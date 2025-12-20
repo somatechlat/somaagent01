@@ -259,103 +259,84 @@ class MultimodalExecutor:
         Returns:
             Tuple of (success, error_message, cost_cents_used)
         """
-        failed_providers: List[Tuple[str, str]] = []
-        last_error_message = ""
         step_cost_cents = 0
         budget_used_cents = plan.budget_used_cents or 0
         budget_limit_cents = plan.budget_limit_cents
+        decision = await self._policy_router.route(
+            modality=self._map_step_type_to_modality(task.step_type),
+            tenant_id=plan.tenant_id,
+            budget_limit_cents=budget_limit_cents,
+            budget_used_cents=budget_used_cents,
+            context={"intent": task.step_type.value},
+        )
 
-        # Provider Fallback Loop
-        while True:
-            decision = await self._policy_router.route(
-                modality=self._map_step_type_to_modality(task.step_type),
-                tenant_id=plan.tenant_id,
-                budget_limit_cents=budget_limit_cents,
-                budget_used_cents=budget_used_cents,
-                excluded_options=failed_providers,
-                context={"intent": task.step_type.value},
+        # --- SHADOW MODE RANKING ---
+        try:
+            shadow_candidates: List[Tuple[str, str]] = []
+            if decision.provider:
+                shadow_candidates.append((decision.provider, "default"))
+
+            ranked = await self._portfolio_ranker.rank(
+                shadow_candidates,
+                task.step_type.value,
             )
-
-            # --- SHADOW MODE RANKING ---
-            try:
-                shadow_candidates: List[Tuple[str, str]] = []
-                seen: set[str] = set()
-                if decision.ladder_considered:
-                    for _, provider_id in decision.ladder_considered:
-                        if provider_id and provider_id not in seen:
-                            shadow_candidates.append((provider_id, "default"))
-                            seen.add(provider_id)
-                elif decision.provider:
-                    shadow_candidates.append((decision.provider, "default"))
-
-                ranked = await self._portfolio_ranker.rank(
-                    shadow_candidates,
-                    task.step_type.value,
-                )
-                if ranked and decision.success and decision.provider:
-                    top_pick_id = ranked[0][0]
-                    if top_pick_id != decision.provider:
-                        logger.info(
-                            "SHADOW DIVERGENCE: Policy=%s, Ranker=%s",
-                            decision.provider,
-                            top_pick_id,
-                        )
-            except Exception as e:
-                logger.warning("Shadow ranking failed: %s", e)
-            # ---------------------------
-
-            if not decision.success or not decision.tool_id:
-                error_msg = (
-                    f"No capability available. Exhausted: {failed_providers}. "
-                    f"Last error: {last_error_message}"
-                )
-                logger.error("Step %s failed: %s", task.task_id, error_msg)
-                if not failed_providers:
-                    await self._execution_tracker.start(
-                        plan.id, step_index, plan.tenant_id, "unknown", "unknown"
+            if ranked and decision.success and decision.provider:
+                top_pick_id = ranked[0][0]
+                if top_pick_id != decision.provider:
+                    logger.info(
+                        "SHADOW DIVERGENCE: Policy=%s, Ranker=%s",
+                        decision.provider,
+                        top_pick_id,
                     )
-                return False, error_msg, step_cost_cents
+        except Exception as e:
+            logger.warning("Shadow ranking failed: %s", e)
+        # ---------------------------
 
-            provider = self._providers.get(decision.tool_id)
-            if not provider:
-                logger.error(
-                    "Provider %s approved by router but not loaded in executor",
-                    decision.tool_id,
-                )
-                failed_providers.append((decision.tool_id, decision.provider))
-                continue
-
-            logger.info(
-                "Step %s selected provider %s (tool: %s)",
-                task.task_id,
-                decision.provider,
-                decision.tool_id,
+        if not decision.success or not decision.tool_id:
+            error_msg = "No capability available."
+            logger.error("Step %s failed: %s", task.task_id, error_msg)
+            await self._execution_tracker.start(
+                plan.id, step_index, plan.tenant_id, "unknown", "unknown"
             )
+            return False, error_msg, step_cost_cents
 
-            max_attempts = 1
-            gate_config = task.quality_gate
-            if gate_config.get("enabled", True):
-                max_attempts = gate_config.get("max_reworks", 2) + 1
+        provider = self._providers.get(decision.tool_id)
+        if not provider:
+            error_msg = f"Provider {decision.tool_id} not loaded in executor"
+            logger.error(error_msg)
+            return False, error_msg, step_cost_cents
 
-            attempt = 0
-            prompt_feedback = ""
-            provider_success = False
+        logger.info(
+            "Step %s selected provider %s (tool: %s)",
+            task.task_id,
+            decision.provider,
+            decision.tool_id,
+        )
 
-            while attempt < max_attempts:
-                attempt += 1
-                is_retry = attempt > 1
-                result = None
-                evaluation_score = None
-                evaluation_feedback: Dict[str, Any] | None = None
-                quality_gate_passed = None
+        max_attempts = 1
+        gate_config = task.quality_gate
+        if gate_config.get("enabled", True):
+            max_attempts = gate_config.get("max_reworks", 2) + 1
 
-                base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
-                if is_retry and prompt_feedback:
-                    full_prompt = f"{base_prompt}
+        attempt = 0
+        prompt_feedback = ""
+        provider_success = False
+
+        while attempt < max_attempts:
+            attempt += 1
+            is_retry = attempt > 1
+            result = None
+            evaluation_score = None
+            evaluation_feedback: Dict[str, Any] | None = None
+            quality_gate_passed = None
+
+            base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
+            if is_retry and prompt_feedback:
+                full_prompt = f"{base_prompt}
 
 CRITIC FEEDBACK: {prompt_feedback}"
-                else:
-                    full_prompt = base_prompt
+            else:
+                full_prompt = base_prompt
 
                 request = GenerationRequest(
                     tenant_id=plan.tenant_id,
@@ -368,9 +349,6 @@ CRITIC FEEDBACK: {prompt_feedback}"
                     parameters=task.params,
                 )
 
-                fallback_reason = decision.fallback_reason.value if decision.fallback_reason else None
-                original_provider = decision.ladder_considered[0][1] if decision.ladder_considered else None
-
                 exec_record = await self._execution_tracker.start(
                     plan.id,
                     step_index,
@@ -378,8 +356,6 @@ CRITIC FEEDBACK: {prompt_feedback}"
                     provider.name,
                     provider.provider_id,
                     attempt_number=attempt,
-                    fallback_reason=fallback_reason,
-                    original_provider=original_provider,
                 )
 
                 try:
@@ -570,18 +546,10 @@ CRITIC FEEDBACK: {prompt_feedback}"
 
             if provider_success:
                 return True, None, step_cost_cents
-
-            logger.warning(
-                "Provider %s failed all attempts for step %s. Falling back.",
-                decision.provider,
-                task.task_id,
-            )
-            failed_providers.append((decision.tool_id, decision.provider))
-
-        return False, last_error_message, step_cost_cents
+            return False, prompt_feedback or "provider_failure", step_cost_cents
 
     def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
-        """Resolve dependency placeholders in prompt.
+        """Resolve dependency tokens in prompt.
         
         Replaces {{task_id.url}} or similar patterns with actual values
         from context.
@@ -598,11 +566,11 @@ CRITIC FEEDBACK: {prompt_feedback}"
         if step_type == StepType.GENERATE_DIAGRAM:
             return "image_diagram"
         if step_type == StepType.GENERATE_IMAGE:
-            return "image_photo" # Default strict
+            return "image_photo"
         if step_type == StepType.CAPTURE_SCREENSHOT:
             return "screenshot"
         if step_type == StepType.GENERATE_VIDEO:
             return "video_short"
         if step_type == StepType.COMPOSE_DOCUMENT:
             return "document"
-        return "image" # Fallback
+        raise ValueError(f"Unsupported step type: {step_type}")

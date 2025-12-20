@@ -14,11 +14,6 @@ from python.integrations.somabrain_client import SomaBrainClient
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus
 from services.common.logging_config import setup_logging
-from services.common.memory_write_outbox import (
-    ensure_schema as ensure_mw_outbox_schema,
-    MemoryWriteOutbox,
-)
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
@@ -59,8 +54,7 @@ class ToolExecutor:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.outbox = OutboxStore(dsn=cfg.settings().database.dsn)
-        self.publisher = DurablePublisher(bus=self.bus, outbox=self.outbox)
+        self.publisher = DurablePublisher(bus=self.bus)
         self.tenant_config = TenantConfig(path=tenant_config_path())
         self.policy = PolicyClient(
             base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
@@ -74,7 +68,6 @@ class ToolExecutor:
         self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
         self.telemetry = ToolTelemetryEmitter(publisher=self.publisher, settings=SERVICE_SETTINGS)
         self.soma = SomaBrainClient.get()
-        self.mem_outbox = MemoryWriteOutbox(dsn=cfg.settings().database.dsn)
         self.streams = get_stream_config()
         self._audit_store: _AuditStore | None = None
         self._multimodal_task: asyncio.Task | None = None
@@ -111,14 +104,6 @@ class ToolExecutor:
         await self.tool_registry.load_all_tools()
 
         # Ensure schemas (best-effort)
-        for ensure_fn, store, name in [
-            (ensure_outbox_schema, self.outbox, "Outbox"),
-            (ensure_mw_outbox_schema, self.mem_outbox, "Memory write outbox"),
-        ]:
-            try:
-                await ensure_fn(store)
-            except Exception:
-                LOGGER.debug(f"{name} schema ensure failed", exc_info=True)
 
         try:
             await self.get_audit_store().ensure_schema()

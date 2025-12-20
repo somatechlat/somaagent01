@@ -97,14 +97,8 @@ def _is_downloading():
 async def is_downloaded():
     if whisper is None:
         return False
-    try:
-        # return await runtime.call_development_function(_is_downloaded)
-        return _is_downloaded()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return _is_downloaded()
+    # return await runtime.call_development_function(_is_downloaded)
+    return _is_downloaded()
 
 
 def _is_downloaded():

@@ -75,7 +75,7 @@
 
 **Enhancements Needed:**
 - [ ] Add `multimodal_dispatch()` method (Section 16.9.2)
-- [ ] Integrate PolicyGraphRouter for fallbacks
+- [ ] Integrate PolicyGraphRouter for single-provider selection
 - [ ] Record executions to `multimodal_executions` table
 - [ ] Trigger AssetCritic if quality gates enabled
 
@@ -86,7 +86,7 @@
 
 - [x] File upload with SHA256 hashing
 - [x] AttachmentsStore - PostgreSQL-backed storage
-- [x] DurablePublisher - Kafka + Outbox pattern
+- [x] DurablePublisher - Kafka publishing
 - [x] SessionCache - Redis caching
 - [x] Authorization via `authorize_request()`
 
@@ -205,8 +205,6 @@
 - [x] dlq_messages - Dead letter queue
 - [x] attachments - File storage
 - [x] audit_events - Audit log
-- [x] outbox - Transactional outbox
-- [x] memory_write_outbox - Memory retry queue
 
 #### PostgreSQL Tables (Multimodal Extension - NEW)
 - [ ] multimodal_assets - Asset storage (images/videos/diagrams)
@@ -280,7 +278,7 @@
 - [ ] `multimodal_capability_selection_total` (Counter)
 - [ ] `multimodal_execution_latency_seconds` (Histogram)
 - [ ] `multimodal_execution_cost_estimate_cents` (Histogram)
-- [ ] `multimodal_fallback_total` (Counter)
+- [ ] `multimodal_provider_errors_total` (Counter)
 - [ ] `multimodal_quality_score` (Histogram)
 - [ ] `multimodal_rework_attempts_total` (Counter)
 - [ ] `portfolio_ranker_shadow_divergence_total` (Counter)
@@ -435,9 +433,9 @@
 #### 1.3 Policy Graph Router (A)
 - [x] Implement `PolicyGraphRouter` service
   - [x] File: `services/common/policy_graph_router.py`
-  - [x] Define fallback ladders per modality:
-    - [x] `image_diagram`: mermaid → plantuml → dalle3
-    - [x] `image_photo`: dalle3 → stability
+  - [x] Define deterministic provider ordering per modality:
+    - [x] `image_diagram`: mermaid, plantuml, dalle3
+    - [x] `image_photo`: dalle3, stability
     - [x] `screenshot`: playwright
     - [x] `video_short`: (prepared for future)
   - [x] `route()` method with OPA integration
@@ -555,7 +553,7 @@
 - [ ] Implement `AssetCritic` service
   - [ ] File: `services/common/asset_critic.py`
   - [ ] `evaluate(asset, rubric, context)` method
-  - [ ] Vision model integration (GPT-4V primary, Claude fallback, heuristics fallback)
+  - [ ] Vision model integration (GPT-4V)
   - [ ] `_evaluate_image()` method
   - [ ] `_evaluate_diagram()` method (heuristics: resolution, element count)
 - [ ] Define rubrics per asset type
@@ -566,8 +564,8 @@
   - [ ] Parse JSON response: passes, score, feedback
 - [ ] User-defined acceptance criteria support
 
-#### 5.2 Rework & Fallback Integration
-- [ ] Integrate Critic with PolicyGraphRouter fallbacks
+#### 5.2 Rework Integration
+- [ ] Integrate Critic with PolicyGraphRouter
 - [ ] Bounded retry logic (MAX_REWORK_ATTEMPTS=2)
 - [ ] Re-prompt loop with feedback
   - [ ] Append feedback to original prompt
@@ -587,7 +585,7 @@
 - [ ] Record execution outcomes to SomaBrain
   - [ ] Call `soma.context_feedback()` after each execution
 - [ ] Create decision record schema
-  - [ ] Fields: chosen_capability, fallback_ladder, rationale
+  - [ ] Fields: chosen_capability, rationale
 
 #### 6.2 Ranking System (Shadow Mode First)
 - [ ] Implement `PortfolioRanker` service
@@ -709,14 +707,14 @@
   - [ ] `multimodal_capability_selection_total` (Counter: modality, tool_id, provider, decision_source)
   - [ ] `multimodal_execution_latency_seconds` (Histogram: modality, tool_id, provider, status)
   - [ ] `multimodal_execution_cost_estimate_cents` (Histogram: modality, tool_id, provider)
-  - [ ] `multimodal_fallback_total` (Counter: modality, tool_id, fallback_reason)
+  - [ ] `multimodal_provider_errors_total` (Counter: modality, tool_id, error_reason)
   - [ ] `multimodal_quality_score` (Histogram: modality, tool_id)
   - [ ] `multimodal_rework_attempts_total` (Counter: modality, reason)
   - [ ] `portfolio_ranker_shadow_divergence_total` (Counter: modality, task_type)
   - [ ] `capability_health_status` (Gauge: tool_id, provider)
 - [ ] Monitor asset storage usage
   - [ ] S3 bucket size metrics
-  - [ ] PostgreSQL bytea column size (if fallback used)
+  - [ ] PostgreSQL bytea column size validation
 
 #### 10.2 Distributed Tracing
 - [ ] Add OpenTelemetry spans:
@@ -740,17 +738,17 @@ All tests in `tests/unit/multimodal/`
   - [ ] Test constraint matching logic
   - [ ] Test registration and updates
 - [ ] test_policy_graph_router.py
-  - [ ] Test fallback ladder construction
-  - [ ] Test OPA integration (mocked)
+  - [ ] Test provider selection order
+  - [ ] Test OPA integration (real policy bundle)
   - [ ] Test budget filtering
   - [ ] Test user override logic
 - [ ] test_asset_store.py
   - [ ] Test create/get with PostgreSQL
-  - [ ] Test S3 integration (mocked)
+  - [ ] Test S3 integration (real bucket)
   - [ ] Test SHA256 deduplication
   - [ ] Test provenance recording
 - [ ] test_asset_critic.py
-  - [ ] Test image evaluation (mocked vision model)
+  - [ ] Test image evaluation (live vision model)
   - [ ] Test diagram heuristics
   - [ ] Test pass/fail scoring
 - [ ] test_portfolio_ranker.py
@@ -791,15 +789,15 @@ All tests in `tests/e2e/multimodal/`
     - [ ] User: "Create ISO SRS for feature X with architecture diagrams and UI screenshots"
     - [ ] Verify: plan extracted, tasks executed, assets generated, SRS assembled
     - [ ] Check: markdown output, asset bundle, provenance summary
-- [ ] test_fallback_scenarios.py
-  - [ ] `test_dalle_failure_fallback`
-    - [ ] Mock DALL-E 503 error
-    - [ ] Verify: fallback to Stability AI, success
-    - [ ] Check: `multimodal_fallback_total` metric incremented
+- [ ] test_provider_failures.py
+  - [ ] `test_provider_failure_error`
+    - [ ] Simulate provider 503 error
+    - [ ] Verify: error surfaced to caller
+    - [ ] Check: `multimodal_provider_errors_total` metric incremented
 - [ ] test_quality_gates.py
   - [ ] `test_diagram_quality_rework`
     - [ ] Generate diagram with quality gate enabled
-    - [ ] Mock Critic: first attempt score < threshold
+    - [ ] Use a low-quality prompt to force first attempt below threshold
     - [ ] Verify: re-generation, second attempt passes
     - [ ] Check: `multimodal_rework_attempts_total` = 1
 
@@ -809,7 +807,7 @@ All tests in `tests/chaos/multimodal/`
 - [ ] test_circuit_breaker.py
   - [ ] Simulate repeated provider failures (5 failures in 10s)
   - [ ] Verify: circuit opens
-  - [ ] Check: future requests skip primary, use fallback
+  - [ ] Check: future requests fail fast when provider is unavailable
   - [ ] Test: circuit recovery after cooldown (60s)
 - [ ] test_resume.py
   - [ ] Start 5-step job
@@ -851,14 +849,14 @@ All tests in `tests/chaos/multimodal/`
   - [ ] UI for API key input (DALL-E, Stability, Runway, Pika)
 - [ ] Set up monitoring dashboards
   - [ ] Grafana: multimodal metrics panel
-  - [ ] Alerts: high fallback rates, quality gate failures, budget overruns
+  - [ ] Alerts: high provider error rates, quality gate failures, budget overruns
 
 ---
 
 ## ✅ Completed Work
 
 ### Recent Completions (2025-12-16)
-- [x] Secret Manager VIBE fix - Replaced silent fallbacks with fail-fast errors
+- [x] Secret Manager VIBE fix - Replaced silent defaults with fail-fast errors
 - [x] Secret Manager comprehensive unit tests
 - [x] SRS Multimodal Extension Design (Section 16 added to SRS.md v3.0)
 - [x] MULTIMODAL_DESIGN.md - Detailed architectural design
@@ -891,7 +889,7 @@ All tests in `tests/chaos/multimodal/`
 1. **Review & Approve** Multimodal Extension design docs
 2. **Database Migrations** - Create 5 new multimodal tables
 3. **Capability Registry** - Implement tool/model discovery service
-4. **Policy Graph Router** - Implement deterministic fallback ladders
+4. **Policy Graph Router** - Implement deterministic provider selection
 5. **Provider Adapters** - Start with DALL-E, Mermaid, Playwright
 
 ---

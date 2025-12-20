@@ -27,12 +27,3 @@ groups:
         annotations:
           summary: "Embedding provider errors"
           description: "Embedding requests failing. Validate API credentials, network, and provider health."
-
-      - alert: OutboxBacklogHigh
-        expr: gateway_outbox_backlog > 1000
-        for: 15m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Outbox backlog high"
-          description: "Gateway outbox backlog exceeds threshold, indicating stuck downstream processing."

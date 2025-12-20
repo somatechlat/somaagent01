@@ -77,7 +77,7 @@ async def test_error_normalization_read_upgrade(store: PostgresSessionStore):
         "message": "",
         "role": None,
     }
-    # Try direct insert bypassing normalization; skip if cannot
+    # Try direct insert to validate read-time normalization; skip if cannot
     try:
         pool = await store._ensure_pool()
         async with pool.acquire() as conn:

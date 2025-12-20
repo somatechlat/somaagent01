@@ -145,20 +145,17 @@ const memoryDashboardStore = {
 
         // Ensure the currently selected subdirectory exists in the list
         if (!this.memorySubdirs.includes(this.selectedMemorySubdir)) {
-          this.selectedMemorySubdir = "default";
+          throw new Error("Selected memory subdirectory is not available");
         }
       } else {
         this.error = response.error || "Failed to load memory subdirectories";
-        this.memorySubdirs = ["default"];
-        this.selectedMemorySubdir = "default";
+        this.memorySubdirs = [];
+        this.selectedMemorySubdir = null;
       }
     } catch (error) {
       this.error = error.message || "Failed to load memory subdirectories";
-      this.memorySubdirs = ["default"];
-      // Only fallback to default if current selection is not available
-      if (!this.memorySubdirs.includes(this.selectedMemorySubdir)) {
-        this.selectedMemorySubdir = "default";
-      }
+      this.memorySubdirs = [];
+      this.selectedMemorySubdir = null;
       console.error("Memory subdirectory loading error:", error);
     } finally {
       this.loadingSubdirs = false;
@@ -525,40 +522,19 @@ ${memory.content_full}
   },
 
   copyToClipboard(text, toastSuccess = true) {
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          if(toastSuccess)
-            justToast("Copied to clipboard!", "success");
-        })
-        .catch((err) => {
-          console.error("Clipboard copy failed:", err);
-          this.fallbackCopyToClipboard(text, toastSuccess);
-        });
-    } else {
-      this.fallbackCopyToClipboard(text, toastSuccess);
+    if (!navigator.clipboard || !window.isSecureContext) {
+      throw new Error("Clipboard API unavailable or insecure context");
     }
-  },
-
-  fallbackCopyToClipboard(text, toastSuccess = true) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
-    textArea.style.top = "-999999px";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-      document.execCommand("copy");
-      if(toastSuccess)
-        justToast(t('memory.copySuccess', 'Copied to clipboard!'), "success");
-    } catch (err) {
-      console.error("Fallback clipboard copy failed:", err);
-      justToast(t('memory.copyError', 'Failed to copy to clipboard'), "error");
-    }
-    document.body.removeChild(textArea);
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        if(toastSuccess)
+          justToast("Copied to clipboard!", "success");
+      })
+      .catch((err) => {
+        console.error("Clipboard copy failed:", err);
+        justToast(t('memory.copyError', 'Failed to copy to clipboard'), "error");
+      });
   },
 
   async deleteMemory(memory) {

@@ -23,7 +23,6 @@ from starlette.responses import Response
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.logging_config import setup_logging
-from services.common.outbox_repository import ensure_schema as ensure_outbox_schema, OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.tracing import setup_tracing
 
@@ -89,26 +88,9 @@ def get_bus() -> KafkaEventBus:
 
 
 def get_publisher() -> DurablePublisher:
-    # Shared durable publisher; construct lazily for DI, ensure outbox schema
-    # on first use to avoid race at startup.
+    # Shared durable publisher; construct lazily for DI.
     bus = get_bus()
-    outbox = OutboxStore(dsn=cfg.settings().database.dsn)
-    # best-effort ensure schema
-    try:
-        import asyncio as _asyncio
-
-        async def _ensure():
-            await ensure_outbox_schema(outbox)
-
-        # If already in an event loop (typical in FastAPI), schedule it
-        loop = _asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(_ensure())
-        else:
-            loop.run_until_complete(_ensure())
-    except Exception:
-        LOGGER.debug("Outbox schema ensure failed", exc_info=True)
-    return DurablePublisher(bus=bus, outbox=outbox)
+    return DurablePublisher(bus=bus)
 
 
 def get_store() -> DelegationStore:

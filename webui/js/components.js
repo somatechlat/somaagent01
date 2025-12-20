@@ -3,16 +3,7 @@ import { emit, on } from "./event-bus.js";
 import { handleError, createErrorBoundary } from "./error-handling.js";
 
 // Create error boundary for component system
-const componentErrorBoundary = createErrorBoundary('ComponentSystem', (errorData) => {
-  return {
-    type: 'error',
-    html: `<div class="component-error-boundary">
-      <h3>${globalThis.i18n ? i18n.t('components.errorTitle') : 'Component Error'}</h3>
-      <p>${errorData.userMessage}</p>
-      <button onclick="window.location.reload()">${globalThis.i18n ? i18n.t('actions.reloadPage') : 'Reload Page'}</button>
-    </div>`
-  };
-});
+const componentErrorBoundary = createErrorBoundary('ComponentSystem');
 
 // Advanced cache with metadata and versioning
 const componentCache = new Map();

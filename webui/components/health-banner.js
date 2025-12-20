@@ -14,9 +14,7 @@ class HealthBanner {
         // Health thresholds
         this.thresholds = {
             wal_lag_warning: 10,      // seconds
-            wal_lag_critical: 30,     // seconds
-            outbox_warning: 50,       // pending messages
-            outbox_critical: 100      // pending messages
+            wal_lag_critical: 30      // seconds
         };
         
         this.init();
@@ -29,7 +27,7 @@ class HealthBanner {
         // Listen for visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                // no-op; no polling to stop
+                // nothing to stop; polling is disabled
             } else {
                 // Trigger a one-shot refresh when tab becomes visible
                 this.performHealthCheck();
@@ -121,26 +119,8 @@ class HealthBanner {
             }
         }
         
-        // Check outbox backlog
-        if (health.components?.memory_write_outbox) {
-            const pending = health.components.memory_write_outbox.pending;
-            if (pending >= this.thresholds.outbox_critical) {
-                issues.push({
-                    level: 'critical',
-                    message: 'Memory backlog critical',
-                    details: `${pending} pending writes`
-                });
-            } else if (pending >= this.thresholds.outbox_warning) {
-                issues.push({
-                    level: 'warning',
-                    message: 'Memory backlog elevated',
-                    details: `${pending} pending writes`
-                });
-            }
-        }
-        
         // Check component health
-        const memoryComponents = ['memory_write_outbox', 'memory_replicator', 'memory_dlq'];
+        const memoryComponents = ['memory_replicator', 'memory_dlq'];
         memoryComponents.forEach(component => {
             if (health.components?.[component]?.status === 'down') {
                 issues.push({

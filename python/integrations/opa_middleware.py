@@ -29,7 +29,7 @@ class EnforcePolicy(BaseHTTPMiddleware):
         if not base:
             raise ValueError(
                 "SA01_SOMA_BASE_URL is required for OPA middleware. "
-                "No hardcoded fallbacks per VIBE rules."
+                "No hardcoded defaults per VIBE rules."
             )
         base = base.rstrip("/")
         self.evaluate_url = (

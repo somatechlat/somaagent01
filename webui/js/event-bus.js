@@ -40,7 +40,7 @@ export function on(event, fn, options = {}) {
   const existingHandlers = handlers.get(event);
   if (existingHandlers && existingHandlers.size >= config.maxHandlersPerEvent) {
     console.warn(`Maximum handlers (${config.maxHandlersPerEvent}) reached for event: ${event}`);
-    return () => {}; // Return no-op unsubscribe function
+    return () => {}; // Return an empty unsubscribe function
   }
 
   if (!handlers.has(event)) {

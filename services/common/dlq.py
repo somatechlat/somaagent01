@@ -7,7 +7,6 @@ import time
 from typing import Any, Dict, Optional
 
 from services.common.event_bus import KafkaEventBus
-from services.common.outbox_repository import OutboxStore
 from services.common.publisher import DurablePublisher
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class DeadLetterQueue:
         if publisher is not None:
             self.publisher = publisher
         else:
-            self.publisher = DurablePublisher(bus=bus or KafkaEventBus(), outbox=OutboxStore())
+            self.publisher = DurablePublisher(bus=bus or KafkaEventBus())
 
     async def send_to_dlq(
         self,

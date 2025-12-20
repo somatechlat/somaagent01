@@ -168,7 +168,7 @@ async def _queue_event(event: ToolExecutionEvent) -> None:
 async def flush_pending_events() -> int:
     """Flush pending events to SomaBrain.
 
-    Called by outbox_sync service or periodic task.
+    Called by periodic task.
     Returns number of events successfully sent.
     """
     async with _queue_lock:

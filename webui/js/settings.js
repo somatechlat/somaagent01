@@ -315,9 +315,6 @@ function showToast(message, type = 'info') {
             default:
                 return store.frontendInfo(message, title, 3);
         }
-    } else {
-        // Fallback if Alpine/store not ready
-        console.log(`SETTINGS ${type.toUpperCase()}: ${message}`);
-        return null;
     }
+    throw new Error("Notification store not available for settings toasts");
 }

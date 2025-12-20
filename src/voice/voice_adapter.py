@@ -6,7 +6,7 @@ selected provider client (OpenAI or local) and streams any returned audio chunks
 to the :class:`~src.voice.speaker.Speaker` for playback.
 
 All components are injected via the constructor which makes the class easy to
-unit‑test (dependencies can be replaced with mocks).  Errors from any stage are
+exercise with real provider implementations. Errors from any stage are
 propagated as :class:`~src.voice.exceptions.VoiceProcessingError` which is a
 common base class for the whole voice subsystem.
 """
@@ -44,9 +44,8 @@ class VoiceAdapter:
     async def _audio_responses(self, audio_stream: AsyncGenerator[bytes, None]) -> AsyncGenerator[bytes, None]:
         """Transform provider responses into a pure audio byte stream.
 
-        The concrete client returns dictionaries with a ``type`` field.  For the
-        stub implementations the type is always ``"audio"``; the adapter filters
-        accordingly and yields the ``data`` payload.
+        The concrete client returns dictionaries with a ``type`` field. The
+        adapter filters for ``"audio"`` responses and yields the ``data`` payload.
         """
         try:
             async for resp in self._client.process(audio_stream):

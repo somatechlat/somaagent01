@@ -31,19 +31,15 @@
 
 **Memory Replicator**: Service consuming memory.wal topic and persisting events to PostgreSQL replica store.
 
-**Memory Sync**: Service processing memory write outbox for retry logic.
-
 ### O
 
 **OPA (Open Policy Agent)**: Policy engine for authorization decisions.
-
-**Outbox Pattern**: Transactional pattern ensuring message delivery by writing to database before publishing.
 
 ### P
 
 **Persona**: User identity context for conversations and memory scoping.
 
-**PostgreSQL**: Relational database storing sessions, events, memory replicas, and outbox entries.
+**PostgreSQL**: Relational database storing sessions, events, and memory replicas.
 
 ### R
 

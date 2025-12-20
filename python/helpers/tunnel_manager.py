@@ -11,8 +11,7 @@ except Exception:  # pragma: no cover - optional dependency
 class TunnelManager:
     """Singleton to manage the tunnel instance.
 
-    If `flaredantic` is not available, the manager will provide no-op methods
-    with clear messages so the rest of the app doesn't crash at import time.
+    Requires the optional `flaredantic` dependency; methods raise when absent.
     """
 
     _instance = None
@@ -33,13 +32,9 @@ class TunnelManager:
 
     def start_tunnel(self, port=80, provider="serveo"):
         if not _FLAREDANTIC_AVAILABLE:
-            PrintError = __import__(
-                "python.helpers.print_style", fromlist=["PrintStyle"]
-            ).PrintStyle
-            PrintError.error(
-                "Tunnel provider not installed (flaredantic). Set up a tunnel or install 'flaredantic' to enable tunneling."
+            raise RuntimeError(
+                "Tunnel provider not installed (flaredantic). Install 'flaredantic' to enable tunneling."
             )
-            return None
 
         # Start tunnel in a separate thread to avoid blocking
         self.provider = provider
@@ -80,7 +75,9 @@ class TunnelManager:
 
     def stop_tunnel(self):
         if not _FLAREDANTIC_AVAILABLE:
-            return False
+            raise RuntimeError(
+                "Tunnel provider not installed (flaredantic). Install 'flaredantic' to enable tunneling."
+            )
         if self.tunnel and self.is_running:
             try:
                 self.tunnel.stop()
@@ -93,4 +90,8 @@ class TunnelManager:
         return False
 
     def get_tunnel_url(self):
+        if not _FLAREDANTIC_AVAILABLE:
+            raise RuntimeError(
+                "Tunnel provider not installed (flaredantic). Install 'flaredantic' to enable tunneling."
+            )
         return self.tunnel_url if self.is_running else None

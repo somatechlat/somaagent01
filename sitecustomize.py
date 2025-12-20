@@ -19,32 +19,6 @@ import warnings
 # Silence upstream DeprecationWarnings from native bindings (e.g., SWIG/faiss) in test runs.
 warnings.simplefilter("ignore", DeprecationWarning)
 
-# Compatibility shim for tests that reference ``pytest.Request`` (which does not
-# exist in the public pytest API). The test suite only uses the type for type
-# hints, so we alias it to ``pytest.FixtureRequest`` which provides the same
-# runtime behaviour.
-# Ensure ``pytest.Request`` exists for type‑checking in the test suite.
-# Importing pytest here forces its module to load before any test files are
-# evaluated, allowing us to safely add the missing attribute.
-import pytest
-
-# Provide a minimal ``Request`` type for the test suite. If the internal
-# ``FixtureRequest`` class is importable we use it; otherwise we fall back to a
-# simple placeholder.
-try:
-    from _pytest.fixtures import FixtureRequest  # type: ignore
-
-    _req_type = FixtureRequest
-except Exception:
-
-    class _PlaceholderRequest:  # pragma: no cover
-        pass
-
-    _req_type = _PlaceholderRequest
-
-if not hasattr(pytest, "Request"):
-    pytest.Request = _req_type  # type: ignore[attr-defined]
-
 # Resolve the absolute path of the repository root (the directory containing this file).
 REPO_ROOT = os.path.abspath(os.path.dirname(__file__))
 

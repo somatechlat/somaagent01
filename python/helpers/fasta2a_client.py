@@ -134,39 +134,6 @@ class AgentConnection:
                         },
                     )
 
-                    # Fallback: if URL contains '/a2a', try root path without it
-                    if "/a2a" in self.agent_url:
-                        root_url = self.agent_url.split("/a2a", 1)[0]
-                        try:
-                            response = await self._http_client.get(
-                                f"{root_url}/.well-known/agent.json"
-                            )
-                            response.raise_for_status()
-                            self._agent_card = response.json()
-
-                            # Track successful fallback
-                            increment_counter(
-                                fast_a2a_requests_total,
-                                {
-                                    "agent_url": root_url,
-                                    "method": "get_agent_card_fallback",
-                                    "status": "success",
-                                },
-                            )
-
-                            _PRINTER.print(f"Retrieved agent card from {root_url}")
-                        except Exception:
-                            # Track fallback failure (error details not needed)
-                            increment_counter(
-                                fast_a2a_errors_total,
-                                {
-                                    "agent_url": root_url,
-                                    "error_type": "fallback_failed",
-                                    "method": "get_agent_card_fallback",
-                                },
-                            )
-                            # swallow, will re-raise below
-
                     _PRINTER.print(
                         f"[!] Could not connect to {self.agent_url}\n    → Ensure the server is running and reachable.\n    → Full error: {e}"
                     )

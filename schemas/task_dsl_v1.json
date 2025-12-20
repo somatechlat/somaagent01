@@ -98,10 +98,6 @@
                     "maximum": 5,
                     "default": 2
                 },
-                "fallback_enabled": {
-                    "type": "boolean",
-                    "default": true
-                },
                 "quality_gate_enabled": {
                     "type": "boolean",
                     "default": true
@@ -257,10 +253,9 @@
                     "type": "string",
                     "enum": [
                         "fail",
-                        "skip",
-                        "fallback"
+                        "skip"
                     ],
-                    "default": "fallback",
+                    "default": "fail",
                     "description": "Action on step failure"
                 },
                 "metadata": {

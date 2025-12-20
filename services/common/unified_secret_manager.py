@@ -4,7 +4,7 @@ Single source of truth for all secrets:
 - API keys → Vault at secret/agent/api_keys/{provider}
 - Credentials → Vault at secret/agent/credentials/{key}
 
-No Redis, no .env files, no fallbacks for secrets.
+No Redis, no .env files.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ VAULT_CREDENTIALS_PATH = "agent/credentials"
 
 
 class UnifiedSecretManager:
-    """Vault-based secret storage. No fallbacks."""
+    """Vault-based secret storage."""
 
     def __init__(self) -> None:
         self._vault_addr = cfg.env("VAULT_ADDR")

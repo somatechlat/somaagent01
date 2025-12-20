@@ -136,7 +136,7 @@
   - HTTPS validation
   - CORS handling
   - CDN caching
-  - Fallback to local
+  - Local theme pack (explicit selection)
 
 #### 🎯 **F14: Theme Categories**
 - **User Story**: As a user, I want to browse themes by category

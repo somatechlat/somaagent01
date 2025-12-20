@@ -1,30 +1,13 @@
 from datetime import datetime
 
+from git import Repo
+
 from python.helpers import files
 
 
 def get_git_info():
     # Get the current working directory (assuming the repo is in the same folder as the script)
     repo_path = files.get_base_dir()
-
-    # GitPython is optional; if unavailable, use lightweight fallbacks that return
-    # minimal metadata without importing ``git``.
-    try:
-        from git import Repo  # type: ignore
-    except Exception:  # pragma: no cover
-        Repo = None  # type: ignore
-
-    # Ensure the repository is not bare
-    if Repo is None:
-        # Fallback data when GitPython is not installed.
-        return {
-            "branch": "",
-            "commit_hash": "",
-            "commit_time": "",
-            "tag": "",
-            "short_tag": "",
-            "version": "",
-        }
 
     repo = Repo(repo_path)
 

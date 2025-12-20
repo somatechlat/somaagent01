@@ -27,14 +27,14 @@ tool_enabled_for_tenant if {
     tenant_flag.enabled == true
 }
 
-# Fallback: Allow if no tenant-specific flag and tool is globally enabled
+# Default: Allow if no tenant-specific flag and tool is globally enabled
 tool_enabled_for_tenant if {
     not data.tenant_tool_flags[input.tenant][input.resource]
     catalog_entry := data.tool_catalog[input.resource]
     catalog_entry.enabled == true
 }
 
-# Fallback: Allow if tool not in catalog (dynamic/MCP tools)
+# Default: Allow if tool not in catalog (dynamic/MCP tools)
 tool_enabled_for_tenant if {
     not data.tenant_tool_flags[input.tenant][input.resource]
     not data.tool_catalog[input.resource]

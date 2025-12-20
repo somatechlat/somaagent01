@@ -1,4 +1,4 @@
-"""Memory module - Local FAISS and Remote SomaBrain memory stores."""
+"""Memory module - SomaBrain memory store."""
 
 from __future__ import annotations
 
@@ -12,25 +12,15 @@ from typing import Any, Dict, List, Mapping, Sequence
 # FAISS REMOVED: Use SomaBrain for all memory operations.
 # Legacy Agent Zero local FAISS memory is deprecated.
 
-LC_AVAILABLE = True
 try:
-    try:
-        from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
-    except Exception:
-        from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
-    from langchain.storage import InMemoryByteStore, LocalFileStore
-    from langchain_community.docstore.in_memory import InMemoryDocstore
-    # from langchain_community.vectorstores import FAISS # FAISS REMOVED
-    from langchain_community.vectorstores.utils import DistanceStrategy
-    from langchain_core.documents import Document
+    from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
 except Exception:
-    LC_AVAILABLE = False
-    LC_CacheBackedEmbeddings = InMemoryByteStore = LocalFileStore = None
-    InMemoryDocstore = DistanceStrategy = None # FAISS REMOVED
-
-    class Document:
-        def __init__(self, page_content: str = "", metadata: dict | None = None):
-            self.page_content, self.metadata = page_content, metadata or {}
+    from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
+from langchain.storage import InMemoryByteStore, LocalFileStore
+from langchain_community.docstore.in_memory import InMemoryDocstore
+# from langchain_community.vectorstores import FAISS # FAISS REMOVED
+from langchain_community.vectorstores.utils import DistanceStrategy
+from langchain_core.documents import Document
 
 
 try:
@@ -78,44 +68,14 @@ class MemoryArea(Enum):
     INSTRUMENTS = "instruments"
 
 
-# if FAISS_AVAILABLE and LC_AVAILABLE and FAISS is not None: # FAISS REMOVED
-if LC_AVAILABLE: # FAISS REMOVED
-    class MyFaiss: # FAISS REMOVED: This class is now a stub
-        def get_by_ids(self, ids: list[str], /) -> List[Document]:
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        async def aget_by_ids(self, ids: list[str], /) -> List[Document]:
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        def get_all_docs(self):
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        async def asearch(self, query: str, search_type: str, k: int, score_threshold: float, filter: Any):
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        async def adelete(self, ids: list[str]):
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        async def aadd_documents(self, documents: list[Document], ids: list[str]):
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        def save_local(self, folder_path: str):
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-        @staticmethod
-        def load_local(folder_path: str, embeddings: Any, allow_dangerous_deserialization: bool, distance_strategy: Any, relevance_score_fn: Any):
-            raise NotImplementedError("Local FAISS memory is deprecated. Use SomaBrain.")
-
-else:
-    class MyFaiss:
-        pass
+# if FAISS_AVAILABLE and FAISS is not None: # FAISS REMOVED
 
 
 class Memory:
-    """Local FAISS-based memory store."""
+    """SomaBrain-backed memory store."""
 
     Area = MemoryArea
-    index: dict[str, "MyFaiss"] = {}
+    index: dict[str, Any] = {}
     _remote_instances: Dict[str, "SomaMemory"] = {}
 
     @staticmethod
@@ -187,59 +147,11 @@ class Memory:
         model_config: models.ModelConfig,
         memory_subdir: str,
         in_memory=False,
-    ) -> tuple[MyFaiss, bool]:
+    ) -> tuple[Any, bool]:
         # DEPRECATED: Local VectorDB/FAISS is not supported
         raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
 
-        em_dir = files.get_abs_path("memory/embeddings")
-        db_dir = Memory._abs_db_dir(memory_subdir)
-        os.makedirs(db_dir, exist_ok=True)
-
-        if in_memory:
-            if not LC_AVAILABLE or InMemoryByteStore is None:
-                raise RuntimeError("LangChain storage not available for in-memory FAISS path")
-            store = InMemoryByteStore()
-        else:
-            os.makedirs(em_dir, exist_ok=True)
-            if not LC_AVAILABLE or LocalFileStore is None:
-                raise RuntimeError("LangChain storage not available for local FAISS path")
-            store = LocalFileStore(em_dir)
-
-        embeddings_model = models.get_embedding_model(
-            model_config.provider, model_config.name, **model_config.build_kwargs()
-        )
-        embeddings_model_id = files.safe_file_name(model_config.provider + "_" + model_config.name)
-
-        if LC_CacheBackedEmbeddings is None:
-            raise RuntimeError("LangChain CacheBackedEmbeddings not available")
-        embedder = LC_CacheBackedEmbeddings.from_bytes_store(
-            embeddings_model, store, namespace=embeddings_model_id
-        )
-
-        db: MyFaiss | None = None
-        created = False
-
-        if os.path.exists(db_dir) and files.exists(db_dir, "index.faiss"):
-            db = MyFaiss.load_local(
-                folder_path=db_dir,
-                embeddings=embedder,
-                allow_dangerous_deserialization=True,
-                distance_strategy=DistanceStrategy.COSINE,
-                relevance_score_fn=Memory._cosine_normalizer,
-            )
-            emb_ok = False
-            emb_set_file = files.get_abs_path(db_dir, "embedding.json")
-            if files.exists(emb_set_file):
-                embedding_set = json.loads(files.read_file(emb_set_file))
-                if (
-                    embedding_set["model_provider"] == model_config.provider
-                    and embedding_set["model_name"] == model_config.name
-                ):
-                    emb_ok = True
-            if db and not emb_ok:
-                db = None
-
-    def __init__(self, db: MyFaiss, memory_subdir: str):
+    def __init__(self, db: Any, memory_subdir: str):
         self.db = db
         self.memory_subdir = memory_subdir
 
@@ -369,7 +281,7 @@ class Memory:
                 return doc_id
 
     @staticmethod
-    def _save_db_file(db: MyFaiss, memory_subdir: str):
+    def _save_db_file(db: Any, memory_subdir: str):
         db.save_local(folder_path=Memory._abs_db_dir(memory_subdir))
 
     @staticmethod

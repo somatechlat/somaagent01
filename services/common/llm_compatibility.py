@@ -1,11 +1,11 @@
 """LLM compatibility layer for provider-specific quirks.
 
 This module formalizes provider-specific transformations that were previously
-scattered as 'hacks' in the main models.py. Each compatibility function has
+scattered as ad-hoc fixes in the main models.py. Each compatibility function has
 clear contracts, feature flags, and tests.
 
 SRS Reference: Multi-provider LLM support
-VIBE Compliance: Replaces inline 'hack' comments with documented compatibility layer
+VIBE Compliance: Replaces inline ad-hoc comments with documented compatibility layer
 """
 
 from __future__ import annotations

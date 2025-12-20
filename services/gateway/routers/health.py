@@ -106,8 +106,6 @@ async def health_check(
         "conversation-worker",
         "tool-executor",
         "memory-replicator",
-        "memory-sync",
-        "outbox-sync",
         "fasta2a-gateway",
         "fasta2a-worker",
         "fasta2a-flower",

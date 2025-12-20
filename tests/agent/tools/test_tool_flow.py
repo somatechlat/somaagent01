@@ -48,12 +48,11 @@ def test_tool_request_echo_flow() -> None:
         tool_names = {t.get("name") for t in tools}
         assert "echo" in tool_names, f"echo tool missing; found: {sorted(tool_names)}"
 
-        # Enqueue tool request; bypass policy by setting requeue_override=True for dev stacks
         payload = {
             "session_id": session_id,
             "tool_name": "echo",
             "args": {"text": "e2e ping"},
-            "metadata": {"tenant": TENANT, "requeue_override": True},
+            "metadata": {"tenant": TENANT},
         }
         resp = client.post(f"{BASE_URL}/v1/tool/request", json=payload)
         assert resp.status_code == 200, f"enqueue failed: HTTP {resp.status_code} {resp.text}"

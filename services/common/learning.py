@@ -67,7 +67,7 @@ async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
         LEARNING_REQUEST_LATENCY_SECONDS.labels(endpoint).observe(time.perf_counter() - t0)
         return data if isinstance(data, dict) else {}
     except (SomaClientError, httpx.HTTPError) as exc:
-        # Log the error clearly and return empty dict - no stub fallbacks allowed
+        # Log the error clearly and return empty dict
         LEARNING_REQUESTS_TOTAL.labels(endpoint, "error").inc()
         LEARNING_REQUEST_LATENCY_SECONDS.labels(endpoint).observe(time.perf_counter() - t0)
         LOGGER.error(

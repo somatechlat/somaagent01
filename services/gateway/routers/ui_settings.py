@@ -4,7 +4,7 @@ Single source of truth:
 - Non-sensitive settings → PostgreSQL via AgentSettingsStore
 - Secrets/API keys → Vault via UnifiedSecretManager
 
-No Redis secrets, no .env files, no fallbacks.
+No Redis secrets, no .env files.
 """
 
 from __future__ import annotations

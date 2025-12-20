@@ -57,7 +57,7 @@ class AudioCapture:
         # Import ``sounddevice`` lazily – this avoids a hard runtime dependency.
         try:
             import sounddevice as sd  # type: ignore
-        except Exception as exc:  # pragma: no cover – exercised in CI via mock
+        except Exception as exc:  # pragma: no cover – exercised in CI
             raise VoiceProcessingError(
                 command="import sounddevice",
                 exit_code=1,
@@ -102,7 +102,7 @@ class AudioCapture:
                 callback=self._callback,
             )
             stream.start()
-        except Exception as exc:  # pragma: no cover – exercised via mock
+        except Exception as exc:  # pragma: no cover – exercised in CI
             raise VoiceProcessingError(
                 command="sounddevice.InputStream",
                 exit_code=1,

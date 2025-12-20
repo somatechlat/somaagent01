@@ -3,6 +3,7 @@ import importlib.util
 import inspect
 import os
 import re
+import logging
 from fnmatch import fnmatch
 from types import ModuleType
 from typing import Any, Type, TypeVar
@@ -12,6 +13,7 @@ import regex
 from .dirty_json import DirtyJson
 from .files import get_abs_path
 
+LOGGER = logging.getLogger(__name__)
 
 def json_parse_dirty(json: str) -> dict[str, Any] | None:
     if not json or not isinstance(json, str):
@@ -95,18 +97,7 @@ def import_module(file_path: str) -> ModuleType:
     except Exception as e:
         # Log import failure but don't let a single failing API handler crash the
         # whole UI process. Caller functions will skip None modules.
-        try:
-            # Prefer using the project's PrintStyle when available
-            from python.helpers.print_style import PrintStyle
-
-            PrintStyle(font_color="yellow").print(f"Warning: failed importing {abs_path}: {e}")
-        except Exception:
-            # Fallback to stderr
-            import sys
-            import traceback
-
-            sys.stderr.write(f"Warning: failed importing {abs_path}: {e}\n")
-            traceback.print_exc()
+        LOGGER.warning("Warning: failed importing %s: %s", abs_path, e, exc_info=True)
         return None
     return module
 

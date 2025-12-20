@@ -11,23 +11,7 @@ import { handleError, createErrorBoundary, setupGlobalErrorHandlers } from "./js
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
 
 // Create error boundary for main application
-const appErrorBoundary = createErrorBoundary('MainApplication', (errorData) => {
-  // Show critical error UI
-  const errorContainer = document.createElement('div');
-  errorContainer.className = 'app-error-container';
-  errorContainer.innerHTML = `
-    <div class="app-error-content">
-      <h2>${t('appError.title', 'Application Error')}</h2>
-      <p>${errorData.userMessage}</p>
-      <div class="error-actions">
-        <button onclick="window.location.reload()">${t('appError.reload', 'Reload Application')}</button>
-        <button onclick="this.closest('.app-error-container').remove()">${t('appError.dismiss', 'Dismiss')}</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(errorContainer);
-  return errorContainer;
-});
+const appErrorBoundary = createErrorBoundary('MainApplication');
 // Prior notification store (toast + polling-era compatibility)
 // Consolidated SSE + REST notifications store (prior polling/ toast removed)
 import { store as notificationsSseStore } from "./components/notifications/notificationsStore.js";

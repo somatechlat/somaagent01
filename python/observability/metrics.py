@@ -520,7 +520,9 @@ class ProductionMetrics:
         }
 
         provider_rates = cost_rates.get(provider.lower(), {})
-        rate = provider_rates.get(model.lower(), 0.001 / 1000)  # Default fallback
+        rate = provider_rates.get(model.lower())
+        if rate is None:
+            raise ValueError(f"Unknown cost rate for provider={provider} model={model}")
 
         total_tokens = input_tokens + output_tokens
         cost = total_tokens * rate

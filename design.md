@@ -138,10 +138,10 @@ Plan Compiler (D) → Executable DAG
     ↓
 For each step:
     ├─ Capability Registry (E).find_candidates(modality, constraints)
-    ├─ Policy Graph Router (A): OPA filter + budget + fallback ladder
+    ├─ Policy Graph Router (A): OPA filter + budget + deterministic selection
     ├─ Portfolio Ranker (B): SomaBrain outcomes → ranked list (shadow/active)
     ├─ ToolExecutor.multimodal_dispatch()
-    │   ├─ Execute with fallback ladder
+    │   ├─ Execute selected provider
     │   ├─ AssetStore.create() → S3/PostgreSQL
     │   ├─ ProvenanceRecorder → Audit trail
     │   └─ [Optional] AssetCritic (C) → Quality evaluation → Pass/Rework/Fail
@@ -156,13 +156,9 @@ Response to user
 
 ### Component Details
 
-#### A — Policy Graph Router (Deterministic Fallbacks)
-- **Fallback Ladders:**
-  - `image_diagram`: mermaid_svg → plantuml_png → matplotlib_png → dalle_raster
-  - `image_photo`: dalle3 → dalle2 → stable_diffusion
-  - `screenshot`: playwright_capture → selenium_screenshot → user_upload
-  - `video_short`: runway_gen2 → pika_labs → storyboard_frames
-- **OPA Integration:** Pre-execution + per-fallback-attempt policy checks
+#### A — Policy Graph Router (Deterministic Selection)
+- **Selection Order:** First eligible candidate by registry priority and policy constraints
+- **OPA Integration:** Pre-execution policy checks for the selected provider
 - **Budget Enforcement:** Cost tier filtering, quota tracking
 
 #### B — Portfolio Selector (Learning)
@@ -181,8 +177,8 @@ Response to user
   2. Critic evaluates against rubric (vision model for images, heuristics for diagrams)
   3. Pass → Store asset
   4. Fail → Re-prompt with feedback (bounded: MAX_REWORK=2)
-  5. Exhausted → Advance to fallback ladder
-- **Vision Model:** GPT-4V (primary) → Claude 3 Opus (fallback) → Heuristics (fallback)
+  5. Exhausted → Fail with a surfaced error
+- **Vision Model:** Single configured vision model per task
 
 #### D — Task DSL & Compiler
 - **JSON Schema v1.0:**
@@ -229,8 +225,6 @@ Response to user
 | dlq_messages | Dead letter queue | topic, event, error |
 | attachments | File storage | id, filename, sha256, content |
 | audit_events | Audit log | action, tenant, session_id, timestamp |
-| outbox | Transactional outbox | topic, payload, status |
-| memory_write_outbox | Memory retry queue | payload, tenant, status |
 
 ### Multimodal Tables (NEW)
 
@@ -300,7 +294,7 @@ Response to user
 
 ### Prometheus Metrics (Multimodal)
 - `multimodal_capability_selection_total`, `multimodal_execution_latency_seconds`
-- `multimodal_execution_cost_estimate_cents`, `multimodal_fallback_total`
+- `multimodal_execution_cost_estimate_cents`
 - `multimodal_quality_score`, `multimodal_rework_attempts_total`
 - `portfolio_ranker_shadow_divergence_total`, `capability_health_status`
 

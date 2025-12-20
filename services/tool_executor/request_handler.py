@@ -74,12 +74,11 @@ class RequestHandler:
         args.setdefault("session_id", session_id)
 
         # Policy check
-        if not metadata.get("requeue_override"):
-            policy_result = await self._check_policy(
-                tenant, persona_id, tool_name, tool_label, event, metadata, session_id, trace_id_hex
-            )
-            if policy_result is not None:
-                return
+        policy_result = await self._check_policy(
+            tenant, persona_id, tool_name, tool_label, event, metadata, session_id, trace_id_hex
+        )
+        if policy_result is not None:
+            return
 
         # Get tool
         tool = self._executor.tool_registry.get(tool_name)

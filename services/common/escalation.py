@@ -95,7 +95,7 @@ def should_escalate(
             metadata=factors,
         )
 
-    # Removed fallback_enabled logic - production uses proper escalation criteria only
+    # Production uses explicit escalation criteria only
 
     return EscalationDecision(
         should_escalate=False,

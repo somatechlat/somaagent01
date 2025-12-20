@@ -5,20 +5,7 @@ import { handleError, createErrorBoundary } from "./error-handling.js";
 const t = (k, fb) => (globalThis.i18n ? i18n.t(k) : fb || k);
 
 // Create error boundary for modal system
-const modalErrorBoundary = createErrorBoundary('ModalSystem', (errorData) => {
-  // Return fallback modal UI
-  const fallbackModal = document.createElement('div');
-  fallbackModal.className = 'modal-error-fallback';
-  fallbackModal.innerHTML = `
-    <div class="modal-error-content">
-      <h3>${t('modal.errorTitle', 'Modal Error')}</h3>
-      <p>${errorData.userMessage}</p>
-      <button onclick="this.closest('.modal-error-fallback').remove()">${t('actions.close', 'Close')}</button>
-    </div>
-  `;
-  document.body.appendChild(fallbackModal);
-  return fallbackModal;
-});
+const modalErrorBoundary = createErrorBoundary('ModalSystem');
 
 // Modal functionality with improved architecture
 const modalStack = [];
@@ -248,8 +235,8 @@ export const openModal = modalErrorBoundary.wrapAsync(async function(modalPath, 
       importComponent(componentPath, modal.body)
         .then((doc) => {
           try {
-            // Set the title from the document with fallback
-            modal.title.innerHTML = (doc && doc.title) || modalPath;
+            // Set the title from the document if available
+            modal.title.innerHTML = doc && doc.title ? doc.title : "";
             
       // Apply CSS classes from document if available
             if (doc && doc.html && doc.html.classList) {
@@ -402,12 +389,6 @@ export function closeModal(modalName = null) {
 
     modal.element.addEventListener('transitionend', transitionHandler, { once: true });
 
-    // Fallback timeout in case transition doesn't fire
-    const fallbackTimeout = setTimeout(() => {
-      modal.element.removeEventListener('transitionend', transitionHandler);
-      removeModalElement();
-    }, modalState.animationDuration + 100);
-
     // Handle backdrop visibility and body overflow
     if (modalStack.length === 0) {
       // No modals left - restore normal state
@@ -433,26 +414,9 @@ export function closeModal(modalName = null) {
     // Update modal z-indexes after state change
     updateModalZIndexes();
 
-    // Clear the fallback timeout if modal was removed successfully
-    modal.element.addEventListener('transitionend', () => {
-      clearTimeout(fallbackTimeout);
-    }, { once: true });
-
   } catch (error) {
     console.error('Error closing modal:', error);
-    // Fallback: force cleanup if something went wrong
-    try {
-      modalStack.forEach(modal => {
-        if (modal.element && modal.element.parentNode) {
-          modal.element.parentNode.removeChild(modal.element);
-        }
-      });
-      modalStack.length = 0;
-      updateModalZIndexes();
-      document.body.style.overflow = "";
-    } catch (fallbackError) {
-      console.error('Fallback cleanup failed:', fallbackError);
-    }
+    throw error;
   }
 }
 

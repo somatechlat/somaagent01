@@ -39,20 +39,20 @@ async def http_ping(url: str, timeout: float = 1.5) -> Dict[str, Any]:
 
 
 async def grpc_ping(
-    target: str, stub_factory: Optional[Any] = None, timeout: float = 1.5
+    target: str, client_factory: Optional[Any] = None, timeout: float = 1.5
 ) -> Dict[str, Any]:
     """Ping a gRPC target.
 
     - `target` is a host:port string the channel should connect to.
-    - `stub_factory` is an optional callable(channel) -> stub with a `Ping` or `Health` method.
+    - `client_factory` is an optional callable(channel) -> client with a `Ping` or `Health` method.
 
-    If a `stub_factory` is provided it will be used to perform a lightweight RPC
+    If a `client_factory` is provided it will be used to perform a lightweight RPC
     within the timeout window. Otherwise we open a channel and return ok if the
     channel connectivity becomes READY within the timeout.
     """
     try:
         async with grpc.aio.insecure_channel(target) as channel:  # type: ignore[attr-defined]
-            if stub_factory is None:
+            if client_factory is None:
                 # Wait for READY state; if not READY quickly consider degraded
                 try:
                     await asyncio.wait_for(channel.channel_ready(), timeout=timeout)
@@ -60,13 +60,13 @@ async def grpc_ping(
                 except asyncio.TimeoutError:
                     return {"status": "degraded", "detail": "channel not ready in time"}
 
-            # If a stub factory is provided, call a lightweight RPC (Ping/Health)
-            stub = stub_factory(channel)
+            # If a client factory is provided, call a lightweight RPC (Ping/Health)
+            client = client_factory(channel)
             # Prefer common method names
             rpc = None
             for name in ("Ping", "Health", "Check"):
-                if hasattr(stub, name):
-                    rpc = getattr(stub, name)
+                if hasattr(client, name):
+                    rpc = getattr(client, name)
                     break
             if rpc is None:
                 # Fall back to channel readiness if we can't call a method

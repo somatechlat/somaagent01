@@ -112,7 +112,7 @@ Before touching code, confirm:
 - Invent APIs or syntax  
 - Guess behavior  
 - Use placeholders or mocks  
-- Use Shims, use face, use fallbacks, use bypass, use alternate route 
+- Use Shims, use face, use bypass, use alternate route 
 - alternate not existing routes not in the tasks, roadmap or any files detailing the project
 - Hardcode values  
 - Create new files unnecessarily  

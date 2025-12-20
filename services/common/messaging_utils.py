@@ -31,7 +31,7 @@ def build_headers(
     schema: Optional[str] = None,
     correlation: Optional[str] = None,
 ) -> Dict[str, str]:
-    """Standard header map for Kafka/outbox messages."""
+    """Standard header map for Kafka messages."""
     corr = correlation_id(correlation)
     return {
         "tenant_id": tenant or "",

@@ -4,7 +4,6 @@ The functions use the public HTTP API exposed by ``services/capsule_registry/mai
 """
 
 import json
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
@@ -14,17 +13,17 @@ import httpx
 from src.core.config import cfg
 
 
-# Base URL – must be set via env var per VIBE rules (no hardcoded fallbacks)
+# Base URL – must be set via env var per VIBE rules (no hardcoded defaults)
 def _get_capsule_registry_url() -> str:
     """Return the capsule registry base URL.
 
     Requires the ``SA01_CAPSULE_REGISTRY_URL`` environment variable.
-    No hardcoded fallbacks per VIBE rules.
+    No hardcoded defaults per VIBE rules.
     """
     url = cfg.env("SA01_CAPSULE_REGISTRY_URL")
     if not url:
         raise ValueError(
-            "SA01_CAPSULE_REGISTRY_URL is required. No hardcoded fallbacks per VIBE rules."
+            "SA01_CAPSULE_REGISTRY_URL is required. No hardcoded defaults per VIBE rules."
         )
     return url.rstrip("/")
 
@@ -83,14 +82,10 @@ def install_capsule(capsule_id: str, install_dir: str | None = None) -> Path:
     capsule_path = download_capsule(capsule_id)
     extract_dir = Path(install_dir) if install_dir else Path(tempfile.mkdtemp())
     extract_dir.mkdir(parents=True, exist_ok=True)
-    # Use ``unzip`` if available; fallback to Python's zipfile.
-    try:
-        subprocess.run(["unzip", "-o", str(capsule_path), "-d", str(extract_dir)], check=True)
-    except Exception:
-        import zipfile
+    import zipfile
 
-        with zipfile.ZipFile(capsule_path, "r") as zf:
-            zf.extractall(extract_dir)
+    with zipfile.ZipFile(capsule_path, "r") as zf:
+        zf.extractall(extract_dir)
     return extract_dir
 
 

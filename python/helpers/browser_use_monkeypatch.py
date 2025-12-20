@@ -2,14 +2,8 @@ import logging
 from typing import Any
 
 from python.helpers import dirty_json
-from src.core.config import cfg
 
 LOGGER = logging.getLogger(__name__)
-_FEATURE_BROWSER = (cfg.env("FEATURE_BROWSER", "false") or "false").strip().lower()
-
-
-def _feature_enabled() -> bool:
-    return _FEATURE_BROWSER in {"1", "true", "yes", "on"}
 
 
 # ------------------------------------------------------------------------------
@@ -174,35 +168,15 @@ def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
     return clean_schema(schema)
 
 
+try:
+    from browser_use.llm import ChatGoogle  # type: ignore
+except ImportError as exc:  # pragma: no cover - requires external dependency
+    raise ImportError(
+        "browser_use library is required for production web automation. "
+        "Install with: pip install browser-use"
+    ) from exc
+
+
 def apply():
     """Applies the monkey-patch to ChatGoogle."""
     ChatGoogle._fix_gemini_schema = _patched_fix_gemini_schema
-
-
-if _feature_enabled():
-    try:
-        from browser_use.llm import ChatGoogle  # type: ignore
-    except ImportError as exc:  # pragma: no cover - requires external dependency
-        raise ImportError(
-            "browser_use library is required for production web automation. "
-            "Install with: pip install browser-use"
-        ) from exc
-else:  # lightweight developer alternative
-
-    class ChatGoogle:  # type: ignore
-        def _fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
-            return schema
-
-    # Provide a minimal stub for the OpenRouter chat class used elsewhere in the
-    # codebase. The real implementation offers LLM‑specific methods; the tests
-    # only require the class to exist, so an empty implementation is sufficient.
-    class ChatOpenRouter:  # type: ignore
-        def __init__(self, *_, **__):
-            pass
-
-    LOGGER.info("browser_use not loaded – FEATURE_BROWSER disabled")
-
-    # Export a name ``browser_use_monkeypatch`` so that ``from ... import
-    # browser_use_monkeypatch`` works with this shim. The value is not used directly;
-    # it merely satisfies the import contract expected by ``models.py``.
-    browser_use_monkeypatch = None

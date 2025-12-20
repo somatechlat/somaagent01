@@ -32,7 +32,7 @@ async def _get_session_store() -> PostgresSessionStore:
     if _SESSION_STORE is None:
         async with _LOCK:
             if _SESSION_STORE is None:
-                # Use the central Postgres DSN from cfg; fallback to provided URL if any.
+                # Use the central Postgres DSN from cfg.
                 _SESSION_STORE = PostgresSessionStore(dsn=cfg.settings().database.dsn)
     return _SESSION_STORE
 

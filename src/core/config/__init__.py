@@ -1,46 +1,15 @@
 """Centralised configuration package.
 
-Single source of truth for all runtime configuration. Precedence order:
-
-1. ``SA01_*`` environment variables (highest priority)
-2. Raw environment variables (fallback)
-3. YAML/JSON configuration files
-4. Hard-coded defaults
+Single source of truth for all runtime configuration.
 """
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-from typing import Any, Dict
-
-
-def _load_file_config() -> Dict[str, Any]:
-    """Load configuration from YAML file if present."""
-    config_path = Path(__file__).resolve().parents[3] / "config.yaml"
-    if not config_path.is_file():
-        return {}
-    try:
-        import yaml
-
-        with config_path.open("r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
-
-
-_file_cfg: Dict[str, Any] = _load_file_config()
+from typing import Any
 
 
 def env(name: str, default: Any = None) -> Any:
     """Return a configuration value using the **real** loader.
-
-    The VIBE roadmap defines the following precedence (high → low):
-    1. ``SA01_``‑prefixed environment variables (handled by the ``Config``
-       model's ``env_prefix``).
-    2. Plain environment variables (no prefix).
-    3. YAML/JSON file configuration (if present).
-    4. The caller‑provided ``default``.
 
     This implementation delegates to :func:`src.core.config.registry.get_config`
     which returns a validated ``Config`` instance built by ``loader.py``.  The
@@ -69,32 +38,7 @@ def env(name: str, default: Any = None) -> Any:
     if hasattr(cfg_obj, name.lower()):
         return getattr(cfg_obj, name.lower())
 
-    # ---------------------------------------------------------------------
-    # Environment variable mappings – flat names like ``POSTGRES_DSN`` or
-    # ``OPA_URL`` resolve to nested config fields.
-    # ---------------------------------------------------------------------
-    # VIBE COMPLIANT: Only canonical SA01_ prefixed keys supported.
-    # No legacy SOMA_ fallbacks.
-    # ---------------------------------------------------------------------
-    env_map = {
-        "POSTGRES_DSN": lambda: getattr(cfg_obj.database, "dsn", None),
-        "SA01_REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
-        "REDIS_URL": lambda: getattr(cfg_obj.redis, "url", None),
-        "SA01_OPA_URL": lambda: getattr(cfg_obj.external, "opa_url", None),
-        "OPA_URL": lambda: getattr(cfg_obj.external, "opa_url", None),
-        "SA01_SOMA_BASE_URL": lambda: getattr(cfg_obj.external, "somabrain_base_url", None),
-    }
-    if name in env_map:
-        val = env_map[name]()
-        if val is not None:
-            return val
-
-    # Fall back to real environment variables.
-    env_value = os.getenv(name)
-    if env_value is not None:
-        return env_value
-
-    # Fallback to the caller supplied default.
+    # Return the caller supplied default.
     return default
 
 
@@ -116,10 +60,7 @@ def flag(key: str, tenant: Any = None) -> bool:
     if key.lower() in config.feature_flags:
         return config.feature_flags[key.lower()]
 
-    # Fall back to environment variable
-    env_key = f"SA01_ENABLE_{key.upper()}"
-    val = env(env_key, default="false")
-    return str(val).lower() in {"true", "1", "yes", "on"}
+    return False
 
 
 def deployment_mode() -> str:
@@ -134,12 +75,12 @@ def soma_base_url() -> str:
     """Get SomaBrain base URL.
 
     VIBE COMPLIANT: Only SA01_SOMA_BASE_URL is supported.
-    No legacy SOMA_BASE_URL fallback.
+    No legacy SOMA_BASE_URL support.
     """
     url = env("SA01_SOMA_BASE_URL")
     if not url:
         raise RuntimeError(
-            "SA01_SOMA_BASE_URL must be set explicitly. No fallbacks allowed per VIBE rules."
+            "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per VIBE rules."
         )
     return str(url).rstrip("/")
 

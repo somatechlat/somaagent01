@@ -213,6 +213,25 @@ Focused scan and remediation of:
 
 Focused scan and remediation of:
 - tests/ (removed all files containing mock/fake/stub/monkeypatch/respx usage)
+
+### 2025-12-20 — Sweep #4 (runtime no-op/stub cleanup)
+
+Focused scan and remediation of:
+- python/somaagent/context_builder.py
+- services/conversation_worker/main.py
+- python/helpers/browser_use_monkeypatch.py
+- python/helpers/knowledge_import.py
+- python/helpers/tunnel_manager.py
+- services/common/audit_store.py
+- services/common/health_checks.py
+- docs/technical-manual/context-builder-flow.md
+
+### 2025-12-20 — Sweep #5 (repo-wide keyword sweep)
+
+Focused scan and remediation of:
+- ONBOARDING_AGENT.md
+- src/voice/audio_capture.py
+- src/voice/speaker.py
 - templates
 - tests
 - tests/agent
@@ -277,3 +296,36 @@ Targeted checks performed:
 - Duplicate gateway route stacks and duplicate `/v1/*` prefix mounting patterns.
 - Duplicate SSE endpoint implementations (Kafka SSE vs Postgres-poll SSE) under the same path.
 - Duplicate policy files by content (`check_tool_policy.rego` vs `policy/tool_policy.rego`).
+
+### 2025-12-20 — Sweep #6 (no-bypass/no-placeholder cleanup)
+
+Focused scan and remediation of:
+- sitecustomize.py
+- services/common/authorization.py
+- services/tool_executor/request_handler.py
+- services/common/requeue_store.py
+- services/gateway/routers/requeue.py
+- tests/agent/tools/test_tool_flow.py
+- tests/agent/conversation/test_conversation_integrity.py
+- services/tool_executor/multimodal_executor.py
+- observability/metrics.py
+- TASKS.md
+- docs/development-manual/testing-guidelines.md
+- docs/reference/CONTEXT_BUILDER_REQUIREMENTS.md
+- docs/development-manual/contribution-process.md
+- docs/architecture/MULTIMODAL_DESIGN.md
+
+### 2025-12-20 — Sweep #7 (no-alternates / no fallback paths)
+
+Focused scan and remediation of:
+- services/common
+- python/helpers
+- python/integrations
+- python/tasks
+- services/tool_executor
+- webui/js
+- webui/components
+- webui/design-system
+- docs (SRS, architecture, UI spec, onboarding)
+- tests (integration + unit)
+- Makefile

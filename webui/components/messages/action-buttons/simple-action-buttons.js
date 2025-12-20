@@ -52,19 +52,10 @@ export function addActionButtonsToElement(element) {
 
     try {
       // Try modern clipboard API
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        // Fallback for local dev
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.style.position = "fixed";
-        textarea.style.left = "-999999px";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+      if (!navigator.clipboard || !window.isSecureContext) {
+        throw new Error("Clipboard API unavailable or insecure context");
       }
+      await navigator.clipboard.writeText(text);
 
       // Visual feedback
       icon.textContent = "check";

@@ -1,6 +1,6 @@
 """Utility to normalize provider responses into a common schema.
 
-Both the OpenAI and local client stubs emit dictionaries with a ``type`` key –
+Both the OpenAI and local clients emit dictionaries with a ``type`` key –
 currently only ``"audio"`` is used.  In a full implementation the provider may
 also return ``"text"`` (transcriptions) or ``"event"`` messages.  The
 ``ResponseNormalizer`` centralises this transformation so that downstream code

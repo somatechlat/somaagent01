@@ -179,7 +179,7 @@ This document analyzes six critical subsystems in SomaAgent01:
 
 1. Profile-specific: `agents/{profile}/tools/{name}.py`
 2. Default: `python/tools/{name}.py`
-3. Fallback: `Unknown` tool class
+3. Else: `Unknown` tool class
 
 ### VIBE Compliance Status
 

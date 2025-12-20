@@ -33,15 +33,8 @@ is_updating_model = False
 
 
 async def preload():
-    try:
-        # return await runtime.call_development_function(_preload)
-        return await _preload()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # PrintStyle.standard("RFC failed, falling back to direct execution...")
-        # return await _preload()
+    # return await runtime.call_development_function(_preload)
+    return await _preload()
 
 
 async def _preload():
@@ -83,14 +76,8 @@ async def _preload():
 
 
 async def is_downloading():
-    try:
-        # return await runtime.call_development_function(_is_downloading)
-        return _is_downloading()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return _is_downloading()
+    # return await runtime.call_development_function(_is_downloading)
+    return _is_downloading()
 
 
 def _is_downloading():
@@ -98,14 +85,8 @@ def _is_downloading():
 
 
 async def is_downloaded():
-    try:
-        # return await runtime.call_development_function(_is_downloaded)
-        return _is_downloaded()
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return _is_downloaded()
+    # return await runtime.call_development_function(_is_downloaded)
+    return _is_downloaded()
 
 
 def _is_downloaded():
@@ -114,14 +95,8 @@ def _is_downloaded():
 
 async def synthesize_sentences(sentences: list[str]):
     """Generate audio for multiple sentences and return concatenated base64 audio"""
-    try:
-        # return await runtime.call_development_function(_synthesize_sentences, sentences)
-        return await _synthesize_sentences(sentences)
-    except Exception as e:
-        # if not runtime.is_development():
-        raise e
-        # Fallback to direct execution if RFC fails in development
-        # return await _synthesize_sentences(sentences)
+    # return await runtime.call_development_function(_synthesize_sentences, sentences)
+    return await _synthesize_sentences(sentences)
 
 
 async def _synthesize_sentences(sentences: list[str]):
@@ -153,33 +128,12 @@ async def _synthesize_sentences(sentences: list[str]):
         else:
             arr = np.concatenate(chunks, axis=0)
         PrintStyle.standard(f"Kokoro TTS: total_chunks={len(chunks)}")
-        buffer = io.BytesIO()
-        audio_bytes: bytes
-        wrote = False
-        # Preferred: soundfile (libsndfile) if available
-        if _SOUNDFILE_AVAILABLE:
-            try:
-                sf.write(buffer, arr, 24000, format="WAV")
-                audio_bytes = buffer.getvalue()
-                wrote = True
-            except Exception as se:
-                # Fallback to pure-Python writer if soundfile misbehaves in this environment
-                PrintStyle.warn(
-                    f"soundfile write failed ({type(se).__name__}): {se}; falling back to wave module"
-                )
-                buffer = io.BytesIO()
-        if not wrote:
-            import wave
+        if not _SOUNDFILE_AVAILABLE:
+            raise RuntimeError("soundfile is required for Kokoro TTS audio serialization")
 
-            # Convert float32 [-1,1] to int16 PCM
-            pcm = np.clip(arr, -1.0, 1.0)
-            pcm = (pcm * 32767.0).astype(np.int16, copy=False)
-            with wave.open(buffer, "wb") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)  # 16-bit
-                wf.setframerate(24000)
-                wf.writeframes(pcm.tobytes())
-            audio_bytes = buffer.getvalue()
+        buffer = io.BytesIO()
+        sf.write(buffer, arr, 24000, format="WAV")
+        audio_bytes = buffer.getvalue()
 
         # Return base64 encoded audio
         return base64.b64encode(audio_bytes).decode("utf-8")

@@ -220,10 +220,6 @@ CREATE TABLE IF NOT EXISTS multimodal_executions (
     error_code TEXT,
     error_message TEXT,
     
-    -- Fallback tracking
-    fallback_reason TEXT,                    -- Why this provider was chosen (fallback ladder)
-    original_provider TEXT,                  -- Original provider before fallback
-    
     -- Timestamps
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
@@ -381,5 +377,5 @@ ON CONFLICT (tool_id, provider) DO UPDATE SET
 COMMENT ON TABLE multimodal_assets IS 'Stores generated multimodal assets (images, diagrams, videos, screenshots) with content or S3 reference';
 COMMENT ON TABLE multimodal_capabilities IS 'Registry of available multimodal tools/models with modality, cost, and health metadata';
 COMMENT ON TABLE multimodal_job_plans IS 'Task DSL plans for multimodal workflows with status and budget tracking';
-COMMENT ON TABLE multimodal_executions IS 'Execution history per plan step for observability, learning, and fallback tracking';
+COMMENT ON TABLE multimodal_executions IS 'Execution history per plan step for observability and learning';
 COMMENT ON TABLE asset_provenance IS 'Audit trail linking assets to generation context for reproducibility and compliance';

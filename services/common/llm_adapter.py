@@ -1,7 +1,7 @@
 """LLM Adapter for SomaAgent01.
 
-Production-grade adapter that talks to real HTTP endpoints – no stubs, no
-placeholders. This adapter acts as a unified interface for LLM providers
+Production-grade adapter that talks to real HTTP endpoints – no test doubles.
+This adapter acts as a unified interface for LLM providers
 (OpenAI-compatible).
 
 Functionality:
@@ -57,7 +57,7 @@ class LLMAdapter:
 
     def _build_url(self, base_url: str | None, api_path: str | None) -> str:
         if not base_url and not self.service_url:
-            raise RuntimeError("base_url is required for LLM requests (no fallbacks).")
+        raise RuntimeError("base_url is required for LLM requests.")
         base = (base_url or self.service_url or "").rstrip("/")
         path = (api_path or "").lstrip("/") or "v1/chat/completions"
         return f"{base}/{path}"

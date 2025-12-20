@@ -218,8 +218,7 @@ class VoiceConfig(BaseModel):
     """Top‑level voice configuration.
 
     The ``provider`` field selects between ``openai`` (cloud) and ``local`` (on‑prem).
-    ``tts_provider`` determines the fallback for TTS when the primary local engine
-    is unavailable. All nested configs have defaults that allow the service to
+    ``tts_provider`` selects the TTS provider. All nested configs have defaults that allow the service to
     start without any environment variables – useful for CI where the real
     OpenAI key is injected at runtime.
     """
@@ -233,7 +232,7 @@ class VoiceConfig(BaseModel):
         default_factory=LocalVoiceConfig, description="Local stack settings"
     )
     tts_provider: Literal["openai", "local"] = Field(
-        default="openai", description="Fallback TTS provider when local TTS fails"
+        default="openai", description="TTS provider selection"
     )
     audio: AudioConfig = Field(
         default_factory=AudioConfig, description="Audio device and chunk configuration"

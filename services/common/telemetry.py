@@ -1,8 +1,8 @@
 """Telemetry publisher for SomaAgent 01.
 
-Now supports durable publishing via the outbox by accepting a
-DurablePublisher. If not provided, will construct one with a default
-KafkaEventBus and OutboxStore using environment configuration.
+Now supports durable publishing by accepting a DurablePublisher. If not
+provided, will construct one with a default KafkaEventBus using
+environment configuration.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ import uuid
 from typing import Any, Optional
 
 from services.common.event_bus import KafkaEventBus
-from services.common.outbox_repository import OutboxStore
 from services.common.publisher import DurablePublisher
 from services.common.telemetry_store import TelemetryStore
 
@@ -29,8 +28,7 @@ class TelemetryPublisher:
             self.publisher = publisher
         else:
             event_bus = bus or KafkaEventBus()
-            outbox = OutboxStore()  # DSN from env
-            self.publisher = DurablePublisher(bus=event_bus, outbox=outbox)
+            self.publisher = DurablePublisher(bus=event_bus)
         self.store = store or TelemetryStore()
         self.topics = {
             "slm": "slm.metrics",

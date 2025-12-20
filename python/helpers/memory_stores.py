@@ -16,15 +16,7 @@ from python.helpers import guids
 from python.helpers.print_style import PrintStyle
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError, SomaMemoryRecord
 
-# Import Document - handle both LC and fallback
-try:
-    from langchain_core.documents import Document
-except Exception:
-
-    class Document:
-        def __init__(self, page_content: str = "", metadata: dict | None = None):
-            self.page_content = page_content
-            self.metadata = metadata or {}
+from langchain_core.documents import Document
 
 
 class SomaMemory:

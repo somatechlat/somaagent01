@@ -124,23 +124,9 @@ const model = {
         };
       }
     } catch (error) {
-      console.warn("Failed to get default patterns from backend, using fallback");
+      console.error("Failed to get default patterns from backend:", error);
+      throw error;
     }
-
-    // Fallback patterns (will be overridden by backend on first use)
-    return {
-      backup_name: `agent-zero-backup-${timestamp.slice(0, 10)}`,
-      include_hidden: false,
-      include_patterns: [
-        // These will be replaced with resolved absolute paths by backend
-        "# Loading default patterns from backend..."
-      ],
-      exclude_patterns: [],
-      backup_config: {
-        compression_level: 6,
-        integrity_check: true
-      }
-    };
   },
 
   // Editor Management - Following Agent Zero ACE editor patterns
