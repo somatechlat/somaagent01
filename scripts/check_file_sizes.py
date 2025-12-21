@@ -21,7 +21,6 @@ LIMITS = {
     # Helper modules
     "python/helpers/*.py": 300,
     # Task modules
-    "python/tasks/*.py": 200,
     # Agent modules
     "python/somaagent/*.py": 200,
     # Default for all Python files

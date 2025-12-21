@@ -46,8 +46,11 @@ from langchain_core.messages import (
 )
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
 
-# sentence-transformers is a required dependency
-from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
+# sentence-transformers is optional; lazily imported where needed
+try:
+    from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
+except Exception:  # pragma: no cover - optional dep
+    SentenceTransformer = None  # type: ignore
 
 from python.helpers import browser_use_monkeypatch, dirty_json
 from python.helpers.providers import get_provider_config

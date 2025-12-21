@@ -109,6 +109,31 @@ class DelegationCallback(BaseModel):
     result: dict[str, Any] | None = None
 
 
+class DelegationGateway:
+    """Minimal delegation handler used by Temporal A2A worker.
+
+    It publishes the received event to an outbound topic for downstream
+    processing. This keeps the path real (no stubs) while remaining light.
+    """
+
+    def __init__(self) -> None:
+        self._publisher = get_publisher()
+        self._topic = cfg.env("A2A_OUT_TOPIC", "a2a.out")
+
+    async def handle_event(self, event: dict[str, Any], publisher: DurablePublisher | None = None) -> None:
+        pub = publisher or self._publisher
+        dedupe = event.get("task_id") or event.get("event_id")
+        tenant = (event.get("metadata") or {}).get("tenant")
+        session_id = (event.get("metadata") or {}).get("session_id")
+        await pub.publish(
+            self._topic,
+            event,
+            dedupe_key=dedupe,
+            session_id=session_id,
+            tenant=tenant,
+        )
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     ensure_metrics_server()

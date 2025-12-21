@@ -430,6 +430,28 @@ class AssetStore:
         finally:
             await conn.close()
 
+    async def tombstone(self, asset_id: UUID, reason: str | None = None) -> bool:
+        """Soft-delete/tombstone an asset (retain row + audit trail)."""
+        conn = await asyncpg.connect(self._dsn)
+        try:
+            result = await conn.execute(
+                """
+                UPDATE multimodal_assets
+                SET metadata = jsonb_set(
+                    COALESCE(metadata, '{}'::jsonb),
+                    '{tombstone}',
+                    to_jsonb(COALESCE($2::text, 'tombstoned'))
+                )
+                WHERE id = $1
+                """,
+                asset_id,
+                reason,
+            )
+            _, count_str = result.split(" ")
+            return int(count_str) > 0
+        finally:
+            await conn.close()
+
     async def update_metadata(
         self,
         asset_id: UUID,

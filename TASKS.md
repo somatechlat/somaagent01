@@ -96,26 +96,30 @@
 
 ---
 
-### § Celery Tasks Architecture
-**Files:** `services/common/celery/` (multiple modules)
+### § Temporal Workflows
+**Files:** `services/*/temporal_worker.py`
 
-- [x] SafeTask base class - Metrics and error recording
-- [x] core_tasks.py - Infrastructure tasks
-- [x] conversation_tasks.py - Conversation domain tasks
-  - [x] delegate (3 retries, 60s limit, 60/m rate)
-  - [x] build_context (2 retries, 45s limit)
-  - [x] store_interaction (2 retries, 45s limit)
-  - [x] feedback_loop (2 retries, 45s limit)
-- [x] memory_tasks.py - Memory/index domain
-  - [x] rebuild_index (1 retry, 90s limit)
-  - [x] evaluate_policy (2 retries, 30s limit)
-- [x] maintenance_tasks.py - System maintenance
-  - [x] publish_metrics (1 retry, 20s limit)
-  - [x] cleanup_sessions (1 retry, 120s limit)
-  - [x] dead_letter (0 retries, 120/m rate)
-- [x] Saga pattern integration
+- [x] ConversationWorkflow — wraps `ProcessMessageUseCase` activity on queue `conversation`
+- [x] ToolExecutorWorkflow — wraps `handle_tool_request` activity on queue `tool-executor`
+- [x] A2AWorkflow — wraps delegation gateway activity on queue `a2a`
+- [x] Outbox-backed publishing enabled via `SA01_USE_OUTBOX=true`; workers flush pending outbox on startup
+- [x] Start workflows from gateway ingress (Temporal client)
+- [x] Add compensating activities for attachments/assets plus DLQ fallbacks
+- [x] Add rollback/compensation metrics (`compensations_total`, `rollback_latency_seconds`)
 
-**No enhancements needed for multimodal v1.0**
+---
+
+### § Multimodal Model Selection & Permissions
+**Goal:** Intent-driven, permissioned selection of models/providers per modality; no hardcoding.
+
+- [ ] Capability Registry: per-modality entries (text/vision/audio STT/TTS/video/tool) with size/ctx/latency/cost, health, GPU/CPU profile, and tenant/role/persona/capsule allowlists
+- [ ] Selector Service: chooses provider/model/tool via registry + health + policy; returns ranked choices + reasons; added latency < 5 ms P95
+- [ ] Policy Enforcement: `model.use`/`tool.use` OPA checks before invocation; deny unauthorized options with auditable decision
+- [ ] Audit & Explainability: log chosen capability_id/provider, fallback_used + reason, workflow_id/session_id/tenant/persona/capsule/selection_id/policy_id into audit + saga + describe/Decision Trace
+- [ ] Storage/Assets: derive asset_type/format from mime/content-type or explicit params; defaults come from registry, not inline code; hash-dedupe enforced
+- [ ] Degradation-aware: selector consumes degradation monitor health; skips degraded/out-of-budget providers unless explicitly forced in dev
+- [ ] Persona/Capsule/Constitution: selection honors persona constraints, capsule constitution/policy, and capability allowlists
+- [ ] UI/Settings: expose per-tenant/per-persona/capsule availability and overrides in `ui_settings`; enforce at gateway ingress
 
 ---
 
@@ -135,9 +139,12 @@
   - [x] `/context/feedback` - Submit feedback
 
 **Enhancements Needed:**
-- [ ] Store multimodal execution outcomes (Section 16.6)
-- [ ] Query outcomes for Portfolio Ranking (Section 16.5)
-- [ ] Extend feedback schema for tool/model/quality metrics
+- [ ] Mandatory `remember` + `feedback` after every user/assistant/tool/A2A step with workflow_id/event_id/tenant/persona/capsule/capability_id/selection_id/policy_id
+- [ ] Store multimodal execution outcomes (Section 16.6) with derived artifacts (transcript/OCR/summary) references, not blobs
+- [ ] Query outcomes for Portfolio Ranking (Section 16.5) and feed adaptation state into selector
+- [ ] Extend feedback schema for tool/model/quality metrics (latency, cost, quality_gate) and wire to Decision Trace
+- [ ] Enforce Vault-loaded SomaBrain creds and prevent secret leakage into workflow inputs/history/logs
+- [ ] Add UI settings for SomaBrain endpoint, capsules/personas defaults, memory importance thresholds, adaptation toggles
 
 ---
 
@@ -181,6 +188,8 @@
   - [ ] Real Kafka broker connectivity
   - [ ] Real Redis PING command
 - [ ] Add multimodal provider health checks
+- [ ] Add tool/STT/TTS/Vision/Video provider probes feeding capability health; selector uses degradation state for fallbacks
+- [ ] Expose degradation/fallback reasons in Decision Trace
 
 ---
 
@@ -194,6 +203,71 @@
 
 **Documentation Gap:**
 - [ ] Document A2A protocol fully (Section 13.1)
+
+---
+
+## 🧠 Context Builder & Memory Flow
+- [ ] Propagate full provenance (workflow_id/event_id/session_id/tenant/persona/capsule/selection_id/policy_id) into retrieval and summaries
+- [ ] Include multimodal/attachments metadata + derived artifacts in retrieval queries and budgets
+- [ ] Make redaction failure policy configurable (fail-closed for regulated tenants) and auditable
+- [ ] Emit degraded-context marker when SomaBrain is down; surface in Decision Trace
+- [ ] Keep context build fully async; remove sync calls; enforce token budgets with minimal latency
+- [ ] Integrate AgentIQ lanes/backpressure with ContextBuilder budgets; include buffer lane enforcement (≥200 tokens configurable)
+- [ ] Feed digest faithfulness metadata into RetrievalIQ and Decision Trace
+
+---
+
+## 📦 Attachments / Assets / Derived Artifacts
+- [ ] Enforce hash-dedupe and AV scan on ingest; reject/redirect oversize per registry limits
+- [ ] Generate derived artifacts (transcript for audio/video, OCR/vision summary for images, text summary for docs) before memory writes; store references only
+- [ ] Cascade deletes/tombstones to provenance + SomaBrain memories via compensations; add reconciliation workflow for orphans
+
+---
+
+## 🛠 Tooling as Capabilities
+- [ ] Unify ToolRegistry entries into Capability Registry (tool as capability_id)
+- [ ] Tool dispatch must go through selector + OPA; forbid hardcoded tool IDs
+- [ ] Emit full provenance/audit fields per tool call; record quality_gate + fallback_reason
+- [ ] Health probes per tool/provider; degradation-aware routing
+- [ ] CI lint to block bypass of selector/OPA and missing capability_id/selection_id
+- [ ] Implement capsule-scoped Top-K tool retrieval with margin; progressive disclosure ladder (names→desc→minimal schema→full schema) driven by AgentIQ/pressure
+- [ ] Add digest faithfulness checks for tool result compaction; inject warnings in Decision Trace when lossy
+- [ ] Capture confidence for any tool-generated LLM output and propagate to audit/events/OPA
+- [ ] Implement the four AgentIQ primitives explicitly: ConfigResolver, Governor (budgets/mode), ToolSelector (capsule-scoped hybrid ranker), Recorder (stats/receipts)
+
+---
+
+## ⏱ Performance, Budget, and Streaming
+- [ ] Enforce 15 GB stack envelope with per-service `mem_limit`/`mem_reservation`; CI check to fail on overflow
+- [ ] Maintain async streaming: SSE/WS start on first token/audio; no buffering
+- [ ] Cap Temporal activity concurrency to avoid budget breaches; monitor cgroup metrics in Prometheus and degradation monitor
+
+---
+
+## 🔒 Security, Vault, PII
+- [ ] Fetch all secrets (providers/OPA/SomaBrain/Temporal) from Vault/secret manager at call time; never persist in workflow inputs/logs
+- [ ] PII/PHI detection and redaction on ingest (uploads + context); fail-closed for regulated tenants; audit redaction outcomes
+- [ ] Forbid storage/logging of token logprobs; validate confidence range before emitting; ensure OPA input includes confidence fields
+
+---
+
+## 🔁 Durability, DLQ, Backups
+- [ ] Enforce deterministic Kafka keys (session_id/workflow_id) for ordering; idempotent consumers
+- [ ] DLQ + replay workflows per topic; automated requeue with saga correlation
+- [ ] Align Kafka retention with Postgres/SomaBrain backup RPO/RTO; document drills
+- [ ] Reconciliation workflow to detect/repair orphans across attachments/provenance/SomaBrain/outbox
+- [ ] Ensure AIQ_obs computation and RunReceipt storage run off-path (async workers) with backpressure-safe queues
+- [ ] Persist confidence scalar in events/receipts; add replay/backfill script tolerant of null confidence
+- [ ] Default to compact receipts; full receipts only on low AIQ_obs, policy deny, tool failure, or provider rejection; receipts store hashes/pointers only
+
+---
+
+## 🖥 Decision Trace & UX
+- [ ] Expose Decision Trace per message/job (API + UI): capability chosen, fallback reason, cost/latency, health state, memory/feedback status
+- [ ] Show health/budget state and degradation reasons without leaking internals; no Grafana, Prometheus-only
+- [ ] Surface AgentIQ_pred/obs, sub-scores (ContextIQ/RetrievalIQ/ToolIQ/LatencyIQ/PolicyIQ/ReliabilityIQ), degradation level, buffer usage, digest faithfulness warnings, and tool disclosure level
+- [ ] Add confidence scalar to responses and Decision Trace; show low-confidence flags/rejects and missing-logprob cases
+- [ ] Implement Fast vs Rescue paths in Governor; record which path ran in Decision Trace/receipts
 
 ---
 
@@ -241,7 +315,7 @@
   - [x] conversation.send (ConversationPolicyEnforcer)
   - [x] tool.execute (ToolExecutor)
   - [x] memory.write (ResultPublisher)
-  - [x] delegate.task (Celery delegate)
+  - [x] delegate.task
   - [x] admin.* (Gateway admin routes)
 - [x] Secrets management:
   - [x] API Keys (Redis encrypted via `SA01_CRYPTO_FERNET_KEY`)
@@ -251,6 +325,7 @@
   - [x] TLS 1.3 only, HSTS, OCSP stapling
   - [x] mTLS for service-to-service
   - [x] JWS request signing
+- [ ] Forbid storage/logging of token logprobs; validate confidence range before emit; ensure OPA input includes confidence fields
   - [x] Circuit breakers and exponential backoff
   - [x] Key hygiene (rotation, revocation)
 
@@ -541,7 +616,7 @@
   - [x] Resource limits (handled by providers)
   - [x] Integration with `AssetStore` and `ExecutionTracker`
   - [x] Error handling & retries
-- [ ] Integrate with existing Celery task system - Future
+- [ ] Integrate workflow dispatch via Temporal - Future
 - [x] Unit tests: `tests/unit/test_multimodal_executor.py` (5 tests)
 - [ ] Support partial progress and resumption (Implemented basic logic)
 
@@ -712,6 +787,7 @@
   - [ ] `multimodal_rework_attempts_total` (Counter: modality, reason)
   - [ ] `portfolio_ranker_shadow_divergence_total` (Counter: modality, task_type)
   - [ ] `capability_health_status` (Gauge: tool_id, provider)
+  - [ ] `llm_confidence_average`, `llm_confidence_histogram`, `llm_confidence_missing_total`, `llm_confidence_rejected_total` (labels limited to tenant/model/endpoint)
 - [ ] Monitor asset storage usage
   - [ ] S3 bucket size metrics
   - [ ] PostgreSQL bytea column size validation
@@ -891,6 +967,36 @@ All tests in `tests/chaos/multimodal/`
 3. **Capability Registry** - Implement tool/model discovery service
 4. **Policy Graph Router** - Implement deterministic provider selection
 5. **Provider Adapters** - Start with DALL-E, Mermaid, Playwright
+6. **Temporal Migration (enterprise baseline)**
+   - [ ] Add Temporal services to compose/helm (HA-ready layout)
+   - [ ] Port conversation/tool/A2A/maintenance flows to Temporal workflows & activities
+   - [ ] Expose gateway Temporal workflow start/describe/terminate endpoints
+   - [ ] Update degradation monitor and health checks to include Temporal
+   - [ ] Remove legacy task codepaths/tests; add Temporal workflow tests
+7. **Observability (Prometheus-only, enterprise-grade)**
+   - [ ] Expose `/metrics` on all services and Temporal workers
+   - [ ] Add Temporal/Kafka/Postgres exporters; define scrape jobs (no Grafana)
+   - [ ] Add service-level histograms/counters for latency, errors, queue lag
+   - [ ] Wire OpenTelemetry propagation; optional OTLP export guarded by env flag
+   - [ ] Provide Prometheus alert rules for gateway errors, Kafka lag, Temporal failures
+8. **Transactional Integrity & Explainability**
+   - [ ] Add compensations for every workflow activity (all domains) and wire cancels → compensations
+   - [ ] Implement deterministic IDs/idempotency keys + outbox/tombstones for Kafka publishes
+   - [ ] Add “describe run/failure” endpoint (merge Temporal history + audit/saga records)
+   - [ ] Enhance describe API with Temporal history once workflows are migrated (current: session events + saga + audit)
+   - [ ] Add reconciliation workflow to detect/auto-heal orphaned compensations
+   - [ ] Add Prom metrics: compensations_total, rollback_latency_seconds, failure_reason counts
+   - [ ] LLM calls: fetch API keys via SecretManager per-call; record structured audit + usage; ensure retries/compensations for provider-side failures
+9. **Messaging/Storage/Replication/Backups**
+   - [ ] Enforce Kafka idempotent producers with deterministic keys; dev RF=1 note, prod RF≥3 configs
+   - [ ] Uploads/assets: metadata-first writes, checksum dedupe, compensating delete/tombstone; prefer object storage with DB metadata
+   - [ ] Postgres HA + PITR-ready configs; Temporal-orchestrated backups/reindex/export with rate limits
+   - [ ] Redis clustering for prod; ensure sessions survive node loss
+   - [ ] Structured audit on all state changes (DB, Kafka publish, asset ops, auth/login)
+   - [ ] Wire Temporal compensations to call attachments/asset delete/tombstone and emit audit/tombstone events
+   - [ ] Add tombstone support in Temporal workflows for multimodal assets; emit Kafka tombstone/void events for downstream consumers
+   - [ ] Wrap DurablePublisher/DLQ into Temporal activities with outbox + tombstone semantics and rollback metrics
+   - [ ] Add Temporal activity to flush outbox + replay pending DLQ entries on startup/shutdown
 
 ---
 

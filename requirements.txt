@@ -25,8 +25,6 @@ redis==5.2.0
 psycopg[binary]==3.2.3
 asyncpg==0.29.0; python_version < "3.13"
 sqlalchemy==2.0.32
-celery==5.4.0
-celery[redis]==5.4.0
 
 # gRPC and protobuf
 grpcio==1.67.1
@@ -53,6 +51,7 @@ pytz==2024.2
 pathspec>=0.12.1
 simpleeval==1.0.3
 cryptography==43.0.1
+temporalio==1.20.0
 
 # LLM and AI stack (runtime)
 litellm==1.75.0

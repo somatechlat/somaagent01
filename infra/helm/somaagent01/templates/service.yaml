@@ -25,26 +25,6 @@ spec:
   selector:
     {{- include "somaagent01.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: api-gateway
----
-# REAL IMPLEMENTATION - Celery Worker Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "somaagent01.fullname" . }}-celery-worker
-  labels:
-    {{- include "somaagent01.labels" . | nindent 4 }}
-    app.kubernetes.io/component: celery-worker
-spec:
-  type: ClusterIP
-  ports:
-    - port: 9090
-      targetPort: metrics
-      protocol: TCP
-      name: metrics
-  selector:
-    {{- include "somaagent01.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: celery-worker
----
 # REAL IMPLEMENTATION - SomaBrain Service
 {{- if .Values.somabrain.enabled }}
 apiVersion: v1

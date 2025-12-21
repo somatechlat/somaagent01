@@ -350,5 +350,59 @@ ToolExecutor ──────┘   │
 
 ---
 
+## Execution & Orchestration Migration (Temporal)
+
+- **Objective:** Use Temporal workflows/activities while retaining Kafka as ingress/egress and OPA/Vault for policy and secrets.
+- **Temporal Topology (dev compose):** Temporal Server (+ admin tools, optional UI) in namespace `somaagent01-dev`, tuned for low memory; production moves to HA Temporal cluster (frontend/history/matching shards) on dedicated Postgres persistence.
+- **Domain Workflows:**
+  - ConversationWorkflow: delegate → build_context → store_interaction → feedback_loop (existing use-cases).
+  - ToolRequestWorkflow: policy check → multimodal/tool execution → publish results to Kafka.
+  - Maintenance/Memory workflows: publish_metrics, cleanup_sessions, dead_letter, rebuild_index, evaluate_policy.
+  - A2AChatWorkflow: replaces FastA2A task handlers.
+- **Producers:** Gateway + Kafka consumers start workflows via Temporal client; gateway exposes workflow start/describe/terminate routes.
+- **Policy/Security:** OPA enforced inside activities before side effects; secrets fetched in activities (Vault/secret loaders), never serialized in workflow inputs.
+- **Saga/State:** Existing Postgres saga table may remain for reporting; compensations become child workflows/signals.
+- **Observability:** Prometheus metrics on workers; Temporal metrics scraped; OpenTelemetry propagation end-to-end; no Grafana requirement.
+- **Removal:** Legacy task app/config, canvas helpers, Redis-as-broker codepaths, and related tests.
+
+---
+
+## Observability (Prometheus-Only, Enterprise Baseline)
+
+- **Metrics Sink:** Prometheus only (Grafana optional/omitted by policy).
+- **Exporters/Endpoints:**
+  - Temporal Server metrics endpoint scraped directly.
+  - Kafka via JMX → Prometheus JMX exporter.
+  - Postgres via `postgres_exporter`.
+  - All services and Temporal workers expose `/metrics` using `prometheus_client`.
+- **Key Metrics:** gateway request latency/error rates; SSE connections; Kafka lag/error counters; Temporal workflow/activity latency/failure; tool/multimodal execution latency/cost/errors; degradation monitor component health gauges; circuit breaker transitions.
+- **Tracing:** OpenTelemetry propagation maintained; optional OTLP export behind env flag to control resource use.
+- **Alerting (Prom rules only):** gateway error spikes, Kafka consumer lag, Temporal workflow failure rate, DB connection errors, component health down.
+
+---
+
+## Transactional Integrity & Explainability (Enterprise Pattern)
+
+- **ACID locally, Sagas globally:** Postgres mutations wrapped in transactions; cross-service flows use Temporal workflows with compensating activities for every step.
+- **Idempotency & outbox:** Deterministic IDs and idempotency keys; DB + Kafka publishes coupled via outbox/tombstones for reversals.
+- **Cancellation:** User/operator cancel maps to Temporal cancel; activities heartbeat to allow prompt compensation.
+- **Audit & explainability:** Structured audit rows per activity (workflow_id, correlation_id, tenant, outcome, error, compensation_applied) plus Temporal history; gateway exposes “describe run/failure” endpoint that merges both.
+- **Irreversible calls guarded:** OPA + pre-flight checks must pass before external side effects; otherwise rollback occurs before commit.
+- **Reconciliation:** Periodic workflow compares saga records, DB state, and Kafka outbox to auto-heal orphaned operations.
+- **Secrets & policy:** Secrets fetched inside activities (Vault/secret loaders); never serialized in workflow inputs/outputs; OPA enforced before side effects.
+
+---
+
+## Messaging, Uploads, Replication, Backup Patterns
+
+- **Kafka:** Idempotent producers with deterministic keys (tenant/session/request/workflow). Dev RF=1; prod RF≥3 with rack-aware placement; acks=all.
+- **Uploads/Assets:** Metadata-first then binary write; checksum dedupe; compensating delete/tombstone; prefer object storage (S3/MinIO) with DB metadata only.
+- **Postgres:** HA in prod with WAL archiving + PITR; validated backups; bulk ops (reindex, vacuum, exports) orchestrated via Temporal with rate limits.
+- **Redis:** Cluster/sentinel in prod; caches reconstructable; sessions must survive single-node loss.
+- **Backups/restore:** Nightly backups + quarterly restore drills; restore paths scripted; backup jobs run via Temporal workflows with pause/resume.
+- **Audit:** Every state change (DB, Kafka publish, asset create/delete, auth/login) emits structured audit with correlation_id + workflow_id.
+
+---
+
 **Last Updated:** 2025-12-16  
 **Maintained By:** Development Team

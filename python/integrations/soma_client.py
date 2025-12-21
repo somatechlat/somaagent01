@@ -48,14 +48,14 @@ from opentelemetry.propagate import inject
 
 # Use the idempotent wrappers from the observability package. They ensure
 # that metric collectors are created only once, even if this module is
-# imported multiple times (e.g., in Celery workers).
+# imported multiple times.
 from observability.metrics import Counter, Histogram
 from src.core.config import cfg
 
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics for SomaBrain client
-# Avoid duplicate registration when imported multiple times (Celery workers, reloaders).
+# Avoid duplicate registration when imported multiple times.
 # Prometheus metrics for the SomaBrain client – created via the wrapper
 # ``Counter`` / ``Histogram`` which internally calls ``_ensure_metric``.
 SOMA_REQUESTS_TOTAL = Counter(

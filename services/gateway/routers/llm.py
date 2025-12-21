@@ -89,11 +89,15 @@ async def invoke(req: LlmInvokeRequest) -> dict:
         messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
 
     try:
-        content, usage = await slm_client.chat(
+        request_logprobs = cfg.env("CONFIDENCE_ENABLED", "false").lower() == "true"
+        aggregation = cfg.env("CONFIDENCE_AGGREGATION", "average")
+        content, usage, confidence = await slm_client.chat(
             messages=messages,
             model=model,
             base_url=base_url,
             temperature=temperature,
+            request_logprobs=request_logprobs,
+            confidence_aggregation=aggregation,
             **(req.overrides.get("kwargs", {}) if req.overrides else {})
         )
     except Exception as exc:
@@ -127,7 +131,12 @@ async def invoke(req: LlmInvokeRequest) -> dict:
 
         logging.getLogger(__name__).debug("audit log failed for llm.invoke", exc_info=True)
 
-    return {"content": content, "usage": usage, "metadata": req.metadata or {}}
+    return {
+        "content": content,
+        "usage": usage,
+        "metadata": req.metadata or {},
+        "confidence": confidence if request_logprobs else None,
+    }
 
 
 @router.post("/invoke/stream")
@@ -158,14 +167,23 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
         messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
 
     try:
-        content, usage = await slm_client.chat(
+        request_logprobs = cfg.env("CONFIDENCE_ENABLED", "false").lower() == "true"
+        aggregation = cfg.env("CONFIDENCE_AGGREGATION", "average")
+        content, usage, confidence = await slm_client.chat(
             messages=messages,
             model=model,
             base_url=base_url,
             temperature=temperature,
+            request_logprobs=request_logprobs,
+            confidence_aggregation=aggregation,
             **(req.overrides.get("kwargs", {}) if req.overrides else {})
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"llm_provider_error: {exc}")
 
-    return {"stream": [content], "usage": usage, "metadata": req.metadata or {}}
+    return {
+        "stream": [content],
+        "usage": usage,
+        "metadata": req.metadata or {},
+        "confidence": confidence if request_logprobs else None,
+    }

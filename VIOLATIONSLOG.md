@@ -118,7 +118,6 @@ Scanned recursively:
 - postgres-backups
 - prompts
 - python
-- python/api
 - python/extensions
 - python/extensions/agent_init
 - python/extensions/before_main_llm_call
@@ -145,7 +144,6 @@ Scanned recursively:
 - python/integrations
 - python/observability
 - python/somaagent
-- python/tasks
 - python/tools
 - redis-conf
 - schemas
@@ -321,7 +319,6 @@ Focused scan and remediation of:
 - services/common
 - python/helpers
 - python/integrations
-- python/tasks
 - services/tool_executor
 - webui/js
 - webui/components
@@ -329,3 +326,10 @@ Focused scan and remediation of:
 - docs (SRS, architecture, UI spec, onboarding)
 - tests (integration + unit)
 - Makefile
+
+### 2025-12-21 — Sweep #8 (canonical health/session routers)
+
+Focused scan:
+- services/gateway/routers
+
+Reason: Confirmed `/v1/health` and `/v1/sessions/{session_id}/events` now exist only in `services.gateway` and replaced the legacy `src.gateway` routers with this canonical implementation.

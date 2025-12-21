@@ -93,18 +93,6 @@ class ServiceRegistry:
             )
         )
 
-        # Additional services
-        self.register(
-            ServiceDefinition(
-                name="fasta2a-gateway",
-                module_path="python.api.router",
-                startup_order=70,
-                dependencies={"gateway"},
-                critical=False,  # Non-critical for basic functionality
-                port=8011,
-            )
-        )
-
         LOGGER.info(f"Loaded {len(self.services)} services into registry")
 
     def register(self, service: ServiceDefinition) -> None:

@@ -9,7 +9,6 @@ To maintain code quality and readability, we enforce file size limits:
 | `main.py` entry points | 150 |
 | `service.py` files | 200 |
 | Helper modules (`python/helpers/`) | 300 |
-| Task modules (`python/tasks/`) | 200 |
 | Agent modules (`python/somaagent/`) | 200 |
 | All other Python files | 500 |
 

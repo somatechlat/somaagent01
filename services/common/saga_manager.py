@@ -111,6 +111,33 @@ class SagaManager:
             for r in rows
         ]
 
+    async def list_by_workflow(self, workflow_id: str, limit: int = 50) -> list[SagaState]:
+        pool = await self._pool_conn()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT saga_id, name, status, step, data, created_at, updated_at
+                FROM saga_instances
+                WHERE data ->> 'workflow_id' = $1
+                ORDER BY updated_at DESC
+                LIMIT $2
+                """,
+                workflow_id,
+                limit,
+            )
+        return [
+            SagaState(
+                saga_id=str(r["saga_id"]),
+                name=r["name"],
+                status=r["status"],
+                step=r["step"],
+                data=r["data"],
+                created_at=r["created_at"],
+                updated_at=r["updated_at"],
+            )
+            for r in rows
+        ]
+
     async def update(self, saga_id: str, step: str, status: str, data: dict[str, Any]) -> None:
         pool = await self._pool_conn()
         async with pool.acquire() as conn:

@@ -38,6 +38,13 @@ async def get_runtime_config() -> dict:
 
     sse_cfg = {"enabled": str(cfg.env("SSE_ENABLED", "true")).lower() in {"true", "1", "yes", "on"}}
 
+    temporal_cfg = {
+        "host": cfg.env("SA01_TEMPORAL_HOST", "temporal:7233"),
+        "conversation_queue": cfg.env("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation"),
+        "tool_queue": cfg.env("SA01_TEMPORAL_TOOL_QUEUE", "tool-executor"),
+        "a2a_queue": cfg.env("SA01_TEMPORAL_A2A_QUEUE", "a2a"),
+    }
+
     uploads_defaults = {
         "uploads_enabled": True,
         "uploads_max_mb": 25,
@@ -65,6 +72,7 @@ async def get_runtime_config() -> dict:
     return {
         "auth": auth_cfg,
         "sse": sse_cfg,
+        "temporal": temporal_cfg,
         "uploads": uploads_cfg,
         "attachments": attachments,
     }

@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.session_repository import PostgresSessionStore, RedisSessionCache
 from services.common import degradation_monitor
+from services.gateway.providers import get_temporal_client
 
 from src.core.config import cfg
 
@@ -90,6 +91,12 @@ async def health_check(
 
     await check_http_target("somabrain", cfg.soma_base_url())
     await check_http_target("opa", cfg.opa_url())
+    try:
+        temporal_client = await get_temporal_client()
+        await temporal_client.workflow_service.get_system_info()
+        record_status("temporal", "ok")
+    except Exception as exc:
+        record_status("temporal", "down", f"{type(exc).__name__}: {exc}")
 
     # Degradation monitor status
     if degradation_monitor.is_monitoring():
@@ -107,8 +114,6 @@ async def health_check(
         "tool-executor",
         "memory-replicator",
         "fasta2a-gateway",
-        "fasta2a-worker",
-        "fasta2a-flower",
     ]
     for svc in static_services:
         # By default we assume the service is reachable because Docker Compose

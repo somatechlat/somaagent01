@@ -35,7 +35,7 @@ SomaAgent01 is a distributed microservices system comprising:
 - **Conversation Worker**: Kafka consumer for message processing
 - **Tool Executor**: Sandboxed tool execution service
 - **SomaBrain Integration**: Cognitive memory and neuromodulation
-- **Celery Task System**: Async task processing via Redis
+- **Temporal Workflows**: Async processing via Temporal with Kafka ingress/egress
 
 ### 1.3 Definitions and Acronyms
 
@@ -285,58 +285,13 @@ allow_memory = await policy.evaluate(PolicyRequest(
 
 ---
 
-## 6. Celery Tasks Architecture
+## 6. Temporal Workflows Architecture
 
-### 6.1 Task Organization
-
-| Module | Tasks | Responsibility |
-|--------|-------|----------------|
-| `core_tasks.py` | Infrastructure | SafeTask base, shared resources |
-| `conversation_tasks.py` | delegate, build_context, store_interaction, feedback_loop | Conversation domain |
-| `memory_tasks.py` | rebuild_index, evaluate_policy | Memory/index domain |
-| `maintenance_tasks.py` | publish_metrics, cleanup_sessions, dead_letter | System maintenance |
-
-### 6.2 SafeTask Base Class
-
-```python
-class SafeTask(Task):
-    """Base task providing metrics and robust error recording."""
-    
-    def __call__(self, *args, **kwargs):
-        # 1. Record start time
-        # 2. Execute task
-        # 3. Record metrics (success/error)
-        # 4. Send feedback to SomaBrain
-        # 5. On error: enqueue to DLQ
-```
-
-### 6.3 Task Configuration
-
-| Task | Max Retries | Soft Limit | Hard Limit | Rate Limit |
-|------|-------------|------------|------------|------------|
-| delegate | 3 | 45s | 60s | 60/m |
-| build_context | 2 | 30s | 45s | - |
-| store_interaction | 2 | 30s | 45s | - |
-| feedback_loop | 2 | 30s | 45s | - |
-| rebuild_index | 1 | 60s | 90s | - |
-| evaluate_policy | 2 | 20s | 30s | - |
-| publish_metrics | 1 | 15s | 20s | - |
-| cleanup_sessions | 1 | 90s | 120s | - |
-| dead_letter | 0 | - | - | 120/m |
-
-### 6.4 Saga Pattern Integration
-
-```python
-# Delegate task with saga management
-saga_id = await saga_manager.start("delegate", step="authorize", data={...})
-
-# On policy denial
-await saga_manager.fail(saga_id, "policy_denied")
-await run_compensation("delegate", saga_id, {"reason": "policy_denied"})
-
-# On success
-await saga_manager.update(saga_id, step="recorded", status="accepted", data={...})
-```
+- Temporal is the only orchestrator; no task queues or brokers are retained.
+- Kafka remains the ingress/egress bus; workflows are started from gateway or Kafka consumers.
+- Each side-effecting step has a workflow activity plus a compensating activity.
+- Outbox is enabled for all Kafka publishes to couple DB commits with messaging.
+- Dead-letter handling and compensations run as Temporal workflows rather than broker hooks.
 
 ---
 
@@ -557,7 +512,7 @@ CircuitBreaker(
 | conversation.send | message | ConversationPolicyEnforcer |
 | tool.execute | tool_name | ToolExecutor |
 | memory.write | somabrain | ResultPublisher |
-| delegate.task | target | Celery delegate task |
+| delegate.task | target | Temporal delegation workflow |
 | admin.* | endpoint | Gateway admin routes |
 
 ### 11.3 Secrets Management
@@ -578,7 +533,7 @@ CircuitBreaker(
 - **Mode-Aware Policy**: Dev/Test may allow unsigned dev capsules; Prod/Training must enforce signatures, allow/deny lists, and classification/retention rules. Modes gate tool/capsule execution and adaptive learning.
 - **Authorization**: Fine-grained allow/deny by capsule id/version, tool, tenant, environment; link to manifest policy.
 - **Audit & Telemetry**: Immutable, structured logs for install/enable/disable/rollback/API calls/workflows, tagged with capsule id/version, user, client cert fingerprint, nonce. Alert on replay or failed signature attempts.
-- **Background Tasks**: Celery tasks include capsule id/version; emit audit + metrics; respect classification/retention when handling data.
+- **Background Workflows**: Temporal activities include capsule id/version; emit audit + metrics; respect classification/retention when handling data.
 - **Network Posture**: Least-privilege firewall rules; disable compression on sensitive endpoints (mitigate CRIME/BREACH); DDoS/abuse throttles; circuit breakers and exponential backoff around provider calls.
 - **Key Hygiene**: Rotate TLS, JWS, and signing keys regularly; short TTL tokens; support key revocation; store keys in HSM/KMS; zeroize secrets on shutdown.
 - **Export/Import**: Capsule export supports signing and optional encryption; verify signatures and policy on import. Data exports honor classification and retention timers.

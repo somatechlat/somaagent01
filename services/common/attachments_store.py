@@ -201,3 +201,13 @@ class AttachmentsStore:
             return int(result.split()[-1])
         except Exception:
             return 0
+
+    async def delete(self, att_id: uuid.UUID) -> int:
+        """Delete a single attachment (metadata + content). Returns rows affected."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute("DELETE FROM attachments WHERE id = $1", att_id)
+        try:
+            return int(result.split()[-1])
+        except Exception:
+            return 0

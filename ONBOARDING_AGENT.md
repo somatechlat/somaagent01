@@ -2429,35 +2429,6 @@ async def build_context_async(
         return []  # Graceful degradation
 ```
 
-**Celery Task (python/tasks/conversation_tasks.py):**
-
-```python
-@celery_app.task(
-    bind=True,
-    name="python.tasks.conversation_tasks.build_context",
-    queue="fast_a2a",
-    max_retries=2,
-    default_retry_delay=30
-)
-def build_context(
-    self,
-    tenant_id: str,
-    session_id: str
-) -> dict[str, Any]:
-    """Celery task for building conversation context."""
-    
-    # Fetch from SomaBrain
-    payload = {
-        "session_id": session_id,
-        "tenant_id": tenant_id
-    }
-    
-    context = somabrain_client.build_context(payload)
-    
-    return {
-        "context": context,
-        "metadata": {"source": "celery.build_context"}
-    }
 ```
 
 **Learning Module (services/common/learning.py):**

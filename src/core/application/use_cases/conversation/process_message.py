@@ -56,6 +56,7 @@ class ProcessMessageOutput:
     response_event: Dict[str, Any] = field(default_factory=dict)
     usage: Dict[str, int] = field(default_factory=dict)
     path: str = "unknown"
+    confidence: Optional[float] = None
     error: Optional[str] = None
 
 
@@ -180,7 +181,7 @@ class ProcessMessageUseCase:
 
         # Step 5: Build context and generate response
         try:
-            response_text, usage, path = await self._generate_response(
+            response_text, usage, path, confidence = await self._generate_response(
                 event, session_id, persona_id, tenant, enriched_metadata, analysis_dict
             )
             
@@ -197,7 +198,7 @@ class ProcessMessageUseCase:
 
         # Step 6: Build and publish response event
         response_event = self._build_response_event(
-            session_id, persona_id, response_text, usage, enriched_metadata, analysis_dict
+            session_id, persona_id, response_text, usage, enriched_metadata, analysis_dict, confidence
         )
 
         # Step 7: Store assistant response
@@ -223,6 +224,7 @@ class ProcessMessageUseCase:
             response_event=response_event,
             usage=usage,
             path=path,
+            confidence=confidence,
         )
 
     async def _handle_policy_denial(
@@ -336,7 +338,7 @@ class ProcessMessageUseCase:
         tenant: str,
         metadata: Dict[str, Any],
         analysis_dict: Dict[str, Any],
-    ) -> tuple[str, Dict[str, int], str]:
+    ) -> tuple[str, Dict[str, int], str, Optional[float]]:
         """Generate LLM response."""
         # Get history
         history = await self._session_repo.list_events(session_id, limit=20)
@@ -378,7 +380,7 @@ class ProcessMessageUseCase:
         )
         result = await self._response_generator.execute(gen_input)
 
-        return result.text, result.usage, "slm"
+        return result.text, result.usage, "slm", result.confidence
 
     def _history_to_messages(self, events: List[Dict[str, Any]]) -> List[Dict[str, str]]:
         """Convert history events to message format."""
@@ -415,6 +417,7 @@ class ProcessMessageUseCase:
         usage: Dict[str, int],
         metadata: Dict[str, Any],
         analysis_dict: Dict[str, Any],
+        confidence: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Build response event for publishing."""
         response_metadata = dict(metadata)
@@ -422,6 +425,8 @@ class ProcessMessageUseCase:
         response_metadata["status"] = "completed"
         response_metadata["analysis"] = analysis_dict
         response_metadata["usage"] = usage
+        if confidence is not None:
+            response_metadata["confidence"] = confidence
 
         return {
             "event_id": str(uuid.uuid4()),
