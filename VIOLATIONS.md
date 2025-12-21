@@ -394,3 +394,13 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Finding**: Feature metrics updater was a no-op, leaving feature gauges stale.
 - **Evidence**: Method returned `None` without touching `feature_profile_info` or `feature_state_info`.
 - **Suggested fix**: Populate feature profile/state gauges from `services.common.features.build_default_registry`.
+
+### 2025-12-21 — Sweep #5 (canonical health/session routes)
+
+- **Date**: 2025-12-21
+- **Rule**: Rule 3 — NO UNNECESSARY FILES (duplicate routers)
+- **File**: `services/gateway/routers/health.py`, `services/gateway/routers/sessions.py`
+- **Location**: `/v1/health` endpoint (health.py); `/v1/sessions/{session_id}/events` SSE path (sessions.py)
+- **Finding**: The only mounted `/v1/health` and `/v1/sessions/{session_id}/events` implementations now live under `services.gateway`; the obsolete `src.gateway` router copies that previously duplicated the contract have been removed, so there is a single authoritative place for each route.
+- **Evidence**: `APIRouter(prefix="/v1")` inside `services.gateway.routers.health` defines the full dependency-aware health check; `services.gateway.routers.sessions` provides the single session SSE stream (polling `PostgresSessionStore`/`RedisSessionCache`). No other modules expose `/v1/health` or `/v1/sessions/{session_id}/events`.
+- **Suggested fix**: Maintain these routers as the canonical health/session endpoints and avoid reintroducing parallel copies; if additional health views are needed expose them under new subpaths (e.g., `/v1/health/live`).

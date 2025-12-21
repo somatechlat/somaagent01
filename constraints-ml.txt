@@ -6,3 +6,5 @@
 
 torch==2.3.1
 sentence-transformers==2.4.0
+protobuf==5.27.3
+grpcio==1.67.1

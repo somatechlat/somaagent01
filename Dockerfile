@@ -30,7 +30,6 @@ COPY requirements.txt requirements-dev.txt requirements-ml.txt constraints-ml.tx
 # Install core dependencies for development (no ML deps by default)
 RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
                 echo "Installing full dependencies with ML/document-processing deps" && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements.txt && \
                 if [ "${TORCH_VARIANT}" = "cpu" ]; then \
                         TORCH_INDEX="https://download.pytorch.org/whl/cpu"; \
                         TORCH_SPEC="torch==${TORCH_VERSION}"; \
@@ -40,11 +39,24 @@ RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
                         TORCH_SPEC="torch==${TORCH_VERSION}+${TORCH_VARIANT}"; \
                         CONSTRAINT_OPT=""; \
                 fi; \
-                "$VENV_PATH/bin/pip" install --no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX} ${TORCH_SPEC} && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX} -r requirements-ml.txt ${CONSTRAINT_OPT}; \
+                PIP_COMMON="--no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX}"; \
+                "$VENV_PATH/bin/pip" install ${PIP_COMMON} ${TORCH_SPEC} && \
+                "$VENV_PATH/bin/pip" install ${PIP_COMMON} -r requirements.txt ${CONSTRAINT_OPT} && \
+                "$VENV_PATH/bin/pip" install ${PIP_COMMON} -r requirements-ml.txt ${CONSTRAINT_OPT}; \
         else \
                 echo "Installing essential dev dependencies (INCLUDE_ML_DEPS=${INCLUDE_ML_DEPS})" && \
-                "$VENV_PATH/bin/pip" install --no-cache-dir -r requirements-dev.txt; \
+                if [ "${TORCH_VARIANT}" = "cpu" ]; then \
+                        TORCH_INDEX="https://download.pytorch.org/whl/cpu"; \
+                        TORCH_SPEC="torch==${TORCH_VERSION}"; \
+                        CONSTRAINT_OPT="--constraint constraints-ml.txt"; \
+                else \
+                        TORCH_INDEX="https://download.pytorch.org/whl/${TORCH_VARIANT}"; \
+                        TORCH_SPEC="torch==${TORCH_VERSION}+${TORCH_VARIANT}"; \
+                        CONSTRAINT_OPT=""; \
+                fi; \
+                PIP_COMMON="--no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX}"; \
+                "$VENV_PATH/bin/pip" install ${PIP_COMMON} ${TORCH_SPEC} && \
+                "$VENV_PATH/bin/pip" install ${PIP_COMMON} -r requirements-dev.txt ${CONSTRAINT_OPT}; \
         fi
 
 

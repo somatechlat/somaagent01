@@ -367,7 +367,7 @@ class AssetCritic:
             ]
             
             # Using gpt-4o as it is our standard multimodal model
-            response_text, _ = await self._llm_adapter.chat(
+            response_text, _, _ = await self._llm_adapter.chat(
                 messages,
                 model="gpt-4o", 
                 temperature=0.1,

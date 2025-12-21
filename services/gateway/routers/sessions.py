@@ -16,6 +16,8 @@ from pydantic import BaseModel
 
 from services.common.session_repository import ensure_schema, PostgresSessionStore
 from services.gateway import providers
+from services.conversation_worker.temporal_worker import ConversationWorkflow
+from temporalio import workflow
 
 # Legacy admin settings replaced – use central cfg singleton.
 from src.core.config import cfg
@@ -38,10 +40,6 @@ async def _get_store() -> PostgresSessionStore:
     store = PostgresSessionStore(cfg.settings().database.dsn)
     await ensure_schema(store)
     return store
-
-
-def _get_event_bus():
-    return providers.get_event_bus()
 
 
 def _get_session_cache():
@@ -152,7 +150,6 @@ async def session_events_sse(
 @router.post("/message")
 async def post_session_message(
     payload: dict[str, Any],
-    bus=Depends(_get_event_bus),
     store: PostgresSessionStore = Depends(_get_store),
     cache=Depends(_get_session_cache),
 ):
@@ -167,27 +164,32 @@ async def post_session_message(
     import uuid
 
     session_id = payload.get("session_id") or str(uuid.uuid4())
+    import uuid
+    event_id = str(uuid.uuid4())
+
     event = {
         "session_id": session_id,
         "persona_id": payload.get("persona_id"),
         "metadata": {"tenant": payload.get("tenant"), "source": "gateway"},
         "message": message,
         "role": "user",
+        "event_id": event_id,
     }
 
-    # Persist event
+    # Persist event (now includes workflow_id for audit/describe)
     await store.append_event(session_id, event)
 
-    # Fetch last event id for response
-    events = await store.list_events_after(session_id, limit=1)
-    event_id = events[-1]["id"] if events else None
-
-    # Publish to event bus for downstream workers
-    try:
-        await bus.publish("conversation.inbound", {"session_id": session_id, "message": message})
-    except Exception:
-        # Metrics/logging would capture; do not fail user path
-        pass
+    # Start Temporal workflow for conversation processing
+    client = await providers.get_temporal_client()
+    task_queue = cfg.env("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation")
+    workflow_id = f"conversation-{session_id}-{event_id}"
+    event["workflow_id"] = workflow_id
+    await client.start_workflow(
+        ConversationWorkflow.run,
+        event,
+        id=workflow_id,
+        task_queue=task_queue,
+    )
 
     # Cache persona/metadata for quick access
     try:
@@ -195,7 +197,18 @@ async def post_session_message(
     except Exception:
         pass
 
-    return {"session_id": session_id, "event_id": event_id}
+    return {"session_id": session_id, "event_id": event_id, "workflow_id": workflow_id}
+
+
+@router.post("/terminate/{workflow_id}")
+async def terminate_conversation(workflow_id: str) -> dict:
+    client = await providers.get_temporal_client()
+    try:
+        handle = client.get_workflow_handle(workflow_id=workflow_id)
+        await handle.cancel()
+        return {"status": "canceled", "workflow_id": workflow_id}
+    except Exception as exc:
+        return {"status": "error", "workflow_id": workflow_id, "error": str(exc)}
 
 
 @router.get("/{session_id}")

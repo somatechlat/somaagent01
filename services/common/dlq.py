@@ -8,8 +8,27 @@ from typing import Any, Dict, Optional
 
 from services.common.event_bus import KafkaEventBus
 from services.common.publisher import DurablePublisher
+from services.common.outbox import OutboxPublisher
+from src.core.config import cfg
+from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
+
+DLQ_EVENTS = Counter(
+    "dlq_events_total",
+    "DLQ forwarding results",
+    labelnames=("result",),
+)
+COMPENSATIONS_TOTAL = Counter(
+    "compensations_total",
+    "Compensating actions executed",
+    labelnames=("source", "status"),
+)
+ROLLBACK_LATENCY = Histogram(
+    "rollback_latency_seconds",
+    "Latency of rollback/compensation paths",
+    buckets=[0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+)
 
 
 class DeadLetterQueue:
@@ -23,10 +42,9 @@ class DeadLetterQueue:
     ) -> None:
         self.source_topic = source_topic
         self.dlq_topic = f"{source_topic}.dlq"
-        if publisher is not None:
-            self.publisher = publisher
-        else:
-            self.publisher = DurablePublisher(bus=bus or KafkaEventBus())
+        self._use_outbox = cfg.env("SA01_USE_OUTBOX", "false").lower() == "true"
+        self._outbox = OutboxPublisher(bus=bus or KafkaEventBus()) if self._use_outbox else None
+        self.publisher = publisher or DurablePublisher(bus=bus or KafkaEventBus())
 
     async def send_to_dlq(
         self,
@@ -45,13 +63,36 @@ class DeadLetterQueue:
         }
 
         try:
-            await self.publisher.publish(
-                self.dlq_topic,
-                payload,
-                dedupe_key=str(event.get("event_id") or event.get("task_id") or ""),
-                session_id=str(event.get("session_id") or ""),
-                tenant=(event.get("metadata") or {}).get("tenant"),
-            )
+            start = time.time()
+            if self._use_outbox and self._outbox:
+                outbox_id = await self._outbox.enqueue(
+                    topic=self.dlq_topic,
+                    payload=payload,
+                    tenant=(event.get("metadata") or {}).get("tenant"),
+                    session_id=str(event.get("session_id") or ""),
+                    correlation=str(event.get("event_id") or event.get("task_id") or ""),
+                )
+                try:
+                    await self._outbox.publish_once(outbox_id)
+                    DLQ_EVENTS.labels("published").inc()
+                    COMPENSATIONS_TOTAL.labels(self.dlq_topic, "published").inc()
+                    ROLLBACK_LATENCY.observe(time.time() - start)
+                except Exception:
+                    LOG = logging.getLogger(__name__)
+                    LOG.warning("DLQ outbox publish pending retry", extra={"outbox_id": outbox_id})
+                    DLQ_EVENTS.labels("pending_retry").inc()
+                    COMPENSATIONS_TOTAL.labels(self.dlq_topic, "pending_retry").inc()
+            else:
+                await self.publisher.publish(
+                    self.dlq_topic,
+                    payload,
+                    dedupe_key=str(event.get("event_id") or event.get("task_id") or ""),
+                    session_id=str(event.get("session_id") or ""),
+                    tenant=(event.get("metadata") or {}).get("tenant"),
+                )
+                DLQ_EVENTS.labels("published").inc()
+                COMPENSATIONS_TOTAL.labels(self.dlq_topic, "published").inc()
+                ROLLBACK_LATENCY.observe(time.time() - start)
             LOGGER.warning(
                 "Event forwarded to DLQ",
                 extra={
@@ -69,3 +110,5 @@ class DeadLetterQueue:
                     "original_topic": self.source_topic,
                 },
             )
+            DLQ_EVENTS.labels("failed").inc()
+            COMPENSATIONS_TOTAL.labels(self.dlq_topic, "failed").inc()

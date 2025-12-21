@@ -92,6 +92,17 @@ make dev-logs
 
 # Stop services
 make dev-down
+
+# Build image variants (optional)
+# CPU-only (default, lean; pinned torch==2.3.1+cpu)
+docker build -t somaagent01-dev:latest \
+  --build-arg INCLUDE_ML_DEPS=true \
+  --build-arg TORCH_VARIANT=cpu .
+
+# GPU (only on CUDA hosts; pulls matching CUDA wheels)
+docker build -t somaagent01-dev:cuda \
+  --build-arg INCLUDE_ML_DEPS=true \
+  --build-arg TORCH_VARIANT=cu121 .
 ```
 
 ### Method 2: Local Development (Python)

@@ -5,10 +5,12 @@
 fastapi==0.115.2
 uvicorn[standard]==0.32.0
 httpx==0.28.1
+slowapi==0.1.9
 Flask==3.0.3
 flask[async]==3.0.3
 Werkzeug==3.0.3
 a2wsgi==1.10.7
+python-multipart==0.0.9
 
 # Core config and serialization
 pydantic==2.11.6
@@ -24,8 +26,8 @@ redis==5.2.0
 psycopg[binary]==3.2.3
 asyncpg==0.29.0; python_version < "3.13"
 sqlalchemy==2.0.32
-celery==5.4.0
-celery[redis]==5.4.0
+grpcio==1.67.1
+protobuf==5.27.3
 
 # Observability
 prometheus-client==0.21.0
@@ -47,6 +49,7 @@ pytz==2024.2
 pathspec>=0.12.1
 simpleeval==1.0.3
 cryptography==43.0.1
+temporalio==1.20.0
 
 # LLM and AI stack (lightweight)
 litellm==1.75.0

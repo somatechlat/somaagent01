@@ -29,6 +29,7 @@ x-agent-service: &agent-service
     dockerfile: Dockerfile
     args:
       INCLUDE_ML_DEPS: ${INCLUDE_ML_DEPS:-true}
+      TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
   working_dir: /git/agent-zero
   environment:
     <<: *agent-env
@@ -65,6 +66,45 @@ x-agent-service: &agent-service
   restart: unless-stopped
 
 services:
+  temporal:
+    image: temporalio/auto-setup:1.23
+    container_name: somaAgent01_temporal
+    profiles: ["dev"]
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=soma
+      - POSTGRES_PWD=soma
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+      - TEMPORAL_BROADCAST_ADDRESS=temporal
+      - SERVICES=frontend,history,matching,worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7233:7233"
+    volumes:
+      - ./infra/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+    mem_limit: 1024m
+    mem_reservation: 256m
+    cpus: "0.75"
+
+  temporal-ui:
+    image: temporalio/ui:2.26
+    container_name: somaAgent01_temporal_ui
+    profiles: ["dev"]
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_UI_PORT=8080
+    depends_on:
+      temporal:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: "0.25"
   # ===========================================================================
   # INFRASTRUCTURE SERVICES (Core Profile)
   # ===========================================================================
@@ -102,11 +142,11 @@ services:
       - kafka_data:/var/lib/kafka/data
       - ./kafka-logs:/var/log/kafka
     healthcheck:
-      test: ["CMD-SHELL", "</dev/tcp/0.0.0.0/9092 >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "</dev/tcp/127.0.0.1/9092 >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 40s
+      start_period: 60s
     mem_limit: 1536m
     mem_reservation: 384m
     cpus: "1.0"
@@ -240,14 +280,17 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+      temporal:
+        condition: service_started
     environment:
       <<: *agent-env
-      DISABLE_CONVERSATION_POLICY: "true"
       CONVERSATION_METRICS_PORT: "9410"
+      SA01_TEMPORAL_HOST: temporal:7233
+      SA01_TEMPORAL_CONVERSATION_QUEUE: conversation
     command:
       - python3
       - -m
-      - services.conversation_worker.main
+      - services.conversation_worker.temporal_worker
     healthcheck:
       test: ["CMD", "true"]
       interval: 30s
@@ -264,13 +307,17 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+      temporal:
+        condition: service_started
     command:
       - python3
       - -m
-      - services.tool_executor.main
+      - services.tool_executor.temporal_worker
     environment:
       <<: *agent-env
       TOOL_EXECUTOR_METRICS_PORT: "9411"
+      SA01_TEMPORAL_HOST: temporal:7233
+      SA01_TEMPORAL_TOOL_QUEUE: tool-executor
     healthcheck:
       test: ["CMD", "true"]
       interval: 30s
@@ -314,18 +361,13 @@ services:
     command:
       - python3
       - -m
-      - uvicorn
-      - python.api.router:app
-      - --host
-      - "0.0.0.0"
-      - --port
-      - "8011"
+      - services.delegation_gateway.temporal_worker
     environment:
       <<: *agent-env
       PORT: "8011"
       FASTA2A_GATEWAY_METRICS_PORT: "9420"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      SA01_TEMPORAL_HOST: temporal:7233
+      SA01_TEMPORAL_A2A_QUEUE: a2a
     ports:
       - "${FASTA2A_GATEWAY_PORT:-21017}:8011"
     healthcheck:
@@ -336,62 +378,6 @@ services:
     mem_limit: 512m
     mem_reservation: 192m
     cpus: "0.5"
-
-  fasta2a-worker:
-    <<: *agent-service
-    container_name: somaAgent01_fasta2a-worker
-    profiles: ["core", "dev"]
-    command:
-      - celery
-      - -A
-      - python.tasks.celery_app
-      - worker
-      - --loglevel=info
-      - --concurrency=2
-      - --max-tasks-per-child=500
-    environment:
-      <<: *agent-env
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      FASTA2A_WORKER_METRICS_PORT: "9421"
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    mem_limit: 512m
-    mem_reservation: 192m
-    cpus: "0.5"
-
-  # ===========================================================================
-  # MONITORING SERVICES
-  # ===========================================================================
-
-  flower:
-    image: mher/flower:2.0.1
-    container_name: somaAgent01_flower
-    profiles: ["dev"]
-    command:
-      - celery
-      - --broker=redis://redis:6379/0
-      - flower
-      - --port=5555
-      - --persistent=True
-      - --db=/data/flower.db
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
-      FLOWER_PORT: "5555"
-    ports:
-      - "${FLOWER_PORT:-20010}:5555"
-    volumes:
-      - flower_data:/data
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    mem_limit: 128m
-    mem_reservation: 64m
-    cpus: "0.25"
 
 # =============================================================================
 # NETWORKS
@@ -413,4 +399,3 @@ volumes:
   kafka_data:
   redis_data:
   postgres_data:
-  flower_data:

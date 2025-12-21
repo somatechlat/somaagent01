@@ -137,9 +137,7 @@ helm install somaagent01 . \
   --create-namespace \
   --values values.yaml \
   --set app.ingress.hosts[0].host=api.somaagent01.com \
-  --set grafana.ingress.hosts[0].host=grafana.somaagent01.com \
   --set app.replicaCount=3 \
-  --set celery.worker.replicaCount=2 \
   --set app.autoscaling.enabled=true \
   --set app.autoscaling.minReplicas=3 \
   --set app.autoscaling.maxReplicas=10 \
@@ -342,7 +340,6 @@ kubectl patch deployment somaagent01 -p '{"spec":{"replicas":0}}' -n somaagent01
 helm upgrade somaagent01 . \
   --namespace somaagent01-production \
   --set app.image.tag=1.0.1-fasta2a \
-  --set celery.worker.image.tag=1.0.1-fasta2a \
   --atomic \
   --timeout=15m
 ```
@@ -363,8 +360,6 @@ kubectl exec -i -n somaagent01-production svc/somaagent01-postgresql -- psql -U 
 # View application logs
 kubectl logs -f deployment/somaagent01 -n somaagent01-production
 
-# View Celery worker logs
-kubectl logs -f deployment/somaagent01-celery-worker -n somaagent01-production
 
 # Export logs to external system
 kubectl logs deployment/somaagent01 --since=1h -n somaagent01-production | jq . > logs.json

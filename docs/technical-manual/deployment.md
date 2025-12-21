@@ -7,6 +7,16 @@
 ### 1. Docker Compose (Development)
 
 ```bash
+# CPU-only (fast, lean; default)
+docker build -t somaagent01-dev:latest \
+  --build-arg INCLUDE_ML_DEPS=true \
+  --build-arg TORCH_VARIANT=cpu .
+
+# GPU-enabled (only when hosts have matching CUDA runtime, e.g., cu121)
+docker build -t somaagent01-dev:cuda \
+  --build-arg INCLUDE_ML_DEPS=true \
+  --build-arg TORCH_VARIANT=cu121 .
+
 make dev-up
 ```
 
@@ -54,6 +64,10 @@ SA01_POLICY_URL=http://opa:8181
 ## Observability
 SA01_METRICS_PORT=8000
 SA01_OTLP_ENDPOINT=http://otel-collector:4317
+
+## Build args (Docker)
+INCLUDE_ML_DEPS=true          # pull ML/doc stack (faster-whisper, unstructured, etc.)
+TORCH_VARIANT=cpu             # cpu|cu121|cu124 — cpu is default; cu* only on GPU hosts
 ```
 
 ### Optional Variables
@@ -73,6 +87,9 @@ SA01_ENABLE_TOKEN_METRICS=true
 # Write-Through
 GATEWAY_WRITE_THROUGH=true
 GATEWAY_WRITE_THROUGH_ASYNC=true
+
+# Multimodal (planned rollout)
+SA01_ENABLE_multimodal_capabilities=false
 ```
 
 ## Docker Compose Production

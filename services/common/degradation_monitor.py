@@ -9,6 +9,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
+from temporalio.client import Client as TemporalClient
 
 from observability.metrics import Counter, Gauge, Histogram, metrics_collector
 from services.gateway.circuit_breakers import CircuitBreaker, CircuitState
@@ -111,15 +112,16 @@ class DegradationMonitor:
     # Service dependency graph: key depends on values
     # When a dependency fails, dependents are marked as degraded
     SERVICE_DEPENDENCIES: Dict[str, List[str]] = {
-        "gateway": ["database", "redis", "kafka"],
-        "tool_executor": ["database", "kafka", "somabrain"],
-        "conversation_worker": ["database", "kafka", "somabrain", "redis"],
+        "gateway": ["database", "redis", "kafka", "temporal"],
+        "tool_executor": ["database", "kafka", "somabrain", "temporal"],
+        "conversation_worker": ["database", "kafka", "somabrain", "redis", "temporal"],
         "auth_service": ["database", "redis"],
         # Core services have no dependencies (they ARE the dependencies)
         "somabrain": [],
         "database": [],
         "kafka": [],
         "redis": [],
+        "temporal": [],
     }
 
     # Maximum history records to keep in memory
@@ -138,6 +140,7 @@ class DegradationMonitor:
         self._dependency_graph: Dict[str, List[str]] = self.SERVICE_DEPENDENCIES.copy()
         # VIBE COMPLIANT: Real history storage, not a test double
         self._history: List[DegradationHistoryRecord] = []
+        self._temporal_client: Optional[TemporalClient] = None
 
     async def initialize(self) -> None:
         """Initialize degradation monitor with default components."""
@@ -147,6 +150,7 @@ class DegradationMonitor:
             "database",
             "kafka",
             "redis",
+            "temporal",
             "gateway",
             "auth_service",
             "tool_executor",
@@ -233,6 +237,8 @@ class DegradationMonitor:
                 await self._check_kafka_health(component)
             elif component_name == "redis":
                 await self._check_redis_health(component)
+            elif component_name == "temporal":
+                await self._check_temporal_health(component)
             else:
                 # Generic health check for other components
                 await self._check_generic_component(component)
@@ -429,6 +435,15 @@ class DegradationMonitor:
         component.error_rate = 0.0
 
         logger.debug(f"Generic health check passed for {component.name}")
+
+    async def _check_temporal_health(self, component: ComponentHealth) -> None:
+        """Check Temporal server health via system info."""
+        host = cfg.env("SA01_TEMPORAL_HOST", "temporal:7233")
+        if self._temporal_client is None:
+            self._temporal_client = await TemporalClient.connect(host)
+        info = await self._temporal_client.workflow_service.get_system_info()
+        component.healthy = info is not None
+        component.error_rate = 0.0 if component.healthy else 1.0
 
     def _calculate_degradation_level(self, component: ComponentHealth) -> DegradationLevel:
         """Calculate degradation level for a component."""

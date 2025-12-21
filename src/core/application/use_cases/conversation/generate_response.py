@@ -13,6 +13,10 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol
 
+from services.conversation_worker.llm_metrics import (
+    record_llm_failure,
+    record_llm_success,
+)
 LOGGER = logging.getLogger(__name__)
 
 
@@ -68,6 +72,7 @@ class GenerateResponseOutput:
     latency: float
     success: bool = True
     error: Optional[str] = None
+    confidence: Optional[float] = None
 
 
 def normalize_usage(raw: Dict[str, Any] | None) -> Dict[str, int]:
@@ -124,26 +129,36 @@ class GenerateResponseUseCase:
 
             # Try streaming first
             try:
-                text, usage = await self._stream_response(input_data, payload, headers, model)
+                text, usage, confidence = await self._stream_response(input_data, payload, headers, model)
             except Exception as stream_error:
                 LOGGER.warning(f"Streaming failed, falling back to non-stream: {stream_error}")
-                text, usage = await self._invoke_response(payload, headers)
+                text, usage, confidence = await self._invoke_response(payload, headers)
 
             latency = time.perf_counter() - start_time
 
             if not text.strip():
                 text = "I encountered an issue generating a response."
 
-            return GenerateResponseOutput(
+            result = GenerateResponseOutput(
                 text=text,
                 usage=normalize_usage(usage),
                 model=model,
                 latency=latency,
+                confidence=confidence,
                 success=True,
             )
+            usage_norm = result.usage or {"input_tokens": 0, "output_tokens": 0}
+            record_llm_success(
+                model=model,
+                input_tokens=usage_norm.get("input_tokens", 0),
+                output_tokens=usage_norm.get("output_tokens", 0),
+                elapsed=latency,
+            )
+            return result
 
         except Exception as e:
             LOGGER.exception("Response generation failed")
+            record_llm_failure(model=model)
             return GenerateResponseOutput(
                 text="I encountered an error while generating a reply.",
                 usage={"input_tokens": 0, "output_tokens": 0},
@@ -178,13 +193,14 @@ class GenerateResponseUseCase:
         payload: Dict[str, Any],
         headers: Dict[str, str],
         model: str,
-    ) -> tuple[str, Dict[str, int]]:
+    ) -> tuple[str, Dict[str, int], Optional[float]]:
         """Stream response from gateway."""
         import httpx
 
         url = f"{self._gateway_base}/v1/llm/invoke/stream"
         buffer: List[str] = []
         usage = {"input_tokens": 0, "output_tokens": 0}
+        confidence: Optional[float] = None
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
@@ -229,11 +245,11 @@ class GenerateResponseUseCase:
         if not text:
             raise RuntimeError("Empty response from streaming")
 
-        return text, usage
+        return text, usage, confidence
 
     async def _invoke_response(
         self, payload: Dict[str, Any], headers: Dict[str, str]
-    ) -> tuple[str, Dict[str, int]]:
+    ) -> tuple[str, Dict[str, int], Optional[float]]:
         """Non-streaming response from gateway."""
         import httpx
 
@@ -247,11 +263,12 @@ class GenerateResponseUseCase:
             data = resp.json()
             text = data.get("content", "")
             usage = data.get("usage", {"input_tokens": 0, "output_tokens": 0})
+            confidence = data.get("confidence")
 
             if not text:
                 raise RuntimeError("Empty response from gateway")
 
-            return text, usage
+            return text, usage, confidence
 
     async def _publish_stream_event(
         self,

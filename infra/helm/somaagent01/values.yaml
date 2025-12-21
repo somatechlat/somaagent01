@@ -121,33 +121,6 @@ app:
           periodSeconds: 60
         selectPolicy: Max
 
-# REAL IMPLEMENTATION - Celery Configuration
-celery:
-  worker:
-    replicaCount: 2
-    resources:
-      limits:
-        cpu: 2000m
-        memory: 4Gi
-      requests:
-        cpu: 500m
-        memory: 1Gi
-    autoscaling:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 8
-      targetCPUUtilizationPercentage: 70
-  
-  beat:
-    replicaCount: 1
-    resources:
-      limits:
-        cpu: 500m
-        memory: 1Gi
-      requests:
-        cpu: 100m
-        memory: 256Mi
-
 # REAL IMPLEMENTATION - Redis Configuration
 redis:
   enabled: true
@@ -169,6 +142,36 @@ redis:
     enabled: true
     serviceMonitor:
       enabled: true
+
+# Temporal worker deployments
+temporalWorkers:
+  conversation:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  toolExecutor:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  a2a:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 125m
+        memory: 128Mi
 
 # REAL IMPLEMENTATION - Kafka Configuration
 kafka:

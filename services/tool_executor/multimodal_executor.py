@@ -90,8 +90,12 @@ class MultimodalExecutor:
         # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
         from services.common.llm_adapter import LLMAdapter
-        api_key = cfg.env("SA01_OPENAI_API_KEY")
-        self._llm_adapter = LLMAdapter(api_key=str(api_key)) if api_key else None
+        from services.common.secret_manager import SecretManager
+
+        # Prefer per-call secret retrieval to avoid stale keys.
+        sm = SecretManager()
+        api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
+        self._llm_adapter = LLMAdapter(api_key_resolver=api_key_resolver)
         
         self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)
         
@@ -321,6 +325,7 @@ class MultimodalExecutor:
         attempt = 0
         prompt_feedback = ""
         provider_success = False
+        last_error_message: Optional[str] = None
 
         while attempt < max_attempts:
             attempt += 1
@@ -329,57 +334,55 @@ class MultimodalExecutor:
             evaluation_score = None
             evaluation_feedback: Dict[str, Any] | None = None
             quality_gate_passed = None
+            asset = None
+            error_code = None
+            error_message = None
+            exec_status = ExecutionStatus.FAILED
 
             base_prompt = self._resolve_dependencies(task.params.get("prompt", ""), context)
             if is_retry and prompt_feedback:
-                full_prompt = f"{base_prompt}
-
-CRITIC FEEDBACK: {prompt_feedback}"
+                full_prompt = f"{base_prompt}\n\nCRITIC FEEDBACK: {prompt_feedback}"
             else:
                 full_prompt = base_prompt
 
-                request = GenerationRequest(
-                    tenant_id=plan.tenant_id,
-                    session_id=plan.session_id,
-                    modality=task.modality,
-                    prompt=full_prompt,
-                    request_id=plan.request_id,
-                    format=task.params.get("format", "png"),
-                    dimensions=task.params.get("dimensions"),
-                    parameters=task.params,
-                )
+            request = GenerationRequest(
+                tenant_id=plan.tenant_id,
+                session_id=plan.session_id,
+                modality=task.modality,
+                prompt=full_prompt,
+                request_id=plan.request_id,
+                format=task.params.get("format", "png"),
+                dimensions=task.params.get("dimensions"),
+                parameters=task.params,
+            )
 
-                exec_record = await self._execution_tracker.start(
-                    plan.id,
-                    step_index,
-                    plan.tenant_id,
-                    provider.name,
-                    provider.provider_id,
-                    attempt_number=attempt,
-                )
+            exec_record = await self._execution_tracker.start(
+                plan.id,
+                step_index,
+                plan.tenant_id,
+                provider.name,
+                provider.provider_id,
+                attempt_number=attempt,
+            )
 
-                try:
-                    result = await provider.generate(request)
-                    if result and result.cost_cents:
-                        step_cost_cents += int(result.cost_cents)
+            try:
+                result = await provider.generate(request)
+                if result and result.cost_cents:
+                    step_cost_cents += int(result.cost_cents)
 
-                    if not result.success:
-                        logger.warning(
-                            "Step %s provider %s attempt %d failure: %s",
-                            task.task_id,
-                            provider.name,
-                            attempt,
-                            result.error_message,
-                        )
-                        last_error_message = result.error_message or "provider_error"
-                        await self._execution_tracker.complete(
-                            exec_record.id,
-                            ExecutionStatus.FAILED,
-                            error_code=result.error_code,
-                            error_message=result.error_message,
-                        )
-                        prompt_feedback = f"Provider error: {result.error_message}"
-                        continue
+                if not result or not result.success:
+                    logger.warning(
+                        "Step %s provider %s attempt %d failure: %s",
+                        task.task_id,
+                        provider.name,
+                        attempt,
+                        result.error_message if result else "no_result",
+                    )
+                    error_code = result.error_code if result else "provider_error"
+                    error_message = result.error_message if result else "provider_error"
+                    last_error_message = error_message
+                    prompt_feedback = f"Provider error: {error_message}"
+                else:
 
                     asset_type = AssetType.IMAGE
                     if task.step_type == StepType.CAPTURE_SCREENSHOT or task.modality == "screenshot":
@@ -398,9 +401,7 @@ CRITIC FEEDBACK: {prompt_feedback}"
                         elif "pdf" in lowered:
                             asset_type = AssetType.DOCUMENT
 
-                    result_format = (
-                        (result.format or task.params.get("format") or "png").lower()
-                    )
+                    result_format = (result.format or task.params.get("format") or "png").lower()
                     asset = await self._asset_store.create(
                         tenant_id=plan.tenant_id,
                         session_id=plan.session_id,
@@ -440,17 +441,8 @@ CRITIC FEEDBACK: {prompt_feedback}"
                                 provider.name,
                                 evaluation.failed_criteria,
                             )
-                            await self._execution_tracker.complete(
-                                exec_record.id,
-                                ExecutionStatus.FAILED,
-                                asset_id=asset.id,
-                                error_code="QUALITY_GATE_FAILED",
-                                error_message=str(evaluation.failed_criteria),
-                                latency_ms=result.latency_ms,
-                                cost_estimate_cents=result.cost_cents,
-                                quality_score=evaluation_score,
-                                quality_feedback=evaluation_feedback,
-                            )
+                            error_code = "QUALITY_GATE_FAILED"
+                            error_message = str(evaluation.failed_criteria)
                             prompt_feedback = "; ".join(evaluation.feedback)
                             last_error_message = f"Quality Gate: {prompt_feedback}"
 
@@ -464,89 +456,79 @@ CRITIC FEEDBACK: {prompt_feedback}"
                                     execution_id=exec_record.id,
                                     plan_id=plan.id,
                                     session_id=plan.session_id,
+                                    user_id=plan.user_id,
+                                    prompt_summary=plan.prompt,
+                                    generation_params=task.params,
+                                    quality_gate_passed=False,
+                                    quality_score=evaluation_score,
+                                    rework_count=attempt,
+                                )
+                            except Exception as exc:
+                                logger.debug("Failed to record provenance", exc_info=exc)
+                        else:
+                            try:
+                                await self._provenance_recorder.record(
+                                    asset_id=asset.id,
+                                    tenant_id=plan.tenant_id,
+                                    tool_id=provider.name,
+                                    provider=provider.provider_id,
+                                    request_id=plan.request_id,
+                                    execution_id=exec_record.id,
+                                    plan_id=plan.id,
+                                    session_id=plan.session_id,
                                     prompt_summary=full_prompt,
                                     generation_params=request.parameters,
                                     model_version=result.model_version,
-                                    quality_gate_passed=False,
+                                    quality_gate_passed=quality_gate_passed,
                                     quality_score=evaluation_score,
                                     rework_count=attempt - 1,
                                 )
                             except Exception as exc:
                                 logger.warning("Failed to record provenance: %s", exc)
-                            continue
 
-                    try:
-                        await self._provenance_recorder.record(
-                            asset_id=asset.id,
-                            tenant_id=plan.tenant_id,
-                            tool_id=provider.name,
-                            provider=provider.provider_id,
-                            request_id=plan.request_id,
-                            execution_id=exec_record.id,
-                            plan_id=plan.id,
-                            session_id=plan.session_id,
-                            prompt_summary=full_prompt,
-                            generation_params=request.parameters,
-                            model_version=result.model_version,
-                            quality_gate_passed=quality_gate_passed,
-                            quality_score=evaluation_score,
-                            rework_count=attempt - 1,
-                        )
-                    except Exception as exc:
-                        logger.warning("Failed to record provenance: %s", exc)
+                            context[task.task_id] = asset
+                            exec_status = ExecutionStatus.SUCCESS
+                    else:
+                        context[task.task_id] = asset
+                        exec_status = ExecutionStatus.SUCCESS
 
-                    context[task.task_id] = asset
+            except Exception as e:
+                logger.exception("Provider exception: %s", e)
+                last_error_message = str(e)
+                error_message = last_error_message
+
+            finally:
+                try:
+                    latency = 0.0
+                    if exec_record.started_at:
+                        delta = datetime.now(exec_record.started_at.tzinfo) - exec_record.started_at
+                        latency = delta.total_seconds() * 1000
                     await self._execution_tracker.complete(
                         exec_record.id,
-                        ExecutionStatus.SUCCESS,
-                        asset_id=asset.id,
-                        latency_ms=result.latency_ms,
-                        cost_estimate_cents=result.cost_cents,
+                        exec_status,
+                        asset_id=asset.id if asset else None,
+                        latency_ms=latency,
+                        cost_estimate_cents=result.cost_cents if result else None,
                         quality_score=evaluation_score,
                         quality_feedback=evaluation_feedback,
+                        error_code=error_code,
+                        error_message=error_message,
                     )
-                    provider_success = True
-                    break
+                except Exception as ex:
+                    logger.warning("Failed to record outcome: %s", ex)
 
-                except Exception as e:
-                    logger.exception("Provider exception: %s", e)
-                    last_error_message = str(e)
-                    await self._execution_tracker.complete(
-                        exec_record.id, ExecutionStatus.FAILED, error_message=str(e)
-                    )
+            if exec_status == ExecutionStatus.SUCCESS:
+                provider_success = True
+                break
 
-                finally:
-                    try:
-                        final_success = provider_success
-                        latency = 0.0
-                        if exec_record.started_at:
-                            delta = datetime.now(exec_record.started_at.tzinfo) - exec_record.started_at
-                            latency = delta.total_seconds() * 1000
+            last_error_message = error_message or last_error_message
+            if attempt < max_attempts:
+                continue
+            break
 
-                        if result and result.model_version:
-                            model_name = result.model_version
-                        else:
-                            model_name = provider.get_model_version() if provider else "unknown"
-
-                        outcome = MultimodalOutcome(
-                            plan_id=str(plan.id),
-                            task_id=task.task_id,
-                            step_type=task.step_type.value,
-                            provider=provider.provider_id if provider else "unknown",
-                            model=model_name,
-                            success=final_success,
-                            latency_ms=latency,
-                            cost_cents=float(result.cost_cents) if result and result.cost_cents else 0.0,
-                            quality_score=evaluation_score if gate_config.get("enabled", True) else None,
-                            feedback=prompt_feedback if is_retry else None,
-                        )
-                        await self._soma_brain_client.record_outcome(outcome)
-                    except Exception as ex:
-                        logger.warning("Failed to record outcome: %s", ex)
-
-            if provider_success:
-                return True, None, step_cost_cents
-            return False, prompt_feedback or "provider_failure", step_cost_cents
+        if provider_success:
+            return True, None, step_cost_cents
+        return False, prompt_feedback or last_error_message or "provider_failure", step_cost_cents
 
     def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
         """Resolve dependency tokens in prompt.
