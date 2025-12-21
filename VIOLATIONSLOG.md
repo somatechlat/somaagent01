@@ -1,335 +1,71 @@
-# Vibe Coding Rules — Audit Coverage Log
+violations # Vibe Coding Rules — Violations Log
 
-Started: 2025-12-18
+Source: `VIOLATIONS.md`
 
-Purpose: progressive, append-only record of which repo folders were audited for **VIBE_CODING_RULES.md** violations.
+This log lists violation IDs, dates, and file paths. Full findings remain in `VIOLATIONS.md`.
 
-## Scope & exclusions
+## 2025-12-18
+- VCR-2025-12-18-001 — src/gateway/routers/chat.py
+- VCR-2025-12-18-002 — src/gateway/routers/session.py
+- VCR-2025-12-18-003 — services/gateway/routers/chat_full.py
+- VCR-2025-12-18-004 — python/integrations/opa_middleware.py
+- VCR-2025-12-18-005 — services/tool_executor/multimodal_executor.py
+- VCR-2025-12-18-006 — services/tool_executor/multimodal_executor.py
+- VCR-2025-12-18-007 — webui/js/speech_browser.js
+- VCR-2025-12-18-008 — webui/js/scheduler.js
+- VCR-2025-12-18-009 — services/gateway/routers/uploads_full.py
+- VCR-2025-12-18-010 — models.py
+- VCR-2025-12-18-011 — services/common/semantic_recall.py
+- VCR-2025-12-18-012 — src/voice/provider_selector.py
+- VCR-2025-12-18-013 — webui/js/api.js
+- VCR-2025-12-18-014 — prompts/agent.system.tool.scheduler.md
+- VCR-2025-12-18-015 — python/tools/scheduler.py
+- VCR-2025-12-18-016 — services/conversation_worker/policy_integration.py
+- VCR-2025-12-18-017 — docs/ui-integration/COMPLETE_AGENTSKIN_UIX_SPEC.md
+- VCR-2025-12-18-018 — docs/technical-manual/context-builder-flow.md
+- VCR-2025-12-18-019 — docs/reference/CONTEXT_BUILDER_REQUIREMENTS.md
+- VCR-2025-12-18-020 — tests/` (multiple)
+- VCR-2025-12-18-021 — services/gateway/routers/sessions.py`, `services/gateway/routers/sessions_events.py`, `services/gateway/routers/sessions_full.py`, `src/gateway/routers/sse.py
+- VCR-2025-12-18-022 — src/gateway/routers/sse.py`, `services/gateway/routers/sessions.py
+- VCR-2025-12-18-023 — services/gateway/service.py`, `services/gateway/main.py
+- VCR-2025-12-18-024 — check_tool_policy.rego`, `policy/tool_policy.rego
+- VCR-2025-12-18-025 — src/gateway/routers/health.py`, `services/gateway/routers/health.py
+- VCR-2025-12-18-026 — services/gateway/auth.py`, `python/integrations/somabrain_client.py`, `src/core/clients/somabrain.py`, `services/common/soma_brain_client.py
 
-This audit focuses on **first-party project code + config**.
+## 2025-12-21
+- VCR-2025-12-21-001 — services/tool_executor/multimodal_executor.py
+- VCR-2025-12-21-002 — services/tool_executor/multimodal_executor.py
+- VCR-2025-12-21-003 — services/common/asset_critic.py
+- VCR-2025-12-21-004 — services/gateway/routers/llm.py
+- VCR-2025-12-21-005 — services/common/agent_config_loader.py
+- VCR-2025-12-21-006 — python/helpers/settings_defaults.py
+- VCR-2025-12-21-007 — python/helpers/settings_model.py
+- VCR-2025-12-21-008 — services/gateway/routers/ui_settings.py
+- VCR-2025-12-21-009 — services/common/unified_secret_manager.py
+- VCR-2025-12-21-010 — services/common/model_costs.py
+- VCR-2025-12-21-011 — python/observability/metrics.py
+- VCR-2025-12-21-012 — services/common/embeddings.py
+- VCR-2025-12-21-013 — src/core/application/use_cases/conversation/process_message.py
+- VCR-2025-12-21-014 — services/gateway/routers/speech.py
+- VCR-2025-12-21-015 — services/common/semantic_recall.py
+- VCR-2025-12-21-016 — python/integrations/opa_middleware.py
+- VCR-2025-12-20-012 — services/gateway/routers/health.py`, `services/gateway/routers/sessions.py
+- VCR-2025-12-21-017 — webui/vendor/ace-min/mode-d.js
 
-Excluded from deep violation scanning (third-party, generated, or runtime artifacts that are not authored/maintained as part of the project):
-- `.git/`
-- `.venv/`
-- `node_modules/`
-- `**/__pycache__/`
-- `.pytest_cache/`
-- `.ruff_cache/`
-- `logs/`
-- `kafka-logs/`
-- `tmp/`
-- `webui/vendor/`
-- `webui/js/transformers@3.0.2.js` (vendored/minified third-party artifact)
+## 2025-12-19
+- VCR-2025-12-19-001 — services/gateway/routers/uploads_full.py
+- VCR-2025-12-19-002 — ONBOARDING_AGENT.md
+- VCR-2025-12-19-003 — tests/` (multiple)
 
-If you want these included anyway, say so and I will run a separate “vendor/generated sweep” (it will be noisy because upstream packages often contain TODO/FIXME, etc.).
-
-## Folders checked (recursive)
-
-### 2025-12-18 — Sweep #1
-
-Scanned recursively:
-- .
-- .github
-- .github/workflows
-- .kiro
-- .kiro/specs
-- .kiro/steering
-- .vscode
-- agents
-- bin
-- conf
-- docs
-- docs/agent-onboarding
-- docs/architecture
-- docs/development-manual
-- docs/flows
-- docs/guides
-- docs/i18n
-- docs/i18n/en
-- docs/onboarding-manual
-- docs/reference
-- docs/technical-manual
-- docs/technical-manual/runbooks
-- docs/technical-manual/security
-- docs/ui-integration
-- docs/user-manual
-- docs/user-manual/features
-- infra
-- infra/helm
-- infra/helm/delegation
-- infra/helm/delegation/templates
-- infra/helm/gateway
-- infra/helm/gateway/templates
-- infra/helm/outbox-sync
-- infra/helm/outbox-sync/templates
-- infra/helm/overlays
-- infra/helm/patches
-- infra/helm/soma-infra
-- infra/helm/soma-infra/charts
-- infra/helm/soma-infra/charts/auth
-- infra/helm/soma-infra/charts/etcd
-- infra/helm/soma-infra/charts/etcd/templates
-- infra/helm/soma-infra/charts/kafka
-- infra/helm/soma-infra/charts/kafka/templates
-- infra/helm/soma-infra/charts/opa
-- infra/helm/soma-infra/charts/opa/templates
-- infra/helm/soma-infra/charts/postgres
-- infra/helm/soma-infra/charts/postgres/templates
-- infra/helm/soma-infra/charts/prometheus
-- infra/helm/soma-infra/charts/prometheus/templates
-- infra/helm/soma-infra/charts/redis
-- infra/helm/soma-infra/charts/redis/templates
-- infra/helm/soma-infra/charts/vault
-- infra/helm/soma-infra/charts/vault/templates
-- infra/helm/soma-infra/templates
-- infra/helm/soma-stack
-- infra/helm/soma-stack/templates
-- infra/helm/somaagent01
-- infra/helm/somaagent01/templates
-- infra/k8s
-- infra/k8s/base
-- infra/k8s/overlays
-- infra/k8s/overlays/dev
-- infra/k8s/overlays/development
-- infra/k8s/overlays/development/patches
-- infra/k8s/overlays/local
-- infra/k8s/overlays/production
-- infra/k8s/overlays/production/patches
-- infra/kafka
-- infra/memory
-- infra/observability
-- infra/observability/alerts
-- infra/observability/grafana
-- infra/observability/grafana/dashboards
-- infra/observability/grafana/provisioning
-- infra/observability/grafana/provisioning/dashboards
-- infra/observability/grafana/provisioning/datasources
-- infra/postgres
-- infra/postgres/init
-- infra/sql
-- instruments
-- instruments/custom
-- instruments/default
-- integrations
-- memory
-- observability
-- orchestrator
-- policy
-- postgres-backups
-- prompts
-- python
-- python/extensions
-- python/extensions/agent_init
-- python/extensions/before_main_llm_call
-- python/extensions/error_format
-- python/extensions/hist_add_before
-- python/extensions/hist_add_tool_result
-- python/extensions/message_loop_end
-- python/extensions/message_loop_prompts_after
-- python/extensions/message_loop_prompts_before
-- python/extensions/message_loop_start
-- python/extensions/monologue_end
-- python/extensions/monologue_start
-- python/extensions/reasoning_stream
-- python/extensions/reasoning_stream_chunk
-- python/extensions/reasoning_stream_end
-- python/extensions/response_stream
-- python/extensions/response_stream_chunk
-- python/extensions/response_stream_end
-- python/extensions/system_prompt
-- python/extensions/tool_execute_after
-- python/extensions/tool_execute_before
-- python/extensions/util_model_call_before
-- python/helpers
-- python/integrations
-- python/observability
-- python/somaagent
-- python/tools
-- redis-conf
-- schemas
-- schemas/audit
-- schemas/config
-- scripts
-- scripts/benchmarks
-- scripts/entrypoints
-- scripts/load
-- services
-- services/common
-- services/conversation_worker
-- services/delegation_gateway
-- services/delegation_worker
-- services/gateway
-- services/gateway/routers
-- services/gateway/tests
-- services/memory_replicator
-- services/memory_service
-- services/memory_service/grpc_generated
-- services/memory_sync
-- services/multimodal
-- services/outbox_sync
-- services/tool_executor
-- services/ui
-- services/ui_proxy
-- src
-- src/core
-- src/core/application
-- src/core/application/dto
-- src/core/application/services
-- src/core/application/use_cases
-- src/core/application/use_cases/conversation
-- src/core/application/use_cases/memory
-- src/core/application/use_cases/tools
-- src/core/clients
-- src/core/config
-- src/core/domain
-- src/core/domain/entities
-- src/core/domain/memory
-- src/core/domain/ports
-- src/core/domain/ports/adapters
-- src/core/domain/ports/repositories
-- src/core/domain/value_objects
-- src/core/infrastructure
-- src/core/infrastructure/adapters
-- src/core/infrastructure/external
-- src/core/infrastructure/repositories
-- src/core/messaging
-- src/gateway
-- src/gateway/routers
-- src/voice
-
-### 2025-12-19 — Sweep #2 (targeted fixes)
-
-Focused scan and remediation of:
-- services/gateway/routers
-- webui/js
-- tests/integration
-- ONBOARDING_AGENT.md
-- src (duplicate gateway stubs removed)
-- src/core/infrastructure (duplicate Somabrain client removed)
-
-### 2025-12-19 — Sweep #3 (tests purge: mocks/fakes/stubs)
-
-Focused scan and remediation of:
-- tests/ (removed all files containing mock/fake/stub/monkeypatch/respx usage)
-
-### 2025-12-20 — Sweep #4 (runtime no-op/stub cleanup)
-
-Focused scan and remediation of:
-- python/somaagent/context_builder.py
-- services/conversation_worker/main.py
-- python/helpers/browser_use_monkeypatch.py
-- python/helpers/knowledge_import.py
-- python/helpers/tunnel_manager.py
-- services/common/audit_store.py
-- services/common/health_checks.py
-- docs/technical-manual/context-builder-flow.md
-
-### 2025-12-20 — Sweep #5 (repo-wide keyword sweep)
-
-Focused scan and remediation of:
-- ONBOARDING_AGENT.md
-- src/voice/audio_capture.py
-- src/voice/speaker.py
-- templates
-- tests
-- tests/agent
-- tests/agent/context
-- tests/agent/conversation
-- tests/agent/llm
-- tests/agent/memory
-- tests/agent/tools
-- tests/chaos
-- tests/e2e
-- tests/functional
-- tests/integration
-- tests/integration/gateway
-- tests/integration/multimodal
-- tests/integrations
-- tests/load
-- tests/playwright
-- tests/playwright/fixtures
-- tests/playwright/screenshots
-- tests/playwright/tests
-- tests/playwright/tests/playwright
-- tests/playwright/tests/playwright/screenshots
-- tests/properties
-- tests/smoke
-- tests/temp_data
-- tests/ui
-- tests/ui/playwright
-- tests/unit
-- tests/unit/config
-- tests/voice
-- webui
-- webui/components
-- webui/components/_examples
-- webui/components/chat
-- webui/components/chat/attachments
-- webui/components/chat/speech
-- webui/components/messages
-- webui/components/messages/action-buttons
-- webui/components/messages/resize
-- webui/components/notifications
-- webui/components/settings
-- webui/components/settings/a2a
-- webui/components/settings/backup
-- webui/components/settings/external
-- webui/components/settings/mcp
-- webui/components/settings/mcp/client
-- webui/components/settings/mcp/server
-- webui/components/settings/memory
-- webui/components/settings/secrets
-- webui/components/settings/speech
-- webui/components/settings/tunnel
-- webui/css
-- webui/design-system
-- webui/i18n
-- webui/js
-- webui/public
-- webui/themes
-
-### 2025-12-18 — Follow-up (duplication focus)
-
-Targeted checks performed:
-- Duplicate gateway route stacks and duplicate `/v1/*` prefix mounting patterns.
-- Duplicate SSE endpoint implementations (Kafka SSE vs Postgres-poll SSE) under the same path.
-- Duplicate policy files by content (`check_tool_policy.rego` vs `policy/tool_policy.rego`).
-
-### 2025-12-20 — Sweep #6 (no-bypass/no-placeholder cleanup)
-
-Focused scan and remediation of:
-- sitecustomize.py
-- services/common/authorization.py
-- services/tool_executor/request_handler.py
-- services/common/requeue_store.py
-- services/gateway/routers/requeue.py
-- tests/agent/tools/test_tool_flow.py
-- tests/agent/conversation/test_conversation_integrity.py
-- services/tool_executor/multimodal_executor.py
-- observability/metrics.py
-- TASKS.md
-- docs/development-manual/testing-guidelines.md
-- docs/reference/CONTEXT_BUILDER_REQUIREMENTS.md
-- docs/development-manual/contribution-process.md
-- docs/architecture/MULTIMODAL_DESIGN.md
-
-### 2025-12-20 — Sweep #7 (no-alternates / no fallback paths)
-
-Focused scan and remediation of:
-- services/common
-- python/helpers
-- python/integrations
-- services/tool_executor
-- webui/js
-- webui/components
-- webui/design-system
-- docs (SRS, architecture, UI spec, onboarding)
-- tests (integration + unit)
-- Makefile
-
-### 2025-12-21 — Sweep #8 (canonical health/session routers)
-
-Focused scan:
-- services/gateway/routers
-
-Reason: Confirmed `/v1/health` and `/v1/sessions/{session_id}/events` now exist only in `services.gateway` and replaced the legacy `src.gateway` routers with this canonical implementation.
+## 2025-12-20
+- VCR-2025-12-20-001 — services/conversation_worker/main.py`, `python/somaagent/context_builder.py
+- VCR-2025-12-20-002 — python/helpers/browser_use_monkeypatch.py
+- VCR-2025-12-20-003 — python/helpers/knowledge_import.py`, `python/helpers/tunnel_manager.py
+- VCR-2025-12-20-004 — services/common/audit_store.py
+- VCR-2025-12-20-005 — docs/technical-manual/context-builder-flow.md
+- VCR-2025-12-20-006 — ONBOARDING_AGENT.md
+- VCR-2025-12-20-007 — src/voice/audio_capture.py`, `src/voice/speaker.py
+- VCR-2025-12-20-008 — sitecustomize.py
+- VCR-2025-12-20-009 — services/common/authorization.py
+- VCR-2025-12-20-010 — services/common/requeue_store.py
+- VCR-2025-12-20-011 — services/tool_executor/request_handler.py

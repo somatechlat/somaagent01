@@ -89,11 +89,13 @@ async def health_check(
         except Exception as exc:
             record_status(name, "down", f"{type(exc).__name__}: {exc}")
 
-    await check_http_target("somabrain", cfg.soma_base_url())
-    await check_http_target("opa", cfg.opa_url())
+    await check_http_target("somabrain", cfg.get_somabrain_url())
+    await check_http_target("opa", cfg.get_opa_url())
     try:
         temporal_client = await get_temporal_client()
-        await temporal_client.workflow_service.get_system_info()
+        from temporalio.api.workflowservice.v1 import GetSystemInfoRequest
+
+        await temporal_client.workflow_service.get_system_info(GetSystemInfoRequest())
         record_status("temporal", "ok")
     except Exception as exc:
         record_status("temporal", "down", f"{type(exc).__name__}: {exc}")

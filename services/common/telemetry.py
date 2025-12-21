@@ -31,7 +31,7 @@ class TelemetryPublisher:
             self.publisher = DurablePublisher(bus=event_bus)
         self.store = store or TelemetryStore()
         self.topics = {
-            "slm": "slm.metrics",
+            "llm": "llm.metrics",
             "tool": "tool.metrics",
             "audio": "audio.metrics",
             "budget": "budget.events",
@@ -47,7 +47,7 @@ class TelemetryPublisher:
             tenant=(event.get("metadata") or {}).get("tenant") or event.get("tenant"),
         )
 
-    async def emit_slm(
+    async def emit_llm(
         self,
         *,
         session_id: str,
@@ -72,8 +72,8 @@ class TelemetryPublisher:
             "timestamp": time.time(),
             "metadata": metadata or {},
         }
-        await self._publish(self.topics["slm"], event)
-        await self.store.insert_slm(event)
+        await self._publish(self.topics["llm"], event)
+        await self.store.insert_llm(event)
 
     async def emit_tool(
         self,

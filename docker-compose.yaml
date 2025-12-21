@@ -77,8 +77,15 @@ services:
       - POSTGRES_PWD=soma
       - POSTGRES_SEEDS=postgres
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
-      - TEMPORAL_BROADCAST_ADDRESS=temporal
+      - TEMPORAL_BROADCAST_ADDRESS=${TEMPORAL_BROADCAST_ADDRESS:-}
       - SERVICES=frontend,history,matching,worker
+    command:
+      - sh
+      - -c
+      - |
+        set -- $(hostname -i)
+        export TEMPORAL_BROADCAST_ADDRESS="$1"
+        exec /etc/temporal/entrypoint.sh
     depends_on:
       postgres:
         condition: service_healthy
@@ -285,7 +292,7 @@ services:
     environment:
       <<: *agent-env
       CONVERSATION_METRICS_PORT: "9410"
-      SA01_TEMPORAL_HOST: temporal:7233
+      SA01_TEMPORAL_HOST: ${SA01_TEMPORAL_HOST:-temporal:7233}
       SA01_TEMPORAL_CONVERSATION_QUEUE: conversation
     command:
       - python3
@@ -316,7 +323,7 @@ services:
     environment:
       <<: *agent-env
       TOOL_EXECUTOR_METRICS_PORT: "9411"
-      SA01_TEMPORAL_HOST: temporal:7233
+      SA01_TEMPORAL_HOST: ${SA01_TEMPORAL_HOST:-temporal:7233}
       SA01_TEMPORAL_TOOL_QUEUE: tool-executor
     healthcheck:
       test: ["CMD", "true"]
@@ -366,7 +373,7 @@ services:
       <<: *agent-env
       PORT: "8011"
       FASTA2A_GATEWAY_METRICS_PORT: "9420"
-      SA01_TEMPORAL_HOST: temporal:7233
+      SA01_TEMPORAL_HOST: ${SA01_TEMPORAL_HOST:-temporal:7233}
       SA01_TEMPORAL_A2A_QUEUE: a2a
     ports:
       - "${FASTA2A_GATEWAY_PORT:-21017}:8011"

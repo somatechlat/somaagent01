@@ -10,7 +10,6 @@ import os
 import pathlib
 import time
 
-import httpx
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -56,6 +55,8 @@ async def health() -> dict:
 @app.get("/healths", tags=["monitoring"])
 async def aggregated_health() -> dict:
     """Aggregate health of core services."""
+    import httpx
+
     services = {
         "gateway": cfg.env("GATEWAY_HEALTH_URL"),
         "fasta2a_gateway": cfg.env("FASTA2A_HEALTH_URL"),
@@ -90,12 +91,12 @@ app.include_router(build_router())
 # ---------------------------------------------------------------------------
 # Compatibility helpers for routers/tests (centralised in providers)
 # ---------------------------------------------------------------------------
-def get_llm_credentials_store():
-    return providers.get_llm_credentials_store()
+def get_secret_manager():
+    return providers.get_secret_manager()
 
 
-def _gateway_slm_client():
-    return providers.get_slm_client()
+def _gateway_llm_client():
+    return providers.get_llm_client()
 
 
 # Compatibility getters used by integration tests to override dependencies.

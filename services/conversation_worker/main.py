@@ -133,7 +133,7 @@ class ConversationWorkerImpl:
             internal_token=cfg.env("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=cfg.env("SA01_SLM_MODEL", "gpt-4o-mini"),
+            default_model=cfg.env("SA01_LLM_MODEL", "gpt-4o-mini"),
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,

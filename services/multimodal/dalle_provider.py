@@ -10,7 +10,6 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 from __future__ import annotations
 
 import logging
-import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -84,7 +83,7 @@ class DalleProvider(MultimodalProvider):
             model: Model to use (dall-e-3 or dall-e-2).
             timeout_seconds: Request timeout.
         """
-        self._api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self._api_key = api_key or cfg.env("OPENAI_API_KEY")
         self._model = model
         self._timeout = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None
