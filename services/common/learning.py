@@ -58,7 +58,7 @@ async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
         # previous behaviour of ``httpx.AsyncClient()`` (which uses a default
         # fixture that defines ``AsyncClient=lambda timeout: _Client()``.
         async with httpx.AsyncClient(timeout=30) as client:
-            url = f"{cfg.soma_base_url()}/v1/weights"
+            url = f"{cfg.get_somabrain_url()}/v1/weights"
             params = {"persona": persona_id} if persona_id else None
             resp = await client.get(url, params=params)
             resp.raise_for_status()
@@ -88,7 +88,7 @@ async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List
     try:
         payload = {"session_id": session_id, "messages": messages[-10:]}
         async with httpx.AsyncClient(timeout=30) as client:
-            url = f"{cfg.soma_base_url()}/v1/context/build"
+            url = f"{cfg.get_somabrain_url()}/v1/context/build"
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
@@ -115,7 +115,7 @@ async def publish_reward(
     try:
         payload = {"session_id": session_id, "signal": signal, "value": value, "meta": meta or {}}
         async with httpx.AsyncClient(timeout=30) as client:
-            url = f"{cfg.soma_base_url()}/v1/learning/reward"
+            url = f"{cfg.get_somabrain_url()}/v1/learning/reward"
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
         LEARNING_REWARD_TOTAL.labels("ok").inc()

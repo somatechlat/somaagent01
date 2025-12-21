@@ -358,10 +358,8 @@ class ProcessMessageUseCase:
         )
 
         # Convert to ChatMessage format
-        from services.common.slm_client import ChatMessage
-
         messages = [
-            ChatMessage(role=msg.get("role", "user"), content=str(msg.get("content", "")))
+            {"role": msg.get("role", "user"), "content": str(msg.get("content", ""))}
             for msg in built_context.messages
         ]
 
@@ -380,7 +378,7 @@ class ProcessMessageUseCase:
         )
         result = await self._response_generator.execute(gen_input)
 
-        return result.text, result.usage, "slm", result.confidence
+        return result.text, result.usage, "llm", result.confidence
 
     def _history_to_messages(self, events: List[Dict[str, Any]]) -> List[Dict[str, str]]:
         """Convert history events to message format."""
@@ -421,7 +419,7 @@ class ProcessMessageUseCase:
     ) -> Dict[str, Any]:
         """Build response event for publishing."""
         response_metadata = dict(metadata)
-        response_metadata["source"] = "slm"
+        response_metadata["source"] = "llm"
         response_metadata["status"] = "completed"
         response_metadata["analysis"] = analysis_dict
         response_metadata["usage"] = usage

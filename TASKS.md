@@ -339,7 +339,7 @@
 
 ### § Observability Architecture
 
-#### Prometheus Metrics (Existing)
+#### PrometheuYES FOLLOW THE ROLES ok perfect, you are those role snow act like these roles all the tiome ok? so now , use the boen cpoin tules create a requetemrente list to remove all the VIOLATIONS LIKE THIS NOW !! YO UWILL SWEEP THE WHOLE CODE FOR THIS IN THESE AREAS YOU will do this now and you wil lcoem back with violations, log the violations into a  file violations.md and coem bnack with report so we can put them into the requiemtnes and remove whats violting ans it not correct arcuoitecture the rules are very clear USE THEM OK yu have not bein using them so from now on you are OBLIGED ti to that its an order go nwos Metrics (Existing)
 - [x] `somabrain_http_requests_total` (Counter)
 - [x] `somabrain_request_seconds` (Histogram)
 - [x] `conversation_worker_messages_total` (Counter)

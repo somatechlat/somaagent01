@@ -66,18 +66,18 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     if not req.prompt and not req.messages:
         raise HTTPException(status_code=400, detail="prompt_or_messages_required")
 
-    # REAL IMPLEMENTATION - Use SLM client for LLM invocation
-    from services.gateway.main import get_llm_credentials_store, _gateway_slm_client
+    # REAL IMPLEMENTATION - Use LLM client for LLM invocation
+    from services.gateway.main import get_secret_manager, _gateway_llm_client
 
     # Get credentials and client
-    creds_store = get_llm_credentials_store()
-    slm_client = _gateway_slm_client()
+    creds_store = get_secret_manager()
+    llm_client = _gateway_llm_client()
 
     # Get API key for the provider (default to openai)
     provider = req.overrides.get("model", "openai").split("/")[0] if req.overrides else "openai"
     api_key = await creds_store.get_provider_key(provider)
     if api_key:
-        slm_client.api_key = api_key
+        llm_client.api_key = api_key
 
     # Prepare parameters
     model = req.overrides.get("model", "gpt-4o-mini") if req.overrides else "gpt-4o-mini"
@@ -91,7 +91,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     try:
         request_logprobs = cfg.env("CONFIDENCE_ENABLED", "false").lower() == "true"
         aggregation = cfg.env("CONFIDENCE_AGGREGATION", "average")
-        content, usage, confidence = await slm_client.chat(
+        content, usage, confidence = await llm_client.chat(
             messages=messages,
             model=model,
             base_url=base_url,
@@ -144,18 +144,18 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
     if not req.prompt and not req.messages:
         raise HTTPException(status_code=400, detail="prompt_or_messages_required")
 
-    # REAL IMPLEMENTATION - Use SLM client for streaming LLM invocation
-    from services.gateway.main import get_llm_credentials_store, _gateway_slm_client
+    # REAL IMPLEMENTATION - Use LLM client for streaming LLM invocation
+    from services.gateway.main import get_secret_manager, _gateway_llm_client
 
     # Get credentials and client
-    creds_store = get_llm_credentials_store()
-    slm_client = _gateway_slm_client()
+    creds_store = get_secret_manager()
+    llm_client = _gateway_llm_client()
 
     # Get API key for the provider
     provider = req.overrides.get("model", "openai").split("/")[0] if req.overrides else "openai"
     api_key = await creds_store.get_provider_key(provider)
     if api_key:
-        slm_client.api_key = api_key
+        llm_client.api_key = api_key
 
     # Prepare parameters
     model = req.overrides.get("model", "gpt-4o-mini") if req.overrides else "gpt-4o-mini"
@@ -169,7 +169,7 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
     try:
         request_logprobs = cfg.env("CONFIDENCE_ENABLED", "false").lower() == "true"
         aggregation = cfg.env("CONFIDENCE_AGGREGATION", "average")
-        content, usage, confidence = await slm_client.chat(
+        content, usage, confidence = await llm_client.chat(
             messages=messages,
             model=model,
             base_url=base_url,

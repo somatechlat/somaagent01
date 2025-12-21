@@ -93,6 +93,7 @@ help:
 	@echo "  dev-ps                    Show dev stack containers."
 	@echo "  dev-up-ui                 Start dev stack including UI profile."
 	@echo "  dev-restart-ui            Rebuild and start dev stack including UI profile."
+	@echo "  dev-buildx                Build image with buildx bake (auto platform)."
 	@echo ""
 
 	@echo "Dependency & local runtime targets:"
@@ -294,11 +295,16 @@ ui:
 	@echo "To run the full stack locally: make stack-up (or see README)."
 
 .PHONY: dev-build dev-up-services dev-restart-services dev-logs-svc dev-ps
+.PHONY: dev-buildx
 
 # Build images for specific services (or all if SERVICES is empty)
 dev-build:
 	@echo "Building developer stack images $(if $(SERVICES),for: $(SERVICES),for all services)..."
 	$(DEV_DOCKER) build $(SERVICES)
+
+dev-buildx:
+	@echo "Building developer image with buildx bake..."
+	@scripts/build/buildx_bake.sh
 
 # Start specific services
 dev-up-services:

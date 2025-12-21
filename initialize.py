@@ -161,7 +161,7 @@ def _args_override(config):
             setattr(config, key, value)
 
 
-def _set_runtime_config(config: AgentConfig, set: settings.Settings):
+def _set_runtime_config(config: AgentConfig, set: settings.SettingsModel):
     ssh_conf = settings.get_runtime_config(set)
     for key, value in ssh_conf.items():
         if hasattr(config, key):

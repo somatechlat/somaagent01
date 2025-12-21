@@ -33,7 +33,7 @@ async def get_runtime_config() -> dict:
     """Return UI-safe snapshot of runtime flags and derived state."""
     auth_cfg = {
         "require_auth": cfg.flag("AUTH_REQUIRED") or bool(cfg.env("AUTH_REQUIRED", False)),
-        "opa_configured": bool(cfg.opa_url()),
+        "opa_configured": bool(cfg.get_opa_url()),
     }
 
     sse_cfg = {"enabled": str(cfg.env("SSE_ENABLED", "true")).lower() in {"true", "1", "yes", "on"}}

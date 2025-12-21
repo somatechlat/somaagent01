@@ -34,7 +34,7 @@ def should_escalate(
 
     The heuristic balances explicit metadata flags with lightweight semantic
     signals from the conversation pre-processor.  It is intentionally
-    conservative—the default behaviour keeps the request on the SLM unless
+    conservative—the default behaviour keeps the request on the baseline tier unless
     multiple indicators point to higher risk/complexity.
     """
 
@@ -99,6 +99,6 @@ def should_escalate(
 
     return EscalationDecision(
         should_escalate=False,
-        reason="slm_handled",
+        reason="baseline_handled",
         metadata=factors,
     )

@@ -160,6 +160,32 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  --font-sans: var(--font-primary);
+  --text-md: var(--text-base);
+  --font-semibold: var(--weight-semibold);
+  --bg-primary: var(--bg-canvas);
+  --bg-secondary: var(--bg-surface);
+  --surface-1: var(--bg-surface);
+  --border-color: var(--border-subtle);
+  --accent-primary: var(--accent-blue);
+  --accent-hover: var(--accent-blue-dim);
+  --danger: var(--error);
+  --glass-bg: var(--glass-medium);
+  --glass-blur: var(--glass-blur-medium);
+  --gradient-ai: var(--gradient-glow);
+  --space-1: var(--space-xs);
+  --space-4: var(--space-md);
+  --space-16: var(--space-3xl);
+  --shadow-md: var(--shadow-soft);
+  --shadow-glow: var(--glow-soft);
+  --duration-normal: var(--transition-base);
+  --z-modal: var(--z-modal-base);
+  --c-accent: var(--accent-blue);
+  --c-error-subtle: var(--error-dim);
+  --header-h: 64px;
+  --sidebar-w: 280px;
+  --sidebar-collapsed-w: 72px;
 }
 
 /* ═══════════════════════════════════════════════════════════════

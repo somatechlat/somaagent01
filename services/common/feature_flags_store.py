@@ -298,7 +298,7 @@ class FeatureFlagsStore:
         effective_flags = {}
         for key in DEFAULT_FLAGS.keys():
             env_key = f"SA01_ENABLE_{key}".upper()
-            env_value = os.getenv(env_key)
+            env_value = cfg.env(env_key)
             
             if env_value is not None:
                 # Environment override

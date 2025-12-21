@@ -19,7 +19,7 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 ### 2025-12-18 — Sweep #1 (repo-wide)
 
 **Audit notes**
-- Coverage + directory exclusions are recorded in `VIOLATIONSLOG.md`.
+- Coverage + directory exclusions are recorded in `INVENTORY.md`.
 - This sweep includes *docs + tests* as well as production code; violations are logged where the repo text contradicts `VIBE_CODING_RULES.md` (e.g., presence of TODO/stub/mock keywords, “prototype” modules, bypass switches, and invented/non-existent APIs).
 
 #### VCR-2025-12-18-001
@@ -198,6 +198,152 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Rule**: Rule 1 — NO mocks (strict reading; tests contain mocks)
 - **File**: `tests/` (multiple)
 - **Location**: N/A (multiple files)
+
+### 2025-12-21 — Sweep #2 (hardcoded models/providers/defaults + stubs)
+
+#### VCR-2025-12-21-001
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded providers/models)
+- **File**: `services/tool_executor/multimodal_executor.py`
+- **Location**: 118-127
+- **Finding**: Provider registration is hardcoded (Mermaid/Playwright/DALL‑E). This violates “no hardcoded values” and bypasses the DB‑backed model/tool settings as the single source of truth.
+- **Evidence**: `await self.register_provider(MermaidProvider())` + `await self.register_provider(PlaywrightProvider())` + `dalle = DalleProvider()`
+- **Suggested fix**: Load multimodal providers strictly from the DB/Settings model catalog (capability registry + UI settings). Remove all hardcoded provider registration.
+
+#### VCR-2025-12-21-002
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded provider keys)
+- **File**: `services/tool_executor/multimodal_executor.py`
+- **Location**: 90-98
+- **Finding**: AssetCritic LLM adapter is bound to a hardcoded provider key (`provider:openai`).
+- **Evidence**: `api_key_resolver = lambda: sm.get("provider:openai")`
+- **Suggested fix**: Resolve provider/model from DB settings (model catalog) and fetch the matching provider key dynamically.
+
+#### VCR-2025-12-21-003
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded model names)
+- **File**: `services/common/asset_critic.py`
+- **Location**: 369-373
+- **Finding**: The vision critic uses a hardcoded model (`gpt-4o`) rather than the configured model from settings/DB.
+- **Evidence**: `model="gpt-4o"`
+- **Suggested fix**: Use the configured multimodal/vision model from the settings model catalog; no hardcoded model names in code.
+
+#### VCR-2025-12-21-004
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded defaults)
+- **File**: `services/gateway/routers/llm.py`
+- **Location**: 76-85
+- **Finding**: Provider/model/base URL are hardcoded fallbacks in request handling.
+- **Evidence**: `provider = ... "openai"` + `model = ... "gpt-4o-mini"` + `base_url = ... "https://api.openai.com/v1"`
+- **Suggested fix**: Resolve provider/model/base_url from DB settings or request overrides only; remove hardcoded defaults.
+
+#### VCR-2025-12-21-005
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded model/provider defaults)
+- **File**: `services/common/agent_config_loader.py`
+- **Location**: 51-87, 94-129
+- **Finding**: Default provider/model values are hardcoded during settings extraction (`openai`, `gpt-4o`, default RPM/TPM/ctx length).
+- **Evidence**: `_get_field(..., "openai")` + `_get_field(..., "gpt-4o")`
+- **Suggested fix**: Require explicit values from DB settings; remove hardcoded defaults and fail fast if required settings are absent.
+
+#### VCR-2025-12-21-006
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded model/provider defaults)
+- **File**: `python/helpers/settings_defaults.py`
+- **Location**: 30-108
+- **Finding**: Hardcoded model/provider defaults (openrouter/openai/gpt‑4.1, etc.) conflict with “DB is the only source of truth”.
+- **Evidence**: `chat_model_provider="openrouter"` + `chat_model_name="openai/gpt-4.1"` + others
+- **Suggested fix**: Remove hardcoded model defaults and load all model settings from DB/Settings store; require explicit configuration.
+
+#### VCR-2025-12-21-007
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded defaults)
+- **File**: `python/helpers/settings_model.py`
+- **Location**: 18-108
+- **Finding**: Hardcoded provider/model defaults in the settings model (openrouter/openai/gpt‑4.1, etc.).
+- **Evidence**: `chat_model_provider: str = "openrouter"` + `chat_model_name: str = "openai/gpt-4.1"` + others
+- **Suggested fix**: Remove hardcoded defaults; require DB‑sourced settings for all model/provider fields.
+
+#### VCR-2025-12-21-008
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded defaults)
+- **File**: `services/gateway/routers/ui_settings.py`
+- **Location**: 139-143
+- **Finding**: Default model mapping is hardcoded in `test_connection`.
+- **Evidence**: `{"openai": "gpt-3.5-turbo-0125", ...}.get(...)`
+- **Suggested fix**: Use the model selected in settings (or explicit request value) instead of hardcoded defaults.
+
+#### VCR-2025-12-21-009
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (no hardcoded provider list)
+- **File**: `services/common/unified_secret_manager.py`
+- **Location**: 75-81
+- **Finding**: Provider list is hardcoded for key discovery.
+- **Evidence**: `providers = ["openai", "groq", "anthropic", "openrouter", "ollama", "fireworks"]`
+- **Suggested fix**: Read providers from the DB model catalog or settings; do not hardcode provider names.
+
+#### VCR-2025-12-21-010
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (hardcoded model costs)
+- **File**: `services/common/model_costs.py`
+- **Location**: 7-13
+- **Finding**: Escalation model costs are hardcoded in code.
+- **Evidence**: `ESCALATION_MODEL_RATES = {...}`
+- **Suggested fix**: Move rates to DB configuration (model catalog/pricing table) or settings; no hardcoded model pricing.
+
+#### VCR-2025-12-21-011
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (hardcoded cost rates)
+- **File**: `python/observability/metrics.py`
+- **Location**: 515-526
+- **Finding**: Cost estimation uses hardcoded provider/model rates.
+- **Evidence**: `cost_rates = {"openai": {...}, "anthropic": {...}, "groq": {...}}`
+- **Suggested fix**: Pull cost rates from DB model catalog or configuration; do not embed provider pricing in code.
+
+#### VCR-2025-12-21-012
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (hardcoded model/base URL)
+- **File**: `services/common/embeddings.py`
+- **Location**: 36-40
+- **Finding**: Embeddings provider uses hardcoded defaults for base URL and model.
+- **Evidence**: `... or "https://api.openai.com/v1"` + `... or "text-embedding-3-small"`
+- **Suggested fix**: Resolve embedding model/base URL from DB settings only; remove hardcoded defaults.
+
+#### VCR-2025-12-21-013
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (hardcoded prompt limit)
+- **File**: `src/core/application/use_cases/conversation/process_message.py`
+- **Location**: 356-358
+- **Finding**: Prompt token limit is hardcoded (4096) instead of being model‑driven or settings‑driven.
+- **Evidence**: `build_for_turn(..., max_prompt_tokens=4096)`
+- **Suggested fix**: Pull max prompt tokens from the active model config (DB settings) and pass through.
+
+#### VCR-2025-12-21-014
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (stub endpoints)
+- **File**: `services/gateway/routers/speech.py`
+- **Location**: 50-63
+- **Finding**: Two production endpoints are stubs returning 501.
+- **Evidence**: `raise HTTPException(status_code=501, detail="Realtime session not implemented")`
+- **Suggested fix**: Implement real endpoints or remove them from the router and API surface.
+
+#### VCR-2025-12-21-015
+- **Date**: 2025-12-21
+- **Rule**: Rule 4 — REAL IMPLEMENTATIONS ONLY (prototype code in prod path)
+- **File**: `services/common/semantic_recall.py`
+- **Location**: 36-43, 90-108
+- **Finding**: Experimental prototype in-memory vector index is included in production codepaths.
+- **Evidence**: `Experimental in-memory vector index...` + `Enable with: SA01_SEMANTIC_RECALL_PROTOTYPE=true`
+- **Suggested fix**: Remove prototype from production or replace with persistent vector store; keep experimental code in a separate, explicitly non‑prod module.
+
+#### VCR-2025-12-21-016
+- **Date**: 2025-12-21
+- **Rule**: Rule 7 — REAL DATA & SERVERS ONLY (fail-open policy bypass)
+- **File**: `python/integrations/opa_middleware.py`
+- **Location**: 38-43, 80-83
+- **Finding**: Environment-controlled fail-open allows policy bypass on OPA failure.
+- **Evidence**: `SA01_OPA_FAIL_OPEN` + `if self.fail_open: ... return await call_next(request)`
+- **Suggested fix**: Remove fail-open path or restrict to explicit dev profile with hard audit logging.
 - **Finding**: The test suite contains direct use of mocking frameworks (`unittest.mock`, `respx.mock`, `MagicMock`, etc.), contradicting a strict reading of VIBE “NO mocks”.
 - **Evidence** (file list): `tests/test_policy_enforcement.py`, `tests/integrations/test_somabrain_client.py`, `tests/unit/test_asset_critic_llm.py`, `tests/unit/test_policy_graph_router.py`, `tests/unit/test_multimodal_executor.py`, `tests/voice/test_voice_components.py` (and others).
 - **Suggested fix**: Either (a) clarify the scope of `VIBE_CODING_RULES.md` (production code vs tests) to avoid contradictions, or (b) replace mocks with real container-backed integration tests and in-process real service fixtures.
@@ -404,3 +550,14 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Finding**: The only mounted `/v1/health` and `/v1/sessions/{session_id}/events` implementations now live under `services.gateway`; the obsolete `src.gateway` router copies that previously duplicated the contract have been removed, so there is a single authoritative place for each route.
 - **Evidence**: `APIRouter(prefix="/v1")` inside `services.gateway.routers.health` defines the full dependency-aware health check; `services.gateway.routers.sessions` provides the single session SSE stream (polling `PostgresSessionStore`/`RedisSessionCache`). No other modules expose `/v1/health` or `/v1/sessions/{session_id}/events`.
 - **Suggested fix**: Maintain these routers as the canonical health/session endpoints and avoid reintroducing parallel copies; if additional health views are needed expose them under new subpaths (e.g., `/v1/health/live`).
+
+### 2025-12-21 — Sweep #6 (include infra + webui/vendor)
+
+#### VCR-2025-12-21-017
+- **Date**: 2025-12-21
+- **Rule**: Rule 1 — NO TODOs / NO placeholders (strict repo-wide)
+- **File**: `webui/vendor/ace-min/mode-d.js`
+- **Location**: line 1 (minified)
+- **Finding**: Vendored ACE assets embed TODO/FIXME/XXX/HACK tokens as literal regex targets in syntax highlighters (representative of the bundled ACE files). Under the repo’s strict “NO TODOs” rule, these tokens are violations even though they’re part of third‑party code.
+- **Evidence**: `regex:\"\\b(?:TODO|FIXME|XXX|HACK)\\b\"`
+- **Suggested fix**: Remove vendored ACE assets from the repo and consume the editor via a package manager/build step (so the tokens do not live in this repo), or re‑vendor a sanitized build that does not include TODO/FIXME/XXX/HACK tokens.

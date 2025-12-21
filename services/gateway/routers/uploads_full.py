@@ -1,7 +1,5 @@
 """Production-grade Upload Manager with TUS + ClamAV + SHA-256 integrity."""
 
-from __future__ import annotations
-
 import hashlib
 import time
 import uuid
@@ -346,7 +344,7 @@ def _tus_handler(store: AttachmentsStore = Depends(_attachments_store)) -> TUSUp
 @limiter.limit("10/minute")
 async def upload_files(
     request: Request,
-    files: List[UploadFile] = File(...),
+    files: list[UploadFile] = File(...),
     publisher: Annotated[Optional[DurablePublisher], Depends(_publisher)] = None,
     handler: Annotated[TUSUploadHandler, Depends(_tus_handler)] = None,
 ) -> JSONResponse:
@@ -474,6 +472,7 @@ async def tus_delete(
 @limiter.limit("20/minute")
 async def tus_finalize(
     upload_id: str,
+    request: Request,
     handler: Annotated[TUSUploadHandler, Depends(_tus_handler)],
 ):
     try:

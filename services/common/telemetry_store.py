@@ -46,7 +46,7 @@ class TelemetryStore:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS slm_metrics (
+                CREATE TABLE IF NOT EXISTS llm_metrics (
                     id SERIAL PRIMARY KEY,
                     session_id TEXT,
                     persona_id TEXT,
@@ -113,12 +113,12 @@ class TelemetryStore:
                 """
             )
 
-    async def insert_slm(self, event: dict[str, Any]) -> None:
+    async def insert_llm(self, event: dict[str, Any]) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO slm_metrics
+                INSERT INTO llm_metrics
                     (session_id, persona_id, tenant, model, latency_seconds, input_tokens, output_tokens, metadata)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
                 """,

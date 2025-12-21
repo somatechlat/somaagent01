@@ -195,6 +195,10 @@ class DegradationMonitor:
                 pass
         logger.info("Degradation monitoring stopped")
 
+    def is_monitoring(self) -> bool:
+        """Return whether monitoring is active."""
+        return self._monitoring_active
+
     async def _monitor_loop(self) -> None:
         """Main monitoring loop."""
         while self._monitoring_active:
@@ -751,3 +755,8 @@ class DegradationMonitor:
 
 # Global degradation monitor instance
 degradation_monitor = DegradationMonitor()
+
+
+def is_monitoring() -> bool:
+    """Return whether the global degradation monitor is active."""
+    return degradation_monitor.is_monitoring()

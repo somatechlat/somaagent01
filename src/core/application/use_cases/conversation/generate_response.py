@@ -279,7 +279,7 @@ class GenerateResponseUseCase:
         """Publish streaming event."""
         try:
             metadata = dict(input_data.base_metadata)
-            metadata["source"] = "slm"
+            metadata["source"] = "llm"
             metadata["status"] = "streaming"
             metadata["analysis"] = input_data.analysis_metadata
             metadata["stream_index"] = stream_index

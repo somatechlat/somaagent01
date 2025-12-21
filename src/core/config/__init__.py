@@ -5,6 +5,7 @@ Single source of truth for all runtime configuration.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 
@@ -37,6 +38,11 @@ def env(name: str, default: Any = None) -> Any:
     # Direct attribute access for flat keys (e.g., DEPLOYMENT_MODE).
     if hasattr(cfg_obj, name.lower()):
         return getattr(cfg_obj, name.lower())
+
+    # Fall back to process environment if not mapped in config.
+    env_val = os.getenv(name)
+    if env_val is not None:
+        return env_val
 
     # Return the caller supplied default.
     return default
@@ -77,7 +83,8 @@ def soma_base_url() -> str:
     VIBE COMPLIANT: Only SA01_SOMA_BASE_URL is supported.
     No legacy SOMA_BASE_URL support.
     """
-    url = env("SA01_SOMA_BASE_URL")
+    cfg_obj = settings()
+    url = cfg_obj.external.somabrain_base_url or env("SA01_SOMA_BASE_URL")
     if not url:
         raise RuntimeError(
             "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per VIBE rules."

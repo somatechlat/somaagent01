@@ -82,7 +82,7 @@ def _build_use_case():
         internal_token=cfg.env("SA01_GATEWAY_INTERNAL_TOKEN", ""),
         publisher=publisher,
         outbound_topic=cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
-        default_model=cfg.env("SA01_SLM_MODEL", "gpt-4o-mini"),
+        default_model=cfg.env("SA01_LLM_MODEL", "gpt-4o-mini"),
     )
     proc = ProcessMessageUseCase(
         session_repo=store,

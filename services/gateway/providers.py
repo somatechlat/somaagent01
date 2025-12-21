@@ -45,8 +45,8 @@ def get_session_cache() -> RedisSessionCache:
     return RedisSessionCache()
 
 
-def get_llm_credentials_store():
-    """Get the LLM credentials store instance."""
+def get_secret_manager():
+    """Get the SecretManager instance."""
     from services.common.secret_manager import SecretManager
 
     return SecretManager()
@@ -64,11 +64,15 @@ def get_llm_adapter():
     from services.common.llm_adapter import LLMAdapter
     from services.common.secret_manager import SecretManager
 
-    base_url = cfg.env("SA01_SLM_BASE_URL") or cfg.env("SA01_LLM_BASE_URL") or None
+    base_url = cfg.env("SA01_LLM_BASE_URL") or None
     # Prefer per-call secret retrieval to avoid stale keys.
     sm = SecretManager()
     api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
     return LLMAdapter(service_url=base_url, api_key_resolver=api_key_resolver)
+
+
+def get_llm_client():
+    return get_llm_adapter()
 
 
 def get_asset_store():
