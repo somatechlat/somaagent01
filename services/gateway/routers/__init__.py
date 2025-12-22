@@ -30,6 +30,7 @@ from . import (
     requeue,
     route,
     runtime_config,
+    saas,
     sessions,
     skins,
     speech,
@@ -85,6 +86,7 @@ def build_router() -> APIRouter:
         websocket.router,
         sessions.router,
         runtime_config.router,
+        saas.router,
         multimodal.router,
     ):
         router.include_router(sub)
