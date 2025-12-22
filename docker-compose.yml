@@ -509,6 +509,128 @@ services:
       com.somastack.service: "keycloak"
       com.somastack.tier: "identity"
 
+  # ==========================================================================
+  # APPLICATION: Django Backend (Port 20020)
+  # Eye of God UI API server
+  # ==========================================================================
+  somaagent-django:
+    build:
+      context: ./ui/backend
+      dockerfile: Dockerfile
+    image: somaagent-django:latest
+    container_name: somaagent-django
+    profiles: [ "app" ]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+      KAFKA_BROKERS: kafka:9092
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: somaagent
+      KEYCLOAK_CLIENT_ID: eye-of-god
+      JWT_SECRET: ${JWT_SECRET:-somastack-jwt-secret-change-in-prod}
+      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      DEBUG: ${DEBUG:-false}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+    ports:
+      - "20020:8020"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: [ "CMD-SHELL", "curl -f http://localhost:8020/api/v2/health || exit 1" ]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    logging: *common-logging
+    labels:
+      <<: *common-labels
+      com.somastack.service: "django"
+      com.somastack.tier: "application"
+
+  # ==========================================================================
+  # APPLICATION: Lit Frontend (Port 20080)
+  # Eye of God Web UI with nginx
+  # ==========================================================================
+  somaagent-frontend:
+    build:
+      context: ./ui/frontend
+      dockerfile: Dockerfile
+    image: somaagent-frontend:latest
+    container_name: somaagent-frontend
+    profiles: [ "app" ]
+    restart: unless-stopped
+    ports:
+      - "20080:80"
+    depends_on:
+      - somaagent-django
+    healthcheck:
+      <<: *common-healthcheck
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:80/health || exit 1" ]
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+        reservations:
+          memory: 64M
+          cpus: "0.1"
+    logging: *common-logging
+    labels:
+      <<: *common-labels
+      com.somastack.service: "frontend"
+      com.somastack.tier: "application"
+
+  # ==========================================================================
+  # WORKER: Kafka Consumer (Event Processing)
+  # Processes events from Kafka topics
+  # ==========================================================================
+  somaagent-worker:
+    build:
+      context: ./ui/backend
+      dockerfile: Dockerfile
+    image: somaagent-django:latest
+    container_name: somaagent-worker
+    profiles: [ "workers" ]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+      KAFKA_BROKERS: kafka:9092
+      WORKER_MODE: "true"
+    command: [ "python", "manage.py", "run_worker" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+          cpus: "0.1"
+    logging: *common-logging
+    labels:
+      <<: *common-labels
+      com.somastack.service: "worker"
+      com.somastack.tier: "processing"
+
 # ==========================================================================
 # VOLUMES - Namespaced with driver options
 # ==========================================================================
