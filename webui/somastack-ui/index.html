@@ -10,46 +10,27 @@
   <link rel="stylesheet" href="css/somastack-base.css">
   <link rel="stylesheet" href="css/somastack-utilities.css">
   <link rel="stylesheet" href="css/somastack-components.css">
-  
-  <style>
-    /* Page-specific styles */
-    .soma-page-title {
-      margin-bottom: var(--soma-space-6);
-    }
-    
-    .soma-section {
-      margin-bottom: var(--soma-space-8);
-    }
-    
-    .soma-section__title {
-      font-size: var(--soma-text-lg);
-      font-weight: var(--soma-font-semibold);
-      margin-bottom: var(--soma-space-4);
-      color: var(--soma-text-primary);
-    }
-  </style>
 </head>
-<body x-data>
+<body x-data="{ sidebarCollapsed: false }">
   <!-- Skip Link -->
-  <a href="#main-content" class="soma-skip-link">Skip to main content</a>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   
   <!-- Toast Container -->
-  <div x-data="toastContainer" class="soma-toast-container">
+  <div x-data="toastContainer" class="toast-container">
     <template x-for="toast in toasts" :key="toast.id">
-      <div class="soma-toast"
-           :class="'soma-toast--' + toast.variant"
+      <div class="toast"
+           :class="'toast--' + toast.variant"
            x-show="toast.visible"
-           x-transition:enter="soma-transition"
-           x-transition:leave="soma-transition">
-        <span class="soma-toast__icon" x-html="getIcon(toast.variant)"></span>
-        <span class="soma-toast__message" x-text="toast.message"></span>
-        <button @click="dismiss(toast.id)" class="soma-toast__close">×</button>
+           x-transition>
+        <span class="toast__icon" x-html="getIcon(toast.variant)"></span>
+        <span class="toast__message" x-text="toast.message"></span>
+        <button @click="dismiss(toast.id)" class="toast__close">×</button>
       </div>
     </template>
   </div>
 
   <!-- Layout -->
-  <div class="soma-layout" :class="{ 'soma-layout--collapsed': $store.sidebar?.isCollapsed }">
+  <div class="layout" :class="{ 'layout--collapsed': sidebarCollapsed }">
     
     <!-- Sidebar -->
     <nav x-data="sidebarNav({
@@ -77,159 +58,153 @@
           label: 'Admin',
           items: [
             { id: 'settings', label: 'Settings', href: '#settings', icon: '⚙️' },
-            { id: 'users', label: 'Users', href: '#users', icon: '👥', permission: 'admin' }
+            { id: 'users', label: 'Users', href: '#users', icon: '👥' }
           ]
         }
       ]
     })" 
-         class="soma-sidebar"
-         :class="{ 'soma-sidebar--collapsed': isCollapsed }">
+         class="sidebar"
+         :class="{ 'sidebar--collapsed': sidebarCollapsed }">
       
-      <div class="soma-sidebar__header">
-        <div class="soma-sidebar__logo">
-          <span class="soma-sidebar__logo-icon">S</span>
-          <span class="soma-sidebar__logo-text">SomaAgent</span>
+      <div class="sidebar__header">
+        <div class="sidebar__logo">
+          <span class="sidebar__logo-icon">S</span>
+          <span class="sidebar__logo-text" x-show="!sidebarCollapsed">SomaAgent</span>
         </div>
-        <button @click="toggleCollapse()" class="soma-sidebar__toggle" aria-label="Toggle sidebar">
-          <span x-show="!isCollapsed">◀</span>
-          <span x-show="isCollapsed">▶</span>
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="sidebar__toggle" aria-label="Toggle sidebar">
+          <span x-show="!sidebarCollapsed">◀</span>
+          <span x-show="sidebarCollapsed">▶</span>
         </button>
       </div>
       
-      <div class="soma-sidebar__content">
-        <template x-for="(group, gi) in navGroups" :key="group.id">
-          <div class="soma-nav-group">
-            <span class="soma-nav-group__label" x-text="group.label"></span>
-            <template x-for="(item, ii) in group.items" :key="item.id">
+      <div class="sidebar__content">
+        <template x-for="group in navGroups" :key="group.id">
+          <div class="nav-group">
+            <span class="nav-group__label" x-text="group.label"></span>
+            <template x-for="item in group.items" :key="item.id">
               <a :href="item.href"
-                 class="soma-nav-item"
-                 :class="{ 'soma-nav-item--active': isActive(item) }"
-                 x-show="hasPermission(item.permission)"
-                 @click="navigate(item)"
-                 @keydown="handleKeydown($event, item, gi, ii)"
-                 :x-ref="'nav-item-' + gi + '-' + ii"
-                 tabindex="0">
-                <span class="soma-nav-item__icon" x-text="item.icon"></span>
-                <span class="soma-nav-item__label" x-text="item.label"></span>
-                <span x-show="item.badge" class="soma-nav-item__badge" x-text="item.badge"></span>
+                 class="nav-item"
+                 :class="{ 'nav-item--active': isActive(item) }"
+                 @click="navigate(item)">
+                <span class="nav-item__icon" x-text="item.icon"></span>
+                <span class="nav-item__label" x-text="item.label"></span>
+                <span x-show="item.badge" class="nav-item__badge" x-text="item.badge"></span>
               </a>
             </template>
           </div>
         </template>
       </div>
       
-      <div class="soma-sidebar__footer">
-        <div class="soma-status" x-data="statusIndicator({ service: 'somaagent' })">
-          <span class="soma-status__dot" :class="dotClass"></span>
-          <span class="soma-status__label">System</span>
-          <span class="soma-status__time" x-text="lastCheckedFormatted"></span>
+      <div class="sidebar__footer">
+        <div class="status" x-data="statusIndicator({ service: 'somaagent' })">
+          <span class="status__dot" :class="dotClass"></span>
+          <span class="status__label" x-show="!sidebarCollapsed">System</span>
+          <span class="status__time" x-show="!sidebarCollapsed" x-text="lastCheckedFormatted"></span>
         </div>
       </div>
     </nav>
     
     <!-- Header -->
-    <header class="soma-header">
-      <h1 class="soma-header__title">Dashboard</h1>
+    <header class="header">
+      <h1 class="header__title">Dashboard</h1>
       
-      <div class="soma-header__actions">
+      <div class="header__actions">
         <!-- Theme Toggle -->
         <button @click="$store.theme.toggle()" 
-                class="soma-btn soma-btn--ghost soma-btn--icon"
+                class="btn btn--ghost btn--icon"
                 :aria-label="$store.theme.isDark ? 'Switch to light mode' : 'Switch to dark mode'">
           <span x-show="$store.theme.isDark">☀️</span>
           <span x-show="!$store.theme.isDark">🌙</span>
         </button>
         
-        <!-- User Menu -->
-        <div class="soma-flex soma-items-center soma-gap-2">
-          <span class="soma-badge soma-badge--primary" x-text="$store.auth.role"></span>
-        </div>
+        <!-- User Badge -->
+        <span class="badge badge--default" x-text="$store.auth.role"></span>
       </div>
     </header>
     
     <!-- Main Content -->
-    <main id="main-content" class="soma-main">
-      <div class="soma-main__container">
+    <main id="main-content" class="main">
+      <div class="main__container">
         
         <!-- Stats Section -->
-        <section class="soma-section">
-          <h2 class="soma-section__title">Overview</h2>
+        <section class="section">
+          <h2 class="section__title">Overview</h2>
           
-          <div class="soma-stats-grid">
-            <div x-data="statsCard({ value: 1247, previousValue: 1100, label: 'Active Sessions', icon: 'users' })" 
-                 class="soma-stats-card">
-              <div class="soma-stats-card__icon">👥</div>
-              <div class="soma-stats-card__content">
-                <span class="soma-stats-card__value" x-text="formattedValue"></span>
-                <span class="soma-stats-card__label" x-text="label"></span>
-                <div class="soma-stats-card__trend" :class="trendClass">
-                  <span x-text="trendIcon"></span>
-                  <span x-text="trendPercent + '%'"></span>
-                </div>
+          <div class="stats-grid">
+            <div x-data="statsCard({ value: 1247, previousValue: 1100, label: 'Active Sessions' })" 
+                 class="stats-card">
+              <div class="stats-card__header">
+                <span class="stats-card__label" x-text="label"></span>
+                <span class="stats-card__icon">👥</span>
+              </div>
+              <span class="stats-card__value" x-text="formattedValue"></span>
+              <div class="stats-card__trend" :class="trendClass">
+                <span x-text="trendIcon"></span>
+                <span x-text="trendPercent + '%'"></span>
               </div>
             </div>
             
             <div x-data="statsCard({ value: 89.5, previousValue: 85.2, label: 'Success Rate', format: 'percent' })" 
-                 class="soma-stats-card">
-              <div class="soma-stats-card__icon">✅</div>
-              <div class="soma-stats-card__content">
-                <span class="soma-stats-card__value" x-text="formattedValue"></span>
-                <span class="soma-stats-card__label" x-text="label"></span>
-                <div class="soma-stats-card__trend" :class="trendClass">
-                  <span x-text="trendIcon"></span>
-                  <span x-text="trendPercent + '%'"></span>
-                </div>
+                 class="stats-card">
+              <div class="stats-card__header">
+                <span class="stats-card__label" x-text="label"></span>
+                <span class="stats-card__icon">✅</span>
+              </div>
+              <span class="stats-card__value" x-text="formattedValue"></span>
+              <div class="stats-card__trend" :class="trendClass">
+                <span x-text="trendIcon"></span>
+                <span x-text="trendPercent + '%'"></span>
               </div>
             </div>
             
             <div x-data="statsCard({ value: 2450000, previousValue: 2100000, label: 'Memories Stored' })" 
-                 class="soma-stats-card">
-              <div class="soma-stats-card__icon">🧠</div>
-              <div class="soma-stats-card__content">
-                <span class="soma-stats-card__value" x-text="formattedValue"></span>
-                <span class="soma-stats-card__label" x-text="label"></span>
-                <div class="soma-stats-card__trend" :class="trendClass">
-                  <span x-text="trendIcon"></span>
-                  <span x-text="trendPercent + '%'"></span>
-                </div>
+                 class="stats-card">
+              <div class="stats-card__header">
+                <span class="stats-card__label" x-text="label"></span>
+                <span class="stats-card__icon">🧠</span>
+              </div>
+              <span class="stats-card__value" x-text="formattedValue"></span>
+              <div class="stats-card__trend" :class="trendClass">
+                <span x-text="trendIcon"></span>
+                <span x-text="trendPercent + '%'"></span>
               </div>
             </div>
             
             <div x-data="statsCard({ value: 145, previousValue: 180, label: 'Avg Response (ms)', format: 'duration' })" 
-                 class="soma-stats-card">
-              <div class="soma-stats-card__icon">⚡</div>
-              <div class="soma-stats-card__content">
-                <span class="soma-stats-card__value" x-text="formattedValue"></span>
-                <span class="soma-stats-card__label" x-text="label"></span>
-                <div class="soma-stats-card__trend" :class="trendClass">
-                  <span x-text="trendIcon"></span>
-                  <span x-text="trendPercent + '%'"></span>
-                </div>
+                 class="stats-card">
+              <div class="stats-card__header">
+                <span class="stats-card__label" x-text="label"></span>
+                <span class="stats-card__icon">⚡</span>
+              </div>
+              <span class="stats-card__value" x-text="formattedValue"></span>
+              <div class="stats-card__trend" :class="trendClass">
+                <span x-text="trendIcon"></span>
+                <span x-text="trendPercent + '%'"></span>
               </div>
             </div>
           </div>
         </section>
         
         <!-- Service Status -->
-        <section class="soma-section">
-          <h2 class="soma-section__title">Service Status</h2>
+        <section class="section">
+          <h2 class="section__title">Service Status</h2>
           
-          <div class="soma-card">
-            <div class="soma-card__body">
-              <div class="soma-flex soma-gap-8">
-                <div x-data="statusIndicator({ service: 'somaagent' })" class="soma-status">
-                  <span class="soma-status__dot" :class="dotClass"></span>
-                  <span class="soma-status__label">SomaAgent</span>
+          <div class="card">
+            <div class="card__body">
+              <div class="flex gap-8">
+                <div x-data="statusIndicator({ service: 'somaagent' })" class="status">
+                  <span class="status__dot" :class="dotClass"></span>
+                  <span class="status__label">SomaAgent</span>
                 </div>
                 
-                <div x-data="statusIndicator({ service: 'somabrain' })" class="soma-status">
-                  <span class="soma-status__dot" :class="dotClass"></span>
-                  <span class="soma-status__label">SomaBrain</span>
+                <div x-data="statusIndicator({ service: 'somabrain' })" class="status">
+                  <span class="status__dot" :class="dotClass"></span>
+                  <span class="status__label">SomaBrain</span>
                 </div>
                 
-                <div x-data="statusIndicator({ service: 'somamemory' })" class="soma-status">
-                  <span class="soma-status__dot" :class="dotClass"></span>
-                  <span class="soma-status__label">SomaMemory</span>
+                <div x-data="statusIndicator({ service: 'somamemory' })" class="status">
+                  <span class="status__dot" :class="dotClass"></span>
+                  <span class="status__label">SomaMemory</span>
                 </div>
               </div>
             </div>
@@ -237,8 +212,8 @@
         </section>
 
         <!-- Recent Conversations Table -->
-        <section class="soma-section">
-          <h2 class="soma-section__title">Recent Conversations</h2>
+        <section class="section">
+          <h2 class="section__title">Recent Conversations</h2>
           
           <div x-data="dataTable({
             columns: [
@@ -257,36 +232,34 @@
               { id: 'conv-005', user: 'eve@example.com', topic: 'Performance Tuning', status: 'pending', messages: 15, created: '2025-12-21T11:00:00' }
             ],
             pageSize: 10
-          })" class="soma-table-container">
+          })" class="table-container">
             
-            <div class="soma-table__toolbar">
+            <div class="table__toolbar">
               <input type="search" 
                      x-model="searchQuery"
                      placeholder="Search conversations..."
-                     class="soma-input soma-input--search"
+                     class="input input--search"
                      style="max-width: 300px;">
               
-              <template x-if="$store.auth.isAdmin">
-                <button class="soma-btn soma-btn--primary" @click="$toast.success('New conversation started!')">
-                  + New Conversation
-                </button>
-              </template>
+              <button class="btn btn--primary" @click="$toast.success('New conversation started!')">
+                + New Conversation
+              </button>
             </div>
             
-            <table class="soma-table">
+            <table class="table">
               <thead>
                 <tr>
-                  <th class="soma-table__checkbox">
+                  <th class="table__checkbox">
                     <input type="checkbox" 
-                           class="soma-checkbox__input"
+                           class="checkbox__input"
                            :checked="allSelected"
                            :indeterminate="someSelected"
                            @change="toggleSelectAll()">
                   </th>
                   <template x-for="col in columns" :key="col.key">
                     <th @click="sortBy(col.key)" 
-                        class="soma-table__header"
-                        :class="{ 'soma-table__header--sorted': sortColumn === col.key }">
+                        class="table__header"
+                        :class="{ 'table__header--sorted': sortColumn === col.key }">
                       <span x-text="col.label"></span>
                       <span x-show="sortColumn === col.key" x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'"></span>
                     </th>
@@ -297,16 +270,16 @@
               <tbody>
                 <template x-if="isLoading">
                   <tr>
-                    <td :colspan="columns.length + 2" class="soma-p-8 soma-text-center">
-                      <div class="soma-spinner"></div>
+                    <td :colspan="columns.length + 2" class="p-6 text-center">
+                      <div class="spinner"></div>
                     </td>
                   </tr>
                 </template>
                 
                 <template x-if="!isLoading && isEmpty">
                   <tr>
-                    <td :colspan="columns.length + 2" class="soma-table__empty">
-                      <div class="soma-table__empty-icon">📭</div>
+                    <td :colspan="columns.length + 2" class="table__empty">
+                      <div class="table__empty-icon">📭</div>
                       <p>No conversations yet</p>
                     </td>
                   </tr>
@@ -314,57 +287,53 @@
                 
                 <template x-if="!isLoading && noResults">
                   <tr>
-                    <td :colspan="columns.length + 2" class="soma-table__empty">
-                      <div class="soma-table__empty-icon">🔍</div>
+                    <td :colspan="columns.length + 2" class="table__empty">
+                      <div class="table__empty-icon">🔍</div>
                       <p>No results found for "<span x-text="searchQuery"></span>"</p>
                     </td>
                   </tr>
                 </template>
                 
                 <template x-for="row in paginatedData" :key="row.id">
-                  <tr class="soma-table__row" :class="{ 'soma-table__row--selected': isSelected(row.id) }">
-                    <td class="soma-table__checkbox">
+                  <tr class="table__row" :class="{ 'table__row--selected': isSelected(row.id) }">
+                    <td class="table__checkbox">
                       <input type="checkbox" 
-                             class="soma-checkbox__input"
+                             class="checkbox__input"
                              :checked="isSelected(row.id)"
                              @change="toggleSelect(row.id)">
                     </td>
                     <template x-for="col in columns" :key="col.key">
                       <td>
                         <template x-if="col.type === 'status'">
-                          <span class="soma-badge" :class="'soma-badge--' + row[col.key]" x-text="row[col.key]"></span>
+                          <span class="badge" :class="'badge--' + row[col.key]" x-text="row[col.key]"></span>
                         </template>
                         <template x-if="col.type !== 'status'">
                           <span x-text="row[col.key]"></span>
                         </template>
                       </td>
                     </template>
-                    <td class="soma-table__actions">
-                      <button class="soma-btn soma-btn--ghost soma-btn--sm">View</button>
-                      <template x-if="$store.auth.hasPermission('edit')">
-                        <button class="soma-btn soma-btn--ghost soma-btn--sm">Edit</button>
-                      </template>
-                      <template x-if="$store.auth.hasPermission('delete')">
-                        <button class="soma-btn soma-btn--ghost soma-btn--sm soma-text-error">Delete</button>
-                      </template>
+                    <td class="table__actions">
+                      <button class="btn btn--ghost btn--sm">View</button>
+                      <button class="btn btn--ghost btn--sm">Edit</button>
+                      <button class="btn btn--ghost btn--sm text-error">Delete</button>
                     </td>
                   </tr>
                 </template>
               </tbody>
             </table>
             
-            <div class="soma-table__pagination" x-show="showPagination">
+            <div class="table__pagination" x-show="showPagination">
               <span x-text="'Showing ' + startIndex + '-' + endIndex + ' of ' + totalItems"></span>
-              <div class="soma-flex soma-gap-2">
+              <div class="flex gap-2">
                 <button @click="prevPage()" 
                         :disabled="currentPage === 1"
-                        class="soma-btn soma-btn--ghost soma-btn--sm">
+                        class="btn btn--ghost btn--sm">
                   ← Prev
                 </button>
-                <span class="soma-px-3 soma-py-1" x-text="currentPage + ' / ' + totalPages"></span>
+                <span class="px-4 py-2" x-text="currentPage + ' / ' + totalPages"></span>
                 <button @click="nextPage()" 
                         :disabled="currentPage === totalPages"
-                        class="soma-btn soma-btn--ghost soma-btn--sm">
+                        class="btn btn--ghost btn--sm">
                   Next →
                 </button>
               </div>
@@ -378,20 +347,20 @@
   </div>
   
   <!-- Mobile Bottom Nav -->
-  <nav class="soma-bottom-nav">
-    <a href="#dashboard" class="soma-bottom-nav__item soma-bottom-nav__item--active">
+  <nav class="bottom-nav">
+    <a href="#dashboard" class="bottom-nav__item bottom-nav__item--active">
       <span>📊</span>
       <span>Dashboard</span>
     </a>
-    <a href="#conversations" class="soma-bottom-nav__item">
+    <a href="#conversations" class="bottom-nav__item">
       <span>💬</span>
       <span>Chat</span>
     </a>
-    <a href="#memory" class="soma-bottom-nav__item">
+    <a href="#memory" class="bottom-nav__item">
       <span>🧠</span>
       <span>Memory</span>
     </a>
-    <a href="#settings" class="soma-bottom-nav__item">
+    <a href="#settings" class="bottom-nav__item">
       <span>⚙️</span>
       <span>Settings</span>
     </a>
