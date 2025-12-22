@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SomaAgent01 - Dashboard</title>
+  
+  <!-- SomaStack UI Styles -->
+  <link rel="stylesheet" href="css/somastack-tokens.css">
+  <link rel="stylesheet" href="css/somastack-base.css">
+  <link rel="stylesheet" href="css/somastack-utilities.css">
+  <link rel="stylesheet" href="css/somastack-components.css">
+  
+  <style>
+    /* Page-specific styles */
+    .soma-page-title {
+      margin-bottom: var(--soma-space-6);
+    }
+    
+    .soma-section {
+      margin-bottom: var(--soma-space-8);
+    }
+    
+    .soma-section__title {
+      font-size: var(--soma-text-lg);
+      font-weight: var(--soma-font-semibold);
+      margin-bottom: var(--soma-space-4);
+      color: var(--soma-text-primary);
+    }
+  </style>
+</head>
+<body x-data>
+  <!-- Skip Link -->
+  <a href="#main-content" class="soma-skip-link">Skip to main content</a>
+  
+  <!-- Toast Container -->
+  <div x-data="toastContainer" class="soma-toast-container">
+    <template x-for="toast in toasts" :key="toast.id">
+      <div class="soma-toast"
+           :class="'soma-toast--' + toast.variant"
+           x-show="toast.visible"
+           x-transition:enter="soma-transition"
+           x-transition:leave="soma-transition">
+        <span class="soma-toast__icon" x-html="getIcon(toast.variant)"></span>
+        <span class="soma-toast__message" x-text="toast.message"></span>
+        <button @click="dismiss(toast.id)" class="soma-toast__close">×</button>
+      </div>
+    </template>
+  </div>
+
+  <!-- Layout -->
+  <div class="soma-layout" :class="{ 'soma-layout--collapsed': $store.sidebar?.isCollapsed }">
+    
+    <!-- Sidebar -->
+    <nav x-data="sidebarNav({
+      navGroups: [
+        {
+          id: 'main',
+          label: 'Main',
+          items: [
+            { id: 'dashboard', label: 'Dashboard', href: '#dashboard', icon: '📊' },
+            { id: 'conversations', label: 'Conversations', href: '#conversations', icon: '💬', badge: 3 },
+            { id: 'memory', label: 'Memory', href: '#memory', icon: '🧠' }
+          ]
+        },
+        {
+          id: 'tools',
+          label: 'Tools',
+          items: [
+            { id: 'browser', label: 'Browser', href: '#browser', icon: '🌐' },
+            { id: 'terminal', label: 'Terminal', href: '#terminal', icon: '⌨️' },
+            { id: 'files', label: 'Files', href: '#files', icon: '📁' }
+          ]
+        },
+        {
+          id: 'admin',
+          label: 'Admin',
+          items: [
+            { id: 'settings', label: 'Settings', href: '#settings', icon: '⚙️' },
+            { id: 'users', label: 'Users', href: '#users', icon: '👥', permission: 'admin' }
+          ]
+        }
+      ]
+    })" 
+         class="soma-sidebar"
+         :class="{ 'soma-sidebar--collapsed': isCollapsed }">
+      
+      <div class="soma-sidebar__header">
+        <div class="soma-sidebar__logo">
+          <span class="soma-sidebar__logo-icon">S</span>
+          <span class="soma-sidebar__logo-text">SomaAgent</span>
+        </div>
+        <button @click="toggleCollapse()" class="soma-sidebar__toggle" aria-label="Toggle sidebar">
+          <span x-show="!isCollapsed">◀</span>
+          <span x-show="isCollapsed">▶</span>
+        </button>
+      </div>
+      
+      <div class="soma-sidebar__content">
+        <template x-for="(group, gi) in navGroups" :key="group.id">
+          <div class="soma-nav-group">
+            <span class="soma-nav-group__label" x-text="group.label"></span>
+            <template x-for="(item, ii) in group.items" :key="item.id">
+              <a :href="item.href"
+                 class="soma-nav-item"
+                 :class="{ 'soma-nav-item--active': isActive(item) }"
+                 x-show="hasPermission(item.permission)"
+                 @click="navigate(item)"
+                 @keydown="handleKeydown($event, item, gi, ii)"
+                 :x-ref="'nav-item-' + gi + '-' + ii"
+                 tabindex="0">
+                <span class="soma-nav-item__icon" x-text="item.icon"></span>
+                <span class="soma-nav-item__label" x-text="item.label"></span>
+                <span x-show="item.badge" class="soma-nav-item__badge" x-text="item.badge"></span>
+              </a>
+            </template>
+          </div>
+        </template>
+      </div>
+      
+      <div class="soma-sidebar__footer">
+        <div class="soma-status" x-data="statusIndicator({ service: 'somaagent' })">
+          <span class="soma-status__dot" :class="dotClass"></span>
+          <span class="soma-status__label">System</span>
+          <span class="soma-status__time" x-text="lastCheckedFormatted"></span>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Header -->
+    <header class="soma-header">
+      <h1 class="soma-header__title">Dashboard</h1>
+      
+      <div class="soma-header__actions">
+        <!-- Theme Toggle -->
+        <button @click="$store.theme.toggle()" 
+                class="soma-btn soma-btn--ghost soma-btn--icon"
+                :aria-label="$store.theme.isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+          <span x-show="$store.theme.isDark">☀️</span>
+          <span x-show="!$store.theme.isDark">🌙</span>
+        </button>
+        
+        <!-- User Menu -->
+        <div class="soma-flex soma-items-center soma-gap-2">
+          <span class="soma-badge soma-badge--primary" x-text="$store.auth.role"></span>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main id="main-content" class="soma-main">
+      <div class="soma-main__container">
+        
+        <!-- Stats Section -->
+        <section class="soma-section">
+          <h2 class="soma-section__title">Overview</h2>
+          
+          <div class="soma-stats-grid">
+            <div x-data="statsCard({ value: 1247, previousValue: 1100, label: 'Active Sessions', icon: 'users' })" 
+                 class="soma-stats-card">
+              <div class="soma-stats-card__icon">👥</div>
+              <div class="soma-stats-card__content">
+                <span class="soma-stats-card__value" x-text="formattedValue"></span>
+                <span class="soma-stats-card__label" x-text="label"></span>
+                <div class="soma-stats-card__trend" :class="trendClass">
+                  <span x-text="trendIcon"></span>
+                  <span x-text="trendPercent + '%'"></span>
+                </div>
+              </div>
+            </div>
+            
+            <div x-data="statsCard({ value: 89.5, previousValue: 85.2, label: 'Success Rate', format: 'percent' })" 
+                 class="soma-stats-card">
+              <div class="soma-stats-card__icon">✅</div>
+              <div class="soma-stats-card__content">
+                <span class="soma-stats-card__value" x-text="formattedValue"></span>
+                <span class="soma-stats-card__label" x-text="label"></span>
+                <div class="soma-stats-card__trend" :class="trendClass">
+                  <span x-text="trendIcon"></span>
+                  <span x-text="trendPercent + '%'"></span>
+                </div>
+              </div>
+            </div>
+            
+            <div x-data="statsCard({ value: 2450000, previousValue: 2100000, label: 'Memories Stored' })" 
+                 class="soma-stats-card">
+              <div class="soma-stats-card__icon">🧠</div>
+              <div class="soma-stats-card__content">
+                <span class="soma-stats-card__value" x-text="formattedValue"></span>
+                <span class="soma-stats-card__label" x-text="label"></span>
+                <div class="soma-stats-card__trend" :class="trendClass">
+                  <span x-text="trendIcon"></span>
+                  <span x-text="trendPercent + '%'"></span>
+                </div>
+              </div>
+            </div>
+            
+            <div x-data="statsCard({ value: 145, previousValue: 180, label: 'Avg Response (ms)', format: 'duration' })" 
+                 class="soma-stats-card">
+              <div class="soma-stats-card__icon">⚡</div>
+              <div class="soma-stats-card__content">
+                <span class="soma-stats-card__value" x-text="formattedValue"></span>
+                <span class="soma-stats-card__label" x-text="label"></span>
+                <div class="soma-stats-card__trend" :class="trendClass">
+                  <span x-text="trendIcon"></span>
+                  <span x-text="trendPercent + '%'"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Service Status -->
+        <section class="soma-section">
+          <h2 class="soma-section__title">Service Status</h2>
+          
+          <div class="soma-card">
+            <div class="soma-card__body">
+              <div class="soma-flex soma-gap-8">
+                <div x-data="statusIndicator({ service: 'somaagent' })" class="soma-status">
+                  <span class="soma-status__dot" :class="dotClass"></span>
+                  <span class="soma-status__label">SomaAgent</span>
+                </div>
+                
+                <div x-data="statusIndicator({ service: 'somabrain' })" class="soma-status">
+                  <span class="soma-status__dot" :class="dotClass"></span>
+                  <span class="soma-status__label">SomaBrain</span>
+                </div>
+                
+                <div x-data="statusIndicator({ service: 'somamemory' })" class="soma-status">
+                  <span class="soma-status__dot" :class="dotClass"></span>
+                  <span class="soma-status__label">SomaMemory</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Conversations Table -->
+        <section class="soma-section">
+          <h2 class="soma-section__title">Recent Conversations</h2>
+          
+          <div x-data="dataTable({
+            columns: [
+              { key: 'id', label: 'ID', sortType: 'string' },
+              { key: 'user', label: 'User', sortType: 'string' },
+              { key: 'topic', label: 'Topic', sortType: 'string' },
+              { key: 'status', label: 'Status', type: 'status' },
+              { key: 'messages', label: 'Messages', sortType: 'number' },
+              { key: 'created', label: 'Created', sortType: 'date' }
+            ],
+            data: [
+              { id: 'conv-001', user: 'alice@example.com', topic: 'Code Review', status: 'approved', messages: 12, created: '2025-12-22T10:30:00' },
+              { id: 'conv-002', user: 'bob@example.com', topic: 'Bug Investigation', status: 'pending', messages: 8, created: '2025-12-22T09:15:00' },
+              { id: 'conv-003', user: 'carol@example.com', topic: 'Feature Request', status: 'approved', messages: 24, created: '2025-12-21T16:45:00' },
+              { id: 'conv-004', user: 'dave@example.com', topic: 'Documentation', status: 'rejected', messages: 3, created: '2025-12-21T14:20:00' },
+              { id: 'conv-005', user: 'eve@example.com', topic: 'Performance Tuning', status: 'pending', messages: 15, created: '2025-12-21T11:00:00' }
+            ],
+            pageSize: 10
+          })" class="soma-table-container">
+            
+            <div class="soma-table__toolbar">
+              <input type="search" 
+                     x-model="searchQuery"
+                     placeholder="Search conversations..."
+                     class="soma-input soma-input--search"
+                     style="max-width: 300px;">
+              
+              <template x-if="$store.auth.isAdmin">
+                <button class="soma-btn soma-btn--primary" @click="$toast.success('New conversation started!')">
+                  + New Conversation
+                </button>
+              </template>
+            </div>
+            
+            <table class="soma-table">
+              <thead>
+                <tr>
+                  <th class="soma-table__checkbox">
+                    <input type="checkbox" 
+                           class="soma-checkbox__input"
+                           :checked="allSelected"
+                           :indeterminate="someSelected"
+                           @change="toggleSelectAll()">
+                  </th>
+                  <template x-for="col in columns" :key="col.key">
+                    <th @click="sortBy(col.key)" 
+                        class="soma-table__header"
+                        :class="{ 'soma-table__header--sorted': sortColumn === col.key }">
+                      <span x-text="col.label"></span>
+                      <span x-show="sortColumn === col.key" x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'"></span>
+                    </th>
+                  </template>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-if="isLoading">
+                  <tr>
+                    <td :colspan="columns.length + 2" class="soma-p-8 soma-text-center">
+                      <div class="soma-spinner"></div>
+                    </td>
+                  </tr>
+                </template>
+                
+                <template x-if="!isLoading && isEmpty">
+                  <tr>
+                    <td :colspan="columns.length + 2" class="soma-table__empty">
+                      <div class="soma-table__empty-icon">📭</div>
+                      <p>No conversations yet</p>
+                    </td>
+                  </tr>
+                </template>
+                
+                <template x-if="!isLoading && noResults">
+                  <tr>
+                    <td :colspan="columns.length + 2" class="soma-table__empty">
+                      <div class="soma-table__empty-icon">🔍</div>
+                      <p>No results found for "<span x-text="searchQuery"></span>"</p>
+                    </td>
+                  </tr>
+                </template>
+                
+                <template x-for="row in paginatedData" :key="row.id">
+                  <tr class="soma-table__row" :class="{ 'soma-table__row--selected': isSelected(row.id) }">
+                    <td class="soma-table__checkbox">
+                      <input type="checkbox" 
+                             class="soma-checkbox__input"
+                             :checked="isSelected(row.id)"
+                             @change="toggleSelect(row.id)">
+                    </td>
+                    <template x-for="col in columns" :key="col.key">
+                      <td>
+                        <template x-if="col.type === 'status'">
+                          <span class="soma-badge" :class="'soma-badge--' + row[col.key]" x-text="row[col.key]"></span>
+                        </template>
+                        <template x-if="col.type !== 'status'">
+                          <span x-text="row[col.key]"></span>
+                        </template>
+                      </td>
+                    </template>
+                    <td class="soma-table__actions">
+                      <button class="soma-btn soma-btn--ghost soma-btn--sm">View</button>
+                      <template x-if="$store.auth.hasPermission('edit')">
+                        <button class="soma-btn soma-btn--ghost soma-btn--sm">Edit</button>
+                      </template>
+                      <template x-if="$store.auth.hasPermission('delete')">
+                        <button class="soma-btn soma-btn--ghost soma-btn--sm soma-text-error">Delete</button>
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+            
+            <div class="soma-table__pagination" x-show="showPagination">
+              <span x-text="'Showing ' + startIndex + '-' + endIndex + ' of ' + totalItems"></span>
+              <div class="soma-flex soma-gap-2">
+                <button @click="prevPage()" 
+                        :disabled="currentPage === 1"
+                        class="soma-btn soma-btn--ghost soma-btn--sm">
+                  ← Prev
+                </button>
+                <span class="soma-px-3 soma-py-1" x-text="currentPage + ' / ' + totalPages"></span>
+                <button @click="nextPage()" 
+                        :disabled="currentPage === totalPages"
+                        class="soma-btn soma-btn--ghost soma-btn--sm">
+                  Next →
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+      </div>
+    </main>
+    
+  </div>
+  
+  <!-- Mobile Bottom Nav -->
+  <nav class="soma-bottom-nav">
+    <a href="#dashboard" class="soma-bottom-nav__item soma-bottom-nav__item--active">
+      <span>📊</span>
+      <span>Dashboard</span>
+    </a>
+    <a href="#conversations" class="soma-bottom-nav__item">
+      <span>💬</span>
+      <span>Chat</span>
+    </a>
+    <a href="#memory" class="soma-bottom-nav__item">
+      <span>🧠</span>
+      <span>Memory</span>
+    </a>
+    <a href="#settings" class="soma-bottom-nav__item">
+      <span>⚙️</span>
+      <span>Settings</span>
+    </a>
+  </nav>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <!-- SomaStack UI Scripts -->
+  <script src="js/stores/auth-store.js"></script>
+  <script src="js/stores/theme-store.js"></script>
+  <script src="js/stores/status-store.js"></script>
+  <script src="js/components/sidebar-nav.js"></script>
+  <script src="js/components/stats-card.js"></script>
+  <script src="js/components/data-table.js"></script>
+  <script src="js/components/modal.js"></script>
+  <script src="js/components/toast.js"></script>
+  <script src="js/components/status-indicator.js"></script>
+  
+  <script>
+    // Initialize stores after Alpine loads
+    document.addEventListener('alpine:init', () => {
+      // Add sidebar store for layout
+      Alpine.store('sidebar', {
+        isCollapsed: false,
+        toggle() {
+          this.isCollapsed = !this.isCollapsed;
+        }
+      });
+    });
+    
+    // Start status polling after page load
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        if (Alpine.store('status')) {
+          Alpine.store('status').startPolling();
+        }
+      }, 100);
+    });
+  </script>
+</body>
+</html>

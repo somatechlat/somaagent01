@@ -23,7 +23,7 @@
 | T5 | Create Theme Card Component | P0 | 2h | T3 | ⏳ PENDING |
 | T6 | Create Palette Editor Component | P1 | 3h | T3 | ⏳ PENDING |
 | T7 | Create Database Migration | P0 | 1h | None | ⏳ PENDING |
-| T8 | Create Backend API Endpoints | P0 | 4h | T7 | ⏳ PENDING |
+| T8 | Create Backend API Endpoints | P0 | 4h | T7 | ✅ COMPLETE |
 | T9 | Add XSS Validation | P0 | 2h | T2 | ⏳ PENDING |
 | T10 | Add WCAG Contrast Validation | P1 | 2h | T2 | ⏳ PENDING |
 | T11 | Add OPA Admin Authorization | P0 | 2h | T8 | ⏳ PENDING |
@@ -353,52 +353,47 @@ def upgrade():
 
 ### Task 8: Create Backend API Endpoints
 
-**File:** `somaAgent01/services/gateway/routes/skins.py` (create)
+**Files:**
+- `somaAgent01/services/gateway/routers/skins.py` (created)
+- `somaAgent01/services/common/skins_store.py` (created)
+- `somaAgent01/services/gateway/routers/__init__.py` (modified)
 
 **Requirements:** TR-AGS-004.1 - TR-AGS-004.6
 
 ### Acceptance Criteria
-- [ ] GET /v1/skins - List themes for tenant (approved only for non-admin)
-- [ ] GET /v1/skins/{id} - Get theme details
-- [ ] POST /v1/skins - Upload new theme (admin only)
-- [ ] DELETE /v1/skins/{id} - Delete theme (admin only)
-- [ ] PATCH /v1/skins/{id}/approve - Approve theme (admin only)
-- [ ] Validates JSON schema on upload
-- [ ] Rejects themes with url() values (XSS prevention)
-- [ ] All queries scoped by tenant_id
+- [x] GET /v1/skins - List themes for tenant (approved only for non-admin)
+- [x] GET /v1/skins/{id} - Get theme details
+- [x] POST /v1/skins - Upload new theme (admin only)
+- [x] DELETE /v1/skins/{id} - Delete theme (admin only)
+- [x] PATCH /v1/skins/{id}/approve - Approve theme (admin only)
+- [x] Validates JSON schema on upload
+- [x] Rejects themes with url() values (XSS prevention)
+- [x] All queries scoped by tenant_id
 
 ### Implementation Notes
-```python
-from fastapi import APIRouter, Depends, HTTPException
-from src.core.auth import get_current_user, require_admin
 
-router = APIRouter(prefix="/v1/skins", tags=["skins"])
+**Created Files:**
 
-@router.get("")
-async def list_skins(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    query = select(AgentSkin).where(AgentSkin.tenant_id == current_user.tenant_id)
-    if not current_user.is_admin:
-        query = query.where(AgentSkin.is_approved == True)
-    result = await db.execute(query)
-    return result.scalars().all()
+1. `services/common/skins_store.py`:
+   - `SkinRecord` dataclass for skin data
+   - `SkinsStore` class with PostgreSQL operations
+   - `validate_no_xss()` function for XSS pattern detection
+   - Methods: `list()`, `get()`, `get_by_name()`, `create()`, `update()`, `delete()`, `approve()`, `reject()`
 
-@router.post("")
-async def upload_skin(
-    skin: SkinCreate,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    # Validate no url() in variables
-    validate_no_xss(skin.variables)
-    # Create skin
-    db_skin = AgentSkin(**skin.dict(), tenant_id=current_user.tenant_id)
-    db.add(db_skin)
-    await db.commit()
-    return db_skin
-```
+2. `services/gateway/routers/skins.py`:
+   - Pydantic models: `SkinCreateRequest`, `SkinUpdateRequest`, `SkinResponse`, `SkinListResponse`
+   - Endpoints following capsules.py pattern
+   - OPA authorization via `authorize()` for admin operations
+   - Tenant isolation via X-Tenant-Id header
+
+3. Updated `services/gateway/routers/__init__.py`:
+   - Added `skins` import
+   - Added `skins.router` to `build_router()`
+
+**Security Implementation:**
+- XSS patterns rejected: `url()`, `<script>`, `javascript:`, `expression()`, `@import`
+- Admin operations require OPA policy check (skin:upload, skin:delete, skin:approve, skin:reject)
+- Tenant isolation enforced on all queries
 
 ---
 
