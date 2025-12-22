@@ -8,20 +8,22 @@
  * - Responsive sidebar navigation
  */
 
+import { LitElement, html, css } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { consume } from '@lit-labs/context';
+import { Router } from '@vaadin/router';
+import { modeContext, ModeState } from '../services/mode-context.js';
 import './components/eog-tenant-switcher.js';
-
-// ... (rest of imports)
-
-@customElement('eog-app')
-// ... (class definition)
-
-// Inside render():
-
-<div class="topbar-actions" >
-    ${ isPlatformAdmin ? html`<eog-tenant-switcher></eog-tenant-switcher>` : '' }
-<eog-voice - button > </eog-voice-button>
-    < div class="user-avatar" @click=${ this._logout }> ${ this._userInitials } </div>
-        </div>
+import './components/eog-voice-button.js';
+import './eog-chat.js';
+import './eog-memory.js';
+import './eog-tools.js';
+import './eog-cognitive.js';
+import './eog-settings.js';
+import './eog-themes.js';
+import './eog-admin.js';
+import './eog-platform-dashboard.js';
+import './eog-tenants.js';
 
 interface NavItem {
     path: string;

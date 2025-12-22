@@ -127,6 +127,10 @@ export class EogAuthProvider extends LitElement {
 
             const user = await userResponse.json() as User;
 
+            if (!payload) {
+                throw new Error('Invalid token');
+            }
+
             // Store in localStorage
             localStorage.setItem(AUTH_STORAGE_KEY, data.access_token);
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));

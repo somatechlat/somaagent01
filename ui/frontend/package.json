@@ -11,6 +11,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "@lit-labs/context": "^0.5.1",
         "@lit/reactive-element": "^2.0.0",
         "@vaadin/router": "^1.7.5"
     },

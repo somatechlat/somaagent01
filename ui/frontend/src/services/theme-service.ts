@@ -87,10 +87,9 @@ class ThemeService {
         // Validate for XSS before sending
         const validation = this.validateTheme(theme);
         if (!validation.valid) {
-            return {
-                success: false,
-                error: validation.error || 'Validation failed',
-            };
+            if (!validation.valid) {
+                throw new Error(validation.error || 'Validation failed');
+            }
         }
 
         return apiClient.post<Theme>(this.basePath, theme);
@@ -103,10 +102,9 @@ class ThemeService {
         if (theme.variables) {
             const validation = this.validateVariables(theme.variables);
             if (!validation.valid) {
-                return {
-                    success: false,
-                    error: validation.error || 'Validation failed',
-                };
+                if (!validation.valid) {
+                    throw new Error(validation.error || 'Validation failed');
+                }
             }
         }
 
@@ -124,14 +122,14 @@ class ThemeService {
      * Approve theme (admin only)
      */
     async approve(id: string): Promise<ApiResponse<Theme>> {
-        return apiClient.post<Theme>(`${this.basePath}/${id}/approve`);
+        return apiClient.post<Theme>(`${this.basePath}/${id}/approve`, {});
     }
 
     /**
      * Apply theme and track download
      */
     async apply(id: string): Promise<ApiResponse<{ success: boolean; variables: Record<string, string> }>> {
-        return apiClient.post<{ success: boolean; variables: Record<string, string> }>(`${this.basePath}/${id}/apply`);
+        return apiClient.post<{ success: boolean; variables: Record<string, string> }>(`${this.basePath}/${id}/apply`, {});
     }
 
     /**
