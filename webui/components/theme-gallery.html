@@ -1,0 +1,669 @@
+<!--
+  Theme Gallery Component
+  Per AgentSkin UIX T4 (US-AGS-001, US-AGS-002)
+  
+  VIBE COMPLIANT:
+  - Real Alpine.js implementation (no stubs)
+  - ARIA labels for accessibility
+  - Keyboard navigation support
+  
+  Features:
+  - Responsive grid of theme cards
+  - Search/filter functionality
+  - Drag-drop import zone
+  - Admin upload button (OPA-gated)
+-->
+
+<!-- Theme Gallery Component Template -->
+<template id="theme-gallery-template">
+  <div x-data="themeGallery()" 
+       class="theme-gallery"
+       role="region"
+       aria-label="Theme Gallery">
+    
+    <!-- Gallery Header -->
+    <div class="gallery-header">
+      <h2 class="gallery-title">Themes</h2>
+      
+      <!-- Search Input -->
+      <div class="search-wrapper">
+        <i class="fas fa-search search-icon" aria-hidden="true"></i>
+        <input type="search" 
+               x-model="$store.theme.searchQuery"
+               placeholder="Search themes..."
+               class="theme-search"
+               aria-label="Search themes">
+      </div>
+      
+      <!-- Admin Upload Button -->
+      <template x-if="$store.theme.isAdmin">
+        <button @click="showUploadModal = true" 
+                class="btn-upload"
+                aria-label="Upload new theme">
+          <i class="fas fa-upload" aria-hidden="true"></i>
+          <span>Upload</span>
+        </button>
+      </template>
+    </div>
+    
+    <!-- Loading State -->
+    <template x-if="$store.theme.isLoading">
+      <div class="gallery-loading" role="status" aria-live="polite">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+        <span>Loading themes...</span>
+      </div>
+    </template>
+    
+    <!-- Error State -->
+    <template x-if="$store.theme.error">
+      <div class="gallery-error" role="alert">
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+        <span x-text="$store.theme.error"></span>
+        <button @click="$store.theme.clearError()" class="btn-dismiss">
+          Dismiss
+        </button>
+      </div>
+    </template>
+    
+    <!-- Theme Grid with Drag-Drop -->
+    <div class="theme-grid"
+         :class="{ 'drag-active': dragOver }"
+         @dragover.prevent="dragOver = true"
+         @dragleave="dragOver = false"
+         @drop.prevent="handleDrop($event)"
+         role="list"
+         aria-label="Available themes">
+      
+      <!-- Drop Zone Indicator -->
+      <template x-if="dragOver">
+        <div class="drop-zone-overlay">
+          <i class="fas fa-file-import" aria-hidden="true"></i>
+          <span>Drop theme file to import</span>
+        </div>
+      </template>
+      
+      <!-- Theme Cards -->
+      <template x-for="theme in $store.theme.filteredThemes" :key="theme.id || theme.name">
+        <div class="theme-card"
+             :class="{ 
+               'card-active': $store.theme.isActive(theme.name),
+               'card-preview': $store.theme.isPreviewing(theme.name)
+             }"
+             @mouseenter="previewTheme(theme)"
+             @mouseleave="cancelPreview()"
+             @keydown.enter="applyTheme(theme.name)"
+             @keydown.space.prevent="previewTheme(theme)"
+             @keydown.escape="cancelPreview()"
+             tabindex="0"
+             role="listitem"
+             :aria-label="theme.name + ' theme'"
+             :aria-current="$store.theme.isActive(theme.name) ? 'true' : 'false'">
+          
+          <!-- Color Preview Swatches -->
+          <div class="theme-preview">
+            <div class="color-swatch swatch-bg"
+                 :style="'background:' + (theme.variables ? theme.variables['--bg-void'] : '#0f172a')"
+                 aria-hidden="true"></div>
+            <div class="color-swatch swatch-surface"
+                 :style="'background:' + (theme.variables ? theme.variables['--glass-surface'] : 'rgba(30,41,59,0.85)')"
+                 aria-hidden="true"></div>
+            <div class="color-swatch swatch-accent"
+                 :style="'background:' + (theme.variables ? theme.variables['--accent-slate'] : '#94a3b8')"
+                 aria-hidden="true"></div>
+          </div>
+          
+          <!-- Theme Info -->
+          <div class="theme-info">
+            <h3 class="theme-name" x-text="theme.name"></h3>
+            <p class="theme-description" x-text="theme.description || 'No description'"></p>
+            <span class="theme-version">v<span x-text="theme.version || '1.0.0'"></span></span>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="theme-actions">
+            <button @click.stop="applyTheme(theme.name)" 
+                    class="btn-apply"
+                    :disabled="$store.theme.isActive(theme.name)"
+                    aria-label="Apply theme">
+              <i class="fas fa-check" aria-hidden="true"></i>
+              Apply
+            </button>
+            <button @click.stop="downloadTheme(theme)" 
+                    class="btn-export"
+                    aria-label="Export theme">
+              <i class="fas fa-download" aria-hidden="true"></i>
+            </button>
+            <template x-if="$store.theme.isAdmin && theme.id">
+              <button @click.stop="deleteTheme(theme.id)" 
+                      class="btn-delete"
+                      aria-label="Delete theme">
+                <i class="fas fa-trash" aria-hidden="true"></i>
+              </button>
+            </template>
+          </div>
+          
+          <!-- Active Badge -->
+          <template x-if="$store.theme.isActive(theme.name)">
+            <div class="active-badge" aria-label="Currently active">
+              <i class="fas fa-check-circle" aria-hidden="true"></i>
+              Active
+            </div>
+          </template>
+          
+          <!-- Preview Badge -->
+          <template x-if="$store.theme.isPreviewing(theme.name)">
+            <div class="preview-badge" aria-label="Previewing">
+              <i class="fas fa-eye" aria-hidden="true"></i>
+              Preview
+            </div>
+          </template>
+        </div>
+      </template>
+      
+      <!-- Empty State -->
+      <template x-if="!$store.theme.isLoading && $store.theme.filteredThemes.length === 0">
+        <div class="gallery-empty">
+          <i class="fas fa-palette" aria-hidden="true"></i>
+          <p>No themes found</p>
+          <template x-if="$store.theme.searchQuery">
+            <button @click="$store.theme.searchQuery = ''" class="btn-clear-search">
+              Clear search
+            </button>
+          </template>
+        </div>
+      </template>
+    </div>
+    
+    <!-- Upload Modal -->
+    <template x-if="showUploadModal">
+      <div class="upload-modal-backdrop" @click.self="showUploadModal = false">
+        <div class="upload-modal" role="dialog" aria-labelledby="upload-modal-title">
+          <h3 id="upload-modal-title">Upload Theme</h3>
+          
+          <div class="upload-dropzone"
+               :class="{ 'dropzone-active': uploadDragOver }"
+               @dragover.prevent="uploadDragOver = true"
+               @dragleave="uploadDragOver = false"
+               @drop.prevent="handleUploadDrop($event)">
+            <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+            <p>Drag theme JSON file here or click to browse</p>
+            <input type="file" 
+                   accept=".json,application/json"
+                   @change="handleFileSelect($event)"
+                   class="file-input">
+          </div>
+          
+          <div class="modal-actions">
+            <button @click="showUploadModal = false" class="btn-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>
+
+<!-- Alpine.js Component Definition -->
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('themeGallery', () => ({
+        dragOver: false,
+        showUploadModal: false,
+        uploadDragOver: false,
+        
+        /**
+         * Preview theme on hover.
+         * @param {object} theme - Theme object with variables
+         */
+        previewTheme(theme) {
+            if (theme.variables && window.Theme) {
+                window.Theme.preview(theme);
+                this.$store.theme.previewTheme = theme.name;
+            }
+        },
+        
+        /**
+         * Cancel theme preview.
+         */
+        cancelPreview() {
+            if (window.Theme) {
+                window.Theme.cancelPreview();
+                this.$store.theme.previewTheme = null;
+            }
+        },
+        
+        /**
+         * Apply theme permanently.
+         * @param {string} name - Theme name
+         */
+        async applyTheme(name) {
+            await this.$store.theme.applyTheme(name);
+        },
+        
+        /**
+         * Download theme as JSON file.
+         * @param {object} theme - Theme object
+         */
+        downloadTheme(theme) {
+            if (window.Theme) {
+                window.Theme.downloadTheme(theme);
+            }
+        },
+        
+        /**
+         * Delete theme (admin only).
+         * @param {string} id - Theme ID
+         */
+        async deleteTheme(id) {
+            if (confirm('Delete this theme? This cannot be undone.')) {
+                await this.$store.theme.deleteTheme(id);
+            }
+        },
+        
+        /**
+         * Handle drag-drop file import.
+         * @param {DragEvent} event
+         */
+        async handleDrop(event) {
+            this.dragOver = false;
+            const file = event.dataTransfer.files[0];
+            if (file && file.type === 'application/json') {
+                await this.importThemeFile(file);
+            }
+        },
+        
+        /**
+         * Handle upload modal drop.
+         * @param {DragEvent} event
+         */
+        async handleUploadDrop(event) {
+            this.uploadDragOver = false;
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                await this.uploadThemeFile(file);
+            }
+        },
+        
+        /**
+         * Handle file input selection.
+         * @param {Event} event
+         */
+        async handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                await this.uploadThemeFile(file);
+            }
+        },
+        
+        /**
+         * Import theme file locally (preview only).
+         * @param {File} file
+         */
+        async importThemeFile(file) {
+            if (window.Theme) {
+                const theme = await window.Theme.importTheme(file);
+                if (theme) {
+                    this.previewTheme(theme);
+                }
+            }
+        },
+        
+        /**
+         * Upload theme file to backend (admin only).
+         * @param {File} file
+         */
+        async uploadThemeFile(file) {
+            const success = await this.$store.theme.uploadTheme(file);
+            if (success) {
+                this.showUploadModal = false;
+            }
+        }
+    }));
+});
+</script>
+
+<!-- Component Styles -->
+<style>
+.theme-gallery {
+    padding: 24px;
+    background: var(--bg-void);
+    min-height: 100%;
+}
+
+.gallery-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.gallery-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.search-wrapper {
+    flex: 1;
+    position: relative;
+    max-width: 300px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+.theme-search {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-main);
+    outline: none;
+}
+
+.theme-search:focus {
+    border-color: var(--accent-slate);
+}
+
+.btn-upload {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--accent-slate);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-upload:hover {
+    opacity: 0.9;
+}
+
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    position: relative;
+}
+
+.theme-grid.drag-active {
+    background: rgba(100, 116, 139, 0.05);
+    border: 2px dashed var(--accent-slate);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.drop-zone-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(100, 116, 139, 0.1);
+    border-radius: 12px;
+    z-index: 10;
+    color: var(--accent-slate);
+    font-weight: 600;
+}
+
+.drop-zone-overlay i {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.theme-card {
+    width: 280px;
+    height: 180px;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-card:hover,
+.theme-card:focus {
+    border-color: var(--accent-slate);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    outline: none;
+}
+
+.theme-card.card-active {
+    border-color: var(--accent-slate);
+    border-width: 2px;
+}
+
+.theme-card.card-preview {
+    box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.3);
+}
+
+.theme-preview {
+    height: 80px;
+    display: flex;
+    padding: 12px;
+    gap: 8px;
+}
+
+.color-swatch {
+    flex: 1;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-info {
+    padding: 12px;
+    padding-top: 0;
+}
+
+.theme-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0 0 4px 0;
+}
+
+.theme-description {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.theme-version {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.theme-actions {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.theme-card:hover .theme-actions,
+.theme-card:focus .theme-actions {
+    opacity: 1;
+}
+
+.btn-apply, .btn-export, .btn-delete {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-apply {
+    background: var(--accent-slate);
+    color: white;
+}
+
+.btn-apply:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.btn-export {
+    background: var(--glass-surface);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.active-badge, .preview-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.active-badge {
+    background: var(--accent-slate);
+    color: white;
+}
+
+.preview-badge {
+    background: rgba(100, 116, 139, 0.2);
+    color: var(--accent-slate);
+}
+
+.gallery-loading, .gallery-error, .gallery-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.gallery-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    color: #ef4444;
+}
+
+.gallery-loading i, .gallery-empty i {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.btn-dismiss, .btn-clear-search {
+    margin-top: 12px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.upload-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.upload-modal {
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 24px;
+    width: 400px;
+    max-width: 90vw;
+}
+
+.upload-modal h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: var(--text-main);
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--glass-border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.upload-dropzone.dropzone-active {
+    border-color: var(--accent-slate);
+    background: rgba(100, 116, 139, 0.05);
+}
+
+.upload-dropzone i {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.modal-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-cancel {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-main);
+    cursor: pointer;
+}
+</style>

@@ -1,0 +1,664 @@
+<!--
+  Palette Editor Component
+  Per AgentSkin UIX T6 (US-AGS-007)
+  
+  VIBE COMPLIANT:
+  - Real WCAG contrast validation
+  - Real-time preview
+  - Save as new theme variant
+  
+  Features:
+  - 10+ color pickers for key variables
+  - WCAG AA contrast warnings
+  - Real-time theme preview
+  - Save/Cancel functionality
+-->
+
+<!-- Palette Editor Component Template -->
+<template id="palette-editor-template">
+    <div x-data="paletteEditor()" class="palette-editor" role="dialog" aria-labelledby="palette-editor-title">
+
+        <!-- Header -->
+        <div class="editor-header">
+            <h3 id="palette-editor-title">Custom Palette</h3>
+            <p class="editor-subtitle">Customize colors for your theme</p>
+        </div>
+
+        <!-- Color Inputs Grid -->
+        <div class="color-inputs">
+            <template x-for="(config, key) in editableVariables" :key="key">
+                <div class="color-input-group">
+                    <label :for="'color-' + key" class="color-label">
+                        <span x-text="formatLabel(key)"></span>
+                        <span class="color-category" x-text="config.category"></span>
+                    </label>
+
+                    <div class="color-controls">
+                        <!-- Color Picker -->
+                        <input type="color" :id="'color-' + key" :value="currentValues[key]"
+                            @input="updateColor(key, $event.target.value)" class="color-picker"
+                            :aria-label="formatLabel(key) + ' color picker'">
+
+                        <!-- Hex Input -->
+                        <input type="text" :value="currentValues[key]" @input="updateColor(key, $event.target.value)"
+                            @blur="validateHex(key, $event.target.value)" class="hex-input"
+                            :placeholder="config.default" maxlength="7" :aria-label="formatLabel(key) + ' hex value'">
+
+                        <!-- Reset Button -->
+                        <button @click="resetColor(key)" class="btn-reset" :title="'Reset to ' + config.default"
+                            aria-label="Reset to default">
+                            <i class="fas fa-undo" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <!-- Contrast Warning -->
+                    <template x-if="config.contrastWith && !checkContrast(key)">
+                        <div class="contrast-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                            <span>Low contrast: <span x-text="getContrastRatio(key)"></span>:1 (needs 4.5:1)</span>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="preview-section">
+            <h4>Live Preview</h4>
+            <div class="preview-box" :style="getPreviewStyles()">
+                <div class="preview-surface">
+                    <span class="preview-text-main">Main Text</span>
+                    <span class="preview-text-dim">Dim Text</span>
+                    <span class="preview-accent">Accent</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contrast Summary -->
+        <div class="contrast-summary" x-show="contrastFailures.length > 0">
+            <h4>Accessibility Warnings</h4>
+            <p class="contrast-note">The following color pairs don't meet WCAG AA (4.5:1) contrast:</p>
+            <ul class="contrast-list">
+                <template x-for="failure in contrastFailures" :key="failure.pair">
+                    <li x-text="failure.pair + ': ' + failure.ratio + ':1'"></li>
+                </template>
+            </ul>
+        </div>
+
+        <!-- Actions -->
+        <div class="editor-actions">
+            <button @click="saveAsVariant()" class="btn-save">
+                <i class="fas fa-save" aria-hidden="true"></i>
+                Save as New Theme
+            </button>
+            <button @click="applyWithoutSaving()" class="btn-apply">
+                <i class="fas fa-check" aria-hidden="true"></i>
+                Apply
+            </button>
+            <button @click="cancel()" class="btn-cancel">
+                Cancel
+            </button>
+        </div>
+
+        <!-- Save Modal -->
+        <template x-if="showSaveModal">
+            <div class="save-modal-backdrop" @click.self="showSaveModal = false">
+                <div class="save-modal">
+                    <h4>Save Custom Theme</h4>
+                    <div class="form-group">
+                        <label for="theme-name">Theme Name</label>
+                        <input type="text" id="theme-name" x-model="newThemeName" placeholder="My Custom Theme"
+                            class="theme-name-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="theme-description">Description</label>
+                        <textarea id="theme-description" x-model="newThemeDescription"
+                            placeholder="A personalized color palette" class="theme-description-input"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button @click="confirmSave()" class="btn-confirm">Save</button>
+                        <button @click="showSaveModal = false" class="btn-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</template>
+
+<!-- Alpine.js Component Definition -->
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('paletteEditor', () => ({
+            // Editable CSS variables with metadata
+            editableVariables: {
+                '--bg-void': {
+                    category: 'Background',
+                    default: '#0f172a',
+                    contrastWith: null
+                },
+                '--glass-surface': {
+                    category: 'Surface',
+                    default: 'rgba(30,41,59,0.85)',
+                    contrastWith: null
+                },
+                '--glass-border': {
+                    category: 'Border',
+                    default: 'rgba(255,255,255,0.05)',
+                    contrastWith: null
+                },
+                '--text-main': {
+                    category: 'Text',
+                    default: '#e2e8f0',
+                    contrastWith: '--bg-void'
+                },
+                '--text-dim': {
+                    category: 'Text',
+                    default: '#64748b',
+                    contrastWith: '--bg-void'
+                },
+                '--accent-slate': {
+                    category: 'Accent',
+                    default: '#94a3b8',
+                    contrastWith: '--bg-void'
+                },
+                '--pastel-rose': {
+                    category: 'Accent',
+                    default: '#4c1d2e',
+                    contrastWith: null
+                },
+                '--pastel-sage': {
+                    category: 'Accent',
+                    default: '#1a2e22',
+                    contrastWith: null
+                },
+                '--pastel-sky': {
+                    category: 'Accent',
+                    default: '#1e293b',
+                    contrastWith: null
+                },
+                '--dock-bg': {
+                    category: 'Surface',
+                    default: '#1e293b',
+                    contrastWith: null
+                },
+            },
+
+            currentValues: {},
+            originalValues: {},
+            showSaveModal: false,
+            newThemeName: '',
+            newThemeDescription: '',
+
+            /**
+             * Initialize with current theme values.
+             */
+            init() {
+                const root = document.documentElement;
+                for (const key of Object.keys(this.editableVariables)) {
+                    const value = getComputedStyle(root).getPropertyValue(key).trim();
+                    this.currentValues[key] = this.rgbaToHex(value) || this.editableVariables[key].default;
+                    this.originalValues[key] = this.currentValues[key];
+                }
+            },
+
+            /**
+             * Format variable name for display.
+             * @param {string} key - CSS variable name
+             * @returns {string} Human-readable label
+             */
+            formatLabel(key) {
+                return key
+                    .replace(/^--/, '')
+                    .replace(/-/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            },
+
+            /**
+             * Update a color value and apply preview.
+             * @param {string} key - CSS variable name
+             * @param {string} value - New color value
+             */
+            updateColor(key, value) {
+                this.currentValues[key] = value;
+                document.documentElement.style.setProperty(key, value);
+            },
+
+            /**
+             * Reset color to default.
+             * @param {string} key - CSS variable name
+             */
+            resetColor(key) {
+                const defaultValue = this.editableVariables[key].default;
+                this.updateColor(key, defaultValue);
+            },
+
+            /**
+             * Validate hex input.
+             * @param {string} key - CSS variable name
+             * @param {string} value - Input value
+             */
+            validateHex(key, value) {
+                if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                    this.currentValues[key] = this.originalValues[key];
+                }
+            },
+
+            /**
+             * Convert RGBA/RGB to hex.
+             * @param {string} color - Color string
+             * @returns {string|null} Hex color or null
+             */
+            rgbaToHex(color) {
+                if (color.startsWith('#')) return color;
+
+                const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                if (match) {
+                    const r = parseInt(match[1]).toString(16).padStart(2, '0');
+                    const g = parseInt(match[2]).toString(16).padStart(2, '0');
+                    const b = parseInt(match[3]).toString(16).padStart(2, '0');
+                    return `#${r}${g}${b}`;
+                }
+                return null;
+            },
+
+            /**
+             * Check WCAG AA contrast.
+             * @param {string} key - CSS variable name
+             * @returns {boolean} Passes contrast check
+             */
+            checkContrast(key) {
+                const config = this.editableVariables[key];
+                if (!config.contrastWith) return true;
+
+                const fg = this.currentValues[key];
+                const bg = this.currentValues[config.contrastWith];
+
+                if (!fg || !bg) return true;
+
+                return window.Theme ? window.Theme.checkWcagAA(fg, bg) : true;
+            },
+
+            /**
+             * Get contrast ratio for display.
+             * @param {string} key - CSS variable name
+             * @returns {string} Contrast ratio
+             */
+            getContrastRatio(key) {
+                const config = this.editableVariables[key];
+                if (!config.contrastWith) return 'N/A';
+
+                const fg = this.currentValues[key];
+                const bg = this.currentValues[config.contrastWith];
+
+                if (!fg || !bg || !window.Theme) return 'N/A';
+
+                return window.Theme.getContrastRatio(fg, bg).toFixed(1);
+            },
+
+            /**
+             * Get list of contrast failures.
+             */
+            get contrastFailures() {
+                const failures = [];
+                for (const [key, config] of Object.entries(this.editableVariables)) {
+                    if (config.contrastWith && !this.checkContrast(key)) {
+                        failures.push({
+                            pair: `${this.formatLabel(key)} / ${this.formatLabel(config.contrastWith)}`,
+                            ratio: this.getContrastRatio(key)
+                        });
+                    }
+                }
+                return failures;
+            },
+
+            /**
+             * Get inline styles for preview box.
+             */
+            getPreviewStyles() {
+                return Object.entries(this.currentValues)
+                    .map(([k, v]) => `${k}:${v}`)
+                    .join(';');
+            },
+
+            /**
+             * Show save modal.
+             */
+            saveAsVariant() {
+                this.newThemeName = '';
+                this.newThemeDescription = '';
+                this.showSaveModal = true;
+            },
+
+            /**
+             * Confirm save and create new theme.
+             */
+            async confirmSave() {
+                if (!this.newThemeName.trim()) {
+                    alert('Please enter a theme name');
+                    return;
+                }
+
+                const theme = {
+                    name: this.newThemeName.trim(),
+                    description: this.newThemeDescription.trim(),
+                    version: '1.0.0',
+                    variables: { ...this.currentValues }
+                };
+
+                // Download as JSON
+                if (window.Theme) {
+                    window.Theme.downloadTheme(theme, `${theme.name.toLowerCase().replace(/\s+/g, '-')}.json`);
+                }
+
+                this.showSaveModal = false;
+                this.originalValues = { ...this.currentValues };
+            },
+
+            /**
+             * Apply current colors without saving.
+             */
+            applyWithoutSaving() {
+                this.originalValues = { ...this.currentValues };
+            },
+
+            /**
+             * Cancel and restore original colors.
+             */
+            cancel() {
+                for (const [key, value] of Object.entries(this.originalValues)) {
+                    document.documentElement.style.setProperty(key, value);
+                }
+                this.currentValues = { ...this.originalValues };
+            }
+        }));
+    });
+</script>
+
+<!-- Component Styles -->
+<style>
+    .palette-editor {
+        padding: 24px;
+        background: var(--glass-surface);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        max-width: 600px;
+    }
+
+    .editor-header {
+        margin-bottom: 24px;
+    }
+
+    .editor-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .editor-subtitle {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: var(--text-dim);
+    }
+
+    .color-inputs {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .color-input-group {
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+    }
+
+    .color-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 8px;
+    }
+
+    .color-category {
+        font-size: 10px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .color-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .color-picker {
+        width: 40px;
+        height: 32px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .hex-input {
+        flex: 1;
+        padding: 6px 10px;
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 6px;
+        font-size: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-main);
+    }
+
+    .btn-reset {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        border-radius: 6px;
+        color: var(--text-dim);
+        cursor: pointer;
+    }
+
+    .btn-reset:hover {
+        color: var(--text-main);
+        border-color: var(--text-dim);
+    }
+
+    .contrast-warning {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 6px;
+        font-size: 11px;
+        color: #ef4444;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .preview-section {
+        margin-bottom: 24px;
+    }
+
+    .preview-section h4 {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dim);
+        margin: 0 0 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .preview-box {
+        padding: 24px;
+        border-radius: 12px;
+        background: var(--bg-void);
+    }
+
+    .preview-surface {
+        padding: 16px;
+        background: var(--glass-surface);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        display: flex;
+        gap: 16px;
+    }
+
+    .preview-text-main {
+        color: var(--text-main);
+        font-weight: 600;
+    }
+
+    .preview-text-dim {
+        color: var(--text-dim);
+    }
+
+    .preview-accent {
+        color: var(--accent-slate);
+        font-weight: 600;
+    }
+
+    .contrast-summary {
+        margin-bottom: 24px;
+        padding: 12px;
+        background: rgba(239, 68, 68, 0.05);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 8px;
+    }
+
+    .contrast-summary h4 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #ef4444;
+    }
+
+    .contrast-note {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin: 0 0 8px;
+    }
+
+    .contrast-list {
+        margin: 0;
+        padding: 0 0 0 16px;
+        font-size: 11px;
+        color: #ef4444;
+    }
+
+    .editor-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-save,
+    .btn-apply,
+    .btn-cancel {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-save {
+        background: var(--accent-slate);
+        color: white;
+    }
+
+    .btn-apply {
+        background: transparent;
+        border: 1px solid var(--accent-slate);
+        color: var(--accent-slate);
+    }
+
+    .btn-cancel {
+        background: transparent;
+        color: var(--text-dim);
+    }
+
+    .save-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+
+    .save-modal {
+        background: var(--glass-surface);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 24px;
+        width: 360px;
+    }
+
+    .save-modal h4 {
+        margin: 0 0 16px;
+        font-size: 16px;
+        color: var(--text-main);
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-dim);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+    }
+
+    .theme-name-input,
+    .theme-description-input {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--text-main);
+    }
+
+    .theme-description-input {
+        min-height: 60px;
+        resize: vertical;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .btn-confirm {
+        padding: 8px 16px;
+        background: var(--accent-slate);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+</style>
