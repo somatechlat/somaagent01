@@ -25,6 +25,8 @@ redis==5.2.0
 psycopg[binary]==3.2.3
 asyncpg==0.29.0; python_version < "3.13"
 sqlalchemy==2.0.32
+alembic==1.14.0
+pgvector==0.3.6
 
 # gRPC and protobuf
 grpcio==1.67.1

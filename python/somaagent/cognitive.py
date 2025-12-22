@@ -98,7 +98,8 @@ async def consider_sleep_cycle(agent: "Agent") -> None:
             sleep_result = await agent.soma_client.sleep_cycle(
                 tenant_id=agent.tenant_id,
                 persona_id=agent.persona_id,
-                duration_minutes=5,
+                nrem=True,
+                rem=True,
             )
             if sleep_result:
                 agent.data["last_sleep_cycle"] = sleep_result

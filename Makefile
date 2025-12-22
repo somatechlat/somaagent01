@@ -512,3 +512,42 @@ smoke-orchestrator:
 	@echo "Running orchestrator dry-run smoke..."
 	python -m orchestrator.main --dry-run
 	python - <<'PY'\nfrom fastapi.testclient import TestClient\nfrom orchestrator.main import app\nclient = TestClient(app)\nresp = client.get(\"/v1/health\")\nprint(resp.status_code, resp.json())\nassert resp.status_code == 200 and resp.json().get(\"healthy\") is True\nPY
+
+
+# ==============================================================================
+# Database Migrations (Alembic)
+# ==============================================================================
+
+.PHONY: db-migrate db-upgrade db-downgrade db-history db-current db-heads
+
+# Create a new migration (auto-generate from model changes)
+# Usage: make db-migrate MSG="add user table"
+db-migrate:
+	@if [ -z "$(MSG)" ]; then echo "MSG is required (e.g., make db-migrate MSG='add user table')"; exit 1; fi
+	@echo "Creating new migration: $(MSG)"
+	alembic revision --autogenerate -m "$(MSG)"
+
+# Run all pending migrations
+db-upgrade:
+	@echo "Running database migrations..."
+	alembic upgrade head
+
+# Rollback the last migration
+db-downgrade:
+	@echo "Rolling back last migration..."
+	alembic downgrade -1
+
+# Show migration history
+db-history:
+	@echo "Migration history:"
+	alembic history --verbose
+
+# Show current migration version
+db-current:
+	@echo "Current migration version:"
+	alembic current
+
+# Show all migration heads
+db-heads:
+	@echo "Migration heads:"
+	alembic heads

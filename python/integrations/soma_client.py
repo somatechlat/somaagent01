@@ -865,6 +865,171 @@ class SomaClient:
         """
         return await self._request("GET", "/sleep/status")
 
+    # ------------------------------------------------------------------
+    # New endpoints per SomaBrain integration spec
+    # ------------------------------------------------------------------
+
+    async def adaptation_reset(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        base_lr: Optional[float] = None,
+        reset_history: bool = True,
+        retrieval_defaults: Optional[Mapping[str, float]] = None,
+        utility_defaults: Optional[Mapping[str, float]] = None,
+        gains: Optional[Mapping[str, float]] = None,
+        constraints: Optional[Mapping[str, float]] = None,
+    ) -> Mapping[str, Any]:
+        """Reset adaptation engine to defaults for clean benchmarks.
+
+        Args:
+            tenant_id: Tenant identifier for per-tenant reset
+            base_lr: Optional base learning rate override
+            reset_history: Whether to clear feedback history (default True)
+            retrieval_defaults: Optional retrieval weight defaults {alpha, beta, gamma, tau}
+            utility_defaults: Optional utility weight defaults {lambda_, mu, nu}
+            gains: Optional adaptation gains {alpha, gamma, lambda_, mu, nu}
+            constraints: Optional adaptation constraints {*_min, *_max}
+
+        Returns:
+            {"ok": True, "tenant_id": str}
+
+        Raises:
+            SomaClientError: On HTTP 4xx/5xx or network failure
+        """
+        body: Dict[str, Any] = {"reset_history": reset_history}
+        if tenant_id:
+            body["tenant_id"] = tenant_id
+        if base_lr is not None:
+            body["base_lr"] = base_lr
+        if retrieval_defaults:
+            body["retrieval_defaults"] = dict(retrieval_defaults)
+        if utility_defaults:
+            body["utility_defaults"] = dict(utility_defaults)
+        if gains:
+            body["gains"] = dict(gains)
+        if constraints:
+            body["constraints"] = dict(constraints)
+        return await self._request("POST", "/context/adaptation/reset", json=body)
+
+    async def act(
+        self,
+        task: str,
+        *,
+        top_k: int = 3,
+        universe: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Execute a cognitive action step with salience scoring.
+
+        Args:
+            task: The task/action description to execute
+            top_k: Number of memory hits to consider (default 3)
+            universe: Optional universe scope for memory operations
+            session_id: Optional session ID for focus state tracking
+
+        Returns:
+            ActResponse with task, results (list of ActStepResult), plan, plan_universe
+
+        Raises:
+            SomaClientError: On HTTP 4xx/5xx or network failure
+        """
+        body: Dict[str, Any] = {"task": task, "top_k": top_k}
+        if universe:
+            body["universe"] = universe
+        headers: Optional[Dict[str, str]] = None
+        if session_id:
+            headers = {"X-Session-ID": session_id}
+        return await self._request("POST", "/act", json=body, headers=headers)
+
+    async def brain_sleep_mode(
+        self,
+        target_state: str,
+        *,
+        ttl_seconds: Optional[int] = None,
+        async_mode: bool = False,
+        trace_id: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Transition tenant sleep state via cognitive endpoint.
+
+        Args:
+            target_state: One of "active", "light", "deep", "freeze"
+            ttl_seconds: Optional TTL after which state auto-reverts to active
+            async_mode: If True, return immediately (non-blocking)
+            trace_id: Optional trace identifier for observability
+
+        Returns:
+            Sleep transition response
+
+        Raises:
+            SomaClientError: On HTTP 4xx/5xx or network failure
+            ValueError: If target_state is invalid
+        """
+        valid_states = {"active", "light", "deep", "freeze"}
+        if target_state not in valid_states:
+            raise ValueError(f"target_state must be one of {valid_states}, got '{target_state}'")
+        body: Dict[str, Any] = {"target_state": target_state, "async_mode": async_mode}
+        if ttl_seconds is not None:
+            body["ttl_seconds"] = ttl_seconds
+        if trace_id:
+            body["trace_id"] = trace_id
+        return await self._request("POST", "/api/brain/sleep_mode", json=body)
+
+    async def util_sleep(
+        self,
+        target_state: str,
+        *,
+        ttl_seconds: Optional[int] = None,
+        async_mode: bool = False,
+        trace_id: Optional[str] = None,
+    ) -> Mapping[str, Any]:
+        """Transition tenant sleep state via utility endpoint.
+
+        Args:
+            target_state: One of "active", "light", "deep", "freeze"
+            ttl_seconds: Optional TTL after which state auto-reverts to active
+            async_mode: If True, return immediately (non-blocking)
+            trace_id: Optional trace identifier for observability
+
+        Returns:
+            Sleep transition response
+
+        Raises:
+            SomaClientError: On HTTP 4xx/5xx or network failure
+            ValueError: If target_state is invalid
+        """
+        valid_states = {"active", "light", "deep", "freeze"}
+        if target_state not in valid_states:
+            raise ValueError(f"target_state must be one of {valid_states}, got '{target_state}'")
+        body: Dict[str, Any] = {"target_state": target_state, "async_mode": async_mode}
+        if ttl_seconds is not None:
+            body["ttl_seconds"] = ttl_seconds
+        if trace_id:
+            body["trace_id"] = trace_id
+        return await self._request("POST", "/api/util/sleep", json=body)
+
+    async def micro_diag(self) -> Mapping[str, Any]:
+        """Get microcircuit diagnostics (admin mode).
+
+        Returns:
+            Diagnostic info with enabled, tenant, columns, namespace
+
+        Raises:
+            SomaClientError: On HTTP 4xx/5xx or network failure
+        """
+        return await self._request("GET", "/micro/diag")
+
+    async def sleep_status_all(self) -> Mapping[str, Any]:
+        """Get sleep status for all tenants (admin mode).
+
+        Returns:
+            {"enabled": bool, "interval_seconds": int, "tenants": {tid: {nrem, rem}}}
+
+        Raises:
+            SomaClientError: On HTTP 4xx/5xx or network failure
+        """
+        return await self._request("GET", "/sleep/status/all")
+
 
 __all__ = [
     "SomaClient",

@@ -51,6 +51,8 @@ This log lists violation IDs, dates, and file paths. Full findings remain in `VI
 - VCR-2025-12-21-016 — python/integrations/opa_middleware.py
 - VCR-2025-12-20-012 — services/gateway/routers/health.py`, `services/gateway/routers/sessions.py
 - VCR-2025-12-21-017 — webui/vendor/ace-min/mode-d.js
+- VCR-2025-12-21-018 — webui/vendor/ace-min/* (bundle), webui/vendor/ace/mode-markdown.js
+  * Sweep #7 coverage (2025-12-21): requirements.txt, requirements-dev.txt, requirements-ml.txt, constraints-ml.txt, requirements.md, webui/vendor/ace-min/*, webui/vendor/ace/mode-markdown.js, webui/js/transformers@3.0.2.js, VIBE_CODING_RULES.md, VIOLATIONS.md
 
 ## 2025-12-19
 - VCR-2025-12-19-001 — services/gateway/routers/uploads_full.py
