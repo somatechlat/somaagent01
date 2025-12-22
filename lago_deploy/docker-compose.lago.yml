@@ -1,12 +1,67 @@
 version: '3.5'
 
+x-lago-rsa-key: &lago-rsa-key "-----BEGIN RSA PRIVATE KEY-----
+
+  MIIEowIBAAKCAQEA8K1kjJuZJlVZJUkXCDXERw8KyujVbv2XabjIoJuiWHE+aTpN
+
+  QjZ/uQdmzgAdAQuJKpI1Sp5uof+eTx8azg7U8/WvinLyMv6GpwRfs9ewXRkuJcwz
+
+  G1Y3zO2QiAXlIpejT/LixChTXFPLmVfv8hFV6JjFBCx6AmtFrTOD2uz6uloIs7FT
+
+  HpkFs8w7N2qqg37JCT+dLfxXWbRMdjzTQ+A+qGdTl3RacK4YX8yR00t+HfBgaNMj
+
+  B+sB3RRETFK3sL/ubbWZYdl8W0fnIvnohBjDzgmKQeAUypt5+LIxtlCN/I1szvl0
+
+  /zV5o+e7y0XTUsZPXteLAA1elKx9FkvV3B3c8QIDAQABAoIBACkRBQOi9yZd0Mi2
+
+  aHorpnKTg/1sbiKynZfaAk25UKGzrPkKjC08nF2HgEitJ0XK4JxFd1dkoi79LVeF
+
+  0K6RRE/eP5Ypl98QpAwyiFvo9TxldATaC2xiMUJD1PIIw3i8FA8ru/rJgLPTzn07
+
+  ToNo5tY53wAf0K/B+xEbJagA4KVUK8uGMAChi5KDiWYvTd0BLcEuJVXVv0UKtinj
+
+  vk/vbqOxqfnsWNqAgFtFRVS4GQuyOMZXGb8k9EgNDNnjJ279FKeTCaYsIZdejU83
+
+  zgvffYVkIifm9D+TEEnsCyLzpZRgHcCwNziVMIozEJ6QmB0FEORN2/M8LfdZCCAJ
+
+  TYqS+xMCgYEA+NVVI1FOaFzlhMd725AHCkH9qef6ta4xpurScEqEUa1Txv7j0ysF
+
+  2vX5ajsTv4cHdpBdVI5oaqf0sKkKmAGZJevDGraz5UejQnYb6G42VmnCbE2CH4pr
+
+  XdxnAKJnGyWynTT4G4SmthC65meo6lnO+9MK8ogl8eIMwQNgX8Tm8fMCgYEA95vs
+
+  3ow0sKMHc5W5caTXUTRj8ibzQ4oEuDBFAmKAKdmiYrkKzfgH2Ax8zN7GfLhIFHiB
+
+  5FrLcAazS6QbExnseMGwKz3w9At6gTgq/p3DuAlpi//+fbnnBA/VFfkBmZLV3PbN
+
+  a0Vp8BqqGKVA403NmyWK0YPuZv8ti6GFeLnnCosCgYApfekkanpYjKT47wqIIgwK
+
+  edaCblwvz0wYOS+96a8Gr5A4rmfu3k2rpThhrlgsp6dm7cuiPdzLbBYxHv7VOe7/
+
+  k8CEw9JbeQaQHoGo0DffUONKi+IWwE4G6KmEQZBPxolyDVMRw5zI3yFLKh3Qdgk9
+
+  lINOzcUGAFuAE8AOOBcKYQKBgGelbFSH6fJae98FOHf6oWrLfF67sS5/UpRrGCf0
+
+  ZWOfRxr+DCjFfzsPlxoG0p0YYou3GeAlpWzCUUEDc5XeTx8JLJ4dMoRlXaVDhrPI
+
+  BEpAHl9NDBFCxRHtMqwc7G+FiGITKU+S4dJwxuzEF9JOGhesclxbVmrkvALr3Lv5
+
+  TV4bAoGBAK0Tkm6HG6SzMRoVc1AVDm+bWXhfbVn+JV2Y26P9LZP7uqq1ywK5hsJM
+
+  9+C8S52ur9DzNN7ZBDC+1S+t48ukGkwzKYqhq/7s/A3auJOOx68bseWnie7n0a4D
+
+  s3IP0Q6SB0A5UqGaSCMo1Ri4AoH++wL7T1LR5Cb2eYYzPJe8kU04
+
+  -----END RSA PRIVATE KEY-----"
+
 services:
   db:
     image: postgres:14-alpine
     container_name: lago-db
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lago} -d ${POSTGRES_DB:-lago} -h localhost -p ${POSTGRES_PORT:-5432}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lago} -d ${POSTGRES_DB:-lago} -h localhost -p 5432" ]
+
       interval: 10s
       timeout: 5s
       retries: 5
@@ -15,27 +70,27 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-lago}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       PGDATA: /data/postgres
-      PGPORT: ${POSTGRES_PORT:-5432}
+      PGPORT: 5432
       POSTGRES_SCHEMA: public
     volumes:
       - lago_postgres_data:/data/postgres
     ports:
-      - ${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
+      - "${POSTGRES_PORT:-5432}:5432"
 
   redis:
     image: redis:6-alpine
     container_name: lago-redis
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "-p", "${REDIS_PORT:-6379}", "ping" ]
+      test: [ "CMD", "redis-cli", "-p", "6379", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
-    command: --port ${REDIS_PORT:-6379}
+    command: --port 6379
     volumes:
       - lago_redis_data:/data
     ports:
-      - ${REDIS_PORT:-6379}:${REDIS_PORT:-6379}
+      - "${REDIS_PORT:-6379}:6379"
 
   migrate:
     image: getlago/api:v1.38.0
@@ -45,9 +100,9 @@ services:
         condition: service_healthy
     command: [ "./scripts/migrate.sh" ]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
-      REDIS_URL: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
-      LAGO_RSA_PRIVATE_KEY: ${LAGO_RSA_PRIVATE_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
+      REDIS_URL: redis://redis:6379
+      LAGO_RSA_PRIVATE_KEY: *lago-rsa-key
       LAGO_API_URL: ${LAGO_API_URL:-http://localhost:3000}
       LAGO_FRONT_URL: ${LAGO_FRONT_URL:-http://localhost}
       RAILS_ENV: production
@@ -72,9 +127,9 @@ services:
       timeout: 60s
       start_interval: 2s
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
-      REDIS_URL: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
-      LAGO_RSA_PRIVATE_KEY: ${LAGO_RSA_PRIVATE_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
+      REDIS_URL: redis://redis:6379
+      LAGO_RSA_PRIVATE_KEY: *lago-rsa-key
       LAGO_API_URL: ${LAGO_API_URL:-http://localhost:3000}
       LAGO_FRONT_URL: ${LAGO_FRONT_URL:-http://localhost}
       RAILS_ENV: production
@@ -82,7 +137,7 @@ services:
     volumes:
       - lago_storage_data:/app/storage
     ports:
-      - ${API_PORT:-3000}:3000
+      - "${API_PORT:-3000}:3000"
 
   front:
     image: getlago/front:v1.38.0
@@ -95,7 +150,7 @@ services:
       API_URL: ${LAGO_API_URL:-http://localhost:3000}
       APP_ENV: production
     ports:
-      - ${FRONT_PORT:-80}:80
+      - "${FRONT_PORT:-80}:80"
 
   api-worker:
     image: getlago/api:v1.38.0
@@ -116,9 +171,9 @@ services:
       timeout: 60s
       start_interval: 2s
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
-      REDIS_URL: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
-      LAGO_RSA_PRIVATE_KEY: ${LAGO_RSA_PRIVATE_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
+      REDIS_URL: redis://redis:6379
+      LAGO_RSA_PRIVATE_KEY: *lago-rsa-key
       LAGO_API_URL: ${LAGO_API_URL:-http://localhost:3000}
       LAGO_FRONT_URL: ${LAGO_FRONT_URL:-http://localhost}
       RAILS_ENV: production
@@ -139,9 +194,9 @@ services:
         condition: service_healthy
     command: [ "./scripts/start.clock.sh" ]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
-      REDIS_URL: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
-      LAGO_RSA_PRIVATE_KEY: ${LAGO_RSA_PRIVATE_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lago}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-lago}?search_path=${POSTGRES_SCHEMA:-public}
+      REDIS_URL: redis://redis:6379
+      LAGO_RSA_PRIVATE_KEY: *lago-rsa-key
       LAGO_API_URL: ${LAGO_API_URL:-http://localhost:3000}
       LAGO_FRONT_URL: ${LAGO_FRONT_URL:-http://localhost}
       RAILS_ENV: production
@@ -155,3 +210,5 @@ volumes:
   lago_postgres_data:
   lago_redis_data:
   lago_storage_data:
+
+

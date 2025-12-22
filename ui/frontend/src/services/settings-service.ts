@@ -62,7 +62,7 @@ class SettingsService {
      * Reset settings tab to defaults
      */
     async reset(tab: SettingsTab): Promise<ApiResponse<SettingsResponse>> {
-        return apiClient.post<SettingsResponse>(`${this.basePath}/${tab}/reset`);
+        return apiClient.post<SettingsResponse>(`${this.basePath}/${tab}/reset`, {});
     }
 
     /**

@@ -117,7 +117,7 @@ class KeycloakService {
         this._storeToken();
         this._scheduleRefresh();
 
-        return this.token;
+        return this.token!;
     }
 
     /**

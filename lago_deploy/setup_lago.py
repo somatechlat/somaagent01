@@ -10,7 +10,7 @@ def generate_rsa_key():
     )
     private_key = key.private_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption()
     )
     return private_key.decode('utf-8')
@@ -19,10 +19,6 @@ def main():
     print("Generating RSA Key...")
     rsa_key = generate_rsa_key()
     
-    # Escape newlines for .env if needed, but docker compose often handles multi-line if quoted
-    # However, for simply writing to .env, we can just dump it. 
-    # But usually for one-line env vars it's tricky. 
-    # Lago docs usually stick it directly in env file or utilize separate file.
     # We'll put it in .env quoted.
     
     # Generate other secrets

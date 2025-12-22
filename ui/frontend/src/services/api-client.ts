@@ -14,6 +14,8 @@ export interface ApiClientConfig {
     retries: number;
 }
 
+export type ApiResponse<T> = T;
+
 export class ApiError extends Error {
     constructor(public status: number, message: string) {
         super(message);
