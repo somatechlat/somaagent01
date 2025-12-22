@@ -12,6 +12,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import '../components/eog-input.js';
 import '../components/eog-button.js';
+import './eog-enterprise-settings.js';
 
 @customElement('eog-login')
 export class EogLogin extends LitElement {
@@ -232,6 +233,73 @@ export class EogLogin extends LitElement {
             color: var(--eog-accent, #94a3b8);
             text-decoration: none;
         }
+
+        .enterprise-cog {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 9999px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 100;
+            outline: none;
+        }
+
+        .enterprise-cog::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .enterprise-cog:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        .enterprise-cog:hover::before {
+            left: 100%;
+        }
+
+        .cog-icon {
+            font-size: 18px;
+            animation: spin 10s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .cog-label {
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
     `;
 
     @state() private _username = '';
@@ -243,6 +311,8 @@ export class EogLogin extends LitElement {
     @property({ type: String }) keycloakUrl = '/auth';
     @property({ type: String }) realm = 'somaagent';
     @property({ type: String }) clientId = 'eye-of-god';
+
+    @state() private _showEnterpriseSettings = false;
 
     render() {
         return html`
@@ -277,6 +347,16 @@ export class EogLogin extends LitElement {
                             <span>Enterprise SSO with Keycloak</span>
                         </div>
                     </div>
+
+                    <!-- Enterprise Settings Cog using Creative Glassmorphism -->
+                    <button 
+                        class="enterprise-cog" 
+                        @click=${() => this._showEnterpriseSettings = true}
+                        title="Enterprise Configuration"
+                    >
+                        <span class="cog-icon">⚙️</span>
+                        <span class="cog-label">Enterprise</span>
+                    </button>
                 </aside>
 
                 <main class="login-right">
@@ -358,6 +438,11 @@ export class EogLogin extends LitElement {
                     </div>
                 </main>
             </div>
+
+            <eog-enterprise-settings
+                .open=${this._showEnterpriseSettings}
+                @close=${() => this._showEnterpriseSettings = false}
+            ></eog-enterprise-settings>
         `;
     }
 

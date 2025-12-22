@@ -12,7 +12,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Router } from '@vaadin/router';
 import { consume } from '@lit/context';
-import { modeContext, type ModeStateData } from '../stores/mode-store.js';
+import { modeContext, type ModeState } from '../stores/mode-store.js';
 
 interface NavItem {
     path: string;
@@ -206,7 +206,7 @@ export class EogApp extends LitElement {
 
     @consume({ context: modeContext, subscribe: true })
     @property({ attribute: false })
-    modeState?: ModeStateData;
+    modeState?: ModeState;
 
     @state() private _sidebarCollapsed = false;
     @state() private _currentPath = '/';
@@ -217,6 +217,13 @@ export class EogApp extends LitElement {
         { path: '/memory', label: 'Memory', icon: '🧠' },
         { path: '/tools', label: 'Tools', icon: '🔧' },
         { path: '/cognitive', label: 'Cognitive', icon: '⚙️' },
+    ];
+
+    // Platform nav (God Mode only)
+    private _platformNav: NavItem[] = [
+        { path: '/platform', label: 'Dashboard', icon: '📊', roles: ['saas_admin'] },
+        { path: '/platform/tenants', label: 'Tenants', icon: '🏢', roles: ['saas_admin'] },
+        { path: '/platform/billing', label: 'Billing', icon: '💰', roles: ['saas_admin'] },
     ];
 
     private _settingsNav: NavItem[] = [
@@ -230,9 +237,10 @@ export class EogApp extends LitElement {
     ];
 
     render() {
-        const mode = this.modeState?.mode || 'STD';
+        const mode = this.modeState?.current || 'STD';
         const modeLabel = this._getModeLabel(mode);
         const modeClass = mode === 'DGR' ? 'danger' : mode === 'TRN' ? 'training' : '';
+        const isPlatformAdmin = this._checkRole('saas_admin');
 
         return html`
             <aside class="sidebar ${this._sidebarCollapsed ? 'collapsed' : ''}">
@@ -248,6 +256,13 @@ export class EogApp extends LitElement {
                         <div class="nav-section-title">Main</div>
                         ${this._mainNav.map(item => this._renderNavItem(item))}
                     </div>
+
+                    ${isPlatformAdmin ? html`
+                        <div class="nav-section">
+                            <div class="nav-section-title">🔮 Platform</div>
+                            ${this._platformNav.map(item => this._renderNavItem(item))}
+                        </div>
+                    ` : ''}
 
                     <div class="nav-section">
                         <div class="nav-section-title">Settings</div>
@@ -275,7 +290,7 @@ export class EogApp extends LitElement {
                     </button>
                     <div class="topbar-actions">
                         <eog-voice-button></eog-voice-button>
-                        <div class="user-avatar">${this._userInitials}</div>
+                        <div class="user-avatar" @click=${this._logout}>${this._userInitials}</div>
                     </div>
                 </header>
 
@@ -323,7 +338,44 @@ export class EogApp extends LitElement {
         return labels[mode] || mode;
     }
 
+    private _checkRole(role: string): boolean {
+        // Check user role from localStorage
+        try {
+            const user = JSON.parse(localStorage.getItem('eog_user') || '{}');
+            const roles = user.roles || [];
+            return roles.includes(role) || roles.includes('saas_admin');
+        } catch {
+            return false;
+        }
+    }
+
+    private _logout() {
+        localStorage.removeItem('eog_auth_token');
+        localStorage.removeItem('eog_user');
+        window.location.href = '/login';
+    }
+
+    private _isAuthenticated(): boolean {
+        return !!localStorage.getItem('eog_auth_token');
+    }
+
     firstUpdated() {
+        // Check authentication
+        if (!this._isAuthenticated()) {
+            window.location.href = '/login';
+            return;
+        }
+
+        // Load user info
+        try {
+            const user = JSON.parse(localStorage.getItem('eog_user') || '{}');
+            if (user.name) {
+                this._userInitials = user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+            }
+        } catch {
+            // Ignore
+        }
+
         // Initialize router
         const outlet = this.shadowRoot?.getElementById('outlet');
         if (outlet) {
@@ -332,8 +384,14 @@ export class EogApp extends LitElement {
                 { path: '/', redirect: '/chat' },
                 { path: '/chat', component: 'eog-chat' },
                 { path: '/memory', component: 'eog-memory' },
+                { path: '/tools', component: 'eog-tools' },
+                { path: '/cognitive', component: 'eog-cognitive' },
                 { path: '/settings', component: 'eog-settings' },
                 { path: '/themes', component: 'eog-themes' },
+                { path: '/admin', component: 'eog-admin' },
+                // Platform routes (God Mode)
+                { path: '/platform', component: 'eog-platform-dashboard' },
+                { path: '/platform/tenants', component: 'eog-tenants' },
                 { path: '(.*)', redirect: '/chat' },
             ]);
         }

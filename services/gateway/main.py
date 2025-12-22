@@ -84,8 +84,15 @@ def serve_root() -> FileResponse:
     return FileResponse(os.path.join(webui_path, "index.html"))
 
 
+
+# Validated Django setup import
+from services.gateway.django_setup import django_app
+
 app.mount("/static", StaticFiles(directory=webui_path, html=False), name="webui")
 app.include_router(build_router())
+
+# HYBRID MOUNT: Mount Django Ninja app for new SaaS features
+app.mount("/saas", django_app)
 
 
 # ---------------------------------------------------------------------------

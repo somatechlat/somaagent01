@@ -137,7 +137,12 @@ Before touching code, confirm:
 - Document everything clearly  
 - Follow all Vibe Coding Rules  
 - Deliver honest, real, complete solutions  
--after every TASK or milestone proposed , I will always run a second inspection to the code i have deloped for vibe coding rules Violations
+- After every TASK or milestone proposed, I will always run a second inspection to the code i have developed for vibe coding rules Violations
+
+# 8. API FRAMEWORK POLICY
+- **Existing Code**: The existing FastAPI infrastructure (`services/gateway/main.py` etc.) remains AS IS. Do not migrate it.
+- **New Code**: ALL NEW API endpoint creation MUST use **Django Ninja** in conjunction with the Django Framework.
+- **Hybrid**: The architecture must support both running simultaneously.
 
 ===============================================================
                 📚 ISO-STYLE DOCUMENTATION NOTE
