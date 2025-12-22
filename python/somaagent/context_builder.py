@@ -1,14 +1,17 @@
-"""Somabrain-aware context builder for SomaAgent01."""
+"""Somabrain-aware context builder for SomaAgent01.
+
+Integrates with AgentIQ Governor for lane-based token budgeting.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Any, Callable, Dict, List, Optional, Protocol, TYPE_CHECKING
 
 from observability.metrics import ContextBuilderMetrics
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
@@ -18,6 +21,9 @@ from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from src.core.config import cfg
+
+if TYPE_CHECKING:
+    from python.somaagent.agentiq_governor import LanePlan
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,10 +90,20 @@ class RealPresidioRedactor:
 
 @dataclass
 class BuiltContext:
+    """Result of context building for a turn.
+    
+    Attributes:
+        system_prompt: The system prompt for the LLM
+        messages: List of formatted messages for the LLM
+        token_counts: Token counts by category (system, history, snippets, user)
+        debug: Debug information about the build process
+        lane_actual: Actual token usage per lane (for AgentIQ Governor)
+    """
     system_prompt: str
     messages: List[Dict[str, Any]]
     token_counts: Dict[str, int]
     debug: Dict[str, Any]
+    lane_actual: Dict[str, int] = field(default_factory=dict)
 
 
 class ContextBuilder:
@@ -135,7 +151,18 @@ class ContextBuilder:
         turn: Dict[str, Any],
         *,
         max_prompt_tokens: int,
+        lane_plan: Optional["LanePlan"] = None,
     ) -> BuiltContext:
+        """Build context for a conversation turn.
+        
+        Args:
+            turn: Turn context with user_message, history, system_prompt, etc.
+            max_prompt_tokens: Overall token budget (used if lane_plan is None)
+            lane_plan: Optional AgentIQ lane plan for per-lane budgeting
+            
+        Returns:
+            BuiltContext with assembled messages and token usage
+        """
         with self.metrics.time_total():
             state = self._current_health()
             reason = state.value
@@ -245,6 +272,15 @@ class ContextBuilder:
                     "user": user_tokens,
                 },
                 debug=debug,
+                # Map token counts to AgentIQ lanes for Governor reporting
+                lane_actual={
+                    "system_policy": system_tokens,
+                    "history": history_tokens,
+                    "memory": snippet_tokens,
+                    "tools": 0,  # Tools are added by caller after context build
+                    "tool_results": 0,  # Tool results are added by caller
+                    "buffer": lane_plan.buffer if lane_plan else 200,
+                },
             )
 
     def _current_health(self) -> SomabrainHealthState:
