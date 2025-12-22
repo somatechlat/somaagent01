@@ -25,28 +25,44 @@ const app = document.getElementById('app');
 if (app) {
     app.innerHTML = '';
 
-    const path = window.location.pathname;
-
-    // Show login page for /login route OR if not authenticated
-    if (path === '/login' || path === '/auth/callback') {
-        const loginPage = document.createElement('eog-login');
-        app.appendChild(loginPage);
-    } else {
-        // Check for auth token
+    // Route handler
+    const handleRoute = () => {
+        const path = window.location.pathname;
         const token = localStorage.getItem('eog_auth_token');
-        if (!token && path !== '/') {
-            // Redirect to login
-            window.location.href = '/login';
-        } else if (!token) {
-            // Show login for root without token
-            const loginPage = document.createElement('eog-login');
-            app.appendChild(loginPage);
-        } else {
-            // Authenticated - show app
-            const eogApp = document.createElement('eog-app');
-            app.appendChild(eogApp);
+
+        // 1. Unauthenticated -> Login
+        if (!token) {
+            if (path !== '/login' && path !== '/auth/callback') {
+                window.location.href = '/login';
+                return;
+            }
+            // Show Login
+            app.innerHTML = '';
+            app.appendChild(document.createElement('eog-login'));
+            return;
         }
-    }
+
+        // 2. Authenticated Routes
+        app.innerHTML = '';
+
+        if (path === '/login') {
+            // Already logged in
+            window.location.href = '/mode-select';
+            return;
+        }
+
+        if (path === '/mode-select') {
+            import('./views/eog-mode-selection.js').then(() => {
+                app.appendChild(document.createElement('eog-mode-selection'));
+            });
+            return;
+        }
+
+        // Default App (Dashboard)
+        app.appendChild(document.createElement('eog-app'));
+    };
+
+    handleRoute();
 }
 
 // Log startup
