@@ -1730,6 +1730,28 @@
                     </a>
                 </div>
 
+                <!-- GOD MODE: Platform Section (only visible to SAAS admins) -->
+                <div class="nav-section god-mode-section">
+                    <div class="nav-title">
+                        <span class="material-icons-outlined"
+                            style="font-size: 12px; margin-right: 4px;">remove_red_eye</span>
+                        Platform
+                    </div>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">corporate_fare</span>
+                        Tenants
+                        <span class="nav-count">5</span>
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">payments</span>
+                        Billing
+                    </a>
+                </div>
+
                 <div class="nav-section">
                     <div class="nav-title">Admin</div>
                     <a class="nav-item" href="#">
@@ -2275,6 +2297,268 @@
                                 <div class="stat-item"><span>Status</span><span>Not Running</span></div>
                             </div>
                             <button class="server-action-btn">Start Server</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GOD MODE: Platform Dashboard -->
+            <section class="canvas hidden" id="canvasPlatformDashboard" data-view="platform-dashboard">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">remove_red_eye</span>
+                        Platform
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn" title="Refresh">
+                            <span class="material-icons-outlined">refresh</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 24px;">
+                    <!-- Metrics Grid -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon"><span class="material-icons-outlined">corporate_fare</span></div>
+                            <div class="metric-data">
+                                <div class="metric-value">5</div>
+                                <div class="metric-label">Active Tenants</div>
+                            </div>
+                            <div class="metric-trend up">+2 this month</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon"><span class="material-icons-outlined">smart_toy</span></div>
+                            <div class="metric-data">
+                                <div class="metric-value">12</div>
+                                <div class="metric-label">Running Agents</div>
+                            </div>
+                            <div class="metric-trend up">+5 this month</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon"><span class="material-icons-outlined">group</span></div>
+                            <div class="metric-data">
+                                <div class="metric-value">47</div>
+                                <div class="metric-label">Total Users</div>
+                            </div>
+                            <div class="metric-trend up">+12 this month</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon"><span class="material-icons-outlined">payments</span></div>
+                            <div class="metric-data">
+                                <div class="metric-value">$2.4K</div>
+                                <div class="metric-label">Monthly Revenue</div>
+                            </div>
+                            <div class="metric-trend up">+18%</div>
+                        </div>
+                    </div>
+
+                    <!-- Two Column Layout -->
+                    <div class="dashboard-grid">
+                        <!-- Tenants Overview -->
+                        <div class="dashboard-section">
+                            <div class="section-header">
+                                <h3>Tenants Overview</h3>
+                                <button class="section-action">View All</button>
+                            </div>
+                            <div class="tenant-list">
+                                <div class="tenant-row">
+                                    <div class="tenant-info">
+                                        <div class="tenant-avatar">ST</div>
+                                        <div class="tenant-details">
+                                            <div class="tenant-name">SomaTechDev</div>
+                                            <div class="tenant-tier">Enterprise</div>
+                                        </div>
+                                    </div>
+                                    <div class="tenant-stats">
+                                        <span>3 agents</span>
+                                        <span>•</span>
+                                        <span>12 users</span>
+                                    </div>
+                                    <span class="status-dot active"></span>
+                                </div>
+                                <div class="tenant-row">
+                                    <div class="tenant-info">
+                                        <div class="tenant-avatar">AC</div>
+                                        <div class="tenant-details">
+                                            <div class="tenant-name">Acme Corp</div>
+                                            <div class="tenant-tier">Team</div>
+                                        </div>
+                                    </div>
+                                    <div class="tenant-stats">
+                                        <span>5 agents</span>
+                                        <span>•</span>
+                                        <span>23 users</span>
+                                    </div>
+                                    <span class="status-dot active"></span>
+                                </div>
+                                <div class="tenant-row">
+                                    <div class="tenant-info">
+                                        <div class="tenant-avatar">DM</div>
+                                        <div class="tenant-details">
+                                            <div class="tenant-name">Demo Account</div>
+                                            <div class="tenant-tier">Free</div>
+                                        </div>
+                                    </div>
+                                    <div class="tenant-stats">
+                                        <span>1 agent</span>
+                                        <span>•</span>
+                                        <span>2 users</span>
+                                    </div>
+                                    <span class="status-dot warning"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="dashboard-section">
+                            <div class="section-header">
+                                <h3>Recent Activity</h3>
+                                <button class="section-action">View Log</button>
+                            </div>
+                            <div class="activity-feed">
+                                <div class="activity-item">
+                                    <span class="material-icons-outlined">add_circle</span>
+                                    <div class="activity-content">
+                                        <span class="activity-text">New tenant <strong>TechStartup</strong>
+                                            created</span>
+                                        <span class="activity-time">2 min ago</span>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <span class="material-icons-outlined">person_add</span>
+                                    <div class="activity-content">
+                                        <span class="activity-text">User <strong>john@acme.com</strong> joined Acme
+                                            Corp</span>
+                                        <span class="activity-time">15 min ago</span>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <span class="material-icons-outlined">rocket_launch</span>
+                                    <div class="activity-content">
+                                        <span class="activity-text">Agent <strong>CustomerBot</strong> deployed</span>
+                                        <span class="activity-time">1 hr ago</span>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <span class="material-icons-outlined">upgrade</span>
+                                    <div class="activity-content">
+                                        <span class="activity-text">SomaTechDev upgraded to
+                                            <strong>Enterprise</strong></span>
+                                        <span class="activity-time">3 hrs ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GOD MODE: Tenants Management -->
+            <section class="canvas hidden" id="canvasTenants" data-view="tenants">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">corporate_fare</span>
+                        Platform
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>Tenants</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn primary-btn" title="Add Tenant">
+                            <span class="material-icons-outlined">add</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" title="Search">
+                            <span class="material-icons-outlined">search</span>
+                        </button>
+                        <input type="text" class="toolbar-search" placeholder="Search tenants...">
+                    </div>
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn active">All</button>
+                        <button class="toolbar-btn">Active</button>
+                        <button class="toolbar-btn">Suspended</button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 20px;">
+                    <div class="admin-table">
+                        <div class="table-header" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;">
+                            <div class="table-cell">Tenant</div>
+                            <div class="table-cell">Plan</div>
+                            <div class="table-cell">Agents</div>
+                            <div class="table-cell">Users</div>
+                            <div class="table-cell">Status</div>
+                            <div class="table-cell">Actions</div>
+                        </div>
+                        <div class="table-row" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;">
+                            <div class="table-cell">
+                                <div class="avatar-sm">ST</div>
+                                <div>
+                                    <div style="font-weight: 500;">SomaTechDev</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">owner@somatech.dev</div>
+                                </div>
+                            </div>
+                            <div class="table-cell"><span class="badge">Enterprise</span></div>
+                            <div class="table-cell">3 / ∞</div>
+                            <div class="table-cell">12 / ∞</div>
+                            <div class="table-cell"><span class="status-dot active"></span> Active</div>
+                            <div class="table-cell">
+                                <button class="action-btn-sm" title="Enter"><span
+                                        class="material-icons-outlined">login</span></button>
+                                <button class="action-btn-sm" title="Edit"><span
+                                        class="material-icons-outlined">edit</span></button>
+                            </div>
+                        </div>
+                        <div class="table-row" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;">
+                            <div class="table-cell">
+                                <div class="avatar-sm">AC</div>
+                                <div>
+                                    <div style="font-weight: 500;">Acme Corp</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">admin@acme.com</div>
+                                </div>
+                            </div>
+                            <div class="table-cell"><span class="badge secondary">Team</span></div>
+                            <div class="table-cell">5 / 10</div>
+                            <div class="table-cell">23 / 50</div>
+                            <div class="table-cell"><span class="status-dot active"></span> Active</div>
+                            <div class="table-cell">
+                                <button class="action-btn-sm" title="Enter"><span
+                                        class="material-icons-outlined">login</span></button>
+                                <button class="action-btn-sm" title="Edit"><span
+                                        class="material-icons-outlined">edit</span></button>
+                            </div>
+                        </div>
+                        <div class="table-row" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;">
+                            <div class="table-cell">
+                                <div class="avatar-sm">DM</div>
+                                <div>
+                                    <div style="font-weight: 500;">Demo Account</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">demo@example.com</div>
+                                </div>
+                            </div>
+                            <div class="table-cell"><span class="badge secondary">Free</span></div>
+                            <div class="table-cell">1 / 1</div>
+                            <div class="table-cell">2 / 3</div>
+                            <div class="table-cell"><span class="status-dot warning"></span> Trial</div>
+                            <div class="table-cell">
+                                <button class="action-btn-sm" title="Enter"><span
+                                        class="material-icons-outlined">login</span></button>
+                                <button class="action-btn-sm" title="Edit"><span
+                                        class="material-icons-outlined">edit</span></button>
+                            </div>
                         </div>
                     </div>
                 </div>
