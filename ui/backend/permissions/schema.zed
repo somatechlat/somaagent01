@@ -1,0 +1,88 @@
+"""SpiceDB Permission Schema for Eye of God.
+
+Per Eye of God UIX Design Section 2.3
+
+Defines permission relationships for:
+- Tenant roles (sysadmin, admin, developer, trainer, member, viewer)
+- Agent modes
+- Settings sections
+- Themes
+- Tools
+- Memory
+"""
+
+definition user {}
+
+definition tenant {
+    relation sysadmin: user
+    relation admin: user
+    relation developer: user
+    relation trainer: user
+    relation member: user
+    relation viewer: user
+    
+    // Computed permissions - hierarchical
+    permission manage = sysadmin
+    permission administrate = sysadmin + admin
+    permission develop = sysadmin + admin + developer
+    permission train = sysadmin + admin + trainer
+    permission use = sysadmin + admin + developer + trainer + member
+    permission view = sysadmin + admin + developer + trainer + member + viewer
+}
+
+definition agent_mode {
+    relation tenant: tenant
+    relation allowed_role: tenant#admin | tenant#developer | tenant#trainer | tenant#member | tenant#viewer
+    
+    permission activate = allowed_role
+}
+
+definition setting_section {
+    relation tenant: tenant
+    relation edit_role: tenant#sysadmin | tenant#admin
+    relation view_role: tenant#sysadmin | tenant#admin | tenant#developer | tenant#trainer | tenant#member | tenant#viewer
+    
+    permission edit = edit_role
+    permission view = view_role
+}
+
+definition cognitive_parameter {
+    relation tenant: tenant
+    
+    permission view = tenant->view
+    permission edit = tenant->train + tenant->administrate
+}
+
+definition theme {
+    relation tenant: tenant
+    relation owner: user
+    
+    permission view = tenant->view
+    permission apply = tenant->use
+    permission edit = owner + tenant->administrate
+    permission delete = tenant->administrate
+}
+
+definition tool {
+    relation tenant: tenant
+    relation required_mode: agent_mode
+    
+    permission execute = tenant->use & required_mode->activate
+    permission view = tenant->view
+    permission configure = tenant->administrate
+}
+
+definition memory {
+    relation tenant: tenant
+    
+    permission read = tenant->view
+    permission write = tenant->use
+    permission delete = tenant->administrate
+    permission export = tenant->administrate
+}
+
+definition audit_log {
+    relation tenant: tenant
+    
+    permission read = tenant->administrate
+}
