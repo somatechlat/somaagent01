@@ -1,0 +1,361 @@
+/**
+ * SomaStack Unified UI Design System - Utility Classes
+ * 
+ * Document ID: SOMASTACK-UI-UTILITIES
+ * Version: 1.0.0
+ * 
+ * Utility classes for common styling patterns.
+ * 
+ * Requirements: 13.2, 13.3
+ */
+
+/* ============================================
+ * ACCESSIBILITY UTILITIES
+ * Requirement: 13.2, 13.3
+ * ============================================ */
+
+/* Screen reader only - visually hidden but accessible */
+.soma-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link for keyboard navigation */
+.soma-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--bg-surface-1);
+  color: var(--text-primary);
+  border: 2px solid var(--border-focus);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-medium);
+  transition: top var(--transition-fast);
+}
+
+.soma-skip-link:focus {
+  top: var(--space-2);
+}
+
+/* Focusable element with visible focus ring */
+.soma-focusable:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ============================================
+ * DISPLAY UTILITIES
+ * ============================================ */
+
+.soma-hidden { display: none !important; }
+.soma-block { display: block; }
+.soma-inline { display: inline; }
+.soma-inline-block { display: inline-block; }
+.soma-flex { display: flex; }
+.soma-inline-flex { display: inline-flex; }
+.soma-grid { display: grid; }
+
+/* ============================================
+ * FLEXBOX UTILITIES
+ * ============================================ */
+
+.soma-flex-row { flex-direction: row; }
+.soma-flex-col { flex-direction: column; }
+.soma-flex-wrap { flex-wrap: wrap; }
+.soma-flex-nowrap { flex-wrap: nowrap; }
+
+.soma-items-start { align-items: flex-start; }
+.soma-items-center { align-items: center; }
+.soma-items-end { align-items: flex-end; }
+.soma-items-stretch { align-items: stretch; }
+
+.soma-justify-start { justify-content: flex-start; }
+.soma-justify-center { justify-content: center; }
+.soma-justify-end { justify-content: flex-end; }
+.soma-justify-between { justify-content: space-between; }
+.soma-justify-around { justify-content: space-around; }
+
+.soma-flex-1 { flex: 1 1 0%; }
+.soma-flex-auto { flex: 1 1 auto; }
+.soma-flex-none { flex: none; }
+
+.soma-gap-1 { gap: var(--space-1); }
+.soma-gap-2 { gap: var(--space-2); }
+.soma-gap-3 { gap: var(--space-3); }
+.soma-gap-4 { gap: var(--space-4); }
+.soma-gap-6 { gap: var(--space-6); }
+.soma-gap-8 { gap: var(--space-8); }
+
+/* ============================================
+ * SPACING UTILITIES
+ * ============================================ */
+
+/* Margin */
+.soma-m-0 { margin: var(--space-0); }
+.soma-m-1 { margin: var(--space-1); }
+.soma-m-2 { margin: var(--space-2); }
+.soma-m-3 { margin: var(--space-3); }
+.soma-m-4 { margin: var(--space-4); }
+.soma-m-6 { margin: var(--space-6); }
+.soma-m-8 { margin: var(--space-8); }
+.soma-m-auto { margin: auto; }
+
+.soma-mx-auto { margin-left: auto; margin-right: auto; }
+.soma-my-auto { margin-top: auto; margin-bottom: auto; }
+
+.soma-mt-0 { margin-top: var(--space-0); }
+.soma-mt-1 { margin-top: var(--space-1); }
+.soma-mt-2 { margin-top: var(--space-2); }
+.soma-mt-3 { margin-top: var(--space-3); }
+.soma-mt-4 { margin-top: var(--space-4); }
+.soma-mt-6 { margin-top: var(--space-6); }
+.soma-mt-8 { margin-top: var(--space-8); }
+
+.soma-mb-0 { margin-bottom: var(--space-0); }
+.soma-mb-1 { margin-bottom: var(--space-1); }
+.soma-mb-2 { margin-bottom: var(--space-2); }
+.soma-mb-3 { margin-bottom: var(--space-3); }
+.soma-mb-4 { margin-bottom: var(--space-4); }
+.soma-mb-6 { margin-bottom: var(--space-6); }
+.soma-mb-8 { margin-bottom: var(--space-8); }
+
+.soma-ml-0 { margin-left: var(--space-0); }
+.soma-ml-1 { margin-left: var(--space-1); }
+.soma-ml-2 { margin-left: var(--space-2); }
+.soma-ml-3 { margin-left: var(--space-3); }
+.soma-ml-4 { margin-left: var(--space-4); }
+.soma-ml-auto { margin-left: auto; }
+
+.soma-mr-0 { margin-right: var(--space-0); }
+.soma-mr-1 { margin-right: var(--space-1); }
+.soma-mr-2 { margin-right: var(--space-2); }
+.soma-mr-3 { margin-right: var(--space-3); }
+.soma-mr-4 { margin-right: var(--space-4); }
+.soma-mr-auto { margin-right: auto; }
+
+/* Padding */
+.soma-p-0 { padding: var(--space-0); }
+.soma-p-1 { padding: var(--space-1); }
+.soma-p-2 { padding: var(--space-2); }
+.soma-p-3 { padding: var(--space-3); }
+.soma-p-4 { padding: var(--space-4); }
+.soma-p-6 { padding: var(--space-6); }
+.soma-p-8 { padding: var(--space-8); }
+
+.soma-px-0 { padding-left: var(--space-0); padding-right: var(--space-0); }
+.soma-px-1 { padding-left: var(--space-1); padding-right: var(--space-1); }
+.soma-px-2 { padding-left: var(--space-2); padding-right: var(--space-2); }
+.soma-px-3 { padding-left: var(--space-3); padding-right: var(--space-3); }
+.soma-px-4 { padding-left: var(--space-4); padding-right: var(--space-4); }
+.soma-px-6 { padding-left: var(--space-6); padding-right: var(--space-6); }
+
+.soma-py-0 { padding-top: var(--space-0); padding-bottom: var(--space-0); }
+.soma-py-1 { padding-top: var(--space-1); padding-bottom: var(--space-1); }
+.soma-py-2 { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.soma-py-3 { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.soma-py-4 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+.soma-py-6 { padding-top: var(--space-6); padding-bottom: var(--space-6); }
+
+/* ============================================
+ * TYPOGRAPHY UTILITIES
+ * ============================================ */
+
+.soma-text-xs { font-size: var(--text-xs); }
+.soma-text-sm { font-size: var(--text-sm); }
+.soma-text-base { font-size: var(--text-base); }
+.soma-text-lg { font-size: var(--text-lg); }
+.soma-text-xl { font-size: var(--text-xl); }
+.soma-text-2xl { font-size: var(--text-2xl); }
+
+.soma-font-normal { font-weight: var(--font-normal); }
+.soma-font-medium { font-weight: var(--font-medium); }
+.soma-font-semibold { font-weight: var(--font-semibold); }
+.soma-font-bold { font-weight: var(--font-bold); }
+
+.soma-text-left { text-align: left; }
+.soma-text-center { text-align: center; }
+.soma-text-right { text-align: right; }
+
+.soma-text-primary { color: var(--text-primary); }
+.soma-text-secondary { color: var(--text-secondary); }
+.soma-text-muted { color: var(--text-muted); }
+.soma-text-success { color: var(--color-success-500); }
+.soma-text-warning { color: var(--color-warning-500); }
+.soma-text-error { color: var(--color-error-500); }
+
+.soma-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soma-line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.soma-line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================
+ * SIZING UTILITIES
+ * ============================================ */
+
+.soma-w-full { width: 100%; }
+.soma-w-auto { width: auto; }
+.soma-h-full { height: 100%; }
+.soma-h-auto { height: auto; }
+.soma-h-screen { height: 100vh; }
+.soma-min-h-screen { min-height: 100vh; }
+
+/* ============================================
+ * BORDER UTILITIES
+ * ============================================ */
+
+.soma-border { border: 1px solid var(--border-default); }
+.soma-border-0 { border: none; }
+.soma-border-t { border-top: 1px solid var(--border-default); }
+.soma-border-b { border-bottom: 1px solid var(--border-default); }
+.soma-border-l { border-left: 1px solid var(--border-default); }
+.soma-border-r { border-right: 1px solid var(--border-default); }
+
+.soma-rounded-none { border-radius: var(--radius-none); }
+.soma-rounded-sm { border-radius: var(--radius-sm); }
+.soma-rounded-md { border-radius: var(--radius-md); }
+.soma-rounded-lg { border-radius: var(--radius-lg); }
+.soma-rounded-xl { border-radius: var(--radius-xl); }
+.soma-rounded-full { border-radius: var(--radius-full); }
+
+/* ============================================
+ * SHADOW UTILITIES
+ * ============================================ */
+
+.soma-shadow-none { box-shadow: none; }
+.soma-shadow-sm { box-shadow: var(--shadow-sm); }
+.soma-shadow-md { box-shadow: var(--shadow-md); }
+.soma-shadow-lg { box-shadow: var(--shadow-lg); }
+.soma-shadow-xl { box-shadow: var(--shadow-xl); }
+
+/* ============================================
+ * BACKGROUND UTILITIES
+ * ============================================ */
+
+.soma-bg-page { background-color: var(--bg-page); }
+.soma-bg-surface-1 { background-color: var(--bg-surface-1); }
+.soma-bg-surface-2 { background-color: var(--bg-surface-2); }
+.soma-bg-surface-3 { background-color: var(--bg-surface-3); }
+.soma-bg-transparent { background-color: transparent; }
+
+.soma-bg-primary { background-color: var(--color-primary-500); }
+.soma-bg-success { background-color: var(--color-success-500); }
+.soma-bg-warning { background-color: var(--color-warning-500); }
+.soma-bg-error { background-color: var(--color-error-500); }
+
+/* ============================================
+ * POSITION UTILITIES
+ * ============================================ */
+
+.soma-relative { position: relative; }
+.soma-absolute { position: absolute; }
+.soma-fixed { position: fixed; }
+.soma-sticky { position: sticky; }
+
+.soma-inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.soma-top-0 { top: 0; }
+.soma-right-0 { right: 0; }
+.soma-bottom-0 { bottom: 0; }
+.soma-left-0 { left: 0; }
+
+/* ============================================
+ * OVERFLOW UTILITIES
+ * ============================================ */
+
+.soma-overflow-auto { overflow: auto; }
+.soma-overflow-hidden { overflow: hidden; }
+.soma-overflow-visible { overflow: visible; }
+.soma-overflow-scroll { overflow: scroll; }
+.soma-overflow-x-auto { overflow-x: auto; }
+.soma-overflow-y-auto { overflow-y: auto; }
+
+/* ============================================
+ * CURSOR UTILITIES
+ * ============================================ */
+
+.soma-cursor-pointer { cursor: pointer; }
+.soma-cursor-default { cursor: default; }
+.soma-cursor-not-allowed { cursor: not-allowed; }
+.soma-cursor-wait { cursor: wait; }
+
+/* ============================================
+ * OPACITY UTILITIES
+ * ============================================ */
+
+.soma-opacity-0 { opacity: 0; }
+.soma-opacity-25 { opacity: 0.25; }
+.soma-opacity-50 { opacity: 0.5; }
+.soma-opacity-75 { opacity: 0.75; }
+.soma-opacity-100 { opacity: 1; }
+
+/* ============================================
+ * TRANSITION UTILITIES
+ * ============================================ */
+
+.soma-transition {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: ease;
+  transition-duration: 200ms;
+}
+
+.soma-transition-fast { transition-duration: var(--transition-fast); }
+.soma-transition-normal { transition-duration: var(--transition-normal); }
+.soma-transition-slow { transition-duration: var(--transition-slow); }
+
+/* ============================================
+ * ANIMATION UTILITIES
+ * ============================================ */
+
+.soma-animate-spin { animation: var(--animation-spin); }
+.soma-animate-pulse { animation: var(--animation-pulse); }
+.soma-animate-bounce { animation: var(--animation-bounce); }
+
+/* ============================================
+ * POINTER EVENTS
+ * ============================================ */
+
+.soma-pointer-events-none { pointer-events: none; }
+.soma-pointer-events-auto { pointer-events: auto; }
+
+/* ============================================
+ * USER SELECT
+ * ============================================ */
+
+.soma-select-none { user-select: none; }
+.soma-select-text { user-select: text; }
+.soma-select-all { user-select: all; }
+
+/* ============================================
+ * Z-INDEX UTILITIES
+ * ============================================ */
+
+.soma-z-0 { z-index: var(--z-base); }
+.soma-z-dropdown { z-index: var(--z-dropdown); }
+.soma-z-sticky { z-index: var(--z-sticky); }
+.soma-z-fixed { z-index: var(--z-fixed); }
+.soma-z-modal { z-index: var(--z-modal); }
+.soma-z-tooltip { z-index: var(--z-tooltip); }
+.soma-z-toast { z-index: var(--z-toast); }

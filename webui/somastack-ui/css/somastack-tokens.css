@@ -1,0 +1,359 @@
+/**
+ * SomaStack Unified UI Design System - Design Tokens
+ * 
+ * Document ID: SOMASTACK-UI-TOKENS
+ * Version: 1.0.0
+ * 
+ * This file defines all CSS custom properties (design tokens) for the
+ * SomaStack platform. All visual attributes are centralized here to
+ * ensure consistency across all applications.
+ * 
+ * Requirements: FR-DT-001 through FR-DT-008, FR-GL-001 through FR-GL-005
+ */
+
+:root {
+  /* ============================================
+   * COLOR TOKENS
+   * Requirement: FR-DT-003 - 5 color palettes
+   * ============================================ */
+
+  /* Neutral Palette (10 shades) */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+
+  /* Primary Palette - Blue (5 shades) */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+
+  /* Success Palette - Green (3 shades) */
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+
+  /* Warning Palette - Amber (3 shades) */
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+
+  /* Error Palette - Red (3 shades) */
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+
+  /* ============================================
+   * SEMANTIC COLOR TOKENS
+   * ============================================ */
+
+  /* Backgrounds */
+  --bg-page: var(--color-neutral-50);
+  --bg-surface-1: #ffffff;
+  --bg-surface-2: rgba(255, 255, 255, 0.8);
+  --bg-surface-3: rgba(255, 255, 255, 0.6);
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --bg-active: rgba(0, 0, 0, 0.08);
+
+  /* Text Colors */
+  --text-primary: var(--color-neutral-900);
+  --text-secondary: var(--color-neutral-600);
+  --text-muted: var(--color-neutral-400);
+  --text-inverse: #ffffff;
+
+  /* Border Colors */
+  --border-default: var(--color-neutral-200);
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-focus: var(--color-primary-500);
+
+  /* Status Colors - Requirement: FR-SI-001 */
+  --status-healthy: var(--color-success-500);
+  --status-degraded: var(--color-warning-500);
+  --status-down: var(--color-error-500);
+  --status-unknown: var(--color-neutral-400);
+
+  /* Interactive Colors */
+  --interactive-primary: var(--color-primary-500);
+  --interactive-primary-hover: var(--color-primary-600);
+  --interactive-primary-active: var(--color-primary-700);
+  --interactive-danger: var(--color-error-500);
+  --interactive-danger-hover: var(--color-error-600);
+
+  /* ============================================
+   * TYPOGRAPHY TOKENS
+   * Requirement: FR-DT-005, FR-DT-006
+   * ============================================ */
+
+  /* Font Families */
+  --font-sans: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Font Sizes (6 scale values) */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+
+  /* Font Weights (4 weights) */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+
+  /* ============================================
+   * SPACING TOKENS
+   * Requirement: FR-DT-004 - 8 scale values
+   * ============================================ */
+
+  --space-0: 0;
+  --space-1: 0.25rem;     /* 4px */
+  --space-2: 0.5rem;      /* 8px */
+  --space-3: 0.75rem;     /* 12px */
+  --space-4: 1rem;        /* 16px */
+  --space-6: 1.5rem;      /* 24px */
+  --space-8: 2rem;        /* 32px */
+  --space-12: 3rem;       /* 48px */
+  --space-16: 4rem;       /* 64px */
+
+  /* ============================================
+   * BORDER RADIUS TOKENS
+   * Requirement: FR-DT-008
+   * ============================================ */
+
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-full: 9999px;
+
+  /* ============================================
+   * SHADOW TOKENS
+   * Requirement: FR-DT-007 - 3 elevation levels
+   * ============================================ */
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+
+  /* ============================================
+   * GLASSMORPHISM TOKENS
+   * Requirement: FR-GL-001 through FR-GL-005
+   * ============================================ */
+
+  --glass-blur: blur(12px);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg-hover: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-border-subtle: rgba(0, 0, 0, 0.1);
+
+  /* Surface Levels - Requirement: FR-GL-002 */
+  --surface-1-bg: var(--bg-surface-1);
+  --surface-1-border: var(--glass-border-subtle);
+  --surface-2-bg: var(--bg-surface-2);
+  --surface-2-border: var(--glass-border-subtle);
+  --surface-3-bg: var(--bg-surface-3);
+  --surface-3-border: var(--glass-border-subtle);
+
+  /* ============================================
+   * TRANSITION TOKENS
+   * ============================================ */
+
+  --transition-fast: 100ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-theme: 300ms ease;
+
+  /* ============================================
+   * Z-INDEX SCALE
+   * ============================================ */
+
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 800;
+
+  /* ============================================
+   * LAYOUT TOKENS
+   * ============================================ */
+
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
+  --header-height: 64px;
+  --footer-height: 48px;
+  --content-max-width: 1440px;
+
+  /* ============================================
+   * BREAKPOINTS (for reference in JS)
+   * ============================================ */
+
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ============================================
+   * ANIMATION TOKENS
+   * ============================================ */
+
+  --animation-spin: spin 1s linear infinite;
+  --animation-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animation-bounce: bounce 1s infinite;
+}
+
+/* ============================================
+ * DARK THEME TOKENS
+ * Requirement: FR-TH-001
+ * ============================================ */
+
+.soma-dark,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-page: var(--color-neutral-900);
+  --bg-surface-1: var(--color-neutral-800);
+  --bg-surface-2: rgba(38, 38, 38, 0.9);
+  --bg-surface-3: rgba(38, 38, 38, 0.7);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.08);
+
+  /* Text Colors */
+  --text-primary: var(--color-neutral-50);
+  --text-secondary: var(--color-neutral-300);
+  --text-muted: var(--color-neutral-500);
+  --text-inverse: var(--color-neutral-900);
+
+  /* Border Colors */
+  --border-default: var(--color-neutral-700);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(38, 38, 38, 0.7);
+  --glass-bg-hover: rgba(38, 38, 38, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Surface Levels */
+  --surface-1-bg: var(--bg-surface-1);
+  --surface-1-border: var(--glass-border-subtle);
+  --surface-2-bg: var(--bg-surface-2);
+  --surface-2-border: var(--glass-border-subtle);
+  --surface-3-bg: var(--bg-surface-3);
+  --surface-3-border: var(--glass-border-subtle);
+
+  /* Shadows (darker for dark mode) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+ * KEYFRAME ANIMATIONS
+ * ============================================ */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Status indicator pulse animation */
+@keyframes statusPulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 6px currentColor;
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0;
+  }
+}
