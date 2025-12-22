@@ -1,18 +1,16 @@
 # SomaAgent01 Docker Compose Configuration
-# Per SomaStack Infrastructure Spec
+# Per Eye of God UIX Design Section 1.1
 #
 # VIBE COMPLIANT:
-# - Real services (no mocks)
+# - Real services only (no mocks/stubs)
 # - Production-grade configuration
-# - Resource limits for 15GB total
+# - Unique port namespace (20xxx) to avoid conflicts
+# - Per design.md: Django Ninja on 8020, parallel with FastAPI 8010
 #
-# Profiles:
-#   - infra: Core infrastructure (PostgreSQL, Redis, Kafka)
-#   - soma: SomaAgent services
-#   - observability: Prometheus, Grafana
-#   - security: SpiceDB, OPA
-
-version: "3.9"
+# Usage:
+#   docker compose up -d                    # All services
+#   docker compose --profile core up -d     # Core only
+#   docker compose --profile vectors up -d  # Vector DB
 
 x-common-labels: &common-labels
   com.somastack.project: "somaagent01"
@@ -26,24 +24,23 @@ x-common-healthcheck: &common-healthcheck
 
 services:
   # ==========================================================================
-  # DATABASE: PostgreSQL with WAL for CDC
+  # DATABASE: PostgreSQL 16 (Port 20432 - unique namespace)
   # ==========================================================================
   postgres:
     image: postgres:16-alpine
-    container_name: somastack-postgres
-    profiles: [ "infra", "core" ]
+    container_name: somaagent-postgres
+    profiles: [ "core" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-somastack2024}
       POSTGRES_DB: ${POSTGRES_DB:-somaagent}
-      POSTGRES_MULTIPLE_DATABASES: somabrain,somamemory
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - somaagent_postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "${POSTGRES_PORT:-15432}:5432"
+      - "20432:5432"
     command: >
-      postgres -c wal_level=logical -c max_wal_senders=5 -c max_replication_slots=5 -c shared_buffers=256MB -c work_mem=16MB -c maintenance_work_mem=128MB
+      postgres -c wal_level=logical -c max_wal_senders=5 -c shared_buffers=256MB
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
@@ -51,24 +48,22 @@ services:
       resources:
         limits:
           memory: 1G
-          cpus: "1"
     labels:
       <<: *common-labels
       com.somastack.service: "postgres"
 
   # ==========================================================================
-  # CACHE: Redis with AOF persistence
+  # CACHE: Redis 7 (Port 20379 - unique namespace)
   # ==========================================================================
   redis:
     image: redis:7-alpine
-    container_name: somastack-redis
-    profiles: [ "infra", "core" ]
-    command: >
-      redis-server --appendonly yes --appendfsync everysec --maxmemory 512mb --maxmemory-policy allkeys-lru --save 60 1000 --save 300 10
+    container_name: somaagent-redis
+    profiles: [ "core" ]
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
-      - redis_data:/data
+      - somaagent_redis_data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "20379:6379"
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD", "redis-cli", "ping" ]
@@ -76,63 +71,54 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: "0.5"
     labels:
       <<: *common-labels
       com.somastack.service: "redis"
 
   # ==========================================================================
-  # MESSAGE BROKER: Kafka with KRaft (no ZooKeeper)
+  # MESSAGE BROKER: Kafka with KRaft (Port 20092 - unique namespace)
   # ==========================================================================
   kafka:
     image: apache/kafka:3.7.0
-    container_name: somastack-kafka
-    profiles: [ "infra", "core" ]
+    container_name: somaagent-kafka
+    profiles: [ "core" ]
     environment:
-      KAFKA_CFG_NODE_ID: 1
-      KAFKA_CFG_PROCESS_ROLES: controller,broker
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CFG_LOG_RETENTION_HOURS: 168 # 7 days
-      KAFKA_CFG_LOG_RETENTION_BYTES: 10737418240 # 10GB
-      KAFKA_CFG_ENABLE_IDEMPOTENCE: "true"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_CLUSTER_ID:-soma-kraft-cluster}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      CLUSTER_ID: somaagent-kraft-cluster
     volumes:
-      - kafka_data:/bitnami/kafka
+      - somaagent_kafka_data:/var/lib/kafka/data
     ports:
-      - "${KAFKA_PORT:-9092}:9092"
+      - "20092:9092"
     healthcheck:
       <<: *common-healthcheck
-      test: [ "CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092" ]
+      test: [ "CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1" ]
     deploy:
       resources:
         limits:
           memory: 1.5G
-          cpus: "1"
     labels:
       <<: *common-labels
       com.somastack.service: "kafka"
 
   # ==========================================================================
-  # VECTOR DB: Milvus for embeddings
+  # VECTOR DB: Milvus (Ports 20530, 20091 - unique namespace)
   # ==========================================================================
   etcd:
     image: quay.io/coreos/etcd:v3.5.11
-    container_name: somastack-etcd
-    profiles: [ "infra", "vectors" ]
+    container_name: somaagent-etcd
+    profiles: [ "vectors" ]
     environment:
       ETCD_AUTO_COMPACTION_MODE: revision
       ETCD_AUTO_COMPACTION_RETENTION: "1000"
-      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
-    command: >
-      etcd --advertise-client-urls=http://127.0.0.1:2379 --listen-client-urls=http://0.0.0.0:2379 --data-dir=/etcd
+    command: etcd --advertise-client-urls=http://127.0.0.1:2379 --listen-client-urls=http://0.0.0.0:2379 --data-dir=/etcd
     volumes:
-      - etcd_data:/etcd
+      - somaagent_etcd_data:/etcd
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD", "etcdctl", "endpoint", "health" ]
@@ -140,23 +126,22 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: "0.25"
     labels:
       <<: *common-labels
       com.somastack.service: "etcd"
 
   minio:
     image: minio/minio:latest
-    container_name: somastack-minio
-    profiles: [ "infra", "vectors" ]
+    container_name: somaagent-minio
+    profiles: [ "vectors" ]
     environment:
       MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
     volumes:
-      - minio_data:/data
+      - somaagent_minio_data:/data
     ports:
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "20900:9000"
+      - "20901:9001"
     command: server /data --console-address ":9001"
     healthcheck:
       <<: *common-healthcheck
@@ -165,15 +150,14 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: "0.5"
     labels:
       <<: *common-labels
       com.somastack.service: "minio"
 
   milvus:
     image: milvusdb/milvus:v2.3.4
-    container_name: somastack-milvus
-    profiles: [ "infra", "vectors" ]
+    container_name: somaagent-milvus
+    profiles: [ "vectors" ]
     depends_on:
       - etcd
       - minio
@@ -183,10 +167,10 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_PASSWORD:-minioadmin}
     volumes:
-      - milvus_data:/var/lib/milvus
+      - somaagent_milvus_data:/var/lib/milvus
     ports:
-      - "${MILVUS_PORT:-19530}:19530"
-      - "${MILVUS_GRPC_PORT:-9091}:9091"
+      - "20530:19530"
+      - "20091:9091"
     command: [ "milvus", "run", "standalone" ]
     healthcheck:
       <<: *common-healthcheck
@@ -195,28 +179,27 @@ services:
       resources:
         limits:
           memory: 2G
-          cpus: "1"
     labels:
       <<: *common-labels
       com.somastack.service: "milvus"
 
   # ==========================================================================
-  # AUTHORIZATION: SpiceDB
+  # AUTHORIZATION: SpiceDB (Ports 20051, 20443 - unique namespace)
   # ==========================================================================
   spicedb:
     image: authzed/spicedb:latest
-    container_name: somastack-spicedb
+    container_name: somaagent-spicedb
     profiles: [ "security" ]
     depends_on:
       - postgres
     environment:
       SPICEDB_DATASTORE_ENGINE: postgres
       SPICEDB_DATASTORE_CONN_URI: postgres://postgres:somastack2024@postgres:5432/somaagent?sslmode=disable
-      SPICEDB_GRPC_PRESHARED_KEY: ${SPICEDB_TOKEN:-somastack-spicedb-token}
+      SPICEDB_GRPC_PRESHARED_KEY: ${SPICEDB_TOKEN:-somaagent-spicedb-token}
       SPICEDB_HTTP_ENABLED: "true"
     ports:
-      - "${SPICEDB_GRPC_PORT:-50051}:50051"
-      - "${SPICEDB_HTTP_PORT:-8443}:8443"
+      - "20051:50051"
+      - "20443:8443"
     command: serve
     healthcheck:
       <<: *common-healthcheck
@@ -225,24 +208,22 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: "0.25"
     labels:
       <<: *common-labels
       com.somastack.service: "spicedb"
 
   # ==========================================================================
-  # POLICY ENGINE: OPA
+  # POLICY ENGINE: OPA (Port 20181 - unique namespace)
   # ==========================================================================
   opa:
     image: openpolicyagent/opa:0.60.0-rootless
-    container_name: somastack-opa
+    container_name: somaagent-opa
     profiles: [ "security" ]
     volumes:
       - ./policy:/policy:ro
     ports:
-      - "${OPA_PORT:-8181}:8181"
-    command: >
-      run --server --addr=:8181 --log-level=info /policy
+      - "20181:8181"
+    command: run --server --addr=:8181 --log-level=info /policy
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8181/health" ]
@@ -250,28 +231,26 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: "0.25"
     labels:
       <<: *common-labels
       com.somastack.service: "opa"
 
   # ==========================================================================
-  # OBSERVABILITY: Prometheus
+  # OBSERVABILITY: Prometheus (Port 20090 - unique namespace)
   # ==========================================================================
   prometheus:
     image: prom/prometheus:v2.48.0
-    container_name: somastack-prometheus
+    container_name: somaagent-prometheus
     profiles: [ "observability" ]
     volumes:
       - ./infrastructure/prometheus:/etc/prometheus:ro
-      - prometheus_data:/prometheus
+      - somaagent_prometheus_data:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "20090:9090"
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=7d"
-      - "--web.enable-lifecycle"
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy" ]
@@ -279,29 +258,27 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: "0.5"
     labels:
       <<: *common-labels
       com.somastack.service: "prometheus"
 
   # ==========================================================================
-  # OBSERVABILITY: Grafana
+  # OBSERVABILITY: Grafana (Port 20300 - unique namespace)
   # ==========================================================================
   grafana:
     image: grafana/grafana:10.2.2
-    container_name: somastack-grafana
+    container_name: somaagent-grafana
     profiles: [ "observability" ]
     depends_on:
       - prometheus
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-somastack}
-      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
-      - grafana_data:/var/lib/grafana
+      - somaagent_grafana_data:/var/lib/grafana
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "20300:3000"
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD-SHELL", "wget --spider -q http://localhost:3000/api/health" ]
@@ -309,36 +286,27 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: "0.25"
     labels:
       <<: *common-labels
       com.somastack.service: "grafana"
 
 # ==========================================================================
-# VOLUMES
+# VOLUMES - Namespaced to somaagent_
 # ==========================================================================
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  kafka_data:
-    driver: local
-  etcd_data:
-    driver: local
-  minio_data:
-    driver: local
-  milvus_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
+  somaagent_postgres_data:
+  somaagent_redis_data:
+  somaagent_kafka_data:
+  somaagent_etcd_data:
+  somaagent_minio_data:
+  somaagent_milvus_data:
+  somaagent_prometheus_data:
+  somaagent_grafana_data:
 
-# ==========================================================================
-# NETWORKS
-# ==========================================================================
+    # ==========================================================================
+    # NETWORKS
+    # ==========================================================================
 networks:
   default:
-    name: somastack-network
+    name: somaagent-network
     driver: bridge
