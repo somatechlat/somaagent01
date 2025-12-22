@@ -70,14 +70,23 @@ def health_check(request):
 
 
 # Import and register endpoint routers
+from api.endpoints.auth import router as auth_router
 from api.endpoints.settings import router as settings_router
 from api.endpoints.themes import router as themes_router
 from api.endpoints.modes import router as modes_router
 from api.endpoints.memory import router as memory_router
+from api.endpoints.cognitive import router as cognitive_router
+from api.endpoints.tools import router as tools_router
+from api.endpoints.admin import router as admin_router
 
 # Register all routers
+api.add_router("/auth", auth_router)
 api.add_router("/settings", settings_router)
 api.add_router("/themes", themes_router)
 api.add_router("/modes", modes_router)
 api.add_router("/memory", memory_router)
+api.add_router("/cognitive", cognitive_router)
+api.add_router("/tools", tools_router)
+api.add_router("/admin", admin_router)
+
 
