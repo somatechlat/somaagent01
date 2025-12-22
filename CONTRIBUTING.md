@@ -133,3 +133,82 @@ Run property tests:
 ```bash
 pytest tests/properties/ -v
 ```
+
+## Database Migrations
+
+Database schema changes are managed with Alembic. All migrations are located in `migrations/versions/`.
+
+### Running Migrations
+
+```bash
+# Run all pending migrations
+make db-upgrade
+
+# Or directly with alembic
+alembic upgrade head
+```
+
+### Creating New Migrations
+
+When you modify SQLAlchemy models in `src/core/infrastructure/db/models/`:
+
+```bash
+# Auto-generate migration from model changes
+make db-migrate MSG="add new column to users"
+
+# Review the generated migration in migrations/versions/
+# Then apply it
+make db-upgrade
+```
+
+### Rolling Back
+
+```bash
+# Rollback the last migration
+make db-downgrade
+
+# Rollback to a specific revision
+alembic downgrade <revision_id>
+
+# Rollback all migrations (CAUTION: drops all tables)
+alembic downgrade base
+```
+
+### Viewing Migration Status
+
+```bash
+# Show current migration version
+make db-current
+
+# Show migration history
+make db-history
+
+# Show all migration heads
+make db-heads
+```
+
+### Migration Best Practices
+
+1. **Always review auto-generated migrations** - Alembic may not detect all changes correctly
+2. **Test migrations locally** before committing
+3. **Make migrations idempotent** - Use `IF NOT EXISTS` and `ON CONFLICT DO NOTHING`
+4. **Include downgrade logic** - Every upgrade should have a corresponding downgrade
+5. **Don't modify existing migrations** - Create new migrations for changes
+6. **Seed data uses ON CONFLICT** - Ensures idempotency when re-running migrations
+
+### Docker Integration
+
+Migrations run automatically when the gateway starts in Docker:
+
+```bash
+# Start the dev stack (migrations run automatically)
+make dev-up
+
+# Or run migrations manually in a container
+docker exec -it somaAgent01_gateway alembic upgrade head
+```
+
+### Environment Variables
+
+- `SA01_DB_DSN` - PostgreSQL connection string (required)
+  - Default: `postgresql://soma:soma@localhost:20002/somaagent01`

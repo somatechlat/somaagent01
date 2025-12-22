@@ -561,3 +561,14 @@ This is a progressive, append-only audit report for violations of `VIBE_CODING_R
 - **Finding**: Vendored ACE assets embed TODO/FIXME/XXX/HACK tokens as literal regex targets in syntax highlighters (representative of the bundled ACE files). Under the repo’s strict “NO TODOs” rule, these tokens are violations even though they’re part of third‑party code.
 - **Evidence**: `regex:\"\\b(?:TODO|FIXME|XXX|HACK)\\b\"`
 - **Suggested fix**: Remove vendored ACE assets from the repo and consume the editor via a package manager/build step (so the tokens do not live in this repo), or re‑vendor a sanitized build that does not include TODO/FIXME/XXX/HACK tokens.
+
+### 2025-12-21 — Sweep #7 (vendor bundle cleanup)
+
+#### VCR-2025-12-21-018
+- **Date**: 2025-12-21
+- **Rule**: Rule 1 — NO TODOs / NO placeholders
+- **File**: `webui/vendor/ace-min/` (multiple files) and `webui/vendor/ace/mode-markdown.js`
+- **Location**: line 1 (minified bundles)
+- **Finding**: The vendored ACE bundle contains dozens of files that embed TODO/FIXME/XXX/HACK tokens in shipped regex definitions (e.g., `regex:"\\b(?:TODO|FIXME|XXX|HACK)\\b"`). This violates the repo-wide “no TODO/placeholder” rule and expands beyond the single file captured in VCR-2025-12-21-017.
+- **Evidence**: Examples include `webui/vendor/ace-min/mode-markdown.js` line 1 and `webui/vendor/ace-min/mode-php.js` line 1 showing the TODO/FIXME/XXX/HACK regex literal; `rg -n "TODO|FIXME|XXX|HACK" webui/vendor/ace-min/ | head` returns multiple hits across the bundle.
+- **Suggested fix**: Remove the entire vendored ACE bundle from source control and pull the editor via package manager at build time, or re-vendor a sanitized build with TODO/FIXME/XXX/HACK tokens stripped. Ensure no minified third-party assets remain that conflict with VIBE rules.

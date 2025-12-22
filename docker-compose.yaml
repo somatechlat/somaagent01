@@ -251,14 +251,13 @@ services:
       kafka-init:
         condition: service_completed_successfully
     command:
-      - python3
-      - -m
-      - uvicorn
-      - services.gateway.main:app
-      - --host
-      - "0.0.0.0"
-      - --port
-      - "8010"
+      - bash
+      - -c
+      - |
+        echo "Running database migrations..."
+        alembic upgrade head
+        echo "Starting gateway..."
+        exec python3 -m uvicorn services.gateway.main:app --host 0.0.0.0 --port 8010
     environment:
       <<: *agent-env
       PORT: "8010"
