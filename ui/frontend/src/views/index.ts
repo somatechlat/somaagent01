@@ -20,3 +20,7 @@ export { EogMemory } from './eog-memory.js';
 export { EogCognitive } from './eog-cognitive.js';
 export { EogTools } from './eog-tools.js';
 export { EogAdmin } from './eog-admin.js';
+
+// Platform Views (God Mode)
+export { EogPlatformDashboard } from './eog-platform-dashboard.js';
+export { EogTenants } from './eog-tenants.js';
