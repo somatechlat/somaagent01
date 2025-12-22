@@ -70,21 +70,14 @@ def health_check(request):
 
 
 # Import and register endpoint routers
-def register_routers():
-    """Register all endpoint routers."""
-    # These will be imported when the modules exist
-    # from api.endpoints import auth, settings, themes, modes, memory, tools, cognitive, admin
-    # 
-    # api.add_router("/auth", auth.router, tags=["Authentication"])
-    # api.add_router("/settings", settings.router, tags=["Settings"])
-    # api.add_router("/themes", themes.router, tags=["Themes"])
-    # api.add_router("/modes", modes.router, tags=["Agent Modes"])
-    # api.add_router("/memory", memory.router, tags=["Memory"])
-    # api.add_router("/tools", tools.router, tags=["Tools"])
-    # api.add_router("/cognitive", cognitive.router, tags=["Cognitive"])
-    # api.add_router("/admin", admin.router, tags=["Admin"])
-    pass
+from api.endpoints.settings import router as settings_router
+from api.endpoints.themes import router as themes_router
+from api.endpoints.modes import router as modes_router
+from api.endpoints.memory import router as memory_router
 
+# Register all routers
+api.add_router("/settings", settings_router)
+api.add_router("/themes", themes_router)
+api.add_router("/modes", modes_router)
+api.add_router("/memory", memory_router)
 
-# Call register on module load
-register_routers()
