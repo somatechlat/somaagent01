@@ -1,0 +1,189 @@
+/**
+ * Eye of God CSS Tokens (Design System)
+ * Per Eye of God UIX Design Section 4.1
+ *
+ * VIBE COMPLIANT:
+ * - Real CSS custom properties
+ * - Supports theming via AgentSkin
+ * - Dark mode optimized
+ */
+
+:root {
+    /* ==========================================================================
+       COLORS - Background
+       ========================================================================== */
+    --eog-bg-void: #0f172a;
+    --eog-bg-base: #1e293b;
+    --eog-surface: rgba(30, 41, 59, 0.85);
+    --eog-surface-hover: rgba(51, 65, 85, 0.9);
+
+    /* ==========================================================================
+       COLORS - Text
+       ========================================================================== */
+    --eog-text-main: #e2e8f0;
+    --eog-text-dim: #64748b;
+    --eog-text-bright: #f8fafc;
+
+    /* ==========================================================================
+       COLORS - Accent
+       ========================================================================== */
+    --eog-accent: #94a3b8;
+    --eog-accent-hover: #cbd5e1;
+
+    /* ==========================================================================
+       COLORS - Semantic
+       ========================================================================== */
+    --eog-success: #22c55e;
+    --eog-warning: #eab308;
+    --eog-danger: #ef4444;
+    --eog-info: #3b82f6;
+
+    /* ==========================================================================
+       COLORS - Borders
+       ========================================================================== */
+    --eog-border-color: rgba(255, 255, 255, 0.05);
+    --eog-border-hover: rgba(255, 255, 255, 0.1);
+    --eog-glass-border: rgba(255, 255, 255, 0.08);
+
+    /* ==========================================================================
+       TYPOGRAPHY
+       ========================================================================== */
+    --eog-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --eog-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+    --eog-text-xs: 11px;
+    --eog-text-sm: 13px;
+    --eog-text-base: 14px;
+    --eog-text-lg: 16px;
+    --eog-text-xl: 18px;
+    --eog-text-2xl: 24px;
+
+    --eog-leading-tight: 1.25;
+    --eog-leading-normal: 1.5;
+    --eog-leading-relaxed: 1.75;
+
+    /* ==========================================================================
+       SPACING
+       ========================================================================== */
+    --eog-spacing-xs: 4px;
+    --eog-spacing-sm: 8px;
+    --eog-spacing-md: 16px;
+    --eog-spacing-lg: 24px;
+    --eog-spacing-xl: 32px;
+    --eog-spacing-2xl: 48px;
+
+    /* ==========================================================================
+       BORDERS & RADIUS
+       ========================================================================== */
+    --eog-radius-sm: 4px;
+    --eog-radius-md: 8px;
+    --eog-radius-lg: 12px;
+    --eog-radius-xl: 16px;
+    --eog-radius-full: 9999px;
+
+    /* ==========================================================================
+       SHADOWS
+       ========================================================================== */
+    --eog-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --eog-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --eog-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --eog-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
+
+    /* ==========================================================================
+       TRANSITIONS
+       ========================================================================== */
+    --eog-transition-fast: 0.1s ease;
+    --eog-transition-normal: 0.2s ease;
+    --eog-transition-slow: 0.3s ease;
+
+    /* ==========================================================================
+       Z-INDEX
+       ========================================================================== */
+    --eog-z-dropdown: 100;
+    --eog-z-modal: 200;
+    --eog-z-overlay: 300;
+    --eog-z-toast: 400;
+    --eog-z-tooltip: 500;
+
+    /* ==========================================================================
+       LAYOUT
+       ========================================================================== */
+    --eog-sidebar-width: 280px;
+    --eog-header-height: 56px;
+    --eog-footer-height: 48px;
+}
+
+/* ==========================================================================
+   CSS RESET
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+* {
+    margin: 0;
+}
+
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--eog-font-sans);
+    font-size: var(--eog-text-base);
+    line-height: var(--eog-leading-normal);
+    color: var(--eog-text-main);
+    background: var(--eog-bg-void);
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+    display: block;
+    max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+    font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    overflow-wrap: break-word;
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.glass {
+    background: var(--eog-surface);
+    border: 1px solid var(--eog-glass-border);
+    backdrop-filter: blur(12px);
+}
