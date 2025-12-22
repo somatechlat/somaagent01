@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye of God — Admin Console</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <style>
+        /* ==========================================
+           EYE OF GOD — MINIMAL BLACK/WHITE/GREY
+           Canvas Layout + Voice Controls
+           ========================================== */
+
+        :root {
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            /* Minimal Black/White/Grey Palette */
+            --bg: #fafafa;
+            --bg-elevated: #ffffff;
+            --bg-subtle: #f5f5f5;
+            --bg-muted: #eeeeee;
+
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+
+            --border: #e5e5e5;
+            --border-subtle: #f0f0f0;
+
+            --accent: #000000;
+
+            /* Subtle Status Colors (minimal, elegant) */
+            --success: #22c55e;
+            --success-subtle: rgba(34, 197, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-subtle: rgba(245, 158, 11, 0.1);
+            --error: #ef4444;
+            --error-subtle: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+            --info-subtle: rgba(59, 130, 246, 0.1);
+
+            /* Glassmorphism */
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            --glass-blur: 12px;
+
+            --radius: 8px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --bg: #0a0a0a;
+            --bg-elevated: #141414;
+            --bg-subtle: #1a1a1a;
+            --bg-muted: #262626;
+
+            --text: #fafafa;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+
+            --border: #262626;
+            --border-subtle: #1f1f1f;
+
+            --accent: #ffffff;
+
+            /* Dark Glassmorphism */
+            --glass-bg: rgba(20, 20, 20, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== LAYOUT ===== */
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-elevated);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            margin-bottom: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--bg);
+        }
+
+        .logo-icon .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        /* Mode Badges */
+        .mode-selector {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .mode-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            background: var(--bg-subtle);
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .mode-badge:hover {
+            color: var(--text-secondary);
+        }
+
+        .mode-badge.active {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        /* Search */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-subtle);
+            border-radius: var(--radius);
+            margin-top: 12px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            font: inherit;
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-bar .material-icons-outlined {
+            font-size: 18px;
+            color: var(--text-muted);
+        }
+
+        /* Navigation */
+        .nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .nav-section {
+            margin-bottom: 16px;
+        }
+
+        .nav-title {
+            padding: 8px 12px 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-subtle);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: var(--bg-muted);
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .nav-item .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        .nav-count {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-subtle);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* User */
+        .sidebar-footer {
+            border-top: 1px solid var(--border-subtle);
+            padding: 12px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .user-menu:hover {
+            background: var(--bg-subtle);
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            color: var(--bg);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .user-status {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ===== MAIN CONTENT (CANVAS LAYOUT) ===== */
+        .main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ===== CANVAS (Document View) ===== */
+        .canvas {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+            border-right: 1px solid var(--border-subtle);
+            transition: all 0.3s ease;
+            min-width: 0;
+        }
+
+        .canvas.hidden {
+            flex: 0;
+            width: 0;
+            min-width: 0;
+            overflow: hidden;
+            border-right: none;
+            opacity: 0;
+        }
+
+        .canvas-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-elevated);
+            gap: 8px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb span {
+            color: var(--text);
+        }
+
+        .breadcrumb .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .canvas-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 4px;
+        }
+
+        .canvas-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .canvas-btn:hover {
+            background: var(--bg-subtle);
+            color: var(--text);
+        }
+
+        .canvas-btn .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        .canvas-toolbar {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-elevated);
+            gap: 12px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--bg-subtle);
+            color: var(--text);
+        }
+
+        .toolbar-btn .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            margin: 0 4px;
+        }
+
+        .canvas-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px;
+            background: var(--bg-subtle);
+        }
+
+        .document {
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            padding: 48px 56px;
+            min-height: 800px;
+        }
+
+        .doc-header {
+            margin-bottom: 32px;
+        }
+
+        .doc-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .doc-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .doc-section {
+            margin-bottom: 24px;
+        }
+
+        .doc-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .doc-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        .doc-text p {
+            margin-bottom: 12px;
+        }
+
+        .doc-list {
+            padding-left: 20px;
+            margin: 12px 0;
+        }
+
+        .doc-list li {
+            margin-bottom: 6px;
+        }
+
+        /* ===== CHAT PANEL ===== */
+        .chat-panel {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-left: 1px solid var(--glass-border);
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            box-shadow: -4px 0 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .chat-panel.expanded {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .chat-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .chat-title .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        .new-chat-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .new-chat-btn:hover {
+            opacity: 0.9;
+        }
+
+        .new-chat-btn .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* Welcome State */
+        .welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .welcome-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-subtle);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .welcome-icon .material-icons-outlined {
+            font-size: 24px;
+            color: var(--text-secondary);
+        }
+
+        .welcome-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .welcome-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 16px 20px;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 100px;
+        }
+
+        .quick-action:hover {
+            border-color: var(--border);
+            background: var(--bg-muted);
+        }
+
+        .quick-action .material-icons-outlined {
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
+        .quick-action span {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Messages */
+        .message {
+            margin-bottom: 16px;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .message-author {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .message-content {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .message.user {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .message.user .message-header {
+            justify-content: flex-end;
+        }
+
+        .message.user .message-content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            padding: 10px 14px;
+            border-radius: var(--radius-lg);
+            border-bottom-right-radius: 4px;
+            max-width: 85%;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .message.agent .message-content {
+            max-width: 95%;
+        }
+
+        /* Voice Message */
+        .voice-message {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            max-width: 280px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .voice-play {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .voice-play:hover {
+            opacity: 0.9;
+        }
+
+        .voice-play .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .voice-waveform {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 24px;
+        }
+
+        .waveform-bar {
+            width: 3px;
+            background: var(--text-muted);
+            border-radius: 2px;
+            transition: all 0.1s;
+        }
+
+        .waveform-bar.active {
+            background: var(--accent);
+        }
+
+        .voice-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+        }
+
+        .voice-status {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Typing Indicator */
+        .typing {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 14px;
+            background: var(--bg-subtle);
+            border-radius: var(--radius-lg);
+            max-width: fit-content;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: dot-bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes dot-bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Find in Document */
+        .find-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-top: 1px solid var(--border-subtle);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .find-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-subtle);
+            border-radius: var(--radius);
+            flex: 1;
+        }
+
+        .find-input input {
+            background: none;
+            border: none;
+            outline: none;
+            font: inherit;
+            font-size: 13px;
+            color: var(--text);
+            width: 100%;
+        }
+
+        .find-input input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .find-input .material-icons-outlined {
+            font-size: 16px;
+            color: var(--text-muted);
+        }
+
+        /* Chat Input */
+        .chat-input {
+            padding: 12px 16px 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .input-box {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--accent);
+        }
+
+        .input-box input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            font: inherit;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .input-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .input-btn:hover {
+            background: var(--bg-muted);
+            color: var(--text);
+        }
+
+        .input-btn.primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .input-btn.primary:hover {
+            opacity: 0.9;
+        }
+
+        .input-btn .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        /* Voice Input Active */
+        .input-btn.recording {
+            background: #ef4444;
+            color: white;
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+            }
+        }
+
+        .chat-footer {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding-top: 8px;
+        }
+
+        /* ===== VOICE CONTROLS (Floating) ===== */
+        .voice-controls {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+            z-index: 1000;
+        }
+
+        .voice-control-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--bg-subtle);
+            border: none;
+            border-radius: var(--radius-full);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .voice-control-btn:hover {
+            background: var(--bg-muted);
+            color: var(--text);
+        }
+
+        .voice-control-btn.active {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .voice-control-btn .material-icons-outlined {
+            font-size: 22px;
+        }
+
+        .voice-control-divider {
+            width: 1px;
+            height: 32px;
+            background: var(--border);
+        }
+
+        .voice-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            background: var(--accent);
+            color: var(--bg);
+            border-radius: var(--radius-full);
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .sidebar {
+                display: none;
+            }
+
+            .canvas {
+                border-right: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .chat-panel {
+                width: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                display: none;
+            }
+
+            .chat-panel.open {
+                display: flex;
+            }
+        }
+
+        /* ===== ADMIN COMPONENTS ===== */
+
+        /* Admin Tables */
+        .admin-table {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr 1fr;
+            gap: 16px;
+            padding: 12px 16px;
+            background: var(--bg-subtle);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr 1fr;
+            gap: 16px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            align-items: center;
+            transition: background 0.15s;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-row:hover {
+            background: var(--bg-subtle);
+        }
+
+        .table-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .avatar-sm {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: var(--bg);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            background: var(--accent);
+            color: var(--bg);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .badge.secondary {
+            background: var(--bg-muted);
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.active {
+            background: var(--success);
+        }
+
+        .status-dot.inactive {
+            background: var(--text-muted);
+        }
+
+        .status-dot.warning {
+            background: var(--warning);
+        }
+
+        .status-dot.error {
+            background: var(--error);
+        }
+
+        .action-btn-sm {
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .action-btn-sm:hover {
+            background: var(--bg-muted);
+            color: var(--text);
+        }
+
+        .action-btn-sm .material-icons-outlined {
+            font-size: 16px;
+        }
+
+        .toolbar-search {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font: inherit;
+            font-size: 12px;
+            color: var(--text);
+            width: 200px;
+            outline: none;
+            transition: all 0.15s;
+        }
+
+        .toolbar-search:focus {
+            border-color: var(--accent);
+        }
+
+        .toolbar-search::placeholder {
+            color: var(--text-muted);
+        }
+
+        .primary-btn {
+            background: var(--accent) !important;
+            color: var(--bg) !important;
+        }
+
+        /* Role Cards Grid */
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .role-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .role-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .role-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .role-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .permissions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .perm-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .perm-item .material-icons-outlined {
+            font-size: 14px;
+        }
+
+        .perm-item.active .material-icons-outlined {
+            color: var(--success);
+        }
+
+        .perm-item.inactive .material-icons-outlined {
+            color: var(--error);
+        }
+
+        .edit-role-btn {
+            margin-top: 16px;
+            width: 100%;
+            padding: 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .edit-role-btn:hover {
+            background: var(--bg-subtle);
+            color: var(--text);
+        }
+
+        /* Models Grid */
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .model-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--glass-shadow);
+            transition: all 0.2s;
+        }
+
+        .model-card:hover {
+            border-color: var(--border);
+        }
+
+        .model-card.default {
+            border-color: var(--accent);
+        }
+
+        .model-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .model-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        .model-header .material-icons-outlined {
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
+        .model-card.default .model-header .material-icons-outlined {
+            color: var(--warning);
+        }
+
+        .model-provider {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .model-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .tag {
+            padding: 3px 8px;
+            background: var(--bg-muted);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .tag.default-tag {
+            background: var(--success-subtle);
+            color: var(--success);
+        }
+
+        .model-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .model-stats .stat {
+            display: flex;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .model-stats .stat span:first-child {
+            font-weight: 500;
+        }
+
+        .model-action-btn {
+            width: 100%;
+            padding: 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .model-action-btn:hover {
+            background: var(--bg-subtle);
+            color: var(--text);
+        }
+
+        /* Settings */
+        .settings-container {
+            display: flex;
+            gap: 24px;
+        }
+
+        .settings-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 160px;
+        }
+
+        .settings-tab {
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .settings-tab:hover {
+            background: var(--bg-subtle);
+            color: var(--text);
+        }
+
+        .settings-tab.active {
+            background: var(--bg-muted);
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .settings-content {
+            flex: 1;
+        }
+
+        .settings-panel {
+            display: none;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .settings-panel.active {
+            display: block;
+        }
+
+        .settings-panel h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            transition: all 0.15s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 13px;
+            color: var(--text);
+            resize: vertical;
+            outline: none;
+            transition: all 0.15s;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .form-slider {
+            width: calc(100% - 50px);
+            accent-color: var(--accent);
+        }
+
+        .slider-value {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        .radio-cards {
+            display: flex;
+            gap: 12px;
+        }
+
+        .radio-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            background: var(--bg-subtle);
+            border: 2px solid transparent;
+            border-radius: var(--radius);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+
+        .radio-card:hover {
+            border-color: var(--border);
+        }
+
+        .radio-card:has(input:checked) {
+            border-color: var(--accent);
+            background: var(--bg-muted);
+        }
+
+        .radio-card input {
+            display: none;
+        }
+
+        .radio-card .material-icons-outlined {
+            font-size: 24px;
+            color: var(--text-secondary);
+        }
+
+        .radio-card span:last-child {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Servers Grid */
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .server-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .server-card.online {
+            border-left: 3px solid var(--success);
+        }
+
+        .server-card.offline {
+            border-left: 3px solid var(--text-muted);
+        }
+
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .server-card h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .server-url {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-bottom: 16px;
+        }
+
+        .server-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .stat-item span:first-child {
+            width: 60px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-muted);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            display: block;
+            height: 100%;
+            width: var(--progress);
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .server-action-btn {
+            margin-top: 12px;
+            width: 100%;
+            padding: 8px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: var(--radius);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .server-action-btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <span class="material-icons-outlined">visibility</span>
+                    </div>
+                    <span class="logo-text">Eye of God</span>
+                </div>
+
+                <div class="mode-selector">
+                    <span class="mode-badge">STD</span>
+                    <span class="mode-badge">TRN</span>
+                    <span class="mode-badge active">ADM</span>
+                    <span class="mode-badge">DEV</span>
+                    <span class="mode-badge">RO</span>
+                </div>
+
+                <div class="search-bar">
+                    <span class="material-icons-outlined">search</span>
+                    <input type="text" placeholder="Search...">
+                </div>
+            </div>
+
+            <nav class="nav">
+                <div class="nav-section">
+                    <div class="nav-title">Core</div>
+                    <a class="nav-item active" href="#">
+                        <span class="material-icons-outlined">chat_bubble_outline</span>
+                        Chat
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">description</span>
+                        Documents
+                        <span class="nav-count">12</span>
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">psychology</span>
+                        Memory
+                        <span class="nav-count">1.2K</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Tools</div>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">build</span>
+                        Tool Catalog
+                        <span class="nav-count">24</span>
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">extension</span>
+                        MCP Servers
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">hub</span>
+                        Cognitive
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Admin</div>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">group</span>
+                        Users
+                        <span class="nav-count">8</span>
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">admin_panel_settings</span>
+                        Roles
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">dns</span>
+                        Servers
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">model_training</span>
+                        Models
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">System</div>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">settings</span>
+                        Settings
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">palette</span>
+                        Themes
+                    </a>
+                    <a class="nav-item" href="#">
+                        <span class="material-icons-outlined">history</span>
+                        Audit Log
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-menu">
+                    <div class="avatar">SA</div>
+                    <div class="user-info">
+                        <div class="user-name">SomaAgent</div>
+                        <div class="user-status">Admin • Online</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main (Canvas Layout) -->
+        <main class="main">
+            <!-- Canvas (Document View) -->
+            <section class="canvas" id="canvasDocuments" data-view="documents">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">folder</span>
+                        Documents
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>System Configuration</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn" title="Bookmark">
+                            <span class="material-icons-outlined">bookmark_border</span>
+                        </button>
+                        <button class="canvas-btn" title="Info">
+                            <span class="material-icons-outlined">info_outline</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close Canvas">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" title="Search">
+                            <span class="material-icons-outlined">search</span>
+                        </button>
+                        <button class="toolbar-btn">
+                            <span>1</span>
+                            <span>/</span>
+                            <span>13</span>
+                        </button>
+                    </div>
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" title="Zoom Out">
+                            <span class="material-icons-outlined">remove</span>
+                        </button>
+                        <button class="toolbar-btn">100%</button>
+                        <button class="toolbar-btn" title="Zoom In">
+                            <span class="material-icons-outlined">add</span>
+                        </button>
+                    </div>
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" title="Fullscreen">
+                            <span class="material-icons-outlined">fullscreen</span>
+                        </button>
+                        <button class="toolbar-btn" title="Print">
+                            <span class="material-icons-outlined">print</span>
+                        </button>
+                        <button class="toolbar-btn" title="More">
+                            <span class="material-icons-outlined">more_horiz</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-content">
+                    <div class="document">
+                        <div class="doc-header">
+                            <h1 class="doc-title">SomaAgent01 System Configuration</h1>
+                            <p class="doc-meta">Version 2.1 • Last updated: December 22, 2025</p>
+                        </div>
+
+                        <div class="doc-section">
+                            <h2 class="doc-section-title">1. Infrastructure Overview</h2>
+                            <div class="doc-text">
+                                <p>This document outlines the complete system configuration for the SomaAgent01
+                                    deployment, including server infrastructure, model configurations, and integration
+                                    settings.</p>
+                                <ul class="doc-list">
+                                    <li>Primary API Gateway: Port 8020 (Django Ninja)</li>
+                                    <li>WebSocket Server: Port 8021 (Django Channels)</li>
+                                    <li>SomaBrain Memory: Port 8030</li>
+                                    <li>AgentVoiceBox: Port 8035</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="doc-section">
+                            <h2 class="doc-section-title">2. Agent Modes</h2>
+                            <div class="doc-text">
+                                <p>The system supports six operational modes, each with specific permission levels:</p>
+                                <ul class="doc-list">
+                                    <li><strong>STD</strong> - Standard user operations</li>
+                                    <li><strong>TRN</strong> - Training mode with cognitive parameter access</li>
+                                    <li><strong>ADM</strong> - Full administrative control</li>
+                                    <li><strong>DEV</strong> - Developer mode with debug access</li>
+                                    <li><strong>RO</strong> - Read-only mode</li>
+                                    <li><strong>DGR</strong> - Degraded mode (failover)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Admin View -->
+            <section class="canvas hidden" id="canvasUsers" data-view="users">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">group</span>
+                        Admin
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>Users</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn primary-btn" title="Add User" onclick="showModal('addUser')">
+                            <span class="material-icons-outlined">person_add</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" title="Search">
+                            <span class="material-icons-outlined">search</span>
+                        </button>
+                        <input type="text" class="toolbar-search" placeholder="Search users...">
+                    </div>
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn">All Roles</button>
+                        <button class="toolbar-btn">Active Only</button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 20px;">
+                    <div class="admin-table">
+                        <div class="table-header">
+                            <div class="table-cell">User</div>
+                            <div class="table-cell">Email</div>
+                            <div class="table-cell">Role</div>
+                            <div class="table-cell">Status</div>
+                            <div class="table-cell">Actions</div>
+                        </div>
+                        <div class="table-row">
+                            <div class="table-cell">
+                                <div class="avatar-sm">JD</div> John Doe
+                            </div>
+                            <div class="table-cell">john@example.com</div>
+                            <div class="table-cell"><span class="badge">Admin</span></div>
+                            <div class="table-cell"><span class="status-dot active"></span> Active</div>
+                            <div class="table-cell">
+                                <button class="action-btn-sm" title="Edit"><span
+                                        class="material-icons-outlined">edit</span></button>
+                                <button class="action-btn-sm" title="Delete"><span
+                                        class="material-icons-outlined">delete</span></button>
+                            </div>
+                        </div>
+                        <div class="table-row">
+                            <div class="table-cell">
+                                <div class="avatar-sm">SA</div> SomaAgent
+                            </div>
+                            <div class="table-cell">agent@soma.io</div>
+                            <div class="table-cell"><span class="badge">Owner</span></div>
+                            <div class="table-cell"><span class="status-dot active"></span> Active</div>
+                            <div class="table-cell">
+                                <button class="action-btn-sm" title="Edit"><span
+                                        class="material-icons-outlined">edit</span></button>
+                            </div>
+                        </div>
+                        <div class="table-row">
+                            <div class="table-cell">
+                                <div class="avatar-sm">TU</div> Test User
+                            </div>
+                            <div class="table-cell">test@example.com</div>
+                            <div class="table-cell"><span class="badge secondary">Viewer</span></div>
+                            <div class="table-cell"><span class="status-dot inactive"></span> Inactive</div>
+                            <div class="table-cell">
+                                <button class="action-btn-sm" title="Edit"><span
+                                        class="material-icons-outlined">edit</span></button>
+                                <button class="action-btn-sm" title="Delete"><span
+                                        class="material-icons-outlined">delete</span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Roles Admin View -->
+            <section class="canvas hidden" id="canvasRoles" data-view="roles">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">admin_panel_settings</span>
+                        Admin
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>Roles & Permissions</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn primary-btn" title="Add Role">
+                            <span class="material-icons-outlined">add</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 20px;">
+                    <div class="roles-grid">
+                        <div class="role-card">
+                            <div class="role-header">
+                                <h3>Owner</h3>
+                                <span class="badge">System</span>
+                            </div>
+                            <p class="role-desc">Full system access with all permissions</p>
+                            <div class="permissions-list">
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> All
+                                    Permissions</div>
+                            </div>
+                        </div>
+                        <div class="role-card">
+                            <div class="role-header">
+                                <h3>Admin</h3>
+                                <span class="badge">Built-in</span>
+                            </div>
+                            <p class="role-desc">Administrative access except owner-level</p>
+                            <div class="permissions-list">
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> Manage
+                                    Users</div>
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> Manage
+                                    Models</div>
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> View
+                                    Audit Log</div>
+                                <div class="perm-item inactive"><span class="material-icons-outlined">close</span>
+                                    Delete Tenant</div>
+                            </div>
+                        </div>
+                        <div class="role-card">
+                            <div class="role-header">
+                                <h3>Developer</h3>
+                                <span class="badge secondary">Custom</span>
+                            </div>
+                            <p class="role-desc">Development and debugging access</p>
+                            <div class="permissions-list">
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> Access
+                                    DEV Mode</div>
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> View
+                                    Memory</div>
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> Execute
+                                    Tools</div>
+                            </div>
+                            <button class="edit-role-btn">Edit Role</button>
+                        </div>
+                        <div class="role-card">
+                            <div class="role-header">
+                                <h3>Viewer</h3>
+                                <span class="badge secondary">Custom</span>
+                            </div>
+                            <p class="role-desc">Read-only access to conversations</p>
+                            <div class="permissions-list">
+                                <div class="perm-item active"><span class="material-icons-outlined">check</span> View
+                                    Conversations</div>
+                                <div class="perm-item inactive"><span class="material-icons-outlined">close</span> Send
+                                    Messages</div>
+                            </div>
+                            <button class="edit-role-btn">Edit Role</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Models Admin View -->
+            <section class="canvas hidden" id="canvasModels" data-view="models">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">model_training</span>
+                        Admin
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>Models</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn primary-btn" title="Add Model">
+                            <span class="material-icons-outlined">add</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn active">All</button>
+                        <button class="toolbar-btn">Chat</button>
+                        <button class="toolbar-btn">Vision</button>
+                        <button class="toolbar-btn">Embedding</button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 20px;">
+                    <div class="models-grid">
+                        <div class="model-card default">
+                            <div class="model-header">
+                                <span class="material-icons-outlined">star</span>
+                                <h3>claude-3.5-sonnet</h3>
+                            </div>
+                            <p class="model-provider">Anthropic</p>
+                            <div class="model-tags">
+                                <span class="tag">Chat</span>
+                                <span class="tag">Vision</span>
+                                <span class="tag default-tag">Default</span>
+                            </div>
+                            <div class="model-stats">
+                                <div class="stat"><span>Context:</span> 200K</div>
+                                <div class="stat"><span>Cost:</span> $3/$15 per 1M</div>
+                            </div>
+                            <button class="model-action-btn">Configure</button>
+                        </div>
+                        <div class="model-card">
+                            <div class="model-header">
+                                <span class="material-icons-outlined">smart_toy</span>
+                                <h3>gpt-4o</h3>
+                            </div>
+                            <p class="model-provider">OpenAI</p>
+                            <div class="model-tags">
+                                <span class="tag">Chat</span>
+                                <span class="tag">Vision</span>
+                            </div>
+                            <div class="model-stats">
+                                <div class="stat"><span>Context:</span> 128K</div>
+                                <div class="stat"><span>Cost:</span> $5/$15 per 1M</div>
+                            </div>
+                            <button class="model-action-btn">Set Default</button>
+                        </div>
+                        <div class="model-card">
+                            <div class="model-header">
+                                <span class="material-icons-outlined">psychology</span>
+                                <h3>text-embedding-3-large</h3>
+                            </div>
+                            <p class="model-provider">OpenAI</p>
+                            <div class="model-tags">
+                                <span class="tag">Embedding</span>
+                                <span class="tag default-tag">Default</span>
+                            </div>
+                            <div class="model-stats">
+                                <div class="stat"><span>Dimensions:</span> 3072</div>
+                                <div class="stat"><span>Cost:</span> $0.13 per 1M</div>
+                            </div>
+                            <button class="model-action-btn">Configure</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings View -->
+            <section class="canvas hidden" id="canvasSettings" data-view="settings">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">settings</span>
+                        <span>Settings</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 20px;">
+                    <div class="settings-container">
+                        <div class="settings-nav">
+                            <button class="settings-tab active" data-tab="agent">Agent</button>
+                            <button class="settings-tab" data-tab="connectivity">Connectivity</button>
+                            <button class="settings-tab" data-tab="voice">Voice</button>
+                            <button class="settings-tab" data-tab="external">External</button>
+                            <button class="settings-tab" data-tab="system">System</button>
+                        </div>
+                        <div class="settings-content">
+                            <div class="settings-panel active" id="settingsAgent">
+                                <h3>Agent Configuration</h3>
+                                <div class="form-group">
+                                    <label>Agent Name</label>
+                                    <input type="text" class="form-input" value="SomaAgent01">
+                                </div>
+                                <div class="form-group">
+                                    <label>System Prompt</label>
+                                    <textarea class="form-textarea"
+                                        rows="4">You are a helpful AI assistant...</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Temperature</label>
+                                    <input type="range" class="form-slider" min="0" max="2" step="0.1" value="0.7">
+                                    <span class="slider-value">0.7</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>Max Tokens</label>
+                                    <input type="number" class="form-input" value="4096">
+                                </div>
+                            </div>
+                            <div class="settings-panel" id="settingsConnectivity">
+                                <h3>API Connections</h3>
+                                <div class="form-group">
+                                    <label>SomaBrain URL</label>
+                                    <input type="text" class="form-input" value="http://localhost:8030">
+                                </div>
+                                <div class="form-group">
+                                    <label>AgentVoiceBox URL</label>
+                                    <input type="text" class="form-input" value="http://localhost:8035">
+                                </div>
+                                <div class="form-group">
+                                    <label>WebSocket URL</label>
+                                    <input type="text" class="form-input" value="ws://localhost:8021">
+                                </div>
+                            </div>
+                            <div class="settings-panel" id="settingsVoice">
+                                <h3>Voice Settings</h3>
+                                <div class="form-group">
+                                    <label>Voice Provider</label>
+                                    <div class="radio-cards">
+                                        <label class="radio-card">
+                                            <input type="radio" name="voiceProvider" value="disabled" checked>
+                                            <span class="material-icons-outlined">mic_off</span>
+                                            <span>Disabled</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="voiceProvider" value="local">
+                                            <span class="material-icons-outlined">computer</span>
+                                            <span>Local</span>
+                                        </label>
+                                        <label class="radio-card">
+                                            <input type="radio" name="voiceProvider" value="agentvoicebox">
+                                            <span class="material-icons-outlined">cloud</span>
+                                            <span>AgentVoiceBox</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Servers Admin View -->
+            <section class="canvas hidden" id="canvasServers" data-view="servers">
+                <div class="canvas-header">
+                    <div class="breadcrumb">
+                        <span class="material-icons-outlined">dns</span>
+                        Admin
+                        <span class="material-icons-outlined">chevron_right</span>
+                        <span>Servers</span>
+                    </div>
+                    <div class="canvas-actions">
+                        <button class="canvas-btn primary-btn" title="Add Server">
+                            <span class="material-icons-outlined">add</span>
+                        </button>
+                        <button class="canvas-btn close-canvas-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-content" style="padding: 20px;">
+                    <div class="servers-grid">
+                        <div class="server-card online">
+                            <div class="server-status"><span class="status-dot active"></span> Online</div>
+                            <h3>API Gateway</h3>
+                            <p class="server-url">localhost:8020</p>
+                            <div class="server-stats">
+                                <div class="stat-item"><span>CPU</span>
+                                    <div class="progress-bar" style="--progress: 35%"></div><span>35%</span>
+                                </div>
+                                <div class="stat-item"><span>RAM</span>
+                                    <div class="progress-bar" style="--progress: 62%"></div><span>62%</span>
+                                </div>
+                                <div class="stat-item"><span>Requests</span><span>1.2K/s</span></div>
+                            </div>
+                        </div>
+                        <div class="server-card online">
+                            <div class="server-status"><span class="status-dot active"></span> Online</div>
+                            <h3>SomaBrain</h3>
+                            <p class="server-url">localhost:8030</p>
+                            <div class="server-stats">
+                                <div class="stat-item"><span>CPU</span>
+                                    <div class="progress-bar" style="--progress: 45%"></div><span>45%</span>
+                                </div>
+                                <div class="stat-item"><span>RAM</span>
+                                    <div class="progress-bar" style="--progress: 78%"></div><span>78%</span>
+                                </div>
+                                <div class="stat-item"><span>Memories</span><span>1.2K</span></div>
+                            </div>
+                        </div>
+                        <div class="server-card offline">
+                            <div class="server-status"><span class="status-dot inactive"></span> Offline</div>
+                            <h3>AgentVoiceBox</h3>
+                            <p class="server-url">localhost:8035</p>
+                            <div class="server-stats">
+                                <div class="stat-item"><span>Status</span><span>Not Running</span></div>
+                            </div>
+                            <button class="server-action-btn">Start Server</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat Panel -->
+            <aside class="chat-panel">
+                <div class="chat-header">
+                    <button class="canvas-btn" id="openCanvasBtn" title="Open Canvas" style="display: none;">
+                        <span class="material-icons-outlined">article</span>
+                    </button>
+                    <div class="chat-title">
+                        <span class="material-icons-outlined">smart_toy</span>
+                        AI Chat
+                    </div>
+                    <button class="new-chat-btn">
+                        <span class="material-icons-outlined">add</span>
+                        New Chat
+                    </button>
+                </div>
+
+                <div class="chat-messages">
+                    <!-- Messages will go here when there's a conversation -->
+
+                    <!-- User Voice Message -->
+                    <div class="message user">
+                        <div class="message-header">
+                            <span class="message-author">You</span>
+                            <span class="message-time">2 min ago</span>
+                        </div>
+                        <div class="voice-message">
+                            <button class="voice-play">
+                                <span class="material-icons-outlined">play_arrow</span>
+                            </button>
+                            <div class="voice-waveform" id="waveform1"></div>
+                            <span class="voice-time">0:23</span>
+                        </div>
+                    </div>
+
+                    <!-- Agent Response -->
+                    <div class="message agent">
+                        <div class="message-header">
+                            <span class="message-author">Eye of God</span>
+                            <span class="message-time">1 min ago</span>
+                        </div>
+                        <div class="voice-message">
+                            <button class="voice-play">
+                                <span class="material-icons-outlined">play_arrow</span>
+                            </button>
+                            <div class="voice-waveform" id="waveform2"></div>
+                            <span class="voice-time">0:45</span>
+                        </div>
+                        <div class="voice-status">Generating transcript...</div>
+                    </div>
+
+                    <!-- Text Message -->
+                    <div class="message user">
+                        <div class="message-header">
+                            <span class="message-author">You</span>
+                            <span class="message-time">30 sec ago</span>
+                        </div>
+                        <div class="message-content">
+                            What's the current status of the server configuration?
+                        </div>
+                    </div>
+
+                    <!-- Agent Typing -->
+                    <div class="message agent">
+                        <div class="message-header">
+                            <span class="message-author">Eye of God</span>
+                        </div>
+                        <div class="typing">
+                            <div class="typing-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="find-bar">
+                    <div class="find-input">
+                        <span class="material-icons-outlined">search</span>
+                        <input type="text" placeholder="Find in...">
+                    </div>
+                </div>
+
+                <div class="chat-input">
+                    <div class="input-box">
+                        <button class="input-btn" title="Attach">
+                            <span class="material-icons-outlined">add</span>
+                        </button>
+                        <input type="text" placeholder="Write message...">
+                        <button class="input-btn" title="Voice" id="voiceBtn">
+                            <span class="material-icons-outlined">mic</span>
+                        </button>
+                        <button class="input-btn primary" title="Send">
+                            <span class="material-icons-outlined">arrow_upward</span>
+                        </button>
+                    </div>
+                    <div class="chat-footer">AI can make mistakes. Check important info.</div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Voice Controls (Floating) -->
+    <div class="voice-controls" id="voiceControls" style="display: none;">
+        <button class="voice-control-btn" title="Play">
+            <span class="material-icons-outlined">play_arrow</span>
+        </button>
+        <button class="voice-control-btn" title="Pause">
+            <span class="material-icons-outlined">pause</span>
+        </button>
+        <button class="voice-control-btn" title="Stop">
+            <span class="material-icons-outlined">stop</span>
+        </button>
+        <button class="voice-control-btn" title="Cancel">
+            <span class="material-icons-outlined">close</span>
+        </button>
+        <div class="voice-control-divider"></div>
+        <button class="voice-control-btn active" title="Voice Active">
+            <span class="material-icons-outlined">graphic_eq</span>
+        </button>
+        <div class="voice-control-divider"></div>
+        <button class="voice-control-btn" title="Download" style="position:relative;">
+            <span class="material-icons-outlined">download</span>
+        </button>
+        <button class="voice-control-btn" title="Queue" style="position:relative;">
+            <span class="material-icons-outlined">download</span>
+            <span class="voice-badge">12</span>
+        </button>
+    </div>
+
+    <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('eog-theme', next);
+        }
+
+        const saved = localStorage.getItem('eog-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+
+        // Mode selector
+        document.querySelectorAll('.mode-badge').forEach(badge => {
+            badge.addEventListener('click', function () {
+                document.querySelectorAll('.mode-badge').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Generate waveform bars
+        function generateWaveform(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const barCount = 30;
+            for (let i = 0; i < barCount; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'waveform-bar';
+                const height = Math.random() * 16 + 4;
+                bar.style.height = height + 'px';
+                if (i < 10) bar.classList.add('active');
+                container.appendChild(bar);
+            }
+        }
+
+        generateWaveform('waveform1');
+        generateWaveform('waveform2');
+
+        // Voice button
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceControls = document.getElementById('voiceControls');
+
+        voiceBtn.addEventListener('click', function () {
+            this.classList.toggle('recording');
+            voiceControls.style.display = this.classList.contains('recording') ? 'flex' : 'none';
+        });
+
+        console.log('👁 Eye of God — Canvas Layout + Voice Controls');
+        console.log('🎨 Minimal Black/White/Grey Design');
+
+        // DOM references
+        const chatPanel = document.querySelector('.chat-panel');
+        const openCanvasBtn = document.getElementById('openCanvasBtn');
+
+        // View mapping for navigation
+        const viewMap = {
+            'Documents': 'canvasDocuments',
+            'Users': 'canvasUsers',
+            'Roles': 'canvasRoles',
+            'Servers': 'canvasServers',
+            'Models': 'canvasModels',
+            'Settings': 'canvasSettings'
+        };
+
+        let currentView = 'canvasDocuments';
+
+        function showView(viewId) {
+            // Hide all canvas views
+            document.querySelectorAll('.canvas').forEach(c => c.classList.add('hidden'));
+            // Show target view
+            const target = document.getElementById(viewId);
+            if (target) {
+                target.classList.remove('hidden');
+                currentView = viewId;
+                chatPanel.classList.remove('expanded');
+                openCanvasBtn.style.display = 'none';
+            }
+        }
+
+        function closeCurrentView() {
+            document.querySelectorAll('.canvas').forEach(c => c.classList.add('hidden'));
+            chatPanel.classList.add('expanded');
+            openCanvasBtn.style.display = 'flex';
+        }
+
+        // Close buttons for all canvas views
+        document.querySelectorAll('.close-canvas-btn').forEach(btn => {
+            btn.addEventListener('click', closeCurrentView);
+        });
+
+        openCanvasBtn.addEventListener('click', () => showView(currentView));
+
+        // Navigation item clicks
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+
+                const text = this.textContent.trim();
+                for (const [navText, viewId] of Object.entries(viewMap)) {
+                    if (text.includes(navText)) {
+                        showView(viewId);
+                        return;
+                    }
+                }
+            });
+        });
+
+        // Settings tabs
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+                const panelId = 'settings' + this.dataset.tab.charAt(0).toUpperCase() + this.dataset.tab.slice(1);
+                document.getElementById(panelId)?.classList.add('active');
+            });
+        });
+
+        // Temperature slider
+        const tempSlider = document.querySelector('.form-slider');
+        const sliderValue = document.querySelector('.slider-value');
+        if (tempSlider && sliderValue) {
+            tempSlider.addEventListener('input', function () {
+                sliderValue.textContent = this.value;
+            });
+        }
+
+        console.log('👁 Eye of God — Admin Console Ready');
+        console.log('🎨 Minimal Black/White/Grey + Glassmorphism');
+    </script>
+</body>
+
+</html>

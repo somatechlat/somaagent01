@@ -25,23 +25,23 @@ This document defines the technical architecture for the SomaStack Unified UI De
 │  Design Tokens Layer                                                        │
 │  ├── somastack-tokens.css (CSS Custom Properties)                          │
 │  ├── Colors: neutral, primary, success, warning, error                     │
-│  ├── Typography: Geist font, 6 scale values                                │
+│  ├── Typography: Inter font, 6 scale values                                │
 │  ├── Spacing: 8 scale values (4px - 64px)                                  │
-│  └── Effects: shadows, borders, glassmorphism                              │
+│  └── Effects: minimal shadows, borders (no glassmorphism)                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Component Layer (Alpine.js)                                                │
-│  ├── Layout: Sidebar, Header, Main, Footer                                 │
-│  ├── Navigation: NavItem, NavGroup, Breadcrumb                             │
-│  ├── Data Display: StatsCard, DataTable, StatusIndicator                   │
-│  ├── Forms: Input, Select, Checkbox, Toggle, ColorPicker                   │
-│  ├── Feedback: Toast, Modal, Skeleton, Spinner                             │
-│  └── Agent-Specific: Dashboard, MemoryBrowser, VoiceInterface              │
+│  Component Layer (Lit Web Components)                                       │
+│  ├── Layout: soma-sidebar, soma-header, soma-main, soma-footer             │
+│  ├── Navigation: soma-nav-item, soma-nav-group, soma-breadcrumb            │
+│  ├── Data Display: soma-stats-card, soma-data-table, soma-status           │
+│  ├── Forms: soma-input, soma-select, soma-checkbox, soma-toggle            │
+│  ├── Feedback: soma-toast, soma-modal, soma-skeleton, soma-spinner         │
+│  └── Agent-Specific: soma-dashboard, soma-memory-browser, soma-voice       │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  State Management Layer                                                     │
-│  ├── Alpine.store('auth') - Role management                                │
-│  ├── Alpine.store('theme') - Theme state                                   │
-│  ├── Alpine.store('settings') - User preferences                           │
-│  └── Alpine.store('status') - Service health                               │
+│  State Management Layer (Lit Reactive Controllers)                          │
+│  ├── AuthController - Role management                                       │
+│  ├── ThemeController - Theme state                                          │
+│  ├── SettingsController - User preferences                                  │
+│  └── StatusController - Service health                                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Integration Layer                                                          │
 │  ├── JWT Token Parser                                                       │

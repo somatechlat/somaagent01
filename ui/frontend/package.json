@@ -1,0 +1,27 @@
+{
+    "name": "eye-of-god-ui",
+    "version": "1.0.0",
+    "description": "Eye of God UIX - SomaAgent01 Cognitive Interface",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host 0.0.0.0 --port 5173",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "lint": "eslint src --ext ts",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@lit/reactive-element": "^2.0.0",
+        "@vaadin/router": "^1.7.5"
+    },
+    "devDependencies": {
+        "@lit/context": "^1.1.6",
+        "@types/node": "^20.10.0",
+        "lit": "^3.3.1",
+        "typescript": "^5.9.3",
+        "vite": "^5.4.21"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
