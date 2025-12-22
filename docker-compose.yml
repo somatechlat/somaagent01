@@ -29,7 +29,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaagent-postgres
-    profiles: [ "core" ]
+    profiles: [ "core", "auth" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-somastack2024}
@@ -91,17 +91,22 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       CLUSTER_ID: somaagent-kraft-cluster
+      # JVM heap settings for stability
+      KAFKA_HEAP_OPTS: "-Xmx768m -Xms512m"
     volumes:
       - somaagent_kafka_data:/var/lib/kafka/data
     ports:
       - "20092:9092"
     healthcheck:
       <<: *common-healthcheck
-      test: [ "CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1" ]
+      test: [ "CMD-SHELL", "nc -z localhost 9092 || exit 1" ]
+      start_period: 120s
     deploy:
       resources:
         limits:
-          memory: 1.5G
+          memory: 1G
+        reservations:
+          memory: 512M
     labels:
       <<: *common-labels
       com.somastack.service: "kafka"
@@ -289,6 +294,52 @@ services:
     labels:
       <<: *common-labels
       com.somastack.service: "grafana"
+
+  # ==========================================================================
+  # IDENTITY: Keycloak 24 (Port 20880 - unique namespace)
+  # Enterprise SSO with OIDC/SAML support
+  # ==========================================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: somaagent-keycloak
+    profiles: [ "auth" ]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-postgres}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-somastack2024}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HTTP_PORT: 8080
+      KC_PROXY: edge
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+    command: start-dev
+    ports:
+      - "20880:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r
+
+            Host: localhost\r
+
+            \r
+
+            ' >&3 && cat <&3 | grep -q '200'"
+        ]
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    labels:
+      <<: *common-labels
+      com.somastack.service: "keycloak"
 
 # ==========================================================================
 # VOLUMES - Namespaced to somaagent_
