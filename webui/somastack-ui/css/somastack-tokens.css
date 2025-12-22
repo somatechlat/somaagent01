@@ -1,285 +1,191 @@
 /**
- * SomaStack Unified UI Design System - Design Tokens
- * 
- * Document ID: SOMASTACK-UI-TOKENS
- * Version: 1.0.0
- * 
- * This file defines all CSS custom properties (design tokens) for the
- * SomaStack platform. All visual attributes are centralized here to
- * ensure consistency across all applications.
- * 
- * Requirements: FR-DT-001 through FR-DT-008, FR-GL-001 through FR-GL-005
+ * SomaStack UI Design Tokens
+ * Clean, minimal SaaS dashboard aesthetic
+ * Based on STYLING-GUIDE.md reference
  */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   /* ============================================
-   * COLOR TOKENS
-   * Requirement: FR-DT-003 - 5 color palettes
+   * BACKGROUNDS
    * ============================================ */
-
-  /* Neutral Palette (10 shades) */
-  --color-neutral-50: #fafafa;
-  --color-neutral-100: #f5f5f5;
-  --color-neutral-200: #e5e5e5;
-  --color-neutral-300: #d4d4d4;
-  --color-neutral-400: #a3a3a3;
-  --color-neutral-500: #737373;
-  --color-neutral-600: #525252;
-  --color-neutral-700: #404040;
-  --color-neutral-800: #262626;
-  --color-neutral-900: #171717;
-
-  /* Primary Palette - Blue (5 shades) */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-
-  /* Success Palette - Green (3 shades) */
-  --color-success-50: #f0fdf4;
-  --color-success-500: #22c55e;
-  --color-success-600: #16a34a;
-
-  /* Warning Palette - Amber (3 shades) */
-  --color-warning-50: #fffbeb;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-
-  /* Error Palette - Red (3 shades) */
-  --color-error-50: #fef2f2;
-  --color-error-500: #ef4444;
-  --color-error-600: #dc2626;
+  --bg-page: #FFFFFF;
+  --bg-sidebar: #FAFAFA;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5F5F5;
+  --bg-active: #F0F0F0;
+  --bg-input: #FFFFFF;
+  --bg-muted: #FAFAFA;
 
   /* ============================================
-   * SEMANTIC COLOR TOKENS
+   * TEXT COLORS
    * ============================================ */
-
-  /* Backgrounds */
-  --bg-page: var(--color-neutral-50);
-  --bg-surface-1: #ffffff;
-  --bg-surface-2: rgba(255, 255, 255, 0.8);
-  --bg-surface-3: rgba(255, 255, 255, 0.6);
-  --bg-hover: rgba(0, 0, 0, 0.05);
-  --bg-active: rgba(0, 0, 0, 0.08);
-
-  /* Text Colors */
-  --text-primary: var(--color-neutral-900);
-  --text-secondary: var(--color-neutral-600);
-  --text-muted: var(--color-neutral-400);
-  --text-inverse: #ffffff;
-
-  /* Border Colors */
-  --border-default: var(--color-neutral-200);
-  --border-subtle: rgba(0, 0, 0, 0.1);
-  --border-focus: var(--color-primary-500);
-
-  /* Status Colors - Requirement: FR-SI-001 */
-  --status-healthy: var(--color-success-500);
-  --status-degraded: var(--color-warning-500);
-  --status-down: var(--color-error-500);
-  --status-unknown: var(--color-neutral-400);
-
-  /* Interactive Colors */
-  --interactive-primary: var(--color-primary-500);
-  --interactive-primary-hover: var(--color-primary-600);
-  --interactive-primary-active: var(--color-primary-700);
-  --interactive-danger: var(--color-error-500);
-  --interactive-danger-hover: var(--color-error-600);
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --text-link: #111111;
 
   /* ============================================
-   * TYPOGRAPHY TOKENS
-   * Requirement: FR-DT-005, FR-DT-006
+   * BORDERS
    * ============================================ */
+  --border-default: #E5E5E5;
+  --border-input: #D4D4D4;
+  --border-focus: #111111;
 
-  /* Font Families */
-  --font-sans: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  /* ============================================
+   * STATUS COLORS
+   * ============================================ */
+  --status-success: #22C55E;
+  --status-success-bg: #F0FDF4;
+  --status-warning: #F97316;
+  --status-warning-bg: #FFF7ED;
+  --status-error: #EF4444;
+  --status-error-bg: #FEF2F2;
+  --status-info: #3B82F6;
+  --status-info-bg: #EFF6FF;
 
-  /* Font Sizes (6 scale values) */
-  --text-xs: 0.75rem;     /* 12px */
-  --text-sm: 0.875rem;    /* 14px */
-  --text-base: 1rem;      /* 16px */
-  --text-lg: 1.125rem;    /* 18px */
-  --text-xl: 1.25rem;     /* 20px */
-  --text-2xl: 1.5rem;     /* 24px */
+  /* ============================================
+   * ACCENT (PRIMARY ACTION)
+   * ============================================ */
+  --accent: #111111;
+  --accent-hover: #333333;
+  --accent-text: #FFFFFF;
 
-  /* Font Weights (4 weights) */
+  /* ============================================
+   * TYPOGRAPHY
+   * ============================================ */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Font Sizes */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+
+  /* Line Heights */
+  --leading-xs: 16px;
+  --leading-sm: 20px;
+  --leading-base: 22px;
+  --leading-lg: 24px;
+  --leading-xl: 28px;
+  --leading-2xl: 36px;
+  --leading-3xl: 44px;
+
+  /* Font Weights */
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
 
-  /* Line Heights */
-  --leading-none: 1;
-  --leading-tight: 1.25;
-  --leading-normal: 1.5;
-  --leading-relaxed: 1.75;
-
-  /* Letter Spacing */
-  --tracking-tight: -0.025em;
-  --tracking-normal: 0;
-  --tracking-wide: 0.025em;
+  /* ============================================
+   * SPACING
+   * ============================================ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
 
   /* ============================================
-   * SPACING TOKENS
-   * Requirement: FR-DT-004 - 8 scale values
+   * BORDER RADIUS
    * ============================================ */
-
-  --space-0: 0;
-  --space-1: 0.25rem;     /* 4px */
-  --space-2: 0.5rem;      /* 8px */
-  --space-3: 0.75rem;     /* 12px */
-  --space-4: 1rem;        /* 16px */
-  --space-6: 1.5rem;      /* 24px */
-  --space-8: 2rem;        /* 32px */
-  --space-12: 3rem;       /* 48px */
-  --space-16: 4rem;       /* 64px */
-
-  /* ============================================
-   * BORDER RADIUS TOKENS
-   * Requirement: FR-DT-008
-   * ============================================ */
-
-  --radius-none: 0;
-  --radius-sm: 0.25rem;   /* 4px */
-  --radius-md: 0.5rem;    /* 8px */
-  --radius-lg: 0.75rem;   /* 12px */
-  --radius-xl: 1rem;      /* 16px */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
   --radius-full: 9999px;
 
   /* ============================================
-   * SHADOW TOKENS
-   * Requirement: FR-DT-007 - 3 elevation levels
+   * SHADOWS (Minimal)
    * ============================================ */
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
 
   /* ============================================
-   * GLASSMORPHISM TOKENS
-   * Requirement: FR-GL-001 through FR-GL-005
+   * TRANSITIONS
    * ============================================ */
-
-  --glass-blur: blur(12px);
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-bg-hover: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --glass-border-subtle: rgba(0, 0, 0, 0.1);
-
-  /* Surface Levels - Requirement: FR-GL-002 */
-  --surface-1-bg: var(--bg-surface-1);
-  --surface-1-border: var(--glass-border-subtle);
-  --surface-2-bg: var(--bg-surface-2);
-  --surface-2-border: var(--glass-border-subtle);
-  --surface-3-bg: var(--bg-surface-3);
-  --surface-3-border: var(--glass-border-subtle);
-
-  /* ============================================
-   * TRANSITION TOKENS
-   * ============================================ */
-
   --transition-fast: 100ms ease;
   --transition-normal: 200ms ease;
   --transition-slow: 300ms ease;
-  --transition-theme: 300ms ease;
 
   /* ============================================
-   * Z-INDEX SCALE
+   * Z-INDEX
    * ============================================ */
-
-  --z-base: 0;
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-fixed: 300;
   --z-modal-backdrop: 400;
   --z-modal: 500;
-  --z-popover: 600;
-  --z-tooltip: 700;
   --z-toast: 800;
 
   /* ============================================
-   * LAYOUT TOKENS
+   * LAYOUT
    * ============================================ */
-
   --sidebar-width: 240px;
-  --sidebar-width-collapsed: 64px;
+  --sidebar-collapsed: 64px;
   --header-height: 64px;
-  --footer-height: 48px;
-  --content-max-width: 1440px;
-
-  /* ============================================
-   * BREAKPOINTS (for reference in JS)
-   * ============================================ */
-
-  --breakpoint-sm: 640px;
-  --breakpoint-md: 768px;
-  --breakpoint-lg: 1024px;
-  --breakpoint-xl: 1280px;
-  --breakpoint-2xl: 1536px;
-
-  /* ============================================
-   * ANIMATION TOKENS
-   * ============================================ */
-
-  --animation-spin: spin 1s linear infinite;
-  --animation-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animation-bounce: bounce 1s infinite;
+  --content-max-width: 1200px;
 }
 
 /* ============================================
- * DARK THEME TOKENS
- * Requirement: FR-TH-001
+ * DARK THEME
  * ============================================ */
-
-.soma-dark,
 [data-theme="dark"] {
-  /* Backgrounds */
-  --bg-page: var(--color-neutral-900);
-  --bg-surface-1: var(--color-neutral-800);
-  --bg-surface-2: rgba(38, 38, 38, 0.9);
-  --bg-surface-3: rgba(38, 38, 38, 0.7);
-  --bg-hover: rgba(255, 255, 255, 0.05);
-  --bg-active: rgba(255, 255, 255, 0.08);
+  --bg-page: #0A0A0A;
+  --bg-sidebar: #111111;
+  --bg-card: #171717;
+  --bg-hover: #262626;
+  --bg-active: #333333;
+  --bg-input: #171717;
+  --bg-muted: #171717;
 
-  /* Text Colors */
-  --text-primary: var(--color-neutral-50);
-  --text-secondary: var(--color-neutral-300);
-  --text-muted: var(--color-neutral-500);
-  --text-inverse: var(--color-neutral-900);
+  --text-primary: #FAFAFA;
+  --text-secondary: #A3A3A3;
+  --text-muted: #737373;
+  --text-link: #FAFAFA;
 
-  /* Border Colors */
-  --border-default: var(--color-neutral-700);
-  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-default: #262626;
+  --border-input: #404040;
+  --border-focus: #FAFAFA;
 
-  /* Glassmorphism */
-  --glass-bg: rgba(38, 38, 38, 0.7);
-  --glass-bg-hover: rgba(38, 38, 38, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-border-subtle: rgba(255, 255, 255, 0.05);
+  --accent: #FAFAFA;
+  --accent-hover: #E5E5E5;
+  --accent-text: #0A0A0A;
 
-  /* Surface Levels */
-  --surface-1-bg: var(--bg-surface-1);
-  --surface-1-border: var(--glass-border-subtle);
-  --surface-2-bg: var(--bg-surface-2);
-  --surface-2-border: var(--glass-border-subtle);
-  --surface-3-bg: var(--bg-surface-3);
-  --surface-3-border: var(--glass-border-subtle);
-
-  /* Shadows (darker for dark mode) */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.4);
 }
 
 /* ============================================
- * KEYFRAME ANIMATIONS
+ * ANIMATIONS
  * ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
@@ -288,72 +194,8 @@
   50% { opacity: 0.5; }
 }
 
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(-25%);
-    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-  }
-  50% {
-    transform: translateY(0);
-    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-@keyframes slideInUp {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideInDown {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Status indicator pulse animation */
 @keyframes statusPulse {
-  0% {
-    box-shadow: 0 0 0 0 currentColor;
-    opacity: 1;
-  }
-  70% {
-    box-shadow: 0 0 0 6px currentColor;
-    opacity: 0;
-  }
-  100% {
-    box-shadow: 0 0 0 0 currentColor;
-    opacity: 0;
-  }
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 6px currentColor; opacity: 0; }
+  100% { box-shadow: 0 0 0 0 currentColor; opacity: 0; }
 }

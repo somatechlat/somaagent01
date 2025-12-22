@@ -77,9 +77,9 @@ document.addEventListener('alpine:init', () => {
     get trendClass() {
       const dir = this.trend.direction;
       return {
-        'soma-stats-card__trend--up': dir === 'up',
-        'soma-stats-card__trend--down': dir === 'down',
-        'soma-stats-card__trend--neutral': dir === 'neutral'
+        'stats-card__trend--up': dir === 'up',
+        'stats-card__trend--down': dir === 'down',
+        'stats-card__trend--neutral': dir === 'neutral'
       };
     },
     

@@ -17,7 +17,7 @@ document.addEventListener('alpine:init', () => {
     },
     
     get dotClass() {
-      return `soma-status__dot--${this.health}`;
+      return `status__dot--${this.health}`;
     },
     
     get isPulsing() {
