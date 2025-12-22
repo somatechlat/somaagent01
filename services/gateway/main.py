@@ -24,8 +24,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 from src.core.config import cfg
+from services.gateway.django_setup import django_app
 
-webui_path = str(pathlib.Path(__file__).resolve().parents[2] / "webui")
+webui_path = str(pathlib.Path(__file__).resolve().parents[2] / "ui" / "frontend")
 app = FastAPI(title="SomaAgent Gateway")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -84,15 +85,13 @@ def serve_root() -> FileResponse:
     return FileResponse(os.path.join(webui_path, "index.html"))
 
 
-
-# Validated Django setup import
-from services.gateway.django_setup import django_app
-
 app.mount("/static", StaticFiles(directory=webui_path, html=False), name="webui")
 app.include_router(build_router())
 
 # HYBRID MOUNT: Mount Django Ninja app for new SaaS features
 app.mount("/saas", django_app)
+
+
 
 
 # ---------------------------------------------------------------------------

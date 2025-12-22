@@ -310,7 +310,7 @@ async def update_skin(
     return _record_to_response(updated)
 
 
-@router.delete("/{skin_id}", status_code=204)
+@router.delete("/{skin_id}", status_code=200)
 async def delete_skin(request: Request, skin_id: str) -> None:
     """Delete a skin (TR-AGS-004.4).
     

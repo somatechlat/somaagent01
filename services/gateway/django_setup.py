@@ -1,15 +1,14 @@
 import os
 import sys
 from django.conf import settings
-from django.core.asgi import get_asgi_application
-from ninja import NinjaAPI, Router
 
-# --- 1. Minimal Django Configuration ---
+# --- 1. Minimal Django Configuration (MUST BE BEFORE IMPORTS) ---
 
 if not settings.configured:
     settings.configure(
         DEBUG=os.environ.get("DEBUG", "False").lower() == "true",
         SECRET_KEY=os.environ.get("SECRET_KEY", "insecure-secret-key-for-dev"),
+        ALLOWED_HOSTS=["*"], # VIBE: Allow all for dev gateway
         ROOT_URLCONF=__name__, # This file acts as the URL config
         INSTALLED_APPS=[
             # Core Django
@@ -37,6 +36,8 @@ if not settings.configured:
     django.setup()
 
 # --- 2. Ninja API Setup ---
+from django.core.asgi import get_asgi_application
+from ninja import NinjaAPI, Router
 
 # Define the Ninja wrapper
 # We mount this at the specific path in the Django URL patterns
@@ -56,7 +57,7 @@ from django.urls import path
 # For now, we will define a temporary router here or import the refactored one
 from services.gateway.routers.saas import router as saas_router
 
-ninja_api.add_router("/saas", saas_router) 
+ninja_api.add_router("", saas_router) 
 
 urlpatterns = [
     path("", ninja_api.urls),

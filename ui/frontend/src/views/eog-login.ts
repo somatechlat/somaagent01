@@ -491,7 +491,7 @@ export class EogLogin extends LitElement {
             }
 
             // Redirect to app
-            window.location.href = '/';
+            window.location.href = '/mode-select';
 
         } catch (error) {
             this._error = error instanceof Error ? error.message : 'Login failed';
@@ -543,7 +543,7 @@ export class EogLogin extends LitElement {
             });
 
             if (response.ok) {
-                window.location.href = '/';
+                window.location.href = '/mode-select';
             } else {
                 localStorage.removeItem('eog_auth_token');
             }
