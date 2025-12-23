@@ -24,3 +24,17 @@ export { EogAdmin } from './eog-admin.js';
 // Platform Views (God Mode)
 export { EogPlatformDashboard } from './eog-platform-dashboard.js';
 export { EogTenants } from './eog-tenants.js';
+
+// SAAS Views (New Design)
+export { SaasChat } from './saas-chat.js';
+export { SaasAuthCallback } from './saas-auth-callback.js';
+export { SaasLogin } from './saas-login.js';
+export { SaasMemoryView } from './saas-memory-view.js';
+export { SaasSettings } from './saas-settings.js';
+export { SaasModeSelection } from './saas-mode-selection.js';
+export { SaasCognitivePanel } from './saas-cognitive-panel.js';
+export { SaasSubscriptions } from './saas-subscriptions.js';
+export { SaasBilling } from './saas-billing.js';
+export { SaasTenantDashboard } from './saas-tenant-dashboard.js';
+export { SaasTenantUsers } from './saas-tenant-users.js';
+export { SaasTenantAgents } from './saas-tenant-agents.js';

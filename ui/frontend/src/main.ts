@@ -58,16 +58,18 @@ if (app) {
         // 2. Auth callback - handle OAuth response
         if (path === '/auth/callback') {
             try {
+                await import('./views/saas-auth-callback.js');
+                app.innerHTML = '';
+                app.appendChild(document.createElement('saas-auth-callback'));
+            } catch (e) {
+                // Fallback to legacy callback
                 await import('./views/eog-auth-callback.js');
                 app.innerHTML = '';
                 app.appendChild(document.createElement('eog-auth-callback'));
-            } catch (e) {
-                console.log('Auth callback processed, redirecting...');
-                window.history.replaceState(null, '', '/saas/dashboard');
-                renderRoute();
             }
             return;
         }
+
 
         // Clear app content before rendering new view
         app.innerHTML = '';
@@ -109,16 +111,47 @@ if (app) {
             return;
         }
 
-        // 4. Legacy EOG Routes
+        if (path === '/saas/subscriptions') {
+            await import('./views/saas-subscriptions.js');
+            app.appendChild(document.createElement('saas-subscriptions'));
+            return;
+        }
+
+        if (path === '/saas/billing') {
+            await import('./views/saas-billing.js');
+            app.appendChild(document.createElement('saas-billing'));
+            return;
+        }
+
+        if (path === '/mode-select' || path === '/select-mode') {
+            await import('./views/saas-mode-selection.js');
+            app.appendChild(document.createElement('saas-mode-selection'));
+            return;
+        }
+
+        if (path === '/cognitive' || path === '/training') {
+            await import('./views/saas-cognitive-panel.js');
+            app.appendChild(document.createElement('saas-cognitive-panel'));
+            return;
+        }
+
+        // 4. Login Route
         if (path === '/login') {
             if (token) {
                 window.history.replaceState(null, '', '/saas/dashboard');
                 renderRoute();
                 return;
             }
-            app.appendChild(document.createElement('eog-login'));
+            try {
+                await import('./views/saas-login.js');
+                app.appendChild(document.createElement('saas-login'));
+            } catch {
+                // Fallback to legacy login
+                app.appendChild(document.createElement('eog-login'));
+            }
             return;
         }
+
 
         if (path === '/logout') {
             localStorage.removeItem('eog_auth_token');
@@ -128,20 +161,79 @@ if (app) {
         }
 
         if (path === '/mode-select' || path === '/select-mode') {
-            await import('./views/eog-mode-selection.js');
-            app.appendChild(document.createElement('eog-mode-selection'));
+            await import('./views/saas-mode-selection.js');
+            app.appendChild(document.createElement('saas-mode-selection'));
             return;
         }
 
+        // 5. Tenant Admin Routes
+        if (path === '/admin/dashboard') {
+            await import('./views/saas-tenant-dashboard.js');
+            app.appendChild(document.createElement('saas-tenant-dashboard'));
+            return;
+        }
+
+        if (path === '/admin/users') {
+            await import('./views/saas-tenant-users.js');
+            app.appendChild(document.createElement('saas-tenant-users'));
+            return;
+        }
+
+        if (path === '/admin/agents') {
+            await import('./views/saas-tenant-agents.js');
+            app.appendChild(document.createElement('saas-tenant-agents'));
+            return;
+        }
+
+
         if (path === '/chat') {
             try {
+                await import('./views/saas-chat.js');
+                app.appendChild(document.createElement('saas-chat'));
+            } catch {
+                // Fallback to legacy chat
                 await import('./views/eog-chat.js');
                 app.appendChild(document.createElement('eog-chat'));
-            } catch {
-                app.appendChild(document.createElement('eog-app'));
             }
             return;
         }
+
+        if (path === '/memory') {
+            try {
+                await import('./views/saas-memory-view.js');
+                app.appendChild(document.createElement('saas-memory-view'));
+            } catch {
+                // Fallback to legacy memory
+                await import('./views/eog-memory.js');
+                app.appendChild(document.createElement('eog-memory'));
+            }
+            return;
+        }
+
+        if (path === '/settings') {
+            try {
+                await import('./views/saas-settings.js');
+                app.appendChild(document.createElement('saas-settings'));
+            } catch {
+                // Fallback to legacy settings
+                await import('./views/eog-settings.js');
+                app.appendChild(document.createElement('eog-settings'));
+            }
+            return;
+        }
+
+        if (path === '/tools') {
+            await import('./views/eog-tools.js');
+            app.appendChild(document.createElement('eog-tools'));
+            return;
+        }
+
+        if (path === '/themes') {
+            await import('./views/eog-themes.js');
+            app.appendChild(document.createElement('eog-themes'));
+            return;
+        }
+
 
         // Default: New SAAS Dashboard
         await import('./views/saas-platform-dashboard.js');
@@ -165,9 +257,9 @@ if (app) {
 }
 
 // Log startup
-console.log('🚀 SaaS Sys Admin v1.0.0 initialized');
-console.log('📡 API: /api/v2/');
-console.log('🔌 WebSocket: /ws/v2/');
-console.log('🔧 DEV_MODE:', DEV_MODE ? 'ON' : 'OFF');
+console.log('[SaaS] SaaS Sys Admin v1.0.0 initialized');
+console.log('[SaaS] API: /api/v2/');
+console.log('[SaaS] WebSocket: /ws/v2/');
+console.log('[SaaS] DEV_MODE:', DEV_MODE ? 'ON' : 'OFF');
 
 

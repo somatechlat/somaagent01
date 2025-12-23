@@ -22,6 +22,12 @@ export default defineConfig({
         host: '0.0.0.0',
         cors: true,
         proxy: {
+            // SAAS Platform APIs -> Gateway (Django Ninja)
+            '/api/v2/saas': {
+                target: 'http://localhost:8010',
+                changeOrigin: true,
+            },
+            // Legacy APIs -> Original backend
             '/api': {
                 target: 'http://localhost:20020',
                 changeOrigin: true,
