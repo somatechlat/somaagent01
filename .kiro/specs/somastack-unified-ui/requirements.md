@@ -77,8 +77,8 @@ This specification defines the requirements for the **SomaStack Unified UI Desig
 4. WHEN a user has Viewer role THEN the UI SHALL display read-only views (view, monitor)
 5. THE Role_Manager SHALL retrieve role information from JWT token claims
 6. WHEN role information is unavailable THEN the UI SHALL default to Viewer mode
-7. THE Role_Manager SHALL cache role state in Alpine.js store for reactive updates
-8. WHEN displaying admin-only controls THEN the UI SHALL use `x-show="$store.auth.isAdmin"` directive
+7. THE Role_Manager SHALL cache role state in Lit Reactive Controller for reactive updates
+8. WHEN displaying admin-only controls THEN the UI SHALL use Lit conditional rendering with `?hidden=${!this.authController.isAdmin}`
 
 ---
 
@@ -286,7 +286,7 @@ This specification defines the requirements for the **SomaStack Unified UI Desig
 4. THE Form_System SHALL support placeholder text and helper text
 5. WHEN input is focused THEN the Form_System SHALL display focus ring with accent color
 6. THE Form_System SHALL support form-level validation before submission
-7. THE Form_System SHALL integrate with Alpine.js for reactive state management
+7. THE Form_System SHALL integrate with Lit Web Components for reactive state management
 
 ---
 
@@ -314,7 +314,7 @@ This specification defines the requirements for the **SomaStack Unified UI Desig
 
 1. THE Design_System SHALL be packaged as a standalone CSS + JS bundle
 2. THE Design_System SHALL be importable via `<link>` and `<script>` tags (no build step required)
-3. THE Design_System SHALL provide Alpine.js components for all interactive elements
+3. THE Design_System SHALL provide Lit Web Components for all interactive elements
 4. THE Design_System SHALL document all components with usage examples
 5. WHEN updating the Design_System THEN all projects SHALL receive updates via shared import
 6. THE Design_System SHALL version components following semantic versioning
@@ -336,8 +336,8 @@ This specification defines the requirements for the **SomaStack Unified UI Desig
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| TR-UI-002.1 | All interactive components MUST use Alpine.js 3.x | HIGH |
-| TR-UI-002.2 | No build step required - vanilla JS only | HIGH |
+| TR-UI-002.1 | All interactive components MUST use Lit 3.x Web Components | HIGH |
+| TR-UI-002.2 | Components MUST be ES modules, importable without build step | HIGH |
 | TR-UI-002.3 | JS file size MUST be under 50KB (minified) | MEDIUM |
 | TR-UI-002.4 | All components MUST be tree-shakeable | MEDIUM |
 
@@ -374,7 +374,7 @@ This specification defines the requirements for the **SomaStack Unified UI Desig
 
 ## Dependencies
 
-- Alpine.js 3.x (reactive components)
+- Lit 3.x (Web Components framework)
 - Geist Font (typography)
 - No other external dependencies
 

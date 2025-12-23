@@ -143,6 +143,14 @@ Before touching code, confirm:
 - **Existing Code**: The existing FastAPI infrastructure (`services/gateway/main.py` etc.) remains AS IS. Do not migrate it.
 - **New Code**: ALL NEW API endpoint creation MUST use **Django Ninja** in conjunction with the Django Framework.
 - **Hybrid**: The architecture must support both running simultaneously.
+- **NEVER** create new FastAPI routers or endpoints - Django Ninja ONLY for new development.
+
+# 9. UI FRAMEWORK POLICY
+- **UI Framework**: ALL UI components MUST use **Lit Web Components** (Lit 3.x).
+- **NO Alpine.js**: Alpine.js is DEPRECATED and FORBIDDEN in new code.
+- **State Management**: Use Lit Reactive Controllers for state management.
+- **Existing Alpine Code**: Must be migrated to Lit Web Components when touched.
+- **Component Pattern**: Use custom elements with shadow DOM for encapsulation.
 
 ===============================================================
                 📚 ISO-STYLE DOCUMENTATION NOTE
