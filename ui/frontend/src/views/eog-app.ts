@@ -16,6 +16,7 @@ import { modeContext, ModeState } from '../services/mode-context.js';
 import './components/eog-tenant-switcher.js';
 import './components/eog-voice-button.js';
 import './eog-chat.js';
+import './eog-login.js';
 import './eog-memory.js';
 import './eog-tools.js';
 import './eog-cognitive.js';
@@ -373,8 +374,10 @@ export class EogApp extends LitElement {
     firstUpdated() {
         // Check authentication
         if (!this._isAuthenticated()) {
-            window.location.href = '/login';
-            return;
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+                return;
+            }
         }
 
         // Load user info
@@ -392,6 +395,7 @@ export class EogApp extends LitElement {
         if (outlet) {
             const router = new Router(outlet);
             router.setRoutes([
+                { path: '/login', component: 'eog-login' },
                 { path: '/', redirect: '/chat' },
                 { path: '/chat', component: 'eog-chat' },
                 { path: '/memory', component: 'eog-memory' },
@@ -403,7 +407,7 @@ export class EogApp extends LitElement {
                 // Platform routes (God Mode)
                 { path: '/platform', component: 'eog-platform-dashboard' },
                 { path: '/platform/tenants', component: 'eog-tenants' },
-                { path: '(.*)', redirect: '/chat' },
+                { path: '(.*)', redirect: '/chat' }, // Default fallback
             ]);
         }
 
