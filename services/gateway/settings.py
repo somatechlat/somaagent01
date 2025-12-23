@@ -77,3 +77,20 @@ USE_TZ = True
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# =============================================================================
+# SAAS ADMIN DEFAULTS (Centralized - env overridable)
+# =============================================================================
+
+# Default tenant for unauthenticated requests (development only)
+SAAS_DEFAULT_TENANT_ID = os.environ.get("SAAS_DEFAULT_TENANT_ID", None)
+
+# Default AI model for new agents
+SAAS_DEFAULT_CHAT_MODEL = os.environ.get("SAAS_DEFAULT_CHAT_MODEL", "gpt-4o")
+
+# Default tier limits (can be overridden per-tier in database)
+SAAS_DEFAULT_MAX_AGENTS = int(os.environ.get("SAAS_DEFAULT_MAX_AGENTS", "10"))
+SAAS_DEFAULT_MAX_USERS = int(os.environ.get("SAAS_DEFAULT_MAX_USERS", "50"))
+SAAS_DEFAULT_MAX_TOKENS_MONTHLY = int(os.environ.get("SAAS_DEFAULT_MAX_TOKENS_MONTHLY", "10000000"))
+SAAS_DEFAULT_STORAGE_GB = float(os.environ.get("SAAS_DEFAULT_STORAGE_GB", "50.0"))
+
