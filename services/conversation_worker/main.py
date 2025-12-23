@@ -105,6 +105,8 @@ class ConversationWorkerImpl:
             health_provider=self._get_somabrain_health,
             use_optimal_budget=cfg.env("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
         )
+        # Initialize use cases
+        self._init_use_cases()
 
     def _get_somabrain_health(self) -> SomabrainHealthState:
         """Get current SomaBrain health from degradation monitor."""
@@ -122,7 +124,9 @@ class ConversationWorkerImpl:
             return SomabrainHealthState.DEGRADED
             
         return SomabrainHealthState.NORMAL
-        # Use Cases - all config from env, no hardcoded defaults per VIBE rules
+
+    def _init_use_cases(self) -> None:
+        """Initialize use cases - all config from env, no hardcoded defaults per VIBE rules."""
         gateway_base = cfg.env("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
             raise ValueError(

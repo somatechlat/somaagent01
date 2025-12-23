@@ -23,6 +23,8 @@ PyJWT==2.9.0
 # Databases and brokers
 jsonschema==4.22.0
 aiokafka==0.11.0
+kafka-python==2.0.2
+lz4==4.3.3
 redis==5.2.0
 psycopg[binary]==3.2.3
 asyncpg==0.29.0; python_version < "3.13"

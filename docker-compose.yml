@@ -146,6 +146,12 @@ services:
       KAFKA_DEFAULT_REPLICATION_FACTOR: 1
       KAFKA_MIN_INSYNC_REPLICAS: 1
       KAFKA_COMPRESSION_TYPE: lz4
+      # KRaft Consumer Group Coordinator Settings
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 50
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     volumes:
       - somaagent_kafka_data:/var/lib/kafka/data
     ports:
@@ -153,14 +159,17 @@ services:
     healthcheck:
       <<: *common-healthcheck
       test: [ "CMD-SHELL", "nc -z localhost 9092 || exit 1" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
       start_period: 120s
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
           cpus: "1.0"
         reservations:
-          memory: 512M
+          memory: 1G
           cpus: "0.25"
     logging: *common-logging
     labels:
@@ -336,7 +345,7 @@ services:
   # Production: Decision logging, bundle refresh
   # ==========================================================================
   opa:
-    image: openpolicyagent/opa:0.60.0-rootless
+    image: openpolicyagent/opa:latest
     container_name: somaagent-opa
     profiles: [ "security" ]
     restart: unless-stopped
@@ -593,23 +602,38 @@ services:
       com.somastack.tier: "application"
 
   # ==========================================================================
-  # WORKER: Kafka Consumer (Event Processing)
-  # Processes events from Kafka topics
+  # AGENT CORE: Gateway (FastAPI) (Port 21016)
   # ==========================================================================
-  somaagent-worker:
+  gateway:
     build:
-      context: ./ui/backend
+      context: .
       dockerfile: Dockerfile
-    image: somaagent-django:latest
-    container_name: somaagent-worker
-    profiles: [ "workers" ]
+    image: somaagent-gateway:latest
+    container_name: somaagent-gateway
+    profiles: [ "core" ]
     restart: unless-stopped
+    ports:
+      - "21016:8010"
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
-      KAFKA_BROKERS: kafka:9092
-      WORKER_MODE: "true"
-    command: [ "python", "manage.py", "run_worker" ]
+      # Canonical Configuration (SA01_*)
+      SA01_DEPLOYMENT_MODE: "DEV"
+      SA01_AUTH_REQUIRED: "false"
+      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
+      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
+      SA01_POLICY_URL: "http://opa:8181"
+      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
+      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      # Integration Config
+      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      SA01_GATEWAY_PORT: 8010
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -617,23 +641,171 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "0.5"
-        reservations:
-          memory: 128M
-          cpus: "0.1"
     logging: *common-logging
     labels:
       <<: *common-labels
-      com.somastack.service: "worker"
-      com.somastack.tier: "processing"
+      com.somastack.service: "gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 1G
+          cpus: "0.25"
 
-# ==========================================================================
-# VOLUMES - Namespaced with driver options
-# ==========================================================================
+  conversation-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somaagent-gateway:latest # Reuse same image
+    container_name: somaagent-conversation-worker
+    profiles: [ "core" ]
+    restart: unless-stopped
+    command: [ "python", "-m", "services.conversation_worker.main" ]
+    environment:
+      SA01_DEPLOYMENT_MODE: "DEV"
+      SA01_AUTH_REQUIRED: "false"
+      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
+      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
+      SA01_POLICY_URL: "http://opa:8181"
+      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
+      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      SA01_WORKER_GATEWAY_BASE: "http://gateway:8010"
+      SA01_GATEWAY_INTERNAL_TOKEN: "dev-internal-token"
+    depends_on:
+      - gateway
+    logging: *common-logging
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 1G
+          cpus: "0.25"
+
+  tool-executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somaagent-gateway:latest
+    container_name: somaagent-tool-executor
+    profiles: [ "core" ]
+    restart: unless-stopped
+    command: [ "python", "-m", "services.tool_executor.main" ]
+    environment:
+      SA01_DEPLOYMENT_MODE: "DEV"
+      SA01_AUTH_REQUIRED: "false"
+      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
+      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
+      SA01_POLICY_URL: "http://opa:8181"
+      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
+      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+    depends_on:
+      - gateway
+    logging: *common-logging
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 1G
+          cpus: "0.25"
+
+  memory-replicator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somaagent-gateway:latest
+    container_name: somaagent-memory-replicator
+    profiles: [ "core" ]
+    restart: unless-stopped
+    command: [ "python", "-m", "services.memory_replicator.main" ]
+    environment:
+      SA01_DEPLOYMENT_MODE: "DEV"
+      SA01_AUTH_REQUIRED: "false"
+      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
+      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
+      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
+      SA01_POLICY_URL: "http://opa:8181"
+      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
+      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+    depends_on:
+      - gateway
+    logging: *common-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
+        reservations:
+          memory: 512M
+          cpus: "0.1"
+  # ==========================================================================
+  # WORKER: Kafka Consumer (Event Processing)
+  # Processes events from Kafka topics
+  # ==========================================================================
+  # somaagent-worker:
+  #   build:
+  #     context: ./ui/backend
+  #     dockerfile: Dockerfile
+  #   image: somaagent-django:latest
+  #   container_name: somaagent-worker
+  #   profiles: [ "workers" ]
+  #   restart: unless-stopped
+  #   environment:
+  #     DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
+  #     REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
+  #     KAFKA_BROKERS: kafka:9092
+  #     SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
+  #     WORKER_MODE: "true"
+  #   command: [ "python", "manage.py", "run_worker" ]
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_healthy
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #         cpus: "0.5"
+  #       reservations:
+  #         memory: 128M
+  #         cpus: "0.1"
+  #   logging: *common-logging
+  #   labels:
+  #     <<: *common-labels
+  #     com.somastack.service: "worker"
+  #     com.somastack.tier: "processing"
+
+  # ==========================================================================
+  # VOLUMES - Namespaced with driver options
+  # ==========================================================================
 volumes:
   somaagent_postgres_data:
     driver: local

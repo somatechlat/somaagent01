@@ -1,5 +1,0 @@
-# Traceability Matrix
-This file should be an Excel spreadsheet. For now, this is a preliminary version.
-Please create the actual Excel file with:
-- Sheet1 – Features: Columns `Feature ID`, `Description`, `ISO Clause`, `Doc Page`
-- Sheet2 – Tests: Columns `Test ID`, `Related Feature ID`, `Result`, `ISO Clause`
