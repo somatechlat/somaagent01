@@ -16,7 +16,11 @@ from admin.saas.api.schemas import (
     FeatureOut,
     MessageResponse,
 )
+import logging
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 from admin.saas.models import FeatureProvider, SaasFeature, TierFeature
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -46,17 +50,23 @@ def list_features(request):
 @router.get("/{feature_id}", response=FeatureOut)
 def get_feature(request, feature_id: str):
     """Get single feature details."""
-    f = SaasFeature.objects.get(id=feature_id)
-    return FeatureOut(
-        id=str(f.id),
-        code=f.code,
-        name=f.name,
-        description=f.description,
-        category=f.category,
-        icon=f.icon,
-        enabled=f.is_active,
-        default_config=f.default_settings or {},
-    )
+    try:
+        f = SaasFeature.objects.get(id=feature_id)
+        return FeatureOut(
+            id=str(f.id),
+            code=f.code,
+            name=f.name,
+            description=f.description,
+            category=f.category,
+            icon=f.icon,
+            enabled=f.is_active,
+            default_config=f.default_settings or {},
+        )
+    except SaasFeature.DoesNotExist:
+        # Ninja will handle 404 if we raise Http404, or we can return error response if schema allows
+        # For strict schema (FeatureOut), raising 404 is cleaner than returning ErrorResponse
+        from django.http import Http404
+        raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, code=feature_id))
 
 
 @router.get("/{feature_code}/providers", response=list[dict])
@@ -113,21 +123,28 @@ def assign_feature_to_tier(
     settings: Optional[dict[str, Any]] = None,
 ):
     """Assign a feature to a tier with optional settings override."""
-    feature = SaasFeature.objects.get(code=feature_code)
+    try:
+        feature = SaasFeature.objects.get(code=feature_code)
+    except SaasFeature.DoesNotExist:
+        from django.http import Http404
+        raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, code=feature_code))
 
     tf, created = TierFeature.objects.update_or_create(
         tier_id=tier_id,
         feature=feature,
         defaults={
-            "enabled": True,
+            "is_enabled": True,
             "settings_override": settings or {},
         },
     )
 
+    action = "assigned to" if created else "updated on"
+    logger.info(f"Feature {feature_code} {action} tier {tier_id}")
+
     return {
         "id": str(tf.id),
         "feature_code": feature_code,
-        "enabled": tf.enabled,
+        "enabled": tf.is_enabled,
         "created": created,
     }
 
@@ -142,9 +159,11 @@ def remove_feature_from_tier(request, tier_id: str, feature_code: str):
     ).delete()
 
     if deleted:
-        return MessageResponse(message=f"Feature {feature_code} removed from tier")
+        logger.info(f"Feature {feature_code} removed from tier {tier_id}")
+        return MessageResponse(message=get_message(SuccessCode.FEATURE_REMOVED, code=feature_code))
+    
     return MessageResponse(
-        message=f"Feature {feature_code} not found on tier",
+        message=get_message(ErrorCode.FEATURE_NOT_ON_TIER, code=feature_code),
         success=False,
     )
 

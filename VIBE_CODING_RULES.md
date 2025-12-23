@@ -152,6 +152,15 @@ Before touching code, confirm:
 - **Existing Alpine Code**: Must be migrated to Lit Web Components when touched.
 - **Component Pattern**: Use custom elements with shadow DOM for encapsulation.
 
+# 10. DATABASE ORM POLICY
+- **Django ORM ONLY**: ALL database models MUST use **Django ORM**.
+- **NO SQLAlchemy**: SQLAlchemy is FORBIDDEN for new models in this project.
+- **Model Location**: Django models go in `admin/<app_name>/models.py` following existing patterns (e.g., `admin/skins/models.py`).
+- **Reference Pattern**: Use the `AgentSkin` model as the canonical reference for model structure.
+- **Migrations**: Use Django migrations (`python manage.py makemigrations && python manage.py migrate`), NOT Alembic.
+- **Field Types**: Use Django field types: `models.UUIDField`, `models.JSONField`, `models.CharField`, `models.ForeignKey`, etc.
+- **Existing SQLAlchemy**: The existing SQLAlchemy infrastructure in `src/core/infrastructure/db/models/` is for legacy non-SAAS multimodal operations ONLY.
+
 ===============================================================
                 📚 ISO-STYLE DOCUMENTATION NOTE
 ===============================================================
@@ -170,3 +179,12 @@ We ONLY follow ISO-style structure because it produces the clearest and most pro
 
 NO CODING until the entire architecture + flow is understood.
 IF YO ARE FINISHING ANY TAKS, MILESTOBE OR AYHTING LIKE THAT , REVIEW THE CODE YOU HAVE JUST FIH=NISHED FOR VIOLATIONS OPF THE VIBE CODING RULES AND CONOTNUE 
+
+django patterns 
+django ninja 
+
+# 11. CENTRALIZED MESSAGES & I18N
+- **NO Hardcoded Strings**: All user-facing text (errors, success messages, notifications) MUST use `admin.common.messages`.
+- **Use `get_message`**: Retrieve strings via `get_message(code, **kwargs)`.
+- **Error Codes**: Define new error/success codes in `admin.common.messages` rather than inline strings.
+- **I18N Ready**: Ensure all strings are routable through the message system for future translation.

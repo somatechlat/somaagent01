@@ -6,6 +6,8 @@ Runtime URL handling is done in django_setup.py.
 """
 
 from django.urls import path
+from admin.api import api
 
-# Minimal URLs for management commands
-urlpatterns: list = []
+urlpatterns = [
+    path("api/v2/", api.urls),  # Mount under api/v2 per convention or root?
+]

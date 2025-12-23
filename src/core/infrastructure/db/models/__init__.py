@@ -1,6 +1,10 @@
 """SQLAlchemy model definitions for SomaAgent01.
 
 This package exports all database models and the Base class for Alembic migrations.
+
+NOTE: SQLAlchemy models here are for LEGACY multimodal operations ONLY.
+ALL NEW SAAS Admin models MUST use Django ORM in admin/<app_name>/models.py
+See VIBE_CODING_RULES.md Section #10 for the Database ORM Policy.
 """
 
 from src.core.infrastructure.db.models.base import Base
@@ -27,7 +31,7 @@ from src.core.infrastructure.db.models.tools import TenantToolFlag, ToolCatalog
 __all__ = [
     # Base
     "Base",
-    # Enums
+    # Enums - Multimodal
     "AssetType",
     "JobStatus",
     "ExecutionStatus",
@@ -51,3 +55,4 @@ __all__ = [
     # Embeddings
     "SessionEmbedding",
 ]
+
