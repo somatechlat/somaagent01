@@ -102,8 +102,9 @@ export class EogAuthProvider extends LitElement {
 
     /**
      * Login with credentials
+     * Returns result object with success flag and redirect_path for role-based routing
      */
-    async login(username: string, password: string): Promise<boolean> {
+    async login(username: string, password: string): Promise<{ success: boolean; redirect_path?: string; error?: string }> {
         this.authState = { ...this.authState, isLoading: true, error: null };
 
         try {
@@ -145,15 +146,23 @@ export class EogAuthProvider extends LitElement {
             };
 
             this._scheduleRefresh(payload.exp * 1000);
-            return true;
+
+            // Return success with redirect_path from API
+            // SAAS admins (sysadmin, saas_admin) -> /select-mode
+            // Regular users -> /chat
+            return {
+                success: true,
+                redirect_path: data.redirect_path || '/chat'
+            };
 
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Login failed';
             this.authState = {
                 ...this.authState,
                 isLoading: false,
-                error: error instanceof Error ? error.message : 'Login failed',
+                error: errorMessage,
             };
-            return false;
+            return { success: false, error: errorMessage };
         }
     }
 

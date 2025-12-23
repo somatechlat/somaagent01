@@ -13,8 +13,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit-labs/context';
 import { Router } from '@vaadin/router';
 import { modeContext, ModeState } from '../services/mode-context.js';
-import './components/eog-tenant-switcher.js';
-import './components/eog-voice-button.js';
+import '../components/eog-tenant-switcher.js';
+import '../components/eog-voice-button.js';
 import './eog-chat.js';
 import './eog-login.js';
 import './eog-memory.js';
@@ -221,6 +221,7 @@ export class EogApp extends LitElement {
     modeState?: ModeState;
 
     @state() private _sidebarCollapsed = false;
+    @state() private _isLoginView = false;
     @state() private _currentPath = '/';
     @state() private _userInitials = 'SA';
 
@@ -253,6 +254,15 @@ export class EogApp extends LitElement {
         const modeLabel = this._getModeLabel(mode);
         const modeClass = mode === 'DGR' ? 'danger' : mode === 'TRN' ? 'training' : '';
         const isPlatformAdmin = this._checkRole('saas_admin');
+
+        // Full screen rendering for Login
+        if (this._isLoginView) {
+            return html`
+                <main class="main full-screen">
+                    <div class="content" id="outlet"></div>
+                </main>
+            `;
+        }
 
         return html`
             <aside class="sidebar ${this._sidebarCollapsed ? 'collapsed' : ''}">
@@ -313,6 +323,9 @@ export class EogApp extends LitElement {
         `;
     }
 
+    // ... (helper methods renderNavItem, toggleSidebar, etc - keep existing)
+    // RESTORING MISSING METHODS TO FIX BUILD
+
     private _renderNavItem(item: NavItem) {
         const isActive = this._currentPath === item.path || this._currentPath.startsWith(item.path + '/');
 
@@ -351,7 +364,6 @@ export class EogApp extends LitElement {
     }
 
     private _checkRole(role: string): boolean {
-        // Check user role from localStorage
         try {
             const user = JSON.parse(localStorage.getItem('eog_user') || '{}');
             const roles = user.roles || [];
@@ -372,12 +384,13 @@ export class EogApp extends LitElement {
     }
 
     firstUpdated() {
+        // Initial check
+        this._isLoginView = window.location.pathname === '/login';
+
         // Check authentication
-        if (!this._isAuthenticated()) {
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
-                return;
-            }
+        if (!this._isAuthenticated() && !this._isLoginView) {
+            window.location.href = '/login';
+            return;
         }
 
         // Load user info
@@ -404,11 +417,16 @@ export class EogApp extends LitElement {
                 { path: '/settings', component: 'eog-settings' },
                 { path: '/themes', component: 'eog-themes' },
                 { path: '/admin', component: 'eog-admin' },
-                // Platform routes (God Mode)
                 { path: '/platform', component: 'eog-platform-dashboard' },
                 { path: '/platform/tenants', component: 'eog-tenants' },
-                { path: '(.*)', redirect: '/chat' }, // Default fallback
+                { path: '(.*)', redirect: '/chat' },
             ]);
+
+            // Listen for route changes to toggle layout
+            window.addEventListener('vaadin-router-location-changed', (e: any) => {
+                this._currentPath = e.detail.location.pathname;
+                this._isLoginView = this._currentPath === '/login';
+            });
         }
 
         // Set current path

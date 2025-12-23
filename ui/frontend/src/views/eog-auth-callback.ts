@@ -4,13 +4,15 @@
  *
  * VIBE COMPLIANT:
  * - Real Lit implementation
- * - OIDC callback handling
+ * - OIDC callback handling (Keycloak + Google)
  * - Token exchange
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { keycloakService } from '../services/keycloak-service.js';
+import { googleAuthService } from '../services/google-auth-service.js';
+import { Router } from '@vaadin/router';
 
 @customElement('eog-auth-callback')
 export class EogAuthCallback extends LitElement {
@@ -109,51 +111,102 @@ export class EogAuthCallback extends LitElement {
 
     private async _handleCallback() {
         try {
-            // Parse callback URL
-            const callback = keycloakService.parseCallback(window.location.href);
+            // Detect which OAuth provider by checking stored state
+            const isGoogleAuth = sessionStorage.getItem('eog_google_state') !== null;
+            const isKeycloakAuth = sessionStorage.getItem('eog_auth_state') !== null;
 
-            // Check for errors
-            if (callback.error) {
-                throw new Error(callback.error);
-            }
-
-            // Verify state
-            if (callback.state && !keycloakService.verifyState(callback.state)) {
-                throw new Error('Invalid state parameter - possible CSRF attack');
-            }
-
-            // Exchange code for tokens
-            if (callback.code) {
-                this._status = 'Exchanging authorization code...';
-                await keycloakService.exchangeCode(callback.code);
-
-                this._status = 'Fetching user information...';
-                const userInfo = await keycloakService.getUserInfo();
-
-                if (userInfo) {
-                    localStorage.setItem('eog_user', JSON.stringify({
-                        id: userInfo.sub,
-                        username: userInfo.preferred_username,
-                        email: userInfo.email,
-                        name: userInfo.name,
-                        roles: userInfo.realm_access?.roles || [],
-                    }));
-                }
-
-                this._isLoading = false;
-
-                // Redirect to app
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
+            if (isGoogleAuth) {
+                await this._handleGoogleCallback();
+            } else if (isKeycloakAuth) {
+                await this._handleKeycloakCallback();
             } else {
-                throw new Error('No authorization code received');
+                throw new Error('No authentication session found');
             }
 
         } catch (error) {
             this._isLoading = false;
             this._error = error instanceof Error ? error.message : 'Authentication failed';
         }
+    }
+
+    /**
+     * Handle Google OAuth callback
+     */
+    private async _handleGoogleCallback() {
+        const callback = googleAuthService.parseCallback(window.location.href);
+
+        if (callback.error) {
+            throw new Error(callback.error);
+        }
+
+        if (callback.state && !googleAuthService.verifyState(callback.state)) {
+            throw new Error('Invalid state parameter - possible CSRF attack');
+        }
+
+        if (!callback.code) {
+            throw new Error('No authorization code received');
+        }
+
+        this._status = 'Exchanging authorization code...';
+
+        // Exchange code via backend (keeps client_secret secure)
+        const result = await googleAuthService.exchangeCode(callback.code);
+
+        // Store token and user info
+        localStorage.setItem('eog_auth_token', result.access_token);
+        localStorage.setItem('eog_user', JSON.stringify(result.user));
+
+        // Clear state
+        googleAuthService.clearState();
+
+        this._isLoading = false;
+
+        // Redirect based on role
+        setTimeout(() => {
+            Router.go(result.redirect_path || '/chat');
+        }, 1000);
+    }
+
+    /**
+     * Handle Keycloak OIDC callback
+     */
+    private async _handleKeycloakCallback() {
+        const callback = keycloakService.parseCallback(window.location.href);
+
+        if (callback.error) {
+            throw new Error(callback.error);
+        }
+
+        if (callback.state && !keycloakService.verifyState(callback.state)) {
+            throw new Error('Invalid state parameter - possible CSRF attack');
+        }
+
+        if (!callback.code) {
+            throw new Error('No authorization code received');
+        }
+
+        this._status = 'Exchanging authorization code...';
+        await keycloakService.exchangeCode(callback.code);
+
+        this._status = 'Fetching user information...';
+        const userInfo = await keycloakService.getUserInfo();
+
+        if (userInfo) {
+            localStorage.setItem('eog_user', JSON.stringify({
+                id: userInfo.sub,
+                username: userInfo.preferred_username,
+                email: userInfo.email,
+                name: userInfo.name,
+                roles: userInfo.realm_access?.roles || [],
+            }));
+        }
+
+        this._isLoading = false;
+
+        // Redirect to app
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1000);
     }
 
     private _retry() {

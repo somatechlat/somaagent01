@@ -1,6 +1,6 @@
 /**
- * Eye of God - Main Entry Point
- * Per eye-of-god-uix design.md
+ * SaaS Sys Admin - Main Entry Point
+ * Enterprise Platform UI
  * 
  * VIBE COMPLIANT:
  * - Real routing
@@ -51,9 +51,33 @@ if (app) {
             return;
         }
 
-        if (path === '/mode-select') {
+        if (path === '/logout') {
+            localStorage.removeItem('eog_auth_token');
+            localStorage.removeItem('eog_user');
+            window.location.href = '/login';
+            return;
+        }
+
+        if (path === '/mode-select' || path === '/select-mode') {
             import('./views/eog-mode-selection.js').then(() => {
                 app.appendChild(document.createElement('eog-mode-selection'));
+            });
+            return;
+        }
+
+        if (path === '/platform' || path === '/platform-dashboard') {
+            import('./views/eog-platform-dashboard.js').then(() => {
+                app.appendChild(document.createElement('eog-platform-dashboard'));
+            });
+            return;
+        }
+
+        if (path === '/chat') {
+            import('./views/eog-chat.js').then(() => {
+                app.appendChild(document.createElement('eog-chat'));
+            }).catch(() => {
+                // Fallback to app if chat not implemented
+                app.appendChild(document.createElement('eog-app'));
             });
             return;
         }
@@ -66,7 +90,7 @@ if (app) {
 }
 
 // Log startup
-console.log('🔮 Eye of God UIX v1.0.0 initialized');
+console.log('🚀 SaaS Sys Admin v1.0.0 initialized');
 console.log('📡 API: /api/v2/');
 console.log('🔌 WebSocket: /ws/v2/');
 

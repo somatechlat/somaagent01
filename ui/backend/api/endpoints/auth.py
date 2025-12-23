@@ -72,12 +72,30 @@ async def login(request: HttpRequest, payload: TokenRequest) -> TokenResponse:
     - tenant_id: Tenant ID
     - role: User role
     - exp: Expiration timestamp
+    
+    Returns redirect_path based on role:
+    - saas_admin/sysadmin -> /select-mode
+    - others -> /chat
     """
+    from core.models import AuditLog
+    import logging
+    
+    LOGGER = logging.getLogger(__name__)
+    
     try:
         user = await User.objects.aget(username=payload.username)
         
         # Verify password
         if not _verify_password(payload.password, user.salt, user.password_hash):
+            # Audit failed login attempt
+            await AuditLog.objects.acreate(
+                tenant_id=user.tenant_id,
+                user_id=str(user.id),
+                action="auth.login_failed",
+                resource_type="user",
+                resource_id=str(user.id),
+                details={"reason": "invalid_password", "username": payload.username},
+            )
             raise ValueError("Invalid credentials")
         
         # Generate token
@@ -92,13 +110,41 @@ async def login(request: HttpRequest, payload: TokenRequest) -> TokenResponse:
         user.last_login = datetime.utcnow()
         await user.asave(update_fields=['last_login'])
         
+        # Determine redirect path based on role
+        # SAAS admins (sysadmin, saas_admin) go to mode selection
+        saas_admin_roles = ['sysadmin', 'saas_admin']
+        if user.role in saas_admin_roles:
+            redirect_path = '/select-mode'
+        else:
+            redirect_path = '/chat'
+        
+        # Audit successful login
+        await AuditLog.objects.acreate(
+            tenant_id=user.tenant_id,
+            user_id=str(user.id),
+            action="auth.login_success",
+            resource_type="session",
+            resource_id=str(user.id),
+            details={
+                "role": user.role,
+                "redirect_path": redirect_path,
+                "ip_address": request.META.get('REMOTE_ADDR', 'unknown'),
+            },
+        )
+        
+        LOGGER.info(f"User {user.username} logged in successfully, redirecting to {redirect_path}")
+        
         return TokenResponse(
             access_token=token,
             token_type="bearer",
             expires_in=JWT_EXPIRY_HOURS * 3600,
+            role=user.role,
+            redirect_path=redirect_path,
         )
         
     except User.DoesNotExist:
+        # Generic error to prevent user enumeration
+        LOGGER.warning(f"Login attempt for non-existent user: {payload.username}")
         raise ValueError("Invalid credentials")
 
 
@@ -312,3 +358,171 @@ def _get_role_permissions(role: str) -> list[str]:
         ],
     }
     return role_permissions.get(role, [])
+
+
+# =============================================================================
+# GOOGLE OAUTH
+# =============================================================================
+
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5173/auth/callback')
+
+
+class GoogleCallbackRequest(BaseModel):
+    """Google OAuth callback request."""
+    code: str
+    redirect_uri: Optional[str] = None
+
+
+class GoogleCallbackResponse(BaseModel):
+    """Google OAuth callback response."""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    role: str
+    redirect_path: str
+    user: dict
+
+
+from pydantic import BaseModel as PydanticBaseModel
+
+class BaseModel(PydanticBaseModel):
+    class Config:
+        extra = 'allow'
+
+
+@router.post(
+    "/google/callback",
+    response={200: dict, 400: ErrorResponse},
+    auth=None,
+    summary="Handle Google OAuth callback"
+)
+async def google_callback(request: HttpRequest, payload: GoogleCallbackRequest) -> dict:
+    """
+    Exchange Google authorization code for tokens and create/login user.
+    
+    Flow:
+    1. Exchange code for Google tokens
+    2. Get user info from Google
+    3. Find or create user in database
+    4. Generate JWT token
+    5. Return token with role-based redirect
+    """
+    import httpx
+    import logging
+    from core.models import Tenant, AuditLog
+    from uuid import uuid4
+    
+    LOGGER = logging.getLogger(__name__)
+    
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise ValueError("Google OAuth not configured")
+    
+    try:
+        # Exchange code for tokens
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                'https://oauth2.googleapis.com/token',
+                data={
+                    'code': payload.code,
+                    'client_id': GOOGLE_CLIENT_ID,
+                    'client_secret': GOOGLE_CLIENT_SECRET,
+                    'redirect_uri': payload.redirect_uri or GOOGLE_REDIRECT_URI,
+                    'grant_type': 'authorization_code',
+                }
+            )
+            
+            if token_response.status_code != 200:
+                LOGGER.error(f"Google token exchange failed: {token_response.text}")
+                raise ValueError("Failed to exchange authorization code")
+            
+            tokens = token_response.json()
+            
+            # Get user info from Google
+            user_response = await client.get(
+                'https://www.googleapis.com/oauth2/v2/userinfo',
+                headers={'Authorization': f"Bearer {tokens['access_token']}"}
+            )
+            
+            if user_response.status_code != 200:
+                raise ValueError("Failed to get user info from Google")
+            
+            google_user = user_response.json()
+        
+        # Find or create user
+        email = google_user.get('email')
+        if not email:
+            raise ValueError("Google account has no email")
+        
+        try:
+            user = await User.objects.aget(email=email)
+            LOGGER.info(f"Existing user logged in via Google: {email}")
+        except User.DoesNotExist:
+            # Create new user from Google account
+            # First, get or create default tenant
+            default_tenant, _ = await Tenant.objects.aget_or_create(
+                name='Default',
+                defaults={'slug': 'default'}
+            )
+            
+            user = await User.objects.acreate(
+                id=uuid4(),
+                tenant_id=default_tenant.id,
+                username=email.split('@')[0],
+                email=email,
+                password_hash='',  # No password for OAuth users
+                salt='',
+                role='member',
+                current_mode='STD',
+            )
+            LOGGER.info(f"New user created via Google: {email}")
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        await user.asave(update_fields=['last_login'])
+        
+        # Generate JWT token
+        token = _create_token(
+            user_id=str(user.id),
+            tenant_id=str(user.tenant_id),
+            role=user.role,
+            email=user.email,
+        )
+        
+        # Determine redirect path
+        saas_admin_roles = ['sysadmin', 'saas_admin']
+        redirect_path = '/select-mode' if user.role in saas_admin_roles else '/chat'
+        
+        # Audit log
+        await AuditLog.objects.acreate(
+            tenant_id=user.tenant_id,
+            user_id=str(user.id),
+            action="auth.google_login",
+            resource_type="session",
+            resource_id=str(user.id),
+            details={
+                "provider": "google",
+                "google_id": google_user.get('id'),
+                "redirect_path": redirect_path,
+            },
+        )
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRY_HOURS * 3600,
+            "role": user.role,
+            "redirect_path": redirect_path,
+            "user": {
+                "id": str(user.id),
+                "email": user.email,
+                "name": google_user.get('name', ''),
+                "picture": google_user.get('picture', ''),
+            }
+        }
+        
+    except Exception as e:
+        LOGGER.error(f"Google OAuth failed: {e}")
+        raise ValueError(f"Google authentication failed: {str(e)}")
+
