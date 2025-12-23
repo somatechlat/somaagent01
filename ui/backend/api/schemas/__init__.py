@@ -48,10 +48,12 @@ class TokenRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """JWT token response."""
+    """JWT token response with role-based redirect."""
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 86400
+    role: Optional[str] = None
+    redirect_path: Optional[str] = None  # '/select-mode' for SAAS admins, '/chat' for others
 
 
 class UserInfo(BaseModel):
