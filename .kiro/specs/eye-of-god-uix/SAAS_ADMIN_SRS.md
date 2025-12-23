@@ -354,7 +354,7 @@ DELETE /api/v2/agents/{id}/users/{uid}       # Remove from agent
 ## 7. Database Schema
 
 ```sql
--- Subscription Tiers
+-- Subscription Tiers  
 CREATE TABLE subscription_tiers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(64) NOT NULL,

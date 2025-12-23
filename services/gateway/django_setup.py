@@ -56,8 +56,16 @@ from django.urls import path
 # Lazy import or direct definition
 # For now, we will define a temporary router here or import the refactored one
 from services.gateway.routers.saas import router as saas_router
+from services.gateway.routers.tenant_admin import router as tenant_admin_router
+from services.gateway.routers.agent_admin import router as agent_admin_router
 
-ninja_api.add_router("", saas_router) 
+# Register routers with correct prefixes per SRS Section 5:
+# - SAAS Admin APIs at root (Section 5.1)
+# - Tenant Admin APIs at /admin (Section 5.2)
+# - Agent Admin APIs at /agents (Section 5.3)
+ninja_api.add_router("", saas_router)  # /api/v2/saas/*
+ninja_api.add_router("/admin", tenant_admin_router)  # /api/v2/saas/admin/*
+ninja_api.add_router("/agents", agent_admin_router)  # /api/v2/saas/agents/*
 
 urlpatterns = [
     path("", ninja_api.urls),

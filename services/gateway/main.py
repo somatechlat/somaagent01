@@ -89,7 +89,7 @@ app.mount("/static", StaticFiles(directory=webui_path, html=False), name="webui"
 app.include_router(build_router())
 
 # HYBRID MOUNT: Mount Django Ninja app for new SaaS features
-app.mount("/saas", django_app)
+app.mount("/api/v2/saas", django_app)
 
 
 

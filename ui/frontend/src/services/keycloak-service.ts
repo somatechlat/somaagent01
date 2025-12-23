@@ -37,12 +37,18 @@ export interface KeycloakUserInfo {
     resource_access?: Record<string, { roles: string[] }>;
 }
 
+// Keycloak configuration - can be overridden at runtime
+const KEYCLOAK_CONFIG = {
+    // Development: Keycloak runs on port 20880
+    // Production: Use reverse proxy at /auth or configure via env
+    url: 'http://localhost:20880',
+    realm: 'somaagent',
+    clientId: 'eye-of-god',
+};
+
 class KeycloakService {
-    private config: KeycloakConfig = {
-        url: '/auth',
-        realm: 'somaagent',
-        clientId: 'eye-of-god',
-    };
+    private config: KeycloakConfig = { ...KEYCLOAK_CONFIG };
+
 
     private token: KeycloakToken | null = null;
     private refreshTimeoutId: ReturnType<typeof setTimeout> | null = null;
