@@ -205,6 +205,208 @@ definition agent {
 
 ---
 
+### 4.3.1 Subscription Tier Builder (Full-Screen Composer)
+
+**Route:** `/saas/subscriptions/builder`  
+**Permission:** `saas_admin->configure_platform`
+
+#### Overview
+
+A **full-screen, drag-and-drop tier composition system** that enables SAAS admins to create and configure subscription tiers by dragging features from a catalog and customizing limits. All modals are **full-screen experiences** (100% viewport) for maximum configuration space.
+
+#### Wireframe - Tier Builder
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  ← Back to Tiers                          TIER BUILDER                    [Save Draft]  │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│  ┌────────────────────────────────────────────────────────────┐  ┌────────────────────┐ │
+│  │                                                            │  │  FEATURE CATALOG   │ │
+│  │   TIER INFO                                                │  │  ────────────────  │ │
+│  │   ─────────────────────────────────────────                │  │                    │ │
+│  │   Name: [Professional_____________]                         │  │  Search features...│ │
+│  │   Slug: [professional] (auto)                              │  │                    │ │
+│  │   Description: [For growing teams with advanced needs___]  │  │  CORE              │ │
+│  │                                                            │  │  ┌──────────────┐  │ │
+│  │   Price: [$__299__]  Billing: [Monthly ▼]                  │  │  │  ◉ VOICE     │  │ │
+│  │   ☐ Custom pricing  ☐ Usage-based add-on                   │  │  │  TTS & STT   │  │ │
+│  │                                                            │  │  └──────────────┘  │ │
+│  │   ─────────────────────────────────────────                │  │  ┌──────────────┐  │ │
+│  │   ASSIGNED FEATURES (drop here)                            │  │  │  ◉ MEMORY    │  │ │
+│  │                                                            │  │  │  SomaBrain   │  │ │
+│  │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │  │  └──────────────┘  │ │
+│  │   │   VOICE     │  │   MEMORY    │  │    MCP      │       │  │  ┌──────────────┐  │ │
+│  │   │  ●●●●●      │  │  ●●●●○      │  │  ●●●○○      │       │  │  │  ◉ MCP       │  │ │
+│  │   │  1000 min   │  │  100K items │  │  5 servers  │       │  │  │  Connections │  │ │
+│  │   │  [Configure]│  │  [Configure]│  │  [Configure]│       │  │  └──────────────┘  │ │
+│  │   └─────────────┘  └─────────────┘  └─────────────┘       │  │                    │ │
+│  │                                                            │  │  AI CAPABILITIES   │ │
+│  │   ┌─────────────┐  ┌─────────────┐                        │  │  ┌──────────────┐  │ │
+│  │   │   VISION    │  │   MODELS    │   [+ Drop more]         │  │  │  ◉ VISION    │  │ │
+│  │   │  ●●●○○      │  │  ●●●●●      │                        │  │  │  Image AI    │  │ │
+│  │   │  100 img/d  │  │  All models │                        │  │  └──────────────┘  │ │
+│  │   │  [Configure]│  │  [Configure]│                        │  │  ┌──────────────┐  │ │
+│  │   └─────────────┘  └─────────────┘                        │  │  │  ◉ MODELS    │  │ │
+│  │                                                            │  │  │  LLM Access  │  │ │
+│  │   ─────────────────────────────────────────                │  │  └──────────────┘  │ │
+│  │   BASE LIMITS                                              │  │                    │ │
+│  │   Agents: [__20__]  Users: [__100__]  Storage: [__500 GB]  │  │  AUTOMATION        │ │
+│  │                                                            │  │  ┌──────────────┐  │ │
+│  │                                                            │  │  │  ◉ BROWSER   │  │ │
+│  │                                                            │  │  │  Automation  │  │ │
+│  │                                                            │  │  └──────────────┘  │ │
+│  │                                                            │  │  ┌──────────────┐  │ │
+│  │                                                            │  │  │  ◉ CODE EXEC │  │ │
+│  │                                                            │  │  │  Sandbox     │  │ │
+│  │                                                            │  │  └──────────────┘  │ │
+│  │                                                            │  │  ┌──────────────┐  │ │
+│  │                                                            │  │  │  ◉ TOOLS     │  │ │
+│  │                                                            │  │  │  Extensions  │  │ │
+│  │                                                            │  │  └──────────────┘  │ │
+│  │                                                            │  │                    │ │
+│  └────────────────────────────────────────────────────────────┘  └────────────────────┘ │
+│                                                                                          │
+│                                             [Cancel]  [Preview Tier]  [Publish Tier]     │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Feature Settings Modal - Full-Screen (Example: VOICE)
+
+When user clicks **[Configure]** on a feature card → **FULL SCREEN** modal opens:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  ← Back to Tier Builder              VOICE CONFIGURATION                  Professional  │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│   ┌─────────────────────────────────────────┐   ┌─────────────────────────────────────┐ │
+│   │  USAGE LIMITS                           │   │  LIVE PREVIEW                       │ │
+│   │  ─────────────────────────────────      │   │  ─────────────────────────────────  │ │
+│   │                                         │   │                                     │ │
+│   │  Monthly Voice Minutes                  │   │   ┌───────────────────────────┐    │ │
+│   │  ┌─────────────────────────────────┐   │   │   │  Voice Assistant Active   │    │ │
+│   │  │  1000                           │   │   │   │  ─────────────────────    │    │ │
+│   │  └─────────────────────────────────┘   │   │   │  "Hello, how can I help   │    │ │
+│   │  ○ Unlimited  ● Limited  ○ Disabled     │   │   │   you today?"             │    │ │
+│   │                                         │   │   │                           │    │ │
+│   │  Concurrent Calls                       │   │   │   [Play Sample]           │    │ │
+│   │  ┌─────────────────────────────────┐   │   │   │                           │    │ │
+│   │  │  5                              │   │   │   └───────────────────────────┘    │ │
+│   │  └─────────────────────────────────┘   │   │                                     │ │
+│   │                                         │   │   Estimated Cost: ~$50/mo          │ │
+│   │  Max Recording Length (minutes)         │   │   Based on avg usage               │ │
+│   │  ┌─────────────────────────────────┐   │   │                                     │ │
+│   │  │  30                             │   │   └─────────────────────────────────────┘ │
+│   │  └─────────────────────────────────┘   │                                          │
+│   │                                         │   ┌─────────────────────────────────────┐ │
+│   └─────────────────────────────────────────┘   │  ENFORCEMENT POLICY                 │ │
+│                                                  │  ─────────────────────────────────  │ │
+│   ┌─────────────────────────────────────────┐   │                                     │ │
+│   │  TTS PROVIDERS (Text-to-Speech)         │   │  Backend: AgentVoiceBox             │ │
+│   │  ─────────────────────────────────      │   │  Metric: lago.voice_minutes         │ │
+│   │                                         │   │  Policy: spicedb.voice_quota        │ │
+│   │  ☑ Local TTS (Free, basic quality)      │   │                                     │ │
+│   │  ☑ ElevenLabs (Premium voices)          │   │  [View Policy Definition]           │ │
+│   │  ☑ OpenAI TTS (Natural voices)          │   │                                     │ │
+│   │  ☐ Azure Cognitive (Enterprise)         │   │  When limit exceeded:               │ │
+│   │  ☐ Google Cloud TTS (Wavenet)           │   │  ○ Block  ● Soft limit  ○ Alert     │ │
+│   │                                         │   │                                     │ │
+│   └─────────────────────────────────────────┘   └─────────────────────────────────────┘ │
+│                                                                                          │
+│   ┌─────────────────────────────────────────┐   ┌─────────────────────────────────────┐ │
+│   │  STT PROVIDERS (Speech-to-Text)         │   │  VOICE CLONING                      │ │
+│   │  ─────────────────────────────────      │   │  ─────────────────────────────────  │ │
+│   │                                         │   │                                     │ │
+│   │  ☑ OpenAI Whisper (Most accurate)       │   │  ● Disabled  ○ Enabled              │ │
+│   │  ☑ Local Whisper (Offline capable)      │   │                                     │ │
+│   │  ☐ Google Speech (Streaming)            │   │  Max Custom Voices: [___3___]       │ │
+│   │  ☐ Azure Speech (Real-time)             │   │                                     │ │
+│   │                                         │   │  Cloning Method:                    │ │
+│   └─────────────────────────────────────────┘   │  [ElevenLabs Instant Clone ▼]       │ │
+│                                                  │                                     │ │
+│   ┌─────────────────────────────────────────┐   └─────────────────────────────────────┘ │
+│   │  QUALITY SETTINGS                       │                                          │
+│   │  ─────────────────────────────────      │                                          │ │
+│   │                                         │                                          │ │
+│   │  Output Quality:                        │                                          │ │
+│   │  ○ Standard (fastest, 22kHz)            │                                          │ │
+│   │  ● High (balanced, 44kHz)               │                                          │ │
+│   │  ○ Ultra (slowest, 48kHz lossless)      │                                          │ │
+│   │                                         │                                          │ │
+│   └─────────────────────────────────────────┘                                          │
+│                                                                                          │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                                [Cancel]                    [Apply to Tier]               │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Feature Settings Modals (All Full-Screen)
+
+| Feature | Modal Contents | Backend Integration |
+|---------|----------------|---------------------|
+| **VOICE** | Limits, TTS/STT Providers, Quality, Cloning | `AgentVoiceBox`, Lago `voice_minutes` |
+| **MEMORY** | Entries limit, Retention, Embedding model, Capabilities | `SomaBrain`, PostgreSQL |
+| **MCP** | Client/Server toggle, Max connections, Allowed servers list | MCP Registry, SpiceDB |
+| **VISION** | Images/day, Providers (OpenAI, Anthropic, Google), Resolution | Lago `vision_requests` |
+| **MODELS** | Model catalog with tier access toggle per model | `saas.models` table |
+| **BROWSER** | Sessions, Timeout, Allowed domains, Sandbox level | Browser Automation Service |
+| **CODE EXEC** | Languages, Memory limit, CPU time, Allowed packages | Code Sandbox Service |
+| **TOOLS** | Tool catalog with enable/disable per tool | `saas.tools` table |
+| **DELEGATION** | Max delegate agents, Inter-agent communication | Agent Orchestrator |
+
+#### API Endpoints (Tier Builder)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v2/saas/tiers` | GET | List all subscription tiers |
+| `/api/v2/saas/tiers` | POST | Create new tier |
+| `/api/v2/saas/tiers/{id}` | GET | Get tier with all feature configs |
+| `/api/v2/saas/tiers/{id}` | PUT | Update tier |
+| `/api/v2/saas/tiers/{id}` | DELETE | Delete tier |
+| `/api/v2/saas/tiers/{id}/features` | GET | Get features assigned to tier |
+| `/api/v2/saas/tiers/{id}/features/{feature}` | PUT | Update feature config for tier |
+| `/api/v2/saas/features/catalog` | GET | List all available features |
+| `/api/v2/saas/features/{feature}/schema` | GET | Get schema for feature settings |
+| `/api/v2/saas/features/{feature}/defaults` | GET | Get default settings |
+| `/api/v2/saas/features/{feature}/providers` | GET | List available providers |
+
+#### Database Schema (Tier Builder Extension)
+
+```sql
+-- Feature Catalog
+CREATE TABLE saas_features (
+    id VARCHAR(50) PRIMARY KEY,  -- 'voice', 'memory', 'mcp', etc.
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    category VARCHAR(50),
+    icon VARCHAR(50),
+    settings_schema JSONB,  -- JSON Schema for settings
+    default_settings JSONB,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Tier-Feature Assignments
+CREATE TABLE saas_tier_features (
+    tier_id UUID REFERENCES subscription_tiers(id),
+    feature_id VARCHAR(50) REFERENCES saas_features(id),
+    is_enabled BOOLEAN DEFAULT TRUE,
+    settings JSONB,  -- Override settings for this tier
+    PRIMARY KEY (tier_id, feature_id)
+);
+
+-- Feature Providers
+CREATE TABLE saas_feature_providers (
+    id VARCHAR(50) PRIMARY KEY,
+    feature_id VARCHAR(50) REFERENCES saas_features(id),
+    name VARCHAR(100) NOT NULL,
+    config_schema JSONB,
+    is_active BOOLEAN DEFAULT TRUE
+);
+```
+
+---
+
 ### 4.4 Tenant Users (within Tenant Admin)
 
 **Route:** `/admin/users`  
@@ -841,6 +1043,111 @@ All components follow the `saas-*` naming convention and are built with Lit 3.x.
 │  [Reset to Defaults]                                   [Save Settings]      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 10.3 Catalog Manager Abstraction (Universal Dual-Panel Pattern)
+
+A **universal reusable component** for all complex admin catalog management. This abstraction enables drag-and-drop composition with full-screen configuration modals.
+
+#### Pattern Overview
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                         CATALOG MANAGER (Base Component)                              │
+├──────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                       │
+│   LEFT PANEL (Source)                           RIGHT PANEL (Target/Config)           │
+│   ┌───────────────────────────┐                ┌────────────────────────────────┐    │
+│   │  AVAILABLE ITEMS          │                │  ASSIGNED / CONFIGURED          │    │
+│   │  ─────────────────────    │                │  ─────────────────────────      │    │
+│   │                           │                │                                 │    │
+│   │  [Search...]              │   DRAG →→→    │  [Drop zone / Configuration]    │    │
+│   │                           │                │                                 │    │
+│   │  ┌─────────────────────┐  │                │                                 │    │
+│   │  │  Draggable Card 1   │──┼────────────→   │                                 │    │
+│   │  └─────────────────────┘  │                │                                 │    │
+│   │  ┌─────────────────────┐  │                │  Click item → Opens Full-Screen │    │
+│   │  │  Draggable Card 2   │  │                │  Configuration Modal            │    │
+│   │  └─────────────────────┘  │                │                                 │    │
+│   │  ┌─────────────────────┐  │                │                                 │    │
+│   │  │  Draggable Card 3   │  │                │                                 │    │
+│   │  └─────────────────────┘  │                │                                 │    │
+│   │                           │                │                                 │    │
+│   │  Categories/Filters       │                │                                 │    │
+│   │  ─────────────────────    │                │                                 │    │
+│   │  ○ All  ● Core  ○ AI      │                └────────────────────────────────┘    │
+│   │                           │                                                       │
+│   └───────────────────────────┘                                                       │
+│                                                                                       │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Component Architecture
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `<catalog-manager>` | Full-screen page | Master orchestrator |
+| `<catalog-panel>` | Sidebar panel | Left: Searchable, filterable, draggable items |
+| `<catalog-item>` | Draggable card | Draggable feature/item card |
+| `<target-panel>` | Drop zone | Right: Drop target + assigned items |
+| `<assigned-item>` | Clickable card | Opens full-screen modal on click |
+| `<fullscreen-config-modal>` | Full-screen modal | 100% viewport configuration |
+
+#### Use Cases (Same Abstraction, Different Data)
+
+| Use Case | Left Panel (Catalog) | Right Panel (Target) | Full-Screen Modal |
+|----------|---------------------|---------------------|-------------------|
+| **Tier Builder** | Features (Voice, Memory, MCP...) | Tier composition canvas | Feature settings |
+| **Agent Config** | Tools, Models, Features | Agent capabilities | Tool/Model settings |
+| **Role Editor** | Permissions catalog | Role permission set | Permission rules |
+| **MCP Manager** | Available MCP servers | Connected servers | Server config |
+| **Model Catalog** | All LLM models | Enabled for tenant | Model settings & limits |
+| **Tool Registry** | All available tools | Active tools | Tool configuration |
+| **Webhook Manager** | Event types | Active webhooks | Webhook config |
+| **Theme Builder** | UI components | Theme preview | Component styling |
+
+#### Component Usage Examples
+
+**Tier Builder:**
+```html
+<catalog-manager
+  catalog-source="/api/v2/saas/features/catalog"
+  target-source="/api/v2/saas/tiers/{tierId}/features"
+  modal-component="feature-settings-modal"
+  mode="compose"
+></catalog-manager>
+```
+
+**Agent Tool Configuration:**
+```html
+<catalog-manager
+  catalog-source="/api/v2/tools/registry"
+  target-source="/api/v2/agents/{agentId}/tools"
+  modal-component="tool-settings-modal"
+  mode="assign"
+></catalog-manager>
+```
+
+**Role Permission Editor:**
+```html
+<catalog-manager
+  catalog-source="/api/v2/permissions/catalog"
+  target-source="/api/v2/roles/{roleId}/permissions"
+  modal-component="permission-rules-modal"
+  mode="assign"
+></catalog-manager>
+```
+
+#### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `catalog-source` | string | API endpoint for catalog items |
+| `target-source` | string | API endpoint for assigned items |
+| `modal-component` | string | Custom element name for config modal |
+| `mode` | 'compose' \| 'assign' | Composition vs assignment mode |
+| `searchable` | boolean | Enable search in catalog |
+| `filterable` | boolean | Enable category filters |
+| `max-items` | number | Maximum assignable items |
 
 ---
 

@@ -18,7 +18,11 @@ from admin.saas.api.schemas import (
     TierLimits,
     TierUpdate,
 )
+import logging
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 from admin.saas.models import SubscriptionTier, Tenant
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -26,22 +30,22 @@ router = Router()
 def _tier_to_out(tier: SubscriptionTier) -> SubscriptionTierOut:
     """Convert SubscriptionTier model to output schema."""
     # Get feature codes from tier_features
-    features = list(tier.tier_features.filter(enabled=True).values_list("feature__code", flat=True))
+    features = list(tier.tier_features.filter(is_enabled=True).values_list("feature__code", flat=True))
 
     return SubscriptionTierOut(
         id=str(tier.id),
         name=tier.name,
         slug=tier.slug,
-        price=tier.price_cents / 100.0,
+        price=tier.base_price_cents / 100.0,
         billing_period=tier.billing_interval,
         limits=TierLimits(
             agents=tier.max_agents,
             users=tier.max_users_per_agent,
-            tokens_per_month=tier.token_quota_monthly,
-            storage_gb=tier.storage_quota_gb,
+            tokens_per_month=tier.max_monthly_api_calls,
+            storage_gb=float(tier.max_storage_gb),
         ),
         features=features,
-        popular=tier.is_popular,
+        popular=False,
         active_count=Tenant.objects.filter(tier=tier, status="active").count(),
     )
 
@@ -70,12 +74,12 @@ def create_tier(request, payload: TierCreate):
         id=uuid4(),
         name=payload.name,
         slug=slugify(payload.slug),
-        price_cents=payload.price_cents,
+        base_price_cents=payload.price_cents,
         billing_interval=payload.billing_interval,
         max_agents=payload.limits.get("agents", 1),
         max_users_per_agent=payload.limits.get("users", 5),
-        token_quota_monthly=payload.limits.get("tokens_per_month", 10000),
-        storage_quota_gb=payload.limits.get("storage_gb", 1.0),
+        max_monthly_api_calls=payload.limits.get("tokens_per_month", 10000),
+        max_storage_gb=payload.limits.get("storage_gb", 1.0),
         is_active=True,
     )
 
@@ -90,7 +94,7 @@ def create_tier(request, payload: TierCreate):
                     id=uuid4(),
                     tier=tier,
                     feature=feature,
-                    enabled=True,
+                    is_enabled=True,
                 )
 
     # TODO: Sync to Lago as a plan
@@ -106,12 +110,12 @@ def update_tier(request, tier_id: str, payload: TierUpdate):
     if payload.name is not None:
         tier.name = payload.name
     if payload.price_cents is not None:
-        tier.price_cents = payload.price_cents
+        tier.base_price_cents = payload.price_cents
     if payload.limits is not None:
         tier.max_agents = payload.limits.get("agents", tier.max_agents)
         tier.max_users_per_agent = payload.limits.get("users", tier.max_users_per_agent)
-        tier.token_quota_monthly = payload.limits.get("tokens_per_month", tier.token_quota_monthly)
-        tier.storage_quota_gb = payload.limits.get("storage_gb", tier.storage_quota_gb)
+        tier.max_monthly_api_calls = payload.limits.get("tokens_per_month", tier.max_monthly_api_calls)
+        tier.max_storage_gb = payload.limits.get("storage_gb", tier.max_storage_gb)
     if payload.is_active is not None:
         tier.is_active = payload.is_active
 
@@ -134,7 +138,7 @@ def update_tier(request, tier_id: str, payload: TierUpdate):
                         id=uuid4(),
                         tier=tier,
                         feature=feature,
-                        enabled=True,
+                        is_enabled=True,
                     )
 
     # TODO: Sync changes to Lago
@@ -145,16 +149,25 @@ def update_tier(request, tier_id: str, payload: TierUpdate):
 @transaction.atomic
 def delete_tier(request, tier_id: str):
     """Soft-delete a tier by marking as inactive."""
-    tier = SubscriptionTier.objects.get(id=tier_id)
+    try:
+        tier = SubscriptionTier.objects.get(id=tier_id)
+    except SubscriptionTier.DoesNotExist:
+        # Handled by global exception handler, but good for explicitness
+        return MessageResponse(
+            message=get_message(ErrorCode.TIER_NOT_FOUND),
+            success=False
+        )
 
     # Check if any tenants are using this tier
     active_tenants = Tenant.objects.filter(tier=tier, status="active").count()
     if active_tenants > 0:
+        logger.warning(f"Attempted to delete tier {tier.id} with {active_tenants} active tenants")
         return MessageResponse(
-            message=f"Cannot delete tier with {active_tenants} active tenants",
+            message=get_message(ErrorCode.TIER_ACTIVE_TENANTS, count=active_tenants),
             success=False,
         )
 
     tier.is_active = False
     tier.save()
-    return MessageResponse(message=f"Tier {tier.name} deactivated")
+    logger.info(f"Tier {tier.id} deactivated")
+    return MessageResponse(message=get_message(SuccessCode.TIER_DEACTIVATED, name=tier.name))

@@ -1,26 +1,39 @@
-"""Admin router skeleton."""
+"""General admin API endpoints.
+
+Migrated from: services/gateway/routers/admin.py
+"""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
 import json
-import time
+import logging
 from typing import Optional
 
-from integrations.repositories import get_audit_store
+from ninja import Router
+from django.http import HttpRequest, HttpResponse
 
-router = APIRouter(prefix="/v1/admin", tags=["admin"])
+from admin.common.auth import AuthBearer, RoleRequired
+
+router = Router(tags=["admin-general"])
+logger = logging.getLogger(__name__)
 
 
-@router.get("/ping")
-async def ping() -> dict[str, str]:
+@router.get("/ping", summary="Ping the server")
+async def ping() -> dict:
+    """Simple health check endpoint."""
     return {"status": "ok"}
 
 
-@router.get("/audit/export")
-async def audit_export(action: Optional[str] = Query(None)):
-    """
-    Export audit logs as newline-delimited JSON.
+@router.get(
+    "/audit/export",
+    summary="Export audit logs as NDJSON",
+    auth=RoleRequired("admin", "saas_admin"),
+)
+async def audit_export(
+    request: HttpRequest,
+    action: Optional[str] = None,
+) -> HttpResponse:
+    """Export audit logs as newline-delimited JSON.
     
     Args:
         action: Filter by specific action (e.g., "llm.invoke")
@@ -28,19 +41,16 @@ async def audit_export(action: Optional[str] = Query(None)):
     Returns:
         Newline-delimited JSON response of audit records
     """
-    from fastapi import Response
-
+    from integrations.repositories import get_audit_store
+    
     store = get_audit_store()
     try:
         await store.ensure_schema()
     except Exception:
-        # If schema ensure fails we still attempt list; log at debug level.
-        import logging
-
-        logging.getLogger(__name__).debug("audit ensure_schema failed", exc_info=True)
-
+        logger.debug("audit ensure_schema failed", exc_info=True)
+    
     records = await store.list(action=action, limit=1000)
-
+    
     def _serialize(evt) -> dict:
         return {
             "id": getattr(evt, "id", None),
@@ -55,6 +65,6 @@ async def audit_export(action: Optional[str] = Query(None)):
             "ip": getattr(evt, "ip", None),
             "user_agent": getattr(evt, "user_agent", None),
         }
-
+    
     payload = "\n".join(json.dumps(_serialize(evt), default=str) for evt in records)
-    return Response(content=payload, media_type="text/plain")
+    return HttpResponse(content=payload, content_type="text/plain")
