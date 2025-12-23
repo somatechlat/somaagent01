@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpRequest
@@ -95,7 +96,7 @@ def list_users(
     per_page: int = Query(20, ge=1, le=100),
 ) -> dict:
     """List all users in the tenant with filtering."""
-    tenant_id = getattr(request.auth, "tenant_id", None) or "demo-tenant"
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SAAS_DEFAULT_TENANT_ID
 
     qs = TenantUser.objects.filter(tenant_id=tenant_id)
 
@@ -133,7 +134,7 @@ def invite_user(
     if payload.role not in VALID_ROLES:
         raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
 
-    tenant_id = getattr(request.auth, "tenant_id", None) or "demo-tenant"
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SAAS_DEFAULT_TENANT_ID
 
     user = TenantUser.objects.create(
         id=uuid4(),

@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
+from django.conf import settings
 from django.db import transaction
 from django.http import HttpRequest
 from ninja import Query, Router
@@ -51,7 +52,7 @@ class AgentCreateRequest(BaseModel):
 
     name: str
     slug: Optional[str] = None
-    chat_model: str = "gpt-4o"
+    chat_model: str = None  # Uses settings.SAAS_DEFAULT_CHAT_MODEL if not provided
     memory_enabled: bool = True
     voice_enabled: bool = False
 
@@ -89,7 +90,7 @@ def _agent_to_schema(agent: Agent) -> AgentSchema:
         slug=agent.slug or agent.name.lower().replace(" ", "-"),
         status=agent.status,
         tenant_id=str(agent.tenant_id),
-        chat_model=config.get("chat_model", "gpt-4o"),
+        chat_model=config.get("chat_model", settings.SAAS_DEFAULT_CHAT_MODEL),
         memory_enabled=config.get("memory_enabled", True),
         voice_enabled=config.get("voice_enabled", False),
         created_at=agent.created_at,
@@ -108,14 +109,20 @@ def get_tenant_quota(tenant_id: str) -> QuotaStatus:
         tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
         tier = tenant.tier
         if tier and tier.limits:
-            agents_limit = tier.limits.get("max_agents", 10)
-            users_limit = tier.limits.get("max_users", 50)
-            tokens_limit = tier.limits.get("max_tokens_monthly", 10000000)
-            storage_limit = tier.limits.get("storage_gb", 50.0)
+            agents_limit = tier.limits.get("max_agents", settings.SAAS_DEFAULT_MAX_AGENTS)
+            users_limit = tier.limits.get("max_users", settings.SAAS_DEFAULT_MAX_USERS)
+            tokens_limit = tier.limits.get("max_tokens_monthly", settings.SAAS_DEFAULT_MAX_TOKENS_MONTHLY)
+            storage_limit = tier.limits.get("storage_gb", settings.SAAS_DEFAULT_STORAGE_GB)
         else:
-            agents_limit, users_limit, tokens_limit, storage_limit = 10, 50, 10000000, 50.0
+            agents_limit = settings.SAAS_DEFAULT_MAX_AGENTS
+            users_limit = settings.SAAS_DEFAULT_MAX_USERS
+            tokens_limit = settings.SAAS_DEFAULT_MAX_TOKENS_MONTHLY
+            storage_limit = settings.SAAS_DEFAULT_STORAGE_GB
     except Tenant.DoesNotExist:
-        agents_limit, users_limit, tokens_limit, storage_limit = 10, 50, 10000000, 50.0
+        agents_limit = settings.SAAS_DEFAULT_MAX_AGENTS
+        users_limit = settings.SAAS_DEFAULT_MAX_USERS
+        tokens_limit = settings.SAAS_DEFAULT_MAX_TOKENS_MONTHLY
+        storage_limit = settings.SAAS_DEFAULT_STORAGE_GB
 
     return QuotaStatus(
         agents_used=agents_used,
@@ -149,7 +156,7 @@ def list_agents(
     per_page: int = Query(20, ge=1, le=100),
 ) -> dict:
     """List all agents in the tenant."""
-    tenant_id = getattr(request.auth, "tenant_id", None) or "demo-tenant"
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SAAS_DEFAULT_TENANT_ID
 
     qs = Agent.objects.filter(tenant_id=tenant_id)
 
@@ -185,7 +192,7 @@ def create_agent(
     payload: AgentCreateRequest,
 ) -> dict:
     """Create a new agent in the tenant."""
-    tenant_id = getattr(request.auth, "tenant_id", None) or "demo-tenant"
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SAAS_DEFAULT_TENANT_ID
 
     # Check quota
     quota = get_tenant_quota(tenant_id)
@@ -207,7 +214,7 @@ def create_agent(
         slug=slug,
         status=AgentStatus.ACTIVE,
         config={
-            "chat_model": payload.chat_model,
+            "chat_model": payload.chat_model or settings.SAAS_DEFAULT_CHAT_MODEL,
             "memory_enabled": payload.memory_enabled,
             "voice_enabled": payload.voice_enabled,
         },
@@ -346,6 +353,6 @@ def stop_agent(
 )
 def get_quota(request) -> dict:
     """Get the current quota status for the tenant."""
-    tenant_id = getattr(request.auth, "tenant_id", None) or "demo-tenant"
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SAAS_DEFAULT_TENANT_ID
     quota = get_tenant_quota(tenant_id)
     return api_response(quota.model_dump())
