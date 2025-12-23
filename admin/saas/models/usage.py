@@ -5,10 +5,11 @@ Per SAAS_ADMIN_SRS.md Section 4.7
 """
 
 import uuid
+
 from django.db import models
 
-from admin.saas.models.tenants import Tenant
 from admin.saas.models.agents import Agent
+from admin.saas.models.tenants import Tenant
 
 
 class UsageRecord(models.Model):

@@ -6,6 +6,7 @@ Per SAAS_ADMIN_SRS.md Section 4.3
 
 import uuid
 from decimal import Decimal
+
 from django.db import models
 
 from admin.saas.models.choices import BillingInterval

@@ -5,9 +5,10 @@ Per SAAS_ADMIN_SRS.md Section 4.5, 4.6
 """
 
 import uuid
+
 from django.db import models
 
-from admin.saas.models.choices import AgentStatus, AgentRole
+from admin.saas.models.choices import AgentRole, AgentStatus
 from admin.saas.models.tenants import Tenant
 
 

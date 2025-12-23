@@ -5,6 +5,7 @@ Per SAAS_ADMIN_SRS.md Section 4.3.1
 """
 
 import uuid
+
 from django.db import models
 
 from admin.saas.models.choices import FeatureCategory, QuotaEnforcementPolicy

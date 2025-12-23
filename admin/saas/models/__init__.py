@@ -8,24 +8,23 @@ Usage:
 """
 
 # Import all choices first (no dependencies)
+from admin.saas.models.agents import Agent, AgentUser
+from admin.saas.models.audit import AuditLog
 from admin.saas.models.choices import (
-    TenantStatus,
-    AgentStatus,
-    TenantRole,
     AgentRole,
+    AgentStatus,
     BillingInterval,
-    QuotaEnforcementPolicy,
     FeatureCategory,
+    QuotaEnforcementPolicy,
+    TenantRole,
+    TenantStatus,
 )
+from admin.saas.models.features import FeatureProvider, SaasFeature, TierFeature
+from admin.saas.models.tenants import Tenant, TenantUser
 
 # Import models in dependency order
 from admin.saas.models.tiers import SubscriptionTier
-from admin.saas.models.tenants import Tenant, TenantUser
-from admin.saas.models.agents import Agent, AgentUser
 from admin.saas.models.usage import UsageRecord
-from admin.saas.models.features import SaasFeature, TierFeature, FeatureProvider
-from admin.saas.models.audit import AuditLog
-
 
 # Django model discovery - all models must be listed here
 __all__ = [
