@@ -23,6 +23,24 @@
 
 For the complete documentation, see `docs/README.md` or build the site with `mkdocs`.
 
+## 🐳 Docker Image Build (IMPORTANT)
+
+**⚠️ CRITICAL**: This project uses `requirements-dev.txt` for development builds (NOT `requirements.txt`!)
+
+```bash
+# Standard development build (uses requirements-dev.txt)
+docker build -t somaagent-gateway:latest .
+
+# Production ML build (uses requirements.txt + requirements-ml.txt)
+docker build --build-arg INCLUDE_ML_DEPS=true -t somaagent-gateway:latest .
+```
+
+**When adding dependencies:**
+- Runtime deps → Add to BOTH `requirements-dev.txt` AND `requirements.txt`
+- Dev-only deps (linters/tests) → Add ONLY to `requirements-dev.txt`
+
+**📖 Full details**: See [DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)
+
 </div>
 
 

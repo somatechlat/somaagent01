@@ -5,4 +5,4 @@ set -euo pipefail
 python scripts/preflight.py
 
 # Start Gateway (no reload)
-exec uvicorn services.gateway.main:app --host 0.0.0.0 --port "${PORT:-8010}"
+exec /opt/venv/bin/uvicorn services.gateway.main:app --host 0.0.0.0 --port "${PORT:-8010}"
