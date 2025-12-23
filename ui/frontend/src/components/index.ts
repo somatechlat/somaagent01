@@ -25,3 +25,20 @@ export { EogVoiceOverlay } from './eog-voice-overlay.js';
 // Re-export types
 export type { SelectOption } from './eog-select.js';
 export type { Tab } from './eog-tabs.js';
+
+// SAAS Components (Light/Dark Theme)
+export * from './saas-stat-card.js';
+export * from './saas-glass-modal.js';
+export * from './saas-status-badge.js';
+export * from './saas-data-table.js';
+export * from './saas-sidebar.js';
+export * from './saas-form-field.js';
+export * from './saas-select.js';
+export * from './saas-toggle.js';
+export * from './saas-action-menu.js';
+
+// SAAS Types
+export type { StatStatus, TrendDirection } from './saas-stat-card.js';
+export type { ModalSize } from './saas-glass-modal.js';
+export type { BadgeVariant, BadgeSize } from './saas-status-badge.js';
+
