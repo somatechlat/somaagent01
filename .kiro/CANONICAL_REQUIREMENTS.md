@@ -358,9 +358,9 @@ This document serves as the **Single Source of Truth** for all requirements of t
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| AGS-FE-001 | Stack: Alpine.js 3.x, vanilla CSS variables, no build step | HIGH |
+| AGS-FE-001 | Stack: Lit 3.x Web Components, vanilla CSS variables, no build step | HIGH |
 | AGS-FE-002 | ThemeLoader SDK with loadLocal, loadRemote, validate, apply, use | HIGH |
-| AGS-FE-003 | Alpine Component with load/restore/apply/preview/upload/drag-drop | HIGH |
+| AGS-FE-003 | Lit Web Component with load/restore/apply/preview/upload/drag-drop | HIGH |
 | AGS-FE-004 | Theme card dimensions 280×180, radius 12px | MEDIUM |
 
 ### 15.3 Backend & Data

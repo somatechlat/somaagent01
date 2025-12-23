@@ -62,8 +62,8 @@ somastack-ui/
 │   └── somastack-utilities.css   # Utility classes
 ├── js/
 │   ├── somastack-core.js         # Core utilities
-│   ├── somastack-stores.js       # Alpine.js stores
-│   ├── somastack-components.js   # Alpine.js components
+│   ├── somastack-controllers.js  # Lit Reactive Controllers
+│   ├── somastack-components.js   # Lit Web Components
 │   └── somastack-theme.js        # Theme engine
 ├── fonts/
 │   └── geist/                    # Geist font files
@@ -282,249 +282,403 @@ interface StatusState {
 
 ## Component Specifications
 
-### Sidebar Navigation Component
+### Sidebar Navigation Component (Lit Web Component)
 
 ```html
-<nav x-data="sidebarNav" 
-     class="soma-sidebar"
-     :class="{ 'soma-sidebar--collapsed': isCollapsed }">
-  
+<soma-sidebar ?collapsed="${this.isCollapsed}">
   <div class="soma-sidebar__header">
     <img src="/logo.svg" alt="SomaStack" class="soma-sidebar__logo">
-    <button @click="toggleCollapse()" class="soma-sidebar__toggle">
-      <span x-show="!isCollapsed">◀</span>
-      <span x-show="isCollapsed">▶</span>
+    <button @click="${this._toggleCollapse}" class="soma-sidebar__toggle">
+      ${this.isCollapsed ? html`▶` : html`◀`}
     </button>
   </div>
   
   <div class="soma-sidebar__content">
-    <template x-for="group in navGroups" :key="group.id">
+    ${this.navGroups.map(group => html`
       <div class="soma-nav-group">
-        <span class="soma-nav-group__label" x-text="group.label"></span>
-        <template x-for="item in group.items" :key="item.id">
-          <a :href="item.href"
-             class="soma-nav-item"
-             :class="{ 'soma-nav-item--active': isActive(item) }"
-             x-show="hasPermission(item.permission)">
-            <span class="soma-nav-item__icon" x-html="item.icon"></span>
-            <span class="soma-nav-item__label" x-text="item.label"></span>
-            <span x-show="item.badge" 
-                  class="soma-nav-item__badge" 
-                  x-text="item.badge"></span>
+        <span class="soma-nav-group__label">${group.label}</span>
+        ${group.items.filter(item => this._hasPermission(item.permission)).map(item => html`
+          <a href="${item.href}"
+             class="soma-nav-item ${this._isActive(item) ? 'soma-nav-item--active' : ''}">
+            <span class="soma-nav-item__icon">${unsafeHTML(item.icon)}</span>
+            <span class="soma-nav-item__label">${item.label}</span>
+            ${item.badge ? html`<span class="soma-nav-item__badge">${item.badge}</span>` : nothing}
           </a>
-        </template>
+        `)}
       </div>
-    </template>
+    `)}
   </div>
-</nav>
+</soma-sidebar>
 ```
 
-### Stats Card Component
+### Stats Card Component (Lit Web Component)
 
 ```html
-<div x-data="statsCard({ 
-       value: 1234567, 
-       previousValue: 1100000,
-       label: 'Active Sessions',
-       icon: 'users'
-     })"
-     class="soma-stats-card">
-  
-  <div class="soma-stats-card__icon">
-    <span x-html="getIcon(icon)"></span>
-  </div>
-  
-  <div class="soma-stats-card__content">
-    <span class="soma-stats-card__value" x-text="formatNumber(value)"></span>
-    <span class="soma-stats-card__label" x-text="label"></span>
-  </div>
-  
-  <div class="soma-stats-card__trend"
-       :class="trendClass">
-    <span x-text="trendIcon"></span>
-    <span x-text="trendPercent + '%'"></span>
-  </div>
-</div>
+<soma-stats-card
+  .value="${1234567}"
+  .previousValue="${1100000}"
+  label="Active Sessions"
+  icon="users">
+</soma-stats-card>
 ```
 
-### Data Table Component
+```typescript
+// Lit Web Component Implementation
+@customElement('soma-stats-card')
+export class SomaStatsCard extends LitElement {
+  @property({ type: Number }) value = 0;
+  @property({ type: Number }) previousValue = 0;
+  @property({ type: String }) label = '';
+  @property({ type: String }) icon = '';
+
+  private get trendPercent() {
+    if (!this.previousValue) return 0;
+    return Math.round(((this.value - this.previousValue) / this.previousValue) * 100);
+  }
+
+  private get trendClass() {
+    return this.trendPercent >= 0 ? 'soma-stats-card__trend--up' : 'soma-stats-card__trend--down';
+  }
+
+  render() {
+    return html`
+      <div class="soma-stats-card">
+        <div class="soma-stats-card__icon">
+          <span>${unsafeHTML(this._getIcon(this.icon))}</span>
+        </div>
+        <div class="soma-stats-card__content">
+          <span class="soma-stats-card__value">${this._formatNumber(this.value)}</span>
+          <span class="soma-stats-card__label">${this.label}</span>
+        </div>
+        <div class="soma-stats-card__trend ${this.trendClass}">
+          <span>${this.trendPercent >= 0 ? '↑' : '↓'}</span>
+          <span>${Math.abs(this.trendPercent)}%</span>
+        </div>
+      </div>
+    `;
+  }
+}
+```
+
+### Data Table Component (Lit Web Component)
 
 ```html
-<div x-data="dataTable({ 
-       columns: [...],
-       data: [...],
-       pageSize: 10
-     })"
-     class="soma-table-container">
+<soma-data-table
+  .columns="${columns}"
+  .data="${data}"
+  .pageSize="${10}">
+</soma-data-table>
+```
+
+```typescript
+// Lit Web Component Implementation
+@customElement('soma-data-table')
+export class SomaDataTable extends LitElement {
+  @property({ type: Array }) columns: Column[] = [];
+  @property({ type: Array }) data: any[] = [];
+  @property({ type: Number }) pageSize = 10;
   
-  <!-- Search/Filter -->
-  <div class="soma-table__toolbar">
-    <input type="search" 
-           x-model="searchQuery"
-           placeholder="Search..."
-           class="soma-input soma-input--search">
-    <template x-if="$store.auth.role === 'admin'">
-      <button class="soma-btn soma-btn--primary">Add New</button>
-    </template>
-  </div>
-  
-  <!-- Table -->
-  <table class="soma-table">
-    <thead>
-      <tr>
-        <th class="soma-table__checkbox">
-          <input type="checkbox" @change="toggleSelectAll()">
-        </th>
-        <template x-for="col in columns" :key="col.key">
-          <th @click="sortBy(col.key)" 
-              class="soma-table__header"
-              :class="{ 'soma-table__header--sorted': sortColumn === col.key }">
-            <span x-text="col.label"></span>
-            <span x-show="sortColumn === col.key" x-text="sortDirection === 'asc' ? '↑' : '↓'"></span>
-          </th>
-        </template>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <template x-for="row in paginatedData" :key="row.id">
-        <tr class="soma-table__row">
-          <td><input type="checkbox" :checked="isSelected(row.id)"></td>
-          <template x-for="col in columns" :key="col.key">
-            <td>
-              <template x-if="col.type === 'status'">
-                <span class="soma-badge" :class="'soma-badge--' + row[col.key]" x-text="row[col.key]"></span>
-              </template>
-              <template x-if="col.type !== 'status'">
-                <span x-text="row[col.key]"></span>
-              </template>
-            </td>
-          </template>
-          <td class="soma-table__actions">
-            <button class="soma-btn soma-btn--ghost soma-btn--sm">View</button>
-            <template x-if="$store.auth.hasPermission('edit')">
-              <button class="soma-btn soma-btn--ghost soma-btn--sm">Edit</button>
-            </template>
-            <template x-if="$store.auth.hasPermission('delete')">
-              <button class="soma-btn soma-btn--ghost soma-btn--sm soma-btn--danger">Delete</button>
-            </template>
-          </td>
-        </tr>
-      </template>
-    </tbody>
-  </table>
-  
-  <!-- Pagination -->
-  <div class="soma-table__pagination">
-    <span x-text="'Showing ' + startIndex + '-' + endIndex + ' of ' + totalItems"></span>
-    <div class="soma-pagination">
-      <button @click="prevPage()" :disabled="currentPage === 1">←</button>
-      <span x-text="currentPage + ' / ' + totalPages"></span>
-      <button @click="nextPage()" :disabled="currentPage === totalPages">→</button>
-    </div>
-  </div>
-</div>
+  @state() private searchQuery = '';
+  @state() private sortColumn = '';
+  @state() private sortDirection: 'asc' | 'desc' = 'asc';
+  @state() private currentPage = 1;
+  @state() private selectedIds = new Set<string>();
+
+  // Inject AuthController for role-based visibility
+  private authController = new AuthController(this);
+
+  render() {
+    return html`
+      <div class="soma-table-container">
+        <div class="soma-table__toolbar">
+          <input type="search" 
+                 .value="${this.searchQuery}"
+                 @input="${this._onSearch}"
+                 placeholder="Search..."
+                 class="soma-input soma-input--search">
+          ${this.authController.role === 'admin' ? html`
+            <button class="soma-btn soma-btn--primary">Add New</button>
+          ` : nothing}
+        </div>
+        
+        <table class="soma-table">
+          <thead>
+            <tr>
+              <th class="soma-table__checkbox">
+                <input type="checkbox" @change="${this._toggleSelectAll}">
+              </th>
+              ${this.columns.map(col => html`
+                <th @click="${() => this._sortBy(col.key)}" 
+                    class="soma-table__header ${this.sortColumn === col.key ? 'soma-table__header--sorted' : ''}">
+                  <span>${col.label}</span>
+                  ${this.sortColumn === col.key ? html`<span>${this.sortDirection === 'asc' ? '↑' : '↓'}</span>` : nothing}
+                </th>
+              `)}
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this._paginatedData.map(row => html`
+              <tr class="soma-table__row">
+                <td><input type="checkbox" .checked="${this.selectedIds.has(row.id)}"></td>
+                ${this.columns.map(col => html`
+                  <td>
+                    ${col.type === 'status' 
+                      ? html`<span class="soma-badge soma-badge--${row[col.key]}">${row[col.key]}</span>`
+                      : html`<span>${row[col.key]}</span>`}
+                  </td>
+                `)}
+                <td class="soma-table__actions">
+                  <button class="soma-btn soma-btn--ghost soma-btn--sm">View</button>
+                  ${this.authController.hasPermission('edit') ? html`
+                    <button class="soma-btn soma-btn--ghost soma-btn--sm">Edit</button>
+                  ` : nothing}
+                  ${this.authController.hasPermission('delete') ? html`
+                    <button class="soma-btn soma-btn--ghost soma-btn--sm soma-btn--danger">Delete</button>
+                  ` : nothing}
+                </td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+        
+        <div class="soma-table__pagination">
+          <span>Showing ${this._startIndex}-${this._endIndex} of ${this._totalItems}</span>
+          <div class="soma-pagination">
+            <button @click="${this._prevPage}" ?disabled="${this.currentPage === 1}">←</button>
+            <span>${this.currentPage} / ${this._totalPages}</span>
+            <button @click="${this._nextPage}" ?disabled="${this.currentPage === this._totalPages}">→</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
 ```
 
 
-### Status Indicator Component
+### Status Indicator Component (Lit Web Component)
 
 ```html
-<div x-data="statusIndicator({ service: 'somabrain' })"
-     class="soma-status">
-  
-  <span class="soma-status__dot"
-        :class="'soma-status__dot--' + status.health"
-        :title="status.health">
-  </span>
-  
-  <span class="soma-status__label" x-text="service"></span>
-  
-  <span class="soma-status__time" x-text="formatTime(status.lastChecked)"></span>
-  
-  <!-- Tooltip on hover -->
-  <div class="soma-status__tooltip" x-show="showTooltip">
-    <div>Latency: <span x-text="status.latencyMs + 'ms'"></span></div>
-    <div>Status: <span x-text="status.health"></span></div>
-    <template x-for="(value, key) in status.details" :key="key">
-      <div><span x-text="key"></span>: <span x-text="value"></span></div>
-    </template>
-  </div>
-</div>
+<soma-status-indicator service="somabrain"></soma-status-indicator>
 ```
 
-### Modal Component
+```typescript
+// Lit Web Component Implementation
+@customElement('soma-status-indicator')
+export class SomaStatusIndicator extends LitElement {
+  @property({ type: String }) service = '';
+  
+  @state() private showTooltip = false;
+  
+  // Inject StatusController for service health data
+  private statusController = new StatusController(this);
+
+  private get status() {
+    return this.statusController.getServiceStatus(this.service);
+  }
+
+  render() {
+    return html`
+      <div class="soma-status"
+           @mouseenter="${() => this.showTooltip = true}"
+           @mouseleave="${() => this.showTooltip = false}">
+        
+        <span class="soma-status__dot soma-status__dot--${this.status.health}"
+              title="${this.status.health}">
+        </span>
+        
+        <span class="soma-status__label">${this.service}</span>
+        
+        <span class="soma-status__time">${this._formatTime(this.status.lastChecked)}</span>
+        
+        ${this.showTooltip ? html`
+          <div class="soma-status__tooltip">
+            <div>Latency: <span>${this.status.latencyMs}ms</span></div>
+            <div>Status: <span>${this.status.health}</span></div>
+            ${Object.entries(this.status.details).map(([key, value]) => html`
+              <div><span>${key}</span>: <span>${value}</span></div>
+            `)}
+          </div>
+        ` : nothing}
+      </div>
+    `;
+  }
+}
+```
+
+### Modal Component (Lit Web Component)
 
 ```html
-<div x-data="modal({ size: 'md' })"
-     x-show="isOpen"
-     x-transition:enter="soma-modal--enter"
-     x-transition:leave="soma-modal--leave"
-     class="soma-modal"
-     @keydown.escape.window="close()">
-  
-  <!-- Backdrop -->
-  <div class="soma-modal__backdrop" @click="closeOnBackdrop && close()"></div>
-  
-  <!-- Content -->
-  <div class="soma-modal__content" :class="'soma-modal__content--' + size"
-       x-trap.noscroll="isOpen">
+<soma-modal 
+  ?open="${this.isModalOpen}"
+  size="md"
+  title="Confirm Action"
+  @close="${this._onModalClose}"
+  @confirm="${this._onModalConfirm}">
+  <p>Are you sure you want to proceed?</p>
+</soma-modal>
+```
+
+```typescript
+// Lit Web Component Implementation
+@customElement('soma-modal')
+export class SomaModal extends LitElement {
+  @property({ type: Boolean, reflect: true }) open = false;
+  @property({ type: String }) size: 'sm' | 'md' | 'lg' = 'md';
+  @property({ type: String }) title = '';
+  @property({ type: Boolean }) closeOnBackdrop = true;
+  @property({ type: Boolean }) showFooter = true;
+
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('keydown', this._handleEscape);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('keydown', this._handleEscape);
+  }
+
+  private _handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && this.open) {
+      this._close();
+    }
+  };
+
+  private _close() {
+    this.dispatchEvent(new CustomEvent('close'));
+  }
+
+  private _confirm() {
+    this.dispatchEvent(new CustomEvent('confirm'));
+  }
+
+  render() {
+    if (!this.open) return nothing;
     
-    <div class="soma-modal__header">
-      <h2 class="soma-modal__title" x-text="title"></h2>
-      <button @click="close()" class="soma-modal__close">×</button>
-    </div>
-    
-    <div class="soma-modal__body">
-      <slot></slot>
-    </div>
-    
-    <div class="soma-modal__footer" x-show="showFooter">
-      <button @click="close()" class="soma-btn soma-btn--ghost">Cancel</button>
-      <button @click="confirm()" class="soma-btn soma-btn--primary">Confirm</button>
-    </div>
-  </div>
-</div>
+    return html`
+      <div class="soma-modal">
+        <div class="soma-modal__backdrop" 
+             @click="${() => this.closeOnBackdrop && this._close()}"></div>
+        
+        <div class="soma-modal__content soma-modal__content--${this.size}">
+          <div class="soma-modal__header">
+            <h2 class="soma-modal__title">${this.title}</h2>
+            <button @click="${this._close}" class="soma-modal__close">×</button>
+          </div>
+          
+          <div class="soma-modal__body">
+            <slot></slot>
+          </div>
+          
+          ${this.showFooter ? html`
+            <div class="soma-modal__footer">
+              <button @click="${this._close}" class="soma-btn soma-btn--ghost">Cancel</button>
+              <button @click="${this._confirm}" class="soma-btn soma-btn--primary">Confirm</button>
+            </div>
+          ` : nothing}
+        </div>
+      </div>
+    `;
+  }
+}
 ```
 
-### Toast Notification Component
+### Toast Notification Component (Lit Web Component)
 
 ```html
-<div x-data="toastContainer"
-     class="soma-toast-container">
-  
-  <template x-for="toast in toasts" :key="toast.id">
-    <div class="soma-toast"
-         :class="'soma-toast--' + toast.variant"
-         x-show="toast.visible"
-         x-transition>
-      
-      <span class="soma-toast__icon" x-html="getIcon(toast.variant)"></span>
-      <span class="soma-toast__message" x-text="toast.message"></span>
-      <button @click="dismiss(toast.id)" class="soma-toast__close">×</button>
-    </div>
-  </template>
-</div>
+<soma-toast-container></soma-toast-container>
+```
+
+```typescript
+// Lit Web Component Implementation
+@customElement('soma-toast-container')
+export class SomaToastContainer extends LitElement {
+  @state() private toasts: Toast[] = [];
+
+  // Global toast service integration
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('soma-toast', this._handleToastEvent as EventListener);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('soma-toast', this._handleToastEvent as EventListener);
+  }
+
+  private _handleToastEvent = (e: CustomEvent<Toast>) => {
+    this._addToast(e.detail);
+  };
+
+  private _addToast(toast: Toast) {
+    const id = crypto.randomUUID();
+    this.toasts = [...this.toasts, { ...toast, id, visible: true }];
+    
+    // Auto-dismiss after timeout
+    setTimeout(() => this._dismiss(id), toast.duration || 5000);
+  }
+
+  private _dismiss(id: string) {
+    this.toasts = this.toasts.filter(t => t.id !== id);
+  }
+
+  render() {
+    return html`
+      <div class="soma-toast-container">
+        ${this.toasts.map(toast => html`
+          <div class="soma-toast soma-toast--${toast.variant}">
+            <span class="soma-toast__icon">${unsafeHTML(this._getIcon(toast.variant))}</span>
+            <span class="soma-toast__message">${toast.message}</span>
+            <button @click="${() => this._dismiss(toast.id)}" class="soma-toast__close">×</button>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+}
+
+// Global toast function
+export function showToast(message: string, variant: 'success' | 'error' | 'warning' | 'info' = 'info') {
+  window.dispatchEvent(new CustomEvent('soma-toast', { detail: { message, variant } }));
+}
 ```
 
 ---
 
-## Alpine.js Store Specifications
+## Lit Reactive Controller Specifications
 
-### Auth Store
+### AuthController
 
-```javascript
-Alpine.store('auth', {
-  isAuthenticated: false,
-  role: 'viewer',
-  tenantId: null,
-  userId: null,
-  permissions: [],
+```typescript
+// Lit Reactive Controller for authentication state
+import { ReactiveController, ReactiveControllerHost } from 'lit';
+
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  admin: ['view', 'create', 'edit', 'delete', 'approve', 'admin'],
+  operator: ['view', 'create', 'edit', 'execute'],
+  viewer: ['view']
+};
+
+export class AuthController implements ReactiveController {
+  host: ReactiveControllerHost;
   
-  init() {
+  isAuthenticated = false;
+  role: 'admin' | 'operator' | 'viewer' = 'viewer';
+  tenantId: string | null = null;
+  userId: string | null = null;
+  permissions: string[] = [];
+
+  constructor(host: ReactiveControllerHost) {
+    this.host = host;
+    host.addController(this);
+  }
+
+  hostConnected() {
     this.loadFromToken();
-  },
-  
+  }
+
   loadFromToken() {
     const token = localStorage.getItem('soma_token');
     if (!token) {
@@ -539,88 +693,136 @@ Alpine.store('auth', {
       this.tenantId = payload.tenant_id;
       this.userId = payload.sub;
       this.permissions = ROLE_PERMISSIONS[this.role] || [];
+      this.host.requestUpdate();
     } catch (e) {
       console.error('Failed to parse JWT:', e);
       this.setRole('viewer');
     }
-  },
-  
-  setRole(role) {
+  }
+
+  setRole(role: 'admin' | 'operator' | 'viewer') {
     this.role = role;
     this.permissions = ROLE_PERMISSIONS[role] || [];
-  },
-  
-  hasPermission(permission) {
+    this.host.requestUpdate();
+  }
+
+  hasPermission(permission: string): boolean {
     return this.permissions.includes(permission);
-  },
-  
-  get isAdmin() {
+  }
+
+  get isAdmin(): boolean {
     return this.role === 'admin';
-  },
-  
-  get isOperator() {
+  }
+
+  get isOperator(): boolean {
     return this.role === 'operator' || this.role === 'admin';
   }
-});
+}
 ```
 
-### Theme Store
+### ThemeController
 
-```javascript
-Alpine.store('theme', {
-  mode: 'system',
-  currentTheme: 'default',
+```typescript
+// Lit Reactive Controller for theme state
+import { ReactiveController, ReactiveControllerHost } from 'lit';
+
+export class ThemeController implements ReactiveController {
+  host: ReactiveControllerHost;
   
-  init() {
+  mode: 'light' | 'dark' | 'system' = 'system';
+  currentTheme = 'default';
+  private mediaQuery: MediaQueryList;
+
+  constructor(host: ReactiveControllerHost) {
+    this.host = host;
+    host.addController(this);
+    this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  }
+
+  hostConnected() {
     this.loadPreference();
     this.applyTheme();
-    this.watchSystemPreference();
-  },
-  
+    this.mediaQuery.addEventListener('change', this._handleSystemChange);
+  }
+
+  hostDisconnected() {
+    this.mediaQuery.removeEventListener('change', this._handleSystemChange);
+  }
+
+  private _handleSystemChange = () => {
+    if (this.mode === 'system') {
+      this.applyTheme();
+      this.host.requestUpdate();
+    }
+  };
+
   loadPreference() {
     const saved = localStorage.getItem('soma_theme_mode');
-    if (saved) this.mode = saved;
-  },
-  
-  setMode(mode) {
+    if (saved) this.mode = saved as 'light' | 'dark' | 'system';
+  }
+
+  setMode(mode: 'light' | 'dark' | 'system') {
     this.mode = mode;
     localStorage.setItem('soma_theme_mode', mode);
     this.applyTheme();
-  },
-  
+    this.host.requestUpdate();
+  }
+
   applyTheme() {
     const isDark = this.mode === 'dark' || 
-      (this.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      (this.mode === 'system' && this.mediaQuery.matches);
     
     document.documentElement.classList.toggle('soma-dark', isDark);
-  },
-  
-  watchSystemPreference() {
-    window.matchMedia('(prefers-color-scheme: dark)')
-      .addEventListener('change', () => {
-        if (this.mode === 'system') this.applyTheme();
-      });
-  },
-  
+  }
+
   toggle() {
     this.setMode(this.mode === 'dark' ? 'light' : 'dark');
   }
-});
+}
 ```
 
-### Status Store
+### StatusController
 
-```javascript
-Alpine.store('status', {
-  services: {},
-  isPolling: false,
-  pollIntervalMs: 5000,
+```typescript
+// Lit Reactive Controller for service status
+import { ReactiveController, ReactiveControllerHost } from 'lit';
+
+interface ServiceStatus {
+  name: string;
+  health: 'healthy' | 'degraded' | 'down' | 'unknown';
+  lastChecked: Date;
+  latencyMs: number;
+  details: Record<string, any>;
+}
+
+export class StatusController implements ReactiveController {
+  host: ReactiveControllerHost;
   
-  init() {
+  services: Record<string, ServiceStatus> = {};
+  isPolling = false;
+  pollIntervalMs = 5000;
+  private intervalId: number | null = null;
+
+  private readonly endpoints = {
+    somabrain: 'http://localhost:9696/health',
+    somamemory: 'http://localhost:9595/healthz',
+    somaagent: 'http://localhost:21016/v1/health'
+  };
+
+  constructor(host: ReactiveControllerHost) {
+    this.host = host;
+    host.addController(this);
+  }
+
+  hostConnected() {
     this.startPolling();
-  },
-  
-  async checkHealth(serviceName, endpoint) {
+  }
+
+  hostDisconnected() {
+    this.stopPolling();
+  }
+
+  async checkHealth(serviceName: string, endpoint: string) {
     try {
       const start = performance.now();
       const response = await fetch(endpoint);
@@ -640,29 +842,42 @@ Alpine.store('status', {
         health: 'down',
         lastChecked: new Date(),
         latencyMs: 0,
-        details: { error: e.message }
+        details: { error: (e as Error).message }
       };
     }
-  },
-  
+    this.host.requestUpdate();
+  }
+
   async checkAllServices() {
-    const endpoints = {
-      somabrain: 'http://localhost:9696/health',
-      somamemory: 'http://localhost:9595/healthz',
-      somaagent: 'http://localhost:21016/v1/health'
-    };
-    
     await Promise.all(
-      Object.entries(endpoints).map(([name, url]) => this.checkHealth(name, url))
+      Object.entries(this.endpoints).map(([name, url]) => this.checkHealth(name, url))
     );
-  },
-  
+  }
+
   startPolling() {
     this.isPolling = true;
     this.checkAllServices();
-    setInterval(() => this.checkAllServices(), this.pollIntervalMs);
+    this.intervalId = window.setInterval(() => this.checkAllServices(), this.pollIntervalMs);
   }
-});
+
+  stopPolling() {
+    this.isPolling = false;
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  }
+
+  getServiceStatus(serviceName: string): ServiceStatus {
+    return this.services[serviceName] || {
+      name: serviceName,
+      health: 'unknown',
+      lastChecked: new Date(),
+      latencyMs: 0,
+      details: {}
+    };
+  }
+}
 ```
 
 

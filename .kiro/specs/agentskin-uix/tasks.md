@@ -18,7 +18,7 @@
 |----|------|----------|--------|--------------|--------|
 | T1 | Extract Inline Styles from index.html | P0 | 3h | None | ⏳ PENDING |
 | T2 | Enhance ThemeLoader SDK | P0 | 3h | T1 | ⏳ PENDING |
-| T3 | Create Theme Alpine Store | P0 | 2h | T2 | ⏳ PENDING |
+| T3 | Create Theme Lit Controller | P0 | 2h | T2 | ⏳ PENDING |
 | T4 | Create Theme Gallery Component | P0 | 4h | T3 | ⏳ PENDING |
 | T5 | Create Theme Card Component | P0 | 2h | T3 | ⏳ PENDING |
 | T6 | Create Palette Editor Component | P1 | 3h | T3 | ⏳ PENDING |
@@ -125,57 +125,70 @@ const ThemeLoader = {
 
 ---
 
-## Phase 3: Alpine.js Integration
+## Phase 3: Lit Web Components Integration
 
-### Task 3: Create Theme Alpine Store
+### Task 3: Create Theme Lit Controller
 
-**File:** `somaAgent01/webui/js/stores/theme-store.js` (create)
+**File:** `somaAgent01/webui/js/controllers/theme-controller.js` (create)
 
 **Requirements:** TR-AGS-003.1 - TR-AGS-003.3
 
 ### Acceptance Criteria
-- [ ] Creates Alpine.js store for theme state
+- [ ] Creates Lit Reactive Controller for theme state
 - [ ] Stores: themes[], currentTheme, previewTheme, isAdmin, searchQuery
 - [ ] Implements loadThemes() to fetch from API
 - [ ] Implements applyTheme(name) using ThemeLoader
 - [ ] Implements uploadTheme(file) for admin upload
 - [ ] Implements filterThemes() for search functionality
-- [ ] Integrates with existing AlpineStore.js
+- [ ] Integrates with Lit component lifecycle
 
 ### Implementation Notes
 ```javascript
-// webui/js/stores/theme-store.js
-document.addEventListener('alpine:init', () => {
-  Alpine.store('theme', {
-    themes: [],
-    currentTheme: localStorage.getItem('soma-theme') || 'default',
-    previewTheme: null,
-    isAdmin: false,
-    searchQuery: '',
-    isLoading: false,
-    
-    async init() {
-      await this.loadThemes();
-      await ThemeLoader.switch(this.currentTheme);
-    },
-    
-    async loadThemes() {
-      this.isLoading = true;
-      const response = await fetch('/v1/skins');
-      this.themes = await response.json();
-      this.isLoading = false;
-    },
-    
-    get filteredThemes() {
-      if (!this.searchQuery) return this.themes;
-      const q = this.searchQuery.toLowerCase();
-      return this.themes.filter(t => 
-        t.name.toLowerCase().includes(q) ||
-        (t.description || '').toLowerCase().includes(q)
-      );
-    }
-  });
-});
+// webui/js/controllers/theme-controller.js
+import { ReactiveController } from 'lit';
+
+export class ThemeController {
+  host;
+  themes = [];
+  currentTheme = localStorage.getItem('soma-theme') || 'default';
+  previewTheme = null;
+  isAdmin = false;
+  searchQuery = '';
+  isLoading = false;
+
+  constructor(host) {
+    this.host = host;
+    host.addController(this);
+  }
+
+  async hostConnected() {
+    await this.loadThemes();
+    await ThemeLoader.switch(this.currentTheme);
+  }
+
+  async loadThemes() {
+    this.isLoading = true;
+    this.host.requestUpdate();
+    const response = await fetch('/v1/skins');
+    this.themes = await response.json();
+    this.isLoading = false;
+    this.host.requestUpdate();
+  }
+
+  get filteredThemes() {
+    if (!this.searchQuery) return this.themes;
+    const q = this.searchQuery.toLowerCase();
+    return this.themes.filter(t => 
+      t.name.toLowerCase().includes(q) ||
+      (t.description || '').toLowerCase().includes(q)
+    );
+  }
+
+  setSearchQuery(query) {
+    this.searchQuery = query;
+    this.host.requestUpdate();
+  }
+}
 ```
 
 ---
@@ -702,6 +715,6 @@ Week 5:
 
 - Tasks marked with `*` are property-based tests
 - All tests use real infrastructure per VIBE Coding Rules
-- No build step required - vanilla Alpine.js only
+- UI uses Lit 3.x Web Components (Alpine.js is FORBIDDEN)
 - Theme switch must complete within 300ms
 

@@ -113,7 +113,7 @@
   - .soma-nav-item__badge (notification badge)
   - _Requirements: FR-NAV-001 through FR-NAV-006_
 
-- [ ] 5.2 Create `js/components/sidebar-nav.js` Alpine component
+- [ ] 5.2 Create `js/components/sidebar-nav.js` Lit Web Component
   - Collapse/expand functionality
   - Active section tracking
   - localStorage persistence
@@ -139,7 +139,7 @@
   - Size variants: sm, md, lg, full
   - _Requirements: FR-SC-001 through FR-SC-005_
 
-- [ ] 6.2 Create `js/components/stats-card.js` Alpine component
+- [ ] 6.2 Create `js/components/stats-card.js` Lit Web Component
   - Number formatting (K/M/B suffixes)
   - Trend calculation and display
   - Value animation (300ms transition)
@@ -162,7 +162,7 @@
   - .soma-badge (status badges: approved, pending, rejected)
   - _Requirements: FR-TBL-001 through FR-TBL-008_
 
-- [ ] 7.2 Create `js/components/data-table.js` Alpine component
+- [ ] 7.2 Create `js/components/data-table.js` Lit Web Component
   - Column sorting (asc/desc toggle)
   - Row selection with select-all
   - Pagination (configurable page size)
@@ -194,7 +194,7 @@
   - Pulse animation for active states
   - _Requirements: FR-SI-001 through FR-SI-007_
 
-- [ ] 8.2 Create `js/components/status-indicator.js` Alpine component
+- [ ] 8.2 Create `js/components/status-indicator.js` Lit Web Component
   - Health status display
   - Relative timestamp formatting
   - Tooltip on hover
@@ -214,11 +214,11 @@
   - Helper text and validation error styling
   - _Requirements: FR-FRM-001 through FR-FRM-007_
 
-- [ ] 9.2 Create `js/components/form-validation.js` Alpine component
+- [ ] 9.2 Create `js/components/form-validation.js` Lit Web Component
   - Inline validation
   - Form-level validation
   - Error message display
-  - Alpine.js x-model integration
+  - Lit reactive property integration
   - _Requirements: FR-FRM-002, FR-FRM-006, FR-FRM-007_
 
 - [ ] 9.3 Write property test for form validation
@@ -238,8 +238,8 @@
   - Open/close animations (fade + scale, 200ms)
   - _Requirements: FR-MOD-001 through FR-MOD-007_
 
-- [ ] 10.2 Create `js/components/modal.js` Alpine component
-  - Focus trap (x-trap directive)
+- [ ] 10.2 Create `js/components/modal.js` Lit Web Component
+  - Focus trap
   - Escape key close
   - Backdrop click close (configurable)
   - Body scroll lock
@@ -265,7 +265,7 @@
   - Enter/exit animations
   - _Requirements: FR-TST-001 through FR-TST-004_
 
-- [ ] 11.2 Create `js/components/toast.js` Alpine component
+- [ ] 11.2 Create `js/components/toast.js` Lit Web Component
   - Toast creation with variants
   - Auto-dismiss (configurable timeout, default 5s)
   - Manual dismiss
@@ -281,8 +281,8 @@
 
 ## Phase 3: State Management
 
-### Task 12: Implement Auth Store
-- [ ] 12.1 Create `js/stores/auth-store.js`
+### Task 12: Implement Auth Controller
+- [ ] 12.1 Create `js/controllers/auth-controller.js`
   - AuthState interface implementation
   - JWT token parsing from localStorage
   - Role extraction from token claims
@@ -626,7 +626,7 @@
 
 - All property-based tests are required (comprehensive testing)
 - All tests use real infrastructure per VIBE Coding Rules
-- No build step required - vanilla Alpine.js only
+- Lit Web Components only - no build step required
 - Theme switch must complete within 100ms
 - Status updates must occur within 5 seconds
 - All components must work in both light and dark themes

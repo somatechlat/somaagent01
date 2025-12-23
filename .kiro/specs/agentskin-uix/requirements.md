@@ -12,7 +12,7 @@ This specification defines the requirements for the AgentSkin UIX (User Interfac
 |-----------|----------|--------|
 | Design Tokens | `webui/design-system/tokens.css` | ✅ 200+ CSS variables defined |
 | Theme Loader SDK | `webui/js/theme.js` | ✅ Basic implementation (loadLocal, loadRemote, validate, apply) |
-| Alpine Store | `webui/js/AlpineStore.js` | ✅ Reactive state management |
+| Alpine Store | `webui/js/AlpineStore.js` | ❌ DEPRECATED - Use Lit Controllers |
 | Theme Files | `webui/themes/*.json` | ✅ 2 themes (default, midnight) |
 | Main UI | `webui/index.html` | ⚠️ Monolithic (1323 lines, inline styles) |
 | App Styles | `webui/css/app.css` | ✅ Component styles using CSS variables |
@@ -161,14 +161,14 @@ This specification defines the requirements for the AgentSkin UIX (User Interfac
 | TR-AGS-002.7 | ThemeLoader MUST implement `preview(skin)` for temporary application | MEDIUM |
 | TR-AGS-002.8 | ThemeLoader MUST implement `cancelPreview()` to restore previous | MEDIUM |
 
-### TR-AGS-003: Alpine.js Integration
+### TR-AGS-003: Lit Web Components Integration
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| TR-AGS-003.1 | Theme state MUST be managed via Alpine.js store | HIGH |
-| TR-AGS-003.2 | Theme gallery MUST be an Alpine.js component | HIGH |
-| TR-AGS-003.3 | Theme switching MUST trigger Alpine reactivity | HIGH |
-| TR-AGS-003.4 | No build step required - vanilla Alpine.js only | HIGH |
+| TR-AGS-003.1 | Theme state MUST be managed via Lit Reactive Controller | HIGH |
+| TR-AGS-003.2 | Theme gallery MUST be a Lit Web Component | HIGH |
+| TR-AGS-003.3 | Theme switching MUST trigger Lit reactivity | HIGH |
+| TR-AGS-003.4 | No build step required - vanilla Lit 3.x only | HIGH |
 
 ### TR-AGS-004: Backend API
 
@@ -362,7 +362,7 @@ The following 26 CSS variables MUST be defined in every theme:
 
 ## Dependencies
 
-- Alpine.js 3.x (already in vendor/)
+- Lit 3.x Web Components (Alpine.js is FORBIDDEN)
 - FastAPI backend (existing)
 - PostgreSQL database (existing)
 - OPA for admin authorization (existing)
