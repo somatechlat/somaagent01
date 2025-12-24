@@ -116,8 +116,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Default tenant for unauthenticated requests (development only)
 SAAS_DEFAULT_TENANT_ID = os.environ.get("SAAS_DEFAULT_TENANT_ID", None)
 
-# Default AI model for new agents
-SAAS_DEFAULT_CHAT_MODEL = os.environ.get("SAAS_DEFAULT_CHAT_MODEL", "gpt-4o")
+# Default AI model for new agents (REQUIRED - no hardcoded default per VIBE Rule 4)
+SAAS_DEFAULT_CHAT_MODEL = os.environ.get("SAAS_DEFAULT_CHAT_MODEL")
 
 # Default tier limits (can be overridden per-tier in database)
 SAAS_DEFAULT_MAX_AGENTS = int(os.environ.get("SAAS_DEFAULT_MAX_AGENTS", "10"))

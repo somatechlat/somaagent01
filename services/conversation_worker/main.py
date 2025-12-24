@@ -139,7 +139,7 @@ class ConversationWorkerImpl:
             internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=os.environ.get("SA01_LLM_MODEL", "gpt-4o-mini"),
+            default_model=os.environ.get("SA01_LLM_MODEL"),  # REQUIRED - no hardcoded default per VIBE
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,

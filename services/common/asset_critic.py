@@ -366,10 +366,20 @@ class AssetCritic:
                 ChatMessage(role="user", content=user_content),
             ]
             
-            # Using gpt-4o as it is our standard multimodal model
+            # Get vision model from Django settings (REQUIRED per VIBE Rule 4)
+            import os
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+            import django
+            if not django.apps.apps.ready:
+                django.setup()
+            from django.conf import settings
+            vision_model = getattr(settings, "SAAS_VISION_MODEL", os.environ.get("SA01_VISION_MODEL"))
+            if not vision_model:
+                raise ValueError("Vision model not configured - set SAAS_VISION_MODEL or SA01_VISION_MODEL")
+            
             response_text, _, _ = await self._llm_adapter.chat(
                 messages,
-                model="gpt-4o", 
+                model=vision_model, 
                 temperature=0.1,
                 response_format={"type": "json_object"}
             )
