@@ -97,11 +97,6 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/capsules", capsules_router)
 
-    # Notifications (NEW)
-    from admin.notifications.api import router as notifications_router
-
-    api.add_router("/notifications", notifications_router)
-
     # =========================================================================
     # NEW ROUTERS - 2025-12-24 Session
     # =========================================================================
