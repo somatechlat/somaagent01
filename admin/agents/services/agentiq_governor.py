@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, field_validator
 
 from services.common.budget_manager import BudgetManager
-from services.common.capsule_store import CapsuleRecord, CapsuleStore
+from services.common.capsule_enforcer import CapsuleRecord, CapsuleEnforcer as CapsuleStore
 from services.common.degradation_monitor import DegradationLevel, DegradationMonitor
 
 LOGGER = logging.getLogger(__name__)
