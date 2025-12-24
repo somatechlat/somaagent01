@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third party
     "ninja",
-    "corsheaders",
     # Local admin apps
     "admin.core",
     "admin.saas",
