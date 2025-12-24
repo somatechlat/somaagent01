@@ -149,6 +149,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/assets", assets_router)
 
+    # Capabilities (Registry + Circuit Breakers)
+    from admin.capabilities.api import router as capabilities_router
+
+    api.add_router("/capabilities", capabilities_router)
+
     return api
 
 
