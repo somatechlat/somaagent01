@@ -110,9 +110,13 @@
 - [x] auth-store.ts (270 lines) - Lit Context
 - [x] saas-login.ts (33KB) - login view
 
-### 2.2 MFA Setup ⏳ IN PROGRESS
-- [ ] POST /auth/mfa/setup - Initialize TOTP
-- [ ] POST /auth/mfa/verify - Verify TOTP code
+### 2.2 MFA Setup ✅ COMPLETE
+- [x] POST /auth/mfa/setup - Initialize TOTP
+- [x] POST /auth/mfa/verify - Verify TOTP code
+- [x] POST /auth/mfa/validate - Login MFA step
+- [x] GET /auth/mfa/status - MFA status
+- [x] POST /auth/mfa/disable - Disable MFA
+- [x] mfa.py (280 lines)
 - [ ] saas-mfa-setup.ts view
 
 ### 2.3 Password Reset
@@ -124,10 +128,10 @@
 - [ ] GET /auth/invite/{token} - Accept invitation
 - [ ] Onboarding wizard
 
-### 2.5 Session Management ⏳ PARTIAL
+### 2.5 Session Management ✅ COMPLETE
 - [x] Token refresh (auto-scheduled in frontend)
+- [x] POST /auth/impersonate (125 lines) - SAAS admin only
 - [ ] Concurrent session limits
-- [ ] Impersonation tokens (SAAS admin only)
 
 ---
 
@@ -261,10 +265,13 @@
 ### 4.5 Tenant Settings ✅
 - [x] saas-settings.ts view (33KB)
 
-### 4.6 Tenant Billing
-- [ ] GET /api/v2/admin/billing
-- [ ] POST /api/v2/admin/billing/upgrade
-- [ ] saas-tenant-billing view
+### 4.6 Tenant Billing ✅ COMPLETE
+- [x] GET /saas/billing/tenant/{id}
+- [x] POST /saas/billing/tenant/{id}/upgrade
+- [x] GET /saas/billing/tenant/{id}/invoices
+- [x] POST /saas/billing/tenant/{id}/payment-methods
+- [x] billing.py (+195 lines)
+- [ ] saas-tenant-billing.ts view
 
 ### 4.7 Audit Log ✅ COMPLETE (via /saas/audit)
 - [x] GET /saas/audit - List with filters
