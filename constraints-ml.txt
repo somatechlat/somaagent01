@@ -1,10 +1,11 @@
 ########## ML stack constraints (enforce CPU-only torch) ##########
-# These constraints ensure pip never upgrades torch to CUDA builds.
+# These constraints ensure pip version pins are respected.
 # Keep synchronized with requirements-ml.txt and Docker build args.
---index-url https://download.pytorch.org/whl/cpu
---extra-index-url https://pypi.org/simple
+# NOTE: --index-url directives are NOT valid in constraint files!
+# The index URL is set via PIP_EXTRA_INDEX_URL or --extra-index-url
 
 torch==2.3.1
 sentence-transformers==2.4.0
 protobuf==5.27.3
 grpcio==1.67.1
+
