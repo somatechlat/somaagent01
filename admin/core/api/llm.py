@@ -56,16 +56,27 @@ class LlmInvokeResponse(BaseModel):
     confidence: Optional[float] = None
 
 
-# Centralized configuration via Django settings (with fallback for tests)
-DEFAULT_MODEL = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
-if not DEFAULT_MODEL:
-    raise RuntimeError(
-        "SAAS_DEFAULT_CHAT_MODEL not configured - set in Django settings or SA01_LLM_MODEL env var"
-    )
-DEFAULT_BASE_URL = getattr(settings, "LLM_DEFAULT_BASE_URL", None)  # Optional
-MULTIMODAL_ENABLED = getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
-CONFIDENCE_ENABLED = getattr(settings, "CONFIDENCE_ENABLED", False)
-CONFIDENCE_AGGREGATION = getattr(settings, "CONFIDENCE_AGGREGATION", "average")
+# Centralized configuration via lazy getters to avoid blocking app population
+def get_default_model() -> str:
+    """Get the default chat model from settings or environment.
+    
+    Per VIBE Rules: Source from database first, then environment.
+    """
+    model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
+    if not model:
+        # Fallback to a safe string during migrations/setup if needed,
+        # but do NOT block module import.
+        return "unconfigured"
+    return model
+
+def get_multimodal_enabled() -> bool:
+    return getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
+
+def get_confidence_enabled() -> bool:
+    return getattr(settings, "CONFIDENCE_ENABLED", False)
+
+def get_confidence_aggregation() -> str:
+    return getattr(settings, "CONFIDENCE_AGGREGATION", "average")
 
 
 def _multimodal_instructions() -> str:
@@ -167,9 +178,12 @@ async def invoke(req: LlmInvokeRequest) -> dict:
 
     # Extract params with Django settings defaults
     overrides = req.overrides or {}
-    model = overrides.get("model", DEFAULT_MODEL)
-    base_url = overrides.get("base_url", DEFAULT_BASE_URL)
+    model = overrides.get("model") or get_default_model()
+    base_url = overrides.get("base_url", getattr(settings, "LLM_DEFAULT_BASE_URL", None))
     temperature = overrides.get("temperature")
+
+    if model == "unconfigured":
+         raise ServiceError("llm_not_configured: SAAS_DEFAULT_CHAT_MODEL is missing.")
 
     # Build messages
     messages = (
@@ -179,7 +193,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     )
 
     # Add multimodal instructions if enabled
-    if req.multimodal and MULTIMODAL_ENABLED:
+    if req.multimodal and get_multimodal_enabled():
         messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
 
     try:
@@ -272,8 +286,8 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
             base_url=base_url,
             temperature=temperature,
             overrides=overrides,
-            request_logprobs=CONFIDENCE_ENABLED,
-            aggregation=CONFIDENCE_AGGREGATION,
+            request_logprobs=get_confidence_enabled(),
+            aggregation=get_confidence_aggregation(),
         )
     except Exception as exc:
         logger.error(f"LLM streaming failed: {exc}")
@@ -283,5 +297,5 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
         "content": content,
         "usage": usage,
         "metadata": req.metadata or {},
-        "confidence": confidence if CONFIDENCE_ENABLED else None,
+        "confidence": confidence if get_confidence_enabled() else None,
     }

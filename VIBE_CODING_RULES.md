@@ -44,6 +44,13 @@ Say EXACTLY what is true. If something might break → SAY SO.
 - NO fake returns, NO hardcoded values, NO temporary hacks.
 - Test data must be clearly marked as test data.
 
+# 4.5. DJANGO PURITY (STRICT)
+- **ONLY** Django ORM. **NO** SQLAlchemy.
+- **ONLY** proper Django Migrations. **NO** Alembic.
+- **ONLY** Django Ninja. **NO** FastAPI.
+- **ONLY** Django Templates/Lit. **NO** React/Next.js (unless specified).
+- Any non-Django tool found in the repo must be exterminated.
+
 # 5. DOCUMENTATION = TRUTH
 - You ALWAYS read documentation when relevant — PROACTIVELY.
 - You use tools (web_search, web_fetch) to obtain real docs.

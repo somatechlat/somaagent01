@@ -19,12 +19,15 @@ from typing import Any, Callable, Optional
 
 
 def _ensure_django() -> None:
-    """Ensure Django is configured."""
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+    """Check if Django is ready.
+    
+    VIBE Rule: Do not trigger side effects like django.setup() in helper modules.
+    The entry point must handle initialization.
+    """
     import django
 
     if not django.apps.apps.ready:
-        django.setup()
+        raise RuntimeError("Django apps not populated. Ensure django.setup() is called at entry point.")
 
 
 def _get_version() -> str:
