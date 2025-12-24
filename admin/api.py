@@ -144,6 +144,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/observability", observability_router)
 
+    # Assets (Storage + Provenance)
+    from admin.assets.api import router as assets_router
+
+    api.add_router("/assets", assets_router)
+
     return api
 
 
