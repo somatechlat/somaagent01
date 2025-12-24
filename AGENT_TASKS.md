@@ -119,14 +119,23 @@
 - [x] mfa.py (280 lines)
 - [ ] saas-mfa-setup.ts view
 
-### 2.3 Password Reset
-- [ ] Reset request flow
+### 2.3 Password Reset ✅ COMPLETE
+- [x] POST /auth/password/request - Request reset
+- [x] POST /auth/password/confirm - Confirm with token
+- [x] GET /auth/password/validate/{token}
+- [x] POST /auth/password/change - Authenticated change
+- [x] password_reset.py (260 lines)
 - [ ] Email integration (via Keycloak)
 
-### 2.4 Invitation Flow
-- [ ] POST /saas/users/invite - Send invitation
-- [ ] GET /auth/invite/{token} - Accept invitation
-- [ ] Onboarding wizard
+### 2.4 Invitation Flow ✅ COMPLETE
+- [x] POST /invitations - Send invitation
+- [x] GET /invitations/{token} - Accept invitation page
+- [x] POST /invitations/{token}/accept - Create account
+- [x] GET /invitations - List (admin)
+- [x] DELETE /invitations/{id} - Revoke
+- [x] POST /invitations/{id}/resend
+- [x] invitations.py (320 lines)
+- [ ] Onboarding wizard UI
 
 ### 2.5 Session Management ✅ COMPLETE
 - [x] Token refresh (auto-scheduled in frontend)
