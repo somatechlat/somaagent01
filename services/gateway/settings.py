@@ -82,7 +82,7 @@ TEMPLATES = [
 # Database
 # Parse database DSN from environment
 db_dsn = os.environ.get(
-    "SA01_DB_DSN", "postgresql://soma:soma@localhost:5432/somaagent01"
+    "SA01_DB_DSN", "postgresql://postgres:somastack2024@localhost:20432/somaagent"
 )
 
 # Parse DSN components for Django DATABASE config
