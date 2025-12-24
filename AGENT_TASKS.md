@@ -384,10 +384,16 @@
 
 ## Phase 7: Multimodal & Advanced Features
 
-### 7.1 Capability Registry
-- [ ] CapabilityRegistry service
-- [ ] register(), find_candidates()
-- [ ] Health tracking, circuit breakers
+### 7.1 Capability Registry ✅ COMPLETE
+- [x] POST /capabilities/register - Register capability
+- [x] DELETE /capabilities/{id} - Deregister
+- [x] GET /capabilities - List all
+- [x] POST /capabilities/find - Find candidates
+- [x] POST /capabilities/{id}/health - Report health
+- [x] GET /capabilities/{id}/circuit - Circuit state
+- [x] POST /capabilities/{id}/circuit/reset - Reset circuit
+- [x] GET /capabilities/health/summary - Overall health
+- [x] capabilities/api.py (380 lines)
 
 ### 7.2 Asset Storage ✅ COMPLETE
 - [x] POST /assets - Upload with SHA-256 hash
