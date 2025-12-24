@@ -154,6 +154,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/capabilities", capabilities_router)
 
+    # Quality Gating (Asset Critic + Retry)
+    from admin.quality.api import router as quality_router
+
+    api.add_router("/quality", quality_router)
+
     return api
 
 
