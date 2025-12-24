@@ -413,10 +413,21 @@
 - [x] GET /multimodal/execution/dag/{id} - DAG status
 - [x] execution.py (400 lines)
 
-### 7.4 Quality Gating
-- [ ] AssetCritic service
-- [ ] LLM quality evaluation
-- [ ] Bounded retry logic
+### 7.4 Quality Gating ✅ COMPLETE
+- [x] POST /quality/evaluate - LLM quality evaluation
+- [x] POST /quality/critique - AssetCritic service
+- [x] POST /quality/retry/execute - Bounded retry logic
+- [x] GET /quality/retry/policies - Policy presets
+- [x] GET/PATCH /quality/thresholds
+- [x] quality/api.py (420 lines)
+
+### 7.5 A2A Workflows ✅ COMPLETE
+- [x] POST /a2a/conversations - Conversation workflow
+- [x] POST /a2a/tools/execute - Tool execution
+- [x] POST /a2a/handoffs - Agent handoff
+- [x] POST /a2a/maintenance - Maintenance workflow
+- [x] POST /a2a/escalations - Escalation to human
+- [x] a2a/api.py (480 lines)
 
 ### 7.3 Temporal Workflows ✅ COMPLETE
 - [x] POST /workflows - Start workflow
