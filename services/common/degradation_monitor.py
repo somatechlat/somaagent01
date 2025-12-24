@@ -114,8 +114,8 @@ class DegradationMonitor:
     # When a dependency fails, dependents are marked as degraded
     SERVICE_DEPENDENCIES: Dict[str, List[str]] = {
         "gateway": ["database", "redis", "kafka", "temporal"],
-        "tool_executor": ["database", "kafka", "somabrain", "temporal"],
-        "conversation_worker": ["database", "kafka", "somabrain", "redis", "temporal"],
+        "tool_executor": ["database", "kafka", "somabrain", "temporal", "llm"],
+        "conversation_worker": ["database", "kafka", "somabrain", "redis", "temporal", "llm"],
         "auth_service": ["database", "redis"],
         # Core services have no dependencies (they ARE the dependencies)
         "somabrain": [],
@@ -123,6 +123,7 @@ class DegradationMonitor:
         "kafka": [],
         "redis": [],
         "temporal": [],
+        "llm": [],  # LLM providers (can operate independently)
     }
 
     # Maximum history records to keep in memory
@@ -155,6 +156,7 @@ class DegradationMonitor:
             "gateway",
             "auth_service",
             "tool_executor",
+            "llm",  # LLM providers
         ]
 
         for component in core_components:
@@ -167,7 +169,7 @@ class DegradationMonitor:
             )
 
         # Initialize circuit breakers for critical components
-        critical_components = ["somabrain", "database", "kafka"]
+        critical_components = ["somabrain", "database", "kafka", "llm"]
         for component in critical_components:
             self.circuit_breakers[component] = CircuitBreaker(
                 failure_threshold=5, recovery_timeout=60, expected_exception=Exception  # 1 minute
@@ -244,6 +246,8 @@ class DegradationMonitor:
                 await self._check_redis_health(component)
             elif component_name == "temporal":
                 await self._check_temporal_health(component)
+            elif component_name == "llm":
+                await self._check_llm_health(component)
             else:
                 # Generic health check for other components
                 await self._check_generic_component(component)
@@ -432,6 +436,52 @@ class DegradationMonitor:
         info = await self._temporal_client.workflow_service.get_system_info()
         component.healthy = info is not None
         component.error_rate = 0.0 if component.healthy else 1.0
+
+    async def _check_llm_health(self, component: ComponentHealth) -> None:
+        """Check LLM providers health via LLMDegradationService.
+
+        VIBE COMPLIANT: Integrates with centralized LLM degradation service.
+        """
+        try:
+            from services.common.llm_degradation import llm_degradation_service
+
+            # Initialize if needed
+            if not llm_degradation_service._provider_health:
+                await llm_degradation_service.initialize()
+
+            # Get summary of LLM status
+            summary = llm_degradation_service.get_degradation_summary()
+
+            # LLM is healthy if at least one provider is available
+            healthy_count = len(summary.get("healthy_providers", []))
+            degraded_count = len(summary.get("degraded_providers", []))
+            unavailable_count = len(summary.get("unavailable_providers", []))
+            total = healthy_count + degraded_count + unavailable_count
+
+            if total == 0:
+                # No providers configured - assume healthy (will fail on actual call)
+                component.healthy = True
+                component.error_rate = 0.0
+            elif healthy_count > 0:
+                component.healthy = True
+                component.error_rate = unavailable_count / total if total > 0 else 0.0
+            elif degraded_count > 0:
+                component.healthy = True  # Still operational via fallback
+                component.error_rate = 0.5
+            else:
+                # All providers unavailable
+                component.healthy = False
+                component.error_rate = 1.0
+
+            logger.debug(
+                f"LLM health check: healthy={healthy_count}, "
+                f"degraded={degraded_count}, unavailable={unavailable_count}"
+            )
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"LLM health check failed: {e}")
 
     def _calculate_degradation_level(self, component: ComponentHealth) -> DegradationLevel:
         """Calculate degradation level for a component."""
