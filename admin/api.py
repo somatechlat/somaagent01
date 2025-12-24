@@ -164,6 +164,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/a2a", a2a_router)
 
+    # Notifications (Real-time events)
+    from admin.notifications.api import router as notifications_router
+
+    api.add_router("/notifications", notifications_router)
+
     return api
 
 
