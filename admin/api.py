@@ -129,6 +129,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/voice", voice_router)
 
+    # Workflows (Temporal)
+    from admin.workflows.api import router as workflows_router
+
+    api.add_router("/workflows", workflows_router)
+
     return api
 
 
