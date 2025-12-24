@@ -6,13 +6,13 @@ from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
 from services.common.session_repository import RedisSessionCache
-from src.core.config import cfg
+import os
 
 # Compatibility attributes for test suite
 JWKS_CACHE: dict = {}
 APP_SETTINGS: dict = {}
 # JWT_SECRET must come from config - no hardcoded secrets per VIBE rules
-JWT_SECRET = cfg.env("SA01_JWT_SECRET", "")
+JWT_SECRET = os.environ.get("SA01_JWT_SECRET", "")
 _TEMPORAL_CLIENT = None
 _TEMPORAL_LOCK = None
 
@@ -25,11 +25,11 @@ def get_event_bus() -> KafkaEventBus:
 def get_bus() -> KafkaEventBus:
     """Create a Kafka event bus using admin settings."""
     kafka_settings = KafkaSettings(
-        bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+        sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+        sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
     )
     return KafkaEventBus(kafka_settings)
 
@@ -64,7 +64,7 @@ def get_llm_adapter():
     from services.common.llm_adapter import LLMAdapter
     from services.common.secret_manager import SecretManager
 
-    base_url = cfg.env("SA01_LLM_BASE_URL") or None
+    base_url = os.environ.get("SA01_LLM_BASE_URL") or None
     # Prefer per-call secret retrieval to avoid stale keys.
     sm = SecretManager()
     api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
@@ -79,21 +79,21 @@ def get_asset_store():
     """Get the AssetStore instance for multimodal assets."""
     from services.common.asset_store import AssetStore
     
-    return AssetStore(dsn=cfg.settings().database.dsn)
+    return AssetStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
 
 def get_multimodal_executor():
     """Get the MultimodalExecutor instance for multimodal job execution."""
     from services.tool_executor.multimodal_executor import MultimodalExecutor
     
-    return MultimodalExecutor(dsn=cfg.settings().database.dsn)
+    return MultimodalExecutor(dsn=os.environ.get("SA01_DB_DSN", ""))
 
 
 def get_session_store():
     """Get session store for compatibility."""
     from services.common.session_repository import SessionStore
     
-    return SessionStore(dsn=cfg.settings().database.dsn)
+    return SessionStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
 
 async def get_temporal_client():
@@ -107,6 +107,6 @@ async def get_temporal_client():
 
     async with _TEMPORAL_LOCK:
         if _TEMPORAL_CLIENT is None:
-            host = cfg.env("SA01_TEMPORAL_HOST", "temporal:7233")
+            host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
             _TEMPORAL_CLIENT = await Client.connect(host)
         return _TEMPORAL_CLIENT

@@ -15,17 +15,17 @@ from services.common.publisher import DurablePublisher
 from services.common.dlq import DeadLetterQueue
 from services.common.compensation import compensate_event
 from services.delegation_gateway.main import DelegationGateway
-from src.core.config import cfg
+import os
 
 
 @activity.defn
 async def handle_a2a(event: dict) -> dict:
     kcfg = KafkaSettings(
-        bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers)
+        bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"))
     )
     bus = KafkaEventBus(kcfg)
     publisher = DurablePublisher(bus=bus)
-    dlq = DeadLetterQueue(cfg.env("A2A_TOPIC", "a2a"), bus=bus)
+    dlq = DeadLetterQueue(os.environ.get("A2A_TOPIC", "a2a"), bus=bus)
     gateway = DelegationGateway()
     try:
         await gateway.handle_event(event, publisher)
@@ -51,8 +51,8 @@ class A2AWorkflow:
 
 
 async def main() -> None:
-    temporal_host = cfg.env("SA01_TEMPORAL_HOST", "temporal:7233")
-    task_queue = cfg.env("SA01_TEMPORAL_A2A_QUEUE", "a2a")
+    temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
+    task_queue = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
     await outbox_flush.flush()
     client = await Client.connect(temporal_host)
     worker = Worker(

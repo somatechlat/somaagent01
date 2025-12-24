@@ -16,7 +16,7 @@ from services.common.dlq import DeadLetterQueue
 from services.common.compensation import compensate_event
 from services.tool_executor.main import ToolExecutor
 from services.tool_executor.config import kafka_settings
-from src.core.config import cfg
+import os
 
 
 @activity.defn
@@ -24,7 +24,7 @@ async def handle_tool_request(event: dict) -> dict:
     kcfg = kafka_settings()
     bus = KafkaEventBus(kcfg)
     publisher = DurablePublisher(bus=bus)
-    dlq = DeadLetterQueue(cfg.env("TOOL_REQUESTS_TOPIC", "tool.requests"), bus=bus)
+    dlq = DeadLetterQueue(os.environ.get("TOOL_REQUESTS_TOPIC", "tool.requests"), bus=bus)
     executor = ToolExecutor(bus=bus, publisher=publisher)
 
     try:
@@ -51,8 +51,8 @@ class ToolExecutorWorkflow:
 
 
 async def main() -> None:
-    temporal_host = cfg.env("SA01_TEMPORAL_HOST", "temporal:7233")
-    task_queue = cfg.env("SA01_TEMPORAL_TOOL_QUEUE", "tool-executor")
+    temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
+    task_queue = os.environ.get("SA01_TEMPORAL_TOOL_QUEUE", "tool-executor")
     await outbox_flush.flush()
     client = await Client.connect(temporal_host)
     worker = Worker(

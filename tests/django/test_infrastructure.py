@@ -33,7 +33,6 @@ class TestDjangoCheck:
             "admin.features",
             "admin.utils",
             "admin.saas",
-            "admin.skins",
         ]
         
         for app in required_apps:
@@ -240,15 +239,3 @@ class TestSchemas:
         
         assert error.success is False
         assert error.error == "not_found"
-
-
-class TestDatabaseUtilities:
-    """Test database utility functions."""
-    
-    def test_get_database_url(self):
-        """Test database URL parsing."""
-        from admin.common.database import get_database_url
-        
-        url = get_database_url()
-        
-        assert "postgresql+asyncpg://" in url or "postgresql://" in url

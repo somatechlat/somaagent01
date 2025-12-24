@@ -56,7 +56,7 @@ from python.helpers import browser_use_monkeypatch, dirty_json
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-from src.core.config import cfg
+import os
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
@@ -97,7 +97,7 @@ if litellm is not None:
 
 
 def _env_flag(name: str, default: bool = True) -> bool:
-    val = cfg.env(name)
+    val = os.environ.get(name)
     if val is None:
         return default
     return str(val).strip().lower() in {"1", "true", "yes", "on"}
@@ -106,7 +106,7 @@ def _env_flag(name: str, default: bool = True) -> bool:
 def _json_env(name: str):
     import json
 
-    raw = cfg.env(name)
+    raw = os.environ.get(name)
     if not raw:
         return {}
     try:

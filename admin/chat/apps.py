@@ -1,10 +1,11 @@
+"""Django app config for admin.chat."""
+
 from django.apps import AppConfig
 
 
 class ChatConfig(AppConfig):
-    """Django app config for chat."""
+    """Chat application config."""
     
-    default_auto_field = "django.db.models.BigAutoField"
     name = "admin.chat"
-    label = "admin_chat"
-    verbose_name = "Chat & AI"
+    verbose_name = "Chat Sessions"
+    default_auto_field = "django.db.models.BigAutoField"

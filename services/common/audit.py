@@ -8,13 +8,13 @@ from typing import Any, Dict, Optional
 
 from services.common.messaging_utils import build_headers, idempotency_key
 from services.common.publisher import DurablePublisher
-from src.core.config import cfg
+import os
 
 
 class AuditPublisher:
     def __init__(self, publisher: DurablePublisher, topic: Optional[str] = None) -> None:
         self.publisher = publisher
-        self.topic = topic or cfg.env("AUDIT_TOPIC", "audit.events")
+        self.topic = topic or os.environ.get("AUDIT_TOPIC", "audit.events")
 
     async def publish(
         self,

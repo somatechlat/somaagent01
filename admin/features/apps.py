@@ -1,10 +1,11 @@
+"""Django app config for admin.features."""
+
 from django.apps import AppConfig
 
 
 class FeaturesConfig(AppConfig):
-    """Django app config for features."""
+    """Features application config."""
     
-    default_auto_field = "django.db.models.BigAutoField"
     name = "admin.features"
-    label = "admin_features"
-    verbose_name = "Features & Configuration"
+    verbose_name = "Feature Flags"
+    default_auto_field = "django.db.models.BigAutoField"

@@ -11,7 +11,7 @@ from python.observability.metrics import (
     MetricsTimer,
     set_health_status,
 )
-from src.core.config import cfg
+import os
 
 try:
     import httpx  # type: ignore
@@ -49,7 +49,7 @@ class AgentConnection:
         self.timeout = timeout
         # Auth headers
         if token is None:
-            token = cfg.env("A2A_TOKEN")
+            token = os.environ.get("A2A_TOKEN")
         headers = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"

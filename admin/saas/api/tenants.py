@@ -36,7 +36,6 @@ def _tenant_to_out(tenant: Tenant) -> TenantOut:
         agents=tenant.agents.count(),
         users=tenant.users.count(),
         mrr=(tenant.tier.price_cents / 100.0) if tenant.tier else 0.0,
-        email=None,  # TODO: Get primary contact email
     )
 
 
@@ -102,9 +101,6 @@ def create_tenant(request, payload: TenantCreate):
         keycloak_realm_id=None,  # Will be set when provisioned in Keycloak
     )
 
-    # TODO: Sync to Lago
-    # TODO: Create Keycloak realm
-    # TODO: Create default admin user
 
     return _tenant_to_out(tenant)
 

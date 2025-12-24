@@ -62,7 +62,6 @@ if not settings.configured:
             # Django Ninja
             "ninja",
             # Project Apps - Existing
-            "admin.skins",
             "admin.saas",
             # Project Apps - New (M1 Migration)
             "admin.core",

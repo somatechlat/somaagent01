@@ -6,7 +6,7 @@ Provides standardized response formatting across all API endpoints.
 from __future__ import annotations
 
 from typing import Any, TypeVar, Generic
-from datetime import datetime
+from datetime import datetime, timezone, UTC
 
 T = TypeVar("T")
 
@@ -30,7 +30,7 @@ def api_response(
     response: dict[str, Any] = {
         "success": True,
         "data": data,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
     if message:
         response["message"] = message
@@ -74,7 +74,7 @@ def paginated_response(
         "success": True,
         "data": items,
         "pagination": pagination,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
     
     if meta:
@@ -105,7 +105,7 @@ def error_response(
         "success": False,
         "error": error,
         "message": message,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
     if details:
         response["details"] = details

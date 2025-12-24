@@ -3,11 +3,11 @@ from __future__ import annotations
 import asyncio
 
 from services.common.outbox import OutboxPublisher
-from src.core.config import cfg
+import os
 
 
 async def flush(limit: int = 100) -> int:
-    use_outbox = cfg.env("SA01_USE_OUTBOX", "false").lower() == "true"
+    use_outbox = os.environ.get("SA01_USE_OUTBOX", "false").lower() == "true"
     if not use_outbox:
         return 0
     outbox = OutboxPublisher()

@@ -140,10 +140,8 @@ Before touching code, confirm:
 - After every TASK or milestone proposed, I will always run a second inspection to the code i have developed for vibe coding rules Violations
 
 # 8. API FRAMEWORK POLICY
-- **Existing Code**: The existing FastAPI infrastructure (`services/gateway/main.py` etc.) remains AS IS. Do not migrate it.
-- **New Code**: ALL NEW API endpoint creation MUST use **Django Ninja** in conjunction with the Django Framework.
-- **Hybrid**: The architecture must support both running simultaneously.
-- **NEVER** create new FastAPI routers or endpoints - Django Ninja ONLY for new development.
+- **Django/Ninja ONLY**: All API endpoints MUST be implemented with Django + Django Ninja.
+- **No FastAPI**: FastAPI/Starlette/uvicorn are prohibited; remove or migrate any remaining FastAPI services.
 
 # 9. UI FRAMEWORK POLICY
 - **UI Framework**: ALL UI components MUST use **Lit Web Components** (Lit 3.x).

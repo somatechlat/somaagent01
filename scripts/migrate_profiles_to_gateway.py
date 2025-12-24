@@ -17,10 +17,10 @@ from typing import Any, Dict, List
 
 import requests
 
-from src.core.config import cfg
+import os
 
 GATEWAY_BASE = (
-    cfg.env("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016") or "http://127.0.0.1:21016"
+    os.environ.get("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016") or "http://127.0.0.1:21016"
 )
 UI_SETTINGS = f"{GATEWAY_BASE}/v1/settings"
 MODEL_PROFILES = f"{GATEWAY_BASE}/v1/model-profiles"
@@ -38,7 +38,7 @@ def _push_via_ui_settings(profile: Dict[str, Any]) -> bool:
 def _push_via_api(profile: Dict[str, Any]) -> bool:
     # direct upsert requires two path params (role/deployment). We'll call the PUT endpoint
     role = profile.get("role") or "dialogue"
-    dep = profile.get("deployment_mode") or cfg.env("DEPLOYMENT_MODE", "DEV") or "DEV"
+    dep = profile.get("deployment_mode") or os.environ.get("DEPLOYMENT_MODE", "DEV") or "DEV"
     url = f"{MODEL_PROFILES}/{role}/{dep}"
     try:
         resp = requests.put(url, json=profile, timeout=5.0)

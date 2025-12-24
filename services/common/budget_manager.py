@@ -9,11 +9,11 @@ from typing import Optional
 import redis.asyncio as redis
 
 from services.common.tenant_config import TenantConfig
-from src.core.config import cfg
+import os
 
 
 def _int_from_env(name: str, default: int) -> int:
-    raw = cfg.env(name, str(default))
+    raw = os.environ.get(name, str(default))
     try:
         return int(raw) if raw is not None else default
     except (TypeError, ValueError):
@@ -32,10 +32,10 @@ class BudgetManager:
         self, url: Optional[str] = None, tenant_config: Optional[TenantConfig] = None
     ) -> None:
         # Use centralized configuration for Redis URL, falling back to provided URL if given.
-        default_url = cfg.settings().redis.url
-        raw_url = url or cfg.env("REDIS_URL", default_url) or default_url
+        default_url = os.environ.get("SA01_REDIS_URL", "")
+        raw_url = url or os.environ.get("REDIS_URL", default_url) or default_url
         self.url = os.path.expandvars(raw_url)
-        self.prefix = cfg.env("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
+        self.prefix = os.environ.get("BUDGET_PREFIX", "budget:tokens") or "budget:tokens"
         self.limit = _int_from_env("BUDGET_LIMIT_TOKENS", 0)  # 0 = unlimited
         self.client = redis.from_url(self.url, decode_responses=True)
         self.tenant_config = tenant_config or TenantConfig()
@@ -63,9 +63,9 @@ class BudgetManager:
 
     def _current_window(self) -> str:
         # Simple daily window by default
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        return datetime.utcnow().strftime("%Y%m%d")
+        return datetime.now(timezone.utc).strftime("%Y%m%d")
 
     def _limit_for(self, tenant: str, persona_id: Optional[str]) -> Optional[int]:
         config_limit = self.tenant_config.get_budget_limit(tenant, persona_id)
@@ -74,7 +74,7 @@ class BudgetManager:
 
         env_key = f"BUDGET_LIMIT_{tenant.upper()}"
         persona_key = f"BUDGET_LIMIT_{tenant.upper()}_{(persona_id or 'DEFAULT').upper()}"
-        persona_env = cfg.env(persona_key)
+        persona_env = os.environ.get(persona_key)
         if persona_env is not None:
             try:
                 return int(persona_env) or None

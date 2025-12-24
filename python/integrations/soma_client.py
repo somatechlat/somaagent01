@@ -50,7 +50,20 @@ from opentelemetry.propagate import inject
 # that metric collectors are created only once, even if this module is
 # imported multiple times.
 from observability.metrics import Counter, Histogram
-from src.core.config import cfg
+
+# Django settings for centralized configuration (VIBE compliant)
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+try:
+    from django.conf import settings as django_settings
+except Exception:
+    django_settings = None  # Fallback for non-Django contexts
+
+def _get_setting(name: str, default: str = "") -> str:
+    """Get setting from Django settings or environment."""
+    if django_settings:
+        return str(getattr(django_settings, name, os.environ.get(name, default)))
+    return os.environ.get(name, default)
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +133,7 @@ def _sanitize_legacy_base_url(raw_base_url: str) -> str:
 
 def _default_base_url() -> str:
     """Return the base URL for SomaBrain on demand (no import-time side effects)."""
-    url = cfg.env("SA01_SOMA_BASE_URL")
+    url = os.environ.get("SA01_SOMA_BASE_URL")
     if not url:
         raise RuntimeError(
             "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per VIBE rules."
@@ -132,16 +145,16 @@ def _default_base_url() -> str:
 # setup lightweight. The value is resolved at runtime when a client is
 # instantiated.
 DEFAULT_BASE_URL: str | None = None
-DEFAULT_TIMEOUT = float(cfg.env("SA01_SOMA_TIMEOUT_SECONDS", "30") or "30")
-DEFAULT_UNIVERSE = cfg.env("SA01_NAMESPACE")
-DEFAULT_NAMESPACE = cfg.env("SA01_MEMORY_NAMESPACE", "wm") or "wm"
+DEFAULT_TIMEOUT = float(os.environ.get("SA01_SOMA_TIMEOUT_SECONDS", "30") or "30")
+DEFAULT_UNIVERSE = os.environ.get("SA01_NAMESPACE")
+DEFAULT_NAMESPACE = os.environ.get("SA01_MEMORY_NAMESPACE", "wm") or "wm"
 
-TENANT_HEADER = cfg.env("SA01_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
-AUTH_HEADER = cfg.env("SA01_AUTH_HEADER", "Authorization") or "Authorization"
+TENANT_HEADER = os.environ.get("SA01_TENANT_HEADER", "X-Tenant-ID") or "X-Tenant-ID"
+AUTH_HEADER = os.environ.get("SA01_AUTH_HEADER", "Authorization") or "Authorization"
 
 
 def _truthy_env(var_name: str) -> bool:
-    value = cfg.env(var_name)
+    value = os.environ.get(var_name)
     if value is None:
         return False
     return value.lower() in {"1", "true", "yes", "on"}
@@ -177,7 +190,7 @@ def _normalize_base_url(raw_base_url: str) -> str:
 
     host = url.host
     if host in {"localhost", "127.0.0.1"} and _running_inside_container():
-        override_host = cfg.env("SA01_CONTAINER_HOST_ALIAS")
+        override_host = os.environ.get("SA01_CONTAINER_HOST_ALIAS")
         if override_host:
             candidate = url.copy_with(host=override_host)
             adapted = str(candidate).rstrip("/")
@@ -234,23 +247,23 @@ class SomaClient:
             "SomaClient initializing",
             extra={
                 "provided_base_url": base_url,
-                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
+                "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
             },
         )
         sanitized_base_url = _sanitize_legacy_base_url(base_url)
         self.base_url = _normalize_base_url(sanitized_base_url)
         self.namespace = namespace
         self.universe = DEFAULT_UNIVERSE
-        self._tenant_id = tenant_id or cfg.env("SA01_TENANT_ID")
-        self._api_key = api_key or cfg.env("SA01_SOMA_API_KEY")
-        verify_override = _boolean(cfg.env("SA01_VERIFY_SSL"))
+        self._tenant_id = tenant_id or os.environ.get("SA01_TENANT_ID")
+        self._api_key = api_key or os.environ.get("SA01_SOMA_API_KEY")
+        verify_override = _boolean(os.environ.get("SA01_VERIFY_SSL"))
         if verify_ssl is None and verify_override is not None:
             verify_ssl = verify_override
 
         # TLS settings (optional mTLS)
-        ca_bundle = cfg.env("SA01_TLS_CA")
-        client_cert = cfg.env("SA01_TLS_CERT")
-        client_key = cfg.env("SA01_TLS_KEY")
+        ca_bundle = os.environ.get("SA01_TLS_CA")
+        client_cert = os.environ.get("SA01_TLS_CERT")
+        client_key = os.environ.get("SA01_TLS_KEY")
         verify_value: bool | str = True
         if verify_ssl is not None:
             verify_value = verify_ssl
@@ -284,8 +297,8 @@ class SomaClient:
         self._CB_COOLDOWN_SEC: float = 15.0
 
         # Retry configuration
-        self._max_retries: int = int(cfg.env("SA01_SOMA_MAX_RETRIES", "2") or "2")
-        self._retry_base_ms: int = int(cfg.env("SA01_SOMA_RETRY_BASE_MS", "150") or "150")
+        self._max_retries: int = int(os.environ.get("SA01_SOMA_MAX_RETRIES", "2") or "2")
+        self._retry_base_ms: int = int(os.environ.get("SA01_SOMA_RETRY_BASE_MS", "150") or "150")
 
     @classmethod
     def get(cls) -> "SomaClient":
@@ -369,7 +382,7 @@ class SomaClient:
                 "method": method,
                 "path": url,
                 "base_url": self.base_url,
-                "env_base_url": cfg.env("SA01_SOMA_BASE_URL"),
+                "env_base_url": os.environ.get("SA01_SOMA_BASE_URL"),
                 "params_present": bool(params),
             },
         )
@@ -519,7 +532,7 @@ class SomaClient:
             tenant
             or payload_dict.get("tenant")
             or metadata_dict.get("tenant")
-            or (cfg.env("SA01_TENANT_ID", "") or "").strip()
+            or (os.environ.get("SA01_TENANT_ID", "") or "").strip()
             or "default"
         )
         # Determine the memory namespace. Prefer explicit arg or payload field; fall back to client default ("wm").
@@ -601,7 +614,7 @@ class SomaClient:
         """Recall memories for a query."""
 
         body: Dict[str, Any] = {
-            "tenant": tenant or (cfg.env("SA01_TENANT_ID", "") or "").strip() or "default",
+            "tenant": tenant or (os.environ.get("SA01_TENANT_ID", "") or "").strip() or "default",
             "namespace": namespace or self.namespace or "default",
             "query": query,
             "top_k": top_k,

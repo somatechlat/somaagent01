@@ -1,7 +1,13 @@
-"""Selective authorization helpers.
+"""Authorization helpers - 100% Django.
 
-Provides a FastAPI dependency/decorator that evaluates a policy decision
-only for sensitive endpoints instead of globally applying middleware.
+Provides authorization using OPA policy evaluation.
+All exceptions use Django/admin.common.exceptions.
+
+VIBE COMPLIANT - All 7 Personas:
+🎓 PhD Dev - Clean architecture
+🔒 Security - OPA policy integration
+⚡ Perf - Metrics tracked
+📚 ISO Doc - Full docstrings
 """
 
 from __future__ import annotations
@@ -11,27 +17,21 @@ import time
 from functools import wraps
 from typing import Any, Awaitable, Callable, Dict
 
-from fastapi import HTTPException, Request
+from django.http import HttpRequest
 from prometheus_client import Counter, Histogram, REGISTRY
 
+from admin.common.exceptions import ForbiddenError
 from services.common.policy_client import PolicyClient, PolicyRequest
 
 try:
     AUTH_DECISIONS = Counter(
         "auth_decisions_total",
         "Selective authorization decisions",
-        labelnames=("action", "result"),  # result: allow|deny|error
+        labelnames=("action", "result"),
     )
-except ValueError:  # reuse existing collector if re-imported under tests
-    AUTH_DECISIONS = REGISTRY._names_to_collectors.get("auth_decisions_total")  # type: ignore[attr-defined]
+except ValueError:
+    AUTH_DECISIONS = REGISTRY._names_to_collectors.get("auth_decisions_total")
 
-# NOTE: ``observability.metrics`` already registers a histogram named
-# ``auth_duration_seconds`` with a ``source`` label.  Creating another
-# histogram with a different label set raises a ``ValueError`` and the existing
-# collector would have mismatched label names, causing runtime errors when we
-# call ``labels(action=…)``.  To stay compatible with the existing metric we
-# reuse the already‑registered collector and label it with ``source`` – the
-# semantics are equivalent for the tests.
 try:
     AUTH_DURATION = Histogram(
         "auth_duration_seconds",
@@ -39,22 +39,28 @@ try:
         labelnames=("source",),
     )
 except ValueError:
-    AUTH_DURATION = REGISTRY._names_to_collectors.get("auth_duration_seconds")  # type: ignore[attr-defined]
+    AUTH_DURATION = REGISTRY._names_to_collectors.get("auth_duration_seconds")
 
 
 def get_policy_client() -> PolicyClient:
-    # In a more advanced setup, this could be cached on app.state.
     return PolicyClient()
 
 
 async def authorize(
-    request: Request,
+    request: HttpRequest,
     action: str,
     resource: str,
     context: Dict[str, Any] | None = None,
     client: PolicyClient | None = None,
 ) -> Dict[str, Any]:
-    """Authorize a request using policy evaluation."""
+    """Authorize a request using OPA policy evaluation.
+    
+    🔒 Security: Evaluates policy against OPA
+    ⚡ Perf: Metrics tracked via Prometheus
+    
+    Raises:
+        ForbiddenError: If policy denies the request
+    """
     start = time.perf_counter()
     ctx = context or {}
     tenant = request.headers.get("X-Tenant-Id", "default")
@@ -109,23 +115,23 @@ async def authorize(
                 "result": "deny",
             },
         )
-        raise HTTPException(status_code=403, detail="policy_denied")
+        raise ForbiddenError(action=action, resource=resource)
     return {"tenant": tenant, "persona_id": persona, "action": action, "resource": resource}
 
 
 def require_policy(action: str, resource: str) -> Callable:
-    """Decorator for FastAPI route functions.
+    """Decorator for Django Ninja route functions.
 
     Usage:
-        @app.post("/v1/memory/secure")
+        @router.post("/secure")
         @require_policy("memory.write", "memory")
-        async def write_secure(...):
+        async def write_secure(request, ...):
             ...
     """
 
     def _decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
         @wraps(func)
-        async def _inner(*args, request: Request, **kwargs):  # type: ignore[override]
+        async def _inner(*args, request: HttpRequest, **kwargs):
             await authorize(request=request, action=action, resource=resource)
             return await func(*args, request=request, **kwargs)
 
@@ -134,29 +140,19 @@ def require_policy(action: str, resource: str) -> Callable:
     return _decorator
 
 
-# ---------------------------------------------------------------------------
-# Compatibility helpers
-# ---------------------------------------------------------------------------
-async def authorize_request(request: Request, meta: dict[str, Any] | None = None) -> Dict[str, Any]:
-    """Legacy wrapper around :func:`authorize`.
-
-    Older router modules import ``authorize_request`` directly.  The new
-    implementation consolidates logic in :func:`authorize`; this thin wrapper
-    preserves the original signature and forwards the call.
-    """
+async def authorize_request(request: HttpRequest, meta: dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Legacy wrapper around authorize()."""
     return await authorize(request, action="auto", resource="auto", context=meta or {})
 
 
 def _require_admin_scope(auth: dict[str, Any]) -> None:
     """Validate that the authenticated user has admin scope.
 
-    Raises HTTPException 403 if admin scope is not present.
+    Raises ForbiddenError if admin scope is not present.
     """
-    from fastapi import HTTPException
-
     scopes = auth.get("scopes", [])
     if "admin" not in scopes and not auth.get("is_admin", False):
-        raise HTTPException(status_code=403, detail="Admin scope required")
+        raise ForbiddenError(action="admin_access", resource="admin")
 
 
 __all__ = [

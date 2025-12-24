@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional
 
-from fastapi import APIRouter
+from ninja import Router
 
 
 class UnifiedHealthRouter:

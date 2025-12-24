@@ -1,10 +1,11 @@
+"""Django app config for admin.core."""
+
 from django.apps import AppConfig
 
 
 class CoreConfig(AppConfig):
-    """Django app config for core admin."""
+    """Core application config."""
     
-    default_auto_field = "django.db.models.BigAutoField"
     name = "admin.core"
-    label = "admin_core"
-    verbose_name = "Core Administration"
+    verbose_name = "Core Domain"
+    default_auto_field = "django.db.models.BigAutoField"

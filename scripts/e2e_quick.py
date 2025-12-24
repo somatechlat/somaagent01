@@ -17,7 +17,7 @@ from typing import Optional
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 
 def _get_base_url() -> str:

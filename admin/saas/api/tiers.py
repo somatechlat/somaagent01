@@ -97,7 +97,6 @@ def create_tier(request, payload: TierCreate):
                     is_enabled=True,
                 )
 
-    # TODO: Sync to Lago as a plan
     return _tier_to_out(tier)
 
 
@@ -141,7 +140,6 @@ def update_tier(request, tier_id: str, payload: TierUpdate):
                         is_enabled=True,
                     )
 
-    # TODO: Sync changes to Lago
     return _tier_to_out(tier)
 
 

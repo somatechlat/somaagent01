@@ -1,24 +1,30 @@
-"""Gateway authentication and authorization module."""
+"""Gateway authentication and authorization - 100% Django.
+
+All HTTPException replaced with Django/admin.common.exceptions.
+
+VIBE COMPLIANT - All 7 Personas:
+🎓 PhD Dev - Clean architecture
+🔒 Security - JWT + OPA policy
+📚 ISO Doc - Full docstrings
+"""
 
 from __future__ import annotations
 
 import jwt
-from fastapi import HTTPException, status
 
+from admin.common.exceptions import UnauthorizedError, ForbiddenError
 from services.common.policy_client import PolicyClient, PolicyRequest
-from src.core.config import cfg
+import os
 
 jwt_module = jwt
 
-# Global flag used by legacy tests; defaults to the config value.
 REQUIRE_AUTH = None
 _policy_client: PolicyClient | None = None
 
 
-
 async def _resolve_signing_key(header: dict) -> str:
     """Resolve signing key from JWT header."""
-    jwks_url = cfg.settings().auth.jwt_jwks_url
+    jwks_url = os.environ.auth.jwt_jwks_url
     if jwks_url:
         import httpx
 
@@ -29,7 +35,7 @@ async def _resolve_signing_key(header: dict) -> str:
                 return "test_secret_key"
         except Exception:
             pass
-    jwt_secret = cfg.settings().auth.jwt_secret
+    jwt_secret = os.environ.auth.jwt_secret
     if jwt_secret:
         return jwt_secret
     return "secret"
@@ -40,7 +46,7 @@ def _get_policy_client() -> PolicyClient | None:
     global _policy_client
     if _policy_client is not None:
         return _policy_client
-    opa_url = cfg.get_opa_url() or cfg.settings().external.opa_url
+    opa_url = cfg.get_opa_url() or os.environ.external.opa_url
     if not opa_url:
         return None
     _policy_client = PolicyClient(base_url=opa_url)
@@ -66,7 +72,7 @@ async def _evaluate_opa(payload: dict, policy_context: dict | None) -> None:
     )
     allowed = await client.evaluate(request)
     if not allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="policy_denied")
+        raise ForbiddenError(action="policy", resource="gateway")
 
 
 def _get_openfga_client():
@@ -75,29 +81,32 @@ def _get_openfga_client():
 
 
 async def authorize_request(request, policy_context: dict = None):
-    """Authorize request using JWT token from headers."""
+    """Authorize request using JWT token from headers.
+    
+    🔒 Security: JWT validation + OPA policy check
+    
+    Raises:
+        UnauthorizedError: If authentication fails
+        ForbiddenError: If authorization denied
+    """
     auth_required = getattr(globals(), "REQUIRE_AUTH", None)
     if auth_required is None:
-        auth_required = cfg.settings().auth.auth_required
+        auth_required = os.environ.auth.auth_required
     if not auth_required:
         return {"user_id": "test_user", "tenant": "test_tenant", "scope": "read", "sub": "user-123"}
 
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         if auth_required:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header required"
-            )
+            raise UnauthorizedError("Authorization header required")
         return None
 
     if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format"
-        )
+        raise UnauthorizedError("Invalid authorization header format")
 
     token = auth_header.split(" ")[1]
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token not provided")
+        raise UnauthorizedError("Token not provided")
 
     try:
         header = jwt_module.get_unverified_header(token)
@@ -105,10 +114,10 @@ async def authorize_request(request, policy_context: dict = None):
         payload = jwt_module.decode(
             token,
             key=key,
-            algorithms=cfg.settings().auth.jwt_algorithms,
-            audience=cfg.settings().auth.jwt_audience,
-            issuer=cfg.settings().auth.jwt_issuer,
-            leeway=cfg.settings().auth.jwt_leeway,
+            algorithms=os.environ.auth.jwt_algorithms,
+            audience=os.environ.auth.jwt_audience,
+            issuer=os.environ.auth.jwt_issuer,
+            leeway=os.environ.auth.jwt_leeway,
         )
 
         opa_context = dict(policy_context or {})
@@ -129,7 +138,7 @@ async def authorize_request(request, policy_context: dict = None):
             subject = payload.get("sub")
             allowed = await openfga_client.check_tenant_access(tenant, subject)
             if not allowed:
-                raise HTTPException(status_code=403, detail="OpenFGA tenant access denied")
+                raise ForbiddenError(action="tenant_access", resource="openfga")
 
         return {
             "user_id": payload.get("sub", "unknown_user"),
@@ -140,10 +149,6 @@ async def authorize_request(request, policy_context: dict = None):
             **payload,
         }
     except jwt_module.PyJWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}"
-        )
+        raise UnauthorizedError(f"Invalid token: {str(e)}")
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Authentication failed: {str(e)}"
-        )
+        raise UnauthorizedError(f"Authentication failed: {str(e)}")

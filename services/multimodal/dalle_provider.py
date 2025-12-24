@@ -24,7 +24,7 @@ from services.multimodal.base_provider import (
     RateLimitError,
     QuotaExceededError,
 )
-from src.core.config import cfg
+import os
 
 __all__ = ["DalleProvider"]
 
@@ -83,7 +83,7 @@ class DalleProvider(MultimodalProvider):
             model: Model to use (dall-e-3 or dall-e-2).
             timeout_seconds: Request timeout.
         """
-        self._api_key = api_key or cfg.env("OPENAI_API_KEY")
+        self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self._model = model
         self._timeout = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None

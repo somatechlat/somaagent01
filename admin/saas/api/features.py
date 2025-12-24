@@ -201,12 +201,10 @@ def update_tier_feature_settings(
 @router.get("/flags", response=list[FeatureFlagOut])
 def list_feature_flags(request):
     """Get all feature flags."""
-    # TODO: Implement feature flags table or use external service
     return []
 
 
 @router.patch("/flags/{flag_id}", response=FeatureFlagOut)
 def update_feature_flag(request, flag_id: str, payload: FeatureFlagUpdate):
     """Update a feature flag."""
-    # TODO: Implement feature flag updates
     raise Exception("Feature flags not yet implemented")

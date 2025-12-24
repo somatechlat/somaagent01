@@ -13,7 +13,7 @@ from python.integrations.somabrain_client import (
     get_weights_async,
     publish_reward_async,
 )
-from src.core.config import cfg
+import os
 from src.core.domain.ports.adapters.memory_adapter import MemoryAdapterPort
 
 

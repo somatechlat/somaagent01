@@ -13,8 +13,8 @@ codebase without side effects.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from datetime import datetime
+from dataclasses import dataclass, asdict, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
@@ -100,7 +100,7 @@ class ContextResult:
     metrics: Dict[str, Any]
 
 
-@dataclass(frozen=True)
+@dataclass
 class ContextFeedback:
     """Feedback supplied after the LLM answer has been consumed.
 
@@ -116,7 +116,7 @@ class ContextFeedback:
     user_id: str
     success: bool
     score: float
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 def snippet_as_dict(snippet: ScoredSnippet) -> Dict[str, Any]:

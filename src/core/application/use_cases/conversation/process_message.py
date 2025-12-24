@@ -22,7 +22,7 @@ import json
 import re
 
 from services.common.job_planner import JobPlanner, PlanValidationError
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class ProcessMessageUseCase:
             )
             
             # VIBE: Intercept Multimodal Plans
-            if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+            if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
                 response_text = await self._handle_multimodal_plan(response_text, session_id, tenant)
         except Exception as e:
             LOGGER.exception("Response generation failed")

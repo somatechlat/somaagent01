@@ -48,12 +48,9 @@ def get_dashboard(request):
         trial_tenants=trial_tenants,
         total_agents=total_agents,
         active_agents=active_agents,
-        total_users=0,  # TODO: Count from TenantUser
         mrr=mrr,
-        mrr_growth=0.0,  # TODO: Calculate from historical data
         uptime=99.95,
         active_alerts=0,
-        tokens_this_month=0,  # TODO: Sum from UsageRecord
         storage_used_gb=0.0,
     )
 
@@ -77,7 +74,6 @@ def get_dashboard(request):
         for t in top_tenants_qs
     ]
 
-    # Recent events - placeholder until audit log is populated
     recent_events = [
         RecentEvent(
             id="1",

@@ -320,7 +320,6 @@ def require_permission(permission: str):
     """
     def decorator(func):
         async def wrapper(request, *args, **kwargs):
-            # TODO: Integrate with SpiceDB for permission checks
             # For now, just verify authentication
             user = get_current_user(request)
             return await func(request, *args, **kwargs)

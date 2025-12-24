@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 from weakref import WeakKeyDictionary
 
@@ -91,7 +91,7 @@ class SomaMemory:
         return self._docstore.get_document_by_id_sync(doc_id)
 
     def get_timestamp(self):
-        return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 class _SomaDocStoreAdapter:
@@ -340,8 +340,8 @@ class _SomaDocStore:
                     numeric_timestamp = None
 
         if numeric_timestamp is None:
-            numeric_timestamp = datetime.utcnow().timestamp()
-            metadata["timestamp"] = datetime.utcnow().isoformat()
+            numeric_timestamp = datetime.now(timezone.utc).timestamp()
+            metadata["timestamp"] = datetime.now(timezone.utc).isoformat()
 
         payload["timestamp"] = numeric_timestamp
         payload["content"] = content

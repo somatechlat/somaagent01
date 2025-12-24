@@ -48,17 +48,17 @@ from . import files
 
 logging.getLogger("langchain_core.vectorstores.base").setLevel(logging.ERROR)
 
-from src.core.config import cfg
+import os
 
 
 def _env_flag(name: str, default: bool) -> bool:
-    v = cfg.env(name)
+    v = os.environ.get(name)
     return v.strip().lower() in {"1", "true", "yes", "on"} if v else default
 
 
 SOMABRAIN_ENABLED = _env_flag("SA01_SOMABRAIN_ENABLED", True)
 CACHE_INCLUDE_WM = _env_flag("SA01_CACHE_INCLUDE_WM", False)
-CACHE_WM_LIMIT = int(cfg.env("SA01_CACHE_WM_LIMIT", "128") or "128")
+CACHE_WM_LIMIT = int(os.environ.get("SA01_CACHE_WM_LIMIT", "128") or "128")
 
 
 class MemoryArea(Enum):

@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import redis.asyncio as redis
 
-from src.core.config import cfg
+import os
 
 
 class RequeueStore:
@@ -20,11 +20,11 @@ class RequeueStore:
     ) -> None:
         """Create a Redis‑backed requeue store.
         """
-        raw_url = url or cfg.settings().redis.url
+        raw_url = url or os.environ.get("SA01_REDIS_URL", "")
         if not raw_url:
             raise ValueError("Redis URL is required for the requeue store.")
         self.url = os.path.expandvars(raw_url)
-        self.prefix = prefix or cfg.env("POLICY_REQUEUE_PREFIX", "policy:requeue")
+        self.prefix = prefix or os.environ.get("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         if not self.url.startswith(("redis://", "rediss://", "unix://")):
             raise ValueError(f"Invalid Redis URL scheme for requeue store: {self.url!r}")
@@ -44,10 +44,10 @@ class RequeueStore:
         redis_url = getattr(settings, "redis_url", None)
         if redis_url is None and hasattr(settings, "redis"):
             redis_url = getattr(settings.redis, "url", None)
-        url = redis_url or cfg.settings().redis.url
+        url = redis_url or os.environ.get("SA01_REDIS_URL", "")
         if not url:
             raise ValueError("Redis URL is required for the requeue store.")
-        prefix = getattr(settings, "policy_requeue_prefix", None) or cfg.env(
+        prefix = getattr(settings, "policy_requeue_prefix", None) or os.environ.get(
             "POLICY_REQUEUE_PREFIX"
         )
         return cls(url=url, prefix=prefix)

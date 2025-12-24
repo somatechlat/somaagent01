@@ -22,7 +22,7 @@ from typing import Any, Dict, List
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 
 def _get_gateway_base() -> str:

@@ -4,7 +4,7 @@ import math
 import threading
 from typing import Any, Dict, List, Tuple
 
-from src.core.config import cfg
+import os
 
 # Metrics are mandatory; fail fast if prometheus_client is unavailable.
 try:
@@ -100,7 +100,7 @@ def get_index() -> SemanticRecallIndex:
     global _GLOBAL_INDEX
     
     # Security: Require explicit opt-in for prototype code
-    prototype_enabled = cfg.env("SA01_SEMANTIC_RECALL_PROTOTYPE", "false").lower() in {"true", "1", "yes", "on"}
+    prototype_enabled = os.environ.get("SA01_SEMANTIC_RECALL_PROTOTYPE", "false").lower() in {"true", "1", "yes", "on"}
     if not prototype_enabled:
         raise RuntimeError(
             "Semantic recall prototype is not enabled. "

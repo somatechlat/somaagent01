@@ -39,7 +39,7 @@ from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.multimodal_executor import MultimodalExecutor
-from src.core.config import cfg
+import os
 
 setup_logging()
 LOGGER = logging.getLogger(__name__)
@@ -57,10 +57,10 @@ class ToolExecutor:
         self.publisher = DurablePublisher(bus=self.bus)
         self.tenant_config = TenantConfig(path=tenant_config_path())
         self.policy = PolicyClient(
-            base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
+            base_url=os.environ.get("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
             tenant_config=self.tenant_config,
         )
-        self.store = PostgresSessionStore(dsn=cfg.settings().database.dsn)
+        self.store = PostgresSessionStore(dsn=os.environ.get("SA01_DB_DSN", ""))
         self.requeue = RequeueStore(url=redis_url(), prefix=policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
@@ -111,11 +111,11 @@ class ToolExecutor:
             LOGGER.debug("Audit store schema ensure failed (tool-executor)", exc_info=True)
 
         # Multimodal job executor (polling pending plans)
-        if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+        if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
             try:
-                self._multimodal_executor = MultimodalExecutor(dsn=cfg.settings().database.dsn)
+                self._multimodal_executor = MultimodalExecutor(dsn=os.environ.get("SA01_DB_DSN", ""))
                 await self._multimodal_executor.initialize()
-                poll_raw = cfg.env("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
+                poll_raw = os.environ.get("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
                 try:
                     poll_interval = float(poll_raw)
                 except ValueError:

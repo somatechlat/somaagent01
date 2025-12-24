@@ -21,7 +21,7 @@ Playwright API and writes plain logs.
 import asyncio
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 from playwright.async_api import async_playwright, ConsoleMessage, Page, Request
 
@@ -32,7 +32,7 @@ LOG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ui_err
 
 def _timestamp() -> str:
     """Return an ISO‑8601 timestamp for log entries."""
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(timezone.utc).isoformat()
 
 
 async def _run() -> int:
