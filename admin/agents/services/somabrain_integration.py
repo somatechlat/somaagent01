@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from agent import Agent
 
 from admin.core.helpers.print_style import PrintStyle
-from python.integrations.soma_client import SomaClientError
+from admin.core.soma_client import SomaClientError
 
 # Neuromodulator clamping ranges (from SomaBrain neuromod.py)
 # These are the physiological ranges enforced by SomaBrain

@@ -122,7 +122,7 @@ async def _send_to_somabrain(event: ToolExecutionEvent) -> None:
         return
 
     try:
-        from python.integrations.soma_client import SomaClient
+        from admin.core.soma_client import SomaClient
 
         client = SomaClient.get()
 

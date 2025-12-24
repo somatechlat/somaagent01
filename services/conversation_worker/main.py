@@ -20,7 +20,7 @@ from prometheus_client import start_http_server
 
 from observability.metrics import ContextBuilderMetrics
 from admin.core.helpers.tokens import count_tokens
-from python.integrations.somabrain_client import SomaBrainClient
+from admin.core.somabrain_client import SomaBrainClient
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue

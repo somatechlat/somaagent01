@@ -16,7 +16,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
 django.setup()
 
-from python.integrations.somabrain_client import SomaBrainClient
+from admin.core.somabrain_client import SomaBrainClient
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus
 from services.common.policy_client import PolicyClient

@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from prometheus_client import Counter, Histogram
 
-from python.integrations.somabrain_client import SomaClientError
+from admin.core.somabrain_client import SomaClientError
 import os
 
 LOGGER = logging.getLogger(__name__)

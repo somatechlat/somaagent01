@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from agent import Agent
 
 from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
-import python.helpers.log as Log
+import admin.core.helpers.log as Log
 from admin.core.helpers.defer import DeferredTask
 from admin.core.helpers.localization import Localization
 

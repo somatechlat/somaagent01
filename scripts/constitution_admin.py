@@ -23,7 +23,7 @@ import os
 import sys
 from typing import Any, Mapping
 
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
+from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 
 
 def _dual_shape_payload(doc: Mapping[str, Any]) -> Mapping[str, Any]:

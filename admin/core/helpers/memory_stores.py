@@ -14,7 +14,7 @@ from weakref import WeakKeyDictionary
 
 from admin.core.helpers import guids
 from admin.core.helpers.print_style import PrintStyle
-from python.integrations.somabrain_client import SomaBrainClient, SomaClientError, SomaMemoryRecord
+from admin.core.somabrain_client import SomaBrainClient, SomaClientError, SomaMemoryRecord
 
 from langchain_core.documents import Document
 

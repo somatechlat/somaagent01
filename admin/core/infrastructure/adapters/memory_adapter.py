@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from python.integrations.somabrain_client import (
+from admin.core.somabrain_client import (
     build_context_async,
     get_weights_async,
     publish_reward_async,
