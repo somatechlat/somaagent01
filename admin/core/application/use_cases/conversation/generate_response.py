@@ -17,6 +17,7 @@ from services.conversation_worker.llm_metrics import (
     record_llm_failure,
     record_llm_success,
 )
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -129,7 +130,9 @@ class GenerateResponseUseCase:
 
             # Try streaming first
             try:
-                text, usage, confidence = await self._stream_response(input_data, payload, headers, model)
+                text, usage, confidence = await self._stream_response(
+                    input_data, payload, headers, model
+                )
             except Exception as stream_error:
                 LOGGER.warning(f"Streaming failed, falling back to non-stream: {stream_error}")
                 text, usage, confidence = await self._invoke_response(payload, headers)

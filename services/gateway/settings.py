@@ -86,9 +86,7 @@ db_dsn = os.environ.get(
 )
 
 # Parse DSN components for Django DATABASE config
-db_match = re.match(
-    r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn
-)
+db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
 if db_match:
     db_user, db_password, db_host, db_port, db_name = db_match.groups()
     db_port = db_port or "5432"
@@ -231,13 +229,19 @@ LOGGING = {
         },
     },
     "root": {
-        "handlers": ["json_console"] if os.environ.get("LOG_FORMAT", "json") == "json" else ["console"],
+        "handlers": (
+            ["json_console"] if os.environ.get("LOG_FORMAT", "json") == "json" else ["console"]
+        ),
         "level": os.environ.get("LOG_LEVEL", "INFO").upper(),
     },
     "loggers": {
         # Django internals
         "django": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "django.db.backends": {"handlers": ["json_console"], "level": "WARNING", "propagate": False},
+        "django.db.backends": {
+            "handlers": ["json_console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
         # Admin apps
         "admin": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         "admin.saas": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
@@ -247,8 +251,16 @@ LOGGING = {
         "services": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
         "services.common": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
         "services.gateway": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "services.tool_executor": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "services.conversation_worker": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        "services.tool_executor": {
+            "handlers": ["json_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "services.conversation_worker": {
+            "handlers": ["json_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         # Orchestrator
         "orchestrator": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
         # Python helpers/agent modules (legacy namespace - to be migrated)
@@ -257,4 +269,3 @@ LOGGING = {
         "authz": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
     },
 }
-

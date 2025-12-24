@@ -38,7 +38,7 @@ async def _check_postgres() -> tuple[str, Optional[str]]:
     """Check PostgreSQL connectivity."""
     try:
         from django.db import connection
-        
+
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         return "ok", None
@@ -51,7 +51,7 @@ async def _check_redis() -> tuple[str, Optional[str]]:
     """Check Redis connectivity using Django cache."""
     try:
         from django.core.cache import cache
-        
+
         # Test cache set/get
         cache.set("health_check", "ok", timeout=5)
         result = cache.get("health_check")
@@ -67,7 +67,7 @@ async def _check_kafka() -> tuple[str, Optional[str]]:
     """Check Kafka connectivity."""
     try:
         from services.common.event_bus import KafkaEventBus, KafkaSettings
-        
+
         kafka_bus = KafkaEventBus(KafkaSettings.from_env())
         try:
             await kafka_bus.healthcheck()
@@ -98,7 +98,7 @@ async def _check_temporal() -> tuple[str, Optional[str]]:
     try:
         from services.gateway.providers import get_temporal_client
         from temporalio.api.workflowservice.v1 import GetSystemInfoRequest
-        
+
         temporal_client = await get_temporal_client()
         await temporal_client.workflow_service.get_system_info(GetSystemInfoRequest())
         return "ok", None
@@ -110,18 +110,18 @@ async def _check_temporal() -> tuple[str, Optional[str]]:
 async def health_check() -> dict:
     """
     Comprehensive health check for all infrastructure components.
-    
+
     Checks: PostgreSQL, Redis, Kafka, SomaBrain, OPA, Temporal, Degradation Monitor.
-    
+
     Returns:
         HealthResponse with overall status and per-component details.
     """
     from services.common import degradation_monitor
     from django.conf import settings
-    
+
     components: dict[str, dict] = {}
     overall_status = "ok"
-    
+
     def record_status(name: str, status: str, detail: Optional[str] = None) -> None:
         nonlocal overall_status
         components[name] = {"status": status}
@@ -131,33 +131,35 @@ async def health_check() -> dict:
             overall_status = "down"
         elif status == "degraded" and overall_status == "ok":
             overall_status = "degraded"
-    
+
     # Check infrastructure components
     pg_status, pg_detail = await _check_postgres()
     record_status("postgres", pg_status, pg_detail)
-    
+
     redis_status, redis_detail = await _check_redis()
     record_status("redis", redis_status, redis_detail)
-    
+
     kafka_status, kafka_detail = await _check_kafka()
     record_status("kafka", kafka_status, kafka_detail)
-    
+
     # Check external services
     somabrain_status, somabrain_detail = await _check_http_target(
         "somabrain", getattr(settings, "SOMABRAIN_URL", "http://localhost:8090")
     )
     record_status("somabrain", somabrain_status, somabrain_detail)
-    
-    opa_status, opa_detail = await _check_http_target("opa", getattr(settings, "OPA_URL", "http://localhost:8181"))
+
+    opa_status, opa_detail = await _check_http_target(
+        "opa", getattr(settings, "OPA_URL", "http://localhost:8181")
+    )
     record_status("opa", opa_status, opa_detail)
-    
+
     temporal_status, temporal_detail = await _check_temporal()
     record_status("temporal", temporal_status, temporal_detail)
-    
+
     # Degradation monitor
     if degradation_monitor.is_monitoring():
         record_status("degradation_monitor", "ok")
-    
+
     # Static services (assume running via Docker)
     static_services = [
         "conversation-worker",
@@ -167,7 +169,7 @@ async def health_check() -> dict:
     ]
     for svc in static_services:
         record_status(svc, "ok")
-    
+
     return {"status": overall_status, "components": components}
 
 
@@ -190,10 +192,10 @@ async def readiness_check() -> dict:
         # Just check postgres and redis
         pg_status, _ = await _check_postgres()
         redis_status, _ = await _check_redis()
-        
+
         if pg_status == "ok" and redis_status == "ok":
             return {"status": "ready", "postgres": "ok", "redis": "ok"}
-        
+
         return {
             "status": "not_ready",
             "postgres": pg_status,

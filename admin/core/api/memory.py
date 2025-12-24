@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 class AdminMemoryItem(BaseModel):
     """Memory item for admin viewing."""
-    
+
     id: int
     event_id: str
     session_id: Optional[str] = None
@@ -45,14 +45,14 @@ class AdminMemoryItem(BaseModel):
 
 class AdminMemoryListResponse(BaseModel):
     """Paginated memory list response."""
-    
+
     items: list[AdminMemoryItem]
     next_cursor: Optional[int] = None
 
 
 class MemoryMetricsResponse(BaseModel):
     """Memory metrics response."""
-    
+
     kafka: dict[str, Any]
 
 
@@ -118,7 +118,7 @@ async def list_admin_memory(
 ) -> AdminMemoryListResponse:
     """List memory replica rows with filtering and pagination."""
     from src.core.infrastructure.repositories import MemoryReplicaStore
-    
+
     store = MemoryReplicaStore()
     rows = await store.list_memories(
         limit=limit,
@@ -133,10 +133,10 @@ async def list_admin_memory(
         max_ts=max_ts,
         q=q,
     )
-    
+
     items = [_row_to_item(r) for r in rows]
     next_cursor = items[-1].id if items else None
-    
+
     return AdminMemoryListResponse(items=items, next_cursor=next_cursor)
 
 
@@ -152,13 +152,13 @@ async def get_admin_memory_item(
 ) -> AdminMemoryItem:
     """Get a specific memory item by event_id."""
     from src.core.infrastructure.repositories import MemoryReplicaStore
-    
+
     store = MemoryReplicaStore()
     row = await store.get_by_event_id(event_id)
-    
+
     if not row:
         raise NotFoundError("memory event", event_id)
-    
+
     return _row_to_item(row)
 
 
@@ -175,9 +175,9 @@ async def admin_memory_metrics(
 ) -> MemoryMetricsResponse:
     """Get Kafka health metrics for memory subsystem."""
     from services.common.event_bus import KafkaEventBus, KafkaSettings
-    
+
     client = KafkaEventBus(KafkaSettings.from_env())
     result = await client.healthcheck()
     await client.close()
-    
+
     return MemoryMetricsResponse(kafka=result)

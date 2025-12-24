@@ -28,9 +28,10 @@ LOGGER = logging.getLogger(__name__)
 # Feature Flag Helper
 # -----------------------------------------------------------------------------
 
+
 def is_confidence_enabled() -> bool:
     """Check if Confidence Scoring is enabled via feature flag.
-    
+
     Checks SA01_ENABLE_CONFIDENCE_SCORING environment variable.
     Default: disabled (False).
     """
@@ -42,8 +43,10 @@ def is_confidence_enabled() -> bool:
 # Configuration
 # -----------------------------------------------------------------------------
 
+
 class ConfidenceMode(str, Enum):
     """Confidence calculation mode."""
+
     AVERAGE = "average"
     MIN = "min"
     PERCENTILE_90 = "percentile_90"
@@ -51,6 +54,7 @@ class ConfidenceMode(str, Enum):
 
 class OnLowAction(str, Enum):
     """Action to take when confidence is below threshold."""
+
     WARN = "warn"
     RETRY = "retry"
     REJECT = "reject"
@@ -58,6 +62,7 @@ class OnLowAction(str, Enum):
 
 class ConfidenceConfig(BaseModel):
     """Configuration for confidence scoring."""
+
     enabled: bool = Field(default=False, description="Feature flag for confidence scoring")
     mode: ConfidenceMode = Field(default=ConfidenceMode.AVERAGE, description="Calculation mode")
     min_acceptance: float = Field(
@@ -80,10 +85,11 @@ class ConfidenceConfig(BaseModel):
 # Data Classes
 # -----------------------------------------------------------------------------
 
+
 @dataclass(frozen=True, slots=True)
 class ConfidenceResult:
     """Result of confidence calculation.
-    
+
     Attributes:
         score: Confidence score 0.0-1.0, or None if unavailable
         mode: Calculation mode used
@@ -92,6 +98,7 @@ class ConfidenceResult:
         model: Model name
         latency_ms: Calculation latency in milliseconds
     """
+
     score: Optional[float]
     mode: ConfidenceMode
     token_count: int
@@ -121,14 +128,15 @@ class ConfidenceResult:
 # Confidence Scorer
 # -----------------------------------------------------------------------------
 
+
 class ConfidenceScorer:
     """Calculates confidence scores from LLM logprobs.
-    
+
     Supports three calculation modes:
     - average: mean(exp(logprobs)) - balanced view
     - min: min(exp(logprobs)) - most conservative
     - percentile_90: 10th percentile of exp(logprobs) - robust to outliers
-    
+
     VIBE COMPLIANT:
     - Real implementation (no mocks)
     - Safe calculation that never raises
@@ -145,15 +153,15 @@ class ConfidenceScorer:
         model: str,
     ) -> ConfidenceResult:
         """Calculate confidence score from logprobs.
-        
+
         Args:
             logprobs: List of log probabilities (natural log)
             provider: LLM provider name (e.g., "openai", "azure")
             model: Model name (e.g., "gpt-4")
-            
+
         Returns:
             ConfidenceResult with score (0.0-1.0) or None if unavailable
-            
+
         Note:
             This method NEVER raises exceptions. All errors are logged
             and result in None confidence score.
@@ -190,7 +198,7 @@ class ConfidenceScorer:
 
     def _calculate_score(self, logprobs: Optional[List[float]]) -> Optional[float]:
         """Internal score calculation.
-        
+
         Converts logprobs to probabilities and applies the configured mode.
         """
         if not logprobs:
@@ -228,11 +236,11 @@ class ConfidenceScorer:
 
     def _percentile(self, values: List[float], percentile: int) -> float:
         """Calculate percentile of a list of values.
-        
+
         Args:
             values: List of numeric values
             percentile: Percentile to calculate (0-100)
-            
+
         Returns:
             Value at the given percentile
         """
@@ -257,10 +265,10 @@ class ConfidenceScorer:
 
     def evaluate_result(self, result: ConfidenceResult) -> tuple[bool, Optional[str]]:
         """Evaluate confidence result against threshold.
-        
+
         Args:
             result: ConfidenceResult from calculate()
-            
+
         Returns:
             Tuple of (is_acceptable, action_message)
             - is_acceptable: True if confidence meets threshold
@@ -304,15 +312,16 @@ class ConfidenceScorer:
 # EWMA Tracker for confidence trends
 # -----------------------------------------------------------------------------
 
+
 class ConfidenceEWMA:
     """Exponentially Weighted Moving Average tracker for confidence scores.
-    
+
     Tracks confidence trends over time for alerting and monitoring.
     """
 
     def __init__(self, alpha: float = 0.1) -> None:
         """Initialize EWMA tracker.
-        
+
         Args:
             alpha: Smoothing factor (0-1). Higher = more weight on recent values.
         """
@@ -322,10 +331,10 @@ class ConfidenceEWMA:
 
     def update(self, score: float) -> float:
         """Update EWMA with new score.
-        
+
         Args:
             score: New confidence score (0.0-1.0)
-            
+
         Returns:
             Updated EWMA value
         """
@@ -357,6 +366,7 @@ class ConfidenceEWMA:
 # Safe wrapper for production use
 # -----------------------------------------------------------------------------
 
+
 def calculate_confidence_safe(
     logprobs: Optional[List[float]],
     provider: str,
@@ -364,15 +374,15 @@ def calculate_confidence_safe(
     config: Optional[ConfidenceConfig] = None,
 ) -> ConfidenceResult:
     """Safe confidence calculation that never raises.
-    
+
     This is the recommended entry point for production use.
-    
+
     Args:
         logprobs: List of log probabilities
         provider: LLM provider name
         model: Model name
         config: Optional configuration
-        
+
     Returns:
         ConfidenceResult (score may be None on failure)
     """

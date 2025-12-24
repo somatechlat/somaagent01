@@ -30,7 +30,9 @@ router = Router()
 def _tier_to_out(tier: SubscriptionTier) -> SubscriptionTierOut:
     """Convert SubscriptionTier model to output schema."""
     # Get feature codes from tier_features
-    features = list(tier.tier_features.filter(is_enabled=True).values_list("feature__code", flat=True))
+    features = list(
+        tier.tier_features.filter(is_enabled=True).values_list("feature__code", flat=True)
+    )
 
     return SubscriptionTierOut(
         id=str(tier.id),
@@ -113,7 +115,9 @@ def update_tier(request, tier_id: str, payload: TierUpdate):
     if payload.limits is not None:
         tier.max_agents = payload.limits.get("agents", tier.max_agents)
         tier.max_users_per_agent = payload.limits.get("users", tier.max_users_per_agent)
-        tier.max_monthly_api_calls = payload.limits.get("tokens_per_month", tier.max_monthly_api_calls)
+        tier.max_monthly_api_calls = payload.limits.get(
+            "tokens_per_month", tier.max_monthly_api_calls
+        )
         tier.max_storage_gb = payload.limits.get("storage_gb", tier.max_storage_gb)
     if payload.is_active is not None:
         tier.is_active = payload.is_active
@@ -151,10 +155,7 @@ def delete_tier(request, tier_id: str):
         tier = SubscriptionTier.objects.get(id=tier_id)
     except SubscriptionTier.DoesNotExist:
         # Handled by global exception handler, but good for explicitness
-        return MessageResponse(
-            message=get_message(ErrorCode.TIER_NOT_FOUND),
-            success=False
-        )
+        return MessageResponse(message=get_message(ErrorCode.TIER_NOT_FOUND), success=False)
 
     # Check if any tenants are using this tier
     active_tenants = Tenant.objects.filter(tier=tier, status="active").count()

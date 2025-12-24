@@ -15,6 +15,7 @@ from .files import get_abs_path
 
 LOGGER = logging.getLogger(__name__)
 
+
 def json_parse_dirty(json: str) -> dict[str, Any] | None:
     if not json or not isinstance(json, str):
         return None

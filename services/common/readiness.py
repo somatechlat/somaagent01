@@ -45,6 +45,7 @@ async def _check_redis() -> Dict[str, Any]:
     """Check Redis health using Django cache backend."""
     try:
         from django.core.cache import cache
+
         cache.set("health_check", "ok", timeout=5)
         val = cache.get("health_check")
         ok = val == "ok"

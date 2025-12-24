@@ -26,12 +26,14 @@ logger = logging.getLogger(__name__)
 
 def _get_store():
     from services.common.skins_store import SkinsStore
+
     return SkinsStore()
 
 
 def _validate_no_xss(variables: dict) -> dict:
     """Validate no XSS patterns in CSS variables."""
     from services.common.skins_store import validate_no_xss
+
     try:
         validate_no_xss(variables)
     except ValueError as e:
@@ -41,16 +43,17 @@ def _validate_no_xss(variables: dict) -> dict:
 
 # === Request/Response Models ===
 
+
 class SkinCreateRequest(BaseModel):
     """Skin creation request."""
-    
+
     name: str = Field(..., min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=200)
     version: str = Field(..., pattern=r"^\d+\.\d+\.\d+$")
     author: Optional[str] = Field(None, max_length=100)
     variables: dict[str, str] = Field(default_factory=dict)
     changelog: list[dict[str, Any]] = Field(default_factory=list)
-    
+
     @field_validator("variables")
     @classmethod
     def validate_variables(cls, v):
@@ -59,14 +62,14 @@ class SkinCreateRequest(BaseModel):
 
 class SkinUpdateRequest(BaseModel):
     """Skin update request."""
-    
+
     name: Optional[str] = Field(None, min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=200)
     version: Optional[str] = Field(None, pattern=r"^\d+\.\d+\.\d+$")
     author: Optional[str] = Field(None, max_length=100)
     variables: Optional[dict[str, str]] = None
     changelog: Optional[list[dict[str, Any]]] = None
-    
+
     @field_validator("variables")
     @classmethod
     def validate_variables(cls, v):
@@ -77,7 +80,7 @@ class SkinUpdateRequest(BaseModel):
 
 class SkinResponse(BaseModel):
     """Skin response."""
-    
+
     id: str
     tenant_id: str
     name: str
@@ -93,7 +96,7 @@ class SkinResponse(BaseModel):
 
 class SkinListResponse(BaseModel):
     """Skin list response."""
-    
+
     skins: list[SkinResponse]
     count: int
 
@@ -121,6 +124,7 @@ def _get_tenant_id(request: HttpRequest) -> str:
 async def _is_admin(request: HttpRequest) -> bool:
     try:
         from services.common.authorization import authorize
+
         await authorize(request, action="skin:upload", resource="skins")
         return True
     except Exception:
@@ -132,12 +136,12 @@ async def list_skins(request: HttpRequest) -> dict:
     """List available skins for the tenant."""
     store = _get_store()
     await store.ensure_schema()
-    
+
     tenant_id = _get_tenant_id(request)
     is_admin = await _is_admin(request)
-    
+
     skins = await store.list(tenant_id=tenant_id, include_unapproved=is_admin)
-    
+
     return {
         "skins": [_record_to_response(s) for s in skins],
         "count": len(skins),
@@ -149,22 +153,22 @@ async def get_skin(request: HttpRequest, skin_id: str) -> dict:
     """Get a single skin by ID."""
     store = _get_store()
     await store.ensure_schema()
-    
+
     tenant_id = _get_tenant_id(request)
     is_admin = await _is_admin(request)
-    
+
     skin = await store.get(skin_id)
     if not skin:
         raise NotFoundError("skin", skin_id)
-    
+
     # Tenant isolation
     global_tenant = "00000000-0000-0000-0000-000000000000"
     if skin.tenant_id != tenant_id and skin.tenant_id != global_tenant:
         raise NotFoundError("skin", skin_id)
-    
+
     if not is_admin and not skin.is_approved:
         raise NotFoundError("skin", skin_id)
-    
+
     return _record_to_response(skin)
 
 
@@ -173,17 +177,17 @@ async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
     """Upload a new skin (admin only)."""
     from services.common.skins_store import SkinRecord
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
-    
+
     auth = await authorize(request, action="skin:upload", resource="skins")
     tenant_id = auth.get("tenant", _get_tenant_id(request))
-    
+
     existing = await store.get_by_name(tenant_id, payload.name)
     if existing:
         raise ValidationError(f"Skin '{payload.name}' already exists")
-    
+
     skin_id = str(uuid.uuid4())
     record = SkinRecord(
         skin_id=skin_id,
@@ -196,10 +200,10 @@ async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
         changelog=payload.changelog,
         is_approved=False,
     )
-    
+
     await store.create(record)
     created = await store.get(skin_id)
-    
+
     return _record_to_response(created)
 
 
@@ -207,27 +211,27 @@ async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
 async def update_skin(request: HttpRequest, skin_id: str, payload: SkinUpdateRequest) -> dict:
     """Update an existing skin (admin only)."""
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     await authorize(request, action="skin:update", resource="skins")
-    
+
     skin = await store.get(skin_id)
     if not skin:
         raise NotFoundError("skin", skin_id)
-    
+
     updates = {}
     for field in ["name", "description", "version", "author", "variables", "changelog"]:
         value = getattr(payload, field, None)
         if value is not None:
             updates[field] = value
-    
+
     if not updates:
         raise ValidationError("No fields to update")
-    
+
     await store.update(skin_id, updates)
     updated = await store.get(skin_id)
-    
+
     return _record_to_response(updated)
 
 
@@ -235,15 +239,15 @@ async def update_skin(request: HttpRequest, skin_id: str, payload: SkinUpdateReq
 async def delete_skin(request: HttpRequest, skin_id: str) -> dict:
     """Delete a skin (admin only)."""
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     await authorize(request, action="skin:delete", resource="skins")
-    
+
     skin = await store.get(skin_id)
     if not skin:
         raise NotFoundError("skin", skin_id)
-    
+
     await store.delete(skin_id)
     return {"deleted": skin_id}
 
@@ -252,18 +256,18 @@ async def delete_skin(request: HttpRequest, skin_id: str) -> dict:
 async def approve_skin(request: HttpRequest, skin_id: str) -> dict:
     """Approve a skin (admin only)."""
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     await authorize(request, action="skin:approve", resource="skins")
-    
+
     skin = await store.get(skin_id)
     if not skin:
         raise NotFoundError("skin", skin_id)
-    
+
     await store.approve(skin_id)
     approved = await store.get(skin_id)
-    
+
     return _record_to_response(approved)
 
 
@@ -271,16 +275,16 @@ async def approve_skin(request: HttpRequest, skin_id: str) -> dict:
 async def reject_skin(request: HttpRequest, skin_id: str) -> dict:
     """Reject a skin (admin only)."""
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     await authorize(request, action="skin:reject", resource="skins")
-    
+
     skin = await store.get(skin_id)
     if not skin:
         raise NotFoundError("skin", skin_id)
-    
+
     await store.reject(skin_id)
     rejected = await store.get(skin_id)
-    
+
     return _record_to_response(rejected)

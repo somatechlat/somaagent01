@@ -52,6 +52,7 @@ def count_lines(path: Path) -> int:
 def matches_pattern(path: Path, pattern: str) -> bool:
     """Check if path matches a glob pattern."""
     from fnmatch import fnmatch
+
     return fnmatch(str(path), pattern) or fnmatch(path.name, pattern)
 
 
@@ -74,13 +75,13 @@ def get_limit(path: Path) -> int:
 
 def check_file(path: Path) -> tuple[bool, int, int]:
     """Check a single file against its limit.
-    
+
     Returns:
         Tuple of (passed, lines, limit)
     """
     if is_excluded(path):
         return True, 0, 0
-    
+
     lines = count_lines(path)
     limit = get_limit(path)
     return lines <= limit, lines, limit
@@ -91,7 +92,7 @@ def main() -> int:
     parser.add_argument("files", nargs="*", help="Files to check")
     parser.add_argument("--all", action="store_true", help="Check all Python files")
     args = parser.parse_args()
-    
+
     if args.all:
         files = list(Path(".").rglob("*.py"))
     elif args.files:
@@ -99,12 +100,14 @@ def main() -> int:
     else:
         # Default: check staged files (for pre-commit)
         import subprocess
+
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
-            capture_output=True, text=True
+            capture_output=True,
+            text=True,
         )
         files = [Path(f) for f in result.stdout.strip().split("\n") if f.endswith(".py")]
-    
+
     failures = []
     for path in files:
         if not path.exists():
@@ -112,7 +115,7 @@ def main() -> int:
         passed, lines, limit = check_file(path)
         if not passed:
             failures.append((path, lines, limit))
-    
+
     if failures:
         print("❌ File size limit violations:")
         for path, lines, limit in failures:
@@ -120,7 +123,7 @@ def main() -> int:
         print(f"\n{len(failures)} file(s) exceed size limits.")
         print("Consider decomposing large files into smaller modules.")
         return 1
-    
+
     print(f"✅ All {len(files)} file(s) within size limits.")
     return 0
 

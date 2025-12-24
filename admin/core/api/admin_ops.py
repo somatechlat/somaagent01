@@ -23,8 +23,10 @@ logger = logging.getLogger(__name__)
 
 # === DLQ Operations ===
 
+
 class DLQItemResponse(BaseModel):
     """DLQ item schema."""
+
     id: str
     topic: str
     payload: dict
@@ -34,6 +36,7 @@ class DLQItemResponse(BaseModel):
 def _get_dlq_store():
     from services.common.dlq_store import DLQStore
     from django.conf import settings
+
     return DLQStore(dsn=settings.DATABASE_DSN)
 
 
@@ -64,8 +67,10 @@ async def reprocess_dlq(topic: str, item_id: str) -> dict:
 
 # === Requeue Operations ===
 
+
 class RequeueItemResponse(BaseModel):
     """Requeue item schema."""
+
     requeue_id: str
     payload: dict
     status: str
@@ -74,6 +79,7 @@ class RequeueItemResponse(BaseModel):
 def _get_requeue_store():
     from services.common.requeue_store import RequeueStore
     from django.conf import settings
+
     return RequeueStore(
         url=settings.REDIS_URL,
         prefix="policy:requeue",
@@ -109,8 +115,10 @@ async def delete_requeue(requeue_id: str) -> dict:
 
 # === Model Profiles ===
 
+
 class ModelProfileCreate(BaseModel):
     """Model profile create request."""
+
     role: str
     deployment_mode: str
     config: dict
@@ -118,6 +126,7 @@ class ModelProfileCreate(BaseModel):
 
 def _get_profile_store():
     from services.common.model_profiles import ModelProfileStore
+
     return ModelProfileStore()
 
 
@@ -132,7 +141,7 @@ async def list_model_profiles():
 async def create_model_profile(body: ModelProfileCreate) -> dict:
     """Create a new model profile."""
     from services.common.model_profiles import ModelProfile
-    
+
     store = _get_profile_store()
     profile = ModelProfile(role=body.role, deployment_mode=body.deployment_mode, config=body.config)
     await store.upsert(profile)
@@ -143,7 +152,7 @@ async def create_model_profile(body: ModelProfileCreate) -> dict:
 async def update_model_profile(role: str, deployment_mode: str, body: ModelProfileCreate) -> dict:
     """Update an existing model profile."""
     from services.common.model_profiles import ModelProfile
-    
+
     store = _get_profile_store()
     profile = ModelProfile(role=role, deployment_mode=deployment_mode, config=body.config)
     await store.upsert(profile)

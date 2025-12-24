@@ -25,7 +25,7 @@ def api_client():
     """Create a test client for the Django Ninja API."""
     from ninja.testing import TestClient
     from admin.api import api
-    
+
     return TestClient(api)
 
 
@@ -39,10 +39,10 @@ def auth_token():
 def mock_db_session():
     """Create a mock database session."""
     from unittest.mock import AsyncMock, MagicMock
-    
+
     session = MagicMock()
     session.execute = AsyncMock()
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
-    
+
     return session

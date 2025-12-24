@@ -24,13 +24,14 @@ if TYPE_CHECKING:
 # RunReceipt Model
 # -----------------------------------------------------------------------------
 
+
 @dataclass(frozen=True, slots=True)
 class RunReceipt:
     """Immutable record of a governed turn execution.
-    
+
     Contains all information needed for audit, analytics, and debugging.
     No PII is stored in this record.
-    
+
     Attributes:
         turn_id: Unique identifier for this turn
         session_id: Session this turn belongs to
@@ -47,6 +48,7 @@ class RunReceipt:
         latency_ms: Governor overhead in milliseconds
         timestamp: Unix timestamp of execution
     """
+
     turn_id: str
     session_id: str
     tenant_id: str
@@ -64,7 +66,7 @@ class RunReceipt:
 
     def to_audit_event(self) -> Dict[str, Any]:
         """Convert to audit event dictionary for persistence.
-        
+
         Returns:
             Dictionary suitable for JSON serialization and database storage.
         """
@@ -108,10 +110,10 @@ class RunReceipt:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RunReceipt":
         """Create RunReceipt from dictionary.
-        
+
         Args:
             data: Dictionary with receipt fields
-            
+
         Returns:
             RunReceipt instance
         """
@@ -137,9 +139,10 @@ class RunReceipt:
 # RunReceipt Builder
 # -----------------------------------------------------------------------------
 
+
 class RunReceiptBuilder:
     """Builder for creating RunReceipt instances.
-    
+
     Provides a fluent interface for constructing receipts with
     validation and default values.
     """
@@ -235,10 +238,10 @@ class RunReceiptBuilder:
 
     def build(self) -> RunReceipt:
         """Build the RunReceipt instance.
-        
+
         Returns:
             Immutable RunReceipt
-            
+
         Raises:
             ValueError: If required fields are missing
         """
@@ -274,6 +277,7 @@ class RunReceiptBuilder:
 # Factory function
 # -----------------------------------------------------------------------------
 
+
 def create_receipt_from_decision(
     decision: "GovernorDecision",
     turn_context: "TurnContext",
@@ -282,14 +286,14 @@ def create_receipt_from_decision(
     aiq_obs: float = 0.0,
 ) -> RunReceipt:
     """Create RunReceipt from GovernorDecision and execution results.
-    
+
     Args:
         decision: GovernorDecision from govern() call
         turn_context: TurnContext used for the turn
         lane_actual: Actual token usage per lane
         confidence: LLM response confidence (if available)
         aiq_obs: Observed AIQ score (post-execution)
-        
+
     Returns:
         RunReceipt for audit
     """

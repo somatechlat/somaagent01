@@ -29,13 +29,13 @@ agent_reload_requested = Signal()  # args: tenant
 
 class SettingsUpdate(BaseModel):
     """Settings update request."""
-    
+
     data: dict
 
 
 class TestConnectionRequest(BaseModel):
     """Connection test request."""
-    
+
     service: str
     api_key: str
     base_url: Optional[str] = None
@@ -45,6 +45,7 @@ class TestConnectionRequest(BaseModel):
 def _get_store():
     """Get UiSettingsStore instance."""
     from services.common.ui_settings_store import UiSettingsStore
+
     return UiSettingsStore()
 
 
@@ -58,28 +59,28 @@ async def get_settings(request: HttpRequest) -> dict:
     """Return UI settings schema/payload with enriched feature flags."""
     store = _get_store()
     await store.ensure_schema()
-    
+
     data = await store.get()
     if not data or not data.get("sections"):
         raise ServiceError("Settings schema generation failed")
-    
+
     # Enrich with feature flags
     try:
         from services.common.feature_flags_store import FeatureFlagsStore
-        
+
         tenant = _get_tenant(request)
         ff_store = FeatureFlagsStore()
         effective = await ff_store.get_effective_flags(tenant)
-        
+
         sections = data.get("sections", [])
         ff_section = next((s for s in sections if s["id"] == "feature_flags"), None)
-        
+
         if ff_section and "fields" in ff_section:
             # Update profile
             profile_field = next((f for f in ff_section["fields"] if f["id"] == "profile"), None)
             if profile_field:
                 profile_field["value"] = effective["profile"]
-            
+
             # Update flags
             flags_map = effective.get("flags", {})
             for field in ff_section["fields"]:
@@ -88,10 +89,12 @@ async def get_settings(request: HttpRequest) -> dict:
                     verdict = flags_map[fid]
                     field["value"] = verdict["enabled"]
                     if verdict["source"] == "environment":
-                        field["hint"] = f"(Overridden by {verdict['env_var']}) {field.get('hint', '')}"
+                        field["hint"] = (
+                            f"(Overridden by {verdict['env_var']}) {field.get('hint', '')}"
+                        )
     except Exception as exc:
         logger.warning("Failed to enrich settings with feature flags", extra={"error": str(exc)})
-    
+
     return data
 
 
@@ -105,26 +108,26 @@ async def get_settings_sections(request: HttpRequest) -> dict:
 @router.put("/sections", summary="Save settings")
 async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
     """Save settings from UI.
-    
+
     Persists settings, updates feature flags, and triggers agent reload.
     """
     from services.common.feature_flags_store import FeatureFlagsStore
     from services.common.agent_config_loader import reload_agent_config
-    
+
     store = _get_store()
     await store.ensure_schema()
-    
+
     # 1. Persist settings
     await store.set(body.data)
-    
+
     # 2. Persist feature flags
     tenant = _get_tenant(request)
     sections = body.data.get("sections", [])
     ff_section = next((s for s in sections if s["id"] == "feature_flags"), None)
-    
+
     if ff_section and "fields" in ff_section:
         ff_store = FeatureFlagsStore()
-        
+
         # Update profile
         profile_field = next((f for f in ff_section["fields"] if f["id"] == "profile"), None)
         if profile_field:
@@ -132,7 +135,7 @@ async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
                 await ff_store.set_profile(tenant, profile_field["value"])
             except ValueError:
                 pass
-        
+
         # Update flags
         for field in ff_section["fields"]:
             fid = field["id"]
@@ -140,12 +143,12 @@ async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
                 continue
             if "value" in field and isinstance(field["value"], bool):
                 await ff_store.set_flag(tenant, fid, field["value"])
-    
+
     # 3. Trigger agent reload with Django signal
     settings_updated.send(sender=None, tenant=tenant, section_id="feature_flags")
     await reload_agent_config(tenant)
     agent_reload_requested.send(sender=None, tenant=tenant)
-    
+
     return {"status": "ok"}
 
 
@@ -153,16 +156,20 @@ async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
 async def test_connection(body: TestConnectionRequest) -> dict:
     """Validate connectivity to LLM provider."""
     import litellm
-    
+
     # Model defaults from Django settings
-    default_models = getattr(settings, "LLM_DEFAULT_MODELS", {
-        "openai": "gpt-3.5-turbo-0125",
-        "anthropic": "claude-3-haiku-20240307",
-        "google": "gemini-pro",
-    })
-    
+    default_models = getattr(
+        settings,
+        "LLM_DEFAULT_MODELS",
+        {
+            "openai": "gpt-3.5-turbo-0125",
+            "anthropic": "claude-3-haiku-20240307",
+            "google": "gemini-pro",
+        },
+    )
+
     model = body.model or default_models.get(body.service.lower(), "gpt-3.5-turbo")
-    
+
     try:
         await litellm.acompletion(
             model=model,

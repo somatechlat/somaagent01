@@ -118,7 +118,6 @@ def list_agent_users(
     summary="Add user to agent",
     auth=AuthBearer(),
 )
-
 def add_agent_user(
     request,
     agent_id: str,
@@ -157,7 +156,6 @@ def add_agent_user(
     summary="Change user role on agent",
     auth=AuthBearer(),
 )
-
 def change_agent_role(
     request,
     agent_id: str,
@@ -196,7 +194,6 @@ def change_agent_role(
     summary="Remove user from agent",
     auth=AuthBearer(),
 )
-
 def remove_agent_user(
     request,
     agent_id: str,
@@ -215,7 +212,9 @@ def remove_agent_user(
     agent_user.delete()
     logger.info(f"User {user_id} removed from agent {agent_id}")
 
-    return api_response({"agent_id": agent_id, "user_id": user_id}, message="User removed from agent")
+    return api_response(
+        {"agent_id": agent_id, "user_id": user_id}, message="User removed from agent"
+    )
 
 
 @router.post(
@@ -223,7 +222,6 @@ def remove_agent_user(
     summary="Transfer agent ownership",
     auth=AuthBearer(),
 )
-
 def transfer_ownership(
     request,
     agent_id: str,

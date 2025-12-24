@@ -1,7 +1,7 @@
 """Agent services - migrated from python/somaagent/.
 
 All agent orchestration logic including:
-- AgentContext - agent state management  
+- AgentContext - agent state management
 - ConversationOrchestrator - conversation flow
 - ToolSelector - tool selection logic
 - ResponseGenerator - response generation
@@ -9,6 +9,7 @@ All agent orchestration logic including:
 
 Migrated to admin.agents.services for Django compliance per VIBE Rule 8.
 """
+
 # Re-export all services for backward compatibility
 from admin.agents.services.agent_context import *
 from admin.agents.services.conversation_orchestrator import *

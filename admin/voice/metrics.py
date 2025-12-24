@@ -30,6 +30,7 @@ VOICE_SESSION_DURATION_SECONDS = Histogram(
     buckets=(0.1, 0.5, 1, 2, 5, 10, 30, 60, float("inf")),
 )
 
+
 def record_error(component: str) -> None:
     """Increment the error counter for a given component.
 

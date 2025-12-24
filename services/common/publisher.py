@@ -72,7 +72,9 @@ class DurablePublisher:
                 correlation=correlation or payload.get("correlation_id"),
             )
 
-            await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
+            await asyncio.wait_for(
+                self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s
+            )
             PUBLISH_EVENTS.labels("published").inc()
             return {"published": True, "enqueued": False, "id": None}
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:

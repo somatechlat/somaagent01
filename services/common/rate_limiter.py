@@ -39,6 +39,7 @@ RATE_LIMIT_REMAINING = Gauge(
 @dataclass
 class RateLimitResult:
     """Result of a rate limit check."""
+
     allowed: bool
     remaining: int
     reset_at: float
@@ -48,11 +49,11 @@ class RateLimitResult:
 class RedisRateLimiter:
     """
     Redis-backed sliding window rate limiter.
-    
+
     Uses a sorted set to implement sliding window rate limiting.
     Supports per-tenant and per-endpoint limits.
     """
-    
+
     def __init__(
         self,
         redis_url: Optional[str] = None,
@@ -60,16 +61,14 @@ class RedisRateLimiter:
         default_window_seconds: int = 60,
         key_prefix: str = "rate_limit:",
     ):
-        self.redis_url = redis_url or os.getenv(
-            "REDIS_URL", "redis://localhost:6379/0"
-        )
+        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.default_limit = default_limit
         self.default_window_seconds = default_window_seconds
         self.key_prefix = key_prefix
-        
+
         self._redis: Optional[redis.Redis] = None
         self._connected = False
-    
+
     async def connect(self) -> None:
         """Connect to Redis."""
         if not self._connected:
@@ -82,13 +81,13 @@ class RedisRateLimiter:
             await self._redis.ping()
             self._connected = True
             LOGGER.info(f"Redis rate limiter connected: {self.redis_url}")
-    
+
     async def close(self) -> None:
         """Close Redis connection."""
         if self._redis:
             await self._redis.close()
             self._connected = False
-    
+
     async def check(
         self,
         tenant_id: str,
@@ -98,37 +97,37 @@ class RedisRateLimiter:
     ) -> RateLimitResult:
         """
         Check if request should be allowed.
-        
+
         Uses sliding window algorithm:
         1. Remove expired entries from sorted set
         2. Count entries in current window
         3. If under limit, add new entry and allow
         4. If over limit, deny with retry-after
-        
+
         Args:
             tenant_id: Tenant identifier
             endpoint: Optional endpoint for per-endpoint limits
             limit: Max requests in window (default: 100)
             window_seconds: Window size in seconds (default: 60)
-            
+
         Returns:
             RateLimitResult with allowed status and remaining quota
         """
         if not self._connected:
             await self.connect()
-        
+
         # Build key
         key_parts = [self.key_prefix, tenant_id]
         if endpoint:
             key_parts.append(endpoint.replace("/", "_"))
         key = ":".join(key_parts)
-        
+
         limit = limit or self.default_limit
         window = window_seconds or self.default_window_seconds
-        
+
         now = time.time()
         window_start = now - window
-        
+
         # Lua script for atomic sliding window rate limit
         lua_script = """
         local key = KEYS[1]
@@ -155,7 +154,7 @@ class RedisRateLimiter:
             return {0, 0, reset_at}
         end
         """
-        
+
         try:
             result = await self._redis.eval(
                 lua_script,
@@ -166,23 +165,23 @@ class RedisRateLimiter:
                 str(limit),
                 str(window),
             )
-            
+
             allowed = bool(result[0])
             remaining = int(result[1])
             reset_at = float(result[2])
             retry_after = None if allowed else max(1, int(reset_at - now))
-            
+
             status = "allowed" if allowed else "denied"
             RATE_LIMIT_REQUESTS.labels(tenant_id, status).inc()
             RATE_LIMIT_REMAINING.labels(tenant_id, str(window)).set(remaining)
-            
+
             return RateLimitResult(
                 allowed=allowed,
                 remaining=remaining,
                 reset_at=reset_at,
                 retry_after=retry_after,
             )
-            
+
         except Exception as e:
             LOGGER.error(f"Rate limit check failed: {e}")
             # Fail open for rate limiting to avoid blocking on Redis issues
@@ -192,17 +191,17 @@ class RedisRateLimiter:
                 remaining=limit,
                 reset_at=now + window,
             )
-    
+
     async def reset(self, tenant_id: str, endpoint: Optional[str] = None) -> None:
         """Reset rate limit for a tenant/endpoint."""
         if not self._connected:
             await self.connect()
-        
+
         key_parts = [self.key_prefix, tenant_id]
         if endpoint:
             key_parts.append(endpoint.replace("/", "_"))
         key = ":".join(key_parts)
-        
+
         await self._redis.delete(key)
         LOGGER.info(f"Rate limit reset for {key}")
 
@@ -213,11 +212,9 @@ RATE_LIMITS = {
     "/v1/uploads": {"limit": 10, "window": 60},
     "/v1/files/upload": {"limit": 10, "window": 60},
     "/api/v2/uploads": {"limit": 10, "window": 60},
-    
     # Memory endpoints - moderate
     "/v1/memory": {"limit": 50, "window": 60},
     "/api/v2/memory": {"limit": 50, "window": 60},
-    
     # General API - permissive
     "default": {"limit": 100, "window": 60},
 }

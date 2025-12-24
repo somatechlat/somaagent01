@@ -32,7 +32,7 @@ SSE_KEEPALIVE_INTERVAL = float(getattr(settings, "SSE_KEEPALIVE_INTERVAL", 10.0)
 
 class SessionSummary(BaseModel):
     """Session summary schema."""
-    
+
     session_id: str
     persona_id: Optional[str] = None
     tenant: Optional[str] = None
@@ -40,7 +40,7 @@ class SessionSummary(BaseModel):
 
 class SessionMessageRequest(BaseModel):
     """Request schema for posting a message."""
-    
+
     message: str
     session_id: Optional[str] = None
     persona_id: Optional[str] = None
@@ -49,7 +49,7 @@ class SessionMessageRequest(BaseModel):
 
 class SessionMessageResponse(BaseModel):
     """Response schema for posted message."""
-    
+
     session_id: str
     event_id: str
     workflow_id: str
@@ -92,8 +92,7 @@ def _get_events_after(session_id: str, after_id: Optional[int], limit: int):
 def _create_or_update_session(session_id: str, persona_id: Optional[str], tenant: Optional[str]):
     """Create or get session."""
     session, _ = Session.objects.get_or_create(
-        session_id=session_id,
-        defaults={"persona_id": persona_id, "tenant": tenant}
+        session_id=session_id, defaults={"persona_id": persona_id, "tenant": tenant}
     )
     return session
 
@@ -185,16 +184,21 @@ async def get_session(session_id: str) -> dict:
 async def session_history(session_id: str, limit: int = Query(100, ge=1, le=500)) -> dict:
     """Return session history events."""
     from admin.common.exceptions import NotFoundError
-    
+
     events = await _get_session_events(session_id, limit)
     if events is None:
         raise NotFoundError("session", session_id)
     return {
         "session_id": session_id,
         "events": [
-            {"event_type": e.event_type, "payload": e.payload, "role": e.role, "created_at": e.created_at.isoformat()}
+            {
+                "event_type": e.event_type,
+                "payload": e.payload,
+                "role": e.role,
+                "created_at": e.created_at.isoformat(),
+            }
             for e in events
-        ]
+        ],
     }
 
 
@@ -223,7 +227,7 @@ async def session_events_sse(
         "events": [
             {"event_type": e.event_type, "payload": e.payload, "role": e.role}
             for e in (events or [])
-        ]
+        ],
     }
 
 
@@ -233,7 +237,7 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
     from admin.common.exceptions import ValidationError
     from services.gateway import providers
     from services.conversation_worker.temporal_worker import ConversationWorkflow
-    
+
     if not payload.message.strip():
         raise ValidationError("message required")
 
@@ -256,7 +260,7 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
     task_queue = settings.TEMPORAL_CONVERSATION_QUEUE
     workflow_id = f"conversation-{session_id}-{event_id}"
     event["workflow_id"] = workflow_id
-    
+
     await client.start_workflow(
         ConversationWorkflow.run,
         event,
@@ -271,7 +275,7 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
 async def terminate_conversation(workflow_id: str) -> dict:
     """Cancel a running conversation workflow."""
     from services.gateway import providers
-    
+
     client = await providers.get_temporal_client()
     try:
         handle = client.get_workflow_handle(workflow_id=workflow_id)

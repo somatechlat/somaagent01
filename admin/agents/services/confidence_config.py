@@ -25,7 +25,7 @@ _config_instance: Optional["ConfidenceConfig"] = None
 class ConfidenceConfig:
     """
     Configuration for confidence score calculation and enforcement.
-    
+
     Attributes:
         enabled: Whether confidence calculation is active
         aggregation: How to aggregate token logprobs (average, min, percentile_90)
@@ -34,19 +34,19 @@ class ConfidenceConfig:
         treat_null_as_low: Whether to treat null confidence as low
         precision_decimals: Decimal places for rounding confidence
     """
-    
+
     enabled: bool = False
     aggregation: Literal["average", "min", "percentile_90"] = "average"
     min_acceptance: float = 0.40
     on_low: Literal["allow", "flag", "reject"] = "flag"
     treat_null_as_low: bool = False
     precision_decimals: int = 3
-    
+
     @classmethod
     def from_env(cls) -> "ConfidenceConfig":
         """
         Create config from environment variables.
-        
+
         Env vars:
         - CONFIDENCE_ENABLED: true/false
         - CONFIDENCE_AGGREGATION: average/min/percentile_90
@@ -54,15 +54,16 @@ class ConfidenceConfig:
         - CONFIDENCE_ON_LOW: allow/flag/reject
         - CONFIDENCE_TREAT_NULL_AS_LOW: true/false
         - CONFIDENCE_PRECISION_DECIMALS: integer
-        
+
         Returns:
             ConfidenceConfig instance
         """
+
         def parse_bool(val: str, default: bool) -> bool:
             if not val:
                 return default
             return val.lower() in ("true", "1", "yes", "on")
-        
+
         def parse_float(val: str, default: float) -> float:
             if not val:
                 return default
@@ -70,7 +71,7 @@ class ConfidenceConfig:
                 return float(val)
             except ValueError:
                 return default
-        
+
         def parse_int(val: str, default: int) -> int:
             if not val:
                 return default
@@ -78,17 +79,17 @@ class ConfidenceConfig:
                 return int(val)
             except ValueError:
                 return default
-        
+
         def parse_aggregation(val: str) -> Literal["average", "min", "percentile_90"]:
             if val in ("average", "min", "percentile_90"):
                 return val  # type: ignore
             return "average"
-        
+
         def parse_on_low(val: str) -> Literal["allow", "flag", "reject"]:
             if val in ("allow", "flag", "reject"):
                 return val  # type: ignore
             return "flag"
-        
+
         return cls(
             enabled=parse_bool(os.getenv("CONFIDENCE_ENABLED", ""), False),
             aggregation=parse_aggregation(os.getenv("CONFIDENCE_AGGREGATION", "average")),
@@ -97,15 +98,15 @@ class ConfidenceConfig:
             treat_null_as_low=parse_bool(os.getenv("CONFIDENCE_TREAT_NULL_AS_LOW", ""), False),
             precision_decimals=parse_int(os.getenv("CONFIDENCE_PRECISION_DECIMALS", ""), 3),
         )
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConfidenceConfig":
         """
         Create config from dictionary (for YAML loading).
-        
+
         Args:
             data: Configuration dictionary
-            
+
         Returns:
             ConfidenceConfig instance
         """
@@ -117,7 +118,7 @@ class ConfidenceConfig:
             treat_null_as_low=data.get("treat_null_as_low", False),
             precision_decimals=data.get("precision_decimals", 3),
         )
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize to dictionary."""
         return {
@@ -133,10 +134,10 @@ class ConfidenceConfig:
 def get_confidence_config() -> ConfidenceConfig:
     """
     Get singleton confidence config instance.
-    
+
     Loads from environment on first call, then caches.
     Use reset_confidence_config() to reload.
-    
+
     Returns:
         ConfidenceConfig singleton
     """

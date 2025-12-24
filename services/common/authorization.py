@@ -54,10 +54,10 @@ async def authorize(
     client: PolicyClient | None = None,
 ) -> Dict[str, Any]:
     """Authorize a request using OPA policy evaluation.
-    
+
     🔒 Security: Evaluates policy against OPA
     ⚡ Perf: Metrics tracked via Prometheus
-    
+
     Raises:
         ForbiddenError: If policy denies the request
     """
@@ -140,7 +140,9 @@ def require_policy(action: str, resource: str) -> Callable:
     return _decorator
 
 
-async def authorize_request(request: HttpRequest, meta: dict[str, Any] | None = None) -> Dict[str, Any]:
+async def authorize_request(
+    request: HttpRequest, meta: dict[str, Any] | None = None
+) -> Dict[str, Any]:
     """Legacy wrapper around authorize()."""
     return await authorize(request, action="auto", resource="auto", context=meta or {})
 

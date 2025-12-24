@@ -35,9 +35,9 @@ async def load_agent_config_from_db(
     mcp_servers: str = "",
 ) -> AgentConfig:
     """Load AgentConfig from ui_settings database.
-    
+
     Priority: Database > Defaults
-    
+
     Args:
         tenant: Tenant identifier
         chat_model: Chat model config (required)
@@ -45,10 +45,10 @@ async def load_agent_config_from_db(
         embeddings_model: Embeddings model config (required)
         browser_model: Browser model config (required)
         mcp_servers: MCP servers configuration
-        
+
     Returns:
         AgentConfig with values from database or defaults
-        
+
     Example:
         config = await load_agent_config_from_db(
             tenant="acme",
@@ -61,20 +61,22 @@ async def load_agent_config_from_db(
     store = UiSettingsStore()
     await store.ensure_schema()
     settings = await store.get()
-    
+
     # Find agent_config section
     agent_config_section = None
     for section in settings.get("sections", []):
         if section.get("id") == "agent_config":
             agent_config_section = section
             break
-    
+
     # Extract values from fields
     if agent_config_section:
-        fields = {field["id"]: field.get("value") for field in agent_config_section.get("fields", [])}
+        fields = {
+            field["id"]: field.get("value") for field in agent_config_section.get("fields", [])
+        }
     else:
         fields = {}
-    
+
     # Build AgentConfig with DB values or defaults
     config = AgentConfig(
         chat_model=chat_model,
@@ -91,28 +93,28 @@ async def load_agent_config_from_db(
         code_exec_ssh_user=fields.get("code_exec_ssh_user", "root"),
         code_exec_ssh_pass="",  # Always from Vault, not DB
     )
-    
+
     LOGGER.info(
         f"Loaded AgentConfig from database for tenant {tenant}: "
         f"profile={config.profile}, "
         f"knowledge_subdirs={config.knowledge_subdirs}, "
         f"ssh_enabled={config.code_exec_ssh_enabled}"
     )
-    
+
     return config
 
 
 async def validate_agent_config(config: AgentConfig) -> tuple[bool, list[str]]:
     """Validate AgentConfig settings.
-    
+
     AS QA PERSONA: Thorough validation of all fields.
-    
+
     Args:
         config: AgentConfig to validate
-        
+
     Returns:
         Tuple of (is_valid, error_messages)
-        
+
     Validation Rules:
     - Profile must be in: minimal, standard, enhanced, max
     - Knowledge subdirs must exist in /knowledge/
@@ -120,30 +122,30 @@ async def validate_agent_config(config: AgentConfig) -> tuple[bool, list[str]]:
     - SSH addr must not be empty if enabled
     """
     errors = []
-    
+
     # Validate profile
     valid_profiles = ["minimal", "standard", "enhanced", "max", ""]
     if config.profile and config.profile not in valid_profiles:
         errors.append(f"Invalid profile '{config.profile}'. Must be one of: {valid_profiles}")
-    
+
     # Validate knowledge subdirectories
     for subdir in config.knowledge_subdirs:
         path = Path(f"/knowledge/{subdir}")
         if not path.exists():
             LOGGER.warning(f"Knowledge subdirectory does not exist: {path}")
             # Don't error - directory might be created later
-    
+
     # Validate SSH configuration
     if config.code_exec_ssh_enabled:
         if not config.code_exec_ssh_addr:
             errors.append("SSH address required when SSH execution is enabled")
-        
+
         if not (1 <= config.code_exec_ssh_port <= 65535):
             errors.append(f"Invalid SSH port {config.code_exec_ssh_port}. Must be 1-65535")
-        
+
         if not config.code_exec_ssh_user:
             errors.append("SSH user required when SSH execution is enabled")
-    
+
     is_valid = len(errors) == 0
     return is_valid, errors
 
@@ -151,7 +153,7 @@ async def validate_agent_config(config: AgentConfig) -> tuple[bool, list[str]]:
 # Backward compatibility: keep existing function signature
 async def get_agent_config(**kwargs) -> AgentConfig:
     """Get AgentConfig (backward compatible wrapper).
-    
+
     For use in existing code that doesn't pass model configs.
     """
     return await load_agent_config_from_db(**kwargs)

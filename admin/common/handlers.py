@@ -26,11 +26,11 @@ from admin.common.responses import error_response
 
 def register_exception_handlers(api: NinjaAPI) -> None:
     """Register all exception handlers on the Ninja API instance.
-    
+
     Args:
         api: The NinjaAPI instance to register handlers on
     """
-    
+
     @api.exception_handler(ApiError)
     def handle_api_error(request, exc: ApiError):
         """Handle all ApiError exceptions."""
@@ -38,18 +38,20 @@ def register_exception_handlers(api: NinjaAPI) -> None:
             exc.to_dict(),
             status=exc.status_code,
         )
-    
+
     @api.exception_handler(PydanticValidationError)
     def handle_pydantic_validation_error(request, exc: PydanticValidationError):
         """Handle Pydantic validation errors."""
         errors = []
         for error in exc.errors():
-            errors.append({
-                "field": ".".join(str(loc) for loc in error["loc"]),
-                "message": error["msg"],
-                "type": error["type"],
-            })
-        
+            errors.append(
+                {
+                    "field": ".".join(str(loc) for loc in error["loc"]),
+                    "message": error["msg"],
+                    "type": error["type"],
+                }
+            )
+
         return JsonResponse(
             error_response(
                 error="validation_error",
@@ -58,16 +60,16 @@ def register_exception_handlers(api: NinjaAPI) -> None:
             ),
             status=400,
         )
-    
+
     @api.exception_handler(Exception)
     def handle_generic_exception(request, exc: Exception):
         """Handle unexpected exceptions."""
         import logging
         import traceback
-        
+
         logger = logging.getLogger(__name__)
         logger.error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
-        
+
         return JsonResponse(
             error_response(
                 error="internal_error",
@@ -84,13 +86,13 @@ def create_api_with_handlers(
     **kwargs,
 ) -> NinjaAPI:
     """Create a NinjaAPI instance with all handlers registered.
-    
+
     Args:
         title: API title
         version: API version
         description: API description
         **kwargs: Additional NinjaAPI arguments
-        
+
     Returns:
         Configured NinjaAPI instance
     """

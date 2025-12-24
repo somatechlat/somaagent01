@@ -20,6 +20,7 @@ from typing import Any, Dict
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
 import django
+
 django.setup()
 
 import uvicorn
@@ -80,9 +81,9 @@ api.add_router("/", router)
 def create_app():
     """Create a Django ASGI app and register core services."""
     global _orchestrator
-    
+
     django_app = get_asgi_application()
-    
+
     orchestrator = SomaOrchestrator(django_app)
     try:
         gateway = GatewayService()
@@ -92,7 +93,7 @@ def create_app():
         memory = UnifiedMemoryService()
         memory._startup_order = 20
         orchestrator.register(memory, critical=True)
-        
+
         cache_sync = CacheSyncService()
         cache_sync._startup_order = 30
         orchestrator.register(cache_sync, critical=True)
@@ -101,7 +102,7 @@ def create_app():
 
     orchestrator.attach()
     _orchestrator = orchestrator
-    
+
     return django_app
 
 
@@ -123,6 +124,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.dry_run:
+
         async def _smoke():
             orch = _orchestrator
             await orch._start_all()

@@ -12,6 +12,7 @@ from jsonschema import ValidationError
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 from services.common.delegation_store import DelegationStore

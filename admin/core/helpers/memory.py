@@ -18,6 +18,7 @@ except Exception:
     from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
 from langchain.storage import InMemoryByteStore, LocalFileStore
 from langchain_community.docstore.in_memory import InMemoryDocstore
+
 # from langchain_community.vectorstores import FAISS # FAISS REMOVED
 from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_core.documents import Document
@@ -92,7 +93,9 @@ class Memory:
         if SOMABRAIN_ENABLED:
             return Memory._get_soma(agent, memory_subdir)
         # FAISS REMOVED: Local FAISS is deprecated.
-        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        raise NotImplementedError(
+            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
+        )
         # if Memory.index.get(memory_subdir) is None:
         #     log_item = agent.context.log.log(
         #         type="util", heading=f"Initializing VectorDB in '/{memory_subdir}'"
@@ -114,7 +117,9 @@ class Memory:
         if SOMABRAIN_ENABLED:
             return Memory._get_soma(None, memory_subdir)
         # FAISS REMOVED: Local FAISS is deprecated.
-        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        raise NotImplementedError(
+            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
+        )
         # if not Memory.index.get(memory_subdir):
         #     import initialize
 
@@ -137,7 +142,9 @@ class Memory:
                 return Memory._remote_instances[memory_subdir]
             return await Memory.get(agent)
         # FAISS REMOVED: Local FAISS is deprecated.
-        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        raise NotImplementedError(
+            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
+        )
         # Memory.index.pop(memory_subdir, None)
         # return await Memory.get(agent)
 
@@ -149,7 +156,9 @@ class Memory:
         in_memory=False,
     ) -> tuple[Any, bool]:
         # DEPRECATED: Local VectorDB/FAISS is not supported
-        raise NotImplementedError("Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only.")
+        raise NotImplementedError(
+            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
+        )
 
     def __init__(self, db: Any, memory_subdir: str):
         self.db = db

@@ -25,14 +25,14 @@ logger = logging.getLogger(__name__)
 
 class MigrateExportRequest(BaseModel):
     """Request payload for memory export."""
-    
+
     include_wm: bool = Field(..., description="Include working memory in export")
     wm_limit: int = Field(..., ge=0, description="Maximum WM items to export")
 
 
 class MigrateImportRequest(BaseModel):
     """Request payload for memory import."""
-    
+
     manifest: dict[str, Any]
     memories: list[dict[str, Any]]
     wm: Optional[list[dict[str, Any]]] = None
@@ -41,7 +41,7 @@ class MigrateImportRequest(BaseModel):
 
 class MigrateExportResponse(BaseModel):
     """Export result."""
-    
+
     manifest: dict[str, Any]
     memories: list[dict[str, Any]]
     wm: Optional[list[dict[str, Any]]] = None
@@ -50,7 +50,7 @@ class MigrateExportResponse(BaseModel):
 
 class MigrateImportResponse(BaseModel):
     """Import result."""
-    
+
     status: str
     imported_count: int
     errors: list[str] = []
@@ -72,20 +72,20 @@ async def admin_migrate_export(
     payload: MigrateExportRequest,
 ) -> dict:
     """Export all memory data for migration to another instance.
-    
+
     This exports:
     - Memory manifests
     - Long-term memories
     - Optionally working memory (with limit)
     """
     from admin.agents.services.somabrain_integration import SomaBrainClient
-    
+
     client = SomaBrainClient.get()
     result = await client.migrate_export(
         include_wm=payload.include_wm,
         wm_limit=payload.wm_limit,
     )
-    
+
     return result
 
 
@@ -100,16 +100,16 @@ async def admin_migrate_import(
     payload: MigrateImportRequest,
 ) -> dict:
     """Import memory data from another instance.
-    
+
     This imports:
     - Memory manifests
     - Long-term memories
     - Optionally working memory
-    
+
     If replace=True, existing data is replaced.
     """
     from admin.agents.services.somabrain_integration import SomaBrainClient
-    
+
     client = SomaBrainClient.get()
     result = await client.migrate_import(
         manifest=payload.manifest,
@@ -117,5 +117,5 @@ async def admin_migrate_import(
         wm=payload.wm,
         replace=payload.replace,
     )
-    
+
     return result

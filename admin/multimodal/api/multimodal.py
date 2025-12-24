@@ -78,21 +78,23 @@ async def list_capabilities(
     """List multimodal capabilities filtered by modality."""
     from services.common.authorization import authorize
     from services.common.capability_registry import CapabilityRegistry
-    
+
     _require_multimodal_enabled()
-    auth = await authorize(request, action="multimodal.capabilities.read", resource="multimodal.capabilities")
+    auth = await authorize(
+        request, action="multimodal.capabilities.read", resource="multimodal.capabilities"
+    )
     tenant_id = auth.get("tenant")
-    
+
     registry = CapabilityRegistry()
     constraints = {"max_cost_tier": max_cost_tier} if max_cost_tier else {}
-    
+
     candidates = await registry.find_candidates(
         modality=modality,
         constraints=constraints,
         tenant_id=tenant_id,
         include_unhealthy=include_unhealthy,
     )
-    
+
     return [
         {
             "tool_id": c.tool_id,
@@ -114,11 +116,11 @@ async def create_job(request: HttpRequest, body: JobCreateRequest) -> dict:
     """Submit a multimodal job plan (Task DSL)."""
     from services.common.authorization import authorize
     from services.common.job_planner import JobPlanner, PlanValidationError
-    
+
     _require_multimodal_enabled()
     auth = await authorize(request, action="multimodal.jobs.create", resource="multimodal.jobs")
     tenant_id = auth.get("tenant")
-    
+
     planner = JobPlanner()
     try:
         plan = planner.compile(
@@ -130,8 +132,9 @@ async def create_job(request: HttpRequest, body: JobCreateRequest) -> dict:
         await planner.create(plan)
     except PlanValidationError as exc:
         from admin.common.exceptions import ValidationError
+
         raise ValidationError(f"Invalid plan: {exc.errors}")
-    
+
     return {"job_id": str(plan.id), "status": plan.status.value}
 
 
@@ -140,19 +143,19 @@ async def get_job_status(request: HttpRequest, plan_id: str) -> dict:
     """Get the status of a multimodal job plan."""
     from services.common.authorization import authorize
     from services.common.job_planner import JobPlanner
-    
+
     _require_multimodal_enabled()
     auth = await authorize(request, action="multimodal.jobs.read", resource="multimodal.jobs")
     tenant_id = auth.get("tenant")
-    
+
     planner = JobPlanner()
     plan = await planner.get(UUID(plan_id))
-    
+
     if not plan:
         raise NotFoundError("job", plan_id)
     if plan.tenant_id != tenant_id:
         raise ForbiddenError("Tenant mismatch")
-    
+
     return {
         "id": str(plan.id),
         "status": plan.status.value,
@@ -167,19 +170,19 @@ async def get_asset(request: HttpRequest, asset_id: str):
     """Retrieve a generated multimodal asset by ID."""
     from services.common.authorization import authorize
     from services.gateway import providers
-    
+
     _require_multimodal_enabled()
     auth = await authorize(request, action="multimodal.assets.read", resource="multimodal.assets")
     tenant_id = auth.get("tenant")
-    
+
     store = providers.get_asset_store()
     asset = await store.get(UUID(asset_id))
-    
+
     if not asset:
         raise NotFoundError("asset", asset_id)
     if asset.tenant_id != tenant_id:
         raise ForbiddenError("Tenant mismatch")
-    
+
     return StreamingHttpResponse(
         iter([asset.content]),
         content_type=asset.mime_type or "application/octet-stream",
@@ -195,19 +198,21 @@ async def get_provenance(request: HttpRequest, asset_id: str) -> dict:
     """Retrieve provenance record for an asset."""
     from services.common.authorization import authorize
     from services.common.provenance_recorder import ProvenanceRecorder
-    
+
     _require_multimodal_enabled()
-    auth = await authorize(request, action="multimodal.provenance.read", resource="multimodal.provenance")
+    auth = await authorize(
+        request, action="multimodal.provenance.read", resource="multimodal.provenance"
+    )
     tenant_id = auth.get("tenant")
-    
+
     recorder = ProvenanceRecorder()
     record = await recorder.get(UUID(asset_id))
-    
+
     if not record:
         raise NotFoundError("provenance", asset_id)
     if record.tenant_id != tenant_id:
         raise ForbiddenError("Tenant mismatch")
-    
+
     return {
         "asset_id": str(record.asset_id),
         "tenant_id": record.tenant_id,

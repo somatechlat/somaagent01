@@ -64,7 +64,9 @@ class OpenFGAClient:
         self._client = httpx.AsyncClient(timeout=timeout)
         self._cache: Dict[AuthorizationKey, Tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
-        self.cache_ttl = float(os.environ.get("SA01_OPENFGA_CACHE_TTL", str(cache_ttl)) or cache_ttl)
+        self.cache_ttl = float(
+            os.environ.get("SA01_OPENFGA_CACHE_TTL", str(cache_ttl)) or cache_ttl
+        )
 
     async def check_tenant_access(
         self,

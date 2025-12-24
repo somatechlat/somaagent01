@@ -97,6 +97,7 @@ class RepositoryManager:
     def get_session_store(self):
         """Get Django ORM Session model."""
         from admin.core.models import Session
+
         return Session.objects
 
 

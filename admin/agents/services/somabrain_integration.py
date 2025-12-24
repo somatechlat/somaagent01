@@ -13,12 +13,15 @@ from admin.core.helpers.print_style import PrintStyle
 
 class SomaClientError(Exception):
     """Exception raised for SomaBrain client errors."""
+
     pass
 
 
 class SomaBrainClient:
     """Placeholder for SomaBrainClient - to be properly implemented."""
+
     pass
+
 
 # Neuromodulator clamping ranges (from SomaBrain neuromod.py)
 # These are the physiological ranges enforced by SomaBrain
@@ -270,7 +273,9 @@ async def reset_adaptation_state(
         if result and result.get("ok"):
             # Clear local adaptation state cache
             agent.data["adaptation_state"] = {}
-            PrintStyle(font_color="cyan", padding=False).print("Adaptation state reset successfully")
+            PrintStyle(font_color="cyan", padding=False).print(
+                "Adaptation state reset successfully"
+            )
             return True
     except SomaClientError as e:
         PrintStyle(font_color="orange", padding=False).print(

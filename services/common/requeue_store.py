@@ -18,8 +18,7 @@ class RequeueStore:
         *,
         prefix: Optional[str] = None,
     ) -> None:
-        """Create a Redis‑backed requeue store.
-        """
+        """Create a Redis‑backed requeue store."""
         raw_url = url or os.environ.get("SA01_REDIS_URL", "")
         if not raw_url:
             raise ValueError("Redis URL is required for the requeue store.")
@@ -53,9 +52,7 @@ class RequeueStore:
         return cls(url=url, prefix=prefix)
 
     async def add(self, identifier: str, event: dict[str, Any]) -> None:
-        """Add a requeue entry.
-
-        """
+        """Add a requeue entry."""
         key = self._key(identifier)
         await self.client.set(key, json.dumps(event, ensure_ascii=False))
         await self.client.sadd(self.keyset, identifier)

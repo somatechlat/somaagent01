@@ -22,7 +22,7 @@ from django.utils import timezone
 
 class Session(models.Model):
     """Chat session - replaces PostgresSessionStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session_id = models.CharField(max_length=255, unique=True, db_index=True)
     persona_id = models.CharField(max_length=255, null=True, blank=True)
@@ -30,25 +30,25 @@ class Session(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "sessions"
         ordering = ["-created_at"]
-    
+
     def __str__(self):
         return f"Session({self.session_id})"
 
 
 class SessionEvent(models.Model):
     """Session event - replaces events table."""
-    
+
     id = models.BigAutoField(primary_key=True)
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="events")
     event_type = models.CharField(max_length=100, db_index=True)
     payload = models.JSONField(default=dict)
     role = models.CharField(max_length=50, default="user")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    
+
     class Meta:
         db_table = "session_events"
         ordering = ["created_at"]
@@ -61,7 +61,7 @@ class SessionEvent(models.Model):
 
 class Capsule(models.Model):
     """Capsule definition - replaces CapsuleStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     version = models.CharField(max_length=50, default="1.0.0")
@@ -72,18 +72,18 @@ class Capsule(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "capsules"
         unique_together = [["name", "version", "tenant"]]
-    
+
     def __str__(self):
         return f"Capsule({self.name}:{self.version})"
 
 
 class CapsuleInstance(models.Model):
     """Running capsule instance - replaces CapsuleInstanceStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     capsule = models.ForeignKey(Capsule, on_delete=models.CASCADE, related_name="instances")
     session_id = models.CharField(max_length=255, db_index=True)
@@ -91,7 +91,7 @@ class CapsuleInstance(models.Model):
     status = models.CharField(max_length=50, default="running", db_index=True)
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         db_table = "capsule_instances"
 
@@ -103,7 +103,7 @@ class CapsuleInstance(models.Model):
 
 class Capability(models.Model):
     """Agent capability - replaces CapabilityRegistry."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True, db_index=True)
     description = models.TextField(blank=True)
@@ -113,11 +113,11 @@ class Capability(models.Model):
     is_enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "capabilities"
         verbose_name_plural = "capabilities"
-    
+
     def __str__(self):
         return f"Capability({self.name})"
 
@@ -129,7 +129,7 @@ class Capability(models.Model):
 
 class UISetting(models.Model):
     """UI settings per tenant/user - replaces UISettingsStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.CharField(max_length=255, db_index=True)
     user_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
@@ -137,11 +137,11 @@ class UISetting(models.Model):
     value = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "ui_settings"
         unique_together = [["tenant", "user_id", "key"]]
-    
+
     def __str__(self):
         return f"UISetting({self.tenant}:{self.key})"
 
@@ -153,7 +153,7 @@ class UISetting(models.Model):
 
 class Job(models.Model):
     """Scheduled job - replaces JobPlanner."""
-    
+
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("running", "Running"),
@@ -161,13 +161,15 @@ class Job(models.Model):
         ("failed", "Failed"),
         ("cancelled", "Cancelled"),
     ]
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     job_type = models.CharField(max_length=100, db_index=True)
     tenant = models.CharField(max_length=255, db_index=True)
     payload = models.JSONField(default=dict)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="pending", db_index=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS_CHOICES, default="pending", db_index=True
+    )
     priority = models.IntegerField(default=0)
     scheduled_at = models.DateTimeField(null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -178,11 +180,11 @@ class Job(models.Model):
     max_retries = models.IntegerField(default=3)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "jobs"
         ordering = ["-priority", "scheduled_at"]
-    
+
     def __str__(self):
         return f"Job({self.name}:{self.status})"
 
@@ -194,14 +196,14 @@ class Job(models.Model):
 
 class Notification(models.Model):
     """User notification - replaces NotificationsStore."""
-    
+
     TYPE_CHOICES = [
         ("info", "Info"),
         ("warning", "Warning"),
         ("error", "Error"),
         ("success", "Success"),
     ]
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.CharField(max_length=255, db_index=True)
     user_id = models.CharField(max_length=255, db_index=True)
@@ -212,11 +214,11 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at"]
-    
+
     def __str__(self):
         return f"Notification({self.title})"
 
@@ -228,7 +230,7 @@ class Notification(models.Model):
 
 class Prompt(models.Model):
     """Prompt template - replaces PromptStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     version = models.CharField(max_length=50, default="1.0.0")
@@ -239,11 +241,11 @@ class Prompt(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "prompts"
         unique_together = [["name", "version", "tenant"]]
-    
+
     def __str__(self):
         return f"Prompt({self.name}:{self.version})"
 
@@ -255,7 +257,7 @@ class Prompt(models.Model):
 
 class FeatureFlag(models.Model):
     """Feature flag - replaces FeatureFlagsStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True, db_index=True)
     description = models.TextField(blank=True)
@@ -266,10 +268,10 @@ class FeatureFlag(models.Model):
     metadata = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "feature_flags"
-    
+
     def __str__(self):
         return f"FeatureFlag({self.name}:{self.is_enabled})"
 
@@ -281,7 +283,7 @@ class FeatureFlag(models.Model):
 
 class AuditLog(models.Model):
     """Audit log entry - replaces AuditStore."""
-    
+
     id = models.BigAutoField(primary_key=True)
     tenant = models.CharField(max_length=255, db_index=True)
     user_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
@@ -293,11 +295,11 @@ class AuditLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    
+
     class Meta:
         db_table = "agent_audit_logs"
         ordering = ["-created_at"]
-    
+
     def __str__(self):
         return f"AuditLog({self.action}:{self.resource_type})"
 
@@ -309,7 +311,7 @@ class AuditLog(models.Model):
 
 class DeadLetterMessage(models.Model):
     """Dead letter queue message - replaces DLQStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     queue_name = models.CharField(max_length=255, db_index=True)
     original_topic = models.CharField(max_length=255)
@@ -321,11 +323,11 @@ class DeadLetterMessage(models.Model):
     is_processed = models.BooleanField(default=False, db_index=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         db_table = "dead_letter_queue"
         ordering = ["-created_at"]
-    
+
     def __str__(self):
         return f"DLQ({self.queue_name}:{self.error_type})"
 
@@ -337,7 +339,7 @@ class DeadLetterMessage(models.Model):
 
 class AgentSetting(models.Model):
     """Agent-specific settings - replaces AgentSettingsStore."""
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     agent_id = models.CharField(max_length=255, db_index=True)
     key = models.CharField(max_length=255, db_index=True)
@@ -345,10 +347,10 @@ class AgentSetting(models.Model):
     is_secret = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "agent_settings"
         unique_together = [["agent_id", "key"]]
-    
+
     def __str__(self):
         return f"AgentSetting({self.agent_id}:{self.key})"

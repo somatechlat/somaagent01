@@ -34,7 +34,6 @@ def get_dashboard(request):
     # Calculate MRR from active paid subscriptions
     from django.db.models import Sum
 
-
     mrr_result = (
         Tenant.objects.filter(status="active")
         .exclude(tier__price_cents=0)

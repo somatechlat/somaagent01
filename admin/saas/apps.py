@@ -5,7 +5,7 @@ from django.apps import AppConfig
 
 class SaasConfig(AppConfig):
     """SAAS Admin app configuration."""
-    
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'admin.saas'
-    verbose_name = 'SAAS Administration'
+
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "admin.saas"
+    verbose_name = "SAAS Administration"

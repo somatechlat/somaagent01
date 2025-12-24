@@ -78,7 +78,7 @@ class Command(BaseCommand):
     def seed_providers(self):
         """Create feature providers."""
         self.stdout.write("  Creating Feature Providers...")
-        
+
         voice = SaasFeature.objects.get(code="voice")
         FeatureProvider.objects.get_or_create(
             feature=voice,
@@ -131,10 +131,10 @@ class Command(BaseCommand):
     def assign_features_to_tiers(self):
         """Link features to tiers."""
         self.stdout.write("  Assigning Features to Tiers...")
-        
+
         free_tier = SubscriptionTier.objects.get(slug="free")
         starter_tier = SubscriptionTier.objects.get(slug="starter")
-        
+
         voice = SaasFeature.objects.get(code="voice")
         memory = SaasFeature.objects.get(code="memory")
 

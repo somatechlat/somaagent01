@@ -20,6 +20,7 @@ from typing import Any
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
 import django
+
 django.setup()
 
 from django.core.asgi import get_asgi_application
@@ -71,7 +72,9 @@ def ensure_metrics_server() -> None:
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
-    port = int(os.environ.get("DELEGATION_METRICS_PORT", str(int(os.environ.get("METRICS_PORT", "9400")))))
+    port = int(
+        os.environ.get("DELEGATION_METRICS_PORT", str(int(os.environ.get("METRICS_PORT", "9400"))))
+    )
     if port <= 0:
         LOGGER.warning("Delegation metrics server disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
@@ -124,7 +127,9 @@ class DelegationGateway:
         self._publisher = get_publisher()
         self._topic = os.environ.get("A2A_OUT_TOPIC", "a2a.out")
 
-    async def handle_event(self, event: dict[str, Any], publisher: DurablePublisher | None = None) -> None:
+    async def handle_event(
+        self, event: dict[str, Any], publisher: DurablePublisher | None = None
+    ) -> None:
         pub = publisher or self._publisher
         dedupe = event.get("task_id") or event.get("event_id")
         tenant = (event.get("metadata") or {}).get("tenant")
@@ -158,7 +163,7 @@ async def create_delegation_task(request, body: DelegationRequest) -> dict:
     task_id = body.task_id or str(uuid.uuid4())
     store = get_store()
     publisher = get_publisher()
-    
+
     await store.create_task(
         task_id=task_id,
         payload=body.payload,
@@ -216,4 +221,8 @@ if __name__ == "__main__":
     import uvicorn
 
     ensure_metrics_server()
-    uvicorn.run("services.delegation_gateway.main:django_asgi", host="0.0.0.0", port=int(os.environ.get("PORT", "8015")))
+    uvicorn.run(
+        "services.delegation_gateway.main:django_asgi",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "8015")),
+    )

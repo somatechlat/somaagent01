@@ -34,23 +34,23 @@ async def audit_export(
     action: Optional[str] = None,
 ) -> HttpResponse:
     """Export audit logs as newline-delimited JSON.
-    
+
     Args:
         action: Filter by specific action (e.g., "llm.invoke")
-    
+
     Returns:
         Newline-delimited JSON response of audit records
     """
     from integrations.repositories import get_audit_store
-    
+
     store = get_audit_store()
     try:
         await store.ensure_schema()
     except Exception:
         logger.debug("audit ensure_schema failed", exc_info=True)
-    
+
     records = await store.list(action=action, limit=1000)
-    
+
     def _serialize(evt) -> dict:
         return {
             "id": getattr(evt, "id", None),
@@ -65,6 +65,6 @@ async def audit_export(
             "ip": getattr(evt, "ip", None),
             "user_agent": getattr(evt, "user_agent", None),
         }
-    
+
     payload = "\n".join(json.dumps(_serialize(evt), default=str) for evt in records)
     return HttpResponse(content=payload, content_type="text/plain")

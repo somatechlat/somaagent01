@@ -30,13 +30,15 @@ LOGGER = logging.getLogger(__name__)
 # Feature Flag Helpers
 # -----------------------------------------------------------------------------
 
+
 def is_agentiq_enabled() -> bool:
     """Check if AgentIQ Governor is enabled via feature flag.
-    
+
     Checks SA01_ENABLE_AGENTIQ_GOVERNOR environment variable.
     Default: disabled (False).
     """
     import os
+
     val = os.environ.get("SA01_ENABLE_AGENTIQ_GOVERNOR", "false")
     return val.lower() in ("true", "1", "yes", "on")
 
@@ -45,8 +47,10 @@ def is_agentiq_enabled() -> bool:
 # Configuration Models
 # -----------------------------------------------------------------------------
 
+
 class AIQWeights(BaseModel):
     """Weights for AIQ score computation. Must sum to 1.0."""
+
     context_quality: float = Field(default=0.4, ge=0.0, le=1.0)
     tool_relevance: float = Field(default=0.3, ge=0.0, le=1.0)
     budget_efficiency: float = Field(default=0.3, ge=0.0, le=1.0)
@@ -64,12 +68,14 @@ class AIQWeights(BaseModel):
 
 class LaneBounds(BaseModel):
     """Token bounds for a single lane."""
+
     min: int = Field(default=0, ge=0)
     max: int = Field(default=4000, ge=0)
 
 
 class LanesConfig(BaseModel):
     """Configuration for all 6 lanes."""
+
     system_policy: LaneBounds = Field(default_factory=lambda: LaneBounds(min=100, max=2000))
     history: LaneBounds = Field(default_factory=lambda: LaneBounds(min=0, max=4000))
     memory: LaneBounds = Field(default_factory=lambda: LaneBounds(min=0, max=2000))
@@ -80,6 +86,7 @@ class LanesConfig(BaseModel):
 
 class DegradationThresholds(BaseModel):
     """AIQ thresholds for degradation level escalation."""
+
     l1_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
     l2_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     l3_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
@@ -88,6 +95,7 @@ class DegradationThresholds(BaseModel):
 
 class ToolKConfig(BaseModel):
     """Tool selection limits by degradation level."""
+
     normal: int = Field(default=5, ge=0)
     l1: int = Field(default=3, ge=0)
     l2: int = Field(default=1, ge=0)
@@ -97,6 +105,7 @@ class ToolKConfig(BaseModel):
 
 class AgentIQConfig(BaseModel):
     """Complete AgentIQ Governor configuration."""
+
     enabled: bool = Field(default=False, description="Feature flag for AgentIQ Governor")
     weights: AIQWeights = Field(default_factory=AIQWeights)
     lanes: LanesConfig = Field(default_factory=LanesConfig)
@@ -108,10 +117,11 @@ class AgentIQConfig(BaseModel):
 # Data Classes
 # -----------------------------------------------------------------------------
 
+
 @dataclass(frozen=True, slots=True)
 class LanePlan:
     """Token budget allocation across 6 lanes.
-    
+
     Lanes:
     - system_policy: System prompt + OPA policies
     - history: Conversation history
@@ -120,6 +130,7 @@ class LanePlan:
     - tool_results: Previous tool outputs
     - buffer: Safety margin (≥200 tokens)
     """
+
     system_policy: int
     history: int
     memory: int
@@ -158,12 +169,13 @@ class LanePlan:
 @dataclass(frozen=True, slots=True)
 class AIQScore:
     """Intelligence quotient scores (0-100 scale).
-    
+
     Attributes:
         predicted: Pre-call prediction based on context quality
         observed: Post-call observation (set after LLM response)
         components: Breakdown by factor (context_quality, tool_relevance, budget_efficiency)
     """
+
     predicted: float
     observed: float = 0.0
     components: Dict[str, float] = field(default_factory=dict)
@@ -186,6 +198,7 @@ class AIQScore:
 
 class PathMode(str, Enum):
     """Execution path mode."""
+
     FAST = "fast"
     RESCUE = "rescue"
 
@@ -193,10 +206,11 @@ class PathMode(str, Enum):
 @dataclass(frozen=True, slots=True)
 class GovernorDecision:
     """Result of Governor.govern() call.
-    
+
     Contains all information needed to proceed with LLM invocation
     and emit RunReceipt after completion.
     """
+
     lane_plan: LanePlan
     aiq_score: AIQScore
     degradation_level: DegradationLevel
@@ -236,9 +250,10 @@ class GovernorDecision:
 @dataclass
 class TurnContext:
     """Context for a single conversation turn.
-    
+
     Passed to Governor.govern() to make budgeting decisions.
     """
+
     turn_id: str
     session_id: str
     tenant_id: str
@@ -256,18 +271,22 @@ class TurnContext:
 # Exceptions
 # -----------------------------------------------------------------------------
 
+
 class GovernorError(Exception):
     """Base exception for Governor failures."""
+
     pass
 
 
 class BudgetExhaustedError(GovernorError):
     """Raised when no valid lane plan can be computed."""
+
     pass
 
 
 class CapsuleNotFoundError(GovernorError):
     """Raised when capsule lookup fails."""
+
     pass
 
 
@@ -275,9 +294,10 @@ class CapsuleNotFoundError(GovernorError):
 # Lane Allocator (inline for single-file simplicity per Task 1)
 # -----------------------------------------------------------------------------
 
+
 class LaneAllocator:
     """Allocates token budget across lanes with degradation awareness.
-    
+
     Default ratios (L0 - Normal):
     - system_policy: 15%
     - history: 25%
@@ -285,7 +305,7 @@ class LaneAllocator:
     - tools: 20%
     - tool_results: 10%
     - buffer: 5% (minimum 200 tokens)
-    
+
     Degraded ratios reduce history, tools, and memory progressively.
     """
 
@@ -343,15 +363,15 @@ class LaneAllocator:
         capsule: Optional[CapsuleRecord] = None,
     ) -> LanePlan:
         """Allocate token budget across lanes.
-        
+
         Args:
             total_budget: Total tokens available for allocation
             degradation_level: Current system degradation level
             capsule: Optional capsule for constraint overrides
-            
+
         Returns:
             LanePlan with token allocations per lane
-            
+
         Raises:
             BudgetExhaustedError: If total_budget < minimum required
         """
@@ -359,10 +379,7 @@ class LaneAllocator:
         ratios = self._get_ratios(degradation_level)
 
         # Calculate raw allocations
-        allocations = {
-            lane: int(total_budget * ratio)
-            for lane, ratio in ratios.items()
-        }
+        allocations = {lane: int(total_budget * ratio) for lane, ratio in ratios.items()}
 
         # Enforce buffer minimum
         if allocations["buffer"] < self.MINIMUM_BUFFER:
@@ -384,8 +401,7 @@ class LaneAllocator:
             # Scale down proportionally
             scale = total_budget / total_allocated
             allocations = {
-                lane: max(0, int(tokens * scale))
-                for lane, tokens in allocations.items()
+                lane: max(0, int(tokens * scale)) for lane, tokens in allocations.items()
             }
             # Re-enforce buffer minimum
             if allocations["buffer"] < self.MINIMUM_BUFFER:
@@ -457,9 +473,10 @@ class LaneAllocator:
 # AIQ Calculator
 # -----------------------------------------------------------------------------
 
+
 class AIQCalculator:
     """Calculates AIQ scores based on context quality, tool relevance, and budget efficiency.
-    
+
     Formula: AIQ = w1*context_quality + w2*tool_relevance + w3*budget_efficiency
     Scale: 0-100
     """
@@ -474,7 +491,7 @@ class AIQCalculator:
         degradation_level: DegradationLevel,
     ) -> AIQScore:
         """Compute predicted AIQ score before LLM call.
-        
+
         Components:
         - context_quality: Based on memory snippet scores and history depth
         - tool_relevance: Based on available tools matching user intent
@@ -508,7 +525,7 @@ class AIQCalculator:
 
     def _compute_context_quality(self, turn: TurnContext, lane_plan: LanePlan) -> float:
         """Compute context quality score (0-100).
-        
+
         Factors:
         - Memory snippet relevance scores (if available)
         - History depth (more history = better context)
@@ -518,9 +535,9 @@ class AIQCalculator:
 
         # Memory snippets contribution (up to +30)
         if turn.memory_snippets:
-            avg_score = sum(
-                s.get("score", 0.5) for s in turn.memory_snippets
-            ) / len(turn.memory_snippets)
+            avg_score = sum(s.get("score", 0.5) for s in turn.memory_snippets) / len(
+                turn.memory_snippets
+            )
             score += avg_score * 30.0
 
         # History depth contribution (up to +15)
@@ -528,6 +545,7 @@ class AIQCalculator:
         if history_count > 0:
             # Diminishing returns: log scale
             import math
+
             history_bonus = min(15.0, 5.0 * math.log2(history_count + 1))
             score += history_bonus
 
@@ -539,7 +557,7 @@ class AIQCalculator:
 
     def _compute_tool_relevance(self, turn: TurnContext, lane_plan: LanePlan) -> float:
         """Compute tool relevance score (0-100).
-        
+
         Factors:
         - Number of available tools
         - Tool budget allocation
@@ -570,7 +588,7 @@ class AIQCalculator:
         degradation_level: DegradationLevel,
     ) -> float:
         """Compute budget efficiency score (0-100).
-        
+
         Factors:
         - Degradation level (lower = better)
         - Buffer utilization (higher buffer = more safety margin)
@@ -598,13 +616,14 @@ class AIQCalculator:
 # AgentIQ Governor
 # -----------------------------------------------------------------------------
 
+
 class AgentIQGovernor:
     """Governor-mediated control loop for budgeted LLM transactions.
-    
+
     Executes after OPA gate, before LLM call.
     Computes AIQ_pred, decides Fast Path vs Rescue Path.
     Target latency: ≤10ms p95.
-    
+
     VIBE COMPLIANT:
     - Real implementations only
     - Integrates with existing infrastructure
@@ -631,14 +650,14 @@ class AgentIQGovernor:
         max_tokens: int,
     ) -> GovernorDecision:
         """Execute governor logic for a turn.
-        
+
         Args:
             turn: Context for the current conversation turn
             max_tokens: Maximum tokens available for the LLM call
-            
+
         Returns:
             GovernorDecision with lane plan, AIQ score, and execution path
-            
+
         Raises:
             GovernorError: On unrecoverable failures (caller should use rescue path)
         """
@@ -711,7 +730,7 @@ class AgentIQGovernor:
         degradation_level: DegradationLevel,
     ) -> Tuple[PathMode, int]:
         """Determine execution path and tool_k based on AIQ and degradation.
-        
+
         Returns:
             Tuple of (PathMode, tool_k)
         """
@@ -749,12 +768,12 @@ class AgentIQGovernor:
         tool_k: int,
     ) -> List[str]:
         """Filter and limit tools based on capsule and tool_k.
-        
+
         Args:
             available_tools: All available tool names
             capsule: Optional capsule with tool constraints
             tool_k: Maximum number of tools to return
-            
+
         Returns:
             Filtered list of tool names
         """
@@ -782,7 +801,7 @@ class AgentIQGovernor:
         max_tokens: int,
     ) -> GovernorDecision:
         """Execute governor with automatic fallback to rescue path on failure.
-        
+
         This is the recommended entry point for production use.
         """
         try:
@@ -799,6 +818,7 @@ class AgentIQGovernor:
 # Factory function
 # -----------------------------------------------------------------------------
 
+
 def create_governor(
     capsule_store: CapsuleStore,
     degradation_monitor: DegradationMonitor,
@@ -806,13 +826,13 @@ def create_governor(
     config: Optional[AgentIQConfig] = None,
 ) -> AgentIQGovernor:
     """Factory function to create an AgentIQ Governor instance.
-    
+
     Args:
         capsule_store: PostgreSQL-backed capsule store
         degradation_monitor: System degradation monitor
         budget_manager: Redis-backed budget manager
         config: Optional configuration (uses defaults if not provided)
-        
+
     Returns:
         Configured AgentIQGovernor instance
     """

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 def _get_store():
     from services.common.attachments_store import AttachmentsStore
     from django.conf import settings
+
     return AttachmentsStore(dsn=settings.DATABASE_DSN)
 
 
@@ -32,15 +33,15 @@ async def download_attachment(request: HttpRequest, attachment_id: str):
     att_uuid = uuid.UUID(str(attachment_id))
     meta = await store.get_metadata(att_uuid)
     content = await store.get_content(att_uuid)
-    
+
     if not meta or content is None:
         raise NotFoundError("attachment", attachment_id)
-    
+
     response = HttpResponse(
         content=content,
         content_type=meta.mime or "application/octet-stream",
     )
     response["Content-Disposition"] = f'attachment; filename="{meta.filename}"'
     response["X-Attachment-SHA256"] = meta.sha256 or ""
-    
+
     return response
