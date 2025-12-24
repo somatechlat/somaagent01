@@ -1,4 +1,4 @@
-"""FastAPI router for on‑demand health checks of registered services.
+"""Django Ninja router for on‑demand health checks of registered services.
 
 The project distinguishes two concerns:
 
@@ -60,16 +60,16 @@ class UnifiedHealthRouter:
 
 
 def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
-    """Mount the health router onto the provided FastAPI app.
+    """Mount the health router onto the provided Django ASGI app.
 
     ``router_obj`` is an instance of :class:`UnifiedHealthRouter`. The function
     registers a ``/v1/health`` endpoint that delegates to ``router_obj``.
     """
 
-    router = APIRouter()
+    router = Router()
 
     @router.get("/v1/health")
     async def health() -> Dict:  # pragma: no cover – exercised via API tests
         return await router_obj.health_endpoint()
 
-    app.include_router(router)
+    app.add_router("", router)

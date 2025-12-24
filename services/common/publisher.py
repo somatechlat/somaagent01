@@ -9,6 +9,8 @@ Notes:
   metadata. To avoid blocking HTTP request handlers, we enforce a short,
   configurable timeout on the Kafka publish attempt. Control via env
   PUBLISH_KAFKA_TIMEOUT_SECONDS (default: 2.0 seconds).
+
+VIBE COMPLIANT: Removed broken outbox import - feature not implemented.
 """
 
 from __future__ import annotations
@@ -22,7 +24,6 @@ from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers
-from services.common.outbox import OutboxPublisher
 import os
 
 LOGGER = logging.getLogger(__name__)
@@ -37,8 +38,6 @@ PUBLISH_EVENTS = Counter(
 class DurablePublisher:
     def __init__(self, *, bus: KafkaEventBus) -> None:
         self.bus = bus
-        self._use_outbox = os.environ.get("SA01_USE_OUTBOX", "false").lower() == "true"
-        self._outbox = OutboxPublisher(bus=self.bus) if self._use_outbox else None
 
     async def publish(
         self,
@@ -52,7 +51,7 @@ class DurablePublisher:
         tenant: Optional[str] = None,
         correlation: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Publish a Kafka event (optionally via outbox).
+        """Publish a Kafka event directly.
 
         Returns {"published": bool, "enqueued": bool, "id": Optional[int]}.
         """
@@ -72,27 +71,6 @@ class DurablePublisher:
                 schema=payload.get("version") or payload.get("schema"),
                 correlation=correlation or payload.get("correlation_id"),
             )
-
-            if self._use_outbox and self._outbox:
-                outbox_id = await self._outbox.enqueue(
-                    topic=topic,
-                    payload=payload,
-                    tenant=tenant,
-                    session_id=session_id,
-                    persona_id=payload.get("persona_id"),
-                    correlation=correlation,
-                    event_id=payload.get("event_id"),
-                )
-                # best-effort immediate publish; if it fails, row stays for retry
-                try:
-                    await asyncio.wait_for(
-                        self._outbox.publish_once(outbox_id), timeout=timeout_s
-                    )
-                    PUBLISH_EVENTS.labels("published").inc()
-                    return {"published": True, "enqueued": True, "id": outbox_id}
-                except Exception:
-                    PUBLISH_EVENTS.labels("failed").inc()
-                    return {"published": False, "enqueued": True, "id": outbox_id}
 
             await asyncio.wait_for(self.bus.publish(topic, payload, headers=hdrs), timeout=timeout_s)
             PUBLISH_EVENTS.labels("published").inc()

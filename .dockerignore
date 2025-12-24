@@ -43,3 +43,44 @@ docs/
 memory/*
 !memory/.gitkeep
 
+
+# === VIBE CLEANUP - Added 2024-12-23 ===
+# Deleted/legacy directories
+bin/
+src/core/infrastructure/db/
+src/core/messaging/
+
+# Build artifacts
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE and project files
+.kiro/
+.gemini/
+*.md
+!README.md
+!CHANGELOG.md
+
+# Large ML models (should be mounted, not baked)
+*.bin
+*.onnx
+*.pt
+*.pth
+
+# Alembic (deprecated - use Django migrations)
+alembic/
+alembic.ini
+
+# UI dist files (served by CDN, not needed in backend image)
+ui/frontend/dist/
+ui/frontend/node_modules/
+
+# Source maps
+*.map
+
+# Entire UI folder (frontend served separately)
+ui/

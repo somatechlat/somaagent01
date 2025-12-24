@@ -1,9 +1,9 @@
 """Sessions API Router with SSE Streaming.
 
 Migrated from: services/gateway/routers/sessions.py
-Pure Django Ninja implementation with async SSE support.
+Pure Django ORM implementation - NO session_repository.
 
-VIBE COMPLIANT - Django patterns, centralized config, no hardcoded values.
+VIBE COMPLIANT - Django ORM, no legacy stores.
 """
 
 from __future__ import annotations
@@ -18,6 +18,9 @@ from django.conf import settings
 from django.http import StreamingHttpResponse, JsonResponse
 from ninja import Router, Query
 from pydantic import BaseModel
+
+from asgiref.sync import sync_to_async
+from admin.core.models import Session, SessionEvent
 
 router = Router(tags=["sessions"])
 logger = logging.getLogger(__name__)
@@ -52,26 +55,68 @@ class SessionMessageResponse(BaseModel):
     workflow_id: str
 
 
-async def _get_store():
-    """Get initialized session store."""
-    from services.common.session_repository import ensure_schema, PostgresSessionStore
-    from django.conf import settings
-    
-    store = PostgresSessionStore(settings.DATABASE_DSN)
-    await ensure_schema(store)
-    return store
+@sync_to_async
+def _list_sessions(limit: int):
+    """List sessions using Django ORM."""
+    return list(Session.objects.all().order_by("-created_at")[:limit])
 
 
-def _get_session_cache():
-    """Get session cache from providers."""
-    from services.gateway import providers
-    return providers.get_session_cache()
+@sync_to_async
+def _get_session(session_id: str):
+    """Get session by ID."""
+    return Session.objects.filter(session_id=session_id).first()
 
 
-async def _sse_event_generator(
-    session_id: str,
-    store,
-) -> AsyncGenerator[str, None]:
+@sync_to_async
+def _get_session_events(session_id: str, limit: int):
+    """Get session events."""
+    session = Session.objects.filter(session_id=session_id).first()
+    if not session:
+        return None
+    return list(session.events.all().order_by("-created_at")[:limit])
+
+
+@sync_to_async
+def _get_events_after(session_id: str, after_id: Optional[int], limit: int):
+    """Get events after a given ID."""
+    session = Session.objects.filter(session_id=session_id).first()
+    if not session:
+        return []
+    qs = session.events.all()
+    if after_id:
+        qs = qs.filter(id__gt=after_id)
+    return list(qs.order_by("id")[:limit])
+
+
+@sync_to_async
+def _create_or_update_session(session_id: str, persona_id: Optional[str], tenant: Optional[str]):
+    """Create or get session."""
+    session, _ = Session.objects.get_or_create(
+        session_id=session_id,
+        defaults={"persona_id": persona_id, "tenant": tenant}
+    )
+    return session
+
+
+@sync_to_async
+def _append_event(session_id: str, event_data: dict):
+    """Append event to session."""
+    session = Session.objects.filter(session_id=session_id).first()
+    if not session:
+        session = Session.objects.create(
+            session_id=session_id,
+            persona_id=event_data.get("persona_id"),
+            tenant=event_data.get("metadata", {}).get("tenant"),
+        )
+    SessionEvent.objects.create(
+        session=session,
+        event_type="message",
+        payload=event_data,
+        role=event_data.get("role", "user"),
+    )
+
+
+async def _sse_event_generator(session_id: str) -> AsyncGenerator[str, None]:
     """Generate SSE events for a session by polling PostgreSQL."""
     last_event_id: Optional[int] = None
     last_keepalive = asyncio.get_event_loop().time()
@@ -81,17 +126,15 @@ async def _sse_event_generator(
 
     while True:
         try:
-            events = await store.list_events_after(
-                session_id,
-                after_id=last_event_id,
-                limit=50,
-            )
+            events = await _get_events_after(session_id, last_event_id, 50)
 
             for event in events:
-                event_id = event.get("id")
+                event_id = event.id
                 if event_id is not None:
                     last_event_id = event_id
-                payload = event.get("payload", event)
+                payload = event.payload or {}
+                payload["event_type"] = event.event_type
+                payload["role"] = event.role
                 yield f"data: {json.dumps(payload)}\n\n"
 
             now = asyncio.get_event_loop().time()
@@ -111,13 +154,12 @@ async def _sse_event_generator(
 @router.get("", response=list[SessionSummary], summary="List recent sessions")
 async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> list[dict]:
     """List recent sessions."""
-    store = await _get_store()
-    rows = await store.list_sessions(limit=limit)
+    rows = await _list_sessions(limit)
     return [
         {
             "session_id": str(r.session_id),
-            "persona_id": getattr(r, "persona_id", None),
-            "tenant": getattr(r, "tenant", None),
+            "persona_id": r.persona_id,
+            "tenant": r.tenant,
         }
         for r in rows
     ]
@@ -126,16 +168,15 @@ async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> list[dict]:
 @router.get("/{session_id}", summary="Get session details")
 async def get_session(session_id: str) -> dict:
     """Get session envelope."""
-    store = await _get_store()
-    envelope = await store.get_envelope(session_id)
-    if envelope:
+    session = await _get_session(session_id)
+    if session:
         return {
-            "session_id": str(envelope.session_id),
-            "persona_id": envelope.persona_id,
-            "tenant": envelope.tenant,
-            "metadata": envelope.metadata,
-            "created_at": envelope.created_at.isoformat() if envelope.created_at else None,
-            "updated_at": envelope.updated_at.isoformat() if envelope.updated_at else None,
+            "session_id": str(session.session_id),
+            "persona_id": session.persona_id,
+            "tenant": session.tenant,
+            "metadata": session.metadata,
+            "created_at": session.created_at.isoformat() if session.created_at else None,
+            "updated_at": session.updated_at.isoformat() if session.updated_at else None,
         }
     return {"session_id": session_id, "status": "not_found"}
 
@@ -145,11 +186,16 @@ async def session_history(session_id: str, limit: int = Query(100, ge=1, le=500)
     """Return session history events."""
     from admin.common.exceptions import NotFoundError
     
-    store = await _get_store()
-    events = await store.list_events(session_id=session_id, limit=limit)
+    events = await _get_session_events(session_id, limit)
     if events is None:
         raise NotFoundError("session", session_id)
-    return {"session_id": session_id, "events": events}
+    return {
+        "session_id": session_id,
+        "events": [
+            {"event_type": e.event_type, "payload": e.payload, "role": e.role, "created_at": e.created_at.isoformat()}
+            for e in events
+        ]
+    }
 
 
 @router.get("/{session_id}/events", summary="Session events (SSE or JSON)")
@@ -159,18 +205,10 @@ async def session_events_sse(
     stream: bool = Query(False),
     limit: int = Query(100, ge=1, le=500),
 ):
-    """Session events endpoint with optional SSE streaming.
-
-    Args:
-        session_id: The session identifier
-        stream: If true, return SSE stream; otherwise return JSON
-        limit: Maximum events to return (JSON mode only)
-    """
-    store = await _get_store()
-
+    """Session events endpoint with optional SSE streaming."""
     if stream:
         return StreamingHttpResponse(
-            _sse_event_generator(session_id, store),
+            _sse_event_generator(session_id),
             content_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -179,26 +217,25 @@ async def session_events_sse(
             },
         )
 
-    events = await store.list_events(session_id=session_id, limit=limit)
-    return {"session_id": session_id, "events": events or []}
+    events = await _get_session_events(session_id, limit)
+    return {
+        "session_id": session_id,
+        "events": [
+            {"event_type": e.event_type, "payload": e.payload, "role": e.role}
+            for e in (events or [])
+        ]
+    }
 
 
 @router.post("/message", response=SessionMessageResponse, summary="Post user message")
 async def post_session_message(payload: SessionMessageRequest) -> dict:
-    """Enqueue a user message and persist a session event.
-
-    Returns session_id, event_id, and workflow_id for the enqueued message.
-    """
+    """Enqueue a user message and persist a session event."""
     from admin.common.exceptions import ValidationError
     from services.gateway import providers
     from services.conversation_worker.temporal_worker import ConversationWorkflow
-    from django.conf import settings
     
     if not payload.message.strip():
         raise ValidationError("message required")
-
-    store = await _get_store()
-    cache = _get_session_cache()
 
     session_id = payload.session_id or str(uuid.uuid4())
     event_id = str(uuid.uuid4())
@@ -212,7 +249,7 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
         "event_id": event_id,
     }
 
-    await store.append_event(session_id, event)
+    await _append_event(session_id, event)
 
     # Start Temporal workflow
     client = await providers.get_temporal_client()
@@ -226,11 +263,6 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
         id=workflow_id,
         task_queue=task_queue,
     )
-
-    try:
-        await cache.write_context(session_id, payload.persona_id, {"tenant": payload.tenant})
-    except Exception:
-        pass
 
     return {"session_id": session_id, "event_id": event_id, "workflow_id": workflow_id}
 

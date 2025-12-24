@@ -29,7 +29,7 @@ class CacheSyncService(BaseSomaService):
         super().__init__()
         # Import lazily to avoid circular imports.
         from services.cache_sync.main import app as cache_app
-        self.app: FastAPI = cache_app
+        self.app: Any = cache_app
 
     async def _start(self) -> None:
         LOGGER.debug("CacheSyncService start – nothing to initialise")

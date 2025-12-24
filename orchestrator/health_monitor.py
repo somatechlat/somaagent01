@@ -2,7 +2,7 @@
 
 Provides a lightweight ``UnifiedHealthMonitor`` that aggregates the ``health``
 coroutine of each registered ``BaseSomaService``.  The ``attach_to_app``
-function mounts a ``/v1/health`` endpoint on a FastAPI app.
+function mounts a ``/v1/health`` endpoint on a Django ASGI app.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Dict, List
 
 from ninja import Router
 
-router = APIRouter()
+router = Router()
 
 
 class UnifiedHealthMonitor:
@@ -41,7 +41,7 @@ class UnifiedHealthMonitor:
 
 
 def attach_to_app(app, monitor: UnifiedHealthMonitor) -> None:
-    """Mount the health router onto the provided FastAPI ``app``.
+    """Mount the health router onto the provided Django ASGI ``app``.
 
     The router defines a single ``GET /v1/health`` endpoint that delegates to
     ``monitor.health_endpoint``.
@@ -51,4 +51,4 @@ def attach_to_app(app, monitor: UnifiedHealthMonitor) -> None:
     async def health() -> Dict:
         return await monitor.health_endpoint()
 
-    app.include_router(router)
+    app.add_router("", router)

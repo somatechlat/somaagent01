@@ -9,7 +9,6 @@ from datetime import timedelta
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from services.common import outbox_flush
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
 from services.common.dlq import DeadLetterQueue
@@ -53,7 +52,7 @@ class A2AWorkflow:
 async def main() -> None:
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
-    await outbox_flush.flush()
+    # outbox_flush removed - feature never implemented
     client = await Client.connect(temporal_host)
     worker = Worker(
         client,

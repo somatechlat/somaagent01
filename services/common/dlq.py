@@ -1,4 +1,7 @@
-"""Dead Letter Queue helper for Kafka topics."""
+"""Dead Letter Queue helper for Kafka topics.
+
+VIBE COMPLIANT: Removed broken outbox - uses direct Kafka publishing only.
+"""
 
 from __future__ import annotations
 
@@ -8,8 +11,6 @@ from typing import Any, Dict, Optional
 
 from services.common.event_bus import KafkaEventBus
 from services.common.publisher import DurablePublisher
-from services.common.outbox import OutboxPublisher
-import os
 from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
@@ -42,8 +43,6 @@ class DeadLetterQueue:
     ) -> None:
         self.source_topic = source_topic
         self.dlq_topic = f"{source_topic}.dlq"
-        self._use_outbox = os.environ.get("SA01_USE_OUTBOX", "false").lower() == "true"
-        self._outbox = OutboxPublisher(bus=bus or KafkaEventBus()) if self._use_outbox else None
         self.publisher = publisher or DurablePublisher(bus=bus or KafkaEventBus())
 
     async def send_to_dlq(
@@ -64,35 +63,16 @@ class DeadLetterQueue:
 
         try:
             start = time.time()
-            if self._use_outbox and self._outbox:
-                outbox_id = await self._outbox.enqueue(
-                    topic=self.dlq_topic,
-                    payload=payload,
-                    tenant=(event.get("metadata") or {}).get("tenant"),
-                    session_id=str(event.get("session_id") or ""),
-                    correlation=str(event.get("event_id") or event.get("task_id") or ""),
-                )
-                try:
-                    await self._outbox.publish_once(outbox_id)
-                    DLQ_EVENTS.labels("published").inc()
-                    COMPENSATIONS_TOTAL.labels(self.dlq_topic, "published").inc()
-                    ROLLBACK_LATENCY.observe(time.time() - start)
-                except Exception:
-                    LOG = logging.getLogger(__name__)
-                    LOG.warning("DLQ outbox publish pending retry", extra={"outbox_id": outbox_id})
-                    DLQ_EVENTS.labels("pending_retry").inc()
-                    COMPENSATIONS_TOTAL.labels(self.dlq_topic, "pending_retry").inc()
-            else:
-                await self.publisher.publish(
-                    self.dlq_topic,
-                    payload,
-                    dedupe_key=str(event.get("event_id") or event.get("task_id") or ""),
-                    session_id=str(event.get("session_id") or ""),
-                    tenant=(event.get("metadata") or {}).get("tenant"),
-                )
-                DLQ_EVENTS.labels("published").inc()
-                COMPENSATIONS_TOTAL.labels(self.dlq_topic, "published").inc()
-                ROLLBACK_LATENCY.observe(time.time() - start)
+            await self.publisher.publish(
+                self.dlq_topic,
+                payload,
+                dedupe_key=str(event.get("event_id") or event.get("task_id") or ""),
+                session_id=str(event.get("session_id") or ""),
+                tenant=(event.get("metadata") or {}).get("tenant"),
+            )
+            DLQ_EVENTS.labels("published").inc()
+            COMPENSATIONS_TOTAL.labels(self.dlq_topic, "published").inc()
+            ROLLBACK_LATENCY.observe(time.time() - start)
             LOGGER.warning(
                 "Event forwarded to DLQ",
                 extra={

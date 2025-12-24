@@ -6,10 +6,15 @@ Provides reusable request/response schemas across all API endpoints.
 from __future__ import annotations
 
 from typing import Any, Generic, TypeVar
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+
+def _utc_now() -> datetime:
+    """Return timezone-aware UTC datetime (VIBE Rule 28)."""
+    return datetime.now(timezone.utc)
 
 
 T = TypeVar("T")
@@ -51,7 +56,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     success: bool = True
     data: list[T]
     pagination: PaginationInfo
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
 
 
 # =============================================================================
@@ -74,7 +79,7 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Machine-readable error code")
     message: str = Field(..., description="Human-readable error message")
     details: list[ErrorDetail] | dict[str, Any] | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
 
 
 # =============================================================================
@@ -87,7 +92,7 @@ class SuccessResponse(BaseModel):
     
     success: bool = True
     message: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
 
 
 class DataResponse(BaseModel, Generic[T]):
@@ -97,7 +102,7 @@ class DataResponse(BaseModel, Generic[T]):
     data: T
     message: str | None = None
     meta: dict[str, Any] | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
 
 
 # =============================================================================
@@ -174,7 +179,7 @@ class AggregatedHealth(BaseModel):
     
     overall: str
     services: list[ServiceHealth]
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
 
 
 # =============================================================================

@@ -8,52 +8,88 @@ import time
 
 from prometheus_client import Counter, Gauge, Histogram, Info
 
-from observability.metrics import (
-    context_tokens_after_budget,
-    context_tokens_after_redaction,
-    context_tokens_before_budget,
-    event_publish_failure_total,
-    event_publish_latency_seconds as _event_publish_latency_seconds,
-    event_published_total as _event_published_total,
-    somabrain_errors_total as _somabrain_errors_total,
-    somabrain_latency_seconds as _somabrain_latency_seconds,
-    somabrain_memory_operations_total as _somabrain_memory_operations_total,
-    somabrain_requests_total as _somabrain_requests_total,
-    system_health_gauge as _system_health_gauge,
-    system_uptime_seconds as _system_uptime_seconds,
-    thinking_policy_seconds as _thinking_policy_seconds,
-    thinking_prompt_seconds as _thinking_prompt_seconds,
-    thinking_ranking_seconds as _thinking_ranking_seconds,
-    thinking_redaction_seconds as _thinking_redaction_seconds,
-    thinking_retrieval_seconds as _thinking_retrieval_seconds,
-    thinking_salience_seconds as _thinking_salience_seconds,
-    thinking_tokenisation_seconds as _thinking_tokenisation_seconds,
-    thinking_total_seconds as _thinking_total_seconds,
-    tokens_received_total as _tokens_received_total,
+# =============================================================================
+# CANONICAL METRICS DEFINITIONS (defined here, not imported)
+# =============================================================================
+
+# Context Builder Metrics
+tokens_received_total = Counter(
+    "tokens_received_total", "Total tokens received", ["source"]
+)
+context_tokens_before_budget = Gauge(
+    "context_tokens_before_budget", "Tokens before budget applied", ["session_id"]
+)
+context_tokens_after_budget = Gauge(
+    "context_tokens_after_budget", "Tokens after budget applied", ["session_id"]
+)
+context_tokens_after_redaction = Gauge(
+    "context_tokens_after_redaction", "Tokens after redaction", ["session_id"]
 )
 
-# Re-export canonical metrics for compatibility with legacy imports
-tokens_received_total = _tokens_received_total
+# Thinking Phase Metrics
+thinking_tokenisation_seconds = Histogram(
+    "thinking_tokenisation_seconds", "Tokenisation phase duration", ["session_id"]
+)
+thinking_policy_seconds = Histogram(
+    "thinking_policy_seconds", "Policy phase duration", ["session_id"]
+)
+thinking_retrieval_seconds = Histogram(
+    "thinking_retrieval_seconds", "Retrieval phase duration", ["session_id"]
+)
+thinking_salience_seconds = Histogram(
+    "thinking_salience_seconds", "Salience phase duration", ["session_id"]
+)
+thinking_ranking_seconds = Histogram(
+    "thinking_ranking_seconds", "Ranking phase duration", ["session_id"]
+)
+thinking_redaction_seconds = Histogram(
+    "thinking_redaction_seconds", "Redaction phase duration", ["session_id"]
+)
+thinking_prompt_seconds = Histogram(
+    "thinking_prompt_seconds", "Prompt phase duration", ["session_id"]
+)
+thinking_total_seconds = Histogram(
+    "thinking_total_seconds", "Total thinking duration", ["session_id"]
+)
+
+# Event Publisher Metrics
+event_published_total = Counter(
+    "event_published_total", "Total events published", ["event_type", "status"]
+)
+event_publish_latency_seconds = Histogram(
+    "event_publish_latency_seconds", "Event publish latency", ["event_type"]
+)
+event_publish_failure_total = Counter(
+    "event_publish_failure_total", "Event publish failures", ["event_type", "error_type"]
+)
+
+# SomaBrain Metrics
+somabrain_requests_total = Counter(
+    "somabrain_requests_total", "Total SomaBrain requests", ["operation", "status"]
+)
+somabrain_latency_seconds = Histogram(
+    "somabrain_latency_seconds", "SomaBrain operation latency", ["operation"]
+)
+somabrain_errors_total = Counter(
+    "somabrain_errors_total", "SomaBrain errors", ["operation", "error_type"]
+)
+somabrain_memory_operations_total = Counter(
+    "somabrain_memory_operations_total", "SomaBrain memory operations", ["operation_type"]
+)
+
+# System Metrics
+system_health_gauge = Gauge(
+    "system_health_gauge", "System health status", ["service", "component"]
+)
+system_uptime_seconds = Counter(
+    "system_uptime_seconds", "System uptime in seconds", ["service", "version"]
+)
+
+# Compatibility aliases
 tokens_before_budget_gauge = context_tokens_before_budget
 tokens_after_budget_gauge = context_tokens_after_budget
 tokens_after_redaction_gauge = context_tokens_after_redaction
-thinking_tokenisation_seconds = _thinking_tokenisation_seconds
-thinking_policy_seconds = _thinking_policy_seconds
-thinking_retrieval_seconds = _thinking_retrieval_seconds
-thinking_salience_seconds = _thinking_salience_seconds
-thinking_ranking_seconds = _thinking_ranking_seconds
-thinking_redaction_seconds = _thinking_redaction_seconds
-thinking_prompt_seconds = _thinking_prompt_seconds
-thinking_total_seconds = _thinking_total_seconds
-event_published_total = _event_published_total
-event_publish_latency_seconds = _event_publish_latency_seconds
 event_publish_errors_total = event_publish_failure_total
-somabrain_requests_total = _somabrain_requests_total
-somabrain_latency_seconds = _somabrain_latency_seconds
-somabrain_errors_total = _somabrain_errors_total
-somabrain_memory_operations_total = _somabrain_memory_operations_total
-system_health_gauge = _system_health_gauge
-system_uptime_seconds = _system_uptime_seconds
 
 # REAL IMPLEMENTATION - FastA2A Metrics (unique to this module)
 fast_a2a_requests_total = Counter(
