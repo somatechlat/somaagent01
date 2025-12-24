@@ -12,7 +12,26 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 from enum import Enum
 
-from services.common.capsule_store import CapsuleRecord
+
+@dataclass
+class CapsuleRecord:
+    """Capsule policy record."""
+    capsule_id: str
+    egress_mode: str = "open"
+    allowed_domains: List[str] = field(default_factory=list)
+    blocked_domains: List[str] = field(default_factory=list)
+    max_wall_clock_seconds: int = 300
+    max_concurrent_nodes: int = 10
+    default_hitl_mode: str = "none"
+    max_pending_hitl: int = 5
+    risk_thresholds: Dict[str, float] = field(default_factory=dict)
+    prohibited_tools: List[str] = field(default_factory=list)
+    allowed_tools: Optional[List[str]] = None
+    tool_risk_profile: str = "medium"
+    rl_export_allowed: bool = True
+    rl_export_scope: str = "tenant"
+    rl_excluded_fields: List[str] = field(default_factory=list)
+    example_store_policy: str = "allow"
 
 
 __all__ = [
