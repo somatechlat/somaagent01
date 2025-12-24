@@ -1,4 +1,7 @@
-"""Memory module - SomaBrain memory store."""
+"""Memory module - SomaBrain memory store.
+
+VIBE COMPLIANT: Pure SomaBrain integration. No FAISS, no local memory.
+"""
 
 from __future__ import annotations
 
@@ -9,20 +12,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Sequence
 
-# FAISS REMOVED: Use SomaBrain for all memory operations.
-# Legacy Agent Zero local FAISS memory is deprecated.
-
-try:
-    from langchain.embeddings.cache import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
-except Exception:
-    from langchain.embeddings import CacheBackedEmbeddings as LC_CacheBackedEmbeddings
-from langchain.storage import InMemoryByteStore, LocalFileStore
-from langchain_community.docstore.in_memory import InMemoryDocstore
-
-# from langchain_community.vectorstores import FAISS # FAISS REMOVED
-from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_core.documents import Document
-
 
 try:
     from simpleeval import simple_eval
@@ -38,7 +28,7 @@ except Exception:
         return False
 
 
-from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
+from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper
 from agent import Agent
 from admin.core.helpers import guids, knowledge_import
 from admin.core.helpers.log import LogItem
@@ -49,15 +39,12 @@ from . import files
 
 logging.getLogger("langchain_core.vectorstores.base").setLevel(logging.ERROR)
 
-import os
-
 
 def _env_flag(name: str, default: bool) -> bool:
     v = os.environ.get(name)
     return v.strip().lower() in {"1", "true", "yes", "on"} if v else default
 
 
-SOMABRAIN_ENABLED = _env_flag("SA01_SOMABRAIN_ENABLED", True)
 CACHE_INCLUDE_WM = _env_flag("SA01_CACHE_INCLUDE_WM", False)
 CACHE_WM_LIMIT = int(os.environ.get("SA01_CACHE_WM_LIMIT", "128") or "128")
 
@@ -67,9 +54,6 @@ class MemoryArea(Enum):
     FRAGMENTS = "fragments"
     SOLUTIONS = "solutions"
     INSTRUMENTS = "instruments"
-
-
-# if FAISS_AVAILABLE and FAISS is not None: # FAISS REMOVED
 
 
 class Memory:
@@ -90,75 +74,21 @@ class Memory:
     @staticmethod
     async def get(agent: Agent):
         memory_subdir = agent.config.memory_subdir or "default"
-        if SOMABRAIN_ENABLED:
-            return Memory._get_soma(agent, memory_subdir)
-        # FAISS REMOVED: Local FAISS is deprecated.
-        raise NotImplementedError(
-            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
-        )
-        # if Memory.index.get(memory_subdir) is None:
-        #     log_item = agent.context.log.log(
-        #         type="util", heading=f"Initializing VectorDB in '/{memory_subdir}'"
-        #     )
-        #     db, _ = Memory.initialize(log_item, agent.config.embeddings_model, memory_subdir, False)
-        #     Memory.index[memory_subdir] = db
-        #     wrap = Memory(db, memory_subdir=memory_subdir)
-        #     if agent.config.knowledge_subdirs:
-        #         await wrap.preload_knowledge(
-        #             log_item, agent.config.knowledge_subdirs, memory_subdir
-        #         )
-        #     return wrap
-        # return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
+        return Memory._get_soma(agent, memory_subdir)
 
     @staticmethod
     async def get_by_subdir(
         memory_subdir: str, log_item: LogItem | None = None, preload_knowledge: bool = True
     ):
-        if SOMABRAIN_ENABLED:
-            return Memory._get_soma(None, memory_subdir)
-        # FAISS REMOVED: Local FAISS is deprecated.
-        raise NotImplementedError(
-            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
-        )
-        # if not Memory.index.get(memory_subdir):
-        #     import initialize
-
-        #     agent_config = initialize.initialize_agent()
-        #     db, _ = Memory.initialize(log_item, agent_config.embeddings_model, memory_subdir, False)
-        #     wrap = Memory(db, memory_subdir=memory_subdir)
-        #     if preload_knowledge and agent_config.knowledge_subdirs:
-        #         await wrap.preload_knowledge(
-        #             log_item, agent_config.knowledge_subdirs, memory_subdir
-        #         )
-        #     Memory.index[memory_subdir] = db
-        # return Memory(db=Memory.index[memory_subdir], memory_subdir=memory_subdir)
+        return Memory._get_soma(None, memory_subdir)
 
     @staticmethod
     async def reload(agent: Agent):
         memory_subdir = agent.config.memory_subdir or "default"
-        if SOMABRAIN_ENABLED:
-            if memory_subdir in Memory._remote_instances:
-                await Memory._remote_instances[memory_subdir].refresh()
-                return Memory._remote_instances[memory_subdir]
-            return await Memory.get(agent)
-        # FAISS REMOVED: Local FAISS is deprecated.
-        raise NotImplementedError(
-            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
-        )
-        # Memory.index.pop(memory_subdir, None)
-        # return await Memory.get(agent)
-
-    @staticmethod
-    def initialize(
-        log_item: LogItem | None,
-        model_config: models.ModelConfig,
-        memory_subdir: str,
-        in_memory=False,
-    ) -> tuple[Any, bool]:
-        # DEPRECATED: Local VectorDB/FAISS is not supported
-        raise NotImplementedError(
-            "Local memory (VectorDB/FAISS) is deprecated. Use SomaBrain only."
-        )
+        if memory_subdir in Memory._remote_instances:
+            await Memory._remote_instances[memory_subdir].refresh()
+            return Memory._remote_instances[memory_subdir]
+        return await Memory.get(agent)
 
     def __init__(self, db: Any, memory_subdir: str):
         self.db = db

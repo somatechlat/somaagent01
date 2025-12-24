@@ -161,6 +161,7 @@ class TestSomaBrainDjangoIntegration:
 class TestDjangoORMWithSomaBrain:
     """Test Django ORM works alongside SomaBrain."""
 
+    @pytest.mark.django_db
     def test_django_orm_tenant_model(self):
         """Verify Django ORM Tenant model works."""
         from admin.saas.models import Tenant
@@ -170,6 +171,7 @@ class TestDjangoORMWithSomaBrain:
         print(f"✅ Django ORM: {count} tenants in PostgreSQL")
         assert count >= 0  # Just verify query works
 
+    @pytest.mark.django_db
     def test_django_orm_and_somabrain_coexist(self):
         """Verify Django ORM and SomaBrain can both access data."""
         from admin.saas.models import Tenant
