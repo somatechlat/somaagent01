@@ -55,9 +55,9 @@ class LlmInvokeResponse(BaseModel):
     confidence: Optional[float] = None
 
 
-# Centralized configuration via Django settings
-DEFAULT_MODEL = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", "gpt-4o")
-DEFAULT_BASE_URL = getattr(settings, "LLM_DEFAULT_BASE_URL", "https://api.openai.com/v1")
+# Centralized configuration via Django settings (REQUIRED - no hardcoded defaults per VIBE)
+DEFAULT_MODEL = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL")  # Must be explicitly configured
+DEFAULT_BASE_URL = getattr(settings, "LLM_DEFAULT_BASE_URL", None)  # Optional
 MULTIMODAL_ENABLED = getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
 CONFIDENCE_ENABLED = getattr(settings, "CONFIDENCE_ENABLED", False)
 CONFIDENCE_AGGREGATION = getattr(settings, "CONFIDENCE_AGGREGATION", "average")
