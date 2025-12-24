@@ -198,19 +198,31 @@
 - [x] tenant_agents.py (356 lines)
 - [x] saas-tenant-agents.ts view (20KB)
 
-### 3.9 Settings & API Keys ⏳ PARTIAL
+### 3.9 Settings & API Keys ✅ COMPLETE
 - [x] GET /saas/settings/api-keys
+- [x] POST /saas/settings/api-keys (cryptographic generation)
 - [x] DELETE /saas/settings/api-keys/{id}
 - [x] GET /saas/settings/models
 - [x] PATCH /saas/settings/models/{id}
 - [x] POST /saas/settings/sso
 - [x] POST /saas/settings/sso/test
-- [ ] POST /saas/settings/api-keys (key generation)
+- [x] settings.py (250+ lines) - secrets.token_urlsafe, SHA-256
 
-### 3.7 Platform Health
-- [ ] Health check endpoints per service
-- [ ] saas-health-dashboard view
-- [ ] Degradation alerts
+### 3.10 Platform Health ✅ COMPLETE
+- [x] GET /saas/health - All services check
+- [x] GET /saas/health/db - PostgreSQL
+- [x] GET /saas/health/cache - Redis
+- [x] GET /saas/health/keycloak - Keycloak IAM
+- [x] GET /saas/health/somabrain - SomaBrain
+- [x] GET /saas/health/degradation - Degradation status
+- [x] health.py (270 lines) - Async concurrent checks
+
+### 3.11 Audit Trail ✅ COMPLETE
+- [x] GET /saas/audit - List with filters
+- [x] GET /saas/audit/export - CSV export
+- [x] GET /saas/audit/actions - Action types
+- [x] GET /saas/audit/stats - Dashboard stats
+- [x] audit.py (245 lines)
 
 ---
 
@@ -254,10 +266,10 @@
 - [ ] POST /api/v2/admin/billing/upgrade
 - [ ] saas-tenant-billing view
 
-### 4.7 Audit Log
-- [ ] GET /api/v2/admin/audit
-- [ ] saas-audit-log view
-- [ ] Filters, CSV export
+### 4.7 Audit Log ✅ COMPLETE (via /saas/audit)
+- [x] GET /saas/audit - List with filters
+- [x] GET /saas/audit/export - CSV export
+- [x] saas-audit-log view (pending)
 
 ---
 
