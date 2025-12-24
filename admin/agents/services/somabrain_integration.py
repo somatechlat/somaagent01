@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from agent import Agent
 
-from python.helpers.print_style import PrintStyle
+from admin.core.helpers.print_style import PrintStyle
 from python.integrations.soma_client import SomaClientError
 
 # Neuromodulator clamping ranges (from SomaBrain neuromod.py)

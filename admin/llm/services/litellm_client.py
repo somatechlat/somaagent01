@@ -57,10 +57,10 @@ try:
 except Exception:  # pragma: no cover - optional dep
     SentenceTransformer = None  # type: ignore
 
-from python.helpers import browser_use_monkeypatch, dirty_json
-from python.helpers.providers import get_provider_config
-from python.helpers.rate_limiter import RateLimiter
-from python.helpers.tokens import approximate_tokens
+from admin.core.helpers import browser_use_monkeypatch, dirty_json
+from admin.core.helpers.providers import get_provider_config
+from admin.core.helpers.rate_limiter import RateLimiter
+from admin.core.helpers.tokens import approximate_tokens
 
 # Import from Django LLM app
 from admin.llm.models import ModelConfig, ModelType

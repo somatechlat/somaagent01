@@ -7,7 +7,7 @@ from typing import Any, Dict, TYPE_CHECKING
 if TYPE_CHECKING:
     from agent import Agent
 
-from python.helpers.print_style import PrintStyle
+from admin.core.helpers.print_style import PrintStyle
 
 
 async def initialize_cognitive_state(agent: "Agent") -> None:

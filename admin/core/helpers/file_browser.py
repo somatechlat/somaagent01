@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple
 
 from werkzeug.utils import secure_filename
 
-from python.helpers import files
+from admin.core.helpers import files
 from admin.core.helpers.print_style import PrintStyle
 
 

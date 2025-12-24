@@ -16,7 +16,7 @@ from datetime import timedelta
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from python.helpers.tokens import count_tokens
+from admin.core.helpers.tokens import count_tokens
 from python.integrations.somabrain_client import SomaBrainClient
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 from services.common.compensation import compensate_event

@@ -1,5 +1,5 @@
-from python.helpers.memory import Memory
-from python.helpers.tool import Response, Tool
+from admin.core.helpers.memory import Memory
+from admin.core.helpers.tool import Response, Tool
 
 
 class MemorySave(Tool):

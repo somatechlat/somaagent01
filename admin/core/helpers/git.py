@@ -2,7 +2,7 @@ from datetime import datetime
 
 from git import Repo
 
-from python.helpers import files
+from admin.core.helpers import files
 
 
 def get_git_info():

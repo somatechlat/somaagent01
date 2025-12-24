@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Literal, Optional, Set
 
 from dotenv.parser import parse_stream
 
-from python.helpers import files
+from admin.core.helpers import files
 from admin.core.helpers.errors import RepairableException
 
 # New alias-based placeholder format §§secret(KEY)

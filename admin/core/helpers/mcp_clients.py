@@ -33,7 +33,7 @@ from mcp.client.streamable_http import streamablehttp_client
 from mcp.shared.message import SessionMessage
 from mcp.types import CallToolResult, ListToolsResult
 
-from python.helpers import errors, settings
+from admin.core.helpers import errors, settings
 from admin.core.helpers.print_style import PrintStyle
 
 T = TypeVar("T")

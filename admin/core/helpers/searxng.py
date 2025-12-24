@@ -1,6 +1,6 @@
 import aiohttp
 
-from python.helpers import runtime
+from admin.core.helpers import runtime
 import os
 
 

@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
 from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 import python.helpers.log as Log
-from python.helpers.defer import DeferredTask
-from python.helpers.localization import Localization
+from admin.core.helpers.defer import DeferredTask
+from admin.core.helpers.localization import Localization
 
 
 class AgentContextType(Enum):
@@ -134,7 +134,7 @@ class AgentContext:
     @classmethod
     def get_notification_manager(cls):
         if cls._notification_manager is None:
-            from python.helpers.notification import NotificationManager
+            from admin.core.helpers.notification import NotificationManager
 
             cls._notification_manager = NotificationManager()
         return cls._notification_manager

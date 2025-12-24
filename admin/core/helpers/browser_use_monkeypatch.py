@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from python.helpers import dirty_json
+from admin.core.helpers import dirty_json
 
 LOGGER = logging.getLogger(__name__)
 

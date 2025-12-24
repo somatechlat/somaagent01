@@ -8,7 +8,7 @@ from typing import Any, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from agent import Agent, AgentContext
 
-from python.helpers import history
+from admin.core.helpers import history
 
 
 class LoopData:
@@ -38,8 +38,8 @@ async def run_message_loop(agent: "Agent", loop_data: LoopData) -> str:
     Returns:
         Final response from the agent
     """
-    from python.helpers.extension import call_extensions
-    from python.helpers.print_style import PrintStyle
+    from admin.core.helpers.extension import call_extensions
+    from admin.core.helpers.print_style import PrintStyle
 
     printer = PrintStyle(italic=True, font_color="#b3ffd9", padding=False)
 

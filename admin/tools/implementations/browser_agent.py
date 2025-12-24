@@ -7,14 +7,14 @@ from pydantic import BaseModel
 
 from agent import Agent, InterventionException
 from python.extensions.message_loop_start._10_iteration_no import get_iter_no
-from python.helpers import defer, files, strings
-from python.helpers.browser_use import browser_use  # type: ignore[attr-defined]
-from python.helpers.dirty_json import DirtyJson
-from python.helpers.playwright import ensure_playwright_binary
-from python.helpers.print_style import PrintStyle
-from python.helpers.secrets import SecretsManager
-from python.helpers.session_store_adapter import save_screenshot_attachment
-from python.helpers.tool import Response, Tool
+from admin.core.helpers import defer, files, strings
+from admin.core.helpers.browser_use import browser_use  # type: ignore[attr-defined]
+from admin.core.helpers.dirty_json import DirtyJson
+from admin.core.helpers.playwright import ensure_playwright_binary
+from admin.core.helpers.print_style import PrintStyle
+from admin.core.helpers.secrets import SecretsManager
+from admin.core.helpers.session_store_adapter import save_screenshot_attachment
+from admin.core.helpers.tool import Response, Tool
 
 
 class State:

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, TYPE_CHECKING
 
-from python.helpers import extract_tools, files
+from admin.core.helpers import extract_tools, files
 
 if TYPE_CHECKING:
     from agent import Agent

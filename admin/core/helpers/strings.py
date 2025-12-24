@@ -2,7 +2,7 @@ import re
 import sys
 import time
 
-from python.helpers import files
+from admin.core.helpers import files
 
 
 def sanitize_string(s: str, encoding: str = "utf-8") -> str:

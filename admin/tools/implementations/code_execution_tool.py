@@ -4,13 +4,13 @@ import shlex
 import time
 from dataclasses import dataclass
 
-from python.helpers import rfc_exchange
-from python.helpers.messages import truncate_text as truncate_text_agent
-from python.helpers.print_style import PrintStyle
-from python.helpers.shell_local import LocalInteractiveSession
-from python.helpers.shell_ssh import SSHInteractiveSession
-from python.helpers.strings import truncate_text as truncate_text_string
-from python.helpers.tool import Response, Tool
+from admin.core.helpers import rfc_exchange
+from admin.core.helpers.messages import truncate_text as truncate_text_agent
+from admin.core.helpers.print_style import PrintStyle
+from admin.core.helpers.shell_local import LocalInteractiveSession
+from admin.core.helpers.shell_ssh import SSHInteractiveSession
+from admin.core.helpers.strings import truncate_text as truncate_text_string
+from admin.core.helpers.tool import Response, Tool
 
 
 @dataclass

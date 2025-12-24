@@ -133,7 +133,7 @@ async def apply_neuromodulation(agent: "Agent", response: str) -> str:
 
     # Log neuromodulator state for observability
     if neuromods:
-        from python.helpers.print_style import PrintStyle
+        from admin.core.helpers.print_style import PrintStyle
 
         dopamine = neuromods.get("dopamine", 0.4)
         serotonin = neuromods.get("serotonin", 0.5)

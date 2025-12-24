@@ -1,7 +1,7 @@
 from agent import Agent
-from python.helpers import files, memory
-from python.helpers.log import LogItem
-from python.helpers.tool import Response, Tool
+from admin.core.helpers import files, memory
+from admin.core.helpers.log import LogItem
+from admin.core.helpers.tool import Response, Tool
 
 
 class UpdateBehaviour(Tool):

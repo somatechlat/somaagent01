@@ -8,8 +8,8 @@ from typing import Any, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from agent import Agent
 
-from python.helpers import extract_tools
-from python.helpers.print_style import PrintStyle
+from admin.core.helpers import extract_tools
+from admin.core.helpers.print_style import PrintStyle
 
 
 def get_tool(agent: "Agent", name: str, args: dict, message: str):
@@ -30,7 +30,7 @@ def get_tool(agent: "Agent", name: str, args: dict, message: str):
     Raises:
         ImportError: If tool module cannot be loaded (logged, not raised)
     """
-    from python.tools.base_tool import BaseTool
+    from admin.tools.implementations.base_tool import BaseTool
 
     # Try to import the tool module
     try:
