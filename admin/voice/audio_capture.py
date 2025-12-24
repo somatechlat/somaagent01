@@ -24,7 +24,7 @@ import sys
 from dataclasses import dataclass
 from typing import AsyncGenerator
 
-from src.core.config.models import AudioConfig
+# from src.core.config.models import AudioConfig
 from .exceptions import VoiceProcessingError
 
 

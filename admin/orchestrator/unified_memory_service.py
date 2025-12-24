@@ -18,7 +18,7 @@ from typing import Any
 #     VectorStoreRepository,
 #     ConversationRepository,
 # )
-from src.core.infrastructure.repositories import (
+# from src.core.infrastructure.repositories import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

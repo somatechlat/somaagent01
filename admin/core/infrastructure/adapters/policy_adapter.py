@@ -7,7 +7,7 @@ to the existing production PolicyClient implementation.
 from typing import Optional
 
 from services.common.policy_client import PolicyClient, PolicyRequest
-from src.core.domain.ports.adapters.policy_adapter import (
+# from src.core.domain.ports.adapters.policy_adapter import (
     PolicyAdapterPort,
     PolicyRequestDTO,
 )
