@@ -7,7 +7,7 @@ to the existing production ToolRegistry implementation.
 from typing import Any, Dict, Iterable, Optional
 
 from services.tool_executor.tool_registry import ToolRegistry
-from src.core.domain.ports.adapters.tool_registry import (
+# from src.core.domain.ports.adapters.tool_registry import (
     ToolDefinitionDTO,
     ToolRegistryPort,
 )

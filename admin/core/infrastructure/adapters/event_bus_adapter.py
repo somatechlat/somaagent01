@@ -8,7 +8,7 @@ import asyncio
 from typing import Any, Callable, Dict, Optional
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from src.core.domain.ports.adapters.event_bus import EventBusPort
+# from src.core.domain.ports.adapters.event_bus import EventBusPort
 
 
 class KafkaEventBusAdapter(EventBusPort):
