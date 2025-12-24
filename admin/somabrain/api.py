@@ -18,6 +18,10 @@ from admin.common.responses import paginated_response
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
 
+# Mount cognitive sub-router
+from admin.somabrain.cognitive import router as cognitive_router
+router.add_router("/cognitive", cognitive_router)
+
 
 # =============================================================================
 # SCHEMAS
