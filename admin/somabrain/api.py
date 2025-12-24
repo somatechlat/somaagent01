@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 from admin.somabrain.cognitive import router as cognitive_router
 router.add_router("/cognitive", cognitive_router)
 
+# Mount admin sub-router
+from admin.somabrain.admin_api import router as admin_router
+router.add_router("/admin", admin_router)
+
 
 # =============================================================================
 # SCHEMAS
