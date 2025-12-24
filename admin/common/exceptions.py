@@ -234,3 +234,22 @@ class ServiceError(ApiError):
     ) -> None:
         """Initialize service error."""
         super().__init__(message, **kwargs)
+
+
+class BadRequestError(ApiError):
+    """Bad request error (400).
+
+    Used for invalid client requests.
+    """
+
+    status_code = 400
+    error_code = "bad_request"
+
+    def __init__(
+        self,
+        message: str = "Bad request",
+        **kwargs: Any,
+    ) -> None:
+        """Initialize bad request error."""
+        super().__init__(message, **kwargs)
+
