@@ -9,7 +9,16 @@ if TYPE_CHECKING:
     from agent import Agent
 
 from admin.core.helpers.print_style import PrintStyle
-from admin.core.soma_client import SomaClientError
+
+
+class SomaClientError(Exception):
+    """Exception raised for SomaBrain client errors."""
+    pass
+
+
+class SomaBrainClient:
+    """Placeholder for SomaBrainClient - to be properly implemented."""
+    pass
 
 # Neuromodulator clamping ranges (from SomaBrain neuromod.py)
 # These are the physiological ranges enforced by SomaBrain
