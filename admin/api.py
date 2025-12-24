@@ -169,6 +169,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/analytics", analytics_router)
 
+    # Search (Full-text search)
+    from admin.search.api import router as search_router
+
+    api.add_router("/search", search_router)
+
     return api
 
 
