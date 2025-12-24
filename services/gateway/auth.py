@@ -82,9 +82,9 @@ def _get_openfga_client():
 
 async def authorize_request(request, policy_context: dict = None):
     """Authorize request using JWT token from headers.
-    
+
     🔒 Security: JWT validation + OPA policy check
-    
+
     Raises:
         UnauthorizedError: If authentication fails
         ForbiddenError: If authorization denied

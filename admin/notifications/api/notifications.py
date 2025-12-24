@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 def _get_store():
     from services.common.notifications_store import NotificationsStore
+
     return NotificationsStore()
 
 
@@ -38,7 +39,9 @@ async def list_notifications(limit: int = 50, unreadOnly: bool = False) -> dict:
     try:
         store = _get_store()
         await store.ensure_schema()
-        data = await store.list(tenant_id="default", user_id=None, limit=limit, unread_only=unreadOnly)
+        data = await store.list(
+            tenant_id="default", user_id=None, limit=limit, unread_only=unreadOnly
+        )
         return {"notifications": data}
     except Exception:
         return {"notifications": []}
@@ -70,7 +73,7 @@ async def mark_read(notif_id: str) -> dict:
     return {"status": "ok"}
 
 
-@router.delete("/clear", summary="Clear notifications")  
+@router.delete("/clear", summary="Clear notifications")
 async def clear_notifications() -> dict:
     store = _get_store()
     await store.ensure_schema()

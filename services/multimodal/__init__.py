@@ -9,11 +9,11 @@ Usage:
         DalleProvider,
         PlaywrightProvider,
     )
-    
+
     # Diagram generation
     provider = MermaidProvider()
     result = await provider.generate(request)
-    
+
     # Image generation
     provider = DalleProvider(api_key="...")
     result = await provider.generate(request)

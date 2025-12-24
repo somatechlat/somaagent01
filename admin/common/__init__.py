@@ -11,7 +11,7 @@ from admin.common.schemas import PaginatedRequest, PaginatedResponse, ErrorRespo
 __all__ = [
     # Exceptions
     "ApiError",
-    "NotFoundError", 
+    "NotFoundError",
     "ForbiddenError",
     "ValidationError",
     # Responses

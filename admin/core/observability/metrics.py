@@ -184,10 +184,10 @@ errors_total = Counter(
 
 # Circuit Breaker metrics
 circuit_breaker_state = Gauge(
-    "circuit_breaker_state", 
-    "Circuit breaker state (0=closed, 1=open, 2=half-open)", 
-    ["circuit_name"], 
-    registry=registry
+    "circuit_breaker_state",
+    "Circuit breaker state (0=closed, 1=open, 2=half-open)",
+    ["circuit_name"],
+    registry=registry,
 )
 
 # System metrics
@@ -762,7 +762,14 @@ class ContextBuilderMetrics:
         """Increment snippet counter for given stage."""
         context_builder_snippets_total.labels(stage=stage).inc(count)
 
-    def record_tokens(self, *, before_budget: float, after_budget: float, after_redaction: float, prompt_tokens: float):
+    def record_tokens(
+        self,
+        *,
+        before_budget: float,
+        after_budget: float,
+        after_redaction: float,
+        prompt_tokens: float,
+    ):
         """Record token metrics at various stages."""
         context_tokens_before_budget.set(before_budget)
         context_tokens_after_budget.set(after_budget)

@@ -66,6 +66,7 @@ def get_feature(request, feature_id: str):
         # Ninja will handle 404 if we raise Http404, or we can return error response if schema allows
         # For strict schema (FeatureOut), raising 404 is cleaner than returning ErrorResponse
         from django.http import Http404
+
         raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, code=feature_id))
 
 
@@ -127,6 +128,7 @@ def assign_feature_to_tier(
         feature = SaasFeature.objects.get(code=feature_code)
     except SaasFeature.DoesNotExist:
         from django.http import Http404
+
         raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, code=feature_code))
 
     tf, created = TierFeature.objects.update_or_create(
@@ -161,7 +163,7 @@ def remove_feature_from_tier(request, tier_id: str, feature_code: str):
     if deleted:
         logger.info(f"Feature {feature_code} removed from tier {tier_id}")
         return MessageResponse(message=get_message(SuccessCode.FEATURE_REMOVED, code=feature_code))
-    
+
     return MessageResponse(
         message=get_message(ErrorCode.FEATURE_NOT_ON_TIER, code=feature_code),
         success=False,

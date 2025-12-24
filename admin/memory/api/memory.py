@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class ExportJobCreate(BaseModel):
     """Export job creation request."""
+
     tenant: Optional[str] = None
     namespace: Optional[str] = None
     limit: Optional[int] = None
@@ -38,10 +39,12 @@ class ExportJobCreate(BaseModel):
 
 class MemoryBatchRequest(BaseModel):
     """Memory batch insert request."""
+
     items: list[dict]
 
 
 # === Memory Export ===
+
 
 @router.get("/export", summary="Export memory as NDJSON stream")
 async def export_memory(
@@ -49,26 +52,26 @@ async def export_memory(
     namespace: Optional[str] = None,
 ):
     """Export memory as NDJSON stream.
-    
+
     📚 ISO Doc: Returns NDJSON for machine-readable export
     ⚡ Perf: Streaming response for large datasets
     """
     from src.core.infrastructure.repositories import MemoryReplicaStore
-    
+
     store = MemoryReplicaStore()
     rows = await store.list_memories(limit=1000, tenant=tenant, namespace=namespace)
-    
+
     async def _stream():
         for r in rows:
             yield json.dumps(r.model_dump()) + "\n"
-    
+
     return StreamingHttpResponse(_stream(), content_type="application/x-ndjson")
 
 
 @router.post("/export/jobs", summary="Create async export job")
 async def create_export_job(body: ExportJobCreate) -> dict:
     """Create an async export job.
-    
+
     🔒 Security: Job scoped to tenant
     """
     from services.common.export_job_store import (
@@ -76,11 +79,11 @@ async def create_export_job(body: ExportJobCreate) -> dict:
         ExportJobStore,
     )
     from django.conf import settings
-    
+
     store = ExportJobStore(dsn=settings.DATABASE_DSN)
     await ensure_export_jobs_schema(store)
     job = await store.create_job(body.tenant, body.namespace, body.limit)
-    
+
     return {"job_id": job.id, "status": job.status}
 
 
@@ -89,13 +92,13 @@ async def get_export_job(job_id: int) -> dict:
     """Get export job status."""
     from services.common.export_job_store import ExportJobStore
     from django.conf import settings
-    
+
     store = ExportJobStore(dsn=settings.DATABASE_DSN)
     job = await store.get_job(job_id)
-    
+
     if not job:
         raise NotFoundError("job", str(job_id))
-    
+
     return {
         "job_id": job.id,
         "status": job.status,
@@ -108,18 +111,18 @@ async def get_export_job(job_id: int) -> dict:
 @router.get("/export/jobs/{job_id}/download", summary="Download export result")
 async def download_export(job_id: int):
     """Download export result from PostgreSQL.
-    
+
     VIBE: Data from PostgreSQL BYTEA, not filesystem.
     """
     from services.common.export_job_store import ExportJobStore
     from django.conf import settings
-    
+
     store = ExportJobStore(dsn=settings.DATABASE_DSN)
     result_data = await store.get_result_data(job_id)
-    
+
     if not result_data:
         raise NotFoundError("result", str(job_id))
-    
+
     return StreamingHttpResponse(
         iter([result_data]),
         content_type="application/x-ndjson",
@@ -128,17 +131,18 @@ async def download_export(job_id: int):
 
 # === Memory Mutations ===
 
+
 @router.post("/batch", summary="Batch insert memories")
 async def memory_batch(req: MemoryBatchRequest) -> dict:
     """Batch insert memories."""
     from src.core.infrastructure.repositories import MemoryReplicaStore
-    
+
     store = MemoryReplicaStore()
     ids = []
     for item in req.items:
         res = await store.insert_memory(item)
         ids.append(res)
-    
+
     return {"inserted": len(ids), "ids": ids}
 
 
@@ -146,11 +150,11 @@ async def memory_batch(req: MemoryBatchRequest) -> dict:
 async def memory_delete(mem_id: str) -> dict:
     """Delete a memory by ID."""
     from src.core.infrastructure.repositories import MemoryReplicaStore
-    
+
     store = MemoryReplicaStore()
     deleted = await store.delete_memory(mem_id)
-    
+
     if not deleted:
         raise NotFoundError("memory", mem_id)
-    
+
     return {"deleted": mem_id}

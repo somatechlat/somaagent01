@@ -3,6 +3,7 @@
 This module provides LangChain-compatible LLM wrappers using LiteLLM.
 Migrated to admin.llm.services for Django compliance per VIBE Rule 8.
 """
+
 import logging
 import os
 from dataclasses import dataclass, field
@@ -122,6 +123,7 @@ def _json_env(name: str):
         return json.loads(raw)
     except Exception:
         return {}
+
 
 # ---------------------------------------------------------------------------
 # Production LLM Configuration - Enterprise Grade Implementation
@@ -878,8 +880,11 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
             kwrgs = {**self._wrapper.kwargs, **kwargs}
 
             # Apply Gemini-specific schema compatibility if needed
-            from services.common.llm_compatibility import fix_gemini_schema, should_apply_gemini_compat
-            
+            from services.common.llm_compatibility import (
+                fix_gemini_schema,
+                should_apply_gemini_compat,
+            )
+
             if (
                 should_apply_gemini_compat()
                 and "response_format" in kwrgs
@@ -899,7 +904,7 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
 
             # Apply Gemini JSON response cleaning if needed
             from services.common.llm_compatibility import clean_gemini_json_response
-            
+
             try:
                 msg = resp.choices[0].message  # type: ignore
                 if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
@@ -914,12 +919,12 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
 
         # Apply lenient JSON parsing for malformed responses
         from services.common.llm_compatibility import clean_invalid_json, should_apply_json_cleaning
-        
+
         if should_apply_json_cleaning():
             try:
-                if (
-                    "response_format" in kwrgs
-                    and ("json_schema" in kwrgs["response_format"] or "json_object" in kwrgs["response_format"])
+                if "response_format" in kwrgs and (
+                    "json_schema" in kwrgs["response_format"]
+                    or "json_object" in kwrgs["response_format"]
                 ):
                     content = resp.choices[0].message.content  # type: ignore
                     if content is not None and not content.startswith("{"):

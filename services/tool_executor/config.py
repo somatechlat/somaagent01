@@ -10,7 +10,8 @@ def kafka_settings() -> KafkaSettings:
     """Build Kafka connection settings from configuration."""
     return KafkaSettings(
         bootstrap_servers=os.environ.get(
-            "KAFKA_BOOTSTRAP_SERVERS", os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+            "KAFKA_BOOTSTRAP_SERVERS",
+            os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         ),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
@@ -54,6 +55,10 @@ def get_stream_config() -> dict[str, str]:
         "requests": os.environ.get(
             "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
         ),
-        "results": os.environ.get("TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")),
-        "group": os.environ.get("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
+        "results": os.environ.get(
+            "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
+        ),
+        "group": os.environ.get(
+            "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
+        ),
     }

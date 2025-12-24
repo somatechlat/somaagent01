@@ -677,9 +677,7 @@ class DegradationMonitor:
 
         logger.debug(f"Recorded success for {component_name}: {response_time:.3f}s")
 
-    def _record_history(
-        self, component: ComponentHealth, event_type: str = "check"
-    ) -> None:
+    def _record_history(self, component: ComponentHealth, event_type: str = "check") -> None:
         """Record a degradation event to history.
 
         VIBE COMPLIANT: Real history storage, not a test double.

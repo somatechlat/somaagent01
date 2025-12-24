@@ -28,11 +28,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 # Circuit Breaker for SomaBrain
-SOMABRAIN_BREAKER = AsyncCircuitBreaker(
-    name="somabrain_breaker",
-    fail_max=5,
-    reset_timeout=30
-)
+SOMABRAIN_BREAKER = AsyncCircuitBreaker(name="somabrain_breaker", fail_max=5, reset_timeout=30)
 
 
 class SomabrainHealthState(str, Enum):
@@ -47,7 +43,7 @@ class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
 
 class RealPresidioRedactor:
     """Production-grade sensitive data redaction using Presidio.
-    
+
     VIBE COMPLIANCE:
     - Real implementation (no mocks) using presidio-analyzer/anonymizer
     - Lazy loading to reduce startup time
@@ -64,17 +60,20 @@ class RealPresidioRedactor:
             try:
                 from presidio_analyzer import AnalyzerEngine
                 from presidio_anonymizer import AnonymizerEngine
-                
+
                 self._analyzer = AnalyzerEngine()
                 self._anonymizer = AnonymizerEngine()
             except ImportError as e:
-                LOGGER.error("Presidio dependencies missing. Redaction disabled. Install requirements.", exc_info=True)
+                LOGGER.error(
+                    "Presidio dependencies missing. Redaction disabled. Install requirements.",
+                    exc_info=True,
+                )
                 raise e
 
     def redact(self, text: str) -> str:
         if not text:
             return ""
-        
+
         try:
             self._ensure_loaded()
             if not self._analyzer or not self._anonymizer:
@@ -91,7 +90,7 @@ class RealPresidioRedactor:
 @dataclass
 class BuiltContext:
     """Result of context building for a turn.
-    
+
     Attributes:
         system_prompt: The system prompt for the LLM
         messages: List of formatted messages for the LLM
@@ -99,6 +98,7 @@ class BuiltContext:
         debug: Debug information about the build process
         lane_actual: Actual token usage per lane (for AgentIQ Governor)
     """
+
     system_prompt: str
     messages: List[Dict[str, Any]]
     token_counts: Dict[str, int]
@@ -154,12 +154,12 @@ class ContextBuilder:
         lane_plan: Optional["LanePlan"] = None,
     ) -> BuiltContext:
         """Build context for a conversation turn.
-        
+
         Args:
             turn: Turn context with user_message, history, system_prompt, etc.
             max_prompt_tokens: Overall token budget (used if lane_plan is None)
             lane_plan: Optional AgentIQ lane plan for per-lane budgeting
-            
+
         Returns:
             BuiltContext with assembled messages and token usage
         """
@@ -205,8 +205,7 @@ class ContextBuilder:
                 available_for_snippets = max_prompt_tokens - (system_tokens + user_tokens)
                 if self.use_optimal_budget:
                     snippets, snippet_tokens = self._trim_snippets_optimal(
-                        snippets,
-                        available_for_snippets
+                        snippets, available_for_snippets
                     )
                     self.metrics.inc_snippets(stage="budgeted_optimal", count=len(snippets))
                 else:
@@ -328,7 +327,7 @@ class ContextBuilder:
                     stop=stop_after_attempt(3),
                     wait=wait_exponential(multiplier=1, min=1, max=10),
                     retry=retry_if_exception_type((SomaClientError, TimeoutError)),
-                    reraise=True
+                    reraise=True,
                 )
                 async def _reliable_evaluate(p):
                     return await SOMABRAIN_BREAKER.call(self.somabrain.context_evaluate, p)
@@ -342,7 +341,9 @@ class ContextBuilder:
             return []
         except SomaClientError as exc:
             LOGGER.info(
-                "Somabrain context_evaluate failed after retries", exc_info=True, extra={"state": state.value}
+                "Somabrain context_evaluate failed after retries",
+                exc_info=True,
+                extra={"state": state.value},
             )
             if state == SomabrainHealthState.NORMAL:
                 self.on_degraded(self.DEGRADED_WINDOW_SECONDS)
@@ -469,7 +470,7 @@ class ContextBuilder:
         """Knapsack-style selection to maximize score within token budget."""
         if allowed_tokens <= 0 or not snippets:
             return [], 0
-            
+
         # Get token cost for each snippet
         items = []
         for s in snippets:
@@ -478,11 +479,11 @@ class ContextBuilder:
             # Skip items that alone exceed budget (optional optimization)
             if cost <= allowed_tokens:
                 items.append((cost, score, s))
-                
+
         n = len(items)
         if n == 0:
             return [], 0
-            
+
         # DP Table: dp[i][w] = max score using first i items with weight limit w
         # Optimised space: 1D array dp[w] stores max score for capacity w
         dp = [0.0] * (allowed_tokens + 1)
@@ -492,35 +493,35 @@ class ContextBuilder:
         # 2D table for reconstruction is safer or dict based approach.
         # Given allowed_tokens can be 8k+, O(N*W) might be slow if W is token count?
         # Typically snippet budget is ~1-2k. 2000 * 10 = 20k operations. Fast.
-        
+
         # Using 2D for reconstruction simplicity
         # dp[i][w]
         dp_table = [[0.0 for _ in range(allowed_tokens + 1)] for _ in range(n + 1)]
-        
+
         for i in range(1, n + 1):
-            w_i, v_i, _ = items[i-1]
+            w_i, v_i, _ = items[i - 1]
             for w in range(allowed_tokens + 1):
                 if w_i <= w:
-                    dp_table[i][w] = max(dp_table[i-1][w], dp_table[i-1][w-w_i] + v_i)
+                    dp_table[i][w] = max(dp_table[i - 1][w], dp_table[i - 1][w - w_i] + v_i)
                 else:
-                    dp_table[i][w] = dp_table[i-1][w]
-                    
+                    dp_table[i][w] = dp_table[i - 1][w]
+
         # Reconstruct
         selected = []
         total_tokens = 0
         w = allowed_tokens
         for i in range(n, 0, -1):
-            if dp_table[i][w] != dp_table[i-1][w]:
+            if dp_table[i][w] != dp_table[i - 1][w]:
                 # Item was selected
-                cost, _, snippet = items[i-1]
+                cost, _, snippet = items[i - 1]
                 selected.append(snippet)
                 total_tokens += cost
                 w -= cost
-                
-        selected.reverse() # Restore original relative order? No, Knapsack doesn't preserve order.
+
+        selected.reverse()  # Restore original relative order? No, Knapsack doesn't preserve order.
         # We might want to re-sort by score or original index if order matters for context linearisation.
         # For now, we return as is (reverse selection order).
-        
+
         return selected, total_tokens
 
     def _trim_history(

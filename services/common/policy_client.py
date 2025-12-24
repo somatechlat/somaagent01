@@ -31,9 +31,9 @@ class PolicyClient:
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
         config = os.environ
-        default_base_url = getattr(getattr(config, "external", None), "opa_url", None) or os.environ.get(
-            "SA01_POLICY_URL"
-        )
+        default_base_url = getattr(
+            getattr(config, "external", None), "opa_url", None
+        ) or os.environ.get("SA01_POLICY_URL")
         if not base_url and not default_base_url:
             raise ValueError("SA01_POLICY_URL is required. No hardcoded defaults per VIBE rules.")
         self.base_url = base_url or default_base_url

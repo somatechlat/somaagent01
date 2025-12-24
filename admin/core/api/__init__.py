@@ -19,7 +19,7 @@ router = Router(tags=["admin"])
 # Mount sub-routers
 router.add_router("", general_router)
 router.add_router("", health_router)  # /health endpoints
-router.add_router("", llm_router)  # /llm endpoints  
+router.add_router("", llm_router)  # /llm endpoints
 router.add_router("", sessions_router)  # /sessions endpoints
 router.add_router("/kafka", kafka_router)
 router.add_router("", memory_router)  # /memory endpoints

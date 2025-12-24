@@ -1,8 +1,8 @@
 """Factory for selecting the appropriate voice provider implementation.
 
-Selects and instantiates either :class:`OpenAIClient` or :class:`LocalClient` 
-based on the ``voice.provider`` field from the global configuration model 
-(:class:`src.core.config.models.VoiceConfig`). All providers implement the 
+Selects and instantiates either :class:`OpenAIClient` or :class:`LocalClient`
+based on the ``voice.provider`` field from the global configuration model
+(:class:`src.core.config.models.VoiceConfig`). All providers implement the
 :class:`_BaseClient` protocol for type safety.
 
 All errors are expressed via :class:`ProviderNotSupportedError` defined in
@@ -30,8 +30,9 @@ class _BaseClient(Protocol):
     deliberately minimal to keep the provider contract focused and stable.
     """
 
-    async def process(self, audio_stream: "AsyncGenerator[bytes, None]") -> "AsyncGenerator[object, None]":
-        ...
+    async def process(
+        self, audio_stream: "AsyncGenerator[bytes, None]"
+    ) -> "AsyncGenerator[object, None]": ...
 
 
 def get_provider_client(config: Config) -> _BaseClient:

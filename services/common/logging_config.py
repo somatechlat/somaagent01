@@ -17,11 +17,11 @@ from typing import Any, Dict
 
 class DjangoJSONFormatter(logging.Formatter):
     """JSON log formatter for Django's LOGGING dictConfig.
-    
+
     This formatter renders log records as JSON for downstream aggregation
     systems (ELK, CloudWatch, etc.). It is referenced in settings.LOGGING
     using the "()" factory syntax.
-    
+
     Usage in settings.py:
         LOGGING = {
             "formatters": {
@@ -49,10 +49,27 @@ class DjangoJSONFormatter(logging.Formatter):
 
         # Capture extra kwargs passed to logging calls for structured metadata.
         standard_attrs = {
-            "name", "msg", "args", "levelname", "levelno", "pathname",
-            "filename", "module", "exc_info", "exc_text", "stack_info",
-            "lineno", "funcName", "created", "msecs", "relativeCreated",
-            "thread", "threadName", "processName", "process", "message",
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "message",
             "taskName",
         }
         for key, value in record.__dict__.items():
@@ -69,14 +86,14 @@ JSONFormatter = DjangoJSONFormatter
 
 def get_logger(name: str = "") -> logging.Logger:
     """Return a configured logger using Django's LOGGING configuration.
-    
+
     This is a convenience function for getting loggers. Since Django configures
     logging at startup via settings.LOGGING, simply calling logging.getLogger()
     returns a logger with the correct formatters and handlers attached.
-    
+
     Args:
         name: Logger name, typically __name__. Empty string returns root logger.
-        
+
     Returns:
         Configured logging.Logger instance.
     """

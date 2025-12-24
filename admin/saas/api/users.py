@@ -174,7 +174,6 @@ def get_user(
     summary="Update user",
     auth=AuthBearer(),
 )
-
 def update_user(
     request,
     user_id: str,
@@ -206,7 +205,6 @@ def update_user(
     summary="Remove user from tenant",
     auth=AuthBearer(),
 )
-
 def remove_user(
     request,
     user_id: str,
@@ -228,7 +226,6 @@ def remove_user(
     summary="Change user role",
     auth=AuthBearer(),
 )
-
 def change_user_role(
     request,
     user_id: str,

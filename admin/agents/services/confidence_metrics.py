@@ -87,7 +87,7 @@ def record_confidence(
 ) -> None:
     """
     Record a confidence score in metrics.
-    
+
     Args:
         confidence: Confidence score 0.0-1.0 or None
         tenant: Tenant ID
@@ -95,7 +95,7 @@ def record_confidence(
         endpoint: API endpoint
     """
     labels = {"tenant": tenant, "model": model, "endpoint": endpoint}
-    
+
     if confidence is None:
         LLM_CONFIDENCE_MISSING_TOTAL.labels(**labels).inc()
     else:
@@ -103,7 +103,7 @@ def record_confidence(
         if not 0.0 <= confidence <= 1.0:
             LOGGER.warning(f"Invalid confidence {confidence}, clamping to [0, 1]")
             confidence = max(0.0, min(1.0, confidence))
-        
+
         LLM_CONFIDENCE_HISTOGRAM.labels(**labels).observe(confidence)
         LLM_CONFIDENCE_AVERAGE.labels(**labels).set(confidence)
 
@@ -129,7 +129,7 @@ def record_rejection(
 ) -> None:
     """
     Record a confidence rejection.
-    
+
     Args:
         confidence: The rejected confidence score
         tenant: Tenant ID
@@ -141,7 +141,7 @@ def record_rejection(
         model=model,
         endpoint=endpoint,
     ).inc()
-    
+
     LOGGER.info(
         "Confidence rejected",
         extra={
@@ -149,7 +149,7 @@ def record_rejection(
             "tenant": tenant,
             "model": model,
             "endpoint": endpoint,
-        }
+        },
     )
 
 
@@ -161,7 +161,7 @@ def record_flag(
 ) -> None:
     """
     Record a confidence flag event.
-    
+
     Args:
         confidence: The flagged confidence score
         tenant: Tenant ID

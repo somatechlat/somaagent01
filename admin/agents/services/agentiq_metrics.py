@@ -193,6 +193,7 @@ RUNRECEIPT_PERSIST_LATENCY = Histogram(
 # Helper Functions
 # -----------------------------------------------------------------------------
 
+
 def record_governor_decision(
     tenant_id: str,
     aiq_pred: float,
@@ -203,7 +204,7 @@ def record_governor_decision(
     lane_budgets: dict,
 ) -> None:
     """Record metrics for a governor decision.
-    
+
     Args:
         tenant_id: Tenant identifier
         aiq_pred: Predicted AIQ score (0-100)
@@ -244,7 +245,7 @@ def record_governor_decision(
 
 def record_lane_actual(tenant_id: str, lane_actual: dict, lane_budgets: dict) -> None:
     """Record actual lane token usage.
-    
+
     Args:
         tenant_id: Tenant identifier
         lane_actual: Actual tokens used per lane
@@ -262,7 +263,7 @@ def record_lane_actual(tenant_id: str, lane_actual: dict, lane_budgets: dict) ->
 
 def record_aiq_observed(tenant_id: str, aiq_obs: float) -> None:
     """Record observed AIQ score.
-    
+
     Args:
         tenant_id: Tenant identifier
         aiq_obs: Observed AIQ score (0-100)
@@ -272,7 +273,7 @@ def record_aiq_observed(tenant_id: str, aiq_obs: float) -> None:
 
 def record_governor_error(tenant_id: str, error_type: str) -> None:
     """Record a governor error.
-    
+
     Args:
         tenant_id: Tenant identifier
         error_type: Type of error (e.g., "budget_exhausted", "capsule_not_found")
@@ -289,7 +290,7 @@ def record_confidence(
     is_rejected: bool = False,
 ) -> None:
     """Record confidence scoring metrics.
-    
+
     Args:
         provider: LLM provider name
         model: Model name
@@ -317,7 +318,7 @@ def record_confidence(
 
 def update_confidence_ewma(provider: str, model: str, ewma_value: float) -> None:
     """Update confidence EWMA gauge.
-    
+
     Args:
         provider: LLM provider name
         model: Model name
@@ -328,7 +329,7 @@ def update_confidence_ewma(provider: str, model: str, ewma_value: float) -> None
 
 def record_receipt_persisted(tenant_id: str, latency_ms: float) -> None:
     """Record successful receipt persistence.
-    
+
     Args:
         tenant_id: Tenant identifier
         latency_ms: Persistence latency in milliseconds
@@ -339,7 +340,7 @@ def record_receipt_persisted(tenant_id: str, latency_ms: float) -> None:
 
 def record_receipt_error(tenant_id: str, error_type: str) -> None:
     """Record receipt persistence error.
-    
+
     Args:
         tenant_id: Tenant identifier
         error_type: Type of error

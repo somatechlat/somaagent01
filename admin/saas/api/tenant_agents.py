@@ -111,7 +111,9 @@ def get_tenant_quota(tenant_id: str) -> QuotaStatus:
         if tier and tier.limits:
             agents_limit = tier.limits.get("max_agents", settings.SAAS_DEFAULT_MAX_AGENTS)
             users_limit = tier.limits.get("max_users", settings.SAAS_DEFAULT_MAX_USERS)
-            tokens_limit = tier.limits.get("max_tokens_monthly", settings.SAAS_DEFAULT_MAX_TOKENS_MONTHLY)
+            tokens_limit = tier.limits.get(
+                "max_tokens_monthly", settings.SAAS_DEFAULT_MAX_TOKENS_MONTHLY
+            )
             storage_limit = tier.limits.get("storage_gb", settings.SAAS_DEFAULT_STORAGE_GB)
         else:
             agents_limit = settings.SAAS_DEFAULT_MAX_AGENTS
@@ -186,7 +188,6 @@ def list_agents(
     summary="Create new agent",
     auth=AuthBearer(),
 )
-
 def create_agent(
     request,
     payload: AgentCreateRequest,
@@ -248,7 +249,6 @@ def get_agent(
     summary="Update agent",
     auth=AuthBearer(),
 )
-
 def update_agent(
     request,
     agent_id: str,
@@ -283,7 +283,6 @@ def update_agent(
     summary="Delete agent",
     auth=AuthBearer(),
 )
-
 def delete_agent(
     request,
     agent_id: str,
@@ -305,7 +304,6 @@ def delete_agent(
     summary="Start agent",
     auth=AuthBearer(),
 )
-
 def start_agent(
     request,
     agent_id: str,
@@ -328,7 +326,6 @@ def start_agent(
     summary="Stop agent",
     auth=AuthBearer(),
 )
-
 def stop_agent(
     request,
     agent_id: str,

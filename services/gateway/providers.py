@@ -42,6 +42,7 @@ def get_publisher() -> DurablePublisher:
 def get_session_cache():
     """Return a Redis-backed session cache using Django cache."""
     from django.core.cache import cache
+
     return cache
 
 
@@ -78,20 +79,21 @@ def get_llm_client():
 def get_asset_store():
     """Get the AssetStore instance for multimodal assets."""
     from services.common.asset_store import AssetStore
-    
+
     return AssetStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
 
 def get_multimodal_executor():
     """Get the MultimodalExecutor instance for multimodal job execution."""
     from services.tool_executor.multimodal_executor import MultimodalExecutor
-    
+
     return MultimodalExecutor(dsn=os.environ.get("SA01_DB_DSN", ""))
 
 
 def get_session_store():
     """Get Django ORM Session model."""
     from admin.core.models import Session
+
     return Session.objects
 
 
@@ -102,6 +104,7 @@ async def get_temporal_client():
 
     if _TEMPORAL_LOCK is None:
         import asyncio
+
         _TEMPORAL_LOCK = asyncio.Lock()
 
     async with _TEMPORAL_LOCK:

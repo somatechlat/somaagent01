@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class PartitionInfo(BaseModel):
     """Kafka partition information."""
-    
+
     partition: int
     committed: int
     end: int
@@ -35,7 +35,7 @@ class PartitionInfo(BaseModel):
 
 class KafkaStatusResponse(BaseModel):
     """Kafka consumer status response."""
-    
+
     topic: str
     group: str
     bootstrap: str
@@ -44,7 +44,7 @@ class KafkaStatusResponse(BaseModel):
 
 class KafkaSeekResponse(BaseModel):
     """Response after seeking to end."""
-    
+
     status: str
     topic: str
     group: str
@@ -58,6 +58,7 @@ class KafkaSeekResponse(BaseModel):
 def _kafka_settings():
     """Get Kafka settings from environment."""
     from services.common.event_bus import KafkaSettings
+
     return KafkaSettings.from_env()
 
 
@@ -67,7 +68,7 @@ def _kafka_settings():
 
 
 @router.get(
-    "/status", 
+    "/status",
     response=KafkaStatusResponse,
     summary="Get Kafka consumer status",
     auth=RoleRequired("admin", "saas_admin"),
@@ -83,7 +84,7 @@ async def kafka_status(
         from aiokafka.structs import TopicPartition
     except ImportError as exc:
         raise ServiceUnavailableError("aiokafka", f"aiokafka unavailable: {exc}")
-    
+
     ks = _kafka_settings()
     consumer = AIOKafkaConsumer(
         topic,
@@ -95,14 +96,14 @@ async def kafka_status(
         sasl_plain_username=ks.sasl_username,
         sasl_plain_password=ks.sasl_password,
     )
-    
+
     await consumer.start()
     try:
         parts = consumer.partitions_for_topic(topic) or set()
         tps = [TopicPartition(topic, p) for p in sorted(parts)]
         end_offsets = await consumer.end_offsets(tps) if tps else {}
         committed = {tp: (await consumer.committed(tp)) for tp in tps}
-        
+
         return {
             "topic": topic,
             "group": group,
@@ -133,7 +134,7 @@ async def kafka_seek_to_end(
     group: str = Query(..., description="Consumer group ID"),
 ) -> dict:
     """Seek a consumer group to the end of all partitions.
-    
+
     This effectively skips all pending messages.
     """
     try:
@@ -141,7 +142,7 @@ async def kafka_seek_to_end(
         from aiokafka.structs import TopicPartition
     except ImportError as exc:
         raise ServiceUnavailableError("aiokafka", f"aiokafka unavailable: {exc}")
-    
+
     ks = _kafka_settings()
     consumer = AIOKafkaConsumer(
         topic,
@@ -153,18 +154,18 @@ async def kafka_seek_to_end(
         sasl_plain_username=ks.sasl_username,
         sasl_plain_password=ks.sasl_password,
     )
-    
+
     await consumer.start()
     try:
         parts = consumer.partitions_for_topic(topic) or set()
         tps = [TopicPartition(topic, p) for p in sorted(parts)]
         end_offsets = await consumer.end_offsets(tps) if tps else {}
-        
+
         for tp in tps:
             end = end_offsets.get(tp)
             if end is not None:
                 await consumer.commit({tp: end})
-        
+
         return {"status": "ok", "topic": topic, "group": group}
     finally:
         await consumer.stop()

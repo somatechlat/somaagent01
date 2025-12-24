@@ -80,9 +80,9 @@ class SecretManager:
                 "No alternate sources per VIBE Coding Rules. "
                 "Set SA01_REDIS_URL=redis://host:6379/0 in your environment."
             )
-        
+
         self._redis = redis.from_url(redis_url, decode_responses=True)
-        
+
         # Defer Fernet creation until first use. This allows the manager to be
         # instantiated in test environments where the encryption key may be
         # intentionally omitted.

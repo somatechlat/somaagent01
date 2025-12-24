@@ -29,14 +29,14 @@ llm_invoked = Signal()  # args: session_id, tenant, provider, model, usage
 
 class ChatMessage(BaseModel):
     """Chat message format."""
-    
+
     role: str
     content: str
 
 
 class LlmInvokeRequest(BaseModel):
     """LLM invocation request."""
-    
+
     prompt: Optional[str] = None
     messages: Optional[list[ChatMessage]] = None
     role: Optional[str] = None
@@ -49,7 +49,7 @@ class LlmInvokeRequest(BaseModel):
 
 class LlmInvokeResponse(BaseModel):
     """LLM invocation response."""
-    
+
     content: str
     usage: Optional[dict] = None
     metadata: dict = {}
@@ -59,7 +59,9 @@ class LlmInvokeResponse(BaseModel):
 # Centralized configuration via Django settings (with fallback for tests)
 DEFAULT_MODEL = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
 if not DEFAULT_MODEL:
-    raise RuntimeError("SAAS_DEFAULT_CHAT_MODEL not configured - set in Django settings or SA01_LLM_MODEL env var")
+    raise RuntimeError(
+        "SAAS_DEFAULT_CHAT_MODEL not configured - set in Django settings or SA01_LLM_MODEL env var"
+    )
 DEFAULT_BASE_URL = getattr(settings, "LLM_DEFAULT_BASE_URL", None)  # Optional
 MULTIMODAL_ENABLED = getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
 CONFIDENCE_ENABLED = getattr(settings, "CONFIDENCE_ENABLED", False)
@@ -102,6 +104,7 @@ def _multimodal_instructions() -> str:
 async def _get_llm_client():
     """Get LLM client with Django caching for credentials."""
     from services.gateway.main import get_secret_manager, _gateway_llm_client
+
     return get_secret_manager(), _gateway_llm_client()
 
 
@@ -125,10 +128,10 @@ async def _invoke_llm(
 ) -> tuple[str, dict, Optional[float]]:
     """Execute LLM invocation with Django caching."""
     creds_store, llm_client = await _get_llm_client()
-    
+
     # Get provider from model
     provider = model.split("/")[0] if "/" in model else "openai"
-    
+
     # Check cache first
     api_key = _get_cached_api_key(provider)
     if not api_key:
@@ -136,10 +139,10 @@ async def _invoke_llm(
         if api_key:
             # Cache API key for 5 minutes
             cache.set(f"llm_api_key:{provider}", api_key, 300)
-    
+
     if api_key:
         llm_client.api_key = api_key
-    
+
     content, usage, confidence = await llm_client.chat(
         messages=messages,
         model=model,
@@ -147,38 +150,38 @@ async def _invoke_llm(
         temperature=temperature,
         request_logprobs=request_logprobs,
         confidence_aggregation=aggregation,
-        **(overrides.get("kwargs", {}) if overrides else {})
+        **(overrides.get("kwargs", {}) if overrides else {}),
     )
-    
+
     return content, usage, confidence
 
 
 @router.post("/invoke", response=LlmInvokeResponse, summary="Invoke LLM")
 async def invoke(req: LlmInvokeRequest) -> dict:
     """Invoke LLM with prompt or messages.
-    
+
     Uses Django caching for API keys and signals for audit logging.
     """
     if not req.prompt and not req.messages:
         raise ValidationError("prompt_or_messages_required")
-    
+
     # Extract params with Django settings defaults
     overrides = req.overrides or {}
     model = overrides.get("model", DEFAULT_MODEL)
     base_url = overrides.get("base_url", DEFAULT_BASE_URL)
     temperature = overrides.get("temperature")
-    
+
     # Build messages
     messages = (
         [m.model_dump() for m in req.messages]
         if req.messages
         else [{"role": "user", "content": req.prompt}]
     )
-    
+
     # Add multimodal instructions if enabled
     if req.multimodal and MULTIMODAL_ENABLED:
         messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
-    
+
     try:
         content, usage, confidence = await _invoke_llm(
             messages=messages,
@@ -192,7 +195,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     except Exception as exc:
         logger.error(f"LLM invocation failed: {exc}")
         raise ServiceError(f"llm_provider_error: {exc}")
-    
+
     # Emit Django signal for audit logging
     provider = model.split("/")[0] if "/" in model else "openai"
     llm_invoked.send(
@@ -203,10 +206,11 @@ async def invoke(req: LlmInvokeRequest) -> dict:
         model=model,
         usage=usage,
     )
-    
+
     # Also log via audit store
     try:
         from integrations.repositories import get_audit_store
+
         await get_audit_store().log(
             request_id=None,
             trace_id=None,
@@ -229,7 +233,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
         )
     except Exception:
         logger.debug("audit log failed for llm.invoke", exc_info=True)
-    
+
     return {
         "content": content,
         "usage": usage,
@@ -241,26 +245,26 @@ async def invoke(req: LlmInvokeRequest) -> dict:
 @router.post("/invoke/stream", response=LlmInvokeResponse, summary="Stream LLM response")
 async def invoke_stream(req: LlmInvokeRequest) -> dict:
     """Stream LLM response.
-    
+
     Note: Current implementation returns complete response.
     """
     if not req.prompt and not req.messages:
         raise ValidationError("prompt_or_messages_required")
-    
+
     overrides = req.overrides or {}
     model = overrides.get("model", DEFAULT_MODEL)
     base_url = overrides.get("base_url", DEFAULT_BASE_URL)
     temperature = overrides.get("temperature")
-    
+
     messages = (
         [m.model_dump() for m in req.messages]
         if req.messages
         else [{"role": "user", "content": req.prompt}]
     )
-    
+
     if req.multimodal and MULTIMODAL_ENABLED:
         messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
-    
+
     try:
         content, usage, confidence = await _invoke_llm(
             messages=messages,
@@ -274,7 +278,7 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
     except Exception as exc:
         logger.error(f"LLM streaming failed: {exc}")
         raise ServiceError(f"llm_provider_error: {exc}")
-    
+
     return {
         "content": content,
         "usage": usage,

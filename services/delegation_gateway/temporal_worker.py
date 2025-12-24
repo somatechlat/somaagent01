@@ -20,7 +20,10 @@ import os
 @activity.defn
 async def handle_a2a(event: dict) -> dict:
     kcfg = KafkaSettings(
-        bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"))
+        bootstrap_servers=os.environ.get(
+            "KAFKA_BOOTSTRAP_SERVERS",
+            os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        )
     )
     bus = KafkaEventBus(kcfg)
     publisher = DurablePublisher(bus=bus)

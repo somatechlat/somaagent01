@@ -184,10 +184,12 @@ class ProcessMessageUseCase:
             response_text, usage, path, confidence = await self._generate_response(
                 event, session_id, persona_id, tenant, enriched_metadata, analysis_dict
             )
-            
+
             # VIBE: Intercept Multimodal Plans
             if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
-                response_text = await self._handle_multimodal_plan(response_text, session_id, tenant)
+                response_text = await self._handle_multimodal_plan(
+                    response_text, session_id, tenant
+                )
         except Exception as e:
             LOGGER.exception("Response generation failed")
             return ProcessMessageOutput(
@@ -198,7 +200,13 @@ class ProcessMessageUseCase:
 
         # Step 6: Build and publish response event
         response_event = self._build_response_event(
-            session_id, persona_id, response_text, usage, enriched_metadata, analysis_dict, confidence
+            session_id,
+            persona_id,
+            response_text,
+            usage,
+            enriched_metadata,
+            analysis_dict,
+            confidence,
         )
 
         # Step 7: Store assistant response
@@ -448,7 +456,7 @@ class ProcessMessageUseCase:
         # We look for ```json { ... } ``` or just { ... } at the end
         pattern = r"```json\s*(\{.*?\})\s*```\s*$"
         match = re.search(pattern, response_text, re.DOTALL)
-        
+
         if not match:
             # Try matching raw JSON at end if no blocks
             pattern_raw = r"(\{.*?\})\s*$"
@@ -462,12 +470,12 @@ class ProcessMessageUseCase:
             data = json.loads(json_str)
             if "multimodal_plan" not in data:
                 return response_text
-                
+
             plan_data = data["multimodal_plan"]
-            
+
             # Clean response text (remove the JSON block)
             clean_text = response_text.replace(match.group(0), "").strip()
-            
+
             # Validate/Compile Plan
             planner = JobPlanner()
             request_id = plan_data.get("request_id") or data.get("request_id")
@@ -480,7 +488,7 @@ class ProcessMessageUseCase:
             await planner.create(job_plan)
             LOGGER.info("Created multimodal plan %s for session %s", job_plan.id, session_id)
             return clean_text
-            
+
         except json.JSONDecodeError:
             LOGGER.warning("Failed to decode extracted JSON plan")
             return response_text

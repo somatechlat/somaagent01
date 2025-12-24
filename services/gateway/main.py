@@ -18,6 +18,7 @@ import time
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
 import django
+
 django.setup()
 
 from django.core.asgi import get_asgi_application
@@ -31,6 +32,7 @@ django_asgi = get_asgi_application()
 def main() -> None:
     """Run the Django ASGI gateway with Uvicorn."""
     import uvicorn
+
     uvicorn.run(
         "services.gateway.main:django_asgi",
         host="0.0.0.0",
@@ -46,21 +48,25 @@ if __name__ == "__main__":
 # Compatibility exports for tests
 def get_secret_manager():
     from services.gateway import providers
+
     return providers.get_secret_manager()
 
 
 def get_event_bus():
     from services.gateway import providers
+
     return providers.get_event_bus()
 
 
 def get_session_cache():
     from services.gateway import providers
+
     return providers.get_session_cache()
 
 
 def get_session_store():
     from services.gateway import providers
+
     return providers.get_session_store()
 
 

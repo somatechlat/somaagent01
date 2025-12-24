@@ -37,7 +37,9 @@ class OpenAIEmbeddings(EmbeddingsProvider):
         self.base_url = (
             base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
         ).rstrip("/")
-        self.model = (model or os.environ.get("EMBEDDINGS_MODEL") or "text-embedding-3-small").strip()
+        self.model = (
+            model or os.environ.get("EMBEDDINGS_MODEL") or "text-embedding-3-small"
+        ).strip()
 
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
         provider = "openai"

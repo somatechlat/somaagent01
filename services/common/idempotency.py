@@ -45,7 +45,9 @@ def generate_for_memory_payload(
     now_seconds: Optional[float] = None,
 ) -> str:
     meta = payload.get("metadata") or {}
-    tenant = payload.get("tenant") or meta.get("tenant") or os.environ.get("SA01_TENANT_ID", "default")
+    tenant = (
+        payload.get("tenant") or meta.get("tenant") or os.environ.get("SA01_TENANT_ID", "default")
+    )
     ns = (
         payload.get("namespace")
         or meta.get("namespace")

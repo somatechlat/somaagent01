@@ -11,13 +11,13 @@ from typing import Any
 
 class ApiError(Exception):
     """Base exception for all API errors.
-    
+
     Provides consistent error structure across all endpoints.
     """
-    
+
     status_code: int = 500
     error_code: str = "internal_error"
-    
+
     def __init__(
         self,
         message: str,
@@ -27,7 +27,7 @@ class ApiError(Exception):
         details: dict[str, Any] | None = None,
     ) -> None:
         """Initialize API error.
-        
+
         Args:
             message: Human-readable error message
             status_code: HTTP status code override
@@ -41,7 +41,7 @@ class ApiError(Exception):
         if error_code is not None:
             self.error_code = error_code
         self.details = details or {}
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for JSON response."""
         result = {
@@ -55,10 +55,10 @@ class ApiError(Exception):
 
 class NotFoundError(ApiError):
     """Resource not found (404)."""
-    
+
     status_code = 404
     error_code = "not_found"
-    
+
     def __init__(
         self,
         resource: str,
@@ -66,7 +66,7 @@ class NotFoundError(ApiError):
         **kwargs: Any,
     ) -> None:
         """Initialize not found error.
-        
+
         Args:
             resource: Type of resource (e.g., "tenant", "agent")
             identifier: Optional identifier of the resource
@@ -83,10 +83,10 @@ class NotFoundError(ApiError):
 
 class ForbiddenError(ApiError):
     """Access forbidden (403)."""
-    
+
     status_code = 403
     error_code = "forbidden"
-    
+
     def __init__(
         self,
         action: str,
@@ -94,7 +94,7 @@ class ForbiddenError(ApiError):
         **kwargs: Any,
     ) -> None:
         """Initialize forbidden error.
-        
+
         Args:
             action: Action that was attempted
             resource: Resource access was attempted on
@@ -111,10 +111,10 @@ class ForbiddenError(ApiError):
 
 class ValidationError(ApiError):
     """Request validation failed (400)."""
-    
+
     status_code = 400
     error_code = "validation_error"
-    
+
     def __init__(
         self,
         message: str = "Validation failed",
@@ -124,7 +124,7 @@ class ValidationError(ApiError):
         **kwargs: Any,
     ) -> None:
         """Initialize validation error.
-        
+
         Args:
             message: Error message
             field: Field that failed validation
@@ -139,10 +139,10 @@ class ValidationError(ApiError):
 
 class ConflictError(ApiError):
     """Resource conflict (409)."""
-    
+
     status_code = 409
     error_code = "conflict"
-    
+
     def __init__(
         self,
         message: str,
@@ -157,10 +157,10 @@ class ConflictError(ApiError):
 
 class UnauthorizedError(ApiError):
     """Authentication required (401)."""
-    
+
     status_code = 401
     error_code = "unauthorized"
-    
+
     def __init__(
         self,
         message: str = "Authentication required",
@@ -172,10 +172,10 @@ class UnauthorizedError(ApiError):
 
 class RateLimitError(ApiError):
     """Rate limit exceeded (429)."""
-    
+
     status_code = 429
     error_code = "rate_limit_exceeded"
-    
+
     def __init__(
         self,
         message: str = "Rate limit exceeded",
@@ -184,7 +184,7 @@ class RateLimitError(ApiError):
         **kwargs: Any,
     ) -> None:
         """Initialize rate limit error.
-        
+
         Args:
             message: Error message
             retry_after: Seconds until retry is allowed
@@ -196,10 +196,10 @@ class RateLimitError(ApiError):
 
 class ServiceUnavailableError(ApiError):
     """Service temporarily unavailable (503)."""
-    
+
     status_code = 503
     error_code = "service_unavailable"
-    
+
     def __init__(
         self,
         service: str,
@@ -207,7 +207,7 @@ class ServiceUnavailableError(ApiError):
         **kwargs: Any,
     ) -> None:
         """Initialize service unavailable error.
-        
+
         Args:
             service: Name of unavailable service
             message: Optional custom message
@@ -220,13 +220,13 @@ class ServiceUnavailableError(ApiError):
 
 class ServiceError(ApiError):
     """Internal service error (500).
-    
+
     Used for infrastructure failures and unexpected errors.
     """
-    
+
     status_code = 500
     error_code = "service_error"
-    
+
     def __init__(
         self,
         message: str = "An internal service error occurred",

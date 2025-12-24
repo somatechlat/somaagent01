@@ -1,4 +1,5 @@
 """LLM models - migrated from root models.py to Django ORM."""
+
 from django.db import models as django_models
 from dataclasses import dataclass, field
 from enum import Enum
@@ -6,6 +7,7 @@ from enum import Enum
 
 class ModelType(Enum):
     """Model type enumeration."""
+
     CHAT = "Chat"
     EMBEDDING = "Embedding"
 
@@ -13,10 +15,11 @@ class ModelType(Enum):
 @dataclass
 class ModelConfig:
     """Model configuration dataclass - will be Django model in future refactor.
-    
+
     Currently maintaining backward compatibility as dataclass.
     TODO: Convert to full Django ORM model with database persistence.
     """
+
     type: ModelType
     provider: str
     name: str

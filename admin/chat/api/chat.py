@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class ChatSessionResponse(BaseModel):
     """Chat session details."""
-    
+
     session_id: str
     persona_id: Optional[str] = None
     tenant: Optional[str] = None
@@ -29,25 +29,26 @@ class ChatSessionResponse(BaseModel):
 @router.get("/session/{session_id}", response=ChatSessionResponse, summary="Get chat session")
 async def get_chat_session(request, session_id: str) -> dict:
     """Fetch chat session metadata.
-    
+
     Args:
         session_id: The session identifier
-    
+
     Returns:
         Session metadata including persona and tenant
     """
     from asgiref.sync import sync_to_async
-    
+
     try:
+
         @sync_to_async
         def _get():
             return Session.objects.filter(session_id=session_id).first()
-        
+
         session = await _get()
-        
+
         if session is None:
             raise NotFoundError("session", session_id)
-        
+
         return {
             "session_id": session.session_id,
             "persona_id": session.persona_id,

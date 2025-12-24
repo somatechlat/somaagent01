@@ -31,56 +31,57 @@ logger = logging.getLogger(__name__)
 
 def _get_store():
     from services.common.capsule_store import CapsuleStore
+
     return CapsuleStore()
 
 
 class CapsuleCreateRequest(BaseModel):
     """Capsule creation request per SRS §14."""
-    
+
     name: str
     version: str = "1.0.0"
     description: str = ""
-    
+
     # Persona & Role
     default_persona_ref_id: Optional[str] = None
     role_overrides: dict[str, Any] = Field(default_factory=dict)
-    
+
     # Tool Policy
     allowed_tools: list[str] = Field(default_factory=list)
     prohibited_tools: list[str] = Field(default_factory=list)
     allowed_mcp_servers: list[str] = Field(default_factory=list)
     tool_risk_profile: str = "standard"
-    
+
     # Resource Limits
     max_wall_clock_seconds: int = 3600
     max_concurrent_nodes: int = 5
     allowed_runtimes: list[str] = Field(default_factory=lambda: ["python", "node"])
     resource_profile: str = "default"
-    
+
     # Network Policy
     allowed_domains: list[str] = Field(default_factory=list)
     blocked_domains: list[str] = Field(default_factory=list)
     egress_mode: str = "restricted"
-    
+
     # Policy & Guardrails
     opa_policy_packages: list[str] = Field(default_factory=list)
     guardrail_profiles: list[str] = Field(default_factory=list)
-    
+
     # HITL
     default_hitl_mode: str = "optional"
     risk_thresholds: dict[str, float] = Field(default_factory=dict)
     max_pending_hitl: int = 10
-    
+
     # RL & Export
     rl_export_allowed: bool = False
     rl_export_scope: str = "tenant"
     rl_excluded_fields: list[str] = Field(default_factory=list)
     example_store_policy: str = "retain"
-    
+
     # Classification
     data_classification: str = "internal"
     retention_policy_days: int = 365
-    
+
     # Metadata
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -127,16 +128,16 @@ async def create_capsule(request: HttpRequest, payload: CapsuleCreateRequest) ->
     """Create a new capsule (status=draft)."""
     from services.common.capsule_store import CapsuleRecord, CapsuleStatus
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     auth = await authorize(request, action="capsule.create", resource="capsules")
     tenant_id = auth.get("tenant", "default")
-    
+
     existing = await store.get_by_name_version(tenant_id, payload.name, payload.version)
     if existing:
         raise ValidationError(f"Capsule {payload.name}@{payload.version} already exists")
-    
+
     capsule_id = str(uuid.uuid4())
     record = CapsuleRecord(
         capsule_id=capsule_id,
@@ -172,7 +173,7 @@ async def create_capsule(request: HttpRequest, payload: CapsuleCreateRequest) ->
         installed=False,
         metadata=payload.metadata,
     )
-    
+
     await store.create(record)
     return {"capsule_id": capsule_id, "status": "draft"}
 
@@ -192,11 +193,11 @@ async def install_capsule(capsule_id: str) -> dict:
 async def publish_capsule(request: HttpRequest, capsule_id: str) -> dict:
     """Publish a capsule (draft -> published)."""
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     await authorize(request, action="capsule.publish", resource="capsules")
-    
+
     ok = await store.publish(capsule_id)
     if not ok:
         raise NotFoundError("capsule", capsule_id)
@@ -207,11 +208,11 @@ async def publish_capsule(request: HttpRequest, capsule_id: str) -> dict:
 async def deprecate_capsule(request: HttpRequest, capsule_id: str) -> dict:
     """Deprecate a capsule."""
     from services.common.authorization import authorize
-    
+
     store = _get_store()
     await store.ensure_schema()
     await authorize(request, action="capsule.deprecate", resource="capsules")
-    
+
     ok = await store.deprecate(capsule_id)
     if not ok:
         raise NotFoundError("capsule", capsule_id)

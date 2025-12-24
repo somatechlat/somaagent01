@@ -20,20 +20,14 @@ from django.conf import settings
 
 if not settings.configured:
     # Parse database DSN from environment
-    db_dsn = os.environ.get(
-        "SA01_DB_DSN",
-        "postgresql://soma:soma@localhost:5432/somaagent01"
-    )
-    
+    db_dsn = os.environ.get("SA01_DB_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+
     # Parse DSN components for Django DATABASE config
-    db_match = re.match(
-        r'postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)',
-        db_dsn
-    )
-    
+    db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
+
     if db_match:
         db_user, db_password, db_host, db_port, db_name = db_match.groups()
-        db_port = db_port or '5432'
+        db_port = db_port or "5432"
         db_config = {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": db_name,
@@ -48,7 +42,7 @@ if not settings.configured:
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": ":memory:",
         }
-    
+
     settings.configure(
         DEBUG=os.environ.get("DEBUG", "False").lower() == "true",
         SECRET_KEY=os.environ.get("SECRET_KEY", "insecure-secret-key-for-dev"),
@@ -100,8 +94,9 @@ if not settings.configured:
             },
         },
     )
-    
+
     import django
+
     django.setup()
 
 

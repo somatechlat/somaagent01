@@ -14,6 +14,7 @@ from typing import Any
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 from admin.core.somabrain_client import SomaBrainClient
@@ -64,6 +65,7 @@ class ToolExecutor:
         )
         # Use Django ORM Session model instead of PostgresSessionStore
         from admin.core.models import Session
+
         self.store = Session.objects
         self.requeue = RequeueStore(url=redis_url(), prefix=policy_requeue_prefix())
         self.resources = ResourceManager()
@@ -117,7 +119,9 @@ class ToolExecutor:
         # Multimodal job executor (polling pending plans)
         if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
             try:
-                self._multimodal_executor = MultimodalExecutor(dsn=os.environ.get("SA01_DB_DSN", ""))
+                self._multimodal_executor = MultimodalExecutor(
+                    dsn=os.environ.get("SA01_DB_DSN", "")
+                )
                 await self._multimodal_executor.initialize()
                 poll_raw = os.environ.get("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
                 try:
