@@ -81,9 +81,9 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
     
     # Helper to build ModelConfig
     def build_model_config(idx: str, section: dict, model_type: ModelType) -> ModelConfig:
-        provider = _get_field(section, f"{idx}_provider", "openai")
-        # UI uses 'model_name' suffix usually, e.g. chat_model_name
-        model_name = _get_field(section, f"{idx}_model_name", "gpt-4o")
+        provider = _get_field(section, f"{idx}_provider")  # REQUIRED - no hardcoded default
+        # Model name must be explicitly configured in AgentSetting database
+        model_name = _get_field(section, f"{idx}_model_name")
         base_url = _get_field(section, f"{idx}_base_url", "")
         
         # Mapping numerical fields
