@@ -336,16 +336,19 @@
 
 ## Phase 6: SomaBrain Integration
 
-### 6.1 Core Endpoints
-- [ ] adaptation_reset() - POST /context/adaptation/reset
-- [ ] act() - POST /act with salience
-- [ ] brain_sleep_mode() - POST /api/brain/sleep_mode
-- [ ] util_sleep() - POST /api/util/sleep
+### 6.1 Core Endpoints ✅ COMPLETE
+- [x] POST /somabrain/brain/adaptation/reset/{agent_id}
+- [x] POST /somabrain/brain/act - with salience
+- [x] POST /somabrain/brain/sleep/{agent_id}
+- [x] POST /somabrain/brain/util/sleep
+- [x] GET /somabrain/brain/wake/{agent_id}
+- [x] GET /somabrain/brain/status/{agent_id}
+- [x] core_brain.py (400 lines)
 
-### 6.2 Memory Endpoints
-- [ ] personality_set() - POST /personality
-- [ ] memory_config_get() - GET /config/memory
-- [ ] memory_config_patch() - PATCH /config/memory
+### 6.2 Memory Endpoints ✅ COMPLETE
+- [x] POST /somabrain/brain/personality/{agent_id}
+- [x] GET /somabrain/brain/config/memory/{agent_id}
+- [x] PATCH /somabrain/brain/config/memory/{agent_id}
 
 ### 6.3 Cognitive Thread ✅ COMPLETE
 - [x] POST /somabrain/cognitive/threads - Create thread
