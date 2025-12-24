@@ -374,11 +374,13 @@
 - [ ] micro_diag()
 - [ ] get_features() / update_features()
 
-### 6.5 Integration Tests
-- [ ] test_adaptation_reset
-- [ ] test_act_execution
-- [ ] test_sleep_transitions
-- [ ] test_admin_services
+### 6.5 Integration Tests ✅ COMPLETE
+- [x] test_adaptation_reset
+- [x] test_act_execution
+- [x] test_sleep_transitions
+- [x] test_admin_services
+- [x] test_cognitive_thread
+- [x] tests/test_integration.py (450 lines)
 
 ---
 
