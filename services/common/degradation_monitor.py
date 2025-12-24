@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 from temporalio.client import Client as TemporalClient
 
-from observability.metrics import Counter, Gauge, Histogram, metrics_collector
+from admin.core.observability.metrics import Counter, Gauge, Histogram, metrics_collector
 from services.common.circuit_breakers import CircuitBreaker, CircuitState
 
 # Prometheus metrics for degradation monitoring

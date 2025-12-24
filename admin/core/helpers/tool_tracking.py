@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from observability.metrics import Counter, Histogram
+from admin.core.observability.metrics import Counter, Histogram
 import os
 
 LOGGER = logging.getLogger(__name__)

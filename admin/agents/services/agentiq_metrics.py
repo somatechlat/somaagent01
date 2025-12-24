@@ -11,7 +11,7 @@ VIBE COMPLIANT:
 
 from __future__ import annotations
 
-from observability.metrics import Counter, Gauge, Histogram, registry
+from admin.core.observability.metrics import Counter, Gauge, Histogram, registry
 
 # -----------------------------------------------------------------------------
 # AgentIQ Governor Metrics

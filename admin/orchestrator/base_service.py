@@ -15,7 +15,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from observability.tracing import get_tracer
+from admin.core.observability.tracing import get_tracer
 
 LOGGER = logging.getLogger("orchestrator.base_service")
 

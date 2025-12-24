@@ -99,7 +99,7 @@ class AsyncCircuitBreaker:
 
     def _update_metric(self) -> None:
         """Report current state to metrics."""
-        from observability.metrics import metrics_collector
+        from admin.core.observability.metrics import metrics_collector
         
         # Map state to int: CLOSED=0, OPEN=1, HALF_OPEN=2
         val = 0
