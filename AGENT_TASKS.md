@@ -403,9 +403,15 @@
 - [ ] LLM quality evaluation
 - [ ] Bounded retry logic
 
-### 7.5 Temporal Workflows
-- [ ] Conversation workflow
-- [ ] Tool execution workflow
+### 7.3 Temporal Workflows ✅ COMPLETE
+- [x] POST /workflows - Start workflow
+- [x] GET /workflows/{id} - Get status
+- [x] GET /workflows - List workflows
+- [x] POST /workflows/{id}/cancel - Cancel
+- [x] POST /workflows/{id}/signal - Send signal
+- [x] GET /workflows/{id}/history - History
+- [x] POST /workflows/{id}/terminate - Force
+- [x] workflows/api.py (290 lines) execution workflow
 - [ ] A2A workflow
 - [ ] Maintenance workflows
 
