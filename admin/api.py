@@ -116,20 +116,13 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/somabrain", somabrain_router)
 
-    # MFA Authentication
-    from admin.auth.mfa import router as mfa_router
-
-    api.add_router("/auth/mfa", mfa_router)
-
-    # Invitations
+    # Invitations (standalone, not under /auth)
     from admin.auth.invitations import router as invitations_router
 
     api.add_router("/invitations", invitations_router)
 
-    # Password Reset
-    from admin.auth.password_reset import router as password_reset_router
-
-    api.add_router("/auth/password", password_reset_router)
+    # NOTE: MFA and Password Reset are now sub-routers in auth/api.py
+    # /auth/mfa and /auth/password are mounted inside the auth router
 
     return api
 

@@ -504,3 +504,15 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         audit_id=str(audit.id),
     )
 
+
+# =============================================================================
+# SUB-ROUTERS - MFA and Password Reset
+# =============================================================================
+
+# Import and attach MFA sub-router
+from admin.auth.mfa import router as mfa_router
+router.add_router("/mfa", mfa_router)
+
+# Import and attach Password Reset sub-router
+from admin.auth.password_reset import router as password_reset_router
+router.add_router("/password", password_reset_router)
