@@ -1,0 +1,608 @@
+# SRS: Permission Matrix & Role Administration
+
+**Document ID:** SA01-SRS-PERMISSIONS-2025-12  
+**Role:** 🔴 SAAS SysAdmin (manages all)  
+**Routes:** `/saas/roles/*`, `/saas/permissions/*`  
+**Status:** CANONICAL
+
+---
+
+## 0. SaaS-Wide Permission Architecture
+
+### 0.1 Permission Cascade Model
+
+Permissions flow **top-down** through a strict hierarchy:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         🔴 SAAS PLATFORM (God Mode)                          │
+│                                                                             │
+│  • Manages ALL tenants, subscriptions, roles, permissions                   │
+│  • Can create/modify ANY role at ANY level                                  │
+│  • Defines TIER features (what tenants can access)                          │
+│  • Sets GLOBAL limits and quotas                                            │
+│                                                                             │
+│  SpiceDB: definition platform {}                                            │
+│           definition saas_admin { relation platform: platform }             │
+├─────────────────────────────────────────────────────────────────────────────┤
+                                    │
+                                    ▼ (Tier Limits Apply)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         🟠 TENANT LEVEL                                      │
+│                                                                             │
+│  • Bound by subscription tier limits                                        │
+│  • Can assign roles ONLY within their tenant                                │
+│  • Can configure agents ONLY within their quota                             │
+│  • CANNOT exceed tier limits (enforced by SAAS)                             │
+│                                                                             │
+│  SpiceDB: definition tenant {                                               │
+│               relation subscription: subscription_tier                      │
+│               relation sysadmin: user                                       │
+│           }                                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+                                    │
+                                    ▼ (Agent Limits Apply)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         🟢 AGENT LEVEL                                       │
+│                                                                             │
+│  • Bound by tenant's agent quota                                            │
+│  • Mode access depends on user's tenant role                                │
+│  • Features depend on tier (e.g., DEV mode = Team+ only)                    │
+│                                                                             │
+│  SpiceDB: definition agent {                                                │
+│               relation tenant: tenant                                       │
+│               permission configure = owner + tenant->administrate           │
+│           }                                                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 0.2 Permission Inheritance Rules
+
+| Rule | Description | Example |
+|------|-------------|---------|
+| **Cascade Down** | Higher level can ALWAYS access lower | 🔴 SAAS Admin → can access ANY tenant |
+| **Tier Gating** | Features gated by subscription | DEV mode requires Team tier |
+| **Quota Enforcement** | Operations blocked at limit | "Max 10 agents reached" |
+| **Role Scoping** | Roles only valid in scope | Tenant Admin can't manage other tenants |
+| **Impersonation** | Only 🔴 can impersonate | SAAS Admin can "become" any Tenant Admin |
+
+---
+
+### 0.3 SaaS-Wide Permission Categories
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LEVEL 0: PLATFORM PERMISSIONS (🔴 Only)                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ platform:manage          │ Full platform control                            │
+│ platform:manage_tenants  │ Create/suspend/delete tenants                   │
+│ platform:manage_tiers    │ Create/edit subscription tiers                  │
+│ platform:manage_roles    │ Create/edit/delete roles at ANY level           │
+│ platform:view_billing    │ View ALL billing across platform                │
+│ platform:impersonate     │ Become any tenant user                          │
+│ platform:configure       │ Platform-wide settings                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LEVEL 1: TENANT PERMISSIONS (🟠🟡 within their tenant)                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ tenant:manage            │ Full tenant control (SysAdmin only)             │
+│ tenant:administrate      │ User/agent management                           │
+│ tenant:create_agent      │ Create agents (within quota)                    │
+│ tenant:delete_agent      │ Delete agents                                   │
+│ tenant:view_billing      │ View tenant billing                             │
+│ tenant:manage_api_keys   │ Create/revoke API keys                          │
+│ tenant:assign_roles      │ Assign roles to users (within tenant)           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LEVEL 2: AGENT PERMISSIONS (🟢🔵🟣⚪⚫ per agent)                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ agent:configure          │ Agent settings, models, features                │
+│ agent:activate_adm       │ Enable ADM mode (Owner/Admin only)              │
+│ agent:activate_dev       │ Enable DEV mode (requires tier)                 │
+│ agent:activate_trn       │ Enable TRN mode (requires tier)                 │
+│ agent:activate_std       │ Enable STD mode (default)                       │
+│ agent:activate_ro        │ Enable RO mode (view only)                      │
+│ agent:manage_users       │ Add/remove users from agent                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LEVEL 3: RESOURCE PERMISSIONS (within agent context)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ chat:send                │ Send messages                                   │
+│ chat:view                │ View chat history                               │
+│ chat:delete              │ Delete conversations                            │
+│ memory:read              │ Read memories                                   │
+│ memory:write             │ Create memories                                 │
+│ memory:delete            │ Delete memories                                 │
+│ tools:execute            │ Run tools                                       │
+│ cognitive:view           │ View cognitive state                            │
+│ cognitive:edit           │ Modify neuromodulators                          │
+│ voice:use                │ Use voice features                              │
+│ voice:configure          │ Configure voice settings                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 0.4 Tier-Gated Features
+
+| Feature | Free | Starter | Team | Enterprise |
+|---------|------|---------|------|------------|
+| STD Mode | ✅ | ✅ | ✅ | ✅ |
+| RO Mode | ✅ | ✅ | ✅ | ✅ |
+| **DEV Mode** | ❌ | ❌ | ✅ | ✅ |
+| **TRN Mode** | ❌ | ❌ | ✅ | ✅ |
+| **ADM Mode** | ❌ | ✅ | ✅ | ✅ |
+| Voice | ❌ | ✅ | ✅ | ✅ |
+| API Access | ❌ | ✅ | ✅ | ✅ |
+| Custom LLM | ❌ | ❌ | ❌ | ✅ |
+| SSO | ❌ | ❌ | ❌ | ✅ |
+| SLA | ❌ | ❌ | ❌ | ✅ |
+
+---
+
+### 0.5 Permission Check Flow
+
+```mermaid
+flowchart TD
+    A[API Request] --> B{Authenticated?}
+    B -->|No| C[401 Unauthorized]
+    B -->|Yes| D[Get User from JWT]
+    
+    D --> E{SAAS Admin?}
+    E -->|Yes| F[✅ ALLOW - God Mode]
+    
+    E -->|No| G[Get User's Tenant]
+    G --> H{Tenant Active?}
+    H -->|No| I[403 Tenant Suspended]
+    
+    H -->|Yes| J{Tier Allows Feature?}
+    J -->|No| K[403 Upgrade Required]
+    
+    J -->|Yes| L[SpiceDB Check]
+    L --> M{Has Permission?}
+    M -->|No| N[403 Permission Denied]
+    M -->|Yes| O{Within Quota?}
+    
+    O -->|No| P[429 Quota Exceeded]
+    O -->|Yes| Q[✅ ALLOW]
+```
+
+---
+
+## 1. Complete Permission Matrix — By User Journey
+
+### Legend
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | Full access |
+| 👁️ | View only |
+| ⚠️ | Conditional (quota/ownership) |
+| ❌ | No access |
+
+---
+
+### 1.1 User Journey Permissions
+
+| Journey | 🔴 SAAS Admin | 🟠 Tenant SysAdmin | 🟡 Tenant Admin | 🟢 Agent Owner | 🔵 Developer | 🟣 Trainer | ⚪ User | ⚫ Viewer |
+|---------|---------------|-------------------|-----------------|----------------|--------------|------------|---------|----------|
+| **UC-01** Chat with Agent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
+| **UC-02** Create Conversation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **UC-03** Upload File | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| **UC-04** Voice Chat | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| **UC-05** View Memories | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ | 👁️ |
+| **UC-06** Configure Agent | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **UC-07** Manage Users | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **UC-08** View Billing | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **UC-09** Create Tenant | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **UC-10** Suspend Tenant | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **UC-11** Manage Subscriptions | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **UC-12** Platform Metrics | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **UC-13** Tool Execution | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| **UC-14** Store Memory | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| **UC-15** API Integration | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
+
+---
+
+### 1.2 Screen Access Permissions
+
+| Screen | Route | 🔴 SAAS | 🟠 TSysAdmin | 🟡 TAdmin | 🟢 Owner | 🔵 Dev | 🟣 Trn | ⚪ User | ⚫ View |
+|--------|-------|---------|--------------|-----------|----------|--------|--------|---------|--------|
+| **PLATFORM** |
+| Platform Dashboard | `/saas` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Tenant List | `/saas/tenants` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Create Tenant | `/saas/tenants/new` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Subscription Tiers | `/saas/subscriptions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Platform Billing | `/saas/billing` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Platform Health | `/saas/health` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Role Admin** | `/saas/roles` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Permission Browser** | `/saas/permissions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **TENANT** |
+| Tenant Dashboard | `/admin` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| User Management | `/admin/users` | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Agent List | `/admin/agents` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Create Agent | `/admin/agents/new` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Tenant Settings | `/admin/settings` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Tenant Billing | `/admin/billing` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| API Keys | `/admin/api-keys` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Audit Log | `/admin/audit` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Tenant Roles | `/admin/roles` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **AGENT** |
+| Agent Overview | `/agent/:id` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Agent Config | `/agent/:id/config` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Agent Users | `/agent/:id/users` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **DEV MODE** |
+| Debug Console | `/dev/console` | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| API Logs | `/dev/logs` | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| MCP Inspector | `/dev/mcp` | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **TRN MODE** |
+| Cognitive Panel | `/trn/cognitive` | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Neuromodulators | `/trn/neuro` | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Sleep Control | `/trn/sleep` | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **STD MODE** |
+| Chat View | `/chat` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
+| Memory Browser | `/memory` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ | 👁️ |
+| Tools | `/tools` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| Profile | `/profile` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Settings | `/settings` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
+
+---
+
+### 1.3 API Endpoint Permissions
+
+| Endpoint | Method | 🔴 SAAS | 🟠 TSys | 🟡 TAdm | 🟢 Own | 🔵 Dev | 🟣 Trn | ⚪ Usr | ⚫ View |
+|----------|--------|---------|---------|---------|--------|--------|--------|--------|--------|
+| **SAAS** |
+| `/api/v2/saas/tenants` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/saas/tenants` | POST | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/saas/tenants/{id}` | DELETE | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/saas/subscriptions` | GET/PUT | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/saas/roles` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/saas/roles` | POST/PUT/DEL | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/saas/permissions` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **TENANT ADMIN** |
+| `/api/v2/admin/users` | GET | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/users` | POST | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/users/{id}` | PUT | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/users/{id}` | DELETE | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/agents` | GET | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/agents` | POST | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/agents/{id}` | DELETE | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/billing` | GET | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/admin/roles` | GET/POST/PUT | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **AGENT** |
+| `/api/v2/agent/{id}/config` | GET | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/agent/{id}/config` | PUT | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/agent/{id}/users` | GET/POST | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **CHAT** |
+| `/api/v2/chat/conversations` | GET | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `/api/v2/chat/conversations` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `/api/v2/chat/messages` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **MEMORY** |
+| `/api/v2/memory` | GET | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `/api/v2/memory` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| `/api/v2/memory/{id}` | DELETE | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **COGNITIVE** |
+| `/api/v2/cognitive/*` | GET | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| `/api/v2/cognitive/*` | PUT | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **VOICE** |
+| `/api/v2/voice/transcribe` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| `/api/v2/voice/synthesize` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+
+---
+
+## 2. Role Administration Screens (Eye of God)
+
+### 2.1 Role List (`/saas/roles`)
+
+**Purpose:** View and manage all system roles
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🔴 Role Management                                         [+ Create Role]  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [System Roles]  [Custom Roles]  [Role Templates]                            │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Role               │ Level    │ Users │ Tenants │ Actions              │ │
+│ ├─────────────────────────────────────────────────────────────────────────┤ │
+│ │ 🔴 SAAS SysAdmin   │ Platform │ 3     │ ALL     │ [View] 🔒            │ │
+│ │ 🟠 Tenant SysAdmin │ Tenant   │ 156   │ 156     │ [View] [Edit]        │ │
+│ │ 🟡 Tenant Admin    │ Tenant   │ 234   │ 98      │ [View] [Edit]        │ │
+│ │ 🟢 Agent Owner     │ Agent    │ 445   │ 120     │ [View] [Edit]        │ │
+│ │ 🔵 Developer       │ Agent    │ 892   │ 87      │ [View] [Edit]        │ │
+│ │ 🟣 Trainer         │ Agent    │ 234   │ 45      │ [View] [Edit]        │ │
+│ │ ⚪ User            │ Agent    │ 4,567 │ 145     │ [View] [Edit]        │ │
+│ │ ⚫ Viewer          │ Agent    │ 1,234 │ 78      │ [View] [Edit]        │ │
+│ │ 🟤 Auditor (Custom)│ Tenant   │ 45    │ 12      │ [View] [Edit] [Del]  │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ 📊 Total: 9 roles | 7,810 users assigned                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**API:**
+```
+GET /api/v2/saas/roles
+POST /api/v2/saas/roles
+PUT /api/v2/saas/roles/{id}
+DELETE /api/v2/saas/roles/{id}
+```
+
+---
+
+### 2.2 Role Editor (`/saas/roles/:id`)
+
+**Purpose:** Edit role permissions
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🔴 Edit Role: Tenant Admin                                    [Cancel] [Save]│
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Role Name: [Tenant Admin_________]    Level: [Tenant ▼]                     │
+│ Description: [Manages tenant users and agents without billing access]       │
+│                                                                             │
+│ ─────────────────────────────────────────────────────────────────────────── │
+│                                                                             │
+│ PERMISSIONS                                                    [Expand All] │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ 📁 TENANT MANAGEMENT                                                    │ │
+│ │    ☑ tenant:view           View tenant dashboard                       │ │
+│ │    ☑ tenant:administrate   Manage users and agents                     │ │
+│ │    ☐ tenant:manage         Full tenant control (billing, settings)     │ │
+│ │    ☐ tenant:delete         Delete tenant                               │ │
+│ ├─────────────────────────────────────────────────────────────────────────┤ │
+│ │ 📁 USER MANAGEMENT                                                      │ │
+│ │    ☑ user:view             View user list                              │ │
+│ │    ☑ user:invite           Invite new users                            │ │
+│ │    ☑ user:edit             Edit user roles (except SysAdmin)           │ │
+│ │    ☐ user:delete_sysadmin  Remove SysAdmin users                       │ │
+│ ├─────────────────────────────────────────────────────────────────────────┤ │
+│ │ 📁 AGENT MANAGEMENT                                                     │ │
+│ │    ☑ agent:view            View agent list                             │ │
+│ │    ☑ agent:configure       Configure agent settings                    │ │
+│ │    ☐ agent:create          Create new agents                           │ │
+│ │    ☐ agent:delete          Delete agents                               │ │
+│ ├─────────────────────────────────────────────────────────────────────────┤ │
+│ │ 📁 BILLING (All disabled for this role)                                │ │
+│ │    ☐ billing:view          View billing dashboard                      │ │
+│ │    ☐ billing:manage        Manage subscriptions                        │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ⚠️ Changes affect 234 users across 98 tenants                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2.3 Permission Browser (`/saas/permissions`)
+
+**Purpose:** View all SpiceDB permissions
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🔴 Permission Browser                              [Search permissions...]   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [Platform] [Tenant] [Agent] [Chat] [Memory] [Cognitive] [Voice]             │
+│                                                                             │
+│ PLATFORM PERMISSIONS                                                        │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Permission              │ Description                    │ Roles       │ │
+│ ├─────────────────────────────────────────────────────────────────────────┤ │
+│ │ platform->manage        │ Full platform control          │ 🔴 SAAS     │ │
+│ │ platform->manage_tenants│ Create/delete tenants          │ 🔴 SAAS     │ │
+│ │ platform->view_billing  │ View platform revenue          │ 🔴 SAAS     │ │
+│ │ platform->configure     │ Platform settings              │ 🔴 SAAS     │ │
+│ │ platform->impersonate   │ Impersonate any tenant         │ 🔴 SAAS     │ │
+│ │ platform->manage_roles  │ Create/edit/delete roles       │ 🔴 SAAS     │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ TENANT PERMISSIONS                                                          │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Permission              │ Description                    │ Roles       │ │
+│ ├─────────────────────────────────────────────────────────────────────────┤ │
+│ │ tenant->manage          │ Full tenant control            │ 🟠 TSys     │ │
+│ │ tenant->administrate    │ User/agent management          │ 🟠🟡       │ │
+│ │ tenant->create_agent    │ Create new agents              │ 🟠          │ │
+│ │ tenant->view_billing    │ View tenant billing            │ 🟠          │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ AGENT PERMISSIONS                                                           │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ agent->configure        │ Configure agent                │ 🟢🟠🟡     │ │
+│ │ agent->activate_dev     │ Enable DEV mode                │ 🔵🟢🟠     │ │
+│ │ agent->activate_trn     │ Enable TRN mode                │ 🟣🟢🟠     │ │
+│ │ agent->activate_std     │ Enable STD mode                │ ⚪🟣🔵🟢🟠🟡│ │
+│ │ agent->activate_ro      │ Enable RO mode                 │ ⚫ +all    │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2.4 Subscription Tier Builder (`/saas/subscriptions/builder`)
+
+**Purpose:** Configure tier limits and features
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🔴 Subscription Tier Builder                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐    │
+│ │     FREE      │ │    STARTER    │ │     TEAM      │ │  ENTERPRISE   │    │
+│ │     $0/mo     │ │    $49/mo     │ │   $199/mo     │ │   Custom      │    │
+│ ├───────────────┤ ├───────────────┤ ├───────────────┤ ├───────────────┤    │
+│ │ Agents: 1     │ │ Agents: 3     │ │ Agents: 10    │ │ Agents: ∞     │    │
+│ │ Users: 3      │ │ Users: 10     │ │ Users: 50     │ │ Users: ∞      │    │
+│ │ Tokens: 100K  │ │ Tokens: 1M    │ │ Tokens: 10M   │ │ Tokens: ∞     │    │
+│ │ Storage: 1GB  │ │ Storage: 10GB │ │ Storage: 100GB│ │ Storage: ∞    │    │
+│ ├───────────────┤ ├───────────────┤ ├───────────────┤ ├───────────────┤    │
+│ │ FEATURES:     │ │ FEATURES:     │ │ FEATURES:     │ │ FEATURES:     │    │
+│ │ ☐ Voice       │ │ ☑ Voice       │ │ ☑ Voice       │ │ ☑ Voice       │    │
+│ │ ☐ DEV Mode    │ │ ☐ DEV Mode    │ │ ☑ DEV Mode    │ │ ☑ DEV Mode    │    │
+│ │ ☐ TRN Mode    │ │ ☐ TRN Mode    │ │ ☑ TRN Mode    │ │ ☑ TRN Mode    │    │
+│ │ ☐ Custom LLM  │ │ ☐ Custom LLM  │ │ ☐ Custom LLM  │ │ ☑ Custom LLM  │    │
+│ │ ☐ API Access  │ │ ☑ API Access  │ │ ☑ API Access  │ │ ☑ API Access  │    │
+│ │ ☐ SSO         │ │ ☐ SSO         │ │ ☐ SSO         │ │ ☑ SSO         │    │
+│ │ ☐ SLA         │ │ ☐ SLA         │ │ ☐ SLA         │ │ ☑ SLA         │    │
+│ └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘    │
+│                                                                             │
+│ [Edit Free] [Edit Starter] [Edit Team] [Edit Enterprise] [+ New Tier]       │
+│                                                                             │
+│ Active Tenants: Free(32) Starter(67) Team(45) Enterprise(12)                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. SpiceDB Schema — Complete
+
+```zed
+// ======================
+// PLATFORM LEVEL (GOD MODE)
+// ======================
+definition platform {}
+
+definition saas_admin {
+    relation platform: platform
+    
+    // Core platform permissions
+    permission manage = platform
+    permission manage_tenants = platform
+    permission view_billing = platform
+    permission configure = platform
+    permission impersonate = platform
+    
+    // NEW: Role management
+    permission manage_roles = platform
+    permission manage_permissions = platform
+    permission manage_tiers = platform
+}
+
+// ======================
+// TENANT LEVEL
+// ======================
+definition tenant {
+    relation sysadmin: user
+    relation admin: user
+    relation developer: user
+    relation trainer: user
+    relation member: user
+    relation viewer: user
+    relation subscription: subscription_tier
+    
+    // Hierarchical permissions
+    permission manage = sysadmin
+    permission administrate = sysadmin + admin
+    permission create_agent = sysadmin
+    permission delete_agent = sysadmin
+    permission view_billing = sysadmin
+    permission manage_api_keys = sysadmin
+    
+    // Agent access inheritance
+    permission develop = sysadmin + admin + developer
+    permission train = sysadmin + admin + trainer
+    permission use = sysadmin + admin + developer + trainer + member
+    permission view = sysadmin + admin + developer + trainer + member + viewer
+    
+    // NEW: Tenant-level role management
+    permission manage_tenant_roles = sysadmin
+}
+
+// ======================
+// AGENT LEVEL
+// ======================
+definition agent {
+    relation tenant: tenant
+    relation owner: user
+    relation admin: user
+    relation developer: user
+    relation trainer: user
+    relation user: user
+    relation viewer: user
+    
+    // Mode activation
+    permission configure = owner + admin + tenant->administrate
+    permission activate_adm = owner + admin
+    permission activate_dev = owner + admin + developer + tenant->develop
+    permission activate_trn = owner + admin + trainer + tenant->train
+    permission activate_std = owner + admin + developer + trainer + user + tenant->use
+    permission activate_ro = owner + admin + developer + trainer + user + viewer + tenant->view
+    
+    permission view = activate_ro
+}
+
+// ======================
+// SUBSCRIPTION TIER
+// ======================
+definition subscription_tier {
+    relation owner: tenant
+    // Limit enforcement handled in Django
+}
+
+// ======================
+// FEATURE FLAGS
+// ======================
+definition feature {
+    relation enabled_for: subscription_tier
+    relation enabled_for_tenant: tenant
+    
+    permission use = enabled_for->owner + enabled_for_tenant
+}
+```
+
+---
+
+## 4. User Journey: Create Custom Role
+
+```mermaid
+sequenceDiagram
+    participant Admin as 🔴 SAAS Admin
+    participant UI as Role Editor
+    participant API as Django API
+    participant SpiceDB as SpiceDB
+    
+    Admin->>UI: Open /saas/roles/new
+    UI->>Admin: Display role form
+    
+    Admin->>UI: Enter role name "Auditor"
+    Admin->>UI: Select level "Tenant"
+    Admin->>UI: Check permissions
+    Admin->>UI: Click Save
+    
+    UI->>API: POST /api/v2/saas/roles
+    API->>SpiceDB: Create role definition
+    SpiceDB-->>API: OK
+    API->>API: Save role to PostgreSQL
+    API-->>UI: Role created
+    
+    UI->>Admin: Success: "Role 'Auditor' created"
+    UI->>Admin: Navigate to /saas/roles
+```
+
+---
+
+## 5. Edge Cases
+
+| Scenario | System Response |
+|----------|-----------------|
+| Delete role with users | ⚠️ "45 users have role 'Auditor'. Reassign first." |
+| Edit system role | 🔒 "System roles cannot be modified" |
+| Create duplicate role | ❌ "Role 'Auditor' already exists" |
+| Remove last SysAdmin | ❌ "Cannot remove last SAAS SysAdmin" |
+| Reduce tier limits below usage | ⚠️ "12 tenants exceed new limits. Grandfather?" |
+
+---
+
+**Next:** Update [SRS-SAAS-ADMIN.md](./SRS-SAAS-ADMIN.md) with these screens
+
