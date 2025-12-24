@@ -22,9 +22,12 @@ ALLOWED_HOSTS = ["*"]
 
 # Application definition
 INSTALLED_APPS = [
-    "django.contrib.contenttypes",
+    "django.contrib.admin",
     "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.staticfiles",
     "ninja",
     # Project Apps - Django ORM Models
     "admin.saas",
@@ -35,11 +38,32 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.common.CommonMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 ROOT_URLCONF = "services.gateway.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
 
 # Database
 # Parse database DSN from environment
@@ -77,6 +101,10 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "static"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -174,20 +202,45 @@ LOGGING = {
             "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
         },
+        "json": {
+            "()": "services.common.logging_config.DjangoJSONFormatter",
+        },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
+        "json_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+        },
     },
     "root": {
-        "handlers": ["console"],
-        "level": "INFO",
+        "handlers": ["json_console"] if os.environ.get("LOG_FORMAT", "json") == "json" else ["console"],
+        "level": os.environ.get("LOG_LEVEL", "INFO").upper(),
     },
     "loggers": {
-        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
-        "admin": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
+        # Django internals
+        "django": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        "django.db.backends": {"handlers": ["json_console"], "level": "WARNING", "propagate": False},
+        # Admin apps
+        "admin": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
+        "admin.saas": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
+        "admin.core": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
+        "admin.agents": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
+        # Services
+        "services": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        "services.common": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        "services.gateway": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        "services.tool_executor": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        "services.conversation_worker": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        # Orchestrator
+        "orchestrator": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        # Python helpers/agent modules (legacy namespace - to be migrated)
+        "python": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
+        # Authorization logging
+        "authz": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
     },
 }
 

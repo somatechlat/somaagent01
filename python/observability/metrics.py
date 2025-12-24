@@ -91,6 +91,42 @@ tokens_after_budget_gauge = context_tokens_after_budget
 tokens_after_redaction_gauge = context_tokens_after_redaction
 event_publish_errors_total = event_publish_failure_total
 
+
+# ---------------------------------------------------------------------------
+# MetricsCollector - minimal implementation for services.common compatibility
+# ---------------------------------------------------------------------------
+class MetricsCollector:
+    """Collect and expose common observability actions."""
+
+    def __init__(self) -> None:
+        self._initialized = True
+
+    def track_error(self, error_type: str, component: str) -> None:
+        """Track an error."""
+        pass  # No-op for now
+
+    def track_singleton_health(self, name: str, healthy: bool) -> None:
+        """Track singleton health."""
+        system_health_gauge.labels(service=name, component="singleton").set(1 if healthy else 0)
+
+    def update_feature_metrics(self) -> None:
+        """Update feature metrics."""
+        pass
+
+    def track_auth_result(self, result: str, source: str) -> None:
+        """Track auth result."""
+        pass
+
+    def track_circuit_state(self, name: str, state_value: int) -> None:
+        """Track circuit breaker state."""
+        pass
+
+    def __repr__(self) -> str:
+        return f"<MetricsCollector initialized={self._initialized}>"
+
+
+# Singleton instance
+metrics_collector = MetricsCollector()
 # REAL IMPLEMENTATION - FastA2A Metrics (unique to this module)
 fast_a2a_requests_total = Counter(
     "fast_a2a_requests_total",
@@ -625,6 +661,73 @@ class SLAMonitor:
 
 # Global SLA monitor instance
 sla_monitor = SLAMonitor()
+
+
+# ---------------------------------------------------------------------------
+# ContextBuilderMetrics adapter (used by conversation worker and tools)
+# ---------------------------------------------------------------------------
+class ContextBuilderMetrics:
+    """Simple wrapper exposing counters used by the context builder."""
+
+    @staticmethod
+    def record_prompt() -> None:
+        pass  # No-op for now
+
+    @staticmethod
+    def record_tokens_before() -> None:
+        pass
+
+    @staticmethod
+    def record_tokens_after() -> None:
+        pass
+
+    @staticmethod
+    def record_tokens_redacted() -> None:
+        pass
+
+    def time_total(self):
+        """Return timer context for total context building time."""
+        return thinking_total_seconds.time()
+
+    def time_tokenisation(self):
+        """Return timer context for tokenization time."""
+        return thinking_tokenisation_seconds.time()
+
+    def time_retrieval(self, *, state: str = "default"):
+        """Return timer context for retrieval time."""
+        return thinking_retrieval_seconds.labels(session_id=state).time()
+
+    def time_salience(self):
+        """Return timer context for salience scoring time."""
+        return thinking_salience_seconds.time()
+
+    def time_ranking(self):
+        """Return timer context for ranking time."""
+        return thinking_ranking_seconds.time()
+
+    def time_redaction(self):
+        """Return timer context for redaction time."""
+        return thinking_redaction_seconds.time()
+
+    def time_prompt(self):
+        """Return timer context for prompt rendering time."""
+        return thinking_prompt_seconds.time()
+
+    def inc_prompt(self):
+        """Increment prompt counter."""
+        pass
+
+    def inc_snippets(self, *, stage: str, count: int = 1):
+        """Increment snippet counter for given stage."""
+        pass
+
+    def record_tokens(self, *, before_budget: float = 0, after_budget: float = 0, 
+                     after_redaction: float = 0, prompt_tokens: float = 0):
+        """Record token metrics at various stages."""
+        context_tokens_before_budget.labels(session_id="default").set(before_budget)
+        context_tokens_after_budget.labels(session_id="default").set(after_budget)
+        context_tokens_after_redaction.labels(session_id="default").set(after_redaction)
+
 
 # Initialize on import
 initialize_metrics()

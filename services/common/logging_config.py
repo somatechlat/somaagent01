@@ -1,22 +1,39 @@
-"""Structured JSON logging configuration for SomaAgent services."""
+"""Django-compatible structured JSON logging configuration for SomaAgent services.
+
+This module provides the JSON formatter class referenced by Django's LOGGING
+setting in services.gateway.settings. All logging configuration flows through
+Django's dictConfig - this module only provides the formatter implementation.
+
+Django LOGGING is the SINGLE SOURCE OF TRUTH for log configuration.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
-import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-import os
 
-_LOGGING_INITIALISED = False
+class DjangoJSONFormatter(logging.Formatter):
+    """JSON log formatter for Django's LOGGING dictConfig.
+    
+    This formatter renders log records as JSON for downstream aggregation
+    systems (ELK, CloudWatch, etc.). It is referenced in settings.LOGGING
+    using the "()" factory syntax.
+    
+    Usage in settings.py:
+        LOGGING = {
+            "formatters": {
+                "json": {
+                    "()": "services.common.logging_config.DjangoJSONFormatter",
+                },
+            },
+            ...
+        }
+    """
 
-
-class JSONFormatter(logging.Formatter):
-    """Render log records as JSON for downstream aggregation systems."""
-
-    def format(self, record: logging.LogRecord) -> str:  # type: ignore[override]
+    def format(self, record: logging.LogRecord) -> str:
         log_data: Dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
@@ -30,84 +47,44 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
 
-        # The ``extra`` kwarg is flattened into the log record attributes.
-        # Capture anything non-standard so that structured metadata survives.
+        # Capture extra kwargs passed to logging calls for structured metadata.
         standard_attrs = {
-            "name",
-            "msg",
-            "args",
-            "levelname",
-            "levelno",
-            "pathname",
-            "filename",
-            "module",
-            "exc_info",
-            "exc_text",
-            "stack_info",
-            "lineno",
-            "funcName",
-            "created",
-            "msecs",
-            "relativeCreated",
-            "thread",
-            "threadName",
-            "processName",
-            "process",
+            "name", "msg", "args", "levelname", "levelno", "pathname",
+            "filename", "module", "exc_info", "exc_text", "stack_info",
+            "lineno", "funcName", "created", "msecs", "relativeCreated",
+            "thread", "threadName", "processName", "process", "message",
+            "taskName",
         }
         for key, value in record.__dict__.items():
             if key.startswith("_") or key in log_data or key in standard_attrs:
                 continue
             log_data[key] = value
 
-        return json.dumps(log_data, ensure_ascii=False)
+        return json.dumps(log_data, ensure_ascii=False, default=str)
 
 
-def setup_logging(default_level: str | None = None) -> None:
-    """Configure root logging with JSON formatting if not already configured."""
-
-    global _LOGGING_INITIALISED
-    if _LOGGING_INITIALISED:
-        return
-
-    env_level = os.environ.get("LOG_LEVEL", default_level or "INFO")
-    level_name = (default_level or env_level or "INFO").upper()
-    level = getattr(logging, level_name, logging.INFO)
-
-    root = logging.getLogger()
-    root.setLevel(level)
-
-    # Drop any pre-existing handlers to guarantee consistent formatting.
-    for handler in list(root.handlers):
-        root.removeHandler(handler)
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JSONFormatter())
-    root.addHandler(handler)
-
-    _LOGGING_INITIALISED = True
+# Compatibility alias for legacy code (to be removed after full migration)
+JSONFormatter = DjangoJSONFormatter
 
 
-# ---------------------------------------------------------------------------
-# Compatibility helper
-# ---------------------------------------------------------------------------
 def get_logger(name: str = "") -> logging.Logger:
-    """Return a configured :class:`logging.Logger`.
-
-    Legacy code in the project expects a ``get_logger`` function that returns a
-    logger instance with JSON formatting already applied.  The original
-    implementation was removed during refactoring, causing import errors.
-
-    This helper ensures that :func:`setup_logging` is executed exactly once and
-    then retrieves (or creates) a logger with the supplied ``name``.  An empty
-    name yields the root logger, matching typical usage patterns.
+    """Return a configured logger using Django's LOGGING configuration.
+    
+    This is a convenience function for getting loggers. Since Django configures
+    logging at startup via settings.LOGGING, simply calling logging.getLogger()
+    returns a logger with the correct formatters and handlers attached.
+    
+    Args:
+        name: Logger name, typically __name__. Empty string returns root logger.
+        
+    Returns:
+        Configured logging.Logger instance.
     """
-    # Ensure the global logging configuration is initialised exactly once.
-    setup_logging()
     return logging.getLogger(name)
 
 
 __all__ = [
-    "setup_logging",
+    "DjangoJSONFormatter",
+    "JSONFormatter",  # Legacy alias
     "get_logger",
-    "JSONFormatter",
 ]

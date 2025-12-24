@@ -8,17 +8,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from typing import Any
+
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.tracing import setup_tracing
-import os
 
 # Legacy settings import removed. Use centralized configuration.
 from src.core.infrastructure.repositories import (
@@ -26,7 +30,6 @@ from src.core.infrastructure.repositories import (
     MemoryReplicaStore,
 )
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 # Retrieve unified settings from central configuration.

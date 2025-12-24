@@ -5,6 +5,7 @@ Production-ready degradation detection and management system.
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -12,7 +13,7 @@ from typing import Dict, List, Optional
 from temporalio.client import Client as TemporalClient
 
 from observability.metrics import Counter, Gauge, Histogram, metrics_collector
-from services.gateway.circuit_breakers import CircuitBreaker, CircuitState
+from services.common.circuit_breakers import CircuitBreaker, CircuitState
 
 # Prometheus metrics for degradation monitoring
 SERVICE_HEALTH_STATE = Gauge(
