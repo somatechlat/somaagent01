@@ -42,12 +42,12 @@
 ## Phase 2: Integration Testing (Priority: HIGH)
 
 ### 2.1 Django Tests
-- [ ] Run `pytest tests/django/ -v`
-- [ ] Verify SomaBrain connection (port 9696)
+- [x] Run `pytest tests/django/ -v` - 41/47 passing
+- [!] Verify SomaBrain connection (port 9696) - BLOCKED: SomaBrain not running
 - [ ] All 47 tests passing
 
 ### 2.2 End-to-End Tests
-- [ ] Gateway health check
+- [x] Gateway health check - /api/health endpoint added
 - [ ] Chat endpoint test
 - [ ] WebSocket connection test
 
@@ -58,6 +58,7 @@
 From CANONICAL_REQUIREMENTS.md Section 14.2:
 
 ### 3.1 Standard Mode Endpoints
+- [x] `health()` - GET `/health` - ADDED
 - [ ] `adaptation_reset()` - POST `/context/adaptation/reset`
 - [ ] `act()` - POST `/act` with salience scoring
 - [ ] `brain_sleep_mode()` - POST `/api/brain/sleep_mode`
@@ -326,16 +327,72 @@ From docs/specs/eye-of-god-uix/SAAS_ADMIN_SRS.md:
 
 ---
 
+## Phase 11: Zero Data Loss Architecture (Priority: CRITICAL) ✅
+
+### 11.1 Transactional Outbox Pattern
+- [x] `OutboxMessage` Django model
+- [x] `DeadLetterMessage` Django model
+- [x] `IdempotencyRecord` Django model
+- [x] `PendingMemory` Django model (degradation queue)
+
+### 11.2 Django Management Commands
+- [x] `publish_outbox` - Kafka outbox publisher
+- [x] `sync_memories` - SomaBrain degradation recovery
+
+### 11.3 Django Signals
+- [x] `memory_created` signal
+- [x] `conversation_message` signal
+- [x] `tool_executed` signal
+- [x] `OutboxEntryManager` for transactional outbox
+
+### 11.4 Documentation
+- [x] `docs/ZERO_DATA_LOSS_ARCHITECTURE.md` - SRS specification
+- [x] `docs/ZERO_DATA_LOSS_IMPLEMENTATION.md` - Status document
+
+### 11.5 Integration (Pending)
+- [ ] Wire conversation_worker to use outbox
+- [ ] Wire tool_executor to use outbox
+- [ ] Configure Kafka exactly-once in docker-compose
+
+### 11.6 Monitoring (Pending)
+- [ ] Prometheus metrics for outbox depth
+- [ ] DLQ depth alerting
+- [ ] Sync lag monitoring
+
+---
+
+## Phase 12: Refactoring & Documentation ✅
+
+### 12.1 Legacy Code Removal
+- [x] HARD DELETE `services/ui/` directory
+- [x] HARD DELETE `services/ui_proxy/` directory
+- [x] Remove legacy FAISS code from `admin/core/helpers/memory.py`
+- [x] Remove legacy app reference from `services/gateway/main.py`
+
+### 12.2 Documentation
+- [x] `docs/USER_JOURNEYS.md` - 15 user journey flows
+- [x] `docs/GAP_ANALYSIS.md` - Current status vs requirements
+
+### 12.3 Bug Fixes
+- [x] Add `health()` method to `SomaBrainClient`
+- [x] Add `/api/health` endpoint to gateway
+- [x] Fix circular import in `admin/llm`
+- [x] Add `@pytest.mark.django_db` to ORM tests
+
+---
+
 ## References
 
 - **Eye of God UIX**: `docs/specs/eye-of-god-uix/`
 - **CANONICAL_REQUIREMENTS.md**: 100+ requirements
 - **CANONICAL_TASKS.md**: 250+ features
 - **VIBE_CODING_RULES.md**: Coding standards
+- **ZERO_DATA_LOSS_ARCHITECTURE.md**: ZDL SRS specification
 
 ---
 
-**Total Tasks:** ~150
+**Total Tasks:** ~175
+**Completed Today:** 25+ tasks (Phase 11, 12)
 **Estimated Duration:** 10+ weeks
 
 ---
