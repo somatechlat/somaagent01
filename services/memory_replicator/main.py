@@ -25,7 +25,6 @@ from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.tracing import setup_tracing
 
 # Legacy settings import removed. Use centralized configuration.
-# from src.core.infrastructure.repositories import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

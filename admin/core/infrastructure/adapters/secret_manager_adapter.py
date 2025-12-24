@@ -7,7 +7,6 @@ to the existing production SecretManager implementation.
 from typing import List, Optional
 
 from services.common.secret_manager import SecretManager
-# from src.core.domain.ports.adapters.secret_manager import SecretManagerPort
 
 
 class SecretManagerAdapter(SecretManagerPort):

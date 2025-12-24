@@ -10,7 +10,6 @@ from services.tool_executor.execution_engine import ExecutionEngine
 from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.tool_registry import ToolRegistry
-# from src.core.domain.ports.adapters.execution_engine import (
     ExecutionEnginePort,
     ExecutionLimitsDTO,
     ExecutionResultDTO,
