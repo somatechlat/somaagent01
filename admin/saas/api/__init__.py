@@ -5,6 +5,7 @@ Django Ninja routers for complete SAAS platform management.
 
 from ninja import Router
 
+from .audit import router as audit_router
 from .billing import router as billing_router
 from .dashboard import router as dashboard_router
 from .features import router as features_router
@@ -24,9 +25,11 @@ router.add_router("/tiers", tiers_router, tags=["Subscription Tiers"])
 router.add_router("/billing", billing_router, tags=["Billing"])
 router.add_router("/features", features_router, tags=["Features"])
 router.add_router("/settings", settings_router, tags=["Settings"])
+router.add_router("/audit", audit_router, tags=["Audit Trail"])
 
 # Tenant Admin endpoints
 router.add_router("/admin", users_router, tags=["Tenant Users"])
 router.add_router("/admin", tenant_agents_router, tags=["Tenant Agents"])
 
 __all__ = ["router"]
+

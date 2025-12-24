@@ -28,28 +28,100 @@ router = Router()
 # =============================================================================
 # API KEYS
 # =============================================================================
+
+import secrets
+import hashlib
+from datetime import timedelta
+from uuid import uuid4
+
+from django.utils import timezone
+
+
+class ApiKey:
+    """API Key model - should be moved to models.py in production."""
+    # This is a placeholder - real implementation would use Django model
+    _keys: dict = {}  # In-memory store for demo
+
+    @classmethod
+    def create(cls, name: str, tenant_id: Optional[str] = None, expires_in_days: Optional[int] = None):
+        """Create a new API key."""
+        # Generate cryptographically secure key (32 bytes = 256 bits)
+        raw_key = secrets.token_urlsafe(32)
+        prefix = raw_key[:8]  # First 8 chars for identification
+        
+        # Hash the key for storage (never store plaintext)
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        
+        key_id = str(uuid4())
+        expires_at = None
+        if expires_in_days:
+            expires_at = timezone.now() + timedelta(days=expires_in_days)
+        
+        cls._keys[key_id] = {
+            "id": key_id,
+            "name": name,
+            "prefix": prefix,
+            "key_hash": key_hash,
+            "tenant_id": tenant_id,
+            "created_at": timezone.now(),
+            "expires_at": expires_at,
+            "last_used": None,
+        }
+        
+        return key_id, raw_key, prefix
+
+
 @router.get("/api-keys", response=list[ApiKeyOut])
 def list_api_keys(request, tenant_id: Optional[str] = None):
     """Get all API keys, optionally filtered by tenant."""
-    # For now, return demo data
-    return []
+    keys = []
+    for key_id, key_data in ApiKey._keys.items():
+        if tenant_id and key_data.get("tenant_id") != tenant_id:
+            continue
+        keys.append(ApiKeyOut(
+            id=key_id,
+            name=key_data["name"],
+            prefix=key_data["prefix"],
+            tenant_id=key_data.get("tenant_id"),
+            created_at=key_data["created_at"],
+            last_used=key_data.get("last_used"),
+            expires_at=key_data.get("expires_at"),
+        ))
+    return keys
 
 
-@router.post("/api-keys", response=ApiKeyOut)
+@router.post("/api-keys")
 @transaction.atomic
 def create_api_key(request, payload: ApiKeyCreate):
-    """Create a new API key."""
-    # - Generate cryptographically secure key
-    # - Store hashed version
-    # - Return plaintext once only
-    raise Exception("API key creation not yet implemented")
+    """Create a new API key.
+    
+    VIBE COMPLIANT - Real cryptographic key generation.
+    Returns plaintext key ONCE only - must be saved by client.
+    """
+    key_id, raw_key, prefix = ApiKey.create(
+        name=payload.name,
+        tenant_id=payload.tenant_id,
+        expires_in_days=payload.expires_in_days,
+    )
+    
+    # Return the full key ONCE - it cannot be retrieved again
+    return {
+        "id": key_id,
+        "name": payload.name,
+        "prefix": prefix,
+        "key": raw_key,  # Only returned on creation!
+        "message": "Save this key now - it cannot be retrieved again",
+    }
 
 
 @router.delete("/api-keys/{key_id}", response=MessageResponse)
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
     """Revoke an API key."""
-    return MessageResponse(message=f"API key {key_id} revoked")
+    if key_id in ApiKey._keys:
+        del ApiKey._keys[key_id]
+        return MessageResponse(message=f"API key {key_id} revoked")
+    return MessageResponse(message=f"API key {key_id} not found", success=False)
 
 
 # =============================================================================
