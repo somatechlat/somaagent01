@@ -169,6 +169,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/notifications", notifications_router)
 
+    # Analytics (Metrics and reports)
+    from admin.analytics.api import router as analytics_router
+
+    api.add_router("/analytics", analytics_router)
+
     return api
 
 
