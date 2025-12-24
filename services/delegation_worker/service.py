@@ -13,7 +13,7 @@ import asyncio
 import logging
 from typing import Any, Dict
 
-from fastapi import FastAPI
+from ninja import Router
 
 from orchestrator.base_service import BaseService
 from orchestrator.config import CentralizedConfig
@@ -67,7 +67,7 @@ class DelegationWorkerService(BaseService):
         except Exception as exc:  # pragma: no cover – defensive
             LOGGER.error("Error during %s service shutdown: %s", self.service_name, exc)
 
-    def register_routes(self, app: FastAPI) -> None:
+    def register_routes(self, app: Router) -> None:
         """Expose health‑check and metrics under a namespaced path.
 
         All services use ``/<service_name>/health`` and ``/<service_name>/metrics``
@@ -76,7 +76,7 @@ class DelegationWorkerService(BaseService):
         """
         prefix = f"/{self.service_name}"
 
-        @app.get(f"{prefix}/health")
+        @app.api_route(f"{prefix}/health")
         async def health_check() -> Dict[str, Any]:
             status = "healthy"
             details: Dict[str, Any] = {"service": self.service_name}
@@ -93,7 +93,7 @@ class DelegationWorkerService(BaseService):
                 details["error"] = "Worker task not started"
             return {"status": status, "details": details}
 
-        @app.get(f"{prefix}/metrics")
+        @app.api_route(f"{prefix}/metrics")
         async def metrics() -> Dict[str, Any]:
             return {
                 "service": self.service_name,

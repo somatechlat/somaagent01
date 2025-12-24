@@ -23,7 +23,7 @@ from services.tool_executor.metrics import (
 from services.tool_executor.resource_manager import default_limits
 from services.tool_executor.tools import ToolExecutionError
 from services.tool_executor.validation import validate_tool_request
-from src.core.config import cfg
+import os
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor
@@ -276,7 +276,7 @@ class RequestHandler:
                 "type": "tool.start",
             }
             await self._executor.publisher.publish(
-                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
                 start_event,
                 dedupe_key=start_event.get("event_id"),
                 session_id=str(session_id),

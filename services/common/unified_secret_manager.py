@@ -17,7 +17,7 @@ from services.common.vault_secrets import (
     load_kv_secret,
     save_kv_secret,
 )
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class UnifiedSecretManager:
     """Vault-based secret storage."""
 
     def __init__(self) -> None:
-        self._vault_addr = cfg.env("VAULT_ADDR")
+        self._vault_addr = os.environ.get("VAULT_ADDR")
         if not self._vault_addr:
             LOGGER.warning("VAULT_ADDR not configured - secrets will not be available")
 

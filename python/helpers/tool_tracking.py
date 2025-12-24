@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from observability.metrics import Counter, Histogram
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ async def _send_to_somabrain(event: ToolExecutionEvent) -> None:
     Uses the /context/feedback endpoint for learning.
     """
     # Check if SomaBrain is enabled
-    if not cfg.flag("SOMABRAIN_ENABLED"):
+    if not os.environ.get("SOMABRAIN_ENABLED"):
         LOGGER.debug("SomaBrain disabled, skipping tool tracking")
         return
 

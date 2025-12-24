@@ -11,7 +11,7 @@ from python.integrations.soma_client import (
     SomaClient,  # type: ignore
     SomaClientError,
 )
-from src.core.config import cfg
+import os
 
 
 @dataclass
@@ -104,6 +104,6 @@ class PersonaProvider:
 
 def ttl_from_env(key: str, default: int) -> int:
     try:
-        return int(cfg.env(key, str(default)) or default)
+        return int(os.environ.get(key, str(default)) or default)
     except Exception:
         return default

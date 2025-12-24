@@ -22,7 +22,7 @@ except ImportError:
     dirty_json = None  # type: ignore
     browser_use_monkeypatch = None  # type: ignore
 
-from src.core.config import cfg
+import os
 
 __all__ = [
     "fix_gemini_schema",
@@ -103,7 +103,7 @@ def should_apply_gemini_compat() -> bool:
     
     Can be disabled via feature flag for testing or alternative implementations.
     """
-    return cfg.env("SA01_GEMINI_COMPAT_ENABLED", "true").lower() in {"true", "1", "yes", "on"}
+    return os.environ.get("SA01_GEMINI_COMPAT_ENABLED", "true").lower() in {"true", "1", "yes", "on"}
 
 
 def should_apply_json_cleaning() -> bool:
@@ -111,4 +111,4 @@ def should_apply_json_cleaning() -> bool:
     
     Can be disabled via feature flag for strict mode.
     """
-    return cfg.env("SA01_JSON_CLEANING_ENABLED", "true").lower() in {"true", "1", "yes", "on"}
+    return os.environ.get("SA01_JSON_CLEANING_ENABLED", "true").lower() in {"true", "1", "yes", "on"}

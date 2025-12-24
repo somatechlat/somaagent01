@@ -20,8 +20,8 @@ from python.integrations.soma_client import (
     SomaMemoryRecord,
 )
 
-# Updated to use centralized configuration instead of direct environment access.
-from src.core.config import cfg
+# Django settings for centralized configuration
+from django.conf import settings
 
 
 class SomaBrainClient(SomaClient):
@@ -34,13 +34,11 @@ class SomaBrainClient(SomaClient):
 
 
 def _base_url() -> str:
-    """Return the base URL for the SomaBrain service from the central config.
+    """Return the base URL for the SomaBrain service from Django settings.
 
-    The configuration model validates the presence of ``external.somabrain_base_url``.
-    ``cfg.get_somabrain_url()`` raises a clear error if the URL is missing, which
-    satisfies the VIBE rule of a single source of truth.
+    Uses settings.SOMABRAIN_URL - the VIBE compliant single source of truth.
     """
-    return cfg.get_somabrain_url()
+    return getattr(settings, "SOMABRAIN_URL", "http://localhost:8090")
 
 
 def _handle_response(resp: httpx.Response) -> Any:

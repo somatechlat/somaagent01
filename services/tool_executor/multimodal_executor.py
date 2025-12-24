@@ -33,7 +33,7 @@ from services.multimodal.base_provider import (
 from services.multimodal.dalle_provider import DalleProvider
 from services.multimodal.mermaid_provider import MermaidProvider
 from services.multimodal.playwright_provider import PlaywrightProvider
-from src.core.config import cfg
+import os
 
 __all__ = ["MultimodalExecutor", "ExecutorError"]
 
@@ -77,7 +77,7 @@ class MultimodalExecutor:
             soma_brain_client: SomaBrainOutcomesStore instance for learning
             policy_router: PolicyGraphRouter instance for provider selection
         """
-        self._dsn = dsn or cfg.settings().database.dsn
+        self._dsn = dsn or os.environ.get("SA01_DB_DSN", "")
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)

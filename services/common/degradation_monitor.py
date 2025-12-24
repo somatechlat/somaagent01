@@ -317,36 +317,19 @@ class DegradationMonitor:
     async def _check_database_health(self, component: ComponentHealth) -> None:
         """Check database health with REAL PostgreSQL connection.
 
-        VIBE COMPLIANT: No test doubles, no mocks. Real database connectivity check.
-        Uses asyncpg to execute a simple query against PostgreSQL.
+        VIBE COMPLIANT: Uses Django database connection - no asyncpg.
         """
         try:
-            import asyncpg
+            from django.db import connection
 
-            from src.core.config import cfg
+            # Real connection test using Django
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()[0]
+            component.healthy = result == 1
+            component.error_rate = 0.0 if component.healthy else 1.0
+            logger.debug(f"Database health check passed: SELECT 1 = {result}")
 
-            dsn = cfg.settings().database.dsn
-            if not dsn:
-                component.healthy = False
-                component.error_rate = 1.0
-                logger.warning("Database health check failed: No DSN configured")
-                return
-
-            # Real connection test with timeout
-            conn = await asyncio.wait_for(asyncpg.connect(dsn), timeout=5.0)
-            try:
-                # Execute a simple query to verify the connection works
-                result = await conn.fetchval("SELECT 1")
-                component.healthy = result == 1
-                component.error_rate = 0.0 if component.healthy else 1.0
-                logger.debug(f"Database health check passed: SELECT 1 = {result}")
-            finally:
-                await conn.close()
-
-        except asyncio.TimeoutError:
-            component.healthy = False
-            component.error_rate = 1.0
-            logger.warning("Database health check failed: Connection timeout")
         except Exception as e:
             component.healthy = False
             component.error_rate = 1.0
@@ -361,9 +344,9 @@ class DegradationMonitor:
         try:
             from aiokafka import AIOKafkaProducer
 
-            from src.core.config import cfg
+            import os
 
-            bootstrap_servers = cfg.settings().kafka_bootstrap_servers
+            bootstrap_servers = os.environ.kafka_bootstrap_servers
             if not bootstrap_servers:
                 component.healthy = False
                 component.error_rate = 1.0
@@ -403,9 +386,9 @@ class DegradationMonitor:
         try:
             import redis.asyncio as aioredis
 
-            from src.core.config import cfg
+            import os
 
-            redis_url = cfg.settings().redis.url
+            redis_url = os.environ.get("SA01_REDIS_URL", "")
             if not redis_url:
                 component.healthy = False
                 component.error_rate = 1.0
@@ -442,7 +425,7 @@ class DegradationMonitor:
 
     async def _check_temporal_health(self, component: ComponentHealth) -> None:
         """Check Temporal server health via system info."""
-        host = cfg.env("SA01_TEMPORAL_HOST", "temporal:7233")
+        host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
         if self._temporal_client is None:
             self._temporal_client = await TemporalClient.connect(host)
         info = await self._temporal_client.workflow_service.get_system_info()

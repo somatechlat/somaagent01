@@ -22,7 +22,7 @@ import httpx
 from prometheus_client import Counter, Histogram
 
 from python.integrations.somabrain_client import SomaClientError
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ LEARNING_REWARD_TOTAL = Counter(
 
 
 async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
-    if not cfg.flag("learning_context"):
+    if not os.environ.get("learning_context"):
         return {}
     endpoint = "weights"
     t0 = time.perf_counter()
@@ -81,7 +81,7 @@ async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List
 
     Expects Somabrain to return a list of message objects with 'role' and 'content'.
     """
-    if not cfg.flag("learning_context"):
+    if not os.environ.get("learning_context"):
         return []
     endpoint = "context"
     t0 = time.perf_counter()
@@ -110,7 +110,7 @@ async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List
 async def publish_reward(
     session_id: str, signal: str, value: float, meta: Optional[Dict[str, Any]] = None
 ) -> bool:
-    if not cfg.flag("learning_context"):
+    if not os.environ.get("learning_context"):
         return False
     try:
         payload = {"session_id": session_id, "signal": signal, "value": value, "meta": meta or {}}

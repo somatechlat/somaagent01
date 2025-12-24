@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from fastapi import APIRouter
+from ninja import Router
 
 router = APIRouter()
 

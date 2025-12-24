@@ -20,7 +20,7 @@ from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-from src.core.config import cfg
+import os
 
 if TYPE_CHECKING:
     from python.somaagent.agentiq_governor import LanePlan
@@ -611,7 +611,7 @@ class ContextBuilder:
 
     def _build_multimodal_instructions(self) -> str:
         """Build system prompt instructions for multimodal capabilities."""
-        if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() != "true":
+        if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() != "true":
             return ""
 
         return (

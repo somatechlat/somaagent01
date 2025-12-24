@@ -216,3 +216,21 @@ class ServiceUnavailableError(ApiError):
             message = f"Service '{service}' is temporarily unavailable"
         super().__init__(message, **kwargs)
         self.details["service"] = service
+
+
+class ServiceError(ApiError):
+    """Internal service error (500).
+    
+    Used for infrastructure failures and unexpected errors.
+    """
+    
+    status_code = 500
+    error_code = "service_error"
+    
+    def __init__(
+        self,
+        message: str = "An internal service error occurred",
+        **kwargs: Any,
+    ) -> None:
+        """Initialize service error."""
+        super().__init__(message, **kwargs)

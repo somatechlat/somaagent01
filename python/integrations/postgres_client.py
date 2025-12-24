@@ -1,35 +1,28 @@
-"""Production Postgres client - NO TEST STUBS, FAIL FAST"""
+"""Production Postgres client - 100% Django.
+
+VIBE Compliant - Uses Django database connection.
+"""
 
 from __future__ import annotations
 
-import asyncio
-
-import asyncpg
-
-from src.core.config import cfg
+from django.db import connection
 
 
 class PostgresPool:
-    """Real asyncpg connection pool."""
+    """Django-backed database connection wrapper.
+    
+    Provides compatibility interface for code migrating from asyncpg.
+    All queries should use Django ORM directly instead.
+    """
 
-    def __init__(self, dsn: str) -> None:
-        self._dsn = dsn
-        self._pool: asyncpg.Pool | None = None
-
-    async def _get_pool(self) -> asyncpg.Pool:
-        if self._pool is None:
-            self._pool = await asyncpg.create_pool(dsn=self._dsn, min_size=1, max_size=5)
-        return self._pool
+    def __init__(self, dsn: str | None = None) -> None:
+        # DSN ignored - Django uses settings.DATABASES
+        pass
 
     def acquire(self):
-        """Return real asyncpg connection."""
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(self._get_pool().acquire())
+        """Return Django database cursor context manager."""
+        return connection.cursor()
 
 
-# PRODUCTION ONLY - Always use real postgres
-dsn = cfg.env("SA01_DB_DSN", cfg.settings().database.dsn)
-if not dsn:
-    raise RuntimeError("SA01_DB_DSN (or cfg.database.dsn) must be configured for Postgres access")
-
-postgres_pool = PostgresPool(dsn)
+# PRODUCTION ONLY - Always use Django database connection
+postgres_pool = PostgresPool()

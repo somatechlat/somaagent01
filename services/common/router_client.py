@@ -7,7 +7,7 @@ from typing import Optional
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 
 @dataclass
@@ -18,7 +18,7 @@ class RouteDecision:
 
 class RouterClient:
     def __init__(self, base_url: Optional[str] = None) -> None:
-        self.base_url = base_url or cfg.env("ROUTER_URL")
+        self.base_url = base_url or os.environ.get("ROUTER_URL")
         self._client = httpx.AsyncClient(timeout=5.0) if self.base_url else None
 
     async def route(

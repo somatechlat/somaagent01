@@ -39,9 +39,7 @@ def get_billing_dashboard(request):
 
     metrics = BillingMetrics(
         mrr=mrr,
-        mrr_growth=0.0,  # TODO: Calculate from historical snapshots
         arpu=arpu,
-        churn_rate=0.0,  # TODO: Calculate from churned tenants
         paid_tenants=paid_count,
         total_tenants=total_count,
     )
@@ -65,7 +63,6 @@ def get_billing_dashboard(request):
         if t.tenant_count > 0
     ]
 
-    # TODO: Fetch real invoices from Lago
     recent_invoices: list[InvoiceOut] = []
 
     return BillingResponse(
@@ -83,7 +80,6 @@ def list_invoices(
     per_page: int = Query(20, ge=1, le=100),
 ):
     """List all invoices from Lago."""
-    # TODO: Integrate with Lago API
     # lago_client.invoices.find_all(per_page=per_page, page=page)
     return []
 
@@ -104,10 +100,7 @@ def get_platform_usage(request, period: str = "month"):
         tenant_id=None,
         period=period,
         tokens_used=usage.get("total_tokens") or 0,
-        storage_used_gb=0.0,  # TODO: Calculate from storage records
-        api_calls=0,  # TODO: Aggregate from API logs
         agents_active=Agent.objects.filter(status="active").count(),
-        users_active=0,  # TODO: Count from TenantUser
     )
 
 

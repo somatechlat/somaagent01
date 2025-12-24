@@ -17,7 +17,7 @@ from typing import Any, Iterable, Optional
 
 from agent import AgentContext
 # Use central configuration via cfg instead of legacy ADMIN_SETTINGS.
-from src.core.config import cfg
+import os
 from services.common.attachments_store import AttachmentsStore
 from services.common.session_repository import PostgresSessionStore
 
@@ -32,8 +32,8 @@ async def _get_session_store() -> PostgresSessionStore:
     if _SESSION_STORE is None:
         async with _LOCK:
             if _SESSION_STORE is None:
-                # Use the central Postgres DSN from cfg.
-                _SESSION_STORE = PostgresSessionStore(dsn=cfg.settings().database.dsn)
+                # Use the central Postgres DSN from environment.
+                _SESSION_STORE = PostgresSessionStore(dsn=os.environ.get("SA01_DB_DSN", ""))
     return _SESSION_STORE
 
 
@@ -42,8 +42,8 @@ async def _get_attachment_store() -> AttachmentsStore:
     if _ATTACHMENT_STORE is None:
         async with _LOCK:
             if _ATTACHMENT_STORE is None:
-                # Use the central Postgres DSN from cfg for attachments store.
-                _ATTACHMENT_STORE = AttachmentsStore(dsn=cfg.settings().database.dsn)
+                # Use the central Postgres DSN from environment.for attachments store.
+                _ATTACHMENT_STORE = AttachmentsStore(dsn=os.environ.get("SA01_DB_DSN", ""))
                 await _ATTACHMENT_STORE.ensure_schema()
     return _ATTACHMENT_STORE
 

@@ -17,7 +17,7 @@ from services.tool_executor.sandbox_manager import (
     SandboxManager,
 )
 from services.tool_executor.tool_registry import ToolDefinition
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,13 +39,13 @@ class ExecutionEngine:
         ensure_metrics_exporter()
         try:
             self._circuit_failure_threshold = int(
-                cfg.env("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
+                os.environ.get("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")
             )
         except (TypeError, ValueError):
             self._circuit_failure_threshold = 5
         try:
             self._circuit_reset_timeout = float(
-                cfg.env("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
+                os.environ.get("TOOL_EXECUTOR_CIRCUIT_RESET_TIMEOUT_SECONDS", "30")
             )
         except (TypeError, ValueError):
             self._circuit_reset_timeout = 30.0

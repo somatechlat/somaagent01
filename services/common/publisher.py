@@ -23,7 +23,7 @@ from prometheus_client import Counter
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers
 from services.common.outbox import OutboxPublisher
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ PUBLISH_EVENTS = Counter(
 class DurablePublisher:
     def __init__(self, *, bus: KafkaEventBus) -> None:
         self.bus = bus
-        self._use_outbox = cfg.env("SA01_USE_OUTBOX", "false").lower() == "true"
+        self._use_outbox = os.environ.get("SA01_USE_OUTBOX", "false").lower() == "true"
         self._outbox = OutboxPublisher(bus=self.bus) if self._use_outbox else None
 
     async def publish(
@@ -57,7 +57,7 @@ class DurablePublisher:
         Returns {"published": bool, "enqueued": bool, "id": Optional[int]}.
         """
         timeout_s: float
-        raw_timeout = cfg.env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
+        raw_timeout = os.environ.get("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
         try:
             timeout_s = float(raw_timeout)
         except (TypeError, ValueError):

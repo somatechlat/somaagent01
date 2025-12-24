@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 
 # Base URL – must be set via env var per VIBE rules (no hardcoded defaults)
@@ -20,7 +20,7 @@ def _get_capsule_registry_url() -> str:
     Requires the ``SA01_CAPSULE_REGISTRY_URL`` environment variable.
     No hardcoded defaults per VIBE rules.
     """
-    url = cfg.env("SA01_CAPSULE_REGISTRY_URL")
+    url = os.environ.get("SA01_CAPSULE_REGISTRY_URL")
     if not url:
         raise ValueError(
             "SA01_CAPSULE_REGISTRY_URL is required. No hardcoded defaults per VIBE rules."

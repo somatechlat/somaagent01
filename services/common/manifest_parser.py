@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from src.core.config import cfg
+import os
 from services.common.capsule_store import CapsuleRecord, CapsuleStatus, CapsuleStore
 
 
@@ -73,7 +73,7 @@ class ManifestParser:
     }
     
     def __init__(self, environment: str | None = None):
-        self.environment = environment or cfg.settings().service.environment
+        self.environment = environment or os.environ.service.environment
     
     def parse_file(self, path: Path) -> Dict[str, Any]:
         """Parse a manifest YAML file."""

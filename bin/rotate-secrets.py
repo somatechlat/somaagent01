@@ -4,11 +4,11 @@
 import os
 
 from python.helpers.vault_adapter import VaultAdapter
-from src.core.config import cfg, reload_config
+import os, reload_config
 
 
 def main():
-    old_key = cfg.env("SA01_CRYPTO_FERNET_KEY")
+    old_key = os.environ.get("SA01_CRYPTO_FERNET_KEY")
     new_key = VaultAdapter.rotate_key()
     print(f"🔑 New key generated: {new_key}")
     if old_key:

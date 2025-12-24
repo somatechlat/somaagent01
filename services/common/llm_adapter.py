@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, List, Union
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 
 @dataclass
@@ -58,7 +58,7 @@ class LLMAdapter:
         self.service_url = service_url.rstrip("/") if service_url else None
         self.api_key = api_key
         self.api_key_resolver = api_key_resolver
-        self._client = httpx.AsyncClient(timeout=float(cfg.env("LLM_HTTP_TIMEOUT", 30)))
+        self._client = httpx.AsyncClient(timeout=float(os.environ.get("LLM_HTTP_TIMEOUT", 30)))
 
     async def close(self) -> None:
         """Close underlying HTTP client."""

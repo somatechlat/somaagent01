@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional
 
-from src.core.config import cfg
+import os
 
 Profile = Literal["minimal", "standard", "enhanced", "max"]
 State = Literal["on", "degraded", "disabled"]
@@ -48,7 +48,7 @@ class FeatureRegistry:
         # This is not a prior path; tests and ops rely on fast env flips.
         try:
             if desc.enabled_env_var:
-                raw = cfg.env(desc.enabled_env_var)
+                raw = os.environ.get(desc.enabled_env_var)
                 if raw != "":
                     val = str(raw).lower() in {"1", "true", "yes", "on"}
                     enabled = bool(val)
@@ -65,7 +65,7 @@ class FeatureRegistry:
 
 def build_default_registry() -> FeatureRegistry:
     # Use the central runtime_config.env helper for consistency.
-    profile = cfg.env("SA01_FEATURE_PROFILE", "enhanced").lower()
+    profile = os.environ.get("SA01_FEATURE_PROFILE", "enhanced").lower()
     if profile not in {"minimal", "standard", "enhanced", "max"}:
         profile = "enhanced"
 

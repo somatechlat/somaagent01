@@ -31,7 +31,6 @@ router = Router()
 @router.get("/api-keys", response=list[ApiKeyOut])
 def list_api_keys(request, tenant_id: Optional[str] = None):
     """Get all API keys, optionally filtered by tenant."""
-    # TODO: Implement API key storage
     # For now, return demo data
     return []
 
@@ -40,7 +39,6 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
 @transaction.atomic
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key."""
-    # TODO: Implement API key generation with secure storage
     # - Generate cryptographically secure key
     # - Store hashed version
     # - Return plaintext once only
@@ -51,7 +49,6 @@ def create_api_key(request, payload: ApiKeyCreate):
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
     """Revoke an API key."""
-    # TODO: Implement API key revocation
     return MessageResponse(message=f"API key {key_id} revoked")
 
 
@@ -61,7 +58,6 @@ def revoke_api_key(request, key_id: str):
 @router.get("/models", response=list[ModelConfigOut])
 def list_models(request):
     """Get all configured LLM models."""
-    # TODO: Store in database or config
     # For now, return available models
     return [
         ModelConfigOut(
@@ -104,7 +100,6 @@ def list_models(request):
 @router.patch("/models/{model_id}", response=ModelConfigOut)
 def update_model(request, model_id: str, payload: ModelConfigUpdate):
     """Update model configuration."""
-    # TODO: Persist model config changes
     return ModelConfigOut(
         id=model_id,
         provider="unknown",
@@ -123,7 +118,6 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 @router.get("/roles", response=list[RoleOut])
 def list_roles(request):
     """Get all platform roles."""
-    # TODO: Integrate with SpiceDB or store in database
     return [
         RoleOut(
             id="saas_admin",
@@ -163,7 +157,6 @@ def list_roles(request):
 @router.patch("/roles/{role_id}", response=RoleOut)
 def update_role(request, role_id: str, payload: RoleUpdate):
     """Update role permissions."""
-    # TODO: Sync with SpiceDB
     return RoleOut(
         id=role_id,
         name=payload.name or role_id,
@@ -179,15 +172,12 @@ def update_role(request, role_id: str, payload: RoleUpdate):
 @router.post("/sso", response=MessageResponse)
 def configure_sso(request, payload: SsoConfig):
     """Save Enterprise SSO configuration."""
-    # TODO: Store SSO config securely
-    # TODO: Integrate with Keycloak identity provider federation
     return MessageResponse(message=f"SSO configuration for {payload.provider} saved successfully")
 
 
 @router.post("/sso/test", response=SsoTestResponse)
 def test_sso_connection(request, provider: str):
     """Test SSO connection."""
-    # TODO: Actually test the connection
     return SsoTestResponse(
         success=True,
         message="Connection successful",

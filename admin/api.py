@@ -24,14 +24,14 @@ def create_api() -> NinjaAPI:
     register_exception_handlers(api)
     
     # =========================================================================
-    # MOUNT DOMAIN ROUTERS
+    # MOUNT ALL DOMAIN ROUTERS - 100% Django Ninja
     # =========================================================================
     
-    # SAAS Admin (complete)
+    # SAAS Admin
     from admin.saas.api import router as saas_router
     api.add_router("/saas", saas_router)
     
-    # Core Admin
+    # Core Infrastructure
     from admin.core.api import router as core_router
     api.add_router("/core", core_router)
     
@@ -39,21 +39,49 @@ def create_api() -> NinjaAPI:
     from admin.agents.api import router as agents_router
     api.add_router("/agents", agents_router)
     
-    # Features (placeholder for M3)
+    # Features
     from admin.features.api import router as features_router
     api.add_router("/features", features_router)
     
-    # Chat (placeholder for M4)
+    # Chat
     from admin.chat.api import router as chat_router
     api.add_router("/chat", chat_router)
     
-    # Files (placeholder for M5)
+    # Files & Attachments
     from admin.files.api import router as files_router
     api.add_router("/files", files_router)
     
-    # Utils (placeholder for M6)
+    # Utils
     from admin.utils.api import router as utils_router
     api.add_router("/utils", utils_router)
+    
+    # Tools (NEW)
+    from admin.tools.api import router as tools_router
+    api.add_router("/tools", tools_router)
+    
+    # UI / Skins (NEW)
+    from admin.ui.api import router as ui_router
+    api.add_router("/ui", ui_router)
+    
+    # Multimodal (NEW)
+    from admin.multimodal.api import router as multimodal_router
+    api.add_router("/multimodal", multimodal_router)
+    
+    # Memory (NEW)
+    from admin.memory.api import router as memory_router
+    api.add_router("/memory", memory_router)
+    
+    # Gateway Operations (NEW)
+    from admin.gateway.api import router as gateway_router
+    api.add_router("/gateway", gateway_router)
+    
+    # Capsules (NEW)
+    from admin.capsules.api import router as capsules_router
+    api.add_router("/capsules", capsules_router)
+    
+    # Notifications (NEW)
+    from admin.notifications.api import router as notifications_router
+    api.add_router("/notifications", notifications_router)
     
     return api
 

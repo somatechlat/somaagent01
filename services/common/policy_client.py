@@ -10,7 +10,7 @@ from typing import Any, Optional
 import httpx
 
 from services.common.tenant_config import TenantConfig
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,18 +30,18 @@ class PolicyClient:
         base_url: Optional[str] = None,
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
-        config = cfg.settings()
-        default_base_url = getattr(getattr(config, "external", None), "opa_url", None) or cfg.env(
+        config = os.environ
+        default_base_url = getattr(getattr(config, "external", None), "opa_url", None) or os.environ.get(
             "SA01_POLICY_URL"
         )
         if not base_url and not default_base_url:
             raise ValueError("SA01_POLICY_URL is required. No hardcoded defaults per VIBE rules.")
         self.base_url = base_url or default_base_url
         self.data_path = (
-            cfg.env("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"
+            os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"
         )
         self._client = httpx.AsyncClient(timeout=10.0)
-        self.cache_ttl = float(cfg.env("SA01_POLICY_CACHE_TTL", "2") or "2")
+        self.cache_ttl = float(os.environ.get("SA01_POLICY_CACHE_TTL", "2") or "2")
         # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored
         self.fail_open_default = False
         self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}

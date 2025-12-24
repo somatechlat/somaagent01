@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional
 
 from prometheus_client import Histogram, Counter
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,9 +35,9 @@ class ScanResult:
 
 class ClamAVScanner:
     def __init__(self, socket_path: Optional[str] = None, host: Optional[str] = None, port: Optional[int] = None):
-        self._socket_path = socket_path or cfg.env("SA01_CLAMAV_SOCKET", "/var/run/clamav/clamd.sock")
-        self._host = host or cfg.env("SA01_CLAMAV_HOST")
-        self._port = port or int(cfg.env("SA01_CLAMAV_PORT", "3310"))
+        self._socket_path = socket_path or os.environ.get("SA01_CLAMAV_SOCKET", "/var/run/clamav/clamd.sock")
+        self._host = host or os.environ.get("SA01_CLAMAV_HOST")
+        self._port = port or int(os.environ.get("SA01_CLAMAV_PORT", "3310"))
 
     def _get_clamd(self):
         import pyclamd

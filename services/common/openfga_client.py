@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,12 +43,12 @@ class OpenFGAClient:
         cache_ttl: float = 2.0,
         fail_open: bool = True,
     ) -> None:
-        self.base_url = base_url or cfg.env("SA01_OPENFGA_API_URL")
+        self.base_url = base_url or os.environ.get("SA01_OPENFGA_API_URL")
         if not self.base_url:
             raise ValueError(
                 "SA01_OPENFGA_API_URL is required. No hardcoded defaults per VIBE rules."
             )
-        self.store_id = store_id or cfg.env("SA01_OPENFGA_STORE_ID")
+        self.store_id = store_id or os.environ.get("SA01_OPENFGA_STORE_ID")
         if not self.store_id:
             raise ValueError(
                 "SA01_OPENFGA_STORE_ID is required. No hardcoded defaults per VIBE rules."
@@ -59,12 +59,12 @@ class OpenFGAClient:
         self.action = action
         self.fail_open = fail_open
         timeout = float(
-            cfg.env("SA01_OPENFGA_TIMEOUT_SECONDS", str(timeout_seconds)) or timeout_seconds
+            os.environ.get("SA01_OPENFGA_TIMEOUT_SECONDS", str(timeout_seconds)) or timeout_seconds
         )
         self._client = httpx.AsyncClient(timeout=timeout)
         self._cache: Dict[AuthorizationKey, Tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
-        self.cache_ttl = float(cfg.env("SA01_OPENFGA_CACHE_TTL", str(cache_ttl)) or cache_ttl)
+        self.cache_ttl = float(os.environ.get("SA01_OPENFGA_CACHE_TTL", str(cache_ttl)) or cache_ttl)
 
     async def check_tenant_access(
         self,
