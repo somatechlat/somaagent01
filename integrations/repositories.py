@@ -19,7 +19,6 @@ from services.common.export_job_store import ExportJobStore
 from services.common.memory_replica_store import MemoryReplicaStore
 from services.common.notifications_store import NotificationsStore
 from services.common.secret_manager import SecretManager
-from services.common.session_repository import PostgresSessionStore
 from services.common.ui_settings_store import UiSettingsStore
 
 
@@ -36,7 +35,7 @@ class RepositoryManager:
         self._export_job_store: Optional[ExportJobStore] = None
         self._secret_manager: Optional[SecretManager] = None
         self._ui_settings_store: Optional[UiSettingsStore] = None
-        self._session_store: Optional[PostgresSessionStore] = None
+        self._session_store = None  # Use Django ORM directly
 
     def get_attachments_store(self) -> AttachmentsStore:
         """Get singleton instance of AttachmentsStore."""
@@ -95,11 +94,10 @@ class RepositoryManager:
             self._ui_settings_store = UiSettingsStore()
         return self._ui_settings_store
 
-    def get_session_store(self) -> PostgresSessionStore:
-        """Get singleton instance of PostgresSessionStore."""
-        if self._session_store is None:
-            self._session_store = PostgresSessionStore()
-        return self._session_store
+    def get_session_store(self):
+        """Get Django ORM Session model."""
+        from admin.core.models import Session
+        return Session.objects
 
 
 # Global singleton instance
@@ -160,8 +158,8 @@ def get_ui_settings_store() -> UiSettingsStore:
     return get_repository_manager().get_ui_settings_store()
 
 
-def get_session_store() -> PostgresSessionStore:
-    """Get singleton instance of PostgresSessionStore."""
+def get_session_store():
+    """Get Django ORM Session model."""
     return get_repository_manager().get_session_store()
 
 

@@ -17,7 +17,6 @@ from services.common.logging_config import setup_logging
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
-from services.common.session_repository import PostgresSessionStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 
@@ -60,7 +59,9 @@ class ToolExecutor:
             base_url=os.environ.get("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
             tenant_config=self.tenant_config,
         )
-        self.store = PostgresSessionStore(dsn=os.environ.get("SA01_DB_DSN", ""))
+        # Use Django ORM Session model instead of PostgresSessionStore
+        from admin.core.models import Session
+        self.store = Session.objects
         self.requeue = RequeueStore(url=redis_url(), prefix=policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()

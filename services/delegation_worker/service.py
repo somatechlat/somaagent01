@@ -72,7 +72,7 @@ class DelegationWorkerService(BaseService):
 
         All services use ``/<service_name>/health`` and ``/<service_name>/metrics``
         to avoid route collisions when multiple services are mounted on the same
-        FastAPI instance.
+        Django Ninja instance.
         """
         prefix = f"/{self.service_name}"
 

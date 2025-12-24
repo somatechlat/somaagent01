@@ -48,14 +48,16 @@ async def _check_postgres() -> tuple[str, Optional[str]]:
 
 
 async def _check_redis() -> tuple[str, Optional[str]]:
-    """Check Redis connectivity."""
+    """Check Redis connectivity using Django cache."""
     try:
-        from services.common.session_repository import RedisSessionCache
-        from django.conf import settings
+        from django.core.cache import cache
         
-        cache = RedisSessionCache(settings.REDIS_URL)
-        await cache.ping()
-        return "ok", None
+        # Test cache set/get
+        cache.set("health_check", "ok", timeout=5)
+        result = cache.get("health_check")
+        if result == "ok":
+            return "ok", None
+        return "degraded", "Cache value mismatch"
     except Exception as exc:
         logger.warning("Redis health check failed", extra={"error": str(exc)})
         return "down", f"{type(exc).__name__}: {exc}"

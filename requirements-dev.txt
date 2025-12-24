@@ -2,14 +2,9 @@
 # For fast development builds without heavy ML/document processing
 
 # Web and API
-fastapi==0.115.2
 uvicorn[standard]==0.32.0
 httpx==0.28.1
 slowapi==0.1.9
-Flask==3.0.3
-flask[async]==3.0.3
-Werkzeug==3.0.3
-a2wsgi==1.10.7
 python-multipart==0.0.9
 
 # Core config and serialization
@@ -25,8 +20,6 @@ aiokafka==0.11.0
 lz4==4.3.3
 redis==5.2.0
 psycopg[binary]==3.2.3
-asyncpg==0.29.0; python_version < "3.13"
-sqlalchemy==2.0.32
 grpcio==1.67.1
 protobuf==5.27.3
 
@@ -36,7 +29,6 @@ opentelemetry-api==1.29.0
 opentelemetry-sdk==1.29.0
 opentelemetry-instrumentation==0.50b0
 opentelemetry-instrumentation-asgi==0.50b0
-opentelemetry-instrumentation-fastapi==0.50b0
 opentelemetry-instrumentation-httpx==0.50b0
 opentelemetry-semantic-conventions==0.50b0
 opentelemetry-exporter-otlp-proto-grpc==1.29.0
@@ -65,7 +57,6 @@ ansio==0.0.1
 browser-use==0.5.11
 playwright==1.52.0
 duckduckgo-search==6.1.12
-flask-basicauth==0.2.0
 GitPython==3.1.43
 hvac==2.3.0
 inputimeout==1.0.4

@@ -1,11 +1,10 @@
-"""Gateway dependency providers for FastAPI injection."""
+"""Gateway dependency providers for Django Ninja injection."""
 
 from __future__ import annotations
 
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
-from services.common.session_repository import RedisSessionCache
 import os
 
 # Compatibility attributes for test suite
@@ -35,14 +34,15 @@ def get_bus() -> KafkaEventBus:
 
 
 def get_publisher() -> DurablePublisher:
-    """Provide a DurablePublisher instance for FastAPI dependency injection."""
+    """Provide a DurablePublisher instance for dependency injection."""
     bus = get_bus()
     return DurablePublisher(bus=bus)
 
 
-def get_session_cache() -> RedisSessionCache:
-    """Return a Redis-backed session cache."""
-    return RedisSessionCache()
+def get_session_cache():
+    """Return a Redis-backed session cache using Django cache."""
+    from django.core.cache import cache
+    return cache
 
 
 def get_secret_manager():
@@ -90,10 +90,9 @@ def get_multimodal_executor():
 
 
 def get_session_store():
-    """Get session store for compatibility."""
-    from services.common.session_repository import SessionStore
-    
-    return SessionStore(dsn=os.environ.get("SA01_DB_DSN", ""))
+    """Get Django ORM Session model."""
+    from admin.core.models import Session
+    return Session.objects
 
 
 async def get_temporal_client():

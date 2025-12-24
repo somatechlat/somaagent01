@@ -12,7 +12,6 @@ from temporalio.worker import Worker
 from python.helpers.tokens import count_tokens
 from python.integrations.somabrain_client import SomaBrainClient
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-from services.common import outbox_flush
 from services.common.compensation import compensate_event
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
@@ -22,7 +21,6 @@ from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
-from services.common.session_repository import PostgresSessionStore
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
@@ -56,7 +54,9 @@ def _build_use_case():
     bus = KafkaEventBus(kafka)
     publisher = DurablePublisher(bus=bus)
     dlq = DeadLetterQueue(os.environ.get("CONVERSATION_INBOUND", "conversation.inbound"), bus=bus)
-    store = PostgresSessionStore(dsn=APP.database.dsn)
+    # Use Django ORM Session model
+    from admin.core.models import Session
+    store = Session.objects
     profiles = ModelProfileStore.from_settings(APP)
     tenants = TenantConfig(
         path=os.environ.get("TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml"))
@@ -133,7 +133,7 @@ class ConversationWorkflow:
 async def main() -> None:
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation")
-    await outbox_flush.flush()
+    # outbox_flush removed - feature never implemented
     client = await Client.connect(temporal_host)
     worker = Worker(
         client,

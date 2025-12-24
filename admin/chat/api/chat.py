@@ -1,6 +1,6 @@
-"""Chat Session API Router - 100% Django.
+"""Chat Session API Router - 100% Django ORM.
 
-VIBE COMPLIANT - Django patterns, centralized settings, no legacy cfg.
+VIBE COMPLIANT - Django ORM, no legacy session_repository.
 """
 
 from __future__ import annotations
@@ -8,11 +8,11 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from django.conf import settings
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.exceptions import NotFoundError, ServiceError
+from admin.core.models import Session
 
 router = Router(tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -26,15 +26,6 @@ class ChatSessionResponse(BaseModel):
     tenant: Optional[str] = None
 
 
-async def _get_session_store():
-    """Get PostgreSQL session store using Django settings."""
-    from services.common.session_repository import ensure_schema, PostgresSessionStore
-    
-    store = PostgresSessionStore(settings.DATABASE_DSN)
-    await ensure_schema(store)
-    return store
-
-
 @router.get("/session/{session_id}", response=ChatSessionResponse, summary="Get chat session")
 async def get_chat_session(request, session_id: str) -> dict:
     """Fetch chat session metadata.
@@ -45,17 +36,22 @@ async def get_chat_session(request, session_id: str) -> dict:
     Returns:
         Session metadata including persona and tenant
     """
+    from asgiref.sync import sync_to_async
+    
     try:
-        store = await _get_session_store()
-        envelope = await store.get_envelope(session_id)
+        @sync_to_async
+        def _get():
+            return Session.objects.filter(session_id=session_id).first()
         
-        if envelope is None:
+        session = await _get()
+        
+        if session is None:
             raise NotFoundError("session", session_id)
         
         return {
-            "session_id": session_id,
-            "persona_id": envelope.persona_id,
-            "tenant": envelope.tenant,
+            "session_id": session.session_id,
+            "persona_id": session.persona_id,
+            "tenant": session.tenant,
         }
     except NotFoundError:
         raise

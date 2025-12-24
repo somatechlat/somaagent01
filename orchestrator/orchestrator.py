@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import List
+from typing import Any, List
 
 from ninja import Router
 from prometheus_client import make_asgi_app
@@ -23,7 +23,7 @@ from prometheus_client import make_asgi_app
 from .base_service import BaseSomaService
 from .health_monitor import UnifiedHealthMonitor
 
-# Import the health router (FastAPI router) and the background health monitor.
+# Import the health router (Django Ninja router) and the background health monitor.
 # The router provides the ``/v1/health`` endpoint, while the monitor runs a
 # periodic async task that checks external services.
 from .health_router import attach_to_app, UnifiedHealthRouter
@@ -55,7 +55,7 @@ class ServiceRegistry:
 
 
 class SomaOrchestrator:
-    """Main orchestrator – wires services into a FastAPI app and manages them.
+    """Main orchestrator – wires services into a Django ASGI app and manages them.
 
     The orchestrator is deliberately minimal: it registers a health router, then
     starts and stops each ``BaseSomaService`` instance in the order they were
@@ -64,7 +64,7 @@ class SomaOrchestrator:
     implementation.
     """
 
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(self, app: Any) -> None:
         self.app = app
         self.registry = ServiceRegistry()
         # The router receives the live list of services via a provider so it is always current.
@@ -111,7 +111,7 @@ class SomaOrchestrator:
         LOGGER.info("All services stopped")
 
     def attach(self) -> None:
-        """Integrate the orchestrator with a FastAPI app.
+        """Integrate the orchestrator with a Django ASGI app.
 
         The method is safe to call multiple times – it checks whether the
         ``/v1/health`` and ``/metrics`` routes are already mounted and skips
@@ -126,10 +126,10 @@ class SomaOrchestrator:
         self.app.mount("/metrics", make_asgi_app())
 
         # -----------------------------------------------------------------
-        # Lifespan handler (FastAPI-recommended replacement for on_event).
+        # Lifespan handler (ASGI-recommended replacement for on_event).
         # -----------------------------------------------------------------
         @asynccontextmanager
-        async def lifespan(app: FastAPI):
+        async def lifespan(app: Any):
             await self._start_all()
             try:
                 yield

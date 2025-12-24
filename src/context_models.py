@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass(frozen=True)
 class ContextRequest:
-    """Input supplied by a FastAPI endpoint (or similar) to build a prompt.
+    """Input supplied by a Django Ninja endpoint (or similar) to build a prompt.
 
     * ``tenant_id`` – the logical tenant for multi‑tenant isolation.
     * ``user_id`` – identifier of the end‑user making the request.

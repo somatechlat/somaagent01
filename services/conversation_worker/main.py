@@ -25,11 +25,6 @@ from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
 from services.common.degradation_monitor import degradation_monitor, DegradationLevel
-from services.common.session_repository import (
-    ensure_schema,
-    PostgresSessionStore,
-    RedisSessionCache,
-)
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
@@ -81,8 +76,12 @@ class ConversationWorkerImpl:
         self.bus = KafkaEventBus(self.kafka)
         self.publisher = DurablePublisher(bus=self.bus)
         self.dlq = DeadLetterQueue(self.topics["in"], bus=self.bus)
-        self.cache = RedisSessionCache(url=APP.redis.url)
-        self.store = PostgresSessionStore(dsn=APP.database.dsn)
+        # Use Django cache for session cache
+        from django.core.cache import cache as django_cache
+        self.cache = django_cache
+        # Use Django ORM Session model
+        from admin.core.models import Session
+        self.store = Session.objects
         self.profiles = ModelProfileStore.from_settings(APP)
         self.tenants = TenantConfig(
             path=os.environ.get(
@@ -152,7 +151,7 @@ class ConversationWorkerImpl:
     async def start(self) -> None:
         await degradation_monitor.initialize()
         await degradation_monitor.start_monitoring()
-        await ensure_schema(self.store)
+        # ensure_schema not needed - Django migrations handle this
         await self.profiles.ensure_schema()
         await self.store.append_event(
             "system", {"type": "worker_start", "event_id": str(uuid.uuid4()), "message": "online"}

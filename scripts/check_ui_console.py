@@ -1,6 +1,6 @@
 """Playwright script to capture JavaScript console errors from the UI.
 
-The UI is served by the FastAPI gateway on the host port defined in the
+The UI is served by the Django gateway on the host port defined in the
 Docker compose file (default ``21016``). This script launches a headless
 Chromium browser, navigates to the root URL, and records any console
 messages emitted by the page. Errors, warnings and other log levels are

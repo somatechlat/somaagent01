@@ -5,4 +5,4 @@ SSE-only Gateway UI removed the need for a proxy; package kept as empty to
 avoid import errors in historical scripts.
 """
 
-# Ensures router and helpers are importable by FastAPI include_router in gateway.
+# Ensures router and helpers are importable by Django Ninja add_router in gateway.
