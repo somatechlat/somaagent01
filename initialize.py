@@ -1,4 +1,5 @@
-import models
+"""Agent initialization - uses Django LLM app."""
+from admin.llm import ModelConfig, ModelType  # Migrated from root models.py
 from agent import AgentConfig
 from python.helpers import defer, runtime, settings
 

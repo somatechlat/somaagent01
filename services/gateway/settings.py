@@ -22,16 +22,20 @@ ALLOWED_HOSTS = ["*"]
 
 # Application definition
 INSTALLED_APPS = [
+    # Django core apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Third party
     "ninja",
-    # Project Apps - Django ORM Models
-    "admin.saas",
+    "corsheaders",
+    # Local admin apps
     "admin.core",
+    "admin.saas",
+    "admin.llm",  # LLM management - migrated from root models.py
     "admin.agents",
     "admin.chat",
     "admin.features",

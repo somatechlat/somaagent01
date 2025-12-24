@@ -12,7 +12,7 @@ from typing import Any, Callable, Coroutine, Dict, TYPE_CHECKING
 if TYPE_CHECKING:
     from agent import Agent
 
-import models
+from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 import python.helpers.log as Log
 from python.helpers.defer import DeferredTask
 from python.helpers.localization import Localization

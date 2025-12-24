@@ -37,7 +37,7 @@ except Exception:
         return False
 
 
-import models
+from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 from agent import Agent
 from python.helpers import guids, knowledge_import
 from python.helpers.log import LogItem

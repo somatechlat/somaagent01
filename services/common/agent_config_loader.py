@@ -1,12 +1,11 @@
-
-import os
+"""Agent config loader - uses Django ORM for settings."""
+import asyncio
 import json
-import logging
+import os
 from typing import Any, List, Optional
-from pathlib import Path
 
 from python.somaagent.agent_context import AgentConfig, AgentContext
-from models import ModelConfig, ModelType
+from admin.llm.models import ModelConfig, ModelType  # Migrated from root models.py
 from services.common.ui_settings_store import UiSettingsStore
 
 LOGGER = logging.getLogger(__name__)
