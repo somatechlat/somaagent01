@@ -117,6 +117,13 @@ class DegradationMonitor:
         "tool_executor": ["database", "kafka", "somabrain", "temporal", "llm"],
         "conversation_worker": ["database", "kafka", "somabrain", "redis", "temporal", "llm"],
         "auth_service": ["database", "redis"],
+        # Multimodal services
+        "voice_service": ["llm", "audio_tts", "audio_stt"],
+        "upload_service": ["database", "storage"],
+        "multimodal": ["llm", "voice_service", "upload_service"],
+        # Background services
+        "backup_service": ["database", "storage"],
+        "task_scheduler": ["database", "redis", "temporal"],
         # Core services have no dependencies (they ARE the dependencies)
         "somabrain": [],
         "database": [],
@@ -124,6 +131,9 @@ class DegradationMonitor:
         "redis": [],
         "temporal": [],
         "llm": [],  # LLM providers (can operate independently)
+        "audio_tts": [],  # Text-to-speech providers
+        "audio_stt": [],  # Speech-to-text providers
+        "storage": [],  # File storage (S3, local, etc.)
     }
 
     # Maximum history records to keep in memory
@@ -157,6 +167,16 @@ class DegradationMonitor:
             "auth_service",
             "tool_executor",
             "llm",  # LLM providers
+            # Multimodal services
+            "voice_service",
+            "audio_tts",
+            "audio_stt",
+            "upload_service",
+            "multimodal",
+            "storage",
+            # Background services
+            "backup_service",
+            "task_scheduler",
         ]
 
         for component in core_components:
@@ -169,7 +189,7 @@ class DegradationMonitor:
             )
 
         # Initialize circuit breakers for critical components
-        critical_components = ["somabrain", "database", "kafka", "llm"]
+        critical_components = ["somabrain", "database", "kafka", "llm", "audio_tts", "audio_stt", "storage"]
         for component in critical_components:
             self.circuit_breakers[component] = CircuitBreaker(
                 failure_threshold=5, recovery_timeout=60, expected_exception=Exception  # 1 minute
@@ -248,6 +268,14 @@ class DegradationMonitor:
                 await self._check_temporal_health(component)
             elif component_name == "llm":
                 await self._check_llm_health(component)
+            elif component_name in ("audio_tts", "audio_stt", "voice_service"):
+                await self._check_audio_health(component)
+            elif component_name in ("storage", "upload_service"):
+                await self._check_storage_health(component)
+            elif component_name == "multimodal":
+                await self._check_multimodal_health(component)
+            elif component_name in ("backup_service", "task_scheduler"):
+                await self._check_background_service_health(component)
             else:
                 # Generic health check for other components
                 await self._check_generic_component(component)
@@ -482,6 +510,108 @@ class DegradationMonitor:
             component.healthy = False
             component.error_rate = 1.0
             logger.warning(f"LLM health check failed: {e}")
+
+    async def _check_audio_health(self, component: ComponentHealth) -> None:
+        """Check audio service health (TTS/STT).
+
+        VIBE COMPLIANT: Integrates with MultimodalDegradationService.
+        """
+        try:
+            from services.common.multimodal_degradation import multimodal_degradation_service
+
+            # Initialize if needed
+            if not multimodal_degradation_service._initialized:
+                await multimodal_degradation_service.initialize()
+
+            # Check provider availability based on component
+            if component.name == "audio_tts":
+                provider = await multimodal_degradation_service.get_available_tts()
+                component.healthy = provider is not None
+            elif component.name == "audio_stt":
+                provider = await multimodal_degradation_service.get_available_stt()
+                component.healthy = provider is not None
+            elif component.name == "voice_service":
+                component.healthy = multimodal_degradation_service.is_voice_available()
+            else:
+                component.healthy = True
+
+            component.error_rate = 0.0 if component.healthy else 1.0
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Audio health check failed for {component.name}: {e}")
+
+    async def _check_storage_health(self, component: ComponentHealth) -> None:
+        """Check storage service health.
+
+        VIBE COMPLIANT: Checks storage provider availability.
+        """
+        try:
+            from services.common.multimodal_degradation import multimodal_degradation_service
+
+            if not multimodal_degradation_service._initialized:
+                await multimodal_degradation_service.initialize()
+
+            provider = await multimodal_degradation_service.get_available_storage()
+            component.healthy = provider is not None
+            component.error_rate = 0.0 if component.healthy else 1.0
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Storage health check failed: {e}")
+
+    async def _check_multimodal_health(self, component: ComponentHealth) -> None:
+        """Check overall multimodal service health.
+
+        Multimodal is healthy if at least voice OR storage is available.
+        """
+        try:
+            from services.common.multimodal_degradation import multimodal_degradation_service
+
+            if not multimodal_degradation_service._initialized:
+                await multimodal_degradation_service.initialize()
+
+            voice_ok = multimodal_degradation_service.is_voice_available()
+            storage_ok = await multimodal_degradation_service.get_available_storage() is not None
+
+            component.healthy = voice_ok or storage_ok
+            component.error_rate = 0.0 if (voice_ok and storage_ok) else (0.5 if component.healthy else 1.0)
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Multimodal health check failed: {e}")
+
+    async def _check_background_service_health(self, component: ComponentHealth) -> None:
+        """Check background service health (backup, task scheduler).
+
+        Background services depend on database and temporal.
+        """
+        try:
+            # Check database dependency
+            db_health = self.components.get("database")
+            temporal_health = self.components.get("temporal")
+
+            db_ok = db_health and db_health.healthy if db_health else True
+            temporal_ok = temporal_health and temporal_health.healthy if temporal_health else True
+
+            if component.name == "backup_service":
+                storage_health = self.components.get("storage")
+                storage_ok = storage_health and storage_health.healthy if storage_health else True
+                component.healthy = db_ok and storage_ok
+            elif component.name == "task_scheduler":
+                component.healthy = db_ok and temporal_ok
+            else:
+                component.healthy = db_ok
+
+            component.error_rate = 0.0 if component.healthy else 0.5
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Background service health check failed: {e}")
 
     def _calculate_degradation_level(self, component: ComponentHealth) -> DegradationLevel:
         """Calculate degradation level for a component."""
