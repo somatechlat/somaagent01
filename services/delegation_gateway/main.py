@@ -38,12 +38,9 @@ from prometheus_client import (
 from admin.common.exceptions import NotFoundError
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.publisher import DurablePublisher
 from services.common.tracing import setup_tracing
-import os
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 # Django settings used instead

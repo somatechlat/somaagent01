@@ -4,20 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 from jsonschema import ValidationError
 
-# Legacy import removed. Use centralized configuration via cfg.
-import os
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
+
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
 from services.common.tracing import setup_tracing
-import os
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 # Retrieve settings from the central configuration.

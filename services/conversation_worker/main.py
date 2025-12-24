@@ -7,8 +7,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
 from typing import Any, Dict
+
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
 
 from prometheus_client import start_http_server
 
@@ -19,7 +25,6 @@ from python.somaagent.context_builder import ContextBuilder, SomabrainHealthStat
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
@@ -35,9 +40,7 @@ from src.core.application.use_cases.conversation import (
     ProcessMessageInput,
     ProcessMessageUseCase,
 )
-import os
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead
 tracer = setup_tracing("conversation-worker", endpoint=APP.external.otlp_endpoint)

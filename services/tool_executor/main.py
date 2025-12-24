@@ -8,12 +8,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
+
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
 
 from python.integrations.somabrain_client import SomaBrainClient
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus
-from services.common.logging_config import setup_logging
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
@@ -38,9 +43,7 @@ from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.multimodal_executor import MultimodalExecutor
-import os
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
