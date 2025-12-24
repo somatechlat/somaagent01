@@ -1,10 +1,17 @@
 """Entry point for the memory replicator service when run as a standalone process.
 
 This allows the orchestrator to start the memory replicator service as a subprocess.
+VIBE COMPLIANT: Uses Django LOGGING configuration.
 """
 
 import asyncio
 import logging
+import os
+
+# Django setup MUST happen before any Django-dependent imports
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
 
 import uvicorn
 
@@ -12,8 +19,7 @@ from orchestrator.config import CentralizedConfig
 
 from .service import MemoryReplicatorService
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Use Django-configured logger (no basicConfig override)
 LOGGER = logging.getLogger(__name__)
 
 
