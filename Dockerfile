@@ -67,11 +67,11 @@ WORKDIR /opt/build
 #   - requirements-ml.txt:       Heavy ML/document processing
 #   - constraints-ml.txt:        Version constraints for ML packages
 #
-# ⚠️ IMPORTANT: When adding a NEW dependency:
-#    1. If it's a RUNTIME dependency → Add to BOTH requirements-dev.txt AND requirements.txt
-#    2. If it's DEV-ONLY (linter/test) → Add ONLY to requirements-dev.txt
-#
-COPY requirements.txt requirements-dev.txt requirements-ml.txt constraints-ml.txt ./
+#    # CRITICAL: Remove ALL hardcoded values from requirements.txt before adding packages.
+    #    1. If it's CORE → Add to requirements.txt (no version pin unless security issue)
+    #    2. If it's DEV-ONLY (linter/test) → Add ONLY to requirements-dev.txt
+    #
+COPY requirements.txt requirements-dev.txt requirements-core.txt requirements-gateway.txt requirements-worker.txt requirements-analyzer.txt ./
 
 # ============================================================================
 # Install Python dependencies based on build mode
