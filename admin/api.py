@@ -174,6 +174,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/search", search_router)
 
+    # Config (System configuration + Feature flags)
+    from admin.config.api import router as config_router
+
+    api.add_router("/config", config_router)
+
     return api
 
 
