@@ -1,427 +1,391 @@
-# AGENT TASKS — SomaAgent01 WebUI SaaS Implementation
+# AGENT_TASKS — SomaAgent01 Complete Implementation Tracker
 
-**Document ID:** SA01-AGENT-TASKS-2025-12
-**Version:** 1.0
-**Created:** 2025-12-24
+**Document ID:** SA01-AGENT-TASKS-2025-12  
+**Version:** 2.0  
+**Updated:** 2025-12-24  
 **Status:** CANONICAL — Agent Single Source of Truth
 
-> **CRITICAL:** This file is used by the AI agent to track implementation progress.
-> **DO NOT DELETE OR REPLACE** — Only update status markers.
+> **CRITICAL:** This is the SINGLE task file for tracking ALL implementation.
+> Status: `[ ]` Not Started | `[/]` In Progress | `[x]` Complete | `[!]` Blocked
 
 ---
 
-## How to Use This File
+## Progress Summary
 
-- `[ ]` Not started
-- `[/]` In progress
-- `[x]` Complete
-- `[!]` Blocked
+| Phase | Focus | Status | Tasks |
+|-------|-------|--------|-------|
+| **0** | SaaS Architecture (Docs) | ✅ Complete | 15/15 |
+| **1** | Foundation | ⏳ Ready | 0/28 |
+| **2** | Authentication | ⬜ Pending | 0/20 |
+| **3** | Platform Admin (Eye of God) | ⬜ Pending | 0/35 |
+| **4** | Tenant Admin | ⬜ Pending | 0/28 |
+| **5** | Agent UI | ⬜ Pending | 0/35 |
+| **6** | SomaBrain Integration | ⬜ Pending | 0/25 |
+| **7** | Multimodal & Advanced | ⬜ Pending | 0/40 |
 
----
-
-## Phase 1: Docker Infrastructure (Priority: HIGH)
-
-### 1.1 Docker Deployment
-- [x] Main Dockerfile (unified) - 193 lines with build args
-- [x] Dockerfile.gateway (Django-only) - 86 lines - FIXED
-- [x] Dockerfile.worker (Kafka/Temporal) - 77 lines
-- [x] Dockerfile.analyzer (ML) - 114 lines
-- [/] Build core profile images - BUILDING (24min+)
-- [ ] Verify all services start correctly
-- [ ] Document build commands
-
-### 1.2 Docker Compose Profiles
-- [ ] `core` - postgres (20432), redis (20379), kafka (20092), gateway (21016)
-- [ ] `auth` - postgres, keycloak (20880)
-- [ ] `vectors` - etcd, minio (20900), milvus (20530)
-- [ ] `security` - spicedb (20051), opa (20181)
-- [ ] `observability` - prometheus (20090), grafana (20300)
+**Total:** ~226 tasks | **Complete:** 15 | **Timeline:** 11-14 weeks
 
 ---
 
-## Phase 2: Integration Testing (Priority: HIGH)
+## Phase 0: SaaS Architecture Documentation ✅
 
-### 2.1 Django Tests
-- [x] Run `pytest tests/django/ -v` - 41/47 passing
-- [!] Verify SomaBrain connection (port 9696) - BLOCKED: SomaBrain not running
-- [ ] All 47 tests passing
-
-### 2.2 End-to-End Tests
-- [x] Gateway health check - /api/health endpoint added
-- [ ] Chat endpoint test
-- [ ] WebSocket connection test
-
----
-
-## Phase 3: SomaBrain Client Completion (Priority: HIGH)
-
-From CANONICAL_REQUIREMENTS.md Section 14.2:
-
-### 3.1 Standard Mode Endpoints
-- [x] `health()` - GET `/health` - ADDED
-- [ ] `adaptation_reset()` - POST `/context/adaptation/reset`
-- [ ] `act()` - POST `/act` with salience scoring
-- [ ] `brain_sleep_mode()` - POST `/api/brain/sleep_mode`
-- [ ] `util_sleep()` - POST `/api/util/sleep`
-- [ ] `personality_set()` - POST `/personality`
-- [ ] `memory_config_get()` - GET `/config/memory`
-- [ ] `memory_config_patch()` - PATCH `/config/memory`
-- [ ] `cognitive_thread_create()` - POST `/cognitive/thread`
-- [ ] `cognitive_thread_next()` - GET `/cognitive/thread/next`
-- [ ] `cognitive_thread_reset()` - PUT `/cognitive/thread/reset`
-
-### 3.2 Admin Mode Endpoints (ADMIN ONLY)
-- [ ] `list_services()` - GET `/admin/services`
-- [ ] `get_service_status()` - GET `/admin/services/{name}`
-- [ ] `start_service()` - POST `/admin/services/{name}/start`
-- [ ] `stop_service()` - POST `/admin/services/{name}/stop`
-- [ ] `restart_service()` - POST `/admin/services/{name}/restart`
-- [ ] `sleep_status_all()` - GET `/sleep/status/all`
-- [ ] `micro_diag()` - GET `/micro/diag`
-- [ ] `get_features()` - GET `/admin/features`
-- [ ] `update_features()` - POST `/admin/features`
+- [x] Analyze eye-of-god-uix specs (12 files)
+- [x] Analyze agentskin-uix specs (3 files)
+- [x] Analyze somabrain-integration specs (3 files)
+- [x] Analyze somastack-unified-ui specs (5 files)
+- [x] Create CANONICAL_SAAS_DESIGN.md (795 lines)
+- [x] Create SRS-SAAS-ADMIN.md (227 lines)
+- [x] Create SRS-TENANT-ADMIN.md (277 lines)
+- [x] Create SRS-AGENT-USER.md (635 lines)
+- [x] Create SRS-ERROR-HANDLING.md (337 lines)
+- [x] Create SRS-AUTHENTICATION.md (232 lines)
+- [x] Create SRS-PERMISSION-MATRIX.md (608 lines)
+- [x] Create SRS INDEX.md (214 lines)
+- [x] Create TASKS-PHASE1-4 (4 files)
+- [x] Create CANONICAL_USER_JOURNEYS_SRS.md (758 lines)
+- [x] Git commit all documentation
 
 ---
 
-## Phase 4: Eye of God UIX Foundation (Priority: HIGH)
+## Phase 1: Foundation
 
-From docs/specs/eye-of-god-uix/tasks.md:
+### 1.1 Database Models (Django)
+- [ ] SubscriptionTier model (limits, pricing, lago_code)
+- [ ] Tenant model (org, slug, status, subscription FK)
+- [ ] TenantUser model (user, tenant, role, status)
+- [ ] Agent model (tenant FK, config, features, status)
+- [ ] AgentUser model (agent access, modes allowed)
+- [ ] AuditLog model (all events)
+- [ ] OutboxMessage model (ZDL pattern)
+- [ ] Run initial migrations
 
-### 4.1 Django Project Setup (Task 1)
-- [ ] Django 5.x project at `ui/backend/`
-- [ ] Django Ninja API router
-- [ ] ASGI with Django Channels
-- [ ] PostgreSQL + Redis connections
+### 1.2 SpiceDB Schema
+- [ ] Platform definition (God Mode)
+- [ ] saas_admin definition with platform->manage_roles
+- [ ] Tenant definition with role hierarchy
+- [ ] Agent definition with mode permissions
+- [ ] Resource permissions (chat, memory, cognitive, voice)
+- [ ] SpiceDB client wrapper (grpc-js)
+- [ ] @require_permission decorator
+- [ ] Permission tests
 
-### 4.2 SpiceDB Integration (Task 2)
-- [ ] SpiceDB container in docker-compose
-- [ ] Permission schema (schema.zed)
-- [ ] SpiceDB gRPC client
-- [ ] `@require_permission` decorator
-- [ ] Permission caching (Redis, TTL 60s)
+### 1.3 Keycloak Setup
+- [ ] Create somaagent realm
+- [ ] Google OAuth provider
+- [ ] GitHub OAuth provider
+- [ ] TOTP MFA configuration
+- [ ] Token lifetimes (15min access, 30min session)
+- [ ] Django client credentials
+- [ ] Export realm JSON
 
-### 4.3 Lit Project Setup (Task 3)
-- [ ] Lit 3.x project with Vite
-- [ ] TypeScript strict mode
-- [ ] @vaadin/router for SPA
-- [ ] @lit/context for state
-
-### 4.4 Base UI Components (Task 4)
-- [ ] `eog-button`, `eog-input`, `eog-select`
-- [ ] `eog-toggle`, `eog-slider`, `eog-spinner`
-- [ ] `eog-modal`, `eog-toast`
-
-### 4.5 Auth Store & Service (Task 5)
-- [ ] AuthStore with Lit signals
-- [ ] JWT token management
-- [ ] Session restoration
-
-### 4.6 WebSocket Client (Task 6)
-- [ ] Connection with token auth
-- [ ] Reconnection with exponential backoff
-- [ ] Heartbeat (20s interval)
-
-### 4.7 API Client (Task 7)
-- [ ] Base ApiClient class
-- [ ] Retry logic (3 attempts)
-- [ ] Token injection
-
-### 4.8 App Shell (Task 8)
-- [ ] `eog-app` root component
-- [ ] `eog-header`, `eog-sidebar`, `eog-main`
-- [ ] Route configuration
+### 1.4 Base Lit Components
+- [ ] Design tokens CSS (somastack-tokens.css)
+- [ ] saas-shell (app container)
+- [ ] saas-nav (sidebar navigation)
+- [ ] saas-card, saas-table, saas-modal
+- [ ] saas-form, saas-input, saas-button
+- [ ] saas-toast, saas-badge
+- [ ] saas-degraded-banner
 
 ---
 
-## Phase 5: Core Features (Priority: HIGH)
+## Phase 2: Authentication
 
-### 5.1 Mode Store & Selector (Task 9)
-- [ ] ModeStore with available modes
-- [ ] Permission check on mode change
-- [ ] `eog-mode-selector` component
-- [ ] DEGRADED mode transition
+### 2.1 Login Flow
+- [ ] saas-login view component
+- [ ] Keycloak OAuth redirect
+- [ ] JWT storage (httpOnly cookie)
+- [ ] Session restoration from cookie
+- [ ] Login error handling
 
-### 5.2 Theme Store & AgentSkin (Task 10)
-- [ ] ThemeStore with theme list
-- [ ] Theme validation (26 variables)
-- [ ] Contrast ratio validation (WCAG AA)
-- [ ] Live preview mode
+### 2.2 MFA Setup
+- [ ] saas-mfa-setup view
+- [ ] TOTP QR code display
+- [ ] Backup codes generation
+- [ ] MFA verification flow
 
-### 5.3 Settings Views (Task 11)
-- [ ] `eog-settings-view` with tabs
-- [ ] Agent, External, Connectivity, System tabs
-- [ ] Settings persistence
+### 2.3 Password Reset
+- [ ] Reset request flow
+- [ ] Email integration (Keycloak action)
+- [ ] Reset completion
 
-### 5.4 Chat View (Task 13-14)
-- [ ] `eog-chat-view` layout
-- [ ] `eog-conversation-list` sidebar
-- [ ] `eog-chat-panel`, `eog-message`, `eog-chat-input`
-- [ ] Streaming response display
-- [ ] Kafka message publishing
+### 2.4 Invitation Flow
+- [ ] POST /api/v2/admin/users/invite
+- [ ] Email sending
+- [ ] Invitation acceptance
+- [ ] Onboarding wizard
 
-### 5.5 Themes View (Task 15)
-- [ ] `eog-themes-view` gallery
-- [ ] Theme upload, download/install
-- [ ] Rate limiting (10 uploads/hour)
-
-### 5.6 Django Models (Task 16)
-- [ ] Tenant, User, Settings, Theme, FeatureFlag, AuditLog models
-- [ ] Migrations
+### 2.5 Session Management
+- [ ] Token refresh service
+- [ ] Session timeout handling
+- [ ] Concurrent session limits
+- [ ] Impersonation tokens (SAAS only)
 
 ---
 
-## Phase 6: SaaS Admin Backend (Priority: HIGH)
+## Phase 3: Platform Admin (Eye of God) 🔴
 
-From docs/specs/eye-of-god-uix/SAAS_ADMIN_SRS.md:
+### 3.1 Platform Dashboard
+- [ ] GET /api/v2/saas/stats (tenants, MRR, users)
+- [ ] GET /api/v2/saas/health
+- [ ] GET /api/v2/saas/activity
+- [ ] saas-platform-dashboard view
 
-### 6.1 Tenant Management APIs
-- [ ] `GET /api/v2/saas/tenants` - List tenants
-- [ ] `POST /api/v2/saas/tenants` - Create tenant
-- [ ] `GET /api/v2/saas/tenants/{id}` - Get tenant
-- [ ] `PUT /api/v2/saas/tenants/{id}` - Update tenant
-- [ ] `DELETE /api/v2/saas/tenants/{id}` - Delete tenant
-- [ ] `POST /api/v2/saas/tenants/{id}/suspend` - Suspend
-- [ ] `POST /api/v2/saas/tenants/{id}/activate` - Activate
+### 3.2 Tenant Management
+- [ ] GET /api/v2/saas/tenants
+- [ ] POST /api/v2/saas/tenants
+- [ ] PUT /api/v2/saas/tenants/{id}
+- [ ] DELETE /api/v2/saas/tenants/{id}
+- [ ] POST /api/v2/saas/tenants/{id}/suspend
+- [ ] POST /api/v2/saas/tenants/{id}/activate
+- [ ] POST /api/v2/saas/tenants/{id}/impersonate
+- [ ] saas-tenant-list view
+- [ ] saas-tenant-form modal
 
-### 6.2 Subscription APIs
-- [ ] `GET /api/v2/saas/subscriptions` - List tiers
-- [ ] `POST /api/v2/saas/subscriptions` - Create tier
-- [ ] `PUT /api/v2/saas/tenants/{id}/subscription` - Assign tier
+### 3.3 Role Management (NEW from SRS-PERMISSION-MATRIX)
+- [ ] GET /api/v2/saas/roles
+- [ ] POST /api/v2/saas/roles
+- [ ] PUT /api/v2/saas/roles/{id}
+- [ ] DELETE /api/v2/saas/roles/{id}
+- [ ] saas-role-list view
+- [ ] saas-role-editor view (permission tree)
 
-### 6.3 Tier Builder APIs
-- [ ] `GET /api/v2/saas/tiers` - List tiers
-- [ ] `POST /api/v2/saas/tiers` - Create tier
-- [ ] `GET /api/v2/saas/tiers/{id}` - Get tier with features
-- [ ] `PUT /api/v2/saas/tiers/{id}` - Update tier
-- [ ] `DELETE /api/v2/saas/tiers/{id}` - Delete tier
-- [ ] `GET /api/v2/saas/features/catalog` - List features
-- [ ] `GET /api/v2/saas/features/{feature}/schema` - Get schema
+### 3.4 Permission Browser (NEW)
+- [ ] GET /api/v2/saas/permissions
+- [ ] saas-permission-browser view
+- [ ] Filter by level
 
-### 6.4 Usage & Billing APIs
-- [ ] `GET /api/v2/saas/usage` - Platform usage
-- [ ] `GET /api/v2/saas/tenants/{id}/usage` - Tenant usage
-- [ ] `GET /api/v2/saas/billing` - Billing summary
+### 3.5 Subscription Tier Builder
+- [ ] GET /api/v2/saas/tiers
+- [ ] POST /api/v2/saas/tiers
+- [ ] PUT /api/v2/saas/tiers/{id}
+- [ ] DELETE /api/v2/saas/tiers/{id}
+- [ ] saas-tier-builder view
+- [ ] Feature toggles (Voice, DEV, TRN, SSO)
+- [ ] Lago sync
 
-### 6.5 Database Schema
-- [ ] `subscription_tiers` table
-- [ ] `tenants` table
-- [ ] `tenant_users` table
-- [ ] `agents` table
-- [ ] `agent_users` table
-- [ ] `usage_records` table
-- [ ] `saas_features` table
-- [ ] `saas_tier_features` table
-- [ ] `saas_feature_providers` table
+### 3.6 Platform Billing
+- [ ] GET /api/v2/saas/billing/revenue
+- [ ] GET /api/v2/saas/billing/invoices
+- [ ] saas-revenue-dashboard view
+- [ ] Lago webhooks
 
----
-
-## Phase 7: SaaS Admin Frontend (Priority: MEDIUM)
-
-### 7.1 SAAS Dashboard
-- [ ] `eog-platform-dashboard` - Platform overview
-- [ ] Revenue/billing summary
-- [ ] System health metrics
-
-### 7.2 Tenant Views
-- [ ] `eog-tenant-list` - Tenant grid
-- [ ] `eog-tenant-form` - Create/edit modal
-- [ ] Suspend/Activate flows
-
-### 7.3 Subscription Views
-- [ ] `eog-subscription-manager` - Tier config
-- [ ] `eog-tier-builder` - Drag-drop composer
-- [ ] Feature settings modals (full-screen)
-
-### 7.4 User Management
-- [ ] `eog-user-table` - User list
-- [ ] `eog-role-selector` - Role dropdown
-- [ ] Invite/remove flows
-
-### 7.5 Agent Management
-- [ ] `eog-agent-grid` - Agent cards
-- [ ] `eog-agent-form` - Create/configure
-- [ ] Quota enforcement
+### 3.7 Platform Health
+- [ ] Health check endpoints per service
+- [ ] saas-health-dashboard view
+- [ ] Degradation alerts
 
 ---
 
-## Phase 8: Voice Integration (Priority: MEDIUM)
+## Phase 4: Tenant Admin 🟠🟡
 
-### 8.1 Voice Store (Task 17)
-- [ ] VoiceStore with provider state
-- [ ] Voice state machine
+### 4.1 Tenant Dashboard
+- [ ] GET /api/v2/admin/stats
+- [ ] saas-tenant-dashboard view
+- [ ] Agent grid with status
+- [ ] Quota usage cards
 
-### 8.2 Local Voice Service (Task 18)
-- [ ] Microphone capture
-- [ ] VAD (WebRTC)
-- [ ] Whisper STT, Kokoro TTS
+### 4.2 User Management
+- [ ] GET /api/v2/admin/users
+- [ ] POST /api/v2/admin/users/invite
+- [ ] PUT /api/v2/admin/users/{id}
+- [ ] DELETE /api/v2/admin/users/{id}
+- [ ] saas-user-management view
+- [ ] Role selector dropdown
 
-### 8.3 AgentVoiceBox Integration (Task 19)
-- [ ] WebSocket connection
-- [ ] Speech-on-speech
-- [ ] Turn detection
+### 4.3 Agent Management
+- [ ] GET /api/v2/admin/agents
+- [ ] POST /api/v2/admin/agents
+- [ ] PUT /api/v2/admin/agents/{id}
+- [ ] DELETE /api/v2/admin/agents/{id}
+- [ ] saas-agent-grid view
+- [ ] saas-agent-form modal
 
-### 8.4 Voice UI (Tasks 21-22)
-- [ ] `eog-voice-button`
-- [ ] `eog-voice-overlay` with visualizer
+### 4.4 Tenant Roles
+- [ ] GET /api/v2/admin/roles
+- [ ] POST /api/v2/admin/roles
+- [ ] saas-tenant-roles view
 
----
+### 4.5 Tenant Settings
+- [ ] GET /api/v2/admin/settings
+- [ ] PUT /api/v2/admin/settings
+- [ ] API Keys management
+- [ ] Branding settings
 
-## Phase 9: Advanced Features (Priority: MEDIUM)
+### 4.6 Tenant Billing
+- [ ] GET /api/v2/admin/billing
+- [ ] POST /api/v2/admin/billing/upgrade
+- [ ] saas-tenant-billing view
 
-### 9.1 Memory View (Task 23)
-- [ ] `eog-memory-view` layout
-- [ ] Virtual scrolling (10K+ items)
-- [ ] Memory CRUD
-
-### 9.2 Cognitive Panel (Task 24)
-- [ ] Neuromodulator gauges
-- [ ] Adaptation panel
-- [ ] Sleep controls
-
-### 9.3 Admin Dashboard (Task 25)
-- [ ] User management
-- [ ] Tenant management
-- [ ] System health
-
-### 9.4 Audit Log (Task 26)
-- [ ] Virtual scrolling table
-- [ ] Date/action/user filters
-- [ ] CSV export
-
-### 9.5 Tool Catalog (Task 27)
-- [ ] Tool grid
-- [ ] Permission by mode
-- [ ] Real-time output
-
-### 9.6 Scheduler (Task 28)
-- [ ] Task list
-- [ ] Cron expression builder
-- [ ] Execution history
+### 4.7 Audit Log
+- [ ] GET /api/v2/admin/audit
+- [ ] saas-audit-log view
+- [ ] Filters, CSV export
 
 ---
 
-## Phase 10: Optimization (Priority: LOW)
+## Phase 5: Agent UI 🟢🔵🟣⚪⚫
 
-### 10.1 Service Worker (Task 29)
-- [ ] Asset caching
-- [ ] Offline fallback
+### 5.1 Agent Configuration (ADM Mode)
+- [ ] GET /api/v2/agent/{id}/config
+- [ ] PUT /api/v2/agent/{id}/config
+- [ ] saas-agent-config view
+- [ ] Model configuration tabs
+- [ ] Feature flags, MCP servers
 
-### 10.2 Code Splitting (Task 30)
-- [ ] Manual chunks in Vite
-- [ ] Initial bundle < 100KB
+### 5.2 Chat Interface (STD Mode)
+- [ ] GET /api/v2/chat/conversations
+- [ ] POST /api/v2/chat/conversations
+- [ ] POST /api/v2/chat/messages
+- [ ] WebSocket streaming
+- [ ] saas-chat-view layout
+- [ ] saas-conversation-list sidebar
+- [ ] saas-chat-panel messages
+- [ ] saas-chat-input with attachments
 
-### 10.3 Virtual Scrolling (Task 31)
-- [ ] `eog-virtual-list` component
+### 5.3 Memory Browser
+- [ ] GET /api/v2/memory
+- [ ] POST /api/v2/memory/search
+- [ ] DELETE /api/v2/memory/{id}
+- [ ] saas-memory-view layout
+- [ ] Virtual scrolling
+- [ ] Memory graph visualization
 
-### 10.4 Performance Testing (Task 32)
-- [ ] k6 load tests
-- [ ] 10K concurrent WebSocket
+### 5.4 Developer Mode (DEV)
+- [ ] saas-debug-console
+- [ ] saas-api-logs
+- [ ] saas-mcp-inspector
+- [ ] saas-tool-playground
+- [ ] saas-ws-monitor
 
-### 10.5 Accessibility (Task 33)
-- [ ] axe-core tests
-- [ ] WCAG AA compliance
+### 5.5 Trainer Mode (TRN)
+- [ ] GET /api/v2/cognitive/neuromodulators
+- [ ] PUT /api/v2/cognitive/neuromodulators
+- [ ] POST /api/v2/cognitive/sleep-cycle
+- [ ] saas-cognitive-panel
+- [ ] Neuromodulator sliders
+- [ ] Sleep cycle controls
 
-### 10.6 Security (Task 34)
-- [ ] OWASP ZAP scan
-- [ ] XSS prevention
+### 5.6 Voice Integration
+- [ ] Voice store (state machine)
+- [ ] Local voice (Whisper/Kokoro)
+- [ ] AgentVoiceBox WebSocket
+- [ ] saas-voice-button
+- [ ] saas-voice-overlay
 
----
-
-## Phase 11: Zero Data Loss Architecture (Priority: CRITICAL) ✅
-
-### 11.1 Transactional Outbox Pattern
-- [x] `OutboxMessage` Django model
-- [x] `DeadLetterMessage` Django model
-- [x] `IdempotencyRecord` Django model
-- [x] `PendingMemory` Django model (degradation queue)
-
-### 11.2 Django Management Commands
-- [x] `publish_outbox` - Kafka outbox publisher
-- [x] `sync_memories` - SomaBrain degradation recovery
-
-### 11.3 Django Signals
-- [x] `memory_created` signal
-- [x] `conversation_message` signal
-- [x] `tool_executed` signal
-- [x] `OutboxEntryManager` for transactional outbox
-
-### 11.4 Documentation
-- [x] `docs/ZERO_DATA_LOSS_ARCHITECTURE.md` - SRS specification
-- [x] `docs/ZERO_DATA_LOSS_IMPLEMENTATION.md` - Status document
-
-### 11.5 Integration (Pending)
-- [ ] Wire conversation_worker to use outbox
-- [ ] Wire tool_executor to use outbox
-- [ ] Configure Kafka exactly-once in docker-compose
-
-### 11.6 Monitoring (Pending)
-- [ ] Prometheus metrics for outbox depth
-- [ ] DLQ depth alerting
-- [ ] Sync lag monitoring
+### 5.7 Degraded Mode (DGR)
+- [ ] DegradationMonitor integration
+- [ ] Degradation banner
+- [ ] Session-only memory fallback
+- [ ] LLM fallback chain
 
 ---
 
-## Phase 12: Refactoring & Documentation ✅
+## Phase 6: SomaBrain Integration
 
-### 12.1 Legacy Code Removal
-- [x] HARD DELETE `services/ui/` directory
-- [x] HARD DELETE `services/ui_proxy/` directory
-- [x] Remove legacy FAISS code from `admin/core/helpers/memory.py`
-- [x] Remove legacy app reference from `services/gateway/main.py`
+### 6.1 Core Endpoints
+- [ ] adaptation_reset() - POST /context/adaptation/reset
+- [ ] act() - POST /act with salience
+- [ ] brain_sleep_mode() - POST /api/brain/sleep_mode
+- [ ] util_sleep() - POST /api/util/sleep
 
-### 12.2 Documentation
-- [x] `docs/USER_JOURNEYS.md` - 15 user journey flows
-- [x] `docs/GAP_ANALYSIS.md` - Current status vs requirements
+### 6.2 Memory Endpoints
+- [ ] personality_set() - POST /personality
+- [ ] memory_config_get() - GET /config/memory
+- [ ] memory_config_patch() - PATCH /config/memory
 
-### 12.3 Bug Fixes
-- [x] Add `health()` method to `SomaBrainClient`
-- [x] Add `/api/health` endpoint to gateway
-- [x] Fix circular import in `admin/llm`
-- [x] Add `@pytest.mark.django_db` to ORM tests
+### 6.3 Cognitive Thread
+- [ ] cognitive_thread_create()
+- [ ] cognitive_thread_next()
+- [ ] cognitive_thread_reset()
 
----
+### 6.4 Admin Endpoints (ADMIN mode only)
+- [ ] list_services()
+- [ ] get_service_status()
+- [ ] start/stop/restart_service()
+- [ ] sleep_status_all()
+- [ ] micro_diag()
+- [ ] get_features() / update_features()
 
-## Phase 13: LLM Degradation & Resilience ✅
-
-### 13.1 LLM Degradation Service
-- [x] `LLMDegradationService` with automatic failover
-- [x] Provider health tracking (HEALTHY/DEGRADED/UNAVAILABLE)
-- [x] Fallback chains by use case (chat, coding, fast, embedding)
-- [x] Circuit breaker integration
-
-### 13.2 Centralized Notification Service
-- [x] `DegradationNotificationService` (Django + Kafka)
-- [x] Kafka topic: `degradation.events`
-- [x] Suppression window to prevent alert storms
-- [x] Webhook callback support
-
-### 13.3 Integration
-- [x] LLM health check in DegradationMonitor
-- [x] LLM added to service dependencies
-- [x] `_check_llm_health()` method
-- [x] Circuit breaker for LLM providers
-
-### 13.4 Documentation
-- [x] `docs/RESILIENCE_ARCHITECTURE.md` - Complete architecture
+### 6.5 Integration Tests
+- [ ] test_adaptation_reset
+- [ ] test_act_execution
+- [ ] test_sleep_transitions
+- [ ] test_admin_services
 
 ---
 
-## References
+## Phase 7: Multimodal & Advanced Features
 
-- **Eye of God UIX**: `docs/specs/eye-of-god-uix/`
-- **CANONICAL_REQUIREMENTS.md**: 100+ requirements
-- **CANONICAL_TASKS.md**: 250+ features
-- **VIBE_CODING_RULES.md**: Coding standards
-- **ZERO_DATA_LOSS_ARCHITECTURE.md**: ZDL SRS specification
-- **RESILIENCE_ARCHITECTURE.md**: Degradation & resilience architecture
+### 7.1 Capability Registry
+- [ ] CapabilityRegistry service
+- [ ] register(), find_candidates()
+- [ ] Health tracking, circuit breakers
+
+### 7.2 Asset Pipeline
+- [ ] AssetStore service
+- [ ] SHA256 deduplication
+- [ ] S3 integration
+- [ ] ProvenanceRecorder
+
+### 7.3 Multimodal Execution
+- [ ] OpenAI DALL-E adapter
+- [ ] Mermaid diagram adapter
+- [ ] Playwright screenshot adapter
+- [ ] DAG execution engine
+
+### 7.4 Quality Gating
+- [ ] AssetCritic service
+- [ ] LLM quality evaluation
+- [ ] Bounded retry logic
+
+### 7.5 Temporal Workflows
+- [ ] Conversation workflow
+- [ ] Tool execution workflow
+- [ ] A2A workflow
+- [ ] Maintenance workflows
+
+### 7.6 Observability
+- [ ] Prometheus metrics on all services
+- [ ] OpenTelemetry spans
+- [ ] Grafana dashboards
 
 ---
 
-**Total Tasks:** ~190
-**Completed Today:** 35+ tasks (Phase 11, 12, 13)
-**Estimated Duration:** 10+ weeks
+## Document References
+
+| Document | Lines | Purpose |
+|----------|-------|---------|
+| CANONICAL_SAAS_DESIGN.md | 795 | Master design |
+| CANONICAL_USER_JOURNEYS_SRS.md | 758 | User journeys |
+| CANONICAL_REQUIREMENTS.md | 433 | All requirements |
+| CANONICAL_TASKS.md | 505 | Legacy task list |
+| SRS-PERMISSION-MATRIX.md | 608 | Permission architecture |
+| docs/srs/* | 7 files | Role-specific SRS |
+| docs/tasks/* | 4 files | Phase task details |
+
+---
+
+## Quick Start: Phase 1
+
+```bash
+cd /Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01
+
+# 1. Database models
+# Edit: admin/core/models/
+
+# 2. SpiceDB schema
+# Edit: schemas/spicedb/schema.zed
+
+# 3. Keycloak
+# Edit: infrastructure/keycloak/
+
+# 4. Lit components
+# Edit: webui/src/components/
+```
 
 ---
 
 **Last Updated:** 2025-12-24
+**Maintained By:** Gemini Agent
 
