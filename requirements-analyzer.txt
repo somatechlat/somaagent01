@@ -1,7 +1,7 @@
 # ============================================================================
 # Analyzer Requirements - DJANGO + PyTorch + Document Processing
 # ============================================================================
-# VIBE COMPLIANT: NO FastAPI, NO Flask, NO SQLAlchemy
+
 # Build: make build-analyzer
 #
 # CPU/GPU DETECTION:

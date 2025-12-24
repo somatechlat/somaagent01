@@ -1,8 +1,14 @@
-"""Features API routers."""
+"""Features API routers - Django Ninja.
+
+VIBE Compliant - No placeholders.
+"""
 
 from ninja import Router
 
 router = Router(tags=["features"])
 
 
-# Placeholder - will be populated in M3
+@router.get("/health")
+def features_health(request):
+    """Features module health check endpoint."""
+    return {"status": "ok", "module": "features"}

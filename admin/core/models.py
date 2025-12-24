@@ -305,6 +305,45 @@ class AuditLog(models.Model):
 
 
 # =============================================================================
+# MEMORY REPLICA MODELS
+# =============================================================================
+
+
+class MemoryReplica(models.Model):
+    """Memory replica for WAL events.
+    
+    Replaces the legacy wal_memory_replica raw SQL table.
+    Stores a permanent record of all memory events for retrieval and audit.
+    """
+
+    id = models.BigAutoField(primary_key=True)
+    event_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    session_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    persona_id = models.CharField(max_length=255, null=True, blank=True)
+    tenant = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    role = models.CharField(max_length=50, null=True, blank=True)
+    coord = models.CharField(max_length=255, null=True, blank=True)
+    request_id = models.CharField(max_length=255, null=True, blank=True)
+    trace_id = models.CharField(max_length=255, null=True, blank=True)
+    payload = models.JSONField(default=dict, help_text="The core memory content payload")
+    wal_timestamp = models.FloatField(null=True, blank=True, db_index=True, help_text="Original WAL event timestamp")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "memory_replica"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "session_id"]),
+            models.Index(fields=["wal_timestamp"]),
+        ]
+        verbose_name = "Memory Replica"
+        verbose_name_plural = "Memory Replicas"
+
+    def __str__(self):
+        return f"MemoryReplica({self.event_id})"
+
+
+# =============================================================================
 # DEAD LETTER QUEUE MODELS (replaces dlq_store.py)
 # =============================================================================
 

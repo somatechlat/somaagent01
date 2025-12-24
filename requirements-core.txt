@@ -2,7 +2,7 @@
 # SomaAgent01 Core Requirements - DJANGO ONLY
 # ============================================================================
 #
-# VIBE RULE: NO FastAPI, NO Flask, NO SQLAlchemy
+
 # Django + Django Ninja ONLY
 #
 # ============================================================================

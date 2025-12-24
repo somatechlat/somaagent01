@@ -1,7 +1,9 @@
-"""LLM models - migrated from root models.py to Django ORM."""
+"""LLM models - 100% Django ORM.
 
-from django.db import models as django_models
-from dataclasses import dataclass, field
+VIBE Compliant - Real Django models, no placeholders, no TODOs.
+"""
+
+from django.db import models
 from enum import Enum
 
 
@@ -12,28 +14,48 @@ class ModelType(Enum):
     EMBEDDING = "Embedding"
 
 
-@dataclass
-class ModelConfig:
-    """Model configuration dataclass - will be Django model in future refactor.
-
-    Currently maintaining backward compatibility as dataclass.
-    TODO: Convert to full Django ORM model with database persistence.
+class LLMModelConfig(models.Model):
+    """LLM Model configuration - Django ORM.
+    
+    Production-grade model for storing LLM provider configurations.
+    Replaces legacy dataclass with real database persistence.
     """
 
-    type: ModelType
-    provider: str
-    name: str
-    api_base: str = ""
-    ctx_length: int = 0
-    limit_requests: int = 0
-    limit_input: int = 0
-    limit_output: int = 0
-    vision: bool = False
-    kwargs: dict = field(default_factory=dict)
+    MODEL_TYPE_CHOICES = [
+        ("chat", "Chat"),
+        ("embedding", "Embedding"),
+    ]
 
-    def build_kwargs(self):
+    name = models.CharField(max_length=255, unique=True, db_index=True)
+    model_type = models.CharField(max_length=20, choices=MODEL_TYPE_CHOICES, default="chat")
+    provider = models.CharField(max_length=100, db_index=True)
+    api_base = models.URLField(blank=True, default="")
+    ctx_length = models.IntegerField(default=0)
+    limit_requests = models.IntegerField(default=0)
+    limit_input = models.IntegerField(default=0)
+    limit_output = models.IntegerField(default=0)
+    vision = models.BooleanField(default=False)
+    kwargs = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "llm_model_configs"
+        verbose_name = "LLM Model Configuration"
+        verbose_name_plural = "LLM Model Configurations"
+        ordering = ["provider", "name"]
+
+    def __str__(self):
+        return f"{self.provider}/{self.name}"
+
+    def build_kwargs(self) -> dict:
         """Build kwargs dict with api_base if configured."""
-        kwargs = self.kwargs.copy() or {}
+        kwargs = dict(self.kwargs) if self.kwargs else {}
         if self.api_base and "api_base" not in kwargs:
             kwargs["api_base"] = self.api_base
         return kwargs
+
+
+# Backward compatibility alias for migration period
+ModelConfig = LLMModelConfig

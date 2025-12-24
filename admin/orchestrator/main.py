@@ -17,11 +17,11 @@ import logging
 import os
 from typing import Any, Dict
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
-
-import django
-
-django.setup()
+# VIBE Rule: No global side effects in imported modules.
+# django.setup() should only be called if this is the entry point.
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+    django.setup()
 
 import uvicorn
 from django.core.asgi import get_asgi_application

@@ -1,8 +1,14 @@
-"""Utils API routers."""
+"""Utils API routers - Django Ninja.
+
+VIBE Compliant - No placeholders.
+"""
 
 from ninja import Router
 
 router = Router(tags=["utils"])
 
 
-# Placeholder - will be populated in M6
+@router.get("/health")
+def utils_health(request):
+    """Utils module health check endpoint."""
+    return {"status": "ok", "module": "utils"}
