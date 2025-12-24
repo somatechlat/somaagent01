@@ -158,7 +158,6 @@ async def list_conversations(
     summary="Create conversation",
     auth=AuthBearer(),
 )
-@transaction.atomic
 async def create_conversation(request, payload: CreateConversationRequest) -> dict:
     """Create a new conversation.
     
