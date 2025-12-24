@@ -68,9 +68,9 @@ WORKDIR /opt/build
 #   - constraints-ml.txt:        Version constraints for ML packages
 #
 #    # CRITICAL: Remove ALL hardcoded values from requirements.txt before adding packages.
-    #    1. If it's CORE → Add to requirements.txt (no version pin unless security issue)
-    #    2. If it's DEV-ONLY (linter/test) → Add ONLY to requirements-dev.txt
-    #
+#    1. If it's CORE → Add to requirements.txt (no version pin unless security issue)
+#    2. If it's DEV-ONLY (linter/test) → Add ONLY to requirements-dev.txt
+#
 COPY requirements.txt requirements-dev.txt requirements-core.txt requirements-gateway.txt requirements-worker.txt requirements-analyzer.txt ./
 
 # ============================================================================
@@ -122,18 +122,16 @@ RUN if [ "${INCLUDE_ML_DEPS}" = "true" ]; then \
     if [ "${TORCH_VARIANT}" = "cpu" ]; then \
     TORCH_INDEX="https://download.pytorch.org/whl/cpu"; \
     TORCH_SPEC="torch==${TORCH_VERSION}"; \
-    CONSTRAINT_OPT="--constraint constraints-ml.txt"; \
     else \
     TORCH_INDEX="https://download.pytorch.org/whl/${TORCH_VARIANT}"; \
     TORCH_SPEC="torch==${TORCH_VERSION}+${TORCH_VARIANT}"; \
-    CONSTRAINT_OPT=""; \
     fi; \
     PIP_COMMON="--no-cache-dir --index-url https://pypi.org/simple --extra-index-url ${TORCH_INDEX}"; \
     # Install basic PyTorch CPU
     "${VENV_PATH}/bin/pip" install ${PIP_COMMON} ${TORCH_SPEC} && \
     # ⚠️ CRITICAL: Install from requirements-dev.txt (NOT requirements.txt!)
-    # This is the DEFAULT path for development builds
-    "${VENV_PATH}/bin/pip" install ${PIP_COMMON} -r requirements-dev.txt ${CONSTRAINT_OPT}; \
+    # This is the DEFAULT path for development builds - NO constraints for dev
+    "${VENV_PATH}/bin/pip" install ${PIP_COMMON} -r requirements-dev.txt; \
     fi
 
 
