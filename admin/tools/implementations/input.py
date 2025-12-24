@@ -1,4 +1,4 @@
-from python.helpers.tool import Tool
+from admin.core.helpers.tool import Tool
 from admin.tools.implementations.code_execution_tool import CodeExecution
 
 

@@ -14,7 +14,7 @@ from typing import Annotated, Any, ClassVar, Dict, List, Union
 from mcp.types import CallToolResult
 from pydantic import BaseModel, Discriminator, Field, PrivateAttr, Tag
 
-from python.helpers import dirty_json
+from admin.core.helpers import dirty_json
 
 # Re-export from extracted modules
 from admin.core.helpers.mcp_servers import (

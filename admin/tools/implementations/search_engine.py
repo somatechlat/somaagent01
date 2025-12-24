@@ -1,6 +1,6 @@
-from python.helpers.errors import handle_error
-from python.helpers.searxng import search as searxng
-from python.helpers.tool import Response, Tool
+from admin.core.helpers.errors import handle_error
+from admin.core.helpers.searxng import search as searxng
+from admin.core.helpers.tool import Response, Tool
 
 SEARCH_ENGINE_RESULTS = 10
 

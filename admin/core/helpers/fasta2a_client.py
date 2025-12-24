@@ -3,7 +3,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from admin.core.helpers.print_style import PrintStyle
-from python.observability.metrics import (
+from admin.core.observability.metrics import (
     fast_a2a_errors_total,
     fast_a2a_latency_seconds,
     fast_a2a_requests_total,

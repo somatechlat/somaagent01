@@ -5,7 +5,7 @@ from typing import Any, TypedDict
 
 import aiohttp
 
-from python.helpers import crypto
+from admin.core.helpers import crypto
 
 # Remote Function Call library
 # Call function via http request

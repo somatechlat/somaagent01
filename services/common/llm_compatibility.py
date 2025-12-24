@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle
     import dirty_json
-    from python.helpers import browser_use_monkeypatch
+    from admin.core.helpers import browser_use_monkeypatch
 except ImportError:
     ChatGoogle = None  # type: ignore
     dirty_json = None  # type: ignore

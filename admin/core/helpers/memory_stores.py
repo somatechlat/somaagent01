@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 from weakref import WeakKeyDictionary
 
-from python.helpers import guids
+from admin.core.helpers import guids
 from admin.core.helpers.print_style import PrintStyle
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError, SomaMemoryRecord
 

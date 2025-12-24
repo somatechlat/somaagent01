@@ -3,7 +3,7 @@
 This package exposes shared helper modules used across services and tests.
 """
 
-# Ensure key helper modules are discoverable via ``from python.helpers import X``
+# Ensure key helper modules are discoverable via ``from admin.core.helpers import X``
 from . import settings as settings  # noqa: F401
 
 __all__ = ["settings"]

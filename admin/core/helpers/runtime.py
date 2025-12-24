@@ -7,7 +7,7 @@ import socket
 import threading
 from typing import Awaitable, Callable, cast, overload, TypeVar, Union
 
-from python.helpers import dotenv, files, rfc, settings
+from admin.core.helpers import dotenv, files, rfc, settings
 
 T = TypeVar("T")
 R = TypeVar("R")

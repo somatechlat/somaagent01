@@ -5,7 +5,7 @@ import os
 import tempfile
 import warnings
 
-from python.helpers import files
+from admin.core.helpers import files
 from admin.core.helpers.notification import (
     NotificationManager,
     NotificationPriority,

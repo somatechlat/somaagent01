@@ -5,8 +5,8 @@ import re
 from datetime import datetime
 
 from agent import AgentContext
-from python.helpers.session_store_adapter import delete_context
-from python.helpers.task_scheduler import (
+from admin.core.helpers.session_store_adapter import delete_context
+from admin.core.helpers.task_scheduler import (
     AdHocTask,
     parse_datetime,
     PlannedTask,
@@ -18,7 +18,7 @@ from python.helpers.task_scheduler import (
     TaskScheduler,
     TaskState,
 )
-from python.helpers.tool import Response, Tool
+from admin.core.helpers.tool import Response, Tool
 
 DEFAULT_WAIT_TIMEOUT = 300
 

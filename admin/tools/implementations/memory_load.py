@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from python.helpers.tool import Response, Tool
+from admin.core.helpers.tool import Response, Tool
 from python.integrations.somabrain_client import SomaBrainClient, SomaClientError
 
 # Backwards-compatible alias expected by tests and some callers

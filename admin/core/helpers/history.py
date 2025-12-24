@@ -7,7 +7,7 @@ from typing import cast, Dict, List, TypedDict, Union
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
-from python.helpers import messages, settings, tokens
+from admin.core.helpers import messages, settings, tokens
 
 BULK_MERGE_COUNT = 3
 TOPICS_KEEP_COUNT = 3

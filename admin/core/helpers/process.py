@@ -1,7 +1,7 @@
 import os
 import sys
 
-from python.helpers import runtime
+from admin.core.helpers import runtime
 from admin.core.helpers.print_style import PrintStyle
 
 _server = None

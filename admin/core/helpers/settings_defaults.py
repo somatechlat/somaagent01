@@ -29,7 +29,7 @@ def _ensure_django() -> None:
 def _get_version() -> str:
     """Get current version from git."""
     try:
-        from python.helpers import git
+        from admin.core.helpers import git
         git_info = git.get_git_info()
         return str(git_info.get("short_tag", "")).strip() or "unknown"
     except Exception:
@@ -137,7 +137,7 @@ def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_i
     Returns:
         Settings object with values from Django ORM configuration.
     """
-    from python.helpers import runtime
+    from admin.core.helpers import runtime
     from .settings_model import SettingsModel as Settings
     
     mcp_token = auth_token_fn() if auth_token_fn else ""

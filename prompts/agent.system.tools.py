@@ -1,9 +1,9 @@
 import os
 from typing import Any
 
-from python.helpers import files
-from python.helpers.files import VariablesPlugin
-from python.helpers.print_style import PrintStyle
+from admin.core.helpers import files
+from admin.core.helpers.files import VariablesPlugin
+from admin.core.helpers.print_style import PrintStyle
 
 
 class CallSubordinate(VariablesPlugin):

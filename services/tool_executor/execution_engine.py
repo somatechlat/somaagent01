@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
-from python.helpers.circuit_breaker import (
+from admin.core.helpers.circuit_breaker import (
     circuit_breaker,
     CircuitOpenError,
     ensure_metrics_exporter,

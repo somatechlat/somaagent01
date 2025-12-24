@@ -39,7 +39,7 @@ except Exception:
 
 from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 from agent import Agent
-from python.helpers import guids, knowledge_import
+from admin.core.helpers import guids, knowledge_import
 from admin.core.helpers.log import LogItem
 from admin.core.helpers.memory_stores import SomaMemory
 from admin.core.helpers.print_style import PrintStyle

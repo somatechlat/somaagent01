@@ -1,7 +1,7 @@
 from python.extensions.system_prompt._10_system_prompt import (
     get_tools_prompt,
 )
-from python.helpers.tool import Response, Tool
+from admin.core.helpers.tool import Response, Tool
 
 
 class Unknown(Tool):
