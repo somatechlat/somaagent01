@@ -134,6 +134,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/workflows", workflows_router)
 
+    # Data Export (GDPR)
+    from admin.export.api import router as export_router
+
+    api.add_router("/export", export_router)
+
     return api
 
 
