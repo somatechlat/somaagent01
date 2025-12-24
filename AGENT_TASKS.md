@@ -315,11 +315,15 @@
 - [ ] Virtual scrolling
 - [ ] Memory graph visualization
 
-### 5.4 Voice Integration ⏳ PARTIAL
+### 5.4 Voice Integration ✅ COMPLETE
 - [x] soma-voice-button.ts component
 - [x] soma-voice-overlay.ts component
-- [ ] Whisper/Kokoro integration
-- [ ] AgentVoiceBox WebSocket
+- [x] POST /voice/transcribe (Whisper) - 307 lines
+- [x] POST /voice/synthesize (Kokoro TTS)
+- [x] GET /voice/voices - List voices
+- [x] GET /voice/status - Service health
+- [x] voice/api.py (307 lines)
+- [ ] WebSocket streaming (/ws/voice)
 
 ### 5.5 Mode Selection ✅
 - [x] saas-mode-selection.ts (20KB)
@@ -343,10 +347,16 @@
 - [ ] memory_config_get() - GET /config/memory
 - [ ] memory_config_patch() - PATCH /config/memory
 
-### 6.3 Cognitive Thread
-- [ ] cognitive_thread_create()
-- [ ] cognitive_thread_next()
-- [ ] cognitive_thread_reset()
+### 6.3 Cognitive Thread ✅ COMPLETE
+- [x] POST /somabrain/cognitive/threads - Create thread
+- [x] POST /somabrain/cognitive/threads/{id}/step - Execute
+- [x] POST /somabrain/cognitive/threads/{id}/reset
+- [x] DELETE /somabrain/cognitive/threads/{id}
+- [x] GET /somabrain/cognitive/state/{agent_id}
+- [x] PATCH /somabrain/cognitive/params/{agent_id}
+- [x] POST /somabrain/cognitive/adaptation/reset/{agent_id}
+- [x] POST /somabrain/cognitive/sleep/{agent_id}
+- [x] cognitive.py (380 lines)
 
 ### 6.4 Admin Endpoints (ADMIN mode only)
 - [ ] list_services()
