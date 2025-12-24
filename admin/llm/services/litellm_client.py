@@ -4,6 +4,8 @@ This module provides LangChain-compatible LLM wrappers using LiteLLM.
 Migrated to admin.llm.services for Django compliance per VIBE Rule 8.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from dataclasses import dataclass, field
@@ -63,10 +65,25 @@ from admin.core.helpers.providers import get_provider_config
 from admin.core.helpers.rate_limiter import RateLimiter
 from admin.core.helpers.tokens import approximate_tokens
 
-# Import from Django LLM app
-from admin.llm.models import ModelConfig, ModelType
+# Lazy imports for Django models to avoid AppRegistryNotReady errors
 from admin.llm.exceptions import LLMNotConfiguredError
-import os
+
+
+def _get_model_config():
+    """Lazy import ModelConfig to avoid circular imports."""
+    from admin.llm.models import ModelConfig
+    return ModelConfig
+
+
+def _get_model_type():
+    """Lazy import ModelType to avoid circular imports."""
+    from admin.llm.models import ModelType
+    return ModelType
+
+
+# Type alias for type hints (evaluated lazily)
+ModelConfig = None  # Will be imported lazily when needed
+ModelType = None  # Will be imported lazily when needed
 
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason

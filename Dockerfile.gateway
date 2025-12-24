@@ -67,7 +67,6 @@ WORKDIR /app
 COPY admin/ /app/admin/
 COPY services/gateway/ /app/services/gateway/
 COPY services/common/ /app/services/common/
-COPY python/ /app/python/
 COPY manage.py sitecustomize.py /app/
 COPY scripts/entrypoints/ /app/scripts/entrypoints/
 

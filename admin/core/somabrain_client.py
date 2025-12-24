@@ -466,6 +466,17 @@ class SomaBrainClient:
         except SomaClientError:
             return False
 
+    async def health(self) -> Dict[str, Any]:
+        """Get health status from SomaBrain.
+        
+        Returns:
+            Health status dict with status and optional details
+        """
+        try:
+            return await self._request("GET", "/health")
+        except SomaClientError as e:
+            return {"status": "error", "message": str(e)}
+
     # =========================================================================
     # LEARNING OPERATIONS
     # =========================================================================

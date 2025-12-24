@@ -68,7 +68,3 @@ def get_session_store():
     from services.gateway import providers
 
     return providers.get_session_store()
-
-
-# Legacy app reference for backward compatibility
-app = django_asgi
