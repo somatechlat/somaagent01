@@ -31,13 +31,24 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third party
     "ninja",
-    # Local admin apps
-    "admin.core",
-    "admin.saas",
-    "admin.llm",  # LLM management - migrated from root models.py
+    # Local admin apps (alphabetical order)
     "admin.agents",
+    "admin.capsules",
     "admin.chat",
+    "admin.core",
     "admin.features",
+    "admin.files",
+    "admin.gateway",
+    "admin.llm",
+    "admin.memory",
+    "admin.multimodal",
+    "admin.notifications",
+    "admin.orchestrator",
+    "admin.saas",
+    "admin.tools",
+    "admin.ui",
+    "admin.utils",
+    "admin.voice",
 ]
 
 MIDDLEWARE = [
