@@ -1,3 +1,8 @@
+"""LiteLLM client wrapper - migrated from root models.py to Django app.
+
+This module provides LangChain-compatible LLM wrappers using LiteLLM.
+Migrated to admin.llm.services for Django compliance per VIBE Rule 8.
+"""
 import logging
 import os
 from dataclasses import dataclass, field
@@ -56,6 +61,10 @@ from python.helpers import browser_use_monkeypatch, dirty_json
 from python.helpers.providers import get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
+
+# Import from Django LLM app
+from admin.llm.models import ModelConfig, ModelType
+from admin.llm.exceptions import LLMNotConfiguredError
 import os
 
 
@@ -119,38 +128,7 @@ def _json_env(name: str):
 # ---------------------------------------------------------------------------
 
 
-class LLMNotConfiguredError(RuntimeError):
-    """Raised when LLM is not properly configured for production use."""
-
-    pass
-
-
 # Enterprise LLM configuration required - production systems fail fast on misconfiguration
-
-
-class ModelType(Enum):
-    CHAT = "Chat"
-    EMBEDDING = "Embedding"
-
-
-@dataclass
-class ModelConfig:
-    type: ModelType
-    provider: str
-    name: str
-    api_base: str = ""
-    ctx_length: int = 0
-    limit_requests: int = 0
-    limit_input: int = 0
-    limit_output: int = 0
-    vision: bool = False
-    kwargs: dict = field(default_factory=dict)
-
-    def build_kwargs(self):
-        kwargs = self.kwargs.copy() or {}
-        if self.api_base and "api_base" not in kwargs:
-            kwargs["api_base"] = self.api_base
-        return kwargs
 
 
 class ChatChunk(TypedDict):

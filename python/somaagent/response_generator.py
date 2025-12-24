@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from langchain_core.messages import BaseMessage
 
-import models
+from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 
 
 def get_chat_model(agent: "Agent"):

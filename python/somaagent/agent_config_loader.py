@@ -21,7 +21,7 @@ from typing import Optional
 
 from services.common.ui_settings_store import UiSettingsStore
 from python.somaagent.agent_context import AgentConfig
-import models
+from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 
 LOGGER = logging.getLogger(__name__)
 
