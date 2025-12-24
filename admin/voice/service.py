@@ -25,7 +25,6 @@ from __future__ import annotations
 import asyncio
 from typing import Awaitable
 
-# from src.core.config.models import Config
 from .audio_capture import AudioCapture
 from .speaker import Speaker
 from .provider_selector import get_provider_client, _BaseClient

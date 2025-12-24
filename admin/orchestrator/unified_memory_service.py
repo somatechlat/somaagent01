@@ -14,11 +14,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-# from src.core.infrastructure.repositories import (  # TODO: src/ deleted in Phase 1
 #     VectorStoreRepository,
 #     ConversationRepository,
 # )
-# from src.core.infrastructure.repositories import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

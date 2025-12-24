@@ -13,7 +13,6 @@ All code should import directly from ``src.core.config``.
 from __future__ import annotations
 
 # Import the canonical configuration objects.
-# from src.core.config import cfg as _cfg, Config as _Config, load_config as _load_config  # TODO: Removed - src/ deleted in Phase 1
 
 
 class CentralizedConfig(_Config):
