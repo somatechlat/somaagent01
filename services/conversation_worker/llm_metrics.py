@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from observability.metrics import (
+from admin.core.observability.metrics import (
     llm_call_latency_seconds,
     llm_calls_total,
     llm_input_tokens_total,

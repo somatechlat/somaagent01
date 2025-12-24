@@ -14,7 +14,7 @@ import statistics
 import time
 from typing import Any, Dict, List
 
-from observability.metrics import ContextBuilderMetrics
+from admin.core.observability.metrics import ContextBuilderMetrics
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 
 
