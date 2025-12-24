@@ -124,6 +124,11 @@ def create_api() -> NinjaAPI:
     # NOTE: MFA and Password Reset are now sub-routers in auth/api.py
     # /auth/mfa and /auth/password are mounted inside the auth router
 
+    # Voice API (Whisper + Kokoro TTS)
+    from admin.voice.api import router as voice_router
+
+    api.add_router("/voice", voice_router)
+
     return api
 
 
