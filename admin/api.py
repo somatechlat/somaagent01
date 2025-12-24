@@ -27,6 +27,11 @@ def create_api() -> NinjaAPI:
     # MOUNT ALL DOMAIN ROUTERS - 100% Django Ninja
     # =========================================================================
 
+    # Auth (CRITICAL - must be first for login/token endpoints)
+    from admin.auth.api import router as auth_router
+
+    api.add_router("/auth", auth_router)
+
     # SAAS Admin
     from admin.saas.api import router as saas_router
 
