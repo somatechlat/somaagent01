@@ -126,6 +126,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/invitations", invitations_router)
 
+    # Password Reset
+    from admin.auth.password_reset import router as password_reset_router
+
+    api.add_router("/auth/password", password_reset_router)
+
     return api
 
 
