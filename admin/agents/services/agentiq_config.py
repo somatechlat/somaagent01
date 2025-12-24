@@ -18,8 +18,8 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from python.somaagent.agentiq_governor import AgentIQConfig
-from python.somaagent.confidence_scorer import ConfidenceConfig, ConfidenceMode, OnLowAction
+from admin.agents.services.agentiq_governor import AgentIQConfig
+from admin.agents.services.confidence_scorer import ConfidenceConfig, ConfidenceMode, OnLowAction
 
 LOGGER = logging.getLogger(__name__)
 

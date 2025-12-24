@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
-    from python.somaagent.agentiq_governor import GovernorDecision, TurnContext
+    from admin.agents.services.agentiq_governor import GovernorDecision, TurnContext
 
 
 # -----------------------------------------------------------------------------

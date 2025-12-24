@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from services.common.ui_settings_store import UiSettingsStore
-from python.somaagent.agent_context import AgentConfig
+from admin.agents.services.agent_context import AgentConfig
 from admin.llm import ModelConfig, ModelType, LiteLLMChatWrapper  # Migrated
 
 LOGGER = logging.getLogger(__name__)
