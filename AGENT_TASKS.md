@@ -358,10 +358,15 @@
 - [x] POST /somabrain/cognitive/sleep/{agent_id}
 - [x] cognitive.py (380 lines)
 
-### 6.4 Admin Endpoints (ADMIN mode only)
-- [ ] list_services()
-- [ ] get_service_status()
-- [ ] start/stop/restart_service()
+### 6.4 Admin Endpoints (ADMIN mode only) ✅ COMPLETE
+- [x] GET /somabrain/admin/services - List services
+- [x] GET /somabrain/admin/services/{name} - Service status
+- [x] POST /somabrain/admin/services/{name}/action - Start/stop/restart
+- [x] GET /somabrain/admin/diagnostics - System diagnostics
+- [x] GET /somabrain/admin/sleep-status - All agents sleep
+- [x] GET /somabrain/admin/features - Feature flags
+- [x] PATCH /somabrain/admin/features - Update flags
+- [x] admin_api.py (340 lines)
 - [ ] sleep_status_all()
 - [ ] micro_diag()
 - [ ] get_features() / update_features()
