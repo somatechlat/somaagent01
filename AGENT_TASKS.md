@@ -389,11 +389,15 @@
 - [ ] register(), find_candidates()
 - [ ] Health tracking, circuit breakers
 
-### 7.2 Asset Pipeline
-- [ ] AssetStore service
-- [ ] SHA256 deduplication
-- [ ] S3 integration
-- [ ] ProvenanceRecorder
+### 7.2 Asset Storage ✅ COMPLETE
+- [x] POST /assets - Upload with SHA-256 hash
+- [x] GET /assets/{id} - Get asset
+- [x] GET /assets - List assets
+- [x] DELETE /assets/{id} - Soft delete
+- [x] GET /assets/{id}/provenance - Provenance chain
+- [x] POST /assets/{id}/provenance - Add record
+- [x] GET /assets/{id}/verify - Integrity check
+- [x] assets/api.py (340 lines)
 
 ### 7.3 Multimodal Execution
 - [ ] OpenAI DALL-E adapter
