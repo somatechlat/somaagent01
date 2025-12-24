@@ -102,6 +102,25 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/notifications", notifications_router)
 
+    # =========================================================================
+    # NEW ROUTERS - 2025-12-24 Session
+    # =========================================================================
+
+    # Billing Webhooks (Lago)
+    from admin.billing.webhooks import router as billing_webhooks_router
+
+    api.add_router("/webhooks", billing_webhooks_router)
+
+    # SomaBrain Memory (cognitive memory)
+    from admin.somabrain.api import router as somabrain_router
+
+    api.add_router("/somabrain", somabrain_router)
+
+    # MFA Authentication
+    from admin.auth.mfa import router as mfa_router
+
+    api.add_router("/auth/mfa", mfa_router)
+
     return api
 
 
