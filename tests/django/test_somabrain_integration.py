@@ -52,7 +52,7 @@ class TestSomaBrainDjangoIntegration:
     @pytest.mark.asyncio
     async def test_somabrain_health_check(self):
         """Test SomaBrain health endpoint on real infrastructure."""
-        from python.integrations.soma_client import SomaClient
+        from admin.core.soma_client import SomaClient
         
         somabrain_url = os.environ.get('SA01_SOMA_BASE_URL', 'http://localhost:9696')
         client = SomaClient(base_url=somabrain_url)
@@ -68,7 +68,7 @@ class TestSomaBrainDjangoIntegration:
     @pytest.mark.asyncio
     async def test_somabrain_remember_memory(self):
         """Test storing a memory in SomaBrain - REAL storage."""
-        from python.integrations.soma_client import SomaClient
+        from admin.core.soma_client import SomaClient
         
         somabrain_url = os.environ.get('SA01_SOMA_BASE_URL', 'http://localhost:9696')
         client = SomaClient(base_url=somabrain_url)
@@ -98,7 +98,7 @@ class TestSomaBrainDjangoIntegration:
     @pytest.mark.asyncio
     async def test_somabrain_recall_memory(self):
         """Test recalling memories from SomaBrain - REAL retrieval."""
-        from python.integrations.soma_client import SomaClient
+        from admin.core.soma_client import SomaClient
         
         somabrain_url = os.environ.get('SA01_SOMA_BASE_URL', 'http://localhost:9696')
         client = SomaClient(base_url=somabrain_url)
@@ -127,7 +127,7 @@ class TestSomaBrainDjangoIntegration:
     @pytest.mark.asyncio
     async def test_full_memory_cycle(self):
         """Test complete memory cycle: store -> recall -> verify."""
-        from python.integrations.soma_client import SomaClient
+        from admin.core.soma_client import SomaClient
         import uuid
         
         somabrain_url = os.environ.get('SA01_SOMA_BASE_URL', 'http://localhost:9696')

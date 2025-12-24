@@ -78,7 +78,7 @@ async def admin_migrate_export(
     - Long-term memories
     - Optionally working memory (with limit)
     """
-    from python.integrations.somabrain_client import SomaBrainClient
+    from admin.core.somabrain_client import SomaBrainClient
     
     client = SomaBrainClient.get()
     result = await client.migrate_export(
@@ -108,7 +108,7 @@ async def admin_migrate_import(
     
     If replace=True, existing data is replaced.
     """
-    from python.integrations.somabrain_client import SomaBrainClient
+    from admin.core.somabrain_client import SomaBrainClient
     
     client = SomaBrainClient.get()
     result = await client.migrate_import(

@@ -300,7 +300,7 @@ class DegradationMonitor:
     async def _check_somabrain_health(self, component: ComponentHealth) -> None:
         """Check SomaBrain health specifically."""
         try:
-            from python.integrations.soma_client import SomaClient
+            from admin.core.soma_client import SomaClient
 
             client = SomaClient.get()
             health_result = await client.health()

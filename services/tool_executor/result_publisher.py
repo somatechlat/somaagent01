@@ -12,7 +12,7 @@ import time
 import uuid
 from typing import Any, TYPE_CHECKING
 
-from python.integrations.soma_client import SomaClientError
+from admin.core.soma_client import SomaClientError
 from services.common.idempotency import generate_for_memory_payload
 from services.common.policy_client import PolicyRequest
 from services.tool_executor.metrics import TOOL_FEEDBACK_TOTAL

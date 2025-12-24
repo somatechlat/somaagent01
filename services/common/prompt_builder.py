@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from python.integrations.soma_client import (
+from admin.core.soma_client import (
     SomaClient,  # type: ignore
     SomaClientError,
 )
