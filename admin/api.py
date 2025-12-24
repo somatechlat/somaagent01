@@ -139,6 +139,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/export", export_router)
 
+    # Observability (Prometheus, Tracing)
+    from admin.observability.api import router as observability_router
+
+    api.add_router("/observability", observability_router)
+
     return api
 
 
