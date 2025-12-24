@@ -159,6 +159,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/quality", quality_router)
 
+    # A2A (Agent-to-Agent Workflows)
+    from admin.a2a.api import router as a2a_router
+
+    api.add_router("/a2a", a2a_router)
+
     return api
 
 
