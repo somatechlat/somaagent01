@@ -379,3 +379,128 @@ async def _update_last_login(payload: TokenPayload) -> None:
     except Exception as e:
         # Non-critical - log but don't fail
         logger.debug(f"Could not update last_login: {e}")
+
+
+# =============================================================================
+# IMPERSONATION - SAAS Super Admin Only
+# Per SAAS_ADMIN_SRS.md Section 2.5 - Admin Impersonation
+# =============================================================================
+
+
+class ImpersonationRequest(Schema):
+    """Request to impersonate a tenant admin."""
+    tenant_id: str
+    reason: str  # Required for audit trail
+
+
+class ImpersonationResponse(Schema):
+    """Impersonation token response."""
+    access_token: str
+    token_type: str = "Bearer"
+    expires_in: int = 3600  # 1 hour max for impersonation
+    impersonating_tenant: str
+    original_user_id: str
+    audit_id: str
+
+
+@router.post("/impersonate", response=ImpersonationResponse)
+async def impersonate_tenant(request, payload: ImpersonationRequest):
+    """Generate impersonation token to act as tenant admin.
+    
+    VIBE COMPLIANT - Security Critical:
+    - Only SAAS super_admin can impersonate
+    - Short-lived tokens (1 hour max)
+    - Full audit trail
+    - Cannot impersonate to higher privilege
+    """
+    from asgiref.sync import sync_to_async
+    from uuid import uuid4
+    import secrets
+    import time
+    
+    # Get current user from Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise UnauthorizedError("Missing or invalid authorization header")
+    
+    token = auth_header.split(" ")[1]
+    
+    try:
+        current_user = decode_token(token)
+    except JWTError as e:
+        raise UnauthorizedError(f"Invalid token: {e}")
+    
+    # Check if user has super_admin role
+    user_roles = current_user.realm_access.get("roles", []) if current_user.realm_access else []
+    if "super_admin" not in user_roles and "saas_admin" not in user_roles:
+        raise UnauthorizedError("Only SAAS super admins can impersonate")
+    
+    # Verify target tenant exists
+    @sync_to_async
+    def get_tenant():
+        try:
+            return Tenant.objects.get(id=payload.tenant_id, status="active")
+        except Tenant.DoesNotExist:
+            return None
+    
+    tenant = await get_tenant()
+    if not tenant:
+        raise BadRequestError(f"Tenant {payload.tenant_id} not found or inactive")
+    
+    # Generate impersonation token (signed JWT)
+    config = get_keycloak_config()
+    
+    impersonation_claims = {
+        "sub": current_user.sub,  # Original user
+        "impersonating_tenant": str(tenant.id),
+        "impersonating_as": "tenant_admin",
+        "original_roles": user_roles,
+        "reason": payload.reason,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,  # 1 hour
+        "iss": "somaagent-impersonation",
+        "jti": str(uuid4()),
+    }
+    
+    # Sign with a secret (in production, use proper key management)
+    impersonation_token = jwt.encode(
+        impersonation_claims,
+        secrets.token_urlsafe(32),  # Ephemeral key for demo
+        algorithm="HS256",
+    )
+    
+    # Create audit log entry
+    @sync_to_async
+    def create_audit():
+        from admin.saas.models import AuditLog
+        return AuditLog.objects.create(
+            actor_id=current_user.sub,
+            actor_email=current_user.email or "",
+            tenant=tenant,
+            action="impersonation.started",
+            resource_type="tenant",
+            resource_id=tenant.id,
+            new_value={
+                "reason": payload.reason,
+                "expires_in_seconds": 3600,
+            },
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+            request_id=str(uuid4()),
+        )
+    
+    audit = await create_audit()
+    
+    logger.warning(
+        f"IMPERSONATION: User {current_user.sub} impersonating tenant {tenant.id} "
+        f"for reason: {payload.reason}"
+    )
+    
+    return ImpersonationResponse(
+        access_token=impersonation_token,
+        expires_in=3600,
+        impersonating_tenant=tenant.name,
+        original_user_id=str(current_user.sub),
+        audit_id=str(audit.id),
+    )
+
