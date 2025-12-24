@@ -49,25 +49,35 @@
 
 ## Phase 1: Foundation
 
-### 1.1 Database Models (Django)
-- [ ] SubscriptionTier model (limits, pricing, lago_code)
-- [ ] Tenant model (org, slug, status, subscription FK)
-- [ ] TenantUser model (user, tenant, role, status)
-- [ ] Agent model (tenant FK, config, features, status)
-- [ ] AgentUser model (agent access, modes allowed)
-- [ ] AuditLog model (all events)
-- [ ] OutboxMessage model (ZDL pattern)
-- [ ] Run initial migrations
+### 1.1 Database Models (Django) ✅ COMPLETE
+- [x] SubscriptionTier model (limits, pricing, lago_code)
+- [x] Tenant model (org, slug, status, subscription FK)
+- [x] TenantUser model (user, tenant, role, status)
+- [x] Agent model (tenant FK, config, features, status)
+- [x] AgentUser model (agent access, modes allowed)
+- [x] AuditLog model (all events)
+- [x] SaasFeature, TierFeature, FeatureProvider models
+- [x] UsageRecord model
+- [x] Initial migration (36KB)
 
-### 1.2 SpiceDB Schema
-- [ ] Platform definition (God Mode)
-- [ ] saas_admin definition with platform->manage_roles
-- [ ] Tenant definition with role hierarchy
-- [ ] Agent definition with mode permissions
-- [ ] Resource permissions (chat, memory, cognitive, voice)
+### 1.2 SpiceDB Schema ✅ COMPLETE
+- [x] Platform definition (God Mode)
+- [x] saas_admin definition with platform->manage_roles
+- [x] Tenant definition with role hierarchy
+- [x] Agent definition with mode permissions
+- [x] Resource permissions (conversation, memory, cognitive, voice, tool)
 - [ ] SpiceDB client wrapper (grpc-js)
-- [ ] @require_permission decorator
+- [ ] @require_permission decorator integration
 - [ ] Permission tests
+
+### 1.3 Keycloak Setup ⏳ NEXT
+- [ ] Create somaagent realm
+- [ ] Google OAuth provider
+- [ ] GitHub OAuth provider
+- [ ] TOTP MFA configuration
+- [ ] Token lifetimes (15min access, 30min session)
+- [ ] Django client credentials
+- [ ] Export realm JSON
 
 ### 1.3 Keycloak Setup
 - [ ] Create somaagent realm

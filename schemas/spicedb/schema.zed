@@ -1,0 +1,151 @@
+/**
+ * SpiceDB Authorization Schema for SomaAgent SaaS Platform
+ * 
+ * VIBE COMPLIANT - Production-grade authorization
+ * Per SRS-PERMISSION-MATRIX.md - 4-Level Permission Hierarchy
+ * 
+ * Hierarchy:
+ *   LEVEL 0: Platform (God Mode / SAAS Admin)
+ *   LEVEL 1: Tenant (Tenant SysAdmin, Admin)
+ *   LEVEL 2: Agent (Owner, Developer, Trainer, User, Viewer)
+ *   LEVEL 3: Resource (Chat, Memory, Cognitive, Voice)
+ */
+
+// =============================================================================
+// LEVEL 0: PLATFORM (SAAS ADMIN - GOD MODE)
+// =============================================================================
+
+definition platform {}
+
+definition saas_admin {
+    relation platform: platform
+    
+    // Platform-wide permissions (God Mode)
+    permission manage = platform
+    permission manage_tenants = platform
+    permission manage_tiers = platform
+    permission manage_roles = platform
+    permission manage_permissions = platform
+    permission view_billing = platform
+    permission configure = platform
+    permission impersonate = platform
+}
+
+// =============================================================================
+// LEVEL 1: TENANT
+// =============================================================================
+
+definition subscription_tier {}
+
+definition tenant {
+    // Role relations
+    relation sysadmin: user
+    relation admin: user
+    relation developer: user
+    relation trainer: user
+    relation member: user
+    relation viewer: user
+    
+    // Subscription tier link
+    relation subscription: subscription_tier
+    
+    // Tenant-level permissions
+    permission manage = sysadmin
+    permission administrate = sysadmin + admin
+    permission create_agent = sysadmin
+    permission delete_agent = sysadmin
+    permission view_billing = sysadmin
+    permission manage_api_keys = sysadmin
+    permission assign_roles = sysadmin
+    
+    // Mode access (inherited by agents)
+    permission develop = sysadmin + admin + developer
+    permission train = sysadmin + admin + trainer
+    permission use = sysadmin + admin + developer + trainer + member
+    permission view = sysadmin + admin + developer + trainer + member + viewer
+}
+
+// =============================================================================
+// LEVEL 2: AGENT
+// =============================================================================
+
+definition agent {
+    // Parent tenant
+    relation tenant: tenant
+    
+    // Direct user relations
+    relation owner: user
+    relation admin: user
+    relation developer: user
+    relation trainer: user
+    relation user: user
+    relation viewer: user
+    
+    // Agent configuration
+    permission configure = owner + admin + tenant->administrate
+    
+    // Mode activation permissions
+    permission activate_adm = owner + admin
+    permission activate_dev = owner + admin + developer + tenant->develop
+    permission activate_trn = owner + admin + trainer + tenant->train
+    permission activate_std = owner + admin + developer + trainer + user + tenant->use
+    permission activate_ro = owner + admin + developer + trainer + user + viewer + tenant->view
+    
+    // General permissions
+    permission view = activate_ro
+    permission manage_users = owner + admin + tenant->administrate
+}
+
+// =============================================================================
+// LEVEL 3: RESOURCE PERMISSIONS (within agent context)
+// =============================================================================
+
+definition conversation {
+    relation agent: agent
+    relation owner: user
+    
+    // Chat permissions
+    permission send = owner + agent->activate_std
+    permission view = owner + agent->activate_ro
+    permission delete = owner + agent->configure
+}
+
+definition memory {
+    relation agent: agent
+    relation creator: user
+    
+    // Memory permissions
+    permission read = agent->activate_ro
+    permission write = agent->activate_std
+    permission delete = agent->configure
+}
+
+definition cognitive_state {
+    relation agent: agent
+    
+    // Cognitive permissions (Trainer/Admin mode)
+    permission view = agent->activate_trn
+    permission edit = agent->activate_trn
+}
+
+definition voice_session {
+    relation agent: agent
+    
+    // Voice permissions
+    permission use = agent->activate_std
+    permission configure = agent->configure
+}
+
+definition tool {
+    relation agent: agent
+    
+    // Tool execution permissions
+    permission execute = agent->activate_std
+    permission configure = agent->configure
+}
+
+// =============================================================================
+// USER DEFINITION
+// =============================================================================
+
+definition user {}
