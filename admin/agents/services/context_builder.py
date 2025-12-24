@@ -23,7 +23,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import os
 
 if TYPE_CHECKING:
-    from python.somaagent.agentiq_governor import LanePlan
+    from admin.agents.services.agentiq_governor import LanePlan
 
 LOGGER = logging.getLogger(__name__)
 

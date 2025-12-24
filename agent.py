@@ -20,7 +20,7 @@ from python.helpers.history import output_text
 from python.helpers.print_style import PrintStyle
 from python.helpers.tool_tracking import track_tool_execution
 from python.integrations.soma_client import SomaClient
-from python.somaagent import cognitive as cognitive_ops, somabrain_integration as somabrain_ops
+from admin.agents.services import cognitive as cognitive_ops, somabrain_integration as somabrain_ops
 
 # Import from extracted somaagent modules
 from python.somaagent.agent_context import (

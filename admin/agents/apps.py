@@ -1,11 +1,13 @@
-"""Django app config for admin.agents."""
-
+"""Agents Django app configuration."""
 from django.apps import AppConfig
 
 
 class AgentsConfig(AppConfig):
-    """Agents application config."""
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'admin.agents'
+    verbose_name = 'Agent Management'
     
-    name = "admin.agents"
-    verbose_name = "Agent Management"
-    default_auto_field = "django.db.models.BigAutoField"
+    def ready(self):
+        """Initialize agent services when Django starts."""
+        # Import signals here if needed
+        pass
