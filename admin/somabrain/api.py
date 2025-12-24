@@ -26,6 +26,10 @@ router.add_router("/cognitive", cognitive_router)
 from admin.somabrain.admin_api import router as admin_router
 router.add_router("/admin", admin_router)
 
+# Mount core brain sub-router (Phase 6.1, 6.2)
+from admin.somabrain.core_brain import router as core_brain_router
+router.add_router("/brain", core_brain_router)
+
 
 # =============================================================================
 # SCHEMAS
