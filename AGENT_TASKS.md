@@ -99,35 +99,35 @@
 
 ## Phase 2: Authentication
 
-### 2.1 Login Flow
-- [ ] saas-login view component
-- [ ] Keycloak OAuth redirect
-- [ ] JWT storage (httpOnly cookie)
-- [ ] Session restoration from cookie
-- [ ] Login error handling
+### 2.1 Login Flow ✅ COMPLETE
+- [x] POST /auth/token (password grant + OAuth code)
+- [x] POST /auth/refresh (token refresh)
+- [x] GET /auth/me (current user info)
+- [x] POST /auth/logout (session termination)
+- [x] Role-based redirect paths
+- [x] Permission mapping from Keycloak roles
+- [x] keycloak-service.ts (300 lines) - frontend
+- [x] auth-store.ts (270 lines) - Lit Context
+- [x] saas-login.ts (33KB) - login view
 
-### 2.2 MFA Setup
-- [ ] saas-mfa-setup view
-- [ ] TOTP QR code display
-- [ ] Backup codes generation
-- [ ] MFA verification flow
+### 2.2 MFA Setup ⏳ IN PROGRESS
+- [ ] POST /auth/mfa/setup - Initialize TOTP
+- [ ] POST /auth/mfa/verify - Verify TOTP code
+- [ ] saas-mfa-setup.ts view
 
 ### 2.3 Password Reset
 - [ ] Reset request flow
-- [ ] Email integration (Keycloak action)
-- [ ] Reset completion
+- [ ] Email integration (via Keycloak)
 
 ### 2.4 Invitation Flow
-- [ ] POST /api/v2/admin/users/invite
-- [ ] Email sending
-- [ ] Invitation acceptance
+- [ ] POST /saas/users/invite - Send invitation
+- [ ] GET /auth/invite/{token} - Accept invitation
 - [ ] Onboarding wizard
 
-### 2.5 Session Management
-- [ ] Token refresh service
-- [ ] Session timeout handling
+### 2.5 Session Management ⏳ PARTIAL
+- [x] Token refresh (auto-scheduled in frontend)
 - [ ] Concurrent session limits
-- [ ] Impersonation tokens (SAAS only)
+- [ ] Impersonation tokens (SAAS admin only)
 
 ---
 
