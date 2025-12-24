@@ -121,6 +121,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/auth/mfa", mfa_router)
 
+    # Invitations
+    from admin.auth.invitations import router as invitations_router
+
+    api.add_router("/invitations", invitations_router)
+
     return api
 
 
