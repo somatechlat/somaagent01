@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "admin.core",
     "admin.features",
     "admin.files",
+    "admin.flink",
     "admin.gateway",
     "admin.llm",
     "admin.memory",
