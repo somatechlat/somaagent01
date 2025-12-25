@@ -247,6 +247,13 @@ if (app) {
             return;
         }
 
+        if (path === '/voice/chat' || path === '/platform/voice/chat' || path === '/voice') {
+            await import('./views/saas-voice-chat.js');
+            app.appendChild(document.createElement('saas-voice-chat'));
+            return;
+        }
+
+
 
         // Default: New SAAS Dashboard
         await import('./views/saas-platform-dashboard.js');
