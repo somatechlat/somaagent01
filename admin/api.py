@@ -314,6 +314,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/feedback", feedback_router)
 
+    # Metrics (Operational telemetry)
+    from admin.metrics.api import router as metrics_router
+
+    safe_add_router("/metrics", metrics_router)
+
     return api
 
 
