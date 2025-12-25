@@ -11,20 +11,18 @@ Per AGENT_TASKS.md Phase 8 - Data Export.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import secrets
 from datetime import timedelta
 from typing import Optional
 from uuid import uuid4
 
-from django.conf import settings
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError
+from admin.common.exceptions import BadRequestError
 
 router = Router(tags=["export"])
 logger = logging.getLogger(__name__)
@@ -37,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 class ExportRequest(BaseModel):
     """Data export request."""
+
     export_type: str  # full, conversations, memories, settings
     format: str = "json"  # json, csv, zip
     include_attachments: bool = False
@@ -44,6 +43,7 @@ class ExportRequest(BaseModel):
 
 class ExportResponse(BaseModel):
     """Export request response."""
+
     export_id: str
     status: str  # pending, processing, ready, expired, failed
     requested_at: str
@@ -54,6 +54,7 @@ class ExportResponse(BaseModel):
 
 class ExportStatusResponse(BaseModel):
     """Export status response."""
+
     export_id: str
     status: str
     progress_percent: int
@@ -65,18 +66,21 @@ class ExportStatusResponse(BaseModel):
 
 class ExportListResponse(BaseModel):
     """List of exports."""
+
     exports: list[ExportStatusResponse]
     total: int
 
 
 class DeletionRequest(BaseModel):
     """Account/data deletion request (GDPR)."""
+
     delete_type: str  # account, data_only
     confirmation: str  # Must be "DELETE"
 
 
 class DeletionResponse(BaseModel):
     """Deletion response."""
+
     request_id: str
     status: str
     scheduled_for: str
@@ -96,31 +100,30 @@ class DeletionResponse(BaseModel):
 )
 async def request_export(request, payload: ExportRequest) -> ExportResponse:
     """Request a data export (GDPR Article 20).
-    
+
     Per Phase 8.1: export_request()
-    
+
     Export types:
     - full: All user data including conversations, memories, settings
     - conversations: Chat history only
     - memories: Memory capsules only
     - settings: User preferences and configurations
-    
+
     GDPR COMPLIANT:
     - Right to data portability
     - Machine-readable format
     - Complete data within 30 days
     """
     export_id = str(uuid4())
-    
+
     # Estimate completion based on export size
     estimated_minutes = 5 if payload.export_type == "settings" else 30
     estimated_completion = timezone.now() + timedelta(minutes=estimated_minutes)
-    
+
     logger.info(
-        f"Export requested: {export_id}, type: {payload.export_type}, "
-        f"format: {payload.format}"
+        f"Export requested: {export_id}, type: {payload.export_type}, " f"format: {payload.format}"
     )
-    
+
     # In production: queue ZDL task for export
     # ExportTask.objects.create(
     #     id=export_id,
@@ -129,7 +132,7 @@ async def request_export(request, payload: ExportRequest) -> ExportResponse:
     #     format=payload.format,
     #     include_attachments=payload.include_attachments,
     # )
-    
+
     return ExportResponse(
         export_id=export_id,
         status="pending",
@@ -148,11 +151,11 @@ async def request_export(request, payload: ExportRequest) -> ExportResponse:
 )
 async def get_export_status(request, export_id: str) -> ExportStatusResponse:
     """Get status of an export request.
-    
+
     Per Phase 8.1: export_status()
     """
     # In production: query ExportTask model
-    
+
     return ExportStatusResponse(
         export_id=export_id,
         status="processing",
@@ -171,7 +174,7 @@ async def get_export_status(request, export_id: str) -> ExportStatusResponse:
 )
 async def list_exports(request) -> ExportListResponse:
     """List all export requests for the current user.
-    
+
     Per Phase 8.1: export_list()
     """
     # In production: query ExportTask model
@@ -188,19 +191,19 @@ async def list_exports(request) -> ExportListResponse:
 )
 async def download_export(request, export_id: str) -> dict:
     """Download the exported data file.
-    
+
     Per Phase 8.1: export_download()
-    
+
     Returns a signed URL for secure download.
     """
     # In production:
     # 1. Verify export belongs to user
     # 2. Check export is ready
     # 3. Generate signed URL from storage
-    
+
     # Generate secure download token
     download_token = secrets.token_urlsafe(32)
-    
+
     return {
         "export_id": export_id,
         "download_url": f"/api/v2/export/{export_id}/file?token={download_token}",
@@ -216,11 +219,11 @@ async def download_export(request, export_id: str) -> dict:
 )
 async def delete_export(request, export_id: str) -> dict:
     """Cancel pending export or delete completed export.
-    
+
     Per Phase 8.1: export_cancel()
     """
     logger.info(f"Export cancelled/deleted: {export_id}")
-    
+
     return {
         "export_id": export_id,
         "deleted": True,
@@ -241,13 +244,13 @@ async def delete_export(request, export_id: str) -> dict:
 )
 async def request_deletion(request, payload: DeletionRequest) -> DeletionResponse:
     """Request account or data deletion (GDPR Article 17).
-    
+
     Per Phase 8.2: deletion_request()
-    
+
     Delete types:
     - account: Full account deletion (irreversible)
     - data_only: Delete data but keep account
-    
+
     GDPR COMPLIANT:
     - Right to be forgotten
     - 30-day grace period for full deletion
@@ -255,15 +258,15 @@ async def request_deletion(request, payload: DeletionRequest) -> DeletionRespons
     """
     if payload.confirmation != "DELETE":
         raise BadRequestError("Confirmation must be 'DELETE'")
-    
+
     request_id = str(uuid4())
     scheduled_date = timezone.now() + timedelta(days=30)
-    
+
     logger.warning(
         f"DELETION REQUEST: {request_id}, type: {payload.delete_type}, "
         f"scheduled: {scheduled_date.date()}"
     )
-    
+
     # In production:
     # DeletionRequest.objects.create(
     #     id=request_id,
@@ -271,7 +274,7 @@ async def request_deletion(request, payload: DeletionRequest) -> DeletionRespons
     #     delete_type=payload.delete_type,
     #     scheduled_for=scheduled_date,
     # )
-    
+
     return DeletionResponse(
         request_id=request_id,
         status="scheduled",
@@ -287,7 +290,7 @@ async def request_deletion(request, payload: DeletionRequest) -> DeletionRespons
 )
 async def get_deletion_status(request) -> dict:
     """Get status of any pending deletion request.
-    
+
     Per Phase 8.2: deletion_status()
     """
     # In production: query DeletionRequest model
@@ -304,13 +307,13 @@ async def get_deletion_status(request) -> dict:
 )
 async def cancel_deletion(request) -> dict:
     """Cancel a pending deletion request.
-    
+
     Per Phase 8.2: deletion_cancel()
-    
+
     Only possible during 30-day grace period.
     """
     logger.info("Deletion request cancelled")
-    
+
     return {
         "cancelled": True,
         "message": "Deletion request cancelled",
@@ -329,9 +332,9 @@ async def cancel_deletion(request) -> dict:
 )
 async def get_data_inventory(request) -> dict:
     """Get inventory of all stored user data.
-    
+
     Per Phase 8.3: data_inventory()
-    
+
     GDPR COMPLIANT: Right to access (Article 15).
     """
     return {

@@ -15,12 +15,10 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError
 
 router = Router(tags=["notifications"])
 logger = logging.getLogger(__name__)
@@ -33,10 +31,11 @@ logger = logging.getLogger(__name__)
 
 class NotificationPreferences(BaseModel):
     """User notification preferences."""
+
     email_enabled: bool = True
     push_enabled: bool = True
     in_app_enabled: bool = True
-    
+
     # Categories
     agent_events: bool = True
     billing_alerts: bool = True
@@ -46,6 +45,7 @@ class NotificationPreferences(BaseModel):
 
 class Notification(BaseModel):
     """Notification item."""
+
     notification_id: str
     type: str  # info, success, warning, error
     title: str
@@ -58,6 +58,7 @@ class Notification(BaseModel):
 
 class NotificationListResponse(BaseModel):
     """List of notifications."""
+
     notifications: list[Notification]
     unread_count: int
     total: int
@@ -65,6 +66,7 @@ class NotificationListResponse(BaseModel):
 
 class SendNotificationRequest(BaseModel):
     """Send notification request."""
+
     user_id: str
     type: str
     title: str
@@ -75,6 +77,7 @@ class SendNotificationRequest(BaseModel):
 
 class WebhookSubscription(BaseModel):
     """Webhook subscription."""
+
     subscription_id: str
     url: str
     events: list[str]
@@ -101,7 +104,7 @@ async def get_notifications(
     limit: int = 50,
 ) -> NotificationListResponse:
     """Get user notifications.
-    
+
     PM: Clean, organized notification feed.
     """
     # In production: query from database
@@ -193,18 +196,18 @@ async def send_notification(
     payload: SendNotificationRequest,
 ) -> dict:
     """Send a notification to a user.
-    
+
     DevOps: Internal endpoint for system notifications.
     """
     notification_id = str(uuid4())
-    
+
     logger.info(f"Notification sent: {notification_id} to {payload.user_id}")
-    
+
     # In production:
     # 1. Store in database
     # 2. Push via WebSocket if user online
     # 3. Send email/push if preferences allow
-    
+
     return {
         "notification_id": notification_id,
         "sent": True,
@@ -224,11 +227,11 @@ async def broadcast_notification(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """Broadcast notification to all users.
-    
+
     Security Auditor: Admin only, rate limited.
     """
     broadcast_id = str(uuid4())
-    
+
     return {
         "broadcast_id": broadcast_id,
         "scope": tenant_id or "all",
@@ -262,14 +265,14 @@ async def create_webhook(
     events: list[str],
 ) -> dict:
     """Create a webhook subscription.
-    
+
     DevOps: Outgoing webhook for external integrations.
     """
     import secrets
-    
+
     subscription_id = str(uuid4())
     secret = secrets.token_urlsafe(32)
-    
+
     return {
         "subscription_id": subscription_id,
         "url": url,
@@ -299,13 +302,12 @@ async def delete_webhook(request, subscription_id: str) -> dict:
 )
 async def test_webhook(request, subscription_id: str) -> dict:
     """Send test event to webhook.
-    
+
     DevOps: Verify webhook endpoint is working.
     """
-    import httpx
-    
+
     # In production: send test payload to webhook URL
-    
+
     return {
         "subscription_id": subscription_id,
         "test_sent": True,

@@ -13,12 +13,11 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from admin.permissions.models import (
-    PermissionResource,
-    PermissionAction,
     GranularPermission,
+    PermissionAction,
+    PermissionResource,
     Role,
 )
-
 
 # =============================================================================
 # SEED DATA DEFINITIONS
@@ -115,11 +114,19 @@ PREDEFINED_ROLES = {
         "description": "Full tenant management",
         "scope": "tenant",
         "permissions": [
-            "tenant:read", "tenant:update",
-            "user:*", "agent:*", "conversation:*",
-            "memory:*", "tool:*", "file:*",
-            "apikey:*", "webhook:*", "integration:*",
-            "audit:read", "backup:read",
+            "tenant:read",
+            "tenant:update",
+            "user:*",
+            "agent:*",
+            "conversation:*",
+            "memory:*",
+            "tool:*",
+            "file:*",
+            "apikey:*",
+            "webhook:*",
+            "integration:*",
+            "audit:read",
+            "backup:read",
             "billing:read",
         ],
     },
@@ -128,11 +135,18 @@ PREDEFINED_ROLES = {
         "description": "Full control of assigned agents",
         "scope": "agent",
         "permissions": [
-            "agent:read", "agent:update", "agent:start", "agent:stop",
-            "agent:configure", "agent:export",
-            "conversation:*", "memory:*",
-            "tool:read", "tool:execute",
-            "file:create", "file:read",
+            "agent:read",
+            "agent:update",
+            "agent:start",
+            "agent:stop",
+            "agent:configure",
+            "agent:export",
+            "conversation:*",
+            "memory:*",
+            "tool:read",
+            "tool:execute",
+            "file:create",
+            "file:read",
         ],
     },
     "agent_operator": {
@@ -140,11 +154,16 @@ PREDEFINED_ROLES = {
         "description": "Operate agents, no config changes",
         "scope": "agent",
         "permissions": [
-            "agent:read", "agent:start", "agent:stop",
+            "agent:read",
+            "agent:start",
+            "agent:stop",
             "conversation:*",
-            "memory:read", "memory:search",
-            "tool:read", "tool:execute",
-            "file:create", "file:read",
+            "memory:read",
+            "memory:search",
+            "tool:read",
+            "tool:execute",
+            "file:create",
+            "file:read",
         ],
     },
     "user": {
@@ -153,9 +172,11 @@ PREDEFINED_ROLES = {
         "scope": "tenant",
         "permissions": [
             "agent:read",
-            "conversation:create", "conversation:read",
+            "conversation:create",
+            "conversation:read",
             "memory:read",
-            "file:create", "file:read",
+            "file:create",
+            "file:read",
         ],
     },
     "viewer": {
@@ -183,7 +204,8 @@ PREDEFINED_ROLES = {
         "description": "Read-only security access",
         "scope": "tenant",
         "permissions": [
-            "audit:read", "audit:export",
+            "audit:read",
+            "audit:export",
             "user:read",
             "apikey:read",
             "backup:read",
@@ -194,17 +216,17 @@ PREDEFINED_ROLES = {
 
 class Command(BaseCommand):
     """Seed permission data.
-    
+
     Usage:
         python manage.py seed_permissions
     """
-    
+
     help = "Seed default permissions and roles"
-    
+
     @transaction.atomic
     def handle(self, *args, **options):
         self.stdout.write("Seeding permissions...")
-        
+
         # 1. Create resources
         resources = {}
         for name, data in RESOURCES.items():
@@ -215,7 +237,7 @@ class Command(BaseCommand):
             resources[name] = resource
             if created:
                 self.stdout.write(f"  Created resource: {name}")
-        
+
         # 2. Create actions
         actions = {}
         for name, data in ACTIONS.items():
@@ -226,7 +248,7 @@ class Command(BaseCommand):
             actions[name] = action
             if created:
                 self.stdout.write(f"  Created action: {name}")
-        
+
         # 3. Create granular permissions
         perm_count = 0
         for resource_name, action_names in RESOURCE_ACTIONS.items():
@@ -241,9 +263,9 @@ class Command(BaseCommand):
                 )
                 if created:
                     perm_count += 1
-        
+
         self.stdout.write(f"  Created {perm_count} granular permissions")
-        
+
         # 4. Create system roles (tenant_id = "*" for system roles)
         for slug, data in PREDEFINED_ROLES.items():
             role, created = Role.objects.get_or_create(
@@ -256,7 +278,7 @@ class Command(BaseCommand):
                     "is_system": True,
                 },
             )
-            
+
             if created:
                 # Add permissions to role (skip * wildcards for now)
                 for perm_pattern in data["permissions"]:
@@ -276,11 +298,13 @@ class Command(BaseCommand):
                             role.permissions.add(perm)
                         except GranularPermission.DoesNotExist:
                             pass
-                
+
                 self.stdout.write(f"  Created role: {data['name']}")
-        
-        self.stdout.write(self.style.SUCCESS(
-            f"Successfully seeded: {len(RESOURCES)} resources, "
-            f"{len(ACTIONS)} actions, {perm_count}+ permissions, "
-            f"{len(PREDEFINED_ROLES)} roles"
-        ))
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Successfully seeded: {len(RESOURCES)} resources, "
+                f"{len(ACTIONS)} actions, {perm_count}+ permissions, "
+                f"{len(PREDEFINED_ROLES)} roles"
+            )
+        )

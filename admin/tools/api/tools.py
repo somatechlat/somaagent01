@@ -105,7 +105,6 @@ async def list_tools() -> dict:
 @router.get("/catalog", response=list[ToolCatalogItem], summary="List tool catalog")
 async def list_catalog() -> list[dict]:
     """List all tool catalog entries."""
-    from services.common.tool_catalog import ToolCatalogEntry
 
     catalog = _get_catalog_store()
     await catalog.ensure_schema()

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class UsageEvent(BaseModel):
     """Usage event record."""
+
     event_id: str
     tenant_id: str
     metric: str  # api_calls, tokens, storage, agents
@@ -42,6 +43,7 @@ class UsageEvent(BaseModel):
 
 class UsageSummary(BaseModel):
     """Usage summary."""
+
     tenant_id: str
     period_start: str
     period_end: str
@@ -50,6 +52,7 @@ class UsageSummary(BaseModel):
 
 class UsageQuota(BaseModel):
     """Usage quota."""
+
     metric: str
     limit: float
     used: float
@@ -59,6 +62,7 @@ class UsageQuota(BaseModel):
 
 class BillingCycle(BaseModel):
     """Billing cycle info."""
+
     tenant_id: str
     start_date: str
     end_date: str
@@ -84,11 +88,11 @@ async def record_usage_event(
     metadata: Optional[dict] = None,
 ) -> dict:
     """Record a usage event.
-    
+
     DevOps: Real-time metering to Lago.
     """
     event_id = str(uuid4())
-    
+
     # In production: send to Lago
     # lago_client.events.create(
     #     transaction_id=event_id,
@@ -96,9 +100,9 @@ async def record_usage_event(
     #     code=metric,
     #     properties={"quantity": quantity, **metadata},
     # )
-    
+
     logger.debug(f"Usage event: {tenant_id}/{metric}/{quantity}")
-    
+
     return {
         "event_id": event_id,
         "tenant_id": tenant_id,
@@ -118,11 +122,11 @@ async def record_batch_events(
     events: list[dict],
 ) -> dict:
     """Record multiple usage events.
-    
+
     DevOps: Batch metering for efficiency.
     """
     event_ids = [str(uuid4()) for _ in events]
-    
+
     return {
         "event_ids": event_ids,
         "count": len(events),
@@ -147,7 +151,7 @@ async def get_usage_summary(
     period: str = "current_month",  # current_month, last_month, custom
 ) -> UsageSummary:
     """Get usage summary for a tenant.
-    
+
     PM: Usage visibility.
     """
     return UsageSummary(
@@ -176,7 +180,7 @@ async def get_usage_history(
     limit: int = 30,
 ) -> dict:
     """Get historical usage data.
-    
+
     PM: Usage trends.
     """
     return {
@@ -199,7 +203,7 @@ async def get_usage_history(
 )
 async def get_quotas(request, tenant_id: str) -> dict:
     """Get tenant quotas and usage.
-    
+
     PM: Quota visibility.
     """
     return {
@@ -234,7 +238,7 @@ async def update_quotas(
     quotas: dict,
 ) -> dict:
     """Update tenant quotas.
-    
+
     PM: Plan customization.
     """
     return {
@@ -259,7 +263,7 @@ async def get_current_billing(
     tenant_id: str,
 ) -> BillingCycle:
     """Get current billing cycle.
-    
+
     PM: Billing transparency.
     """
     return BillingCycle(
@@ -282,7 +286,7 @@ async def get_invoices(
     limit: int = 12,
 ) -> dict:
     """Get billing invoices.
-    
+
     PM: Historical billing.
     """
     return {
@@ -304,7 +308,7 @@ async def get_invoices(
 )
 async def list_metrics(request) -> dict:
     """List available usage metrics.
-    
+
     DevOps: Metric catalog.
     """
     return {
@@ -332,7 +336,7 @@ async def list_metrics(request) -> dict:
 )
 async def get_usage_alerts(request, tenant_id: str) -> dict:
     """Get usage alerts for a tenant.
-    
+
     PM: Proactive notifications.
     """
     return {
@@ -356,7 +360,7 @@ async def configure_alert(
 ) -> dict:
     """Configure a usage alert."""
     alert_id = str(uuid4())
-    
+
     return {
         "alert_id": alert_id,
         "tenant_id": tenant_id,

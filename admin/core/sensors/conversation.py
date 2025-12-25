@@ -9,7 +9,7 @@ PhD Dev: This is the agent's working memory sensor.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from admin.core.sensors.base import BaseSensor
 
@@ -18,21 +18,21 @@ logger = logging.getLogger(__name__)
 
 class ConversationSensor(BaseSensor):
     """Sensor for conversation events.
-    
+
     Captures:
     - Message received (user input)
     - Message sent (agent output)
     - Conversation start/end
     - Context updates
     """
-    
+
     SENSOR_NAME = "conversation"
     TARGET_SERVICE = "somabrain"
-    
+
     def on_event(self, event_type: str, data: Any) -> None:
         """Handle conversation events."""
         self.capture(event_type, data if isinstance(data, dict) else {"data": data})
-    
+
     def message_received(
         self,
         message: str,
@@ -40,13 +40,16 @@ class ConversationSensor(BaseSensor):
         metadata: dict = None,
     ) -> None:
         """Capture incoming user message."""
-        self.capture("message.received", {
-            "conversation_id": conversation_id,
-            "role": "user",
-            "content": message,
-            "metadata": metadata or {},
-        })
-    
+        self.capture(
+            "message.received",
+            {
+                "conversation_id": conversation_id,
+                "role": "user",
+                "content": message,
+                "metadata": metadata or {},
+            },
+        )
+
     def message_sent(
         self,
         message: str,
@@ -56,26 +59,32 @@ class ConversationSensor(BaseSensor):
         metadata: dict = None,
     ) -> None:
         """Capture outgoing agent message."""
-        self.capture("message.sent", {
-            "conversation_id": conversation_id,
-            "role": "assistant",
-            "content": message,
-            "thoughts": thoughts or [],
-            "latency_ms": latency_ms,
-            "metadata": metadata or {},
-        })
-    
+        self.capture(
+            "message.sent",
+            {
+                "conversation_id": conversation_id,
+                "role": "assistant",
+                "content": message,
+                "thoughts": thoughts or [],
+                "latency_ms": latency_ms,
+                "metadata": metadata or {},
+            },
+        )
+
     def conversation_start(
         self,
         conversation_id: str,
         context: dict = None,
     ) -> None:
         """Capture conversation start."""
-        self.capture("start", {
-            "conversation_id": conversation_id,
-            "context": context or {},
-        })
-    
+        self.capture(
+            "start",
+            {
+                "conversation_id": conversation_id,
+                "context": context or {},
+            },
+        )
+
     def conversation_end(
         self,
         conversation_id: str,
@@ -83,8 +92,11 @@ class ConversationSensor(BaseSensor):
         duration_seconds: float = 0.0,
     ) -> None:
         """Capture conversation end."""
-        self.capture("end", {
-            "conversation_id": conversation_id,
-            "turn_count": turn_count,
-            "duration_seconds": duration_seconds,
-        })
+        self.capture(
+            "end",
+            {
+                "conversation_id": conversation_id,
+                "turn_count": turn_count,
+                "duration_seconds": duration_seconds,
+            },
+        )

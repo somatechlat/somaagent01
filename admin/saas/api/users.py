@@ -11,16 +11,14 @@ from typing import Optional
 from uuid import uuid4
 
 from django.conf import settings
-from django.db import transaction
 from django.db.models import Q
-from django.http import HttpRequest
 from ninja import Query, Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
-from admin.saas.models import TenantUser, TenantRole
+from admin.saas.models import TenantRole, TenantUser
 
 router = Router(tags=["tenant-users"])
 logger = logging.getLogger(__name__)

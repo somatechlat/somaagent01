@@ -16,11 +16,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Optional, Any
-from uuid import uuid4
+from typing import Optional
 
 from django.conf import settings
 from django.utils import timezone
@@ -77,6 +75,7 @@ class FlinkJobStatus(str, Enum):
 
 class FlinkJob(BaseModel):
     """Flink job status."""
+
     job_id: str
     name: str
     status: str
@@ -89,6 +88,7 @@ class FlinkJob(BaseModel):
 
 class KafkaTopic(BaseModel):
     """Kafka topic info."""
+
     name: str
     partitions: int
     replication_factor: int
@@ -98,6 +98,7 @@ class KafkaTopic(BaseModel):
 
 class StreamMetrics(BaseModel):
     """Stream processing metrics."""
+
     records_in_per_sec: float
     records_out_per_sec: float
     bytes_in_per_sec: float
@@ -114,6 +115,7 @@ class StreamMetrics(BaseModel):
 @dataclass
 class ConversationEvent:
     """Conversation event for Kafka."""
+
     event_id: str
     event_type: str  # started, message, ended
     tenant_id: str
@@ -129,6 +131,7 @@ class ConversationEvent:
 @dataclass
 class UsageMeteringEvent:
     """Usage metering event for billing."""
+
     event_id: str
     tenant_id: str
     resource_type: str  # tokens, api_calls, storage
@@ -141,6 +144,7 @@ class UsageMeteringEvent:
 @dataclass
 class PermissionAuditEvent:
     """Permission audit event."""
+
     event_id: str
     user_id: str
     tenant_id: str
@@ -158,18 +162,19 @@ class PermissionAuditEvent:
 
 class KafkaEventPublisher:
     """Publish events to Kafka for Flink processing.
-    
+
     DevOps: Kafka producer patterns.
     """
-    
+
     _producer = None
-    
+
     @classmethod
     def get_producer(cls):
         """Get or create Kafka producer."""
         if cls._producer is None:
             try:
                 from kafka import KafkaProducer
+
                 cls._producer = KafkaProducer(
                     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
@@ -181,7 +186,7 @@ class KafkaEventPublisher:
                 logger.warning(f"Kafka producer not available: {e}")
                 cls._producer = None
         return cls._producer
-    
+
     @classmethod
     def publish(cls, topic: str, event: dict, key: str = None):
         """Publish event to Kafka topic."""
@@ -197,7 +202,7 @@ class KafkaEventPublisher:
                 logger.debug(f"Published to {topic}: {event.get('event_type', 'unknown')}")
             except Exception as e:
                 logger.error(f"Kafka publish failed: {e}")
-    
+
     @classmethod
     def publish_conversation_event(cls, event: ConversationEvent):
         """Publish conversation event for analytics."""
@@ -206,7 +211,7 @@ class KafkaEventPublisher:
             asdict(event),
             key=event.tenant_id,
         )
-    
+
     @classmethod
     def publish_usage_event(cls, event: UsageMeteringEvent):
         """Publish usage event for billing aggregation."""
@@ -215,7 +220,7 @@ class KafkaEventPublisher:
             asdict(event),
             key=event.tenant_id,
         )
-    
+
     @classmethod
     def publish_permission_audit(cls, event: PermissionAuditEvent):
         """Publish permission audit event."""
@@ -288,7 +293,6 @@ SELECT
 FROM conversation_events
 GROUP BY tenant_id, TUMBLE(event_time, INTERVAL '1' MINUTE);
     """,
-    
     "usage_aggregator": """
 -- Usage Aggregator Job (Flink SQL)
 -- PM: Real-time billing aggregation
@@ -331,7 +335,6 @@ SELECT
 FROM usage_events
 GROUP BY tenant_id, resource_type, TUMBLE(event_time, INTERVAL '1' HOUR);
     """,
-    
     "anomaly_detector": """
 -- Anomaly Detection Job (Flink SQL)
 -- ML Eng: Statistical anomaly detection
@@ -403,20 +406,22 @@ FROM (
 )
 async def list_flink_jobs(request) -> dict:
     """List all Flink jobs.
-    
+
     DevOps: Job monitoring.
     """
     jobs = []
     for job_id, job_name in FLINK_JOBS.items():
-        jobs.append(FlinkJob(
-            job_id=job_id,
-            name=job_name,
-            status="RUNNING",
-            parallelism=4,
-            tasks_total=8,
-            tasks_running=8,
-        ).dict())
-    
+        jobs.append(
+            FlinkJob(
+                job_id=job_id,
+                name=job_name,
+                status="RUNNING",
+                parallelism=4,
+                tasks_total=8,
+                tasks_running=8,
+            ).dict()
+        )
+
     return {
         "jobs": jobs,
         "total": len(jobs),
@@ -451,11 +456,11 @@ async def get_flink_job(request, job_id: str) -> FlinkJob:
 )
 async def start_flink_job(request, job_id: str) -> dict:
     """Start a Flink job.
-    
+
     DevOps: Job lifecycle management.
     """
     logger.info(f"Starting Flink job: {job_id}")
-    
+
     return {
         "job_id": job_id,
         "status": "RUNNING",
@@ -471,7 +476,7 @@ async def start_flink_job(request, job_id: str) -> dict:
 async def stop_flink_job(request, job_id: str) -> dict:
     """Stop a Flink job with savepoint."""
     logger.warning(f"Stopping Flink job: {job_id}")
-    
+
     return {
         "job_id": job_id,
         "status": "CANCELED",
@@ -492,19 +497,21 @@ async def stop_flink_job(request, job_id: str) -> dict:
 )
 async def list_kafka_topics(request) -> dict:
     """List Kafka topics for Flink.
-    
+
     DevOps: Topic monitoring.
     """
     topics = []
     for topic_id, topic_name in KAFKA_TOPICS.items():
-        topics.append(KafkaTopic(
-            name=topic_name,
-            partitions=6,
-            replication_factor=3,
-            message_count=0,
-            bytes_in_per_sec=0.0,
-        ).dict())
-    
+        topics.append(
+            KafkaTopic(
+                name=topic_name,
+                partitions=6,
+                replication_factor=3,
+                message_count=0,
+                bytes_in_per_sec=0.0,
+            ).dict()
+        )
+
     return {
         "topics": topics,
         "total": len(topics),
@@ -527,7 +534,7 @@ async def get_stream_metrics(
     job_id: Optional[str] = None,
 ) -> dict:
     """Get Flink stream processing metrics.
-    
+
     DevOps: Real-time monitoring.
     """
     return {
@@ -560,7 +567,7 @@ async def get_conversation_analytics(
     window: str = "1h",  # 1m, 5m, 1h, 24h
 ) -> dict:
     """Get real-time conversation analytics from Flink.
-    
+
     PhD Dev: Windowed aggregations.
     """
     return {
@@ -594,7 +601,7 @@ async def get_usage_analytics(
     window: str = "1h",
 ) -> dict:
     """Get real-time usage analytics from Flink.
-    
+
     PM: Billing dashboards.
     """
     return {
@@ -620,7 +627,7 @@ async def get_anomaly_alerts(
     limit: int = 50,
 ) -> dict:
     """Get anomaly alerts from Flink detector.
-    
+
     ML Eng: Security monitoring.
     """
     return {
@@ -643,11 +650,11 @@ async def get_anomaly_alerts(
 )
 async def get_job_sql(request, job_id: str) -> dict:
     """Get Flink SQL definition for a job.
-    
+
     PhD Dev: Job introspection.
     """
     sql = FLINK_JOB_DEFINITIONS.get(job_id, "-- Job not found")
-    
+
     return {
         "job_id": job_id,
         "sql": sql,

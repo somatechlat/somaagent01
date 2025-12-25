@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
@@ -32,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class RateLimitConfig(BaseModel):
     """Rate limit configuration."""
+
     name: str
     requests_per_minute: int
     requests_per_hour: int
@@ -42,6 +42,7 @@ class RateLimitConfig(BaseModel):
 
 class RateLimitStatus(BaseModel):
     """Current rate limit status."""
+
     limit: int
     remaining: int
     reset_at: str
@@ -50,6 +51,7 @@ class RateLimitStatus(BaseModel):
 
 class QuotaConfig(BaseModel):
     """Quota configuration."""
+
     tenant_id: str
     max_agents: int
     max_users: int
@@ -60,6 +62,7 @@ class QuotaConfig(BaseModel):
 
 class QuotaUsage(BaseModel):
     """Current quota usage."""
+
     tenant_id: str
     agents_used: int
     agents_limit: int
@@ -84,7 +87,7 @@ class QuotaUsage(BaseModel):
 )
 async def get_rate_limits(request) -> dict:
     """Get all rate limit configurations.
-    
+
     Security Auditor: View rate limiting rules.
     """
     return {
@@ -123,7 +126,7 @@ async def get_rate_limit_status(
     limit_name: str = "api_default",
 ) -> RateLimitStatus:
     """Get current rate limit status for the user.
-    
+
     PM: Transparency on current limits.
     """
     return RateLimitStatus(
@@ -143,11 +146,11 @@ async def create_rate_limit(
     payload: RateLimitConfig,
 ) -> dict:
     """Create a new rate limit rule.
-    
+
     Security Auditor: Admin only.
     """
     logger.info(f"Rate limit created: {payload.name}")
-    
+
     return {
         "name": payload.name,
         "created": True,
@@ -202,7 +205,7 @@ async def get_quota_usage(
     tenant_id: str,
 ) -> QuotaUsage:
     """Get current quota usage for a tenant.
-    
+
     PM: Usage transparency for billing.
     """
     return QuotaUsage(
@@ -232,11 +235,11 @@ async def update_quotas(
     max_api_calls: Optional[int] = None,
 ) -> dict:
     """Update tenant quotas.
-    
+
     PM: Adjust limits based on subscription tier.
     """
     logger.info(f"Quotas updated for tenant: {tenant_id}")
-    
+
     return {
         "tenant_id": tenant_id,
         "updated": True,
@@ -253,7 +256,7 @@ async def list_quotas(
     near_limit: bool = False,  # Filter to tenants near their limits
 ) -> dict:
     """List quota usage for all tenants.
-    
+
     PM: Platform-wide quota monitoring.
     """
     return {
@@ -275,7 +278,7 @@ async def list_quotas(
 )
 async def list_blocked_ips(request) -> dict:
     """List blocked IP addresses.
-    
+
     Security Auditor: Abuse prevention.
     """
     return {
@@ -296,11 +299,11 @@ async def block_ip(
     duration_hours: Optional[int] = None,  # None = permanent
 ) -> dict:
     """Block an IP address.
-    
+
     Security Auditor: Manual block for abuse.
     """
     logger.warning(f"IP blocked: {ip_address}, reason: {reason}")
-    
+
     return {
         "ip_address": ip_address,
         "blocked": True,
@@ -316,7 +319,7 @@ async def block_ip(
 async def unblock_ip(request, ip_address: str) -> dict:
     """Unblock an IP address."""
     logger.info(f"IP unblocked: {ip_address}")
-    
+
     return {
         "ip_address": ip_address,
         "unblocked": True,
@@ -338,7 +341,7 @@ async def get_current_usage(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """Get current usage metrics.
-    
+
     DevOps: Real-time usage monitoring.
     """
     return {

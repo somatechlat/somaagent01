@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 class Webhook(BaseModel):
     """Webhook configuration."""
+
     webhook_id: str
     name: str
     url: str
@@ -49,6 +50,7 @@ class Webhook(BaseModel):
 
 class WebhookDelivery(BaseModel):
     """Webhook delivery attempt."""
+
     delivery_id: str
     webhook_id: str
     event_type: str
@@ -63,6 +65,7 @@ class WebhookDelivery(BaseModel):
 
 class WebhookEvent(BaseModel):
     """Available webhook event type."""
+
     event_type: str
     description: str
     category: str
@@ -108,7 +111,7 @@ async def list_webhooks(
     active_only: bool = False,
 ) -> dict:
     """List configured webhooks.
-    
+
     PM: View event subscriptions.
     """
     return {
@@ -130,14 +133,14 @@ async def create_webhook(
     events: list[str],
 ) -> Webhook:
     """Create a new webhook.
-    
+
     Security Auditor: Auto-generate signing secret.
     """
     webhook_id = str(uuid4())
     secret = secrets.token_urlsafe(32)
-    
+
     logger.info(f"Webhook created: {name} ({webhook_id})")
-    
+
     return Webhook(
         webhook_id=webhook_id,
         name=name,
@@ -192,7 +195,7 @@ async def update_webhook(
 async def delete_webhook(request, webhook_id: str) -> dict:
     """Delete a webhook."""
     logger.info(f"Webhook deleted: {webhook_id}")
-    
+
     return {
         "webhook_id": webhook_id,
         "deleted": True,
@@ -211,13 +214,13 @@ async def delete_webhook(request, webhook_id: str) -> dict:
 )
 async def rotate_secret(request, webhook_id: str) -> dict:
     """Rotate webhook signing secret.
-    
+
     Security Auditor: Key rotation.
     """
     new_secret = secrets.token_urlsafe(32)
-    
+
     logger.info(f"Webhook secret rotated: {webhook_id}")
-    
+
     return {
         "webhook_id": webhook_id,
         "new_secret": new_secret,
@@ -241,13 +244,13 @@ async def test_webhook(
     event_type: str = "test.ping",
 ) -> dict:
     """Send a test event to webhook.
-    
+
     DevOps: Verify connectivity.
     """
     delivery_id = str(uuid4())
-    
+
     # In production: async task to deliver
-    
+
     return {
         "webhook_id": webhook_id,
         "delivery_id": delivery_id,
@@ -273,7 +276,7 @@ async def list_deliveries(
     limit: int = 50,
 ) -> dict:
     """List webhook delivery attempts.
-    
+
     DevOps: Delivery monitoring.
     """
     return {
@@ -314,7 +317,7 @@ async def retry_delivery(
     delivery_id: str,
 ) -> dict:
     """Manually retry a failed delivery.
-    
+
     DevOps: Manual retry.
     """
     return {
@@ -334,7 +337,7 @@ async def retry_delivery(
 )
 async def list_available_events(request) -> dict:
     """List available webhook events.
-    
+
     PM: Event catalog.
     """
     events = [
@@ -345,7 +348,7 @@ async def list_available_events(request) -> dict:
         ).dict()
         for event_type, description in WEBHOOK_EVENTS.items()
     ]
-    
+
     return {
         "events": events,
         "total": len(events),
@@ -368,7 +371,7 @@ async def verify_signature(
     secret: str,
 ) -> dict:
     """Verify webhook signature.
-    
+
     Security Auditor: Signature validation.
     """
     expected = hmac.new(
@@ -376,9 +379,9 @@ async def verify_signature(
         payload.encode(),
         hashlib.sha256,
     ).hexdigest()
-    
+
     valid = hmac.compare_digest(f"sha256={expected}", signature)
-    
+
     return {
         "valid": valid,
     }

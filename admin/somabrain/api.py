@@ -13,21 +13,23 @@ from ninja import Query, Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.responses import paginated_response
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
 
 # Mount cognitive sub-router
 from admin.somabrain.cognitive import router as cognitive_router
+
 router.add_router("/cognitive", cognitive_router)
 
 # Mount admin sub-router
 from admin.somabrain.admin_api import router as admin_router
+
 router.add_router("/admin", admin_router)
 
 # Mount core brain sub-router (Phase 6.1, 6.2)
 from admin.somabrain.core_brain import router as core_brain_router
+
 router.add_router("/brain", core_brain_router)
 
 
@@ -38,6 +40,7 @@ router.add_router("/brain", core_brain_router)
 
 class MemoryOut(BaseModel):
     """Memory item response."""
+
     id: str
     content: str
     memory_type: str  # episodic, semantic, procedural
@@ -48,6 +51,7 @@ class MemoryOut(BaseModel):
 
 class MemorySearchRequest(BaseModel):
     """Search request."""
+
     query: str
     limit: int = 10
     memory_type: Optional[str] = None
@@ -55,6 +59,7 @@ class MemorySearchRequest(BaseModel):
 
 class MemoryCreateRequest(BaseModel):
     """Create memory request."""
+
     content: str
     memory_type: str = "episodic"
     metadata: Optional[dict] = None
@@ -62,6 +67,7 @@ class MemoryCreateRequest(BaseModel):
 
 class MemoryStatsOut(BaseModel):
     """Memory statistics."""
+
     total_memories: int
     pending_sync: int
     by_type: dict
@@ -79,20 +85,20 @@ class MemoryStatsOut(BaseModel):
 )
 async def search_memories(request, payload: MemorySearchRequest) -> dict:
     """Semantic search over memories.
-    
+
     Per SRS UC-05: POST /api/v2/memory/search
-    
+
     VIBE COMPLIANT:
     - Real SomaBrain integration
     - Graceful degradation if unavailable
     """
     from admin.somabrain.client import get_somabrain_client, SomaBrainError
-    
+
     # Get tenant from auth context (placeholder)
     tenant_id = "default"
-    
+
     client = get_somabrain_client()
-    
+
     try:
         memories = await client.recall(
             query=payload.query,
@@ -100,7 +106,7 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
             limit=payload.limit,
             memory_type=payload.memory_type,
         )
-        
+
         items = [
             MemoryOut(
                 id=m.get("id", ""),
@@ -112,9 +118,9 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
             ).model_dump()
             for m in memories
         ]
-        
+
         return {"memories": items, "query": payload.query}
-        
+
     except SomaBrainError as e:
         logger.error(f"Memory search failed: {e}")
         return {"memories": [], "query": payload.query, "error": "SomaBrain unavailable"}
@@ -130,17 +136,17 @@ async def get_recent_memories(
     limit: int = Query(20, ge=1, le=100),
 ) -> dict:
     """Get recent memories for the current user.
-    
+
     Per SRS UC-05: GET /api/v2/memory/recent
     """
     from admin.somabrain.client import get_somabrain_client
-    
+
     tenant_id = "default"
     client = get_somabrain_client()
-    
+
     try:
         memories = await client.get_recent(tenant_id=tenant_id, limit=limit)
-        
+
         items = [
             MemoryOut(
                 id=m.get("id", ""),
@@ -151,9 +157,9 @@ async def get_recent_memories(
             ).model_dump()
             for m in memories
         ]
-        
+
         return {"memories": items}
-        
+
     except Exception as e:
         logger.error(f"Get recent failed: {e}")
         return {"memories": [], "error": "SomaBrain unavailable"}
@@ -166,17 +172,17 @@ async def get_recent_memories(
 )
 async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     """Store a new memory.
-    
+
     Creates a memory record that will be synced to SomaBrain.
     Uses ZDL pattern if SomaBrain is unavailable.
     """
     from admin.somabrain.client import get_somabrain_client, SomaBrainError
-    
+
     tenant_id = "default"
     user_id = "default"
-    
+
     client = get_somabrain_client()
-    
+
     try:
         result = await client.remember(
             content=payload.content,
@@ -185,13 +191,13 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
             memory_type=payload.memory_type,
             metadata=payload.metadata,
         )
-        
+
         return {
             "success": True,
             "memory_id": result.get("id"),
             "message": "Memory stored",
         }
-        
+
     except SomaBrainError as e:
         # ZDL: Queue for later sync
         logger.warning(f"SomaBrain unavailable, queueing memory: {e}")
@@ -211,16 +217,16 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
 )
 async def delete_memory(request, memory_id: str) -> dict:
     """Delete a memory.
-    
+
     Per SRS UC-05: DELETE /api/v2/memory/{id}
     """
     from admin.somabrain.client import get_somabrain_client
-    
+
     tenant_id = "default"
     client = get_somabrain_client()
-    
+
     success = await client.forget(memory_id=memory_id, tenant_id=tenant_id)
-    
+
     return {
         "success": success,
         "memory_id": memory_id,
@@ -235,16 +241,16 @@ async def delete_memory(request, memory_id: str) -> dict:
 )
 async def get_pending_count(request) -> dict:
     """Get count of memories pending sync to SomaBrain.
-    
+
     Used for degradation mode status display.
     """
     from admin.somabrain.client import get_somabrain_client
-    
+
     tenant_id = "default"
     client = get_somabrain_client()
-    
+
     count = await client.get_pending_count(tenant_id=tenant_id)
-    
+
     return {
         "pending_count": count,
         "tenant_id": tenant_id,

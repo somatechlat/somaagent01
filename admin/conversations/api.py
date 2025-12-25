@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Conversation(BaseModel):
     """Conversation definition."""
+
     conversation_id: str
     agent_id: str
     user_id: str
@@ -45,6 +46,7 @@ class Conversation(BaseModel):
 
 class Message(BaseModel):
     """Chat message."""
+
     message_id: str
     conversation_id: str
     role: str  # user, assistant, system, tool
@@ -55,6 +57,7 @@ class Message(BaseModel):
 
 class ConversationStats(BaseModel):
     """Conversation statistics."""
+
     total_tokens: int
     user_messages: int
     assistant_messages: int
@@ -80,7 +83,7 @@ async def list_conversations(
     limit: int = 50,
 ) -> dict:
     """List conversations.
-    
+
     PM: Conversation history.
     """
     return {
@@ -103,13 +106,13 @@ async def start_conversation(
     title: Optional[str] = None,
 ) -> Conversation:
     """Start a new conversation.
-    
+
     PhD Dev: Conversation initialization.
     """
     conversation_id = str(uuid4())
-    
+
     logger.info(f"Conversation started: {conversation_id}")
-    
+
     return Conversation(
         conversation_id=conversation_id,
         agent_id=agent_id,
@@ -168,7 +171,7 @@ async def update_conversation(
 async def delete_conversation(request, conversation_id: str) -> dict:
     """Delete a conversation."""
     logger.warning(f"Conversation deleted: {conversation_id}")
-    
+
     return {
         "conversation_id": conversation_id,
         "deleted": True,
@@ -192,7 +195,7 @@ async def list_messages(
     before: Optional[str] = None,
 ) -> dict:
     """List conversation messages.
-    
+
     PM: Chat history.
     """
     return {
@@ -215,13 +218,13 @@ async def send_message(
     role: str = "user",
 ) -> Message:
     """Send a message.
-    
+
     PhD Dev: Message processing.
     """
     message_id = str(uuid4())
-    
+
     logger.debug(f"Message sent: {message_id}")
-    
+
     return Message(
         message_id=message_id,
         conversation_id=conversation_id,
@@ -269,14 +272,14 @@ async def chat(
     stream: bool = False,
 ) -> dict:
     """Send message and get agent response.
-    
+
     PhD Dev: Full chat cycle.
     """
     user_message_id = str(uuid4())
     assistant_message_id = str(uuid4())
-    
+
     # In production: call LLM
-    
+
     return {
         "conversation_id": conversation_id,
         "user_message_id": user_message_id,
@@ -295,7 +298,7 @@ async def get_stream_info(
     conversation_id: str,
 ) -> dict:
     """Get streaming endpoint info.
-    
+
     PhD Dev: SSE streaming setup.
     """
     return {
@@ -318,7 +321,7 @@ async def get_stream_info(
 async def end_conversation(request, conversation_id: str) -> dict:
     """End a conversation."""
     logger.info(f"Conversation ended: {conversation_id}")
-    
+
     return {
         "conversation_id": conversation_id,
         "status": "ended",
@@ -354,7 +357,7 @@ async def get_conversation_stats(
     conversation_id: str,
 ) -> ConversationStats:
     """Get conversation statistics.
-    
+
     PM: Usage metrics.
     """
     return ConversationStats(
@@ -377,11 +380,11 @@ async def export_conversation(
     format: str = "json",  # json, txt, pdf
 ) -> dict:
     """Export conversation.
-    
+
     PM: Data portability.
     """
     export_id = str(uuid4())
-    
+
     return {
         "export_id": export_id,
         "conversation_id": conversation_id,
@@ -407,7 +410,7 @@ async def search_conversations(
     limit: int = 20,
 ) -> dict:
     """Search across conversations.
-    
+
     PM: Find past conversations.
     """
     return {

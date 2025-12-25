@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class ScheduledJob(BaseModel):
     """Scheduled job."""
+
     job_id: str
     name: str
     description: Optional[str] = None
@@ -45,6 +46,7 @@ class ScheduledJob(BaseModel):
 
 class JobExecution(BaseModel):
     """Job execution record."""
+
     execution_id: str
     job_id: str
     started_at: str
@@ -70,7 +72,7 @@ async def list_jobs(
     limit: int = 50,
 ) -> dict:
     """List scheduled jobs.
-    
+
     DevOps: Job overview.
     """
     return {
@@ -93,13 +95,13 @@ async def create_job(
     description: Optional[str] = None,
 ) -> ScheduledJob:
     """Create a scheduled job.
-    
+
     DevOps: Schedule automation.
     """
     job_id = str(uuid4())
-    
+
     logger.info(f"Job created: {name} ({job_id})")
-    
+
     return ScheduledJob(
         job_id=job_id,
         name=name,
@@ -156,7 +158,7 @@ async def update_job(
 async def delete_job(request, job_id: str) -> dict:
     """Delete a scheduled job."""
     logger.warning(f"Job deleted: {job_id}")
-    
+
     return {
         "job_id": job_id,
         "deleted": True,
@@ -175,13 +177,13 @@ async def delete_job(request, job_id: str) -> dict:
 )
 async def run_job_now(request, job_id: str) -> dict:
     """Run job immediately.
-    
+
     DevOps: Manual trigger.
     """
     execution_id = str(uuid4())
-    
+
     logger.info(f"Job triggered: {job_id}")
-    
+
     return {
         "job_id": job_id,
         "execution_id": execution_id,
@@ -232,7 +234,7 @@ async def list_executions(
     limit: int = 20,
 ) -> dict:
     """List job executions.
-    
+
     QA: Execution history.
     """
     return {
@@ -283,7 +285,7 @@ async def cancel_execution(request, execution_id: str) -> dict:
 )
 async def get_stats(request) -> dict:
     """Get scheduler statistics.
-    
+
     DevOps: Overview.
     """
     return {

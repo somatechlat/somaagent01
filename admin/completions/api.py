@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Message(BaseModel):
     """Chat message."""
+
     role: str  # system, user, assistant, tool
     content: str
     name: Optional[str] = None
@@ -40,6 +41,7 @@ class Message(BaseModel):
 
 class CompletionRequest(BaseModel):
     """Chat completion request."""
+
     model: str
     messages: list[Message]
     temperature: float = 0.7
@@ -53,6 +55,7 @@ class CompletionRequest(BaseModel):
 
 class CompletionChoice(BaseModel):
     """Completion choice."""
+
     index: int
     message: Message
     finish_reason: str
@@ -60,6 +63,7 @@ class CompletionChoice(BaseModel):
 
 class CompletionResponse(BaseModel):
     """Chat completion response (OpenAI-compatible)."""
+
     id: str
     object: str = "chat.completion"
     created: int
@@ -70,6 +74,7 @@ class CompletionResponse(BaseModel):
 
 class UsageStats(BaseModel):
     """Token usage."""
+
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
@@ -95,16 +100,16 @@ async def create_chat_completion(
     stream: bool = False,
 ) -> CompletionResponse:
     """Create a chat completion.
-    
+
     ML Eng: LLM inference.
     PhD Dev: Completion parameters.
     """
     completion_id = f"chatcmpl-{uuid4().hex[:24]}"
-    
+
     # In production: call LLM provider
-    
+
     logger.info(f"Completion: {completion_id}, model={model}")
-    
+
     return CompletionResponse(
         id=completion_id,
         created=int(timezone.now().timestamp()),
@@ -134,7 +139,7 @@ async def create_chat_completion(
 )
 async def get_stream_info(request) -> dict:
     """Get streaming endpoint info.
-    
+
     DevOps: SSE streaming config.
     """
     return {
@@ -163,11 +168,11 @@ async def create_text_completion(
     stop: Optional[list[str]] = None,
 ) -> dict:
     """Create a text completion (legacy).
-    
+
     ML Eng: Legacy completion.
     """
     completion_id = f"cmpl-{uuid4().hex[:24]}"
-    
+
     return {
         "id": completion_id,
         "object": "text_completion",
@@ -206,11 +211,11 @@ async def create_chat_with_functions(
     function_call: str = "auto",
 ) -> dict:
     """Chat completion with function calling.
-    
+
     PhD Dev: Tool use.
     """
     completion_id = f"chatcmpl-{uuid4().hex[:24]}"
-    
+
     return {
         "id": completion_id,
         "object": "chat.completion",
@@ -255,11 +260,11 @@ async def create_chat_json_mode(
     json_schema: Optional[dict] = None,
 ) -> dict:
     """Chat completion with JSON mode.
-    
+
     PhD Dev: Structured output.
     """
     completion_id = f"chatcmpl-{uuid4().hex[:24]}"
-    
+
     return {
         "id": completion_id,
         "object": "chat.completion",
@@ -298,7 +303,7 @@ async def get_stats(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """Get completion statistics.
-    
+
     PM: Usage tracking.
     """
     return {

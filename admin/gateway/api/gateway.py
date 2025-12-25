@@ -24,7 +24,7 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
-from admin.common.exceptions import NotFoundError, ServiceError
+from admin.common.exceptions import NotFoundError
 
 router = Router(tags=["gateway"])
 logger = logging.getLogger(__name__)
@@ -46,9 +46,8 @@ async def execute_a2a(req: A2ARequest) -> dict:
     🔒 Security: Workflow ID includes session for audit
     ⚡ Perf: Async Temporal client
     """
-    from services.gateway.providers import get_temporal_client
     from services.delegation_gateway.temporal_worker import A2AWorkflow
-    from django.conf import settings
+    from services.gateway.providers import get_temporal_client
 
     event = dict(req.event)
     workflow_id = f"a2a-{event.get('session_id') or 'n/a'}-{uuid.uuid4()}"
@@ -211,7 +210,6 @@ async def get_av_status() -> dict:
 
     🔒 Security: Reports scan capability status
     """
-    from django.conf import settings
 
     av_enabled = getattr(settings, "AV_SCAN_ENABLED", False)
     return {"av_enabled": av_enabled, "status": "operational" if av_enabled else "disabled"}

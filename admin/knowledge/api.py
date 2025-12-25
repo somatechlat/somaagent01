@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Document(BaseModel):
     """Knowledge base document."""
+
     document_id: str
     title: str
     content_type: str
@@ -46,6 +47,7 @@ class Document(BaseModel):
 
 class Chunk(BaseModel):
     """Document chunk."""
+
     chunk_id: str
     document_id: str
     content: str
@@ -56,6 +58,7 @@ class Chunk(BaseModel):
 
 class SearchResult(BaseModel):
     """Search result."""
+
     chunk_id: str
     document_id: str
     content: str
@@ -81,7 +84,7 @@ async def list_documents(
     limit: int = 50,
 ) -> dict:
     """List documents.
-    
+
     PM: Knowledge library.
     """
     return {
@@ -106,13 +109,13 @@ async def create_document(
     source_url: Optional[str] = None,
 ) -> Document:
     """Create and index a document.
-    
+
     PhD Dev: Document ingestion.
     """
     document_id = str(uuid4())
-    
+
     logger.info(f"Document created: {title} ({document_id})")
-    
+
     return Document(
         document_id=document_id,
         title=title,
@@ -154,7 +157,7 @@ async def get_document(request, document_id: str) -> Document:
 async def delete_document(request, document_id: str) -> dict:
     """Delete document and chunks."""
     logger.warning(f"Document deleted: {document_id}")
-    
+
     return {
         "document_id": document_id,
         "deleted": True,
@@ -173,11 +176,11 @@ async def delete_document(request, document_id: str) -> dict:
 )
 async def reindex_document(request, document_id: str) -> dict:
     """Trigger reindexing.
-    
+
     ML Eng: Re-embed with new model.
     """
     logger.info(f"Reindexing: {document_id}")
-    
+
     return {
         "document_id": document_id,
         "status": "reindexing",
@@ -195,7 +198,7 @@ async def list_chunks(
     limit: int = 100,
 ) -> dict:
     """List document chunks.
-    
+
     PhD Dev: Chunk inspection.
     """
     return {
@@ -224,7 +227,7 @@ async def semantic_search(
     min_score: float = 0.7,
 ) -> dict:
     """Semantic search across knowledge base.
-    
+
     ML Eng: Vector similarity search.
     """
     return {
@@ -248,7 +251,7 @@ async def hybrid_search(
     semantic_weight: float = 0.7,
 ) -> dict:
     """Hybrid semantic + keyword search.
-    
+
     ML Eng: Combined search strategies.
     """
     return {
@@ -275,7 +278,7 @@ async def list_collections(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """List document collections.
-    
+
     PM: Organized knowledge.
     """
     return {
@@ -297,7 +300,7 @@ async def create_collection(
 ) -> dict:
     """Create a collection."""
     collection_id = str(uuid4())
-    
+
     return {
         "collection_id": collection_id,
         "name": name,
@@ -320,7 +323,7 @@ async def get_stats(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """Get knowledge base statistics.
-    
+
     PM: Usage metrics.
     """
     return {

@@ -138,6 +138,7 @@ from pydantic import BaseModel
 
 class TenantBillingOut(BaseModel):
     """Tenant billing summary."""
+
     tenant_id: str
     tenant_name: str
     current_tier: str
@@ -150,12 +151,14 @@ class TenantBillingOut(BaseModel):
 
 class UpgradeRequest(BaseModel):
     """Request to upgrade/downgrade tier."""
+
     new_tier_id: str
     prorate: bool = True
 
 
 class UpgradeResponse(BaseModel):
     """Response after tier change."""
+
     success: bool
     message: str
     old_tier: str
@@ -166,24 +169,24 @@ class UpgradeResponse(BaseModel):
 @router.get("/tenant/{tenant_id}", response=TenantBillingOut)
 def get_tenant_billing(request, tenant_id: str):
     """Get billing details for a specific tenant.
-    
+
     Per VIBE rules - real DB queries, no mocks.
     """
     from datetime import timedelta
-    from django.utils import timezone
-    
+
     try:
         tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
     except Tenant.DoesNotExist:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Tenant {tenant_id} not found")
-    
+
     # Calculate next billing date (30 days from created or last billed)
     next_billing = None
     if tenant.tier and tenant.tier.price_cents > 0:
         # Simple: 30 days from creation (real impl would use Stripe/Lago)
         next_billing = (tenant.created_at + timedelta(days=30)).isoformat()
-    
+
     return TenantBillingOut(
         tenant_id=str(tenant.id),
         tenant_name=tenant.name,
@@ -200,41 +203,42 @@ def get_tenant_billing(request, tenant_id: str):
 @transaction.atomic
 def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
     """Upgrade or downgrade a tenant's subscription tier.
-    
+
     Per VIBE rules:
     - Real database transaction
     - Atomic operation
     - Audit logging (via AuditLog model)
     """
     from ninja.errors import HttpError
-    
+
     try:
         tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
     except Tenant.DoesNotExist:
         raise HttpError(404, f"Tenant {tenant_id} not found")
-    
+
     try:
         new_tier = SubscriptionTier.objects.get(id=payload.new_tier_id)
     except SubscriptionTier.DoesNotExist:
         raise HttpError(404, f"Tier {payload.new_tier_id} not found")
-    
+
     old_tier_name = tenant.tier.name if tenant.tier else "None"
     old_price = tenant.tier.price_cents if tenant.tier else 0
-    
+
     # Calculate proration (simplified - real impl uses Stripe)
     prorated = 0
     if payload.prorate and old_price > 0:
         # Simple: half-month proration estimate
         prorated = (new_tier.price_cents - old_price) // 2
-    
+
     # Update tenant tier
     tenant.tier = new_tier
     tenant.save(update_fields=["tier", "updated_at"])
-    
+
     # Log the change (audit trail)
-    from admin.saas.models import AuditLog
     from uuid import uuid4
-    
+
+    from admin.saas.models import AuditLog
+
     AuditLog.objects.create(
         actor_id=uuid4(),  # Would be request.user.id in real impl
         actor_email="system@somaagent.ai",
@@ -245,7 +249,7 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
         old_value={"tier": old_tier_name, "price_cents": old_price},
         new_value={"tier": new_tier.name, "price_cents": new_tier.price_cents},
     )
-    
+
     return UpgradeResponse(
         success=True,
         message=f"Successfully changed tier from {old_tier_name} to {new_tier.name}",
@@ -263,7 +267,7 @@ def get_tenant_invoices(
     per_page: int = Query(20, ge=1, le=100),
 ):
     """Get invoice history for a specific tenant.
-    
+
     Would integrate with Stripe/Lago in production.
     """
     # In production: stripe.Invoice.list(customer=tenant.stripe_id)
@@ -272,12 +276,14 @@ def get_tenant_invoices(
 
 class PaymentMethodCreate(BaseModel):
     """Create payment method request."""
+
     token: str  # Stripe token from frontend
     set_default: bool = True
 
 
 class PaymentMethodOut(BaseModel):
     """Payment method response."""
+
     id: str
     type: str  # card, bank_account
     last4: str
@@ -290,19 +296,19 @@ class PaymentMethodOut(BaseModel):
 @transaction.atomic
 def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
     """Add a payment method for a tenant.
-    
+
     VIBE COMPLIANT:
     - Real validation
     - Would integrate with Stripe in production
     - Returns structured response
     """
     from ninja.errors import HttpError
-    
+
     try:
         tenant = Tenant.objects.get(id=tenant_id)
     except Tenant.DoesNotExist:
         raise HttpError(404, f"Tenant {tenant_id} not found")
-    
+
     # In production: stripe.PaymentMethod.attach(payload.token, customer=tenant.stripe_id)
     # For now, return mock confirmation
     return {
@@ -313,6 +319,5 @@ def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
             "type": "card",
             "last4": "4242",  # Would come from Stripe
             "is_default": payload.set_default,
-        }
+        },
     }
-

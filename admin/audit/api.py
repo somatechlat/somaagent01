@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class AuditEvent(BaseModel):
     """Audit event."""
+
     event_id: str
     timestamp: str
     actor_id: str
@@ -48,6 +49,7 @@ class AuditEvent(BaseModel):
 
 class AuditSummary(BaseModel):
     """Audit summary statistics."""
+
     total_events: int
     by_action: dict
     by_resource: dict
@@ -76,7 +78,7 @@ async def list_audit_events(
     offset: int = 0,
 ) -> dict:
     """List audit events.
-    
+
     Security Auditor: Query audit trail.
     """
     return {
@@ -135,7 +137,7 @@ async def get_audit_summary(
     to_date: Optional[str] = None,
 ) -> AuditSummary:
     """Get audit summary statistics.
-    
+
     PM: Compliance dashboard.
     """
     return AuditSummary(
@@ -158,11 +160,11 @@ async def generate_compliance_report(
     format: str = "json",  # json, csv, pdf
 ) -> dict:
     """Generate compliance report.
-    
+
     PM: Audit report for compliance.
     """
     report_id = str(uuid4())
-    
+
     return {
         "report_id": report_id,
         "from_date": from_date,
@@ -205,7 +207,7 @@ async def get_actor_history(
     limit: int = 100,
 ) -> dict:
     """Get all events for an actor.
-    
+
     Security Auditor: User activity review.
     """
     return {
@@ -227,7 +229,7 @@ async def get_resource_history(
     limit: int = 100,
 ) -> dict:
     """Get all events for a resource.
-    
+
     Security Auditor: Resource change history.
     """
     return {
@@ -254,7 +256,7 @@ async def list_alerts(
     severity: Optional[str] = None,
 ) -> dict:
     """List security alerts.
-    
+
     Security Auditor: Security incidents.
     """
     return {
@@ -276,7 +278,7 @@ async def acknowledge_alert(
 ) -> dict:
     """Acknowledge a security alert."""
     logger.info(f"Alert acknowledged: {alert_id}")
-    
+
     return {
         "alert_id": alert_id,
         "acknowledged": True,
@@ -296,7 +298,7 @@ async def acknowledge_alert(
 )
 async def get_retention_policy(request) -> dict:
     """Get audit log retention policy.
-    
+
     DevOps: Retention configuration.
     """
     return {

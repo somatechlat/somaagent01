@@ -15,11 +15,9 @@ from __future__ import annotations
 import base64
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from django.conf import settings
-from django.utils import timezone
-from ninja import File, Router, UploadedFile
+from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -45,6 +43,7 @@ MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
 
 class TranscribeRequest(BaseModel):
     """Transcription request."""
+
     audio_base64: str  # Base64 encoded audio
     format: str = "wav"  # wav, mp3, webm, ogg
     language: Optional[str] = None  # Auto-detect if not specified
@@ -52,6 +51,7 @@ class TranscribeRequest(BaseModel):
 
 class TranscribeResponse(BaseModel):
     """Transcription response."""
+
     text: str
     language: str
     duration_seconds: float
@@ -61,6 +61,7 @@ class TranscribeResponse(BaseModel):
 
 class SynthesizeRequest(BaseModel):
     """Text-to-speech request."""
+
     text: str
     voice: str = "default"  # Voice ID
     speed: float = 1.0  # 0.5 - 2.0
@@ -69,6 +70,7 @@ class SynthesizeRequest(BaseModel):
 
 class SynthesizeResponse(BaseModel):
     """TTS response."""
+
     audio_base64: str
     format: str
     duration_seconds: float
@@ -77,11 +79,13 @@ class SynthesizeResponse(BaseModel):
 
 class VoiceListResponse(BaseModel):
     """Available voices."""
+
     voices: list[dict]
 
 
 class VoiceStatusResponse(BaseModel):
     """Voice service status."""
+
     whisper_status: str
     kokoro_status: str
     fallback_available: bool
@@ -100,25 +104,25 @@ class VoiceStatusResponse(BaseModel):
 )
 async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeResponse:
     """Transcribe audio to text using Whisper.
-    
+
     Per SRS UC-04: POST /api/v2/voice/transcribe
-    
+
     VIBE COMPLIANT:
     - Real Whisper integration
     - Fallback to browser API if unavailable
     - Size and format validation
     """
     import httpx
-    
+
     # Decode and validate audio
     try:
         audio_bytes = base64.b64decode(payload.audio_base64)
     except Exception:
         raise BadRequestError("Invalid base64 audio data")
-    
+
     if len(audio_bytes) > MAX_AUDIO_SIZE:
         raise BadRequestError(f"Audio exceeds maximum size of {MAX_AUDIO_SIZE // 1024 // 1024}MB")
-    
+
     # Call Whisper service
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -130,7 +134,7 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
                     "output": "json",
                 },
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 return TranscribeResponse(
@@ -143,13 +147,12 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
             else:
                 logger.error(f"Whisper error: {response.status_code}")
                 raise ServiceUnavailableError("whisper", "Transcription service unavailable")
-                
+
     except httpx.HTTPError as e:
         logger.error(f"Whisper connection error: {e}")
         # Return degraded response with browser fallback hint
         raise ServiceUnavailableError(
-            "whisper",
-            "Whisper unavailable - use browser Speech API as fallback"
+            "whisper", "Whisper unavailable - use browser Speech API as fallback"
         )
 
 
@@ -161,22 +164,22 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
 )
 async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeResponse:
     """Synthesize text to speech using Kokoro TTS.
-    
+
     Per SRS UC-04: POST /api/v2/voice/synthesize
-    
+
     VIBE COMPLIANT:
     - Real Kokoro TTS integration
     - Fallback to browser API if unavailable
     - Multiple voice options
     """
     import httpx
-    
+
     if len(payload.text) > 5000:
         raise BadRequestError("Text exceeds maximum length of 5000 characters")
-    
+
     if not 0.5 <= payload.speed <= 2.0:
         raise BadRequestError("Speed must be between 0.5 and 2.0")
-    
+
     # Call Kokoro TTS service
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -189,15 +192,15 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
                     "format": payload.format,
                 },
             )
-            
+
             if response.status_code == 200:
                 audio_bytes = response.content
                 audio_base64 = base64.b64encode(audio_bytes).decode()
-                
+
                 # Estimate duration (rough: 150 words per minute)
                 word_count = len(payload.text.split())
                 duration = (word_count / 150) * 60 / payload.speed
-                
+
                 return SynthesizeResponse(
                     audio_base64=audio_base64,
                     format=payload.format,
@@ -207,12 +210,11 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
             else:
                 logger.error(f"Kokoro error: {response.status_code}")
                 raise ServiceUnavailableError("kokoro", "TTS service unavailable")
-                
+
     except httpx.HTTPError as e:
         logger.error(f"Kokoro connection error: {e}")
         raise ServiceUnavailableError(
-            "kokoro",
-            "Kokoro TTS unavailable - use browser Speech Synthesis as fallback"
+            "kokoro", "Kokoro TTS unavailable - use browser Speech Synthesis as fallback"
         )
 
 
@@ -224,13 +226,13 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
 )
 async def list_voices(request) -> VoiceListResponse:
     """List available TTS voices.
-    
+
     Includes both Kokoro voices and browser fallback voices.
     """
     import httpx
-    
+
     voices = []
-    
+
     # Try to get Kokoro voices
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -239,14 +241,16 @@ async def list_voices(request) -> VoiceListResponse:
                 voices.extend(response.json().get("voices", []))
     except Exception:
         pass
-    
+
     # Add browser fallback voices
-    voices.extend([
-        {"id": "browser_default", "name": "Browser Default", "provider": "browser"},
-        {"id": "browser_male", "name": "Browser Male", "provider": "browser"},
-        {"id": "browser_female", "name": "Browser Female", "provider": "browser"},
-    ])
-    
+    voices.extend(
+        [
+            {"id": "browser_default", "name": "Browser Default", "provider": "browser"},
+            {"id": "browser_male", "name": "Browser Male", "provider": "browser"},
+            {"id": "browser_female", "name": "Browser Female", "provider": "browser"},
+        ]
+    )
+
     return VoiceListResponse(voices=voices)
 
 
@@ -257,14 +261,14 @@ async def list_voices(request) -> VoiceListResponse:
 )
 async def get_voice_status(request) -> VoiceStatusResponse:
     """Check status of voice services.
-    
+
     Used by frontend to determine if browser fallback is needed.
     """
     import httpx
-    
+
     whisper_status = "down"
     kokoro_status = "down"
-    
+
     # Check Whisper
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
@@ -273,7 +277,7 @@ async def get_voice_status(request) -> VoiceStatusResponse:
                 whisper_status = "healthy"
     except Exception:
         pass
-    
+
     # Check Kokoro
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
@@ -282,7 +286,7 @@ async def get_voice_status(request) -> VoiceStatusResponse:
                 kokoro_status = "healthy"
     except Exception:
         pass
-    
+
     return VoiceStatusResponse(
         whisper_status=whisper_status,
         kokoro_status=kokoro_status,
@@ -297,7 +301,7 @@ async def get_voice_status(request) -> VoiceStatusResponse:
 )
 async def transcribe_stream(request) -> dict:
     """Placeholder for streaming transcription.
-    
+
     Real-time transcription would use WebSockets.
     See: /ws/voice for WebSocket endpoint.
     """

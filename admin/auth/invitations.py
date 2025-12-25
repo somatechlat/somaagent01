@@ -26,7 +26,7 @@ from ninja import Router
 from pydantic import BaseModel, EmailStr
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError
+from admin.common.exceptions import BadRequestError
 
 router = Router(tags=["invitations"])
 logger = logging.getLogger(__name__)
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 class InviteUserRequest(BaseModel):
     """Send invitation request."""
+
     email: EmailStr
     role: str = "user"  # user, admin, viewer
     expires_hours: int = 72
@@ -47,6 +48,7 @@ class InviteUserRequest(BaseModel):
 
 class InviteUserResponse(BaseModel):
     """Invitation response."""
+
     invitation_id: str
     email: str
     invite_url: str
@@ -56,6 +58,7 @@ class InviteUserResponse(BaseModel):
 
 class InvitationStatusResponse(BaseModel):
     """Invitation status."""
+
     invitation_id: str
     email: str
     role: str
@@ -67,6 +70,7 @@ class InvitationStatusResponse(BaseModel):
 
 class AcceptInvitationRequest(BaseModel):
     """Accept invitation request."""
+
     first_name: str
     last_name: str
     password: str
@@ -74,6 +78,7 @@ class AcceptInvitationRequest(BaseModel):
 
 class AcceptInvitationResponse(BaseModel):
     """Accept invitation response."""
+
     success: bool
     user_id: str
     message: str
@@ -93,9 +98,9 @@ class AcceptInvitationResponse(BaseModel):
 )
 async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResponse:
     """Send an invitation to a new user.
-    
+
     Per Phase 2.4: POST /saas/users/invite
-    
+
     VIBE COMPLIANT:
     - Cryptographic token (secrets.token_urlsafe)
     - SHA-256 hash stored (never plaintext)
@@ -103,14 +108,14 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
     - Audit logged
     """
     from asgiref.sync import sync_to_async
-    
+
     # Generate secure invitation token
     token = secrets.token_urlsafe(32)  # 256-bit entropy
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    
+
     invitation_id = str(uuid4())
     expires_at = timezone.now() + timedelta(hours=payload.expires_hours)
-    
+
     @sync_to_async
     def _create_invitation():
         # In production: create Invitation model record
@@ -123,20 +128,20 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
         #     invited_by=request.auth.user_id,
         #     message=payload.message,
         # )
-        
+
         # Audit log
         logger.info(f"Invitation sent to {payload.email} by admin")
         return True
-    
+
     await _create_invitation()
-    
+
     # In production: Send email via Keycloak or SMTP
     # KeycloakAdmin.send_invitation_email(email=payload.email, token=token)
-    
+
     # Build invitation URL
     base_url = "http://localhost:5173"  # Would come from settings
     invite_url = f"{base_url}/auth/invite/{token}"
-    
+
     return InviteUserResponse(
         invitation_id=invitation_id,
         email=payload.email,
@@ -153,16 +158,16 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
 )
 async def get_invitation(request, token: str) -> InvitationStatusResponse:
     """Get invitation details by token.
-    
+
     Per Phase 2.4: GET /auth/invite/{token}
-    
+
     Returns invitation status without accepting it.
     """
     from asgiref.sync import sync_to_async
-    
+
     # Hash the token to look up
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    
+
     @sync_to_async
     def _get_invitation():
         # In production: query by token_hash
@@ -172,12 +177,12 @@ async def get_invitation(request, token: str) -> InvitationStatusResponse:
         # ).first()
         # return invitation
         return None
-    
+
     invitation = await _get_invitation()
-    
+
     # For now, return placeholder
     # In production: check if invitation is None or expired
-    
+
     return InvitationStatusResponse(
         invitation_id="placeholder",
         email="invited@example.com",
@@ -200,9 +205,9 @@ async def accept_invitation(
     payload: AcceptInvitationRequest,
 ) -> AcceptInvitationResponse:
     """Accept an invitation and create user account.
-    
+
     Per Phase 2.4: POST /auth/invite/{token}/accept
-    
+
     VIBE COMPLIANT:
     - Validates token
     - Creates user in Keycloak
@@ -211,9 +216,9 @@ async def accept_invitation(
     - Single-use (token invalidated)
     """
     from asgiref.sync import sync_to_async
-    
+
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    
+
     @sync_to_async
     @transaction.atomic
     def _accept_invitation():
@@ -223,44 +228,44 @@ async def accept_invitation(
         # 3. Create Keycloak user
         # 4. Create TenantUser record
         # 5. Mark invitation accepted
-        
+
         user_id = str(uuid4())
-        
+
         # invitation = Invitation.objects.select_for_update().get(
         #     token_hash=token_hash,
         #     status='pending',
         #     expires_at__gt=timezone.now(),
         # )
-        # 
+        #
         # KeycloakAdmin.create_user(
         #     email=invitation.email,
         #     first_name=payload.first_name,
         #     last_name=payload.last_name,
         #     password=payload.password,
         # )
-        # 
+        #
         # TenantUser.objects.create(
         #     user_id=user_id,
         #     tenant=invitation.tenant,
         #     role=invitation.role,
         # )
-        # 
+        #
         # invitation.status = 'accepted'
         # invitation.accepted_at = timezone.now()
         # invitation.save()
-        
+
         return user_id
-    
+
     try:
         user_id = await _accept_invitation()
-        
+
         return AcceptInvitationResponse(
             success=True,
             user_id=user_id,
             message="Account created successfully",
             requires_mfa_setup=False,  # Based on tenant policy
         )
-        
+
     except Exception as e:
         logger.error(f"Accept invitation failed: {e}")
         raise BadRequestError("Invalid or expired invitation")
@@ -278,7 +283,7 @@ async def list_invitations(
     per_page: int = 20,
 ) -> dict:
     """List all invitations for the tenant.
-    
+
     Admin only endpoint.
     """
     # In production: query Invitation model
@@ -297,11 +302,11 @@ async def list_invitations(
 )
 async def revoke_invitation(request, invitation_id: str) -> dict:
     """Revoke a pending invitation.
-    
+
     Prevents the invitation from being accepted.
     """
     from asgiref.sync import sync_to_async
-    
+
     @sync_to_async
     def _revoke():
         # Invitation.objects.filter(
@@ -309,9 +314,9 @@ async def revoke_invitation(request, invitation_id: str) -> dict:
         #     status='pending'
         # ).update(status='revoked')
         return True
-    
+
     await _revoke()
-    
+
     return {
         "success": True,
         "invitation_id": invitation_id,
@@ -326,14 +331,14 @@ async def revoke_invitation(request, invitation_id: str) -> dict:
 )
 async def resend_invitation(request, invitation_id: str) -> dict:
     """Resend an invitation email.
-    
+
     Generates new token and resets expiration.
     """
     # In production:
     # 1. Generate new token
     # 2. Update invitation record
     # 3. Send email
-    
+
     return {
         "success": True,
         "invitation_id": invitation_id,

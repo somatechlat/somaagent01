@@ -15,7 +15,6 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
@@ -37,6 +36,7 @@ router.add_router("/granular", granular_router, tags=["granular-permissions"])
 
 class Role(BaseModel):
     """Role definition."""
+
     role_id: str
     name: str
     description: Optional[str] = None
@@ -47,6 +47,7 @@ class Role(BaseModel):
 
 class Permission(BaseModel):
     """Permission definition."""
+
     permission_id: str
     name: str
     resource: str
@@ -56,6 +57,7 @@ class Permission(BaseModel):
 
 class RoleAssignment(BaseModel):
     """Role assignment to user."""
+
     assignment_id: str
     user_id: str
     role_id: str
@@ -81,7 +83,7 @@ async def list_roles(
     include_system: bool = True,
 ) -> dict:
     """List available roles.
-    
+
     PM: View role hierarchy.
     """
     return {
@@ -131,13 +133,13 @@ async def create_role(
     description: Optional[str] = None,
 ) -> dict:
     """Create a custom role.
-    
+
     PM: Custom role creation.
     """
     role_id = str(uuid4())
-    
+
     logger.info(f"Role created: {name} ({role_id})")
-    
+
     return {
         "role_id": role_id,
         "name": name,
@@ -185,7 +187,7 @@ async def update_role(
 )
 async def delete_role(request, role_id: str) -> dict:
     """Delete a custom role.
-    
+
     Security Auditor: Cannot delete system roles.
     """
     return {
@@ -209,7 +211,7 @@ async def list_permissions(
     resource: Optional[str] = None,
 ) -> dict:
     """List all available permissions.
-    
+
     Security Auditor: Permission inventory.
     """
     return {
@@ -253,7 +255,7 @@ async def list_assignments(
     role_id: Optional[str] = None,
 ) -> dict:
     """List role assignments.
-    
+
     PM: View who has what access.
     """
     return {
@@ -275,13 +277,13 @@ async def assign_role(
     scope_id: Optional[str] = None,
 ) -> dict:
     """Assign a role to a user.
-    
+
     Security Auditor: Permission grant.
     """
     assignment_id = str(uuid4())
-    
+
     logger.info(f"Role assigned: {role_id} -> {user_id}")
-    
+
     return {
         "assignment_id": assignment_id,
         "user_id": user_id,
@@ -300,11 +302,11 @@ async def remove_assignment(
     assignment_id: str,
 ) -> dict:
     """Remove a role assignment.
-    
+
     Security Auditor: Permission revocation.
     """
     logger.info(f"Role assignment removed: {assignment_id}")
-    
+
     return {
         "assignment_id": assignment_id,
         "removed": True,
@@ -328,7 +330,7 @@ async def check_permission(
     resource_id: Optional[str] = None,
 ) -> dict:
     """Check if user has a permission.
-    
+
     Django Architect: SpiceDB query.
     """
     # In production: query SpiceDB
@@ -350,7 +352,7 @@ async def get_user_permissions(
     user_id: str,
 ) -> dict:
     """Get all permissions for a user.
-    
+
     Security Auditor: Effective permissions.
     """
     return {

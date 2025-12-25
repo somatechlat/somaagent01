@@ -19,7 +19,7 @@ import json
 import logging
 from typing import Optional
 
-from django.http import HttpRequest, StreamingHttpResponse
+from django.http import StreamingHttpResponse
 from ninja import Router
 from pydantic import BaseModel
 
@@ -74,11 +74,11 @@ async def create_export_job(body: ExportJobCreate) -> dict:
 
     🔒 Security: Job scoped to tenant
     """
+    from django.conf import settings
     from services.common.export_job_store import (
         ensure_schema as ensure_export_jobs_schema,
         ExportJobStore,
     )
-    from django.conf import settings
 
     store = ExportJobStore(dsn=settings.DATABASE_DSN)
     await ensure_export_jobs_schema(store)
@@ -90,8 +90,8 @@ async def create_export_job(body: ExportJobCreate) -> dict:
 @router.get("/export/jobs/{job_id}", summary="Get export job status")
 async def get_export_job(job_id: int) -> dict:
     """Get export job status."""
-    from services.common.export_job_store import ExportJobStore
     from django.conf import settings
+    from services.common.export_job_store import ExportJobStore
 
     store = ExportJobStore(dsn=settings.DATABASE_DSN)
     job = await store.get_job(job_id)
@@ -114,8 +114,8 @@ async def download_export(job_id: int):
 
     VIBE: Data from PostgreSQL BYTEA, not filesystem.
     """
-    from services.common.export_job_store import ExportJobStore
     from django.conf import settings
+    from services.common.export_job_store import ExportJobStore
 
     store = ExportJobStore(dsn=settings.DATABASE_DSN)
     result_data = await store.get_result_data(job_id)

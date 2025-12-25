@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Plugin(BaseModel):
     """Plugin definition."""
+
     plugin_id: str
     name: str
     version: str
@@ -45,6 +46,7 @@ class Plugin(BaseModel):
 
 class PluginManifest(BaseModel):
     """Plugin manifest for installation."""
+
     name: str
     version: str
     description: str
@@ -57,6 +59,7 @@ class PluginManifest(BaseModel):
 
 class PluginHook(BaseModel):
     """Plugin hook point."""
+
     hook_id: str
     name: str
     description: str
@@ -79,7 +82,7 @@ async def list_plugins(
     category: Optional[str] = None,
 ) -> dict:
     """List installed plugins.
-    
+
     PM: View installed extensions.
     """
     return {
@@ -110,13 +113,13 @@ async def install_plugin(
     source: str,  # URL or registry name
 ) -> dict:
     """Install a plugin from source.
-    
+
     Security Auditor: Validate and sandbox.
     """
     plugin_id = str(uuid4())
-    
+
     logger.info(f"Plugin installation started: {source}")
-    
+
     return {
         "plugin_id": plugin_id,
         "source": source,
@@ -152,7 +155,7 @@ async def get_plugin(request, plugin_id: str) -> Plugin:
 async def enable_plugin(request, plugin_id: str) -> dict:
     """Enable a plugin."""
     logger.info(f"Plugin enabled: {plugin_id}")
-    
+
     return {
         "plugin_id": plugin_id,
         "status": "enabled",
@@ -167,7 +170,7 @@ async def enable_plugin(request, plugin_id: str) -> dict:
 async def disable_plugin(request, plugin_id: str) -> dict:
     """Disable a plugin."""
     logger.info(f"Plugin disabled: {plugin_id}")
-    
+
     return {
         "plugin_id": plugin_id,
         "status": "disabled",
@@ -181,11 +184,11 @@ async def disable_plugin(request, plugin_id: str) -> dict:
 )
 async def uninstall_plugin(request, plugin_id: str) -> dict:
     """Uninstall a plugin.
-    
+
     Security Auditor: Clean removal, revoke permissions.
     """
     logger.info(f"Plugin uninstalled: {plugin_id}")
-    
+
     return {
         "plugin_id": plugin_id,
         "uninstalled": True,
@@ -240,7 +243,7 @@ async def update_plugin_config(
 )
 async def list_hooks(request) -> dict:
     """List available plugin hooks.
-    
+
     PhD Dev: Extension points for plugins.
     """
     return {
@@ -283,7 +286,7 @@ async def browse_marketplace(
     search: Optional[str] = None,
 ) -> dict:
     """Browse plugin marketplace.
-    
+
     PM: Discover new plugins.
     """
     return {

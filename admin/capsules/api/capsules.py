@@ -15,12 +15,12 @@ VIBE COMPLIANT - All 7 Personas:
 
 from __future__ import annotations
 
-import uuid
 import logging
+import uuid
 from typing import Any, Optional
 
 from django.http import HttpRequest
-from ninja import Router, Query
+from ninja import Query, Router
 from pydantic import BaseModel, Field
 
 from admin.common.exceptions import NotFoundError, ValidationError
@@ -127,6 +127,7 @@ async def get_capsule(capsule_id: str) -> dict:
 async def create_capsule(request: HttpRequest, payload: CapsuleCreateRequest) -> dict:
     """Create a new capsule (status=draft)."""
     from services.common.capsule_store import CapsuleRecord, CapsuleStatus
+
     from services.common.authorization import authorize
 
     store = _get_store()

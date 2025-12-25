@@ -15,13 +15,11 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.conf import settings
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError
 
 router = Router(tags=["quality"])
 logger = logging.getLogger(__name__)
@@ -42,6 +40,7 @@ DEFAULT_QUALITY_THRESHOLD = 0.7
 
 class QualityEvaluationRequest(BaseModel):
     """Request quality evaluation."""
+
     asset_id: str
     asset_type: str  # text, image, code, diagram
     content: Optional[str] = None
@@ -51,6 +50,7 @@ class QualityEvaluationRequest(BaseModel):
 
 class QualityScore(BaseModel):
     """Quality score result."""
+
     criterion: str
     score: float  # 0.0 - 1.0
     feedback: Optional[str] = None
@@ -58,6 +58,7 @@ class QualityScore(BaseModel):
 
 class QualityEvaluationResponse(BaseModel):
     """Quality evaluation result."""
+
     evaluation_id: str
     asset_id: str
     overall_score: float
@@ -69,6 +70,7 @@ class QualityEvaluationResponse(BaseModel):
 
 class RetryPolicyRequest(BaseModel):
     """Bounded retry configuration."""
+
     max_attempts: int = 3
     backoff_type: str = "exponential"  # none, linear, exponential
     initial_delay_ms: int = 100
@@ -78,6 +80,7 @@ class RetryPolicyRequest(BaseModel):
 
 class RetryExecutionRequest(BaseModel):
     """Execute with retry."""
+
     operation_type: str  # generate_image, render_diagram, llm_completion
     input: dict
     retry_policy: Optional[RetryPolicyRequest] = None
@@ -85,6 +88,7 @@ class RetryExecutionRequest(BaseModel):
 
 class RetryExecutionResponse(BaseModel):
     """Retry execution result."""
+
     execution_id: str
     success: bool
     attempts: int
@@ -96,6 +100,7 @@ class RetryExecutionResponse(BaseModel):
 
 class AssetCritiqueRequest(BaseModel):
     """Request asset critique."""
+
     asset_id: str
     asset_type: str
     content: str
@@ -104,6 +109,7 @@ class AssetCritiqueRequest(BaseModel):
 
 class AssetCritiqueResponse(BaseModel):
     """Asset critique result."""
+
     critique_id: str
     asset_id: str
     overall_assessment: str  # excellent, good, acceptable, needs_improvement, poor
@@ -130,16 +136,16 @@ async def evaluate_quality(
     payload: QualityEvaluationRequest,
 ) -> QualityEvaluationResponse:
     """Evaluate quality of an asset using LLM.
-    
+
     Per Phase 7.4: LLM quality evaluation
-    
+
     ML Eng: Uses GPT-4 or similar to evaluate quality.
     """
     evaluation_id = str(uuid4())
-    
+
     # Default criteria based on asset type
     criteria = payload.criteria or _get_default_criteria(payload.asset_type)
-    
+
     # Evaluate each criterion
     scores = []
     for criterion in criteria:
@@ -149,11 +155,11 @@ async def evaluate_quality(
             asset_type=payload.asset_type,
         )
         scores.append(score)
-    
+
     # Calculate overall score
     overall = sum(s.score for s in scores) / len(scores) if scores else 0.0
     passed = overall >= DEFAULT_QUALITY_THRESHOLD
-    
+
     # Generate recommendations if needed
     recommendations = None
     if not passed:
@@ -162,9 +168,11 @@ async def evaluate_quality(
             for s in scores
             if s.score < DEFAULT_QUALITY_THRESHOLD
         ]
-    
-    logger.info(f"Quality evaluation {evaluation_id}: {overall:.2f} ({'PASS' if passed else 'FAIL'})")
-    
+
+    logger.info(
+        f"Quality evaluation {evaluation_id}: {overall:.2f} ({'PASS' if passed else 'FAIL'})"
+    )
+
     return QualityEvaluationResponse(
         evaluation_id=evaluation_id,
         asset_id=payload.asset_id,
@@ -187,23 +195,23 @@ async def critique_asset(
     payload: AssetCritiqueRequest,
 ) -> AssetCritiqueResponse:
     """Get detailed critique of an asset.
-    
+
     Per Phase 7.4: AssetCritic service
-    
+
     PhD Dev: Comprehensive analysis with actionable feedback.
     """
     critique_id = str(uuid4())
-    
+
     # In production: call LLM for detailed critique
     # response = await openai.chat.completions.create(...)
-    
+
     # Mock critique based on asset type
     assessment, strengths, weaknesses, suggestions = _generate_critique(
         payload.asset_type,
         payload.content,
         payload.rubric,
     )
-    
+
     return AssetCritiqueResponse(
         critique_id=critique_id,
         asset_id=payload.asset_id,
@@ -237,45 +245,47 @@ async def execute_with_retry(
     payload: RetryExecutionRequest,
 ) -> RetryExecutionResponse:
     """Execute an operation with bounded retry and quality gating.
-    
+
     Per Phase 7.4: Bounded retry logic
-    
+
     PhD Dev: Exponential backoff with quality threshold.
     """
     import asyncio
     import time
-    
+
     execution_id = str(uuid4())
     policy = payload.retry_policy or RetryPolicyRequest()
-    
+
     start_time = time.time()
     attempts = 0
     errors = []
     final_output = None
     final_score = None
     success = False
-    
+
     while attempts < policy.max_attempts and not success:
         attempts += 1
-        
+
         try:
             # Execute operation
             output = await _execute_operation(
                 payload.operation_type,
                 payload.input,
             )
-            
+
             # Evaluate quality
             score = await _quick_quality_check(output)
             final_score = score
-            
+
             if score >= policy.quality_threshold:
                 success = True
                 final_output = output
                 logger.info(f"Retry {execution_id}: succeeded on attempt {attempts}")
             else:
-                errors.append(f"Attempt {attempts}: quality {score:.2f} < threshold {policy.quality_threshold}")
-                
+                errors.append(
+                    f"Attempt {attempts}: quality {score:.2f} < threshold {policy.quality_threshold}"
+                )
+
                 # Wait before retry
                 if attempts < policy.max_attempts:
                     delay = _calculate_backoff(
@@ -285,13 +295,13 @@ async def execute_with_retry(
                         policy.max_delay_ms,
                     )
                     await asyncio.sleep(delay / 1000)
-                    
+
         except Exception as e:
             errors.append(f"Attempt {attempts}: {str(e)}")
             logger.warning(f"Retry {execution_id}: attempt {attempts} failed: {e}")
-    
+
     total_duration = (time.time() - start_time) * 1000
-    
+
     return RetryExecutionResponse(
         execution_id=execution_id,
         success=success,
@@ -364,7 +374,7 @@ async def get_thresholds(request) -> dict:
 )
 async def update_thresholds(request, thresholds: dict) -> dict:
     """Update quality threshold configuration.
-    
+
     Security Auditor: Admin only.
     """
     # In production: persist to database
@@ -396,17 +406,18 @@ async def _evaluate_criterion(
     asset_type: str,
 ) -> QualityScore:
     """Evaluate a single quality criterion.
-    
+
     In production: call LLM for evaluation.
     """
     # Mock evaluation
     import random
+
     score = random.uniform(0.5, 1.0)
-    
+
     feedback = None
     if score < DEFAULT_QUALITY_THRESHOLD:
         feedback = f"Could improve {criterion}"
-    
+
     return QualityScore(
         criterion=criterion,
         score=score,
@@ -420,7 +431,7 @@ def _generate_critique(
     rubric: Optional[dict],
 ) -> tuple[str, list[str], list[str], list[str]]:
     """Generate critique for an asset.
-    
+
     In production: call LLM for detailed analysis.
     """
     # Mock critique
@@ -428,7 +439,7 @@ def _generate_critique(
     strengths = ["Clear structure", "Good formatting"]
     weaknesses = ["Could be more concise"]
     suggestions = ["Add more examples", "Improve transitions"]
-    
+
     return assessment, strengths, weaknesses, suggestions
 
 
@@ -440,6 +451,7 @@ async def _execute_operation(operation_type: str, input: dict) -> dict:
 async def _quick_quality_check(output: dict) -> float:
     """Quick quality check for retry logic."""
     import random
+
     return random.uniform(0.6, 1.0)
 
 
@@ -456,5 +468,5 @@ def _calculate_backoff(
         delay = initial_delay * attempt
     else:  # exponential
         delay = initial_delay * (2 ** (attempt - 1))
-    
+
     return min(delay, max_delay)

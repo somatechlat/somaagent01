@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
@@ -32,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigItem(BaseModel):
     """Configuration item."""
+
     key: str
     value: str
     type: str = "string"  # string, int, bool, json
@@ -42,12 +42,14 @@ class ConfigItem(BaseModel):
 
 class ConfigListResponse(BaseModel):
     """Configuration list."""
+
     items: list[ConfigItem]
     total: int
 
 
 class FeatureFlag(BaseModel):
     """Feature flag."""
+
     key: str
     enabled: bool
     description: Optional[str] = None
@@ -56,6 +58,7 @@ class FeatureFlag(BaseModel):
 
 class FeatureFlagsResponse(BaseModel):
     """Feature flags response."""
+
     flags: list[FeatureFlag]
     total: int
 
@@ -76,7 +79,7 @@ async def get_system_config(
     category: Optional[str] = None,
 ) -> ConfigListResponse:
     """Get system-wide configuration.
-    
+
     DevOps: Platform-level settings.
     """
     # In production: fetch from database
@@ -101,11 +104,11 @@ async def update_system_config(
     value: str,
 ) -> dict:
     """Update system configuration.
-    
+
     Security Auditor: Admin only, audit logged.
     """
     logger.info(f"System config updated: {key}")
-    
+
     return {
         "key": key,
         "value": value,
@@ -130,7 +133,7 @@ async def get_tenant_config(
     tenant_id: str,
 ) -> ConfigListResponse:
     """Get tenant-specific configuration.
-    
+
     PM: Tenant customization settings.
     """
     return ConfigListResponse(
@@ -175,13 +178,15 @@ async def get_feature_flags(
     tenant_id: Optional[str] = None,
 ) -> FeatureFlagsResponse:
     """Get feature flags.
-    
+
     DevOps: Feature flag management.
     """
     return FeatureFlagsResponse(
         flags=[
             FeatureFlag(key="new_chat_ui", enabled=True, description="New chat interface"),
-            FeatureFlag(key="multimodal_enabled", enabled=True, description="Multimodal processing"),
+            FeatureFlag(
+                key="multimodal_enabled", enabled=True, description="Multimodal processing"
+            ),
             FeatureFlag(key="a2a_workflows", enabled=False, description="Agent-to-agent workflows"),
         ],
         total=3,
@@ -220,7 +225,7 @@ async def update_feature_flag(
 ) -> dict:
     """Update feature flag state."""
     logger.info(f"Feature flag {key} set to {enabled}")
-    
+
     return {
         "key": key,
         "enabled": enabled,
@@ -253,7 +258,7 @@ async def check_feature_flag(
     user_id: Optional[str] = None,
 ) -> dict:
     """Check if feature is enabled for context.
-    
+
     DevOps: Evaluate feature flag with targeting rules.
     """
     # In production: evaluate targeting rules
@@ -276,7 +281,7 @@ async def check_feature_flag(
 )
 async def list_secrets(request) -> dict:
     """List secret keys (not values).
-    
+
     Security Auditor: Only key names, not values.
     """
     return {
@@ -300,13 +305,13 @@ async def set_secret(
     value: str,
 ) -> dict:
     """Set a secret value.
-    
+
     Security Auditor: Encrypted storage, audit logged.
     """
     logger.info(f"Secret set: {key}")
-    
+
     # In production: store in Vault or encrypted database
-    
+
     return {
         "key": key,
         "set": True,

@@ -21,7 +21,6 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError
 
 router = Router(tags=["workflows"])
 logger = logging.getLogger(__name__)
@@ -42,6 +41,7 @@ TEMPORAL_NAMESPACE = getattr(settings, "TEMPORAL_NAMESPACE", "default")
 
 class WorkflowStartRequest(BaseModel):
     """Start workflow request."""
+
     workflow_type: str  # memory_consolidation, sleep_cycle, batch_analysis
     input: Optional[dict] = None
     task_queue: str = "soma-tasks"
@@ -50,6 +50,7 @@ class WorkflowStartRequest(BaseModel):
 
 class WorkflowStartResponse(BaseModel):
     """Workflow start response."""
+
     workflow_id: str
     run_id: str
     workflow_type: str
@@ -59,6 +60,7 @@ class WorkflowStartResponse(BaseModel):
 
 class WorkflowStatusResponse(BaseModel):
     """Workflow status response."""
+
     workflow_id: str
     run_id: str
     status: str  # running, completed, failed, cancelled, timed_out
@@ -70,6 +72,7 @@ class WorkflowStatusResponse(BaseModel):
 
 class WorkflowListResponse(BaseModel):
     """Workflow list response."""
+
     workflows: list[WorkflowStatusResponse]
     total: int
     next_page_token: Optional[str] = None
@@ -77,6 +80,7 @@ class WorkflowListResponse(BaseModel):
 
 class WorkflowCancelResponse(BaseModel):
     """Cancel workflow response."""
+
     workflow_id: str
     cancelled: bool
     message: str
@@ -84,6 +88,7 @@ class WorkflowCancelResponse(BaseModel):
 
 class WorkflowSignalRequest(BaseModel):
     """Send signal to workflow."""
+
     signal_name: str
     data: Optional[dict] = None
 
@@ -104,9 +109,9 @@ async def start_workflow(
     payload: WorkflowStartRequest,
 ) -> WorkflowStartResponse:
     """Start a Temporal workflow.
-    
+
     Per Phase 7.3: workflow_start()
-    
+
     Supported workflow types:
     - memory_consolidation: Consolidate memories across agents
     - sleep_cycle: Agent sleep cycle with memory sync
@@ -115,9 +120,9 @@ async def start_workflow(
     """
     workflow_id = payload.workflow_id or f"{payload.workflow_type}-{uuid4().hex[:8]}"
     run_id = uuid4().hex
-    
+
     logger.info(f"Starting workflow: {workflow_id}, type: {payload.workflow_type}")
-    
+
     # In production: use Temporal client
     # from temporalio.client import Client
     # client = await Client.connect(TEMPORAL_HOST)
@@ -127,7 +132,7 @@ async def start_workflow(
     #     task_queue=payload.task_queue,
     #     args=[payload.input],
     # )
-    
+
     return WorkflowStartResponse(
         workflow_id=workflow_id,
         run_id=run_id,
@@ -145,14 +150,14 @@ async def start_workflow(
 )
 async def get_workflow_status(request, workflow_id: str) -> WorkflowStatusResponse:
     """Get status of a Temporal workflow.
-    
+
     Per Phase 7.3: workflow_status()
     """
     # In production: query Temporal
     # client = await Client.connect(TEMPORAL_HOST)
     # handle = client.get_workflow_handle(workflow_id)
     # describe = await handle.describe()
-    
+
     return WorkflowStatusResponse(
         workflow_id=workflow_id,
         run_id=uuid4().hex,
@@ -175,7 +180,7 @@ async def list_workflows(
     page_token: Optional[str] = None,
 ) -> WorkflowListResponse:
     """List all workflows with optional filters.
-    
+
     Per Phase 7.3: workflow_list()
     """
     # In production: query Temporal with filters
@@ -194,15 +199,15 @@ async def list_workflows(
 )
 async def cancel_workflow(request, workflow_id: str) -> WorkflowCancelResponse:
     """Cancel a running workflow.
-    
+
     Per Phase 7.3: workflow_cancel()
     """
     logger.warning(f"Cancelling workflow: {workflow_id}")
-    
+
     # In production:
     # handle = client.get_workflow_handle(workflow_id)
     # await handle.cancel()
-    
+
     return WorkflowCancelResponse(
         workflow_id=workflow_id,
         cancelled=True,
@@ -221,20 +226,20 @@ async def signal_workflow(
     payload: WorkflowSignalRequest,
 ) -> dict:
     """Send a signal to a running workflow.
-    
+
     Per Phase 7.3: workflow_signal()
-    
+
     Common signals:
     - pause: Pause workflow execution
     - resume: Resume workflow
     - update_params: Update workflow parameters
     """
     logger.info(f"Signaling workflow {workflow_id}: {payload.signal_name}")
-    
+
     # In production:
     # handle = client.get_workflow_handle(workflow_id)
     # await handle.signal(payload.signal_name, payload.data)
-    
+
     return {
         "workflow_id": workflow_id,
         "signal_sent": payload.signal_name,
@@ -253,7 +258,7 @@ async def get_workflow_history(
     limit: int = 100,
 ) -> dict:
     """Get workflow execution history.
-    
+
     Per Phase 7.3: workflow_history()
     """
     # In production: fetch from Temporal history API
@@ -275,14 +280,14 @@ async def terminate_workflow(
     reason: Optional[str] = None,
 ) -> dict:
     """Force terminate a workflow.
-    
+
     WARNING: This does not allow cleanup. Use cancel() first.
     """
     logger.warning(f"FORCE TERMINATING workflow: {workflow_id}, reason: {reason}")
-    
+
     # In production:
     # await handle.terminate(reason)
-    
+
     return {
         "workflow_id": workflow_id,
         "terminated": True,

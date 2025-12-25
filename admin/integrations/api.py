@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Integration(BaseModel):
     """Integration definition."""
+
     integration_id: str
     name: str
     type: str  # oauth, api_key, webhook
@@ -44,6 +45,7 @@ class Integration(BaseModel):
 
 class OAuthConfig(BaseModel):
     """OAuth integration config."""
+
     client_id: str
     authorization_url: str
     token_url: str
@@ -52,6 +54,7 @@ class OAuthConfig(BaseModel):
 
 class WebhookConfig(BaseModel):
     """Webhook integration config."""
+
     url: str
     secret: str
     events: list[str]
@@ -73,7 +76,7 @@ async def list_integrations(
     provider: Optional[str] = None,
 ) -> dict:
     """List all integrations.
-    
+
     PM: View connected services.
     """
     return {
@@ -114,13 +117,13 @@ async def create_integration(
     config: dict,
 ) -> dict:
     """Create a new integration.
-    
+
     DevOps: Connect external services.
     """
     integration_id = str(uuid4())
-    
+
     logger.info(f"Integration created: {name} ({provider})")
-    
+
     return {
         "integration_id": integration_id,
         "name": name,
@@ -179,11 +182,11 @@ async def delete_integration(
     integration_id: str,
 ) -> dict:
     """Delete an integration.
-    
+
     Security Auditor: Revoke access, cleanup.
     """
     logger.info(f"Integration deleted: {integration_id}")
-    
+
     return {
         "integration_id": integration_id,
         "deleted": True,
@@ -206,14 +209,14 @@ async def start_oauth(
     redirect_uri: str,
 ) -> dict:
     """Start OAuth authorization flow.
-    
+
     Security Auditor: Secure OAuth 2.0 flow.
     """
     state = str(uuid4())
-    
+
     # In production: generate actual OAuth URL
     auth_url = f"https://example.com/oauth?state={state}"
-    
+
     return {
         "authorization_url": auth_url,
         "state": state,
@@ -232,11 +235,11 @@ async def oauth_callback(
     state: str,
 ) -> dict:
     """Handle OAuth callback.
-    
+
     Security Auditor: Exchange code for tokens.
     """
     # In production: exchange code for tokens
-    
+
     return {
         "integration_id": integration_id,
         "connected": True,
@@ -258,7 +261,7 @@ async def check_health(
     integration_id: str,
 ) -> dict:
     """Check integration health.
-    
+
     DevOps: Monitor connection status.
     """
     return {
@@ -279,13 +282,13 @@ async def trigger_sync(
     integration_id: str,
 ) -> dict:
     """Trigger a manual sync.
-    
+
     DevOps: Force data synchronization.
     """
     sync_id = str(uuid4())
-    
+
     logger.info(f"Sync triggered for integration: {integration_id}")
-    
+
     return {
         "integration_id": integration_id,
         "sync_id": sync_id,
@@ -304,7 +307,7 @@ async def trigger_sync(
 )
 async def list_providers(request) -> dict:
     """List available integration providers.
-    
+
     PM: Integration marketplace.
     """
     return {

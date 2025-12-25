@@ -10,9 +10,9 @@ import logging
 from datetime import datetime
 from typing import Any, Optional
 
-from ninja import Router, Query
 from django.http import HttpRequest
-from pydantic import BaseModel, Field
+from ninja import Query, Router
+from pydantic import BaseModel
 
 from admin.common.auth import RoleRequired
 from admin.common.exceptions import NotFoundError

@@ -13,10 +13,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-import time
-from typing import Optional
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
@@ -25,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     """Publish pending outbox messages to Kafka.
-    
+
     Django Management Command pattern for background workers.
     """
 
@@ -61,9 +59,11 @@ class Command(BaseCommand):
         interval = options["interval"]
         run_once = options["once"]
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Starting Outbox Publisher (batch={batch_size}, interval={interval}s)"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Starting Outbox Publisher (batch={batch_size}, interval={interval}s)"
+            )
+        )
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -83,7 +83,7 @@ class Command(BaseCommand):
 
     async def _run_publisher(self, batch_size: int, interval: float, run_once: bool):
         """Main publisher loop."""
-        from admin.core.models import OutboxMessage, DeadLetterMessage
+        from admin.core.models import OutboxMessage
 
         # Initialize Kafka producer
         await self._init_producer()
@@ -91,7 +91,7 @@ class Command(BaseCommand):
         while self._running:
             try:
                 published, failed = await self._publish_batch(batch_size)
-                
+
                 if published > 0 or failed > 0:
                     self.stdout.write(
                         f"Published: {published}, Failed: {failed}, "
@@ -114,13 +114,15 @@ class Command(BaseCommand):
     async def _init_producer(self):
         """Initialize Kafka producer with exactly-once semantics."""
         try:
-            from aiokafka import AIOKafkaProducer
-            from django.conf import settings
             import os
 
+            from aiokafka import AIOKafkaProducer
+            from django.conf import settings
+
             bootstrap_servers = getattr(
-                settings, "KAFKA_BOOTSTRAP_SERVERS",
-                os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:20092")
+                settings,
+                "KAFKA_BOOTSTRAP_SERVERS",
+                os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:20092"),
             )
 
             self._producer = AIOKafkaProducer(
@@ -145,26 +147,29 @@ class Command(BaseCommand):
     @transaction.atomic
     async def _publish_batch(self, batch_size: int) -> tuple[int, int]:
         """Publish a batch of pending messages.
-        
+
         Uses SELECT FOR UPDATE SKIP LOCKED for concurrent-safe processing.
-        
+
         Returns:
             (published_count, failed_count)
         """
-        from admin.core.models import OutboxMessage, DeadLetterMessage
+        from admin.core.models import OutboxMessage
 
         published = 0
         failed = 0
 
         # Get pending messages with row-level lock
         messages = list(
-            OutboxMessage.objects.select_for_update(skip_locked=True).filter(
+            OutboxMessage.objects.select_for_update(skip_locked=True)
+            .filter(
                 status__in=[OutboxMessage.Status.PENDING, OutboxMessage.Status.FAILED],
-            ).filter(
+            )
+            .filter(
                 # Only get messages ready for retry
-                models.Q(next_retry_at__isnull=True) | 
-                models.Q(next_retry_at__lte=timezone.now())
-            ).order_by("created_at")[:batch_size]
+                models.Q(next_retry_at__isnull=True)
+                | models.Q(next_retry_at__lte=timezone.now())
+            )
+            .order_by("created_at")[:batch_size]
         )
 
         for message in messages:
@@ -185,7 +190,6 @@ class Command(BaseCommand):
 
     async def _publish_message(self, message):
         """Publish a single message to Kafka."""
-        from admin.core.models import OutboxMessage
         import json
 
         if self._producer is None:
@@ -194,8 +198,7 @@ class Command(BaseCommand):
         # Prepare message
         key = message.partition_key.encode() if message.partition_key else None
         value = json.dumps(message.payload).encode()
-        headers = [(k, v.encode() if isinstance(v, str) else v) 
-                   for k, v in message.headers.items()]
+        headers = [(k, v.encode() if isinstance(v, str) else v) for k, v in message.headers.items()]
 
         # Add idempotency key to headers
         headers.append(("idempotency_key", message.idempotency_key.encode()))
@@ -224,9 +227,9 @@ class Command(BaseCommand):
             original_created_at=message.created_at,
         )
 
-        self.stdout.write(self.style.ERROR(
-            f"Moved to DLQ: {message.topic} ({message.idempotency_key})"
-        ))
+        self.stdout.write(
+            self.style.ERROR(f"Moved to DLQ: {message.topic} ({message.idempotency_key})")
+        )
 
 
 # Import models for Q object

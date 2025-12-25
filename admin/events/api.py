@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Event(BaseModel):
     """Event record."""
+
     event_id: str
     type: str  # agent.message, system.alert, user.action
     payload: dict
@@ -41,6 +42,7 @@ class Event(BaseModel):
 
 class EventSubscription(BaseModel):
     """Event subscription."""
+
     subscription_id: str
     channel: str
     event_types: list[str]
@@ -50,6 +52,7 @@ class EventSubscription(BaseModel):
 
 class StreamConfig(BaseModel):
     """Stream configuration."""
+
     channel: str
     event_types: Optional[list[str]] = None
     last_event_id: Optional[str] = None
@@ -72,15 +75,15 @@ async def publish_event(
     channel: Optional[str] = None,
 ) -> dict:
     """Publish an event to subscribers.
-    
+
     PhD Dev: Event-driven architecture.
     """
     event_id = str(uuid4())
-    
+
     logger.info(f"Event published: {type} ({event_id})")
-    
+
     # In production: publish via Redis pub/sub or similar
-    
+
     return {
         "event_id": event_id,
         "type": type,
@@ -101,13 +104,13 @@ async def broadcast_event(
     payload: dict,
 ) -> dict:
     """Broadcast event to all connected clients.
-    
+
     DevOps: System-wide notifications.
     """
     event_id = str(uuid4())
-    
+
     logger.info(f"Event broadcast: {type} ({event_id})")
-    
+
     return {
         "event_id": event_id,
         "type": type,
@@ -128,7 +131,7 @@ async def broadcast_event(
 )
 async def list_subscriptions(request) -> dict:
     """List active event subscriptions.
-    
+
     PM: View active connections.
     """
     return {
@@ -150,7 +153,7 @@ async def create_subscription(
 ) -> EventSubscription:
     """Create an event subscription."""
     subscription_id = str(uuid4())
-    
+
     return EventSubscription(
         subscription_id=subscription_id,
         channel=channel,
@@ -193,7 +196,7 @@ async def get_event_history(
     limit: int = 100,
 ) -> dict:
     """Get event history.
-    
+
     QA: Debug and audit events.
     """
     return {
@@ -232,7 +235,7 @@ async def get_event(request, event_id: str) -> Event:
 )
 async def list_channels(request) -> dict:
     """List available event channels.
-    
+
     DevOps: Channel management.
     """
     return {
@@ -274,7 +277,7 @@ async def get_channel_subscribers(
 )
 async def get_stream_info(request) -> dict:
     """Get SSE stream connection info.
-    
+
     DevOps: Provide SSE connection details.
     """
     return {

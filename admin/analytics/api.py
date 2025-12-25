@@ -12,7 +12,7 @@ Platform analytics for Eye of God dashboard.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 from uuid import uuid4
 
@@ -33,12 +33,14 @@ logger = logging.getLogger(__name__)
 
 class TimeSeriesPoint(BaseModel):
     """Time series data point."""
+
     timestamp: str
     value: float
 
 
 class MetricSummary(BaseModel):
     """Metric summary."""
+
     name: str
     current_value: float
     previous_value: float
@@ -48,6 +50,7 @@ class MetricSummary(BaseModel):
 
 class DashboardMetrics(BaseModel):
     """Platform dashboard metrics."""
+
     total_tenants: int
     active_tenants: int
     total_agents: int
@@ -63,6 +66,7 @@ class DashboardMetrics(BaseModel):
 
 class UsageReport(BaseModel):
     """Usage report."""
+
     report_id: str
     period_start: str
     period_end: str
@@ -75,6 +79,7 @@ class UsageReport(BaseModel):
 
 class TenantAnalytics(BaseModel):
     """Tenant-specific analytics."""
+
     tenant_id: str
     active_agents: int
     active_users: int
@@ -97,7 +102,7 @@ class TenantAnalytics(BaseModel):
 )
 async def get_dashboard_metrics(request) -> DashboardMetrics:
     """Get platform dashboard metrics.
-    
+
     PM: High-level business KPIs for Eye of God.
     """
     # In production: aggregate from database
@@ -123,7 +128,7 @@ async def get_dashboard_metrics(request) -> DashboardMetrics:
 )
 async def get_metric_summaries(request) -> dict:
     """Get metric summaries with trends.
-    
+
     PM: Changes compared to previous period.
     """
     return {
@@ -163,16 +168,16 @@ async def get_timeseries(
     granularity: str = "hour",  # minute, hour, day
 ) -> dict:
     """Get time series data for a metric.
-    
+
     PhD Dev: Statistical time series for analysis.
     """
     # Generate sample data points
     points = []
     now = timezone.now()
-    
+
     intervals = {"1h": 60, "24h": 24, "7d": 168, "30d": 720}
     num_points = intervals.get(period, 24)
-    
+
     for i in range(min(num_points, 100)):
         points.append(
             TimeSeriesPoint(
@@ -180,7 +185,7 @@ async def get_timeseries(
                 value=0.0,
             ).dict()
         )
-    
+
     return {
         "metric": metric,
         "period": period,
@@ -202,12 +207,12 @@ async def get_timeseries(
 )
 async def get_current_usage(request) -> UsageReport:
     """Get usage for current billing period.
-    
+
     PM: Billing-relevant usage data.
     """
     now = timezone.now()
     period_start = now.replace(day=1, hour=0, minute=0, second=0)
-    
+
     return UsageReport(
         report_id=str(uuid4()),
         period_start=period_start.isoformat(),
@@ -230,7 +235,7 @@ async def get_usage_history(
     months: int = 12,
 ) -> dict:
     """Get historical usage reports.
-    
+
     PM: Trend analysis for capacity planning.
     """
     return {"reports": [], "total": 0}
@@ -248,7 +253,7 @@ async def export_usage(
     format: str = "csv",  # csv, json
 ) -> dict:
     """Export usage report for a period.
-    
+
     PM: Downloadable reports for accounting.
     """
     return {
@@ -274,7 +279,7 @@ async def get_tenant_analytics(
     tenant_id: str,
 ) -> TenantAnalytics:
     """Get analytics for a specific tenant.
-    
+
     PM: Tenant-level performance metrics.
     """
     return TenantAnalytics(
@@ -299,7 +304,7 @@ async def get_all_tenants_analytics(
     limit: int = 100,
 ) -> dict:
     """Get analytics for all tenants.
-    
+
     PM: Platform-wide tenant comparison.
     """
     return {"tenants": [], "total": 0}
@@ -320,7 +325,7 @@ async def get_agent_analytics(
     agent_id: str,
 ) -> dict:
     """Get analytics for a specific agent.
-    
+
     PhD Dev: Agent performance metrics.
     """
     return {
@@ -359,7 +364,7 @@ async def get_all_agents_analytics(
 )
 async def get_infrastructure_metrics(request) -> dict:
     """Get infrastructure metrics.
-    
+
     DevOps: System health and performance.
     """
     return {

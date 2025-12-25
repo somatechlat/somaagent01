@@ -9,10 +9,10 @@ import json
 import logging
 from typing import Optional
 
-from ninja import Router
 from django.http import HttpRequest, HttpResponse
+from ninja import Router
 
-from admin.common.auth import AuthBearer, RoleRequired
+from admin.common.auth import RoleRequired
 
 router = Router(tags=["admin-general"])
 logger = logging.getLogger(__name__)

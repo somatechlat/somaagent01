@@ -21,10 +21,9 @@ Limitations:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from typing import Iterable
-
-import os
 
 DEFAULT_KEYS = {
     "authorization",

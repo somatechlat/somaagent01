@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Tool(BaseModel):
     """Tool definition."""
+
     tool_id: str
     name: str
     description: str
@@ -44,6 +45,7 @@ class Tool(BaseModel):
 
 class ToolExecution(BaseModel):
     """Tool execution record."""
+
     execution_id: str
     tool_id: str
     agent_id: str
@@ -117,7 +119,7 @@ async def list_tools(
     enabled_only: bool = True,
 ) -> dict:
     """List available tools.
-    
+
     PhD Dev: Tool catalog.
     """
     tools = [
@@ -132,7 +134,7 @@ async def list_tools(
         ).dict()
         for tool_id, tool in SYSTEM_TOOLS.items()
     ]
-    
+
     return {
         "tools": tools,
         "total": len(tools),
@@ -155,13 +157,13 @@ async def register_tool(
     requires_approval: bool = False,
 ) -> Tool:
     """Register a custom tool.
-    
+
     PhD Dev: Custom tool creation.
     """
     tool_id = str(uuid4())
-    
+
     logger.info(f"Tool registered: {name} ({tool_id})")
-    
+
     return Tool(
         tool_id=tool_id,
         name=name,
@@ -191,7 +193,7 @@ async def get_tool(request, tool_id: str) -> Tool:
             provider=tool["provider"],
             parameters=tool["parameters"],
         )
-    
+
     return Tool(
         tool_id=tool_id,
         name="Unknown",
@@ -228,7 +230,7 @@ async def update_tool(
 async def delete_tool(request, tool_id: str) -> dict:
     """Delete a custom tool."""
     logger.warning(f"Tool deleted: {tool_id}")
-    
+
     return {
         "tool_id": tool_id,
         "deleted": True,
@@ -253,16 +255,16 @@ async def execute_tool(
     parameters: dict,
 ) -> dict:
     """Execute a tool.
-    
+
     PhD Dev: Tool invocation.
     DevOps: Execution limits.
     """
     execution_id = str(uuid4())
-    
+
     logger.info(f"Tool execution: {tool_id} ({execution_id})")
-    
+
     # In production: queue or execute based on approval requirements
-    
+
     return {
         "execution_id": execution_id,
         "tool_id": tool_id,
@@ -302,11 +304,11 @@ async def approve_execution(
     execution_id: str,
 ) -> dict:
     """Approve a pending execution.
-    
+
     Security Auditor: Human-in-the-loop.
     """
     logger.info(f"Execution approved: {execution_id}")
-    
+
     return {
         "execution_id": execution_id,
         "status": "approved",
@@ -325,7 +327,7 @@ async def reject_execution(
 ) -> dict:
     """Reject a pending execution."""
     logger.info(f"Execution rejected: {execution_id}")
-    
+
     return {
         "execution_id": execution_id,
         "status": "rejected",
@@ -344,7 +346,7 @@ async def reject_execution(
 )
 async def list_mcp_servers(request) -> dict:
     """List connected MCP servers.
-    
+
     PhD Dev: MCP integration.
     """
     return {
@@ -367,9 +369,9 @@ async def register_mcp_server(
 ) -> dict:
     """Register an MCP server."""
     server_id = str(uuid4())
-    
+
     logger.info(f"MCP server registered: {name}")
-    
+
     return {
         "server_id": server_id,
         "name": name,

@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class Model(BaseModel):
     """LLM model definition."""
+
     model_id: str
     name: str
     provider: str  # openai, anthropic, google, local
@@ -43,6 +44,7 @@ class Model(BaseModel):
 
 class ModelUsage(BaseModel):
     """Model usage statistics."""
+
     model_id: str
     total_requests: int
     total_input_tokens: int
@@ -150,7 +152,7 @@ async def list_models(
     capability: Optional[str] = None,
 ) -> dict:
     """List available LLM models.
-    
+
     ML Eng: Model selection.
     """
     models = [
@@ -167,7 +169,7 @@ async def list_models(
         if (not provider or info["provider"] == provider)
         and (not capability or capability in info["capabilities"])
     ]
-    
+
     return {
         "models": models,
         "total": len(models),
@@ -182,11 +184,11 @@ async def list_models(
 )
 async def get_model(request, model_id: str) -> Model:
     """Get model details.
-    
+
     PhD Dev: Model capabilities.
     """
     info = LLM_MODELS.get(model_id, LLM_MODELS["gpt-4o"])
-    
+
     return Model(
         model_id=model_id,
         name=info["name"],
@@ -210,7 +212,7 @@ async def get_model(request, model_id: str) -> Model:
 )
 async def list_providers(request) -> dict:
     """List LLM providers.
-    
+
     DevOps: Provider management.
     """
     return {
@@ -231,7 +233,7 @@ async def list_providers(request) -> dict:
 )
 async def get_provider_status(request, provider_id: str) -> dict:
     """Get provider health status.
-    
+
     DevOps: Provider monitoring.
     """
     return {
@@ -258,7 +260,7 @@ async def get_usage(
     model_id: Optional[str] = None,
 ) -> dict:
     """Get model usage statistics.
-    
+
     PM: Cost tracking.
     """
     return {

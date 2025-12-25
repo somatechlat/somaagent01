@@ -96,8 +96,9 @@ async def _check_http_target(name: str, url: Optional[str]) -> tuple[str, Option
 async def _check_temporal() -> tuple[str, Optional[str]]:
     """Check Temporal connectivity."""
     try:
-        from services.gateway.providers import get_temporal_client
         from temporalio.api.workflowservice.v1 import GetSystemInfoRequest
+
+        from services.gateway.providers import get_temporal_client
 
         temporal_client = await get_temporal_client()
         await temporal_client.workflow_service.get_system_info(GetSystemInfoRequest())
@@ -117,7 +118,6 @@ async def health_check() -> dict:
         HealthResponse with overall status and per-component details.
     """
     from services.common import degradation_monitor
-    from django.conf import settings
 
     components: dict[str, dict] = {}
     overall_status = "ok"

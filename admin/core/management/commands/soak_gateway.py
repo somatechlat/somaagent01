@@ -25,14 +25,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
-
-import os
 
 
 @dataclass

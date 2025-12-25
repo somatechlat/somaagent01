@@ -6,11 +6,10 @@ Migrated from: services/gateway/routers/admin_kafka.py
 from __future__ import annotations
 
 import logging
-from typing import Any
 
-from ninja import Router, Query
 from django.http import HttpRequest
-from pydantic import BaseModel, Field
+from ninja import Query, Router
+from pydantic import BaseModel
 
 from admin.common.auth import RoleRequired
 from admin.common.exceptions import ServiceUnavailableError

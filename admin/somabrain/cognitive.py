@@ -21,9 +21,8 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError, ServiceUnavailableError
+from admin.common.exceptions import ServiceUnavailableError
 from admin.somabrain.client import get_somabrain_client, SomaBrainError
-from services.common.degradation_monitor import DegradationLevel
 
 router = Router(tags=["cognitive"])
 logger = logging.getLogger(__name__)
@@ -36,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 class CognitiveThreadCreateRequest(BaseModel):
     """Create cognitive thread request."""
+
     agent_id: str
     context: Optional[str] = None
     initial_input: Optional[str] = None
@@ -43,6 +43,7 @@ class CognitiveThreadCreateRequest(BaseModel):
 
 class CognitiveThreadResponse(BaseModel):
     """Cognitive thread response."""
+
     thread_id: str
     agent_id: str
     status: str  # active, sleeping, terminated, degraded
@@ -53,12 +54,14 @@ class CognitiveThreadResponse(BaseModel):
 
 class CognitiveStepRequest(BaseModel):
     """Cognitive step input."""
+
     input: str
     context: Optional[dict] = None
 
 
 class CognitiveStepResponse(BaseModel):
     """Cognitive step output."""
+
     thread_id: str
     step_number: int
     output: str
@@ -70,6 +73,7 @@ class CognitiveStepResponse(BaseModel):
 
 class CognitiveStateResponse(BaseModel):
     """Agent cognitive state."""
+
     agent_id: str
     neuromodulators: dict
     adaptation_params: dict
@@ -80,12 +84,14 @@ class CognitiveStateResponse(BaseModel):
 
 class SleepCycleRequest(BaseModel):
     """Sleep cycle request."""
+
     duration_minutes: int = 5
     consolidate_memory: bool = True
 
 
 class SleepCycleResponse(BaseModel):
     """Sleep cycle response."""
+
     status: str
     memories_consolidated: int
     duration_minutes: int
@@ -109,18 +115,18 @@ async def create_cognitive_thread(
     payload: CognitiveThreadCreateRequest,
 ) -> CognitiveThreadResponse:
     """Create a new cognitive thread for an agent.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
     thread_id = str(uuid4())
-    
+
     try:
         # Verify SomaBrain is available
         health = await client.health_check()
         if health.get("status") != "healthy":
             raise SomaBrainError("SomaBrain not healthy")
-        
+
         return CognitiveThreadResponse(
             thread_id=thread_id,
             agent_id=payload.agent_id,
@@ -129,7 +135,7 @@ async def create_cognitive_thread(
             last_activity=timezone.now().isoformat(),
             degraded=False,
         )
-        
+
     except SomaBrainError as e:
         logger.warning(f"Thread create failed - DEGRADED: {e}")
         raise ServiceUnavailableError("somabrain", str(e))
@@ -147,11 +153,11 @@ async def cognitive_thread_next(
     payload: CognitiveStepRequest,
 ) -> CognitiveStepResponse:
     """Execute next step in cognitive thread.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         # Call SomaBrain act endpoint
         result = await client.act(
@@ -160,7 +166,7 @@ async def cognitive_thread_next(
             context=payload.context,
             mode="FULL",
         )
-        
+
         return CognitiveStepResponse(
             thread_id=thread_id,
             step_number=result.get("step_number", 1),
@@ -170,7 +176,7 @@ async def cognitive_thread_next(
             salience=result.get("salience"),
             degraded=False,
         )
-        
+
     except SomaBrainError as e:
         logger.warning(f"Cognitive step failed - DEGRADED: {e}")
         raise ServiceUnavailableError("somabrain", str(e))
@@ -183,21 +189,21 @@ async def cognitive_thread_next(
 )
 async def cognitive_thread_reset(request, thread_id: str) -> dict:
     """Reset cognitive thread to initial state.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         await client.adaptation_reset(thread_id)
-        
+
         return {
             "thread_id": thread_id,
             "status": "reset",
             "message": "Thread reset to initial state",
             "degraded": False,
         }
-        
+
     except SomaBrainError as e:
         logger.warning(f"Thread reset failed - DEGRADED: {e}")
         raise ServiceUnavailableError("somabrain", str(e))
@@ -210,7 +216,7 @@ async def cognitive_thread_reset(request, thread_id: str) -> dict:
 )
 async def terminate_cognitive_thread(request, thread_id: str) -> dict:
     """Terminate and cleanup cognitive thread.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     # Thread termination is local state management
@@ -235,14 +241,14 @@ async def terminate_cognitive_thread(request, thread_id: str) -> dict:
 )
 async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
     """Get agent's current cognitive state.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         state = await client.get_cognitive_state(agent_id)
-        
+
         return CognitiveStateResponse(
             agent_id=agent_id,
             neuromodulators=state.get("neuromodulators", {}),
@@ -251,7 +257,7 @@ async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
             last_sleep=state.get("last_sleep"),
             degraded=False,
         )
-        
+
     except SomaBrainError as e:
         logger.warning(f"Get cognitive state failed - DEGRADED: {e}")
         raise ServiceUnavailableError("somabrain", str(e))
@@ -268,11 +274,11 @@ async def update_cognitive_params(
     params: dict,
 ) -> dict:
     """Update agent's cognitive parameters.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         result = await client.update_cognitive_params(agent_id, params)
         return {
@@ -293,11 +299,11 @@ async def update_cognitive_params(
 )
 async def reset_adaptation(request, agent_id: str) -> dict:
     """Reset agent adaptation parameters to defaults.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         result = await client.adaptation_reset(agent_id)
         return {
@@ -329,14 +335,14 @@ async def trigger_sleep_cycle(
     payload: SleepCycleRequest,
 ) -> SleepCycleResponse:
     """Trigger agent sleep cycle for memory consolidation.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         result = await client.trigger_sleep_cycle(agent_id)
-        
+
         return SleepCycleResponse(
             status=result.get("status", "completed"),
             memories_consolidated=result.get("memories_consolidated", 0),
@@ -344,7 +350,7 @@ async def trigger_sleep_cycle(
             completed_at=timezone.now().isoformat(),
             degraded=False,
         )
-        
+
     except SomaBrainError as e:
         logger.warning(f"Sleep cycle failed - DEGRADED: {e}")
         return SleepCycleResponse(
@@ -363,14 +369,14 @@ async def trigger_sleep_cycle(
 )
 async def get_sleep_status(request, agent_id: str) -> dict:
     """Get agent's sleep/wake status.
-    
+
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
+
     try:
         state = await client.get_cognitive_state(agent_id)
-        
+
         return {
             "agent_id": agent_id,
             "is_sleeping": state.get("is_sleeping", False),
@@ -378,7 +384,7 @@ async def get_sleep_status(request, agent_id: str) -> dict:
             "next_scheduled": state.get("next_scheduled_sleep"),
             "degraded": False,
         }
-        
+
     except SomaBrainError as e:
         logger.warning(f"Sleep status failed - DEGRADED: {e}")
         raise ServiceUnavailableError("somabrain", str(e))

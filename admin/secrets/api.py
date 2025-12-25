@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Secret(BaseModel):
     """Secret metadata (value never exposed)."""
+
     secret_id: str
     name: str
     description: Optional[str] = None
@@ -46,6 +47,7 @@ class Secret(BaseModel):
 
 class SecretVersion(BaseModel):
     """Secret version history."""
+
     version: int
     created_at: str
     created_by: str
@@ -70,7 +72,7 @@ async def list_secrets(
     limit: int = 50,
 ) -> dict:
     """List secrets (metadata only).
-    
+
     Security Auditor: Secret inventory.
     """
     return {
@@ -96,15 +98,15 @@ async def create_secret(
     expires_at: Optional[str] = None,
 ) -> Secret:
     """Create a new secret.
-    
+
     Security Auditor: Encrypted storage.
     """
     secret_id = str(uuid4())
-    
+
     # In production: encrypt and store securely
-    
+
     logger.info(f"Secret created: {name} ({secret_id})")
-    
+
     return Secret(
         secret_id=secret_id,
         name=name,
@@ -143,13 +145,13 @@ async def get_secret(request, secret_id: str) -> Secret:
 )
 async def get_secret_value(request, secret_id: str) -> dict:
     """Get secret value (audit logged).
-    
+
     Security Auditor: Access audit.
     """
     logger.warning(f"Secret value accessed: {secret_id}")
-    
+
     # In production: decrypt and return
-    
+
     return {
         "secret_id": secret_id,
         "value": "***REDACTED***",
@@ -170,11 +172,11 @@ async def update_secret(
     expires_at: Optional[str] = None,
 ) -> dict:
     """Update secret (creates new version).
-    
+
     DevOps: Secret rotation.
     """
     logger.info(f"Secret updated: {secret_id}")
-    
+
     return {
         "secret_id": secret_id,
         "updated": True,
@@ -190,7 +192,7 @@ async def update_secret(
 async def delete_secret(request, secret_id: str) -> dict:
     """Delete secret (soft delete with retention)."""
     logger.warning(f"Secret deleted: {secret_id}")
-    
+
     return {
         "secret_id": secret_id,
         "deleted": True,
@@ -210,7 +212,7 @@ async def delete_secret(request, secret_id: str) -> dict:
 )
 async def list_versions(request, secret_id: str) -> dict:
     """List secret versions.
-    
+
     DevOps: Version history.
     """
     return {
@@ -227,11 +229,11 @@ async def list_versions(request, secret_id: str) -> dict:
 )
 async def rotate_secret(request, secret_id: str) -> dict:
     """Rotate secret (generate new value).
-    
+
     DevOps: Automatic rotation.
     """
     logger.info(f"Secret rotated: {secret_id}")
-    
+
     return {
         "secret_id": secret_id,
         "rotated": True,
@@ -251,7 +253,7 @@ async def rollback_secret(
 ) -> dict:
     """Rollback to previous version."""
     logger.info(f"Secret rollback: {secret_id} to v{version}")
-    
+
     return {
         "secret_id": secret_id,
         "rolled_back_to": version,
@@ -270,7 +272,7 @@ async def rollback_secret(
 )
 async def list_types(request) -> dict:
     """List secret types.
-    
+
     Security Auditor: Classification.
     """
     return {
@@ -301,7 +303,7 @@ async def get_stats(
     scope: Optional[str] = None,
 ) -> dict:
     """Get secrets statistics.
-    
+
     Security Auditor: Inventory overview.
     """
     return {

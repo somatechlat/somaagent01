@@ -41,6 +41,7 @@ TASK_QUEUE = "soma-workflows"
 
 class Workflow(BaseModel):
     """Orchestration workflow."""
+
     workflow_id: str
     name: str
     workflow_type: str
@@ -52,6 +53,7 @@ class Workflow(BaseModel):
 
 class WorkflowRun(BaseModel):
     """Workflow execution."""
+
     run_id: str
     workflow_id: str
     status: str  # pending, running, completed, failed, cancelled
@@ -64,6 +66,7 @@ class WorkflowRun(BaseModel):
 
 class AgentTask(BaseModel):
     """Task assigned to an agent."""
+
     task_id: str
     workflow_id: str
     agent_id: str
@@ -75,6 +78,7 @@ class AgentTask(BaseModel):
 
 class Pipeline(BaseModel):
     """Multi-agent pipeline."""
+
     pipeline_id: str
     name: str
     agents: list[str]
@@ -98,7 +102,7 @@ async def list_workflows(
     limit: int = 50,
 ) -> dict:
     """List orchestration workflows.
-    
+
     PhD Dev: Workflow catalog.
     """
     return {
@@ -121,13 +125,13 @@ async def create_workflow(
     description: Optional[str] = None,
 ) -> Workflow:
     """Create a new workflow.
-    
+
     PhD Dev: Define workflow graph.
     """
     workflow_id = str(uuid4())
-    
+
     logger.info(f"Workflow created: {name} ({workflow_id})")
-    
+
     return Workflow(
         workflow_id=workflow_id,
         name=name,
@@ -165,7 +169,7 @@ async def get_workflow(request, workflow_id: str) -> Workflow:
 async def delete_workflow(request, workflow_id: str) -> dict:
     """Delete a workflow."""
     logger.warning(f"Workflow deleted: {workflow_id}")
-    
+
     return {
         "workflow_id": workflow_id,
         "deleted": True,
@@ -189,11 +193,11 @@ async def run_workflow(
     input_data: Optional[dict] = None,
 ) -> WorkflowRun:
     """Start workflow execution via Temporal.
-    
+
     DevOps: Temporal workflow trigger.
     """
     run_id = str(uuid4())
-    
+
     # In production: Start Temporal workflow
     # client = await Client.connect(TEMPORAL_HOST)
     # handle = await client.start_workflow(
@@ -202,9 +206,9 @@ async def run_workflow(
     #     id=run_id,
     #     task_queue=TASK_QUEUE,
     # )
-    
+
     logger.info(f"Workflow started: {workflow_id} -> {run_id}")
-    
+
     return WorkflowRun(
         run_id=run_id,
         workflow_id=workflow_id,
@@ -241,7 +245,7 @@ async def get_run(request, run_id: str) -> WorkflowRun:
 async def cancel_run(request, run_id: str) -> dict:
     """Cancel a running workflow."""
     logger.warning(f"Workflow run cancelled: {run_id}")
-    
+
     return {
         "run_id": run_id,
         "cancelled": True,
@@ -256,7 +260,7 @@ async def cancel_run(request, run_id: str) -> dict:
 async def retry_run(request, run_id: str) -> dict:
     """Retry a failed workflow run."""
     new_run_id = str(uuid4())
-    
+
     return {
         "original_run_id": run_id,
         "new_run_id": new_run_id,
@@ -281,13 +285,13 @@ async def coordinate_agents(
     strategy: str = "sequential",  # sequential, parallel, consensus
 ) -> dict:
     """Coordinate multiple agents for a task.
-    
+
     ML Eng: Multi-agent patterns.
     """
     coordination_id = str(uuid4())
-    
+
     logger.info(f"Agent coordination started: {coordination_id}")
-    
+
     return {
         "coordination_id": coordination_id,
         "agents": agent_ids,
@@ -324,7 +328,7 @@ async def get_coordination(request, coordination_id: str) -> dict:
 )
 async def list_pipelines(request) -> dict:
     """List multi-agent pipelines.
-    
+
     PhD Dev: Pipeline catalog.
     """
     return {
@@ -348,7 +352,7 @@ async def create_pipeline(
 ) -> Pipeline:
     """Create a multi-agent pipeline."""
     pipeline_id = str(uuid4())
-    
+
     return Pipeline(
         pipeline_id=pipeline_id,
         name=name,
@@ -370,7 +374,7 @@ async def run_pipeline(
 ) -> dict:
     """Execute a multi-agent pipeline."""
     run_id = str(uuid4())
-    
+
     return {
         "pipeline_id": pipeline_id,
         "run_id": run_id,
@@ -415,7 +419,7 @@ async def create_task(
 ) -> AgentTask:
     """Assign a task to an agent."""
     task_id = str(uuid4())
-    
+
     return AgentTask(
         task_id=task_id,
         workflow_id=workflow_id or "",
@@ -438,7 +442,7 @@ async def create_task(
 )
 async def get_stats(request) -> dict:
     """Get orchestration statistics.
-    
+
     DevOps: Orchestrator health.
     """
     return {

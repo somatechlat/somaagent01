@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class SearchResult(BaseModel):
     """Single search result."""
+
     id: str
     type: str  # conversation, agent, tenant, user, memory
     title: str
@@ -43,6 +44,7 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     """Search response."""
+
     query: str
     results: list[SearchResult]
     total: int
@@ -52,6 +54,7 @@ class SearchResponse(BaseModel):
 
 class SearchSuggestion(BaseModel):
     """Search suggestion."""
+
     text: str
     score: float
     type: str
@@ -59,6 +62,7 @@ class SearchSuggestion(BaseModel):
 
 class SuggestionsResponse(BaseModel):
     """Suggestions response."""
+
     query: str
     suggestions: list[SearchSuggestion]
 
@@ -83,20 +87,21 @@ async def search(
     offset: int = 0,
 ) -> SearchResponse:
     """Perform global search across content.
-    
+
     PhD Dev: Full-text search with relevance ranking.
     """
     import time
+
     start = time.time()
-    
+
     # In production: query Elasticsearch or PostgreSQL FTS
     # results = await elasticsearch.search(
     #     index="soma-*",
     #     query={"multi_match": {"query": q, "fields": ["*"]}},
     # )
-    
+
     took = (time.time() - start) * 1000
-    
+
     return SearchResponse(
         query=q,
         results=[],
@@ -118,7 +123,7 @@ async def suggest(
     limit: int = 10,
 ) -> SuggestionsResponse:
     """Get search suggestions for autocomplete.
-    
+
     PM: Fast autocomplete for better UX.
     """
     # In production: query suggestion index
@@ -149,8 +154,9 @@ async def search_conversations(
 ) -> SearchResponse:
     """Search within conversations."""
     import time
+
     start = time.time()
-    
+
     return SearchResponse(
         query=q,
         results=[],
@@ -173,8 +179,9 @@ async def search_agents(
 ) -> SearchResponse:
     """Search agents by name, description, or metadata."""
     import time
+
     start = time.time()
-    
+
     return SearchResponse(
         query=q,
         results=[],
@@ -197,12 +204,13 @@ async def search_memories(
     limit: int = 20,
 ) -> SearchResponse:
     """Search agent memories using semantic similarity.
-    
+
     PhD Dev: Semantic search with embeddings.
     """
     import time
+
     start = time.time()
-    
+
     return SearchResponse(
         query=q,
         results=[],
@@ -227,12 +235,13 @@ async def search_audit(
     limit: int = 50,
 ) -> SearchResponse:
     """Search audit logs.
-    
+
     Security Auditor: Searchable audit trail.
     """
     import time
+
     start = time.time()
-    
+
     return SearchResponse(
         query=q,
         results=[],
@@ -256,15 +265,15 @@ async def trigger_reindex(
     index: Optional[str] = None,  # all, conversations, agents, memories
 ) -> dict:
     """Trigger search index rebuild.
-    
+
     DevOps: Admin-only maintenance operation.
     """
     job_id = str(uuid4())
-    
+
     logger.info(f"Reindex triggered: {index or 'all'}, job: {job_id}")
-    
+
     # In production: start background job
-    
+
     return {
         "job_id": job_id,
         "index": index or "all",
@@ -280,7 +289,7 @@ async def trigger_reindex(
 )
 async def get_index_status(request) -> dict:
     """Get search index status.
-    
+
     DevOps: Index health monitoring.
     """
     return {

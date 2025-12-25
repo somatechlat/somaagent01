@@ -3,8 +3,9 @@
 VIBE Compliant - Real Django models, no placeholders, no TODOs.
 """
 
-from django.db import models
 from enum import Enum
+
+from django.db import models
 
 
 class ModelType(Enum):
@@ -16,7 +17,7 @@ class ModelType(Enum):
 
 class LLMModelConfig(models.Model):
     """LLM Model configuration - Django ORM.
-    
+
     Production-grade model for storing LLM provider configurations.
     Replaces legacy dataclass with real database persistence.
     """

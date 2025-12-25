@@ -20,7 +20,6 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError
 
 router = Router(tags=["a2a"])
 logger = logging.getLogger(__name__)
@@ -33,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class AgentMessage(BaseModel):
     """Message between agents."""
+
     from_agent: str
     to_agent: str
     message_type: str  # request, response, event, handoff
@@ -42,6 +42,7 @@ class AgentMessage(BaseModel):
 
 class ConversationWorkflowRequest(BaseModel):
     """Start conversation workflow."""
+
     initiator_agent: str
     target_agent: str
     topic: str
@@ -51,6 +52,7 @@ class ConversationWorkflowRequest(BaseModel):
 
 class ConversationWorkflowResponse(BaseModel):
     """Conversation workflow response."""
+
     workflow_id: str
     status: str  # started, in_progress, completed, failed
     initiator_agent: str
@@ -61,6 +63,7 @@ class ConversationWorkflowResponse(BaseModel):
 
 class ToolExecutionRequest(BaseModel):
     """Tool execution workflow."""
+
     requesting_agent: str
     tool_name: str
     tool_input: dict
@@ -69,6 +72,7 @@ class ToolExecutionRequest(BaseModel):
 
 class ToolExecutionResponse(BaseModel):
     """Tool execution result."""
+
     execution_id: str
     status: str
     tool_name: str
@@ -79,6 +83,7 @@ class ToolExecutionResponse(BaseModel):
 
 class HandoffRequest(BaseModel):
     """Agent handoff request."""
+
     from_agent: str
     to_agent: str
     conversation_id: str
@@ -88,6 +93,7 @@ class HandoffRequest(BaseModel):
 
 class HandoffResponse(BaseModel):
     """Handoff response."""
+
     handoff_id: str
     status: str  # pending, accepted, rejected
     from_agent: str
@@ -97,6 +103,7 @@ class HandoffResponse(BaseModel):
 
 class MaintenanceWorkflowRequest(BaseModel):
     """Maintenance workflow request."""
+
     workflow_type: str  # cleanup, optimization, health_check, backup
     target: Optional[str] = None  # specific agent or "all"
     schedule: Optional[str] = None  # cron expression
@@ -104,6 +111,7 @@ class MaintenanceWorkflowRequest(BaseModel):
 
 class MaintenanceWorkflowResponse(BaseModel):
     """Maintenance workflow response."""
+
     workflow_id: str
     workflow_type: str
     status: str
@@ -114,6 +122,7 @@ class MaintenanceWorkflowResponse(BaseModel):
 
 class EscalationRequest(BaseModel):
     """Escalation to human or higher-tier agent."""
+
     from_agent: str
     escalation_type: str  # human, supervisor, admin
     reason: str
@@ -123,6 +132,7 @@ class EscalationRequest(BaseModel):
 
 class EscalationResponse(BaseModel):
     """Escalation response."""
+
     escalation_id: str
     status: str  # escalated, acknowledged, resolved
     escalated_to: str
@@ -145,25 +155,25 @@ async def start_conversation_workflow(
     payload: ConversationWorkflowRequest,
 ) -> ConversationWorkflowResponse:
     """Start a conversation workflow between agents.
-    
+
     Per Phase 7.5: Conversation workflow
-    
+
     PhD Dev: Orchestrated multi-turn dialogue.
     """
     workflow_id = str(uuid4())
-    
+
     logger.info(
         f"A2A conversation started: {workflow_id}, "
         f"{payload.initiator_agent} → {payload.target_agent}"
     )
-    
+
     # In production: start Temporal workflow
     # handle = await client.start_workflow(
     #     ConversationWorkflow.run,
     #     args=[payload],
     #     id=workflow_id,
     # )
-    
+
     return ConversationWorkflowResponse(
         workflow_id=workflow_id,
         status="started",
@@ -201,10 +211,10 @@ async def send_workflow_message(
 ) -> dict:
     """Send a message within a conversation workflow."""
     message_id = str(uuid4())
-    
+
     # In production: signal Temporal workflow
     # await handle.signal("new_message", message)
-    
+
     return {
         "message_id": message_id,
         "workflow_id": workflow_id,
@@ -228,17 +238,15 @@ async def execute_tool(
     payload: ToolExecutionRequest,
 ) -> ToolExecutionResponse:
     """Execute a tool via A2A workflow.
-    
+
     Per Phase 7.5: Tool execution workflow
-    
+
     ML Eng: Coordinate tool usage across agents.
     """
     execution_id = str(uuid4())
-    
-    logger.info(
-        f"Tool execution requested: {payload.tool_name} by {payload.requesting_agent}"
-    )
-    
+
+    logger.info(f"Tool execution requested: {payload.tool_name} by {payload.requesting_agent}")
+
     # Execute tool
     try:
         output = await _execute_tool(payload.tool_name, payload.tool_input)
@@ -248,7 +256,7 @@ async def execute_tool(
         output = None
         status = "failed"
         error = str(e)
-    
+
     return ToolExecutionResponse(
         execution_id=execution_id,
         status=status,
@@ -275,20 +283,17 @@ async def request_handoff(
     payload: HandoffRequest,
 ) -> HandoffResponse:
     """Request handoff from one agent to another.
-    
+
     Per Phase 7.5: Agent handoff pattern
-    
+
     PM: Smooth transition of conversation ownership.
     """
     handoff_id = str(uuid4())
-    
-    logger.info(
-        f"Handoff requested: {handoff_id}, "
-        f"{payload.from_agent} → {payload.to_agent}"
-    )
-    
+
+    logger.info(f"Handoff requested: {handoff_id}, " f"{payload.from_agent} → {payload.to_agent}")
+
     # In production: notify target agent and wait for acceptance
-    
+
     return HandoffResponse(
         handoff_id=handoff_id,
         status="pending",
@@ -347,22 +352,22 @@ async def start_maintenance(
     payload: MaintenanceWorkflowRequest,
 ) -> MaintenanceWorkflowResponse:
     """Start a maintenance workflow.
-    
+
     Per Phase 7.5: Maintenance workflows
-    
+
     DevOps: System maintenance and optimization.
     """
     workflow_id = str(uuid4())
-    
+
     durations = {
         "cleanup": 5,
         "optimization": 15,
         "health_check": 2,
         "backup": 30,
     }
-    
+
     logger.info(f"Maintenance workflow started: {payload.workflow_type}")
-    
+
     return MaintenanceWorkflowResponse(
         workflow_id=workflow_id,
         workflow_type=payload.workflow_type,
@@ -403,24 +408,24 @@ async def create_escalation(
     payload: EscalationRequest,
 ) -> EscalationResponse:
     """Escalate to human or supervisor agent.
-    
+
     Per Phase 7.5: Escalation handling
-    
+
     PM: Graceful escalation for complex situations.
     """
     escalation_id = str(uuid4())
-    
+
     target_map = {
         "human": "human-support",
         "supervisor": "supervisor-agent",
         "admin": "admin-team",
     }
-    
+
     logger.warning(
         f"Escalation created: {escalation_id}, "
         f"type: {payload.escalation_type}, priority: {payload.priority}"
     )
-    
+
     return EscalationResponse(
         escalation_id=escalation_id,
         status="escalated",

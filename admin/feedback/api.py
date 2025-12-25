@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Feedback(BaseModel):
     """User feedback."""
+
     feedback_id: str
     conversation_id: str
     message_id: Optional[str] = None
@@ -44,6 +45,7 @@ class Feedback(BaseModel):
 
 class FeedbackStats(BaseModel):
     """Feedback statistics."""
+
     total_feedback: int
     avg_rating: float
     rating_distribution: dict
@@ -68,7 +70,7 @@ async def list_feedback(
     limit: int = 50,
 ) -> dict:
     """List feedback.
-    
+
     PM: Feedback review.
     """
     return {
@@ -93,13 +95,13 @@ async def submit_feedback(
     comment: Optional[str] = None,
 ) -> Feedback:
     """Submit user feedback.
-    
+
     PM: User satisfaction tracking.
     """
     feedback_id = str(uuid4())
-    
+
     logger.info(f"Feedback: {feedback_id}, rating={rating}")
-    
+
     return Feedback(
         feedback_id=feedback_id,
         conversation_id=conversation_id,
@@ -160,11 +162,11 @@ async def thumbs_up(
     user_id: str,
 ) -> dict:
     """Quick thumbs up feedback.
-    
+
     PM: Quick positive signal.
     """
     feedback_id = str(uuid4())
-    
+
     return {
         "feedback_id": feedback_id,
         "type": "thumbs_up",
@@ -185,13 +187,13 @@ async def thumbs_down(
     reason: Optional[str] = None,
 ) -> dict:
     """Quick thumbs down feedback.
-    
+
     QA: Negative signal for review.
     """
     feedback_id = str(uuid4())
-    
+
     logger.warning(f"Thumbs down: {message_id}")
-    
+
     return {
         "feedback_id": feedback_id,
         "type": "thumbs_down",
@@ -218,11 +220,11 @@ async def compare_responses(
     user_id: str,
 ) -> dict:
     """A/B comparison for RLHF.
-    
+
     ML Eng: RLHF training data.
     """
     comparison_id = str(uuid4())
-    
+
     return {
         "comparison_id": comparison_id,
         "preferred": preferred,
@@ -241,11 +243,11 @@ async def export_rlhf_data(
     end_date: Optional[str] = None,
 ) -> dict:
     """Export feedback for RLHF training.
-    
+
     ML Eng: Training data export.
     """
     export_id = str(uuid4())
-    
+
     return {
         "export_id": export_id,
         "status": "generating",
@@ -270,15 +272,13 @@ async def get_stats(
     tenant_id: Optional[str] = None,
 ) -> FeedbackStats:
     """Get feedback statistics.
-    
+
     PM: Quality metrics.
     """
     return FeedbackStats(
         total_feedback=0,
         avg_rating=0.0,
-        rating_distribution={
-            "1": 0, "2": 0, "3": 0, "4": 0, "5": 0
-        },
+        rating_distribution={"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
         category_breakdown={},
     )
 
@@ -290,7 +290,7 @@ async def get_stats(
 )
 async def list_categories(request) -> dict:
     """List feedback categories.
-    
+
     PM: Categorization.
     """
     return {

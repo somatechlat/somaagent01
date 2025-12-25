@@ -7,13 +7,10 @@ Replaces raw SQL stores with Django models.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
-
 
 # =============================================================================
 # SESSION MODELS (replaces session_repository.py)
@@ -311,7 +308,7 @@ class AuditLog(models.Model):
 
 class MemoryReplica(models.Model):
     """Memory replica for WAL events.
-    
+
     Replaces the legacy wal_memory_replica raw SQL table.
     Stores a permanent record of all memory events for retrieval and audit.
     """
@@ -326,7 +323,9 @@ class MemoryReplica(models.Model):
     request_id = models.CharField(max_length=255, null=True, blank=True)
     trace_id = models.CharField(max_length=255, null=True, blank=True)
     payload = models.JSONField(default=dict, help_text="The core memory content payload")
-    wal_timestamp = models.FloatField(null=True, blank=True, db_index=True, help_text="Original WAL event timestamp")
+    wal_timestamp = models.FloatField(
+        null=True, blank=True, db_index=True, help_text="Original WAL event timestamp"
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -402,12 +401,12 @@ class AgentSetting(models.Model):
 
 class OutboxMessage(models.Model):
     """Transactional Outbox for guaranteed message delivery.
-    
+
     Implements the Transactional Outbox Pattern:
     - Messages are stored in same transaction as business data
     - Publisher polls and sends to Kafka
     - Guarantees exactly-once delivery
-    
+
     VIBE COMPLIANT: Django ORM, no raw SQL.
     """
 
@@ -474,7 +473,7 @@ class OutboxMessage(models.Model):
         else:
             self.status = self.Status.FAILED
             # Exponential backoff: 2^attempts seconds
-            backoff = 2 ** self.attempts
+            backoff = 2**self.attempts
             self.next_retry_at = timezone.now() + timezone.timedelta(seconds=backoff)
 
         self.save()
@@ -482,17 +481,17 @@ class OutboxMessage(models.Model):
 
 class DeadLetterMessage(models.Model):
     """Dead Letter Queue storage for failed messages.
-    
+
     Messages that fail after max retries are stored here for:
     - Manual review
     - Alerting
     - Potential replay
-    
+
     VIBE COMPLIANT: Django ORM for DLQ visibility.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
+
     # Original message reference
     original_outbox_id = models.UUIDField(null=True, blank=True, db_index=True)
     original_topic = models.CharField(max_length=255, db_index=True)
@@ -506,7 +505,7 @@ class DeadLetterMessage(models.Model):
     error_message = models.TextField()
     error_type = models.CharField(max_length=255, null=True, blank=True)
     attempts = models.IntegerField(default=0)
-    
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     original_created_at = models.DateTimeField(null=True, blank=True)
@@ -538,19 +537,19 @@ class DeadLetterMessage(models.Model):
 
 class IdempotencyRecord(models.Model):
     """Idempotency tracking for exactly-once operations.
-    
+
     Stores idempotency keys with TTL to prevent duplicate processing.
-    
+
     VIBE COMPLIANT: Django ORM with automatic cleanup.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     idempotency_key = models.CharField(max_length=255, unique=True, db_index=True)
-    
+
     # Operation result (optional, for response caching)
     operation_type = models.CharField(max_length=100, db_index=True)
     result = models.JSONField(null=True, blank=True)
-    
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     expires_at = models.DateTimeField(db_index=True)
@@ -566,23 +565,25 @@ class IdempotencyRecord(models.Model):
         return f"Idempotency({self.idempotency_key})"
 
     @classmethod
-    def check_and_set(cls, key: str, operation_type: str, ttl_seconds: int = 86400) -> tuple[bool, Optional["IdempotencyRecord"]]:
+    def check_and_set(
+        cls, key: str, operation_type: str, ttl_seconds: int = 86400
+    ) -> tuple[bool, Optional["IdempotencyRecord"]]:
         """
         Check if operation was already processed.
-        
+
         Returns:
             (is_new, record) - True if new operation, False if duplicate
         """
         expires_at = timezone.now() + timezone.timedelta(seconds=ttl_seconds)
-        
+
         record, created = cls.objects.get_or_create(
             idempotency_key=key,
             defaults={
                 "operation_type": operation_type,
                 "expires_at": expires_at,
-            }
+            },
         )
-        
+
         if not created:
             # Check if expired
             if record.expires_at < timezone.now():
@@ -593,7 +594,7 @@ class IdempotencyRecord(models.Model):
                 return True, record
             # Not expired - duplicate
             return False, record
-        
+
         return True, record
 
     @classmethod
@@ -605,26 +606,26 @@ class IdempotencyRecord(models.Model):
 
 class PendingMemory(models.Model):
     """Pending memory queue for SomaBrain sync.
-    
+
     When SomaBrain is unavailable (degradation mode), memories are
     stored here and synced when connection is restored.
-    
+
     VIBE COMPLIANT: Django ORM for memory queue persistence.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     idempotency_key = models.CharField(max_length=255, unique=True, db_index=True)
-    
+
     # Memory data
     tenant_id = models.CharField(max_length=255, db_index=True)
     namespace = models.CharField(max_length=100, default="wm")
     payload = models.JSONField()
-    
+
     # State
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     synced = models.BooleanField(default=False, db_index=True)
     synced_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Retry tracking
     sync_attempts = models.IntegerField(default=0)
     last_error = models.TextField(null=True, blank=True)
@@ -653,5 +654,3 @@ class PendingMemory(models.Model):
 
 # Import SensorOutbox so Django detects it for migrations
 from admin.core.sensors.outbox import SensorOutbox  # noqa: E402, F401
-
-

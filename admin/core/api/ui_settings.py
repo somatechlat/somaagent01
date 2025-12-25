@@ -9,7 +9,7 @@ VIBE COMPLIANT - Django patterns, observable, verifiable.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 from django.conf import settings
 from django.dispatch import Signal
@@ -112,6 +112,7 @@ async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
     Persists settings, updates feature flags, and triggers agent reload.
     """
     from services.common.feature_flags_store import FeatureFlagsStore
+
     from services.common.agent_config_loader import reload_agent_config
 
     store = _get_store()

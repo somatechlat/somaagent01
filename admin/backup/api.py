@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Backup(BaseModel):
     """Backup record."""
+
     backup_id: str
     name: str
     type: str  # full, incremental, differential
@@ -45,6 +46,7 @@ class Backup(BaseModel):
 
 class BackupSchedule(BaseModel):
     """Backup schedule."""
+
     schedule_id: str
     name: str
     type: str
@@ -57,6 +59,7 @@ class BackupSchedule(BaseModel):
 
 class RestoreJob(BaseModel):
     """Restore job."""
+
     restore_id: str
     backup_id: str
     status: str  # pending, running, completed, failed
@@ -82,7 +85,7 @@ async def list_backups(
     limit: int = 50,
 ) -> dict:
     """List all backups.
-    
+
     DevOps: View backup inventory.
     """
     return {
@@ -115,13 +118,13 @@ async def create_backup(
     retention_days: int = 30,
 ) -> dict:
     """Create a new backup.
-    
+
     DevOps: On-demand backup.
     """
     backup_id = str(uuid4())
-    
+
     logger.info(f"Backup started: {name} ({type})")
-    
+
     return {
         "backup_id": backup_id,
         "name": name,
@@ -156,11 +159,11 @@ async def get_backup(request, backup_id: str) -> Backup:
 )
 async def delete_backup(request, backup_id: str) -> dict:
     """Delete a backup.
-    
+
     Security Auditor: Permanent deletion, audit logged.
     """
     logger.warning(f"Backup deleted: {backup_id}")
-    
+
     return {
         "backup_id": backup_id,
         "deleted": True,
@@ -174,7 +177,7 @@ async def delete_backup(request, backup_id: str) -> dict:
 )
 async def download_backup(request, backup_id: str) -> dict:
     """Get backup download URL.
-    
+
     Security Auditor: Signed URL, time-limited.
     """
     return {
@@ -200,14 +203,14 @@ async def restore_backup(
     target: str = "staging",  # production, staging, new
 ) -> dict:
     """Restore from a backup.
-    
+
     DevOps: Disaster recovery.
     PM: Data recovery assurance.
     """
     restore_id = str(uuid4())
-    
+
     logger.warning(f"Restore started: {backup_id} -> {target}")
-    
+
     return {
         "restore_id": restore_id,
         "backup_id": backup_id,
@@ -248,7 +251,7 @@ async def get_restore_status(
 )
 async def list_schedules(request) -> dict:
     """List backup schedules.
-    
+
     DevOps: Automated backup configuration.
     """
     return {
@@ -281,7 +284,7 @@ async def create_schedule(
 ) -> dict:
     """Create a backup schedule."""
     schedule_id = str(uuid4())
-    
+
     return {
         "schedule_id": schedule_id,
         "name": name,
@@ -335,7 +338,7 @@ async def delete_schedule(
 )
 async def verify_backup(request, backup_id: str) -> dict:
     """Verify backup integrity.
-    
+
     Security Auditor: Integrity check.
     """
     return {

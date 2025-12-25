@@ -12,7 +12,6 @@ Per AGENT_TASKS.md Phase 7.1 - Capability Registry.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 from typing import Optional
 from uuid import uuid4
 
@@ -21,7 +20,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError
+from admin.common.exceptions import NotFoundError
 
 router = Router(tags=["capabilities"])
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ _circuit_breakers = {}  # capability_id -> CircuitBreakerState
 
 class CircuitBreakerState:
     """Circuit breaker for capability health."""
-    
+
     def __init__(self):
         self.state = "closed"  # closed, open, half_open
         self.failure_count = 0
@@ -52,6 +51,7 @@ class CircuitBreakerState:
 
 class CapabilityRegistration(BaseModel):
     """Register a capability."""
+
     name: str
     capability_type: str  # llm, tool, memory, cognitive, voice
     endpoint: str
@@ -62,6 +62,7 @@ class CapabilityRegistration(BaseModel):
 
 class CapabilityInfo(BaseModel):
     """Capability information."""
+
     capability_id: str
     name: str
     capability_type: str
@@ -75,12 +76,14 @@ class CapabilityInfo(BaseModel):
 
 class CapabilityListResponse(BaseModel):
     """List of capabilities."""
+
     capabilities: list[CapabilityInfo]
     total: int
 
 
 class FindCandidatesRequest(BaseModel):
     """Find capability candidates."""
+
     capability_type: str
     required_features: Optional[list[str]] = None
     prefer_healthy: bool = True
@@ -89,12 +92,14 @@ class FindCandidatesRequest(BaseModel):
 
 class FindCandidatesResponse(BaseModel):
     """Matching capabilities."""
+
     candidates: list[CapabilityInfo]
     total_matching: int
 
 
 class HealthReportRequest(BaseModel):
     """Report health status."""
+
     status: str  # healthy, degraded, down
     latency_ms: Optional[float] = None
     error: Optional[str] = None
@@ -116,18 +121,18 @@ async def register_capability(
     payload: CapabilityRegistration,
 ) -> CapabilityInfo:
     """Register a new capability in the registry.
-    
+
     Per Phase 7.1: register()
-    
+
     DevOps: Capabilities are tracked with circuit breakers.
     """
     capability_id = str(uuid4())
-    
+
     # Initialize circuit breaker
     _circuit_breakers[capability_id] = CircuitBreakerState()
-    
+
     logger.info(f"Capability registered: {payload.name} ({capability_id})")
-    
+
     # In production: persist to database
     # Capability.objects.create(
     #     id=capability_id,
@@ -138,7 +143,7 @@ async def register_capability(
     #     metadata=payload.metadata,
     #     health_endpoint=payload.health_endpoint,
     # )
-    
+
     return CapabilityInfo(
         capability_id=capability_id,
         name=payload.name,
@@ -161,9 +166,9 @@ async def deregister_capability(request, capability_id: str) -> dict:
     """Remove a capability from the registry."""
     if capability_id in _circuit_breakers:
         del _circuit_breakers[capability_id]
-    
+
     logger.info(f"Capability deregistered: {capability_id}")
-    
+
     return {
         "capability_id": capability_id,
         "deregistered": True,
@@ -217,9 +222,9 @@ async def find_candidates(
     payload: FindCandidatesRequest,
 ) -> FindCandidatesResponse:
     """Find matching capabilities.
-    
+
     Per Phase 7.1: find_candidates()
-    
+
     PhD Dev: Intelligent matching based on type, features, health.
     """
     # In production: query database with filters
@@ -227,7 +232,7 @@ async def find_candidates(
     #     capability_type=payload.capability_type,
     #     status__in=['healthy', 'degraded'] if payload.prefer_healthy else ['healthy', 'degraded', 'down']
     # )
-    
+
     return FindCandidatesResponse(
         candidates=[],
         total_matching=0,
@@ -250,17 +255,17 @@ async def report_health(
     payload: HealthReportRequest,
 ) -> dict:
     """Report capability health status.
-    
+
     Per Phase 7.1: Health tracking
-    
+
     DevOps: Updates circuit breaker state based on health.
     """
     cb = _circuit_breakers.get(capability_id)
-    
+
     if not cb:
         cb = CircuitBreakerState()
         _circuit_breakers[capability_id] = cb
-    
+
     if payload.status == "healthy":
         cb.failure_count = 0
         cb.last_success = timezone.now()
@@ -269,12 +274,12 @@ async def report_health(
     else:
         cb.failure_count += 1
         cb.last_failure = timezone.now()
-        
+
         # Open circuit after 3 failures
         if cb.failure_count >= 3:
             cb.state = "open"
             logger.warning(f"Circuit OPENED for capability {capability_id}")
-    
+
     return {
         "capability_id": capability_id,
         "circuit_state": cb.state,
@@ -290,23 +295,23 @@ async def report_health(
 )
 async def get_circuit_state(request, capability_id: str) -> dict:
     """Get circuit breaker state for a capability.
-    
+
     Per Phase 7.1: Circuit breakers
     """
     cb = _circuit_breakers.get(capability_id)
-    
+
     if not cb:
         return {
             "capability_id": capability_id,
             "state": "unknown",
             "failure_count": 0,
         }
-    
+
     # Check if we should transition from open to half_open
     if cb.state == "open" and cb.last_failure:
         if (timezone.now() - cb.last_failure).total_seconds() > cb.reset_timeout:
             cb.state = "half_open"
-    
+
     return {
         "capability_id": capability_id,
         "state": cb.state,
@@ -326,9 +331,9 @@ async def reset_circuit(request, capability_id: str) -> dict:
     if capability_id in _circuit_breakers:
         _circuit_breakers[capability_id].state = "closed"
         _circuit_breakers[capability_id].failure_count = 0
-    
+
     logger.info(f"Circuit reset for capability {capability_id}")
-    
+
     return {
         "capability_id": capability_id,
         "state": "closed",
@@ -346,7 +351,7 @@ async def health_summary(request) -> dict:
     open_circuits = sum(1 for cb in _circuit_breakers.values() if cb.state == "open")
     half_open = sum(1 for cb in _circuit_breakers.values() if cb.state == "half_open")
     closed = sum(1 for cb in _circuit_breakers.values() if cb.state == "closed")
-    
+
     return {
         "total_capabilities": len(_circuit_breakers),
         "circuits": {
@@ -354,5 +359,9 @@ async def health_summary(request) -> dict:
             "half_open": half_open,
             "closed": closed,
         },
-        "overall_health": "healthy" if open_circuits == 0 else "degraded" if open_circuits < len(_circuit_breakers) / 2 else "critical",
+        "overall_health": (
+            "healthy"
+            if open_circuits == 0
+            else "degraded" if open_circuits < len(_circuit_breakers) / 2 else "critical"
+        ),
     }

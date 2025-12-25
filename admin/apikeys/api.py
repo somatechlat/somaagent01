@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 class APIKey(BaseModel):
     """API key."""
+
     key_id: str
     name: str
     prefix: str  # First 8 chars for identification
@@ -45,6 +46,7 @@ class APIKey(BaseModel):
 
 class APIKeyWithSecret(BaseModel):
     """API key with secret (only shown once)."""
+
     key_id: str
     name: str
     prefix: str
@@ -56,6 +58,7 @@ class APIKeyWithSecret(BaseModel):
 
 class APIKeyUsage(BaseModel):
     """API key usage stats."""
+
     key_id: str
     requests_24h: int
     requests_7d: int
@@ -79,7 +82,7 @@ async def list_api_keys(
     active_only: bool = True,
 ) -> dict:
     """List API keys.
-    
+
     DevOps: View programmatic access.
     """
     return {
@@ -110,21 +113,22 @@ async def create_api_key(
     expires_in_days: Optional[int] = None,
 ) -> APIKeyWithSecret:
     """Create a new API key.
-    
+
     Security Auditor: Secret shown only once!
     """
     key_id = str(uuid4())
     prefix = "sk_live_"
     secret_part = secrets.token_urlsafe(32)
     full_key = f"{prefix}{secret_part}"
-    
+
     logger.info(f"API key created: {name} ({key_id})")
-    
+
     expires_at = None
     if expires_in_days:
         from datetime import timedelta
+
         expires_at = (timezone.now() + timedelta(days=expires_in_days)).isoformat()
-    
+
     return APIKeyWithSecret(
         key_id=key_id,
         name=name,
@@ -179,11 +183,11 @@ async def update_api_key(
 )
 async def revoke_api_key(request, key_id: str) -> dict:
     """Revoke an API key.
-    
+
     Security Auditor: Permanent, cannot be undone.
     """
     logger.warning(f"API key revoked: {key_id}")
-    
+
     return {
         "key_id": key_id,
         "revoked": True,
@@ -203,15 +207,15 @@ async def revoke_api_key(request, key_id: str) -> dict:
 )
 async def rotate_api_key(request, key_id: str) -> APIKeyWithSecret:
     """Rotate an API key.
-    
+
     Security Auditor: Generate new secret, old one invalidated.
     """
     prefix = "sk_live_"
     secret_part = secrets.token_urlsafe(32)
     full_key = f"{prefix}{secret_part}"
-    
+
     logger.info(f"API key rotated: {key_id}")
-    
+
     return APIKeyWithSecret(
         key_id=key_id,
         name="Rotated Key",
@@ -238,7 +242,7 @@ async def get_api_key_usage(
     key_id: str,
 ) -> APIKeyUsage:
     """Get API key usage statistics.
-    
+
     DevOps: Monitor key usage.
     """
     return APIKeyUsage(
@@ -258,7 +262,7 @@ async def verify_api_key(
     api_key: str,
 ) -> dict:
     """Verify an API key is valid.
-    
+
     DevOps: Key validation endpoint.
     """
     # In production: hash and lookup key
@@ -281,7 +285,7 @@ async def verify_api_key(
 )
 async def list_scopes(request) -> dict:
     """List available API key scopes.
-    
+
     PM: Developer documentation.
     """
     return {

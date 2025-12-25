@@ -13,7 +13,6 @@ from admin.agents.services.somabrain_integration import (
     get_weights_async,
     publish_reward_async,
 )
-import os
 
 
 class SomaBrainMemoryAdapter(MemoryAdapterPort):

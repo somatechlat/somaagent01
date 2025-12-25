@@ -9,7 +9,6 @@ VIBE COMPLIANT - Django patterns, security-first.
 from __future__ import annotations
 
 import logging
-import re
 import uuid
 from typing import Any, Optional
 
@@ -17,8 +16,7 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel, Field, field_validator
 
-from admin.common.exceptions import NotFoundError, ValidationError, ForbiddenError
-from admin.common.auth import AuthBearer
+from admin.common.exceptions import NotFoundError, ValidationError
 
 router = Router(tags=["skins"])
 logger = logging.getLogger(__name__)
@@ -176,6 +174,7 @@ async def get_skin(request: HttpRequest, skin_id: str) -> dict:
 async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
     """Upload a new skin (admin only)."""
     from services.common.skins_store import SkinRecord
+
     from services.common.authorization import authorize
 
     store = _get_store()

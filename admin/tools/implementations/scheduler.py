@@ -4,8 +4,9 @@ import random
 import re
 from datetime import datetime
 
-from agent import AgentContext
 from admin.core.helpers.session_store_adapter import delete_context
+from agent import AgentContext
+
 from admin.core.helpers.task_scheduler import (
     AdHocTask,
     parse_datetime,

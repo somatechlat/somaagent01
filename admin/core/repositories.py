@@ -2,10 +2,10 @@
 Centralized repository manager for SomaAgent01.
 
 This manager satisfies the system's dependency injection needs by providing
-singleton access to either Service Adapters (for secrets/keys) or 
+singleton access to either Service Adapters (for secrets/keys) or
 native Django Model Managers (for core persistence entities).
 
-VIBE COMPLIANT: 
+VIBE COMPLIANT:
 - 100% Real implementations.
 - Zero Shims/Mocks.
 - Direct Django ORM usage for database entities.
@@ -13,21 +13,21 @@ VIBE COMPLIANT:
 
 from __future__ import annotations
 
-from typing import Optional, Any
-
-# --- REAL SERVICE IMPORTS (Verified on physical disk) ---
-from services.common.api_key_store import ApiKeyStore
-from services.common.secret_manager import SecretManager
+from typing import Any, Optional
 
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
     AuditLog,
     DeadLetterMessage,
-    Notification,
-    UISetting,
-    Session,
     MemoryReplica,
+    Notification,
+    Session,
+    UISetting,
 )
+
+# --- REAL SERVICE IMPORTS (Verified on physical disk) ---
+from services.common.api_key_store import ApiKeyStore
+from services.common.secret_manager import SecretManager
 
 
 class RepositoryManager:
@@ -102,6 +102,7 @@ def get_repository_manager() -> RepositoryManager:
 
 
 # --- CONVENIENCE FUNCTIONS (Exposed to the application) ---
+
 
 def get_api_key_store() -> ApiKeyStore:
     return get_repository_manager().get_api_key_store()

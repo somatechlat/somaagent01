@@ -12,12 +12,11 @@ Typical usage::
 If the topic already has 12 or more partitions the script exits silently.
 """
 
+import os
 import sys
 from typing import Optional
 
 from kafka.admin import KafkaAdminClient, NewPartitions
-
-import os
 
 
 def get_admin_client() -> KafkaAdminClient:

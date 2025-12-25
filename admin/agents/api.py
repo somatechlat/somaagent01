@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Agent(BaseModel):
     """Agent definition."""
+
     agent_id: str
     name: str
     description: Optional[str] = None
@@ -47,6 +48,7 @@ class Agent(BaseModel):
 
 class AgentStats(BaseModel):
     """Agent statistics."""
+
     total_conversations: int
     total_messages: int
     avg_response_time_ms: float
@@ -55,6 +57,7 @@ class AgentStats(BaseModel):
 
 class AgentDeployment(BaseModel):
     """Agent deployment info."""
+
     agent_id: str
     environment: str
     version: str
@@ -79,7 +82,7 @@ async def list_agents(
     limit: int = 50,
 ) -> dict:
     """List agents.
-    
+
     PM: Agent catalog.
     """
     return {
@@ -102,13 +105,13 @@ async def create_agent(
     description: Optional[str] = None,
 ) -> Agent:
     """Create a new agent.
-    
+
     PhD Dev: Agent instantiation.
     """
     agent_id = str(uuid4())
-    
+
     logger.info(f"Agent created: {name} ({agent_id})")
-    
+
     return Agent(
         agent_id=agent_id,
         name=name,
@@ -173,7 +176,7 @@ async def update_agent(
 async def delete_agent(request, agent_id: str) -> dict:
     """Delete an agent."""
     logger.warning(f"Agent deleted: {agent_id}")
-    
+
     return {
         "agent_id": agent_id,
         "deleted": True,
@@ -192,7 +195,7 @@ async def delete_agent(request, agent_id: str) -> dict:
 )
 async def get_personality(request, agent_id: str) -> dict:
     """Get agent personality config.
-    
+
     PhD Dev: Personality tuning.
     """
     return {
@@ -230,7 +233,7 @@ async def update_personality(
 )
 async def get_agent_tools(request, agent_id: str) -> dict:
     """Get agent's enabled tools.
-    
+
     PhD Dev: Tool configuration.
     """
     return {
@@ -264,7 +267,7 @@ async def update_agent_tools(
 )
 async def get_memory_config(request, agent_id: str) -> dict:
     """Get agent memory configuration.
-    
+
     PhD Dev: Memory architecture.
     """
     return {
@@ -290,7 +293,7 @@ async def get_memory_config(request, agent_id: str) -> dict:
 async def activate_agent(request, agent_id: str) -> dict:
     """Activate an agent for use."""
     logger.info(f"Agent activated: {agent_id}")
-    
+
     return {
         "agent_id": agent_id,
         "status": "active",
@@ -336,7 +339,7 @@ async def archive_agent(request, agent_id: str) -> dict:
 )
 async def get_agent_stats(request, agent_id: str) -> AgentStats:
     """Get agent statistics.
-    
+
     PM: Performance metrics.
     """
     return AgentStats(
@@ -353,7 +356,7 @@ async def get_agent_stats(request, agent_id: str) -> AgentStats:
 )
 async def list_deployments(request, agent_id: str) -> dict:
     """List agent deployments.
-    
+
     DevOps: Deployment history.
     """
     return {
@@ -374,13 +377,13 @@ async def deploy_agent(
     environment: str = "production",
 ) -> dict:
     """Deploy agent to environment.
-    
+
     DevOps: Deployment.
     """
     deployment_id = str(uuid4())
-    
+
     logger.info(f"Agent deployed: {agent_id} -> {environment}")
-    
+
     return {
         "deployment_id": deployment_id,
         "agent_id": agent_id,
@@ -406,13 +409,13 @@ async def clone_agent(
     target_tenant_id: Optional[str] = None,
 ) -> dict:
     """Clone an agent.
-    
+
     PM: Agent replication.
     """
     new_agent_id = str(uuid4())
-    
+
     logger.info(f"Agent cloned: {agent_id} -> {new_agent_id}")
-    
+
     return {
         "original_agent_id": agent_id,
         "new_agent_id": new_agent_id,

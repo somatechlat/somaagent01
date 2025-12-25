@@ -20,14 +20,16 @@ from typing import Any, Callable, Optional
 
 def _ensure_django() -> None:
     """Check if Django is ready.
-    
+
     VIBE Rule: Do not trigger side effects like django.setup() in helper modules.
     The entry point must handle initialization.
     """
     import django
 
     if not django.apps.apps.ready:
-        raise RuntimeError("Django apps not populated. Ensure django.setup() is called at entry point.")
+        raise RuntimeError(
+            "Django apps not populated. Ensure django.setup() is called at entry point."
+        )
 
 
 def _get_version() -> str:
@@ -147,6 +149,7 @@ def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_i
         Settings object with values from Django ORM configuration.
     """
     from admin.core.helpers import runtime
+
     from .settings_model import SettingsModel as Settings
 
     mcp_token = auth_token_fn() if auth_token_fn else ""

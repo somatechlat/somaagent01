@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class UploadSensor(BaseSensor):
     """Upload sensor for Zero Data Loss.
-    
+
     Captures:
     - Upload start
     - Upload complete
@@ -29,10 +29,10 @@ class UploadSensor(BaseSensor):
     - Upload deletion
     - Upload errors
     """
-    
+
     sensor_name = "upload"
     target_service = "somabrain"
-    
+
     def capture_upload_start(
         self,
         session_id: str,
@@ -52,7 +52,7 @@ class UploadSensor(BaseSensor):
                 "metadata": metadata or {},
             },
         )
-    
+
     def capture_upload_complete(
         self,
         session_id: str,
@@ -74,7 +74,7 @@ class UploadSensor(BaseSensor):
                 "content_type": content_type,
             },
         )
-    
+
     def capture_upload_processing(
         self,
         file_id: str,
@@ -92,7 +92,7 @@ class UploadSensor(BaseSensor):
                 "result": result or {},
             },
         )
-    
+
     def capture_upload_deletion(
         self,
         file_id: str,
@@ -108,7 +108,7 @@ class UploadSensor(BaseSensor):
                 "deleted_by": deleted_by,
             },
         )
-    
+
     def capture_upload_error(
         self,
         session_id: str,

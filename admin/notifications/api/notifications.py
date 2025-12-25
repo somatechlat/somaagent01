@@ -12,8 +12,6 @@ from typing import Optional
 from ninja import Router
 from pydantic import BaseModel
 
-from admin.common.exceptions import ServiceError
-
 router = Router(tags=["notifications"])
 logger = logging.getLogger(__name__)
 

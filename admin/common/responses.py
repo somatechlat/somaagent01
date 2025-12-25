@@ -5,8 +5,8 @@ Provides standardized response formatting across all API endpoints.
 
 from __future__ import annotations
 
-from typing import Any, TypeVar, Generic
-from datetime import datetime, timezone, UTC
+from datetime import datetime, timezone
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 

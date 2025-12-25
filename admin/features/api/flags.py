@@ -11,13 +11,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from django.conf import settings
 from django.dispatch import Signal
 from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel, Field
 
-from admin.common.exceptions import ValidationError, ServiceError
+from admin.common.exceptions import ServiceError, ValidationError
 
 router = Router(tags=["feature_flags"])
 logger = logging.getLogger(__name__)
@@ -54,8 +53,9 @@ def _get_tenant(request: HttpRequest) -> str:
 async def _publish_config_update(tenant: str, payload: dict):
     """Publish config update event via Kafka."""
     try:
-        from services.gateway.providers import get_publisher
         from django.conf import settings
+
+        from services.gateway.providers import get_publisher
 
         publisher = get_publisher()
         topic = settings.KAFKA_CONVERSATION_TOPIC
