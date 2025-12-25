@@ -109,6 +109,13 @@ if (app) {
             return;
         }
 
+        // Role Matrix - Visual permission editor
+        if (path === '/platform/role-matrix') {
+            await import('./views/saas-role-matrix.js');
+            app.appendChild(document.createElement('saas-role-matrix'));
+            return;
+        }
+
         if (path === '/saas/permissions' || path === '/platform/permissions') {
             await import('./views/saas-permissions.js');
             app.appendChild(document.createElement('saas-permissions'));
