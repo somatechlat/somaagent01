@@ -194,6 +194,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/templates", templates_router)
 
+    # Events (Real-time SSE streaming)
+    from admin.events.api import router as events_router
+
+    api.add_router("/events", events_router)
+
     return api
 
 
