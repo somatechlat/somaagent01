@@ -448,6 +448,7 @@ class ProfileOut(BaseModel):
 def get_profile(request) -> dict:
     """Get current authenticated user's profile."""
     from admin.auth.api import _get_permissions_for_roles
+    from admin.saas.models import AdminProfile, UserSession, ApiKey
 
     user_id = getattr(request.auth, "sub", "unknown")
     email = getattr(request.auth, "email", "admin@example.com")
@@ -456,19 +457,41 @@ def get_profile(request) -> dict:
 
     permissions = _get_permissions_for_roles(roles)
 
+    # Get or create profile from database
+    profile, created = AdminProfile.objects.get_or_create(
+        user_id=user_id,
+        defaults={
+            "email": email,
+            "display_name": name,
+            "session_timeout": 30,
+            "notification_prefs": {
+                "criticalAlerts": True,
+                "billingEvents": True,
+                "weeklyDigest": False,
+                "marketing": False,
+            },
+        }
+    )
+
+    # Count related objects
+    session_count = UserSession.objects.filter(user_id=user_id).count() or 1
+    api_key_count = ApiKey.objects.filter(user_id=user_id, is_active=True).count()
+
     return api_response(
         ProfileOut(
-            id=user_id,
-            email=email,
-            name=name,
+            id=str(profile.user_id),
+            email=profile.email,
+            name=profile.display_name or name,
+            avatar_url=profile.avatar_url or None,
             role=roles[0] if roles else "user",
             roles=roles,
             permissions=permissions,
             mfa_enabled=True,
-            session_timeout=30,
-            active_sessions=1,
-            api_key_count=2,
-            notifications={
+            last_login=profile.last_login_at.isoformat() if profile.last_login_at else None,
+            session_timeout=profile.session_timeout,
+            active_sessions=session_count,
+            api_key_count=api_key_count,
+            notifications=profile.notification_prefs or {
                 "criticalAlerts": True,
                 "billingEvents": True,
                 "weeklyDigest": False,
@@ -488,15 +511,39 @@ def update_profile(
     payload: ProfileUpdateRequest,
 ) -> dict:
     """Update current user's profile settings."""
+    from admin.saas.models import AdminProfile
+
     user_id = getattr(request.auth, "sub", "unknown")
+    email = getattr(request.auth, "email", "admin@example.com")
+    name = getattr(request.auth, "name", "Admin User")
+
+    # Get or create profile
+    profile, created = AdminProfile.objects.get_or_create(
+        user_id=user_id,
+        defaults={
+            "email": email,
+            "display_name": name,
+            "session_timeout": 30,
+        }
+    )
+
+    # Update fields
+    if payload.display_name is not None:
+        profile.display_name = payload.display_name
+    if payload.session_timeout is not None:
+        profile.session_timeout = max(5, min(480, payload.session_timeout))
+    if payload.notifications is not None:
+        profile.notification_prefs = payload.notifications
+
+    profile.save()
+
     logger.info(f"Profile updated for user: {user_id}")
 
-    # Would save to database
     return api_response(
         {
-            "display_name": payload.display_name,
-            "session_timeout": payload.session_timeout,
-            "notifications": payload.notifications,
+            "display_name": profile.display_name,
+            "session_timeout": profile.session_timeout,
+            "notifications": profile.notification_prefs,
         },
         message="Profile updated",
     )

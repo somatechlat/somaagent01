@@ -26,6 +26,15 @@ from admin.saas.models.tenants import Tenant, TenantUser
 from admin.saas.models.tiers import SubscriptionTier
 from admin.saas.models.usage import UsageRecord
 
+# Profile models
+from admin.saas.models.profiles import (
+    AdminProfile,
+    TenantSettings,
+    UserPreferences,
+    UserSession,
+    ApiKey,
+)
+
 # Django model discovery - all models must be listed here
 __all__ = [
     # Choices
@@ -47,4 +56,10 @@ __all__ = [
     "TierFeature",
     "FeatureProvider",
     "AuditLog",
+    # Profile Models
+    "AdminProfile",
+    "TenantSettings",
+    "UserPreferences",
+    "UserSession",
+    "ApiKey",
 ]
