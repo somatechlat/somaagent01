@@ -239,6 +239,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/webhooks", webhooks_router)
 
+    # Tenants (Multi-tenant management)
+    from admin.tenants.api import router as tenants_router
+
+    api.add_router("/tenants", tenants_router)
+
     return api
 
 
