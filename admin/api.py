@@ -304,6 +304,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/models", models_router)
 
+    # Completions (LLM inference)
+    from admin.completions.api import router as completions_router
+
+    safe_add_router("/completions", completions_router)
+
     return api
 
 
