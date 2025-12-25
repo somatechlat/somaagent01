@@ -254,6 +254,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/agents", agents_router)
 
+    # Conversations (Chat management)
+    from admin.conversations.api import router as conversations_router
+
+    api.add_router("/conversations", conversations_router)
+
     return api
 
 
