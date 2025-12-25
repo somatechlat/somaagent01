@@ -40,6 +40,7 @@ export * from './saas-form-field.js';
 export * from './saas-select.js';
 export * from './saas-toggle.js';
 export * from './saas-action-menu.js';
+export * from './entity-manager.js';
 
 // SAAS Types
 export type { StatStatus, TrendDirection } from './saas-stat-card.js';
