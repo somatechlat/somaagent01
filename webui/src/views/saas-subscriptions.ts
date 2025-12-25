@@ -698,7 +698,7 @@ export class SaasSubscriptions extends LitElement {
     private async _loadTiers() {
         this._isLoading = true;
         try {
-            const response = await apiClient.get('/saas/subscriptions/');
+            const response = await apiClient.get('/saas/subscriptions/') as { tiers?: SubscriptionTier[] };
             if (response.tiers) {
                 this._tiers = response.tiers;
             }

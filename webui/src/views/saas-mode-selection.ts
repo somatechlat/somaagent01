@@ -555,9 +555,8 @@ export class SaasModeSelection extends LitElement {
                 this._userEmail = user.email || 'admin@somatech.dev';
             }
 
-            // Load tenants from API
             try {
-                const response = await apiClient.get('/saas/tenants/');
+                const response = await apiClient.get('/saas/tenants/') as { tenants?: Tenant[] };
                 if (response.tenants) {
                     this._tenants = response.tenants;
                 }
