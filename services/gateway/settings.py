@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # SPA static file serving
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -119,6 +120,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "static"
+
+# SPA Frontend (webui/dist) - served by WhiteNoise
+STATICFILES_DIRS = [
+    BASE_DIR / "webui" / "dist",  # Vite production build
+]
+
+# WhiteNoise settings for SPA
+WHITENOISE_INDEX_FILE = True  # Serve index.html at /
+WHITENOISE_ROOT = BASE_DIR / "webui" / "dist"  # Root for SPA assets
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
