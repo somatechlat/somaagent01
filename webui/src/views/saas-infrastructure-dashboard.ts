@@ -39,6 +39,33 @@ interface RateLimitPolicy {
   is_active: boolean;
 }
 
+// Degradation monitoring types
+interface DegradationStatus {
+  overall_level: string;
+  affected_components: string[];
+  healthy_components: string[];
+  total_components: number;
+  timestamp: number;
+  recommendations: string[];
+  mitigation_actions: string[];
+}
+
+interface ComponentHealth {
+  name: string;
+  healthy: boolean;
+  response_time: number;
+  error_rate: number;
+  degradation_level: string;
+  circuit_state: string;
+  last_check: number;
+}
+
+interface ServiceDependency {
+  service: string;
+  depends_on: string[];
+  depended_by: string[];
+}
+
 // Material Symbol names for each service
 const SERVICE_ICONS: Record<string, string> = {
   postgresql: 'database',
@@ -58,9 +85,12 @@ const SERVICE_ICONS: Record<string, string> = {
 export class SaasInfrastructureDashboard extends LitElement {
   @state() health: InfrastructureHealth | null = null;
   @state() rateLimits: RateLimitPolicy[] = [];
+  @state() degradation: DegradationStatus | null = null;
+  @state() components: ComponentHealth[] = [];
+  @state() dependencies: ServiceDependency[] = [];
   @state() loading = true;
   @state() error = '';
-  @state() activeTab: 'health' | 'ratelimits' | 'config' = 'health';
+  @state() activeTab: 'health' | 'ratelimits' | 'degradation' = 'health';
   @state() refreshing = false;
   @state() lastRefresh: Date | null = null;
 
@@ -601,6 +631,134 @@ export class SaasInfrastructureDashboard extends LitElement {
       padding: 40px;
       color: var(--saas-text-muted, #999);
     }
+
+    /* ========================================
+       DEGRADATION LEVEL STYLES
+       ======================================== */
+    .deg-none { color: #22c55e; }
+    .deg-minor { color: #84cc16; }
+    .deg-moderate { color: #f59e0b; }
+    .deg-severe { color: #f97316; }
+    .deg-critical { color: #ef4444; }
+
+    .deg-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .deg-badge.none { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+    .deg-badge.minor { background: rgba(132, 204, 22, 0.15); color: #65a30d; }
+    .deg-badge.moderate { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+    .deg-badge.severe { background: rgba(249, 115, 22, 0.15); color: #ea580c; }
+    .deg-badge.critical { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+
+    .component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .component-card {
+      background: var(--saas-bg-card, #ffffff);
+      border: 1px solid var(--saas-border-light, #e0e0e0);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.15s ease;
+    }
+
+    .component-card:hover {
+      border-color: var(--saas-border-medium, #ccc);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+
+    .component-card.unhealthy {
+      border-color: rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.02);
+    }
+
+    .component-name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: capitalize;
+    }
+
+    .component-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--saas-text-muted, #999);
+    }
+
+    .component-stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .component-stat .material-symbols-outlined { font-size: 14px; }
+
+    .recommendations-panel {
+      background: var(--saas-bg-card, #ffffff);
+      border: 1px solid var(--saas-border-light, #e0e0e0);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    .recommendations-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recommendations-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .recommendations-list li {
+      padding: 8px 12px;
+      background: var(--saas-bg-hover, #fafafa);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recommendations-list li .material-symbols-outlined {
+      font-size: 16px;
+      color: #f59e0b;
+    }
+
+    .circuit-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .circuit-badge.closed { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+    .circuit-badge.open { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+    .circuit-badge.half_open { background: rgba(245, 158, 11, 0.15); color: #d97706; }
   `;
 
   connectedCallback() {
@@ -621,7 +779,7 @@ export class SaasInfrastructureDashboard extends LitElement {
 
   async fetchData() {
     this.loading = true;
-    await Promise.all([this.fetchHealth(), this.fetchRateLimits()]);
+    await Promise.all([this.fetchHealth(), this.fetchRateLimits(), this.fetchDegradation()]);
     this.loading = false;
   }
 
@@ -649,6 +807,23 @@ export class SaasInfrastructureDashboard extends LitElement {
       }
     } catch (err) {
       console.error('Rate limits fetch failed:', err);
+    }
+  }
+
+  async fetchDegradation() {
+    try {
+      const [statusRes, componentsRes] = await Promise.all([
+        fetch('/api/v2/core/infrastructure/degradation/status', { headers: this.getAuthHeaders() }),
+        fetch('/api/v2/core/infrastructure/degradation/components', { headers: this.getAuthHeaders() }),
+      ]);
+      if (statusRes.ok) {
+        this.degradation = await statusRes.json();
+      }
+      if (componentsRes.ok) {
+        this.components = await componentsRes.json();
+      }
+    } catch (err) {
+      console.error('Degradation fetch failed:', err);
     }
   }
 
@@ -733,12 +908,16 @@ export class SaasInfrastructureDashboard extends LitElement {
           <div class="tab ${this.activeTab === 'ratelimits' ? 'active' : ''}" @click=${() => this.activeTab = 'ratelimits'}>
             Rate Limits
           </div>
+          <div class="tab ${this.activeTab === 'degradation' ? 'active' : ''}" @click=${() => this.activeTab = 'degradation'}>
+            Degradation Mode
+          </div>
         </div>
 
         <div class="content">
           ${this.loading ? html`<div class="loading">Loading...</div>` : nothing}
           ${!this.loading && this.activeTab === 'health' ? this.renderHealth() : nothing}
           ${!this.loading && this.activeTab === 'ratelimits' ? this.renderRateLimits() : nothing}
+          ${!this.loading && this.activeTab === 'degradation' ? this.renderDegradation() : nothing}
         </div>
       </main>
     `;
@@ -868,6 +1047,108 @@ export class SaasInfrastructureDashboard extends LitElement {
           </tbody>
         </table>
       </div>
+    `;
+  }
+
+  renderDegradation() {
+    if (!this.degradation) return html`<div class="empty-state">No degradation data</div>`;
+
+    const level = this.degradation.overall_level;
+    const healthy = this.degradation.healthy_components.length;
+    const affected = this.degradation.affected_components.length;
+
+    return html`
+      <!-- Status Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card featured">
+          <div class="metric-header">
+            <span class="metric-label">Degradation Level</span>
+            <div class="metric-icon"><span class="material-symbols-outlined">thermostat</span></div>
+          </div>
+          <div class="metric-value">
+            <span class="deg-badge ${level}">${level.toUpperCase()}</span>
+          </div>
+          <div class="metric-sub">System status assessment</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Healthy</span>
+            <div class="metric-icon"><span class="material-symbols-outlined">check_circle</span></div>
+          </div>
+          <div class="metric-value healthy">${healthy}</div>
+          <div class="metric-sub">components operational</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Affected</span>
+            <div class="metric-icon"><span class="material-symbols-outlined">warning</span></div>
+          </div>
+          <div class="metric-value ${affected > 0 ? 'degraded' : ''}">${affected}</div>
+          <div class="metric-sub">components impacted</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">Total</span>
+            <div class="metric-icon"><span class="material-symbols-outlined">grid_view</span></div>
+          </div>
+          <div class="metric-value">${this.degradation.total_components}</div>
+          <div class="metric-sub">monitored components</div>
+        </div>
+      </div>
+
+      <!-- Component Grid -->
+      <h3 class="section-title">
+        <span class="material-symbols-outlined">memory</span>
+        Component Health
+      </h3>
+      <div class="component-grid">
+        ${this.components.map(c => html`
+          <div class="component-card ${!c.healthy ? 'unhealthy' : ''}">
+            <div class="component-name">
+              <div class="service-icon">
+                <span class="material-symbols-outlined">${SERVICE_ICONS[c.name] || 'settings'}</span>
+              </div>
+              ${c.name}
+              <span class="deg-badge ${c.degradation_level}">${c.degradation_level}</span>
+            </div>
+            <div class="component-stats">
+              <span class="component-stat">
+                <span class="material-symbols-outlined">speed</span>
+                ${c.response_time ? c.response_time.toFixed(2) + 's' : '0s'}
+              </span>
+              <span class="component-stat">
+                <span class="material-symbols-outlined">error_outline</span>
+                ${(c.error_rate * 100).toFixed(0)}% errors
+              </span>
+              <span class="circuit-badge ${c.circuit_state}">${c.circuit_state}</span>
+            </div>
+          </div>
+        `)}
+      </div>
+
+      <!-- Recommendations -->
+      ${this.degradation.recommendations.length > 0 || this.degradation.mitigation_actions.length > 0 ? html`
+        <div class="recommendations-panel">
+          <h4 class="recommendations-title">
+            <span class="material-symbols-outlined">lightbulb</span>
+            Recommendations & Actions
+          </h4>
+          <ul class="recommendations-list">
+            ${this.degradation.recommendations.map(r => html`
+              <li>
+                <span class="material-symbols-outlined">tips_and_updates</span>
+                ${r}
+              </li>
+            `)}
+            ${this.degradation.mitigation_actions.map(a => html`
+              <li>
+                <span class="material-symbols-outlined">build</span>
+                ${a}
+              </li>
+            `)}
+          </ul>
+        </div>
+      ` : nothing}
     `;
   }
 }
