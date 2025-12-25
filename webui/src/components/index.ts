@@ -47,6 +47,9 @@ export * from './settings-form.js';
 export * from './saas-permission-guard.js';
 export * from './saas-impersonation-banner.js';
 export * from './saas-user-profile-card.js';
+export * from './saas-user-invite-modal.js';
+export * from './saas-role-badge.js';
+export * from './saas-quota-bar.js';
 
 // SAAS Types
 export type { StatStatus, TrendDirection } from './saas-stat-card.js';

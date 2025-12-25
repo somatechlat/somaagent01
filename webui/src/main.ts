@@ -267,6 +267,20 @@ if (app) {
             return;
         }
 
+        // Tenant Settings (Organization Configuration)
+        if (path === '/admin/settings' || path.startsWith('/admin/settings/')) {
+            await import('./views/saas-tenant-settings.js');
+            app.appendChild(document.createElement('saas-tenant-settings'));
+            return;
+        }
+
+        // Personal User Profile
+        if (path === '/profile') {
+            await import('./views/saas-personal-profile.js');
+            app.appendChild(document.createElement('saas-personal-profile'));
+            return;
+        }
+
         if (path === '/admin/agents') {
             await import('./views/saas-entity-views.js');
             app.appendChild(document.createElement('saas-agents-view'));
