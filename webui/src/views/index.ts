@@ -38,3 +38,7 @@ export { SaasBilling } from './saas-billing.js';
 export { SaasTenantDashboard } from './saas-tenant-dashboard.js';
 export { SaasTenantUsers } from './saas-tenant-users.js';
 export { SaasTenantAgents } from './saas-tenant-agents.js';
+
+// Platform Admin (Eye of God)
+export { SaasInfrastructureDashboard } from './saas-infrastructure-dashboard.js';
+export { SaasPermissions } from './saas-permissions.js';
