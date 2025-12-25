@@ -146,6 +146,48 @@ if (app) {
             return;
         }
 
+        // Platform Metrics Dashboard
+        if (path === '/platform/metrics' || path === '/saas/metrics') {
+            await import('./views/platform-metrics-dashboard.js');
+            app.appendChild(document.createElement('platform-metrics-dashboard'));
+            return;
+        }
+
+        // Settings Configuration (uses SettingsForm pattern)
+        if (path.startsWith('/platform/settings/')) {
+            const entity = path.split('/').pop() || 'postgresql';
+            await import('./components/settings-form.js');
+            const form = document.createElement('settings-form') as HTMLElement;
+            form.setAttribute('entity', entity);
+            app.appendChild(form);
+            return;
+        }
+
+        // Entity Views (Tenants, Users, Agents, Features using EntityManager)
+        if (path === '/platform/tenants-new') {
+            await import('./views/saas-entity-views.js');
+            app.appendChild(document.createElement('saas-tenants-view'));
+            return;
+        }
+
+        if (path === '/admin/users') {
+            await import('./views/saas-entity-views.js');
+            app.appendChild(document.createElement('saas-users-view'));
+            return;
+        }
+
+        if (path === '/admin/agents') {
+            await import('./views/saas-entity-views.js');
+            app.appendChild(document.createElement('saas-agents-view'));
+            return;
+        }
+
+        if (path === '/platform/features') {
+            await import('./views/saas-entity-views.js');
+            app.appendChild(document.createElement('saas-features-view'));
+            return;
+        }
+
         if (path === '/saas/billing') {
             await import('./views/saas-billing.js');
             app.appendChild(document.createElement('saas-billing'));
