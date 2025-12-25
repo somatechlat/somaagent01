@@ -185,6 +185,21 @@ if (app) {
             return;
         }
 
+        // MFA Setup
+        if (path === '/mfa/setup' || path === '/settings/mfa') {
+            await import('./views/saas-mfa-setup.js');
+            app.appendChild(document.createElement('saas-mfa-setup'));
+            return;
+        }
+
+        // Audit Log
+        if (path === '/audit' || path === '/admin/audit' || path === '/platform/audit') {
+            await import('./views/saas-audit-log.js');
+            app.appendChild(document.createElement('saas-audit-log'));
+            return;
+        }
+
+
 
         if (path === '/chat') {
             try {
