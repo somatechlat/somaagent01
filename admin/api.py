@@ -234,6 +234,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/sessions", sessions_router)
 
+    # Webhooks (Outbound event delivery)
+    from admin.webhooks.api import router as webhooks_router
+
+    api.add_router("/webhooks", webhooks_router)
+
     return api
 
 
