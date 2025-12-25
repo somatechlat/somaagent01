@@ -161,6 +161,13 @@ if (app) {
         }
 
 
+        // Onboarding Wizard (invitation acceptance)
+        if (path.startsWith('/onboarding') || path.startsWith('/invite/')) {
+            await import('./views/saas-onboarding.js');
+            app.appendChild(document.createElement('saas-onboarding'));
+            return;
+        }
+
         if (path === '/logout') {
             localStorage.removeItem('eog_auth_token');
             localStorage.removeItem('eog_user');
