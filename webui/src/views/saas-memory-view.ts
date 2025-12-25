@@ -663,7 +663,7 @@ export class SaasMemoryView extends LitElement {
 
         try {
             // Call SomaBrain API - GET /api/v2/memory/
-            const response = await apiClient.get('/memory/');
+            const response = await apiClient.get('/memory/') as { memories?: Memory[]; total?: number };
             if (response.memories) {
                 this._memories = response.memories;
                 this._totalCount = response.total || this._memories.length;
@@ -737,7 +737,7 @@ export class SaasMemoryView extends LitElement {
             const response = await apiClient.post('/memory/recall/', {
                 query: this._searchQuery,
                 limit: 50,
-            });
+            }) as { memories?: Memory[] };
             if (response.memories) {
                 this._memories = response.memories;
             }
