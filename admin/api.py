@@ -294,6 +294,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/embeddings", embeddings_router)
 
+    # Prompts (Prompt templates)
+    from admin.prompts.api import router as prompts_router
+
+    safe_add_router("/prompts", prompts_router)
+
     return api
 
 
