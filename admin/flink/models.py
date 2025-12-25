@@ -232,3 +232,106 @@ class FlinkSystemMetrics(models.Model):
     
     def __str__(self):
         return f"System @ {self.window_start}"
+
+
+# =============================================================================
+# LLM TOKEN METRICS (from Flink)
+# =============================================================================
+
+
+class FlinkLLMTokenMetrics(models.Model):
+    """LLM token usage metrics from Flink.
+    
+    Tumbling window: 1 minute.
+    Source: soma.llm.tokens Kafka topic.
+    
+    PhD Dev: Token tracking for cost optimization.
+    PM: Billing and usage dashboards.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    model_name = models.CharField(max_length=100, db_index=True)  # gpt-4, claude-3, etc.
+    window_start = models.DateTimeField(db_index=True)
+    window_end = models.DateTimeField()
+    
+    # Token counts
+    prompt_tokens = models.BigIntegerField(default=0)
+    completion_tokens = models.BigIntegerField(default=0)
+    total_tokens = models.BigIntegerField(default=0)
+    
+    # Request counts
+    request_count = models.BigIntegerField(default=0)
+    successful_requests = models.BigIntegerField(default=0)
+    failed_requests = models.BigIntegerField(default=0)
+    
+    # Latency metrics
+    avg_latency_ms = models.FloatField(default=0.0)
+    p95_latency_ms = models.FloatField(default=0.0)
+    p99_latency_ms = models.FloatField(default=0.0)
+    
+    # Cost tracking (calculated based on model pricing)
+    estimated_cost_usd = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_llm_token_metrics"
+        unique_together = [["tenant_id", "model_name", "window_start"]]
+        indexes = [
+            models.Index(fields=["tenant_id", "window_start"]),
+            models.Index(fields=["model_name", "window_start"]),
+            models.Index(fields=["tenant_id", "model_name"]),
+        ]
+        ordering = ["-window_start"]
+    
+    def __str__(self):
+        return f"{self.tenant_id}: {self.model_name} @ {self.window_start}"
+
+
+# =============================================================================
+# LLM MODEL USAGE (from Flink)
+# =============================================================================
+
+
+class FlinkLLMModelUsage(models.Model):
+    """Daily LLM model usage aggregation.
+    
+    Tumbling window: 1 day.
+    Source: soma.llm.completions Kafka topic.
+    
+    PM: Model selection and cost analysis.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    agent_id = models.CharField(max_length=255, db_index=True)
+    model_name = models.CharField(max_length=100, db_index=True)
+    date = models.DateField(db_index=True)
+    
+    # Usage counts
+    total_requests = models.BigIntegerField(default=0)
+    total_tokens = models.BigIntegerField(default=0)
+    prompt_tokens = models.BigIntegerField(default=0)
+    completion_tokens = models.BigIntegerField(default=0)
+    
+    # Performance
+    avg_response_time_ms = models.FloatField(default=0.0)
+    error_rate = models.FloatField(default=0.0)
+    
+    # Cost
+    total_cost_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_llm_model_usage"
+        unique_together = [["tenant_id", "agent_id", "model_name", "date"]]
+        indexes = [
+            models.Index(fields=["tenant_id", "date"]),
+            models.Index(fields=["model_name", "date"]),
+        ]
+        ordering = ["-date"]
+    
+    def __str__(self):
+        return f"{self.agent_id}: {self.model_name} on {self.date}"

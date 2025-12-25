@@ -1,57 +1,45 @@
-# Flink + Kafka Docker Compose
-# VIBE COMPLIANT - Production-grade stream processing infrastructure
+# Flink + Kafka KRaft Docker Compose
+# VIBE COMPLIANT - Modern Kafka without Zookeeper
 #
 # 7-Persona Implementation:
-# - DevOps: Container orchestration, networking
+# - DevOps: KRaft mode (simplified ops)
 # - Security Auditor: Secure defaults
 # - PhD Dev: Flink configuration tuning
 
 services:
   # ===========================================================================
-  # ZOOKEEPER (for Kafka)
-  # ===========================================================================
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: soma-zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-    healthcheck:
-      test: [ "CMD", "echo", "ruok", "|", "nc", "localhost", "2181" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - soma-network
-
-  # ===========================================================================
-  # KAFKA
+  # KAFKA (KRaft Mode - No Zookeeper!)
   # ===========================================================================
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: soma-kafka
-    depends_on:
-      zookeeper:
-        condition: service_healthy
     ports:
       - "9092:9092"
       - "29092:29092"
+      - "9093:9093" # Controller port
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      # KRaft Settings (No Zookeeper!)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Cluster Settings
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_NUM_PARTITIONS: 6
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # Performance
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
@@ -74,12 +62,20 @@ services:
     entrypoint: [ "/bin/sh", "-c" ]
     command: |
       "
-      echo 'Creating Kafka topics...'
+      echo 'Creating Kafka topics (KRaft mode)...'
+
+      # Event Topics
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.conversations.events
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.agents.events
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.permissions.audit
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.usage.metering
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.system.metrics
+
+      # LLM/Model Tracking Topics
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.llm.completions
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.llm.tokens
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.llm.errors
+
       echo 'Topics created.'
       kafka-topics --list --bootstrap-server kafka:29092
       "
@@ -140,7 +136,7 @@ services:
       replicas: 2
 
   # ===========================================================================
-  # FLINK SQL GATEWAY (for submitting SQL jobs)
+  # FLINK SQL GATEWAY
   # ===========================================================================
   flink-sql-gateway:
     image: flink:1.18-java11
@@ -149,7 +145,7 @@ services:
       flink-jobmanager:
         condition: service_healthy
     ports:
-      - "8083:8083" # SQL Gateway REST API
+      - "8083:8083"
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
@@ -159,7 +155,7 @@ services:
       - soma-network
 
   # ===========================================================================
-  # KAFKA UI (Optional - for debugging)
+  # KAFKA UI (Debugging)
   # ===========================================================================
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -172,7 +168,6 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: soma-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     networks:
       - soma-network
 
@@ -181,8 +176,6 @@ networks:
     driver: bridge
 
 volumes:
-  zookeeper-data:
-  zookeeper-logs:
   kafka-data:
   flink-checkpoints:
   flink-savepoints:
