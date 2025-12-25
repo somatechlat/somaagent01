@@ -162,6 +162,13 @@ if (app) {
             return;
         }
 
+        // Tenant Admin - Agent Metrics
+        if (path === '/admin/metrics' || path === '/tenant/metrics') {
+            await import('./views/saas-agent-metrics.js');
+            app.appendChild(document.createElement('saas-agent-metrics'));
+            return;
+        }
+
         if (path === '/saas/tenants' || path === '/platform/tenants') {
             await import('./views/saas-tenants.js');
             app.appendChild(document.createElement('saas-tenants'));
