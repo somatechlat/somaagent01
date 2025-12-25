@@ -67,10 +67,12 @@ class InfrastructureHealthChecker:
         """Check all infrastructure services."""
         start_time = time.time()
 
-        # Run all checks concurrently
+        # Run all checks concurrently - INCLUDING Kafka and Flink
         checks = await asyncio.gather(
             self.check_postgresql(),
             self.check_redis(),
+            self.check_kafka(),
+            self.check_flink(),
             self.check_temporal(),
             self.check_qdrant(),
             self.check_keycloak(),
@@ -193,6 +195,97 @@ class InfrastructureHealthChecker:
             logger.warning(f"Redis health check failed: {e}")
             return HealthCheckResult(
                 name="redis",
+                status="degraded",
+                latency_ms=(time.time() - start) * 1000,
+                error=str(e),
+            )
+
+    async def check_kafka(self) -> HealthCheckResult:
+        """Check Kafka connectivity using existing KafkaEventBus adapter.
+
+        DevOps: Uses production KafkaEventBus.healthcheck() method.
+        """
+        start = time.time()
+        try:
+            from services.common.event_bus import KafkaEventBus, KafkaSettings
+
+            bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+            settings = KafkaSettings(bootstrap_servers=bootstrap_servers)
+            bus = KafkaEventBus(settings)
+
+            # Use the existing healthcheck method from KafkaEventBus
+            await bus.healthcheck()
+            await bus.close()
+
+            latency = (time.time() - start) * 1000
+
+            return HealthCheckResult(
+                name="kafka",
+                status="healthy",
+                latency_ms=latency,
+                details={
+                    "bootstrap_servers": bootstrap_servers,
+                },
+            )
+        except ImportError as e:
+            return HealthCheckResult(
+                name="kafka",
+                status="degraded",
+                error=f"Kafka module not available: {e}",
+            )
+        except Exception as e:
+            logger.warning(f"Kafka health check failed: {e}")
+            return HealthCheckResult(
+                name="kafka",
+                status="degraded",
+                latency_ms=(time.time() - start) * 1000,
+                error=str(e),
+            )
+
+    async def check_flink(self) -> HealthCheckResult:
+        """Check Flink cluster via REST API.
+
+        DevOps: Queries Flink JobManager REST endpoint.
+        Performance Engineer: Monitors streaming job status.
+        """
+        start = time.time()
+        try:
+            import httpx
+
+            flink_rest_url = os.environ.get("FLINK_REST_URL", "http://localhost:8081")
+            url = f"{flink_rest_url}/overview"
+
+            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
+                response = await client.get(url)
+
+            latency = (time.time() - start) * 1000
+
+            if response.status_code == 200:
+                data = response.json() if response.text else {}
+                return HealthCheckResult(
+                    name="flink",
+                    status="healthy",
+                    latency_ms=latency,
+                    details={
+                        "flink_version": data.get("flink-version", "unknown"),
+                        "jobs_running": data.get("jobs-running", 0),
+                        "jobs_finished": data.get("jobs-finished", 0),
+                        "taskmanagers": data.get("taskmanagers", 0),
+                        "slots_total": data.get("slots-total", 0),
+                        "slots_available": data.get("slots-available", 0),
+                    },
+                )
+            else:
+                return HealthCheckResult(
+                    name="flink",
+                    status="degraded",
+                    latency_ms=latency,
+                    error=f"HTTP {response.status_code}",
+                )
+        except Exception as e:
+            logger.warning(f"Flink health check failed: {e}")
+            return HealthCheckResult(
+                name="flink",
                 status="degraded",
                 latency_ms=(time.time() - start) * 1000,
                 error=str(e),
