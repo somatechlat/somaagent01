@@ -24,6 +24,11 @@ from admin.common.auth import AuthBearer
 router = Router(tags=["permissions"])
 logger = logging.getLogger(__name__)
 
+# Mount granular permissions sub-router
+from admin.permissions.granular import router as granular_router
+
+router.add_router("/granular", granular_router, tags=["granular-permissions"])
+
 
 # =============================================================================
 # SCHEMAS
