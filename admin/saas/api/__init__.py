@@ -10,6 +10,7 @@ from .billing import router as billing_router
 from .dashboard import router as dashboard_router
 from .features import router as features_router
 from .health import router as health_router
+from .integrations import router as integrations_router
 from .settings import router as settings_router
 from .tenant_agents import router as tenant_agents_router
 from .tenants import router as tenants_router
@@ -26,6 +27,7 @@ router.add_router("/tiers", tiers_router, tags=["Subscription Tiers"])
 router.add_router("/billing", billing_router, tags=["Billing"])
 router.add_router("/features", features_router, tags=["Features"])
 router.add_router("/settings", settings_router, tags=["Settings"])
+router.add_router("/integrations", integrations_router, tags=["Integrations"])
 router.add_router("/audit", audit_router, tags=["Audit Trail"])
 router.add_router("/health", health_router, tags=["Platform Health"])
 
