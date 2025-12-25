@@ -23,6 +23,8 @@ export { SomaVoiceButton } from './soma-voice-button.js';
 export { SomaVoiceOverlay } from './soma-voice-overlay.js';
 export { VoicePersonaCard } from './voice-persona-card.js';
 export { VoiceConfigPanel } from './voice-config-panel.js';
+export { VoiceWaveform } from './voice-waveform.js';
+export { VoiceTranscript } from './voice-transcript.js';
 
 // Re-export types
 export type { SelectOption } from './soma-select.js';
