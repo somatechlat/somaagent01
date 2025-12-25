@@ -214,6 +214,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/backup", backup_router)
 
+    # Audit (Security logging)
+    from admin.audit.api import router as audit_router
+
+    api.add_router("/audit", audit_router)
+
     return api
 
 
