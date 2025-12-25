@@ -162,6 +162,13 @@ if (app) {
             return;
         }
 
+        // Feature Catalog
+        if (path === '/platform/features' || path === '/saas/features') {
+            await import('./views/saas-feature-catalog.js');
+            app.appendChild(document.createElement('saas-feature-catalog'));
+            return;
+        }
+
         // Tenant Admin - Agent Metrics
         if (path === '/admin/metrics' || path === '/tenant/metrics') {
             await import('./views/saas-agent-metrics.js');
