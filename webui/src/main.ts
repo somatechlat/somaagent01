@@ -110,6 +110,13 @@ if (app) {
             return;
         }
 
+        // Usage Analytics Dashboard
+        if (path === '/platform/usage' || path === '/saas/usage') {
+            await import('./views/saas-usage-analytics.js');
+            app.appendChild(document.createElement('saas-usage-analytics'));
+            return;
+        }
+
         if (path === '/platform/roles') {
             await import('./views/saas-admin-roles-list.js');
             app.appendChild(document.createElement('saas-admin-roles-list'));
