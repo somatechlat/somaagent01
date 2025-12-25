@@ -188,6 +188,13 @@ if (app) {
             return;
         }
 
+        // Audit Log Dashboard
+        if (path === '/platform/audit' || path === '/saas/audit') {
+            await import('./views/saas-audit-dashboard.js');
+            app.appendChild(document.createElement('saas-audit-dashboard'));
+            return;
+        }
+
         if (path === '/saas/billing') {
             await import('./views/saas-billing.js');
             app.appendChild(document.createElement('saas-billing'));
