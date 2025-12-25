@@ -199,6 +199,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/events", events_router)
 
+    # Integrations (Third-party services)
+    from admin.integrations.api import router as integrations_router
+
+    api.add_router("/integrations", integrations_router)
+
     return api
 
 
