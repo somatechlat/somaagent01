@@ -234,6 +234,19 @@ if (app) {
             return;
         }
 
+        // 6. Voice Routes (AgentVoice Vox)
+        if (path === '/voice/personas' || path === '/platform/voice/personas') {
+            await import('./views/saas-voice-personas.js');
+            app.appendChild(document.createElement('saas-voice-personas'));
+            return;
+        }
+
+        if (path === '/voice/sessions' || path === '/platform/voice/sessions') {
+            await import('./views/saas-voice-sessions.js');
+            app.appendChild(document.createElement('saas-voice-sessions'));
+            return;
+        }
+
 
         // Default: New SAAS Dashboard
         await import('./views/saas-platform-dashboard.js');
