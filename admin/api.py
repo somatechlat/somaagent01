@@ -329,6 +329,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/traces", traces_router)
 
+    # Auth Config (Hierarchical auth)
+    from admin.auth_config.api import router as auth_config_router
+
+    safe_add_router("/auth-config", auth_config_router)
+
     return api
 
 
