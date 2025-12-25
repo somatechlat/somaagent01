@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from ninja import NinjaAPI
 
 from admin.common.handlers import register_exception_handlers
 
 
+@lru_cache(maxsize=1)
 def create_api() -> NinjaAPI:
     """Create and configure the master NinjaAPI instance."""
     api = NinjaAPI(
