@@ -202,6 +202,13 @@ if (app) {
             return;
         }
 
+        // Multimodal Settings (Agent Owner)
+        if (path === '/settings/multimodal' || path === '/agent/multimodal') {
+            await import('./views/saas-multimodal-settings.js');
+            app.appendChild(document.createElement('saas-multimodal-settings'));
+            return;
+        }
+
         // Settings Configuration (uses SettingsForm pattern)
         if (path.startsWith('/platform/settings/')) {
             const entity = path.split('/').pop() || 'postgresql';
