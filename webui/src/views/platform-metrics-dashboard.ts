@@ -20,51 +20,51 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
 interface MetricSnapshot {
-    gateway: {
-        requests_total: number;
-        requests_per_minute: number;
-        latency_p50_ms: number;
-        latency_p95_ms: number;
-        latency_p99_ms: number;
-        error_rate: number;
-    };
-    llm: {
-        calls_total: number;
-        input_tokens_total: number;
-        output_tokens_total: number;
-        avg_latency_ms: number;
-        cost_estimate_usd: number;
-        models: Record<string, { calls: number; tokens: number }>;
-    };
-    tools: {
-        executions_total: number;
-        success_rate: number;
-        avg_duration_ms: number;
-        by_tool: Record<string, { calls: number; success_rate: number; avg_ms: number }>;
-    };
-    memory: {
-        operations_total: number;
-        wal_lag_seconds: number;
-        persistence_avg_ms: number;
-        policy_decisions: number;
-    };
-    system: {
-        uptime_seconds: number;
-        cpu_percent: number;
-        memory_bytes: number;
-    };
+  gateway: {
+    requests_total: number;
+    requests_per_minute: number;
+    latency_p50_ms: number;
+    latency_p95_ms: number;
+    latency_p99_ms: number;
+    error_rate: number;
+  };
+  llm: {
+    calls_total: number;
+    input_tokens_total: number;
+    output_tokens_total: number;
+    avg_latency_ms: number;
+    cost_estimate_usd: number;
+    models: Record<string, { calls: number; tokens: number }>;
+  };
+  tools: {
+    executions_total: number;
+    success_rate: number;
+    avg_duration_ms: number;
+    by_tool: Record<string, { calls: number; success_rate: number; avg_ms: number }>;
+  };
+  memory: {
+    operations_total: number;
+    wal_lag_seconds: number;
+    persistence_avg_ms: number;
+    policy_decisions: number;
+  };
+  system: {
+    uptime_seconds: number;
+    cpu_percent: number;
+    memory_bytes: number;
+  };
 }
 
 interface SLAStatus {
-    name: string;
-    target: number;
-    actual: number;
-    status: 'ok' | 'warning' | 'critical';
+  name: string;
+  target: number;
+  actual: number;
+  status: 'ok' | 'warning' | 'critical';
 }
 
 @customElement('platform-metrics-dashboard')
 export class PlatformMetricsDashboard extends LitElement {
-    static styles = css`
+  static styles = css`
     :host {
       display: flex;
       height: 100vh;
@@ -338,128 +338,128 @@ export class PlatformMetricsDashboard extends LitElement {
     }
   `;
 
-    @state() private metrics: MetricSnapshot | null = null;
-    @state() private sla: SLAStatus[] = [];
-    @state() private loading = true;
-    @state() private activeTab: 'overview' | 'llm' | 'tools' | 'memory' | 'sla' = 'overview';
-    @state() private lastRefresh: Date | null = null;
+  @state() private metrics: MetricSnapshot | null = null;
+  @state() private sla: SLAStatus[] = [];
+  @state() private loading = true;
+  @state() private activeTab: 'overview' | 'llm' | 'tools' | 'memory' | 'sla' = 'overview';
+  @state() private lastRefresh: Date | null = null;
 
-    private pollInterval: number | null = null;
+  private pollInterval: number | null = null;
 
-    connectedCallback() {
-        super.connectedCallback();
-        this.fetchMetrics();
-        this.pollInterval = window.setInterval(() => this.fetchMetrics(), 30000);
+  connectedCallback() {
+    super.connectedCallback();
+    this.fetchMetrics();
+    this.pollInterval = window.setInterval(() => this.fetchMetrics(), 30000);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this.pollInterval) clearInterval(this.pollInterval);
+  }
+
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('eog_auth_token');
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  private async fetchMetrics() {
+    try {
+      const [metricsRes, slaRes] = await Promise.all([
+        fetch('/api/v2/core/observability/snapshot', { headers: this.getAuthHeaders() }),
+        fetch('/api/v2/core/observability/sla', { headers: this.getAuthHeaders() }),
+      ]);
+
+      if (metricsRes.ok) {
+        this.metrics = await metricsRes.json();
+      } else {
+        // Generate mock data for demo
+        this.metrics = this.getMockMetrics();
+      }
+
+      if (slaRes.ok) {
+        this.sla = await slaRes.json();
+      } else {
+        this.sla = this.getMockSLA();
+      }
+
+      this.lastRefresh = new Date();
+    } catch (err) {
+      console.error('Failed to fetch metrics:', err);
+      this.metrics = this.getMockMetrics();
+      this.sla = this.getMockSLA();
+    } finally {
+      this.loading = false;
     }
+  }
 
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        if (this.pollInterval) clearInterval(this.pollInterval);
-    }
+  private getMockMetrics(): MetricSnapshot {
+    return {
+      gateway: {
+        requests_total: 1247892,
+        requests_per_minute: 156,
+        latency_p50_ms: 45,
+        latency_p95_ms: 120,
+        latency_p99_ms: 450,
+        error_rate: 0.02,
+      },
+      llm: {
+        calls_total: 45600,
+        input_tokens_total: 45200000,
+        output_tokens_total: 12800000,
+        avg_latency_ms: 1200,
+        cost_estimate_usd: 3245.67,
+        models: {
+          'gpt-4o': { calls: 32000, tokens: 42000000 },
+          'claude-3.5': { calls: 13600, tokens: 16000000 },
+        },
+      },
+      tools: {
+        executions_total: 89000,
+        success_rate: 0.97,
+        avg_duration_ms: 350,
+        by_tool: {
+          'browser_agent': { calls: 23000, success_rate: 0.95, avg_ms: 450 },
+          'code_execute': { calls: 31000, success_rate: 0.99, avg_ms: 234 },
+          'image_gen': { calls: 12000, success_rate: 0.96, avg_ms: 3400 },
+          'web_search': { calls: 23000, success_rate: 0.98, avg_ms: 1200 },
+        },
+      },
+      memory: {
+        operations_total: 567000,
+        wal_lag_seconds: 0.5,
+        persistence_avg_ms: 15,
+        policy_decisions: 234000,
+      },
+      system: {
+        uptime_seconds: 1847293,
+        cpu_percent: 23,
+        memory_bytes: 4831838208,
+      },
+    };
+  }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('eog_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
+  private getMockSLA(): SLAStatus[] {
+    return [
+      { name: 'API Availability', target: 99.9, actual: 99.95, status: 'ok' },
+      { name: 'LLM Latency < 5s', target: 99.0, actual: 99.8, status: 'ok' },
+      { name: 'Memory Durability', target: 99.99, actual: 100, status: 'ok' },
+    ];
+  }
 
-    private async fetchMetrics() {
-        try {
-            const [metricsRes, slaRes] = await Promise.all([
-                fetch('/api/v2/observability/snapshot', { headers: this.getAuthHeaders() }),
-                fetch('/api/v2/observability/sla', { headers: this.getAuthHeaders() }),
-            ]);
+  private formatNumber(n: number): string {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return n.toLocaleString();
+  }
 
-            if (metricsRes.ok) {
-                this.metrics = await metricsRes.json();
-            } else {
-                // Generate mock data for demo
-                this.metrics = this.getMockMetrics();
-            }
+  private formatUptime(seconds: number): string {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    return `${days}d ${hours}h`;
+  }
 
-            if (slaRes.ok) {
-                this.sla = await slaRes.json();
-            } else {
-                this.sla = this.getMockSLA();
-            }
-
-            this.lastRefresh = new Date();
-        } catch (err) {
-            console.error('Failed to fetch metrics:', err);
-            this.metrics = this.getMockMetrics();
-            this.sla = this.getMockSLA();
-        } finally {
-            this.loading = false;
-        }
-    }
-
-    private getMockMetrics(): MetricSnapshot {
-        return {
-            gateway: {
-                requests_total: 1247892,
-                requests_per_minute: 156,
-                latency_p50_ms: 45,
-                latency_p95_ms: 120,
-                latency_p99_ms: 450,
-                error_rate: 0.02,
-            },
-            llm: {
-                calls_total: 45600,
-                input_tokens_total: 45200000,
-                output_tokens_total: 12800000,
-                avg_latency_ms: 1200,
-                cost_estimate_usd: 3245.67,
-                models: {
-                    'gpt-4o': { calls: 32000, tokens: 42000000 },
-                    'claude-3.5': { calls: 13600, tokens: 16000000 },
-                },
-            },
-            tools: {
-                executions_total: 89000,
-                success_rate: 0.97,
-                avg_duration_ms: 350,
-                by_tool: {
-                    'browser_agent': { calls: 23000, success_rate: 0.95, avg_ms: 450 },
-                    'code_execute': { calls: 31000, success_rate: 0.99, avg_ms: 234 },
-                    'image_gen': { calls: 12000, success_rate: 0.96, avg_ms: 3400 },
-                    'web_search': { calls: 23000, success_rate: 0.98, avg_ms: 1200 },
-                },
-            },
-            memory: {
-                operations_total: 567000,
-                wal_lag_seconds: 0.5,
-                persistence_avg_ms: 15,
-                policy_decisions: 234000,
-            },
-            system: {
-                uptime_seconds: 1847293,
-                cpu_percent: 23,
-                memory_bytes: 4831838208,
-            },
-        };
-    }
-
-    private getMockSLA(): SLAStatus[] {
-        return [
-            { name: 'API Availability', target: 99.9, actual: 99.95, status: 'ok' },
-            { name: 'LLM Latency < 5s', target: 99.0, actual: 99.8, status: 'ok' },
-            { name: 'Memory Durability', target: 99.99, actual: 100, status: 'ok' },
-        ];
-    }
-
-    private formatNumber(n: number): string {
-        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-        return n.toLocaleString();
-    }
-
-    private formatUptime(seconds: number): string {
-        const days = Math.floor(seconds / 86400);
-        const hours = Math.floor((seconds % 86400) / 3600);
-        return `${days}d ${hours}h`;
-    }
-
-    render() {
-        return html`
+  render() {
+    return html`
       <aside class="sidebar">
         <saas-sidebar active-route="/platform/metrics"></saas-sidebar>
       </aside>
@@ -517,13 +517,13 @@ export class PlatformMetricsDashboard extends LitElement {
         </div>
       </main>
     `;
-    }
+  }
 
-    private renderOverview() {
-        if (!this.metrics) return nothing;
-        const m = this.metrics;
+  private renderOverview() {
+    if (!this.metrics) return nothing;
+    const m = this.metrics;
 
-        return html`
+    return html`
       <div class="metrics-grid">
         <div class="metric-card featured">
           <div class="metric-header">
@@ -605,13 +605,13 @@ export class PlatformMetricsDashboard extends LitElement {
         </div>
       </div>
     `;
-    }
+  }
 
-    private renderLLM() {
-        if (!this.metrics) return nothing;
-        const m = this.metrics.llm;
+  private renderLLM() {
+    if (!this.metrics) return nothing;
+    const m = this.metrics.llm;
 
-        return html`
+    return html`
       <div class="metrics-grid">
         <div class="metric-card featured">
           <div class="metric-header">
@@ -666,13 +666,13 @@ export class PlatformMetricsDashboard extends LitElement {
         `)}
       </div>
     `;
-    }
+  }
 
-    private renderTools() {
-        if (!this.metrics) return nothing;
-        const m = this.metrics.tools;
+  private renderTools() {
+    if (!this.metrics) return nothing;
+    const m = this.metrics.tools;
 
-        return html`
+    return html`
       <div class="metrics-grid">
         <div class="metric-card featured">
           <div class="metric-header">
@@ -720,13 +720,13 @@ export class PlatformMetricsDashboard extends LitElement {
         `)}
       </div>
     `;
-    }
+  }
 
-    private renderMemory() {
-        if (!this.metrics) return nothing;
-        const m = this.metrics.memory;
+  private renderMemory() {
+    if (!this.metrics) return nothing;
+    const m = this.metrics.memory;
 
-        return html`
+    return html`
       <div class="metrics-grid">
         <div class="metric-card featured">
           <div class="metric-header">
@@ -762,10 +762,10 @@ export class PlatformMetricsDashboard extends LitElement {
         </div>
       </div>
     `;
-    }
+  }
 
-    private renderSLA() {
-        return html`
+  private renderSLA() {
+    return html`
       <div class="sla-grid">
         ${this.sla.map(s => html`
           <div class="sla-card">
@@ -776,11 +776,11 @@ export class PlatformMetricsDashboard extends LitElement {
         `)}
       </div>
     `;
-    }
+  }
 }
 
 declare global {
-    interface HTMLElementTagNameMap {
-        'platform-metrics-dashboard': PlatformMetricsDashboard;
-    }
+  interface HTMLElementTagNameMap {
+    'platform-metrics-dashboard': PlatformMetricsDashboard;
+  }
 }
