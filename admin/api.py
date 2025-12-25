@@ -204,6 +204,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/integrations", integrations_router)
 
+    # Plugins (Extensibility system)
+    from admin.plugins.api import router as plugins_router
+
+    api.add_router("/plugins", plugins_router)
+
     return api
 
 
