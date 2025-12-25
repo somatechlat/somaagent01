@@ -319,6 +319,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/metrics", metrics_router)
 
+    # Logging API (Structured logging)
+    from admin.logging_api.api import router as logging_api_router
+
+    safe_add_router("/logging", logging_api_router)
+
     return api
 
 
