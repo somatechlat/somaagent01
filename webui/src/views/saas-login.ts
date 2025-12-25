@@ -318,17 +318,17 @@ export class SaasLogin extends LitElement {
         .modal-overlay.hidden { display: none; }
 
         .sso-modal {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            border-radius: 24px;
-            box-shadow: 
-                0 32px 64px rgba(0, 0, 0, 0.12),
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
                 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
-            width: 100%;
-            max-width: 720px;
-            max-height: 90vh;
+            width: 100vw;
+            max-width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -657,16 +657,14 @@ export class SaasLogin extends LitElement {
                         </button>
                     </form>
 
-                    <!-- Dev Login -->
-                    <div class="divider">development</div>
-                    <button class="oauth-btn" @click=${this._handleDevLogin} style="background: #fef3c7; border-color: #f59e0b;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                            <path d="M2 17l10 5 10-5"/>
-                            <path d="M2 12l10 5 10-5"/>
-                        </svg>
-                        Dev Login (Skip Auth)
+                    <!-- Dev Login - HIDDEN IN PRODUCTION -->
+                    ${location.hostname === 'localhost' ? html`
+                    <div class="divider">development only</div>
+                    <button class="oauth-btn" @click=${this._handleDevLogin} style="background: #fef3c7; border-color: #f59e0b; opacity: 0.6;">
+                        <span class="material-symbols-outlined" style="color: #b45309;">developer_mode</span>
+                        Dev Login (localhost only)
                     </button>
+                    ` : ''}
 
                     <div class="footer">
                         <p class="footer-text">Powered by <a href="https://somatech.lat" target="_blank">SomaTech LAT</a></p>
@@ -815,18 +813,37 @@ export class SaasLogin extends LitElement {
 
     private async _testConnection() {
         this._testStatus = 'pending';
-        this._testMessage = 'Testing connection...';
+        this._testMessage = 'Testing connection to identity provider...';
 
-        // Simulate connection test
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        const provider = SSO_PROVIDERS.find(p => p.id === this._selectedProvider)!;
+        const config: Record<string, string> = {};
 
-        // For demo, randomly succeed/fail
-        if (Math.random() > 0.3) {
-            this._testStatus = 'success';
-            this._testMessage = 'Connection successful! Identity provider is reachable.';
-        } else {
+        for (const field of provider.fields) {
+            const input = this.shadowRoot?.getElementById(`sso-${field.key}`) as HTMLInputElement;
+            if (input) {
+                config[field.key] = input.value;
+            }
+        }
+
+        try {
+            const response = await fetch('/api/v2/auth/sso/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: this._selectedProvider, config }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this._testStatus = 'success';
+                this._testMessage = result.message || 'Connection successful! Identity provider is reachable.';
+            } else {
+                const error = await response.json().catch(() => ({}));
+                this._testStatus = 'error';
+                this._testMessage = error.detail || 'Connection failed. Please verify your configuration.';
+            }
+        } catch (err) {
             this._testStatus = 'error';
-            this._testMessage = 'Connection failed. Please verify your configuration.';
+            this._testMessage = 'Network error. Please check your connection and try again.';
         }
     }
 

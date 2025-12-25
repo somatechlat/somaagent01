@@ -44,13 +44,29 @@ if (app) {
         }
 
         // 1. Unauthenticated -> Login (skip in dev mode)
+        // Public auth routes that don't require login
+        const publicPaths = ['/login', '/auth/callback', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+
         if (!DEV_MODE && !token) {
-            if (path !== '/login' && path !== '/auth/callback') {
+            if (!publicPaths.includes(path)) {
                 window.history.replaceState(null, '', '/login');
                 renderRoute();
                 return;
             }
             app.innerHTML = '';
+
+            // Route to appropriate auth page
+            if (path === '/register') {
+                await import('./views/saas-register.js');
+                app.appendChild(document.createElement('saas-register'));
+                return;
+            }
+            if (path === '/forgot-password') {
+                await import('./views/saas-forgot-password.js');
+                app.appendChild(document.createElement('saas-forgot-password'));
+                return;
+            }
+
             app.appendChild(document.createElement('soma-login'));
             return;
         }
