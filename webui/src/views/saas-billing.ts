@@ -657,7 +657,11 @@ export class SaasBilling extends LitElement {
     private async _loadBillingData() {
         this._isLoading = true;
         try {
-            const response = await apiClient.get('/saas/billing/');
+            const response = await apiClient.get('/saas/billing/') as {
+                metrics?: BillingMetrics;
+                tierRevenue?: TierRevenue[];
+                invoices?: Invoice[];
+            };
             if (response.metrics) {
                 this._metrics = response.metrics;
             }
