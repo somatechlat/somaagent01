@@ -109,6 +109,12 @@ if (app) {
             return;
         }
 
+        if (path === '/saas/permissions' || path === '/platform/permissions') {
+            await import('./views/saas-permissions.js');
+            app.appendChild(document.createElement('saas-permissions'));
+            return;
+        }
+
         if (path === '/platform/flags') {
             await import('./views/saas-admin-feature-flags.js');
             app.appendChild(document.createElement('saas-admin-feature-flags'));
@@ -130,6 +136,13 @@ if (app) {
         if (path === '/saas/subscriptions') {
             await import('./views/saas-subscriptions.js');
             app.appendChild(document.createElement('saas-subscriptions'));
+            return;
+        }
+
+        // Infrastructure Administration (Eye of God)
+        if (path === '/platform/infrastructure' || path === '/saas/infrastructure') {
+            await import('./views/saas-infrastructure-dashboard.js');
+            app.appendChild(document.createElement('saas-infrastructure-dashboard'));
             return;
         }
 
