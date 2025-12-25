@@ -344,6 +344,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/scheduler", scheduler_router)
 
+    # Orchestrator (Workflow coordination)
+    from admin.orchestrator.api import router as orchestrator_router
+
+    safe_add_router("/orchestrator", orchestrator_router)
+
     return api
 
 
