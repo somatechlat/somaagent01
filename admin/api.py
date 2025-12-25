@@ -224,6 +224,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/permissions", permissions_router)
 
+    # API Keys (Programmatic access)
+    from admin.apikeys.api import router as apikeys_router
+
+    api.add_router("/apikeys", apikeys_router)
+
     return api
 
 
