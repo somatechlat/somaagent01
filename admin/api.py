@@ -354,6 +354,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/permissions", granular_permissions_router)
 
+    # Flink Stream Processing
+    from admin.flink.api import router as flink_router
+
+    safe_add_router("/flink", flink_router)
+
     return api
 
 
