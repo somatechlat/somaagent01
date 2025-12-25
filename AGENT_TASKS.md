@@ -455,6 +455,63 @@
 
 ---
 
+## Phase 9: Hierarchical Auth Configuration 🆕
+
+> **Architecture:** SysAdmin sets platform DEFAULT OAuth providers → TenantAdmin can OVERRIDE for their tenant
+
+### 9.1 Configuration Hierarchy
+
+| Level | Role | Scope | Example |
+|-------|------|-------|---------|
+| **Platform Default** | SysAdmin | All tenants | Google OAuth enabled |
+| **Tenant Override** | TenantAdmin | Single tenant | Use custom SAML SSO |
+
+### 9.2 Platform Auth Defaults (SysAdmin/Eye of God)
+- [ ] GET /auth-config/platform - Get platform defaults
+- [ ] PUT /auth-config/platform - Update platform defaults
+- [ ] GET /auth-config/platform/providers - List OAuth providers
+- [ ] POST /auth-config/platform/providers - Add OAuth provider
+- [ ] PUT /auth-config/platform/providers/{id} - Update provider
+- [ ] DELETE /auth-config/platform/providers/{id} - Remove provider
+- [ ] POST /auth-config/platform/providers/{id}/test - Test connection
+- [ ] GET /auth-config/platform/mfa - MFA policy
+- [ ] PUT /auth-config/platform/mfa - Update MFA policy
+
+### 9.3 Tenant Auth Overrides (TenantAdmin)
+- [ ] GET /auth-config/tenants/{tenant_id} - Get tenant config
+- [ ] PUT /auth-config/tenants/{tenant_id} - Update tenant config
+- [ ] POST /auth-config/tenants/{tenant_id}/providers - Add provider
+- [ ] DELETE /auth-config/tenants/{tenant_id}/providers/{id} - Remove
+- [ ] GET /auth-config/tenants/{tenant_id}/effective - Merged config
+- [ ] POST /auth-config/tenants/{tenant_id}/reset - Reset to defaults
+
+### 9.4 User Journeys
+
+**SysAdmin Journey:**
+1. Navigate to Eye of God → Auth Settings
+2. Configure default OAuth providers (Google, GitHub)
+3. Set default MFA policy (required/optional)
+4. Enable password policy defaults
+5. All new tenants inherit these defaults
+
+**TenantAdmin Journey:**
+1. Navigate to Tenant Settings → Authentication
+2. View inherited platform defaults (read-only badge)
+3. Choose "Override" to customize:
+   - Add custom SAML/OIDC provider
+   - Change MFA policy for tenant
+   - Configure IP whitelisting
+4. Use "Reset to Platform Defaults" to revert
+
+### 9.5 API Implementation
+- [ ] admin/auth_config/api.py - Auth config endpoints
+- [ ] Platform defaults storage (Django settings/DB)
+- [ ] Tenant overrides storage (Tenant model)
+- [ ] Config merger (effective config calculation)
+- [ ] Keycloak realm sync for custom providers
+
+---
+
 ## Document References
 
 | Document | Lines | Purpose |
