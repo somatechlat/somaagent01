@@ -324,6 +324,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/logging", logging_api_router)
 
+    # Traces (Distributed tracing)
+    from admin.traces.api import router as traces_router
+
+    safe_add_router("/traces", traces_router)
+
     return api
 
 
