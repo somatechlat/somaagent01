@@ -299,6 +299,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/prompts", prompts_router)
 
+    # Models (LLM catalog)
+    from admin.models.api import router as models_router
+
+    safe_add_router("/models", models_router)
+
     return api
 
 
