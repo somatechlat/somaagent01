@@ -18,7 +18,7 @@ export default defineConfig({
     },
 
     server: {
-        port: 5173,
+        port: 30173,  // Cluster pattern: 30xxx for frontend
         host: '0.0.0.0',
         cors: true,
         proxy: {
