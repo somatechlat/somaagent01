@@ -43,8 +43,14 @@ export * from './saas-action-menu.js';
 export * from './entity-manager.js';
 export * from './settings-form.js';
 
+// New Reusable Components
+export * from './saas-permission-guard.js';
+export * from './saas-impersonation-banner.js';
+export * from './saas-user-profile-card.js';
+
 // SAAS Types
 export type { StatStatus, TrendDirection } from './saas-stat-card.js';
 export type { ModalSize } from './saas-glass-modal.js';
 export type { BadgeVariant, BadgeSize } from './saas-status-badge.js';
+export type { UserProfileData } from './saas-user-profile-card.js';
 

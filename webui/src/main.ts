@@ -176,6 +176,13 @@ if (app) {
             return;
         }
 
+        // Agent Marketplace
+        if (path === '/platform/marketplace') {
+            await import('./views/saas-marketplace.js');
+            app.appendChild(document.createElement('saas-marketplace'));
+            return;
+        }
+
         // Tenant Admin - Agent Metrics
         if (path === '/admin/metrics' || path === '/tenant/metrics') {
             await import('./views/saas-agent-metrics.js');
@@ -236,6 +243,27 @@ if (app) {
         if (path === '/admin/users') {
             await import('./views/saas-entity-views.js');
             app.appendChild(document.createElement('saas-users-view'));
+            return;
+        }
+
+        // User Detail View (Tenant Admin)
+        if (path.match(/^\/admin\/users\/[^/]+$/)) {
+            await import('./views/saas-user-detail.js');
+            app.appendChild(document.createElement('saas-user-detail'));
+            return;
+        }
+
+        // Platform Admin Profile
+        if (path === '/platform/profile') {
+            await import('./views/saas-platform-profile.js');
+            app.appendChild(document.createElement('saas-platform-profile'));
+            return;
+        }
+
+        // Tenant Admin Profile
+        if (path === '/admin/profile') {
+            await import('./views/saas-platform-profile.js');
+            app.appendChild(document.createElement('saas-platform-profile'));
             return;
         }
 

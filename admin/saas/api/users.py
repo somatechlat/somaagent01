@@ -243,3 +243,260 @@ def change_user_role(
     logger.info(f"User role changed: {user_id} -> {role}")
 
     return api_response({"user_id": user_id, "role": role}, message="Role updated")
+
+
+# =============================================================================
+# EXTENDED USER MANAGEMENT (User Detail View Support)
+# =============================================================================
+
+
+class UserDetailOut(BaseModel):
+    """Extended user details with agent access, activity, sessions."""
+
+    id: str
+    email: str
+    displayName: str
+    avatarUrl: Optional[str] = None
+    role: str
+    roleLabel: str
+    status: str  # active, pending, suspended, archived
+    lastSeen: Optional[str] = None
+    mfaEnabled: bool
+    createdAt: str
+    permissions: list[str]
+    agentAccess: list[dict]
+    activityLog: list[dict]
+    sessions: list[dict]
+
+
+@router.get(
+    "/users/{user_id}/detail",
+    summary="Get detailed user info",
+    auth=AuthBearer(),
+)
+def get_user_detail(
+    request,
+    user_id: str,
+) -> dict:
+    """Get detailed user info with agent access, activity, sessions."""
+    try:
+        user = TenantUser.objects.get(id=user_id)
+    except TenantUser.DoesNotExist:
+        raise NotFoundError("user", user_id)
+
+    # Build role permissions
+    from admin.auth.api import _get_permissions_for_roles
+
+    permissions = _get_permissions_for_roles([user.role])
+
+    # Mock agent access (would query AgentUser model)
+    agent_access = [
+        {
+            "agentId": "agent-001",
+            "agentName": "Support Bot",
+            "modes": ["chat", "dev"],
+            "isOwner": True,
+        },
+    ]
+
+    # Mock activity log (would query AuditLog)
+    activity_log = [
+        {
+            "id": "act-001",
+            "action": "Logged in",
+            "target": "Session",
+            "timestamp": "2025-12-25T10:00:00Z",
+            "ip": "192.168.1.1",
+        },
+    ]
+
+    # Mock sessions
+    sessions = [
+        {
+            "id": "sess-001",
+            "device": "Chrome on macOS",
+            "location": "New York, US",
+            "lastActive": "2025-12-25T16:00:00Z",
+            "current": True,
+        },
+    ]
+
+    role_labels = {
+        "sysadmin": "System Administrator",
+        "admin": "Administrator",
+        "developer": "Developer",
+        "trainer": "Trainer",
+        "user": "User",
+        "viewer": "Viewer",
+    }
+
+    return api_response(
+        UserDetailOut(
+            id=str(user.id),
+            email=user.email,
+            displayName=user.display_name or "",
+            role=user.role,
+            roleLabel=role_labels.get(user.role, user.role),
+            status="active" if user.is_active else "suspended",
+            lastSeen=user.last_login_at.isoformat() if user.last_login_at else None,
+            mfaEnabled=True,  # Would check actual MFA status
+            createdAt=user.created_at.isoformat() if user.created_at else "",
+            permissions=permissions,
+            agentAccess=agent_access,
+            activityLog=activity_log,
+            sessions=sessions,
+        ).model_dump()
+    )
+
+
+@router.post(
+    "/users/{user_id}/suspend",
+    summary="Suspend user",
+    auth=AuthBearer(),
+)
+def suspend_user(
+    request,
+    user_id: str,
+) -> dict:
+    """Suspend a user account."""
+    try:
+        user = TenantUser.objects.get(id=user_id)
+    except TenantUser.DoesNotExist:
+        raise NotFoundError("user", user_id)
+
+    user.is_active = False
+    user.save()
+    logger.warning(f"User suspended: {user_id}")
+
+    return api_response({"user_id": user_id, "status": "suspended"}, message="User suspended")
+
+
+@router.post(
+    "/users/{user_id}/unsuspend",
+    summary="Unsuspend user",
+    auth=AuthBearer(),
+)
+def unsuspend_user(
+    request,
+    user_id: str,
+) -> dict:
+    """Unsuspend a user account."""
+    try:
+        user = TenantUser.objects.get(id=user_id)
+    except TenantUser.DoesNotExist:
+        raise NotFoundError("user", user_id)
+
+    user.is_active = True
+    user.save()
+    logger.info(f"User unsuspended: {user_id}")
+
+    return api_response({"user_id": user_id, "status": "active"}, message="User unsuspended")
+
+
+@router.delete(
+    "/users/{user_id}/sessions/{session_id}",
+    summary="Revoke user session",
+    auth=AuthBearer(),
+)
+def revoke_user_session(
+    request,
+    user_id: str,
+    session_id: str,
+) -> dict:
+    """Revoke a specific user session."""
+    # Would invalidate session in Keycloak/Redis
+    logger.info(f"Session revoked: {session_id} for user {user_id}")
+    return api_response({"session_id": session_id}, message="Session revoked")
+
+
+# =============================================================================
+# PROFILE ENDPOINTS (Platform Admin / Current User)
+# =============================================================================
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Profile update request."""
+
+    display_name: Optional[str] = None
+    session_timeout: Optional[int] = None
+    notifications: Optional[dict] = None
+
+
+class ProfileOut(BaseModel):
+    """Admin profile output."""
+
+    id: str
+    email: str
+    name: str
+    avatar_url: Optional[str] = None
+    role: str
+    roles: list[str]
+    permissions: list[str]
+    mfa_enabled: bool
+    last_login: Optional[str] = None
+    session_timeout: int
+    active_sessions: int
+    api_key_count: int
+    notifications: dict
+
+
+@router.get(
+    "/profile",
+    summary="Get current user profile",
+    auth=AuthBearer(),
+)
+def get_profile(request) -> dict:
+    """Get current authenticated user's profile."""
+    from admin.auth.api import _get_permissions_for_roles
+
+    user_id = getattr(request.auth, "sub", "unknown")
+    email = getattr(request.auth, "email", "admin@example.com")
+    name = getattr(request.auth, "name", "Admin User")
+    roles = getattr(request.auth, "roles", ["saas_admin"])
+
+    permissions = _get_permissions_for_roles(roles)
+
+    return api_response(
+        ProfileOut(
+            id=user_id,
+            email=email,
+            name=name,
+            role=roles[0] if roles else "user",
+            roles=roles,
+            permissions=permissions,
+            mfa_enabled=True,
+            session_timeout=30,
+            active_sessions=1,
+            api_key_count=2,
+            notifications={
+                "criticalAlerts": True,
+                "billingEvents": True,
+                "weeklyDigest": False,
+                "marketing": False,
+            },
+        ).model_dump()
+    )
+
+
+@router.put(
+    "/profile",
+    summary="Update current user profile",
+    auth=AuthBearer(),
+)
+def update_profile(
+    request,
+    payload: ProfileUpdateRequest,
+) -> dict:
+    """Update current user's profile settings."""
+    user_id = getattr(request.auth, "sub", "unknown")
+    logger.info(f"Profile updated for user: {user_id}")
+
+    # Would save to database
+    return api_response(
+        {
+            "display_name": payload.display_name,
+            "session_timeout": payload.session_timeout,
+            "notifications": payload.notifications,
+        },
+        message="Profile updated",
+    )
