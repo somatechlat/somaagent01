@@ -111,12 +111,21 @@ class SensorOutbox(models.Model):
     def __str__(self) -> str:
         return f"{self.event_type} ({self.event_id[:8]}...)"
     
-    def mark_synced(self) -> None:
-        """Mark event as successfully synced."""
+    def mark_synced(self, brain_ref: str = None) -> None:
+        """Mark event as successfully synced.
+        
+        CRITICAL: Clears payload after sync.
+        Content now only lives in SomaBrain.
+        Local keeps only the reference.
+        """
         self.synced = True
         self.synced_at = timezone.now()
-        self.save(update_fields=["synced", "synced_at", "updated_at"])
-        logger.debug(f"Event {self.event_id} marked as synced")
+        self.payload = {}  # DELETE content - now only in SomaBrain
+        if brain_ref:
+            # Store reference to SomaBrain location
+            self.last_error = f"brain_ref:{brain_ref}"
+        self.save(update_fields=["synced", "synced_at", "payload", "last_error", "updated_at"])
+        logger.debug(f"Event {self.event_id} synced, payload cleared")
     
     def mark_failed(self, error: str, max_retries: int = 10) -> None:
         """Mark event as failed, schedule retry or dead letter."""
