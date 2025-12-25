@@ -1,0 +1,188 @@
+# Flink + Kafka Docker Compose
+# VIBE COMPLIANT - Production-grade stream processing infrastructure
+#
+# 7-Persona Implementation:
+# - DevOps: Container orchestration, networking
+# - Security Auditor: Secure defaults
+# - PhD Dev: Flink configuration tuning
+
+services:
+  # ===========================================================================
+  # ZOOKEEPER (for Kafka)
+  # ===========================================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: soma-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    healthcheck:
+      test: [ "CMD", "echo", "ruok", "|", "nc", "localhost", "2181" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - soma-network
+
+  # ===========================================================================
+  # KAFKA
+  # ===========================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: soma-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 6
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - soma-network
+
+  # ===========================================================================
+  # KAFKA INIT (Create Topics)
+  # ===========================================================================
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: soma-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "
+      echo 'Creating Kafka topics...'
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.conversations.events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.agents.events
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.permissions.audit
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.usage.metering
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --replication-factor 1 --partitions 6 --topic soma.system.metrics
+      echo 'Topics created.'
+      kafka-topics --list --bootstrap-server kafka:29092
+      "
+    networks:
+      - soma-network
+
+  # ===========================================================================
+  # FLINK JOB MANAGER
+  # ===========================================================================
+  flink-jobmanager:
+    image: flink:1.18-java11
+    container_name: soma-flink-jobmanager
+    ports:
+      - "8081:8081" # Flink Web UI
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1600m
+        state.backend: rocksdb
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        state.savepoints.dir: file:///opt/flink/savepoints
+        execution.checkpointing.interval: 60000
+        execution.checkpointing.mode: EXACTLY_ONCE
+    command: jobmanager
+    volumes:
+      - flink-checkpoints:/opt/flink/checkpoints
+      - flink-savepoints:/opt/flink/savepoints
+      - ./flink-jobs:/opt/flink/jobs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/overview" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - soma-network
+
+  # ===========================================================================
+  # FLINK TASK MANAGER (Worker)
+  # ===========================================================================
+  flink-taskmanager:
+    image: flink:1.18-java11
+    container_name: soma-flink-taskmanager
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.memory.process.size: 2048m
+        taskmanager.numberOfTaskSlots: 4
+    command: taskmanager
+    volumes:
+      - flink-checkpoints:/opt/flink/checkpoints
+      - flink-savepoints:/opt/flink/savepoints
+    networks:
+      - soma-network
+    deploy:
+      replicas: 2
+
+  # ===========================================================================
+  # FLINK SQL GATEWAY (for submitting SQL jobs)
+  # ===========================================================================
+  flink-sql-gateway:
+    image: flink:1.18-java11
+    container_name: soma-flink-sql-gateway
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    ports:
+      - "8083:8083" # SQL Gateway REST API
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+    command: >
+      sql-gateway.sh start-foreground -Dsql-gateway.endpoint.rest.address=0.0.0.0 -Dsql-gateway.endpoint.rest.port=8083
+    networks:
+      - soma-network
+
+  # ===========================================================================
+  # KAFKA UI (Optional - for debugging)
+  # ===========================================================================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: soma-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: soma-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - soma-network
+
+networks:
+  soma-network:
+    driver: bridge
+
+volumes:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+  flink-checkpoints:
+  flink-savepoints:

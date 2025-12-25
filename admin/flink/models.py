@@ -1,0 +1,234 @@
+"""Flink Sink Tables Migration.
+
+VIBE COMPLIANT - Django ORM.
+PostgreSQL tables for Flink streaming output.
+
+7-Persona Implementation:
+- Django Architect: ORM models for Flink sinks
+- DevOps: Table structure for stream processing
+- PM: Analytics dashboards data source
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from django.db import models
+from django.utils import timezone
+
+
+# =============================================================================
+# CONVERSATION ANALYTICS (from Flink)
+# =============================================================================
+
+
+class FlinkConversationMetrics(models.Model):
+    """Real-time conversation metrics from Flink.
+    
+    Tumbling window: 1 minute.
+    Source: soma.conversations.events Kafka topic.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    window_start = models.DateTimeField(db_index=True)
+    window_end = models.DateTimeField()
+    
+    # Aggregated metrics
+    total_conversations = models.BigIntegerField(default=0)
+    total_messages = models.BigIntegerField(default=0)
+    total_tokens = models.BigIntegerField(default=0)
+    avg_latency_ms = models.FloatField(default=0.0)
+    unique_users = models.BigIntegerField(default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_conversation_metrics"
+        unique_together = [["tenant_id", "window_start"]]
+        indexes = [
+            models.Index(fields=["tenant_id", "window_start"]),
+            models.Index(fields=["window_start"]),
+        ]
+        ordering = ["-window_start"]
+    
+    def __str__(self):
+        return f"{self.tenant_id} @ {self.window_start}"
+
+
+# =============================================================================
+# USAGE AGGREGATES (from Flink)
+# =============================================================================
+
+
+class FlinkUsageAggregate(models.Model):
+    """Hourly usage aggregates from Flink for billing.
+    
+    Tumbling window: 1 hour.
+    Source: soma.usage.metering Kafka topic.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    resource_type = models.CharField(max_length=50)  # tokens, api_calls, storage
+    window_start = models.DateTimeField(db_index=True)
+    
+    # Aggregated usage
+    total_quantity = models.BigIntegerField(default=0)
+    event_count = models.BigIntegerField(default=0)
+    
+    # Billing metadata
+    unit_price = models.DecimalField(max_digits=10, decimal_places=6, default=0)
+    total_cost = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    billed = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_usage_aggregates"
+        unique_together = [["tenant_id", "resource_type", "window_start"]]
+        indexes = [
+            models.Index(fields=["tenant_id", "window_start"]),
+            models.Index(fields=["tenant_id", "billed"]),
+        ]
+        ordering = ["-window_start"]
+    
+    def __str__(self):
+        return f"{self.tenant_id}: {self.resource_type} @ {self.window_start}"
+
+
+# =============================================================================
+# ANOMALY ALERTS (from Flink)
+# =============================================================================
+
+
+class FlinkAnomalyAlert(models.Model):
+    """Security anomaly alerts from Flink detector.
+    
+    Tumbling window: 5 minutes.
+    Source: soma.permissions.audit Kafka topic.
+    """
+    
+    SEVERITY_CHOICES = [
+        ("LOW", "Low"),
+        ("MEDIUM", "Medium"),
+        ("HIGH", "High"),
+        ("CRITICAL", "Critical"),
+    ]
+    
+    ALERT_TYPES = [
+        ("HIGH_DENIAL_RATE", "High Permission Denial Rate"),
+        ("BRUTE_FORCE", "Brute Force Attack"),
+        ("UNUSUAL_ACTIVITY", "Unusual Activity Pattern"),
+        ("DATA_EXFILTRATION", "Potential Data Exfiltration"),
+        ("PRIVILEGE_ESCALATION", "Privilege Escalation Attempt"),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    user_id = models.CharField(max_length=255, db_index=True)
+    
+    alert_type = models.CharField(max_length=50, choices=ALERT_TYPES)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
+    details = models.TextField()
+    
+    detected_at = models.DateTimeField(db_index=True)
+    acknowledged = models.BooleanField(default=False)
+    acknowledged_by = models.CharField(max_length=255, blank=True, null=True)
+    acknowledged_at = models.DateTimeField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_anomaly_alerts"
+        indexes = [
+            models.Index(fields=["tenant_id", "detected_at"]),
+            models.Index(fields=["severity", "acknowledged"]),
+            models.Index(fields=["alert_type"]),
+        ]
+        ordering = ["-detected_at"]
+    
+    def __str__(self):
+        return f"{self.severity} {self.alert_type} for {self.user_id}"
+
+
+# =============================================================================
+# AGENT METRICS (from Flink)
+# =============================================================================
+
+
+class FlinkAgentMetrics(models.Model):
+    """Real-time agent performance metrics from Flink.
+    
+    Tumbling window: 1 minute.
+    Source: soma.agents.events Kafka topic.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    agent_id = models.CharField(max_length=255, db_index=True)
+    window_start = models.DateTimeField(db_index=True)
+    window_end = models.DateTimeField()
+    
+    # Performance metrics
+    total_requests = models.BigIntegerField(default=0)
+    successful_requests = models.BigIntegerField(default=0)
+    failed_requests = models.BigIntegerField(default=0)
+    avg_response_time_ms = models.FloatField(default=0.0)
+    p95_response_time_ms = models.FloatField(default=0.0)
+    tokens_consumed = models.BigIntegerField(default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_agent_metrics"
+        unique_together = [["agent_id", "window_start"]]
+        indexes = [
+            models.Index(fields=["tenant_id", "window_start"]),
+            models.Index(fields=["agent_id", "window_start"]),
+        ]
+        ordering = ["-window_start"]
+    
+    def __str__(self):
+        return f"{self.agent_id} @ {self.window_start}"
+
+
+# =============================================================================
+# SYSTEM METRICS (from Flink)
+# =============================================================================
+
+
+class FlinkSystemMetrics(models.Model):
+    """System-wide metrics aggregated by Flink.
+    
+    Tumbling window: 1 minute.
+    Source: soma.system.metrics Kafka topic.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    window_start = models.DateTimeField(db_index=True)
+    window_end = models.DateTimeField()
+    
+    # System metrics
+    total_api_requests = models.BigIntegerField(default=0)
+    total_active_conversations = models.BigIntegerField(default=0)
+    total_active_agents = models.BigIntegerField(default=0)
+    total_active_users = models.BigIntegerField(default=0)
+    avg_api_latency_ms = models.FloatField(default=0.0)
+    error_rate = models.FloatField(default=0.0)
+    
+    # Resource usage
+    total_tokens_consumed = models.BigIntegerField(default=0)
+    total_storage_bytes = models.BigIntegerField(default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = "flink_system_metrics"
+        indexes = [
+            models.Index(fields=["window_start"]),
+        ]
+        ordering = ["-window_start"]
+    
+    def __str__(self):
+        return f"System @ {self.window_start}"
