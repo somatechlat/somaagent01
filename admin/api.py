@@ -189,6 +189,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/scheduling", scheduling_router)
 
+    # Templates (Agent + Prompt templates)
+    from admin.templates.api import router as templates_router
+
+    api.add_router("/templates", templates_router)
+
     return api
 
 
