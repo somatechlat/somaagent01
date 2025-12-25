@@ -334,6 +334,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/auth-config", auth_config_router)
 
+    # Secrets (Credential management)
+    from admin.secrets.api import router as secrets_router
+
+    safe_add_router("/secrets", secrets_router)
+
     return api
 
 
