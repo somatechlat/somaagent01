@@ -349,6 +349,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/orchestrator", orchestrator_router)
 
+    # Granular Permissions (RBAC)
+    from admin.permissions.granular import router as granular_permissions_router
+
+    safe_add_router("/permissions", granular_permissions_router)
+
     return api
 
 
