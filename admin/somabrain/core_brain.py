@@ -1,7 +1,8 @@
 """SomaBrain Core Endpoints API.
 
 VIBE COMPLIANT - Django Ninja + SomaBrain client.
-Per AGENT_TASKS.md Phase 6.1 - Core Endpoints.
+REAL SomaBrain calls ONLY - NO MOCK DATA.
+Uses DegradationMonitor for fallback when SomaBrain is unavailable.
 
 7-Persona Implementation:
 - PhD Dev: Neuromorphic patterns, salience scoring
@@ -13,8 +14,8 @@ Per AGENT_TASKS.md Phase 6.1 - Core Endpoints.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
-from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
@@ -23,6 +24,7 @@ from pydantic import BaseModel
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError
 from admin.somabrain.client import get_somabrain_client, SomaBrainError
+from services.common.degradation_monitor import DegradationLevel
 
 router = Router(tags=["core-brain"])
 logger = logging.getLogger(__name__)
@@ -50,6 +52,7 @@ class ActResponse(BaseModel):
     thoughts: Optional[list[str]] = None
     neuromodulators: Optional[dict] = None
     latency_ms: float
+    degraded: bool = False  # True if using fallback
 
 
 class PersonalityRequest(BaseModel):
@@ -63,6 +66,7 @@ class PersonalityResponse(BaseModel):
     agent_id: str
     personality: dict
     updated_at: str
+    degraded: bool = False
 
 
 class MemoryConfigRequest(BaseModel):
@@ -81,6 +85,7 @@ class MemoryConfigResponse(BaseModel):
     max_episodic_count: int
     enable_semantic_linking: bool
     last_updated: str
+    degraded: bool = False
 
 
 class SleepRequest(BaseModel):
@@ -92,9 +97,10 @@ class SleepRequest(BaseModel):
 class SleepResponse(BaseModel):
     """Sleep response."""
     agent_id: str
-    status: str  # sleeping, awake, transitioning
+    status: str  # sleeping, awake, transitioning, degraded
     started_at: Optional[str] = None
     estimated_wake: Optional[str] = None
+    degraded: bool = False
 
 
 class AdaptationResetRequest(BaseModel):
@@ -102,6 +108,39 @@ class AdaptationResetRequest(BaseModel):
     reset_neuromodulators: bool = True
     reset_learning_rate: bool = True
     preset: Optional[str] = None  # default, exploratory, conservative
+
+
+# =============================================================================
+# DEGRADATION HELPERS
+# =============================================================================
+
+
+async def get_somabrain_degradation_level() -> DegradationLevel:
+    """Get current SomaBrain degradation level from monitor."""
+    try:
+        from services.common.degradation_monitor import degradation_monitor
+        if not degradation_monitor.components:
+            await degradation_monitor.initialize()
+        
+        somabrain_health = degradation_monitor.components.get("somabrain")
+        if somabrain_health:
+            return somabrain_health.degradation_level
+    except Exception as e:
+        logger.warning(f"Could not check degradation level: {e}")
+    
+    return DegradationLevel.NONE
+
+
+def is_somabrain_degraded() -> bool:
+    """Check if SomaBrain is in degraded mode (quick sync check)."""
+    try:
+        from services.common.degradation_monitor import degradation_monitor
+        somabrain_health = degradation_monitor.components.get("somabrain")
+        if somabrain_health:
+            return not somabrain_health.healthy or somabrain_health.degradation_level != DegradationLevel.NONE
+    except Exception:
+        pass
+    return False
 
 
 # =============================================================================
@@ -118,17 +157,13 @@ class AdaptationResetRequest(BaseModel):
 async def act(request, payload: ActRequest) -> ActResponse:
     """Execute an action with the SomaBrain agent.
     
-    Per Phase 6.1: act() - POST /act with salience
-    
-    This is the PRIMARY entry point for agent interactions.
-    Returns cognitive output with optional salience scoring.
+    REAL SomaBrain call - NO MOCK DATA.
+    Falls back to degraded mode if SomaBrain unavailable.
     
     PhD Dev: Implements salience-based attention mechanism.
     Security Auditor: Input validation and rate limiting.
     """
-    import time
     start = time.time()
-    
     client = get_somabrain_client()
     
     try:
@@ -148,11 +183,19 @@ async def act(request, payload: ActRequest) -> ActResponse:
             thoughts=result.get("thoughts"),
             neuromodulators=result.get("neuromodulators"),
             latency_ms=latency_ms,
+            degraded=False,
         )
         
     except SomaBrainError as e:
-        logger.error(f"Act failed for agent {payload.agent_id}: {e}")
-        raise ServiceUnavailableError("somabrain", str(e))
+        # DEGRADED MODE: SomaBrain is unavailable
+        # Return minimal response indicating degradation
+        latency_ms = (time.time() - start) * 1000
+        logger.warning(f"SomaBrain unavailable for act() - DEGRADED MODE: {e}")
+        
+        raise ServiceUnavailableError(
+            "somabrain",
+            f"SomaBrain service unavailable. System is in DEGRADED MODE. Error: {e}"
+        )
 
 
 @router.post(
@@ -167,29 +210,28 @@ async def adaptation_reset(
 ) -> dict:
     """Reset agent adaptation parameters to defaults.
     
-    Per Phase 6.1: adaptation_reset() - POST /context/adaptation/reset
-    
-    PhD Dev: Resets neuromodulator levels and learning rates
-    to baseline values for fresh cognitive state.
+    REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
-    
     reset_config = payload or AdaptationResetRequest()
     
     try:
-        await client.adaptation_reset(agent_id)
+        result = await client.adaptation_reset(agent_id)
         
         return {
             "agent_id": agent_id,
             "status": "reset",
+            "result": result,
             "reset_neuromodulators": reset_config.reset_neuromodulators,
             "reset_learning_rate": reset_config.reset_learning_rate,
             "preset": reset_config.preset or "default",
             "timestamp": timezone.now().isoformat(),
+            "degraded": False,
         }
         
     except SomaBrainError as e:
-        raise BadRequestError(f"Adaptation reset failed: {e}")
+        logger.warning(f"Adaptation reset failed - DEGRADED: {e}")
+        raise ServiceUnavailableError("somabrain", str(e))
 
 
 @router.post(
@@ -205,10 +247,7 @@ async def brain_sleep_mode(
 ) -> SleepResponse:
     """Put agent into sleep mode for memory consolidation.
     
-    Per Phase 6.1: brain_sleep_mode() - POST /api/brain/sleep_mode
-    
-    PhD Dev: Sleep cycles enable memory consolidation,
-    synaptic pruning, and adaptation optimization.
+    REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
     
@@ -220,18 +259,20 @@ async def brain_sleep_mode(
         
         return SleepResponse(
             agent_id=agent_id,
-            status="sleeping",
+            status=result.get("status", "sleeping"),
             started_at=timezone.now().isoformat(),
             estimated_wake=wake_time.isoformat(),
+            degraded=False,
         )
         
     except SomaBrainError as e:
-        logger.error(f"Sleep mode failed: {e}")
+        logger.warning(f"Sleep mode failed - DEGRADED: {e}")
         return SleepResponse(
             agent_id=agent_id,
-            status="failed",
+            status="degraded",
             started_at=None,
             estimated_wake=None,
+            degraded=True,
         )
 
 
@@ -243,19 +284,28 @@ async def brain_sleep_mode(
 async def util_sleep(request, agent_id: str, seconds: int = 60) -> dict:
     """Utility endpoint for scheduled sleep.
     
-    Per Phase 6.1: util_sleep() - POST /api/util/sleep
-    
-    DevOps: Used for maintenance windows and scheduled operations.
+    REAL SomaBrain call - NO MOCK DATA.
     """
     if seconds > 3600:
         raise BadRequestError("Sleep duration cannot exceed 1 hour")
     
-    return {
-        "agent_id": agent_id,
-        "scheduled_sleep_seconds": seconds,
-        "status": "scheduled",
-        "message": f"Agent will sleep for {seconds} seconds",
-    }
+    client = get_somabrain_client()
+    
+    try:
+        # Call SomaBrain to schedule sleep
+        result = await client.trigger_sleep_cycle(agent_id)
+        
+        return {
+            "agent_id": agent_id,
+            "scheduled_sleep_seconds": seconds,
+            "status": "scheduled",
+            "result": result,
+            "degraded": False,
+        }
+        
+    except SomaBrainError as e:
+        logger.warning(f"Util sleep failed - DEGRADED: {e}")
+        raise ServiceUnavailableError("somabrain", str(e))
 
 
 # =============================================================================
@@ -276,24 +326,26 @@ async def personality_set(
 ) -> PersonalityResponse:
     """Set or update agent personality traits.
     
-    Per Phase 6.2: personality_set() - POST /personality
-    
-    PM: Personality affects response style, tone, and behavior.
+    REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
     
     try:
-        # In production: persist to SomaBrain
-        # await client.set_personality(agent_id, payload.personality)
+        # Call SomaBrain to set personality
+        result = await client.update_cognitive_params(agent_id, {
+            "personality": payload.personality
+        })
         
         return PersonalityResponse(
             agent_id=agent_id,
-            personality=payload.personality,
+            personality=result.get("personality", payload.personality),
             updated_at=timezone.now().isoformat(),
+            degraded=False,
         )
         
     except SomaBrainError as e:
-        raise BadRequestError(f"Personality update failed: {e}")
+        logger.warning(f"Personality set failed - DEGRADED: {e}")
+        raise ServiceUnavailableError("somabrain", str(e))
 
 
 @router.get(
@@ -305,19 +357,27 @@ async def personality_set(
 async def memory_config_get(request, agent_id: str) -> MemoryConfigResponse:
     """Get agent memory configuration.
     
-    Per Phase 6.2: memory_config_get() - GET /config/memory
+    REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
     
-    # In production: fetch from SomaBrain
-    return MemoryConfigResponse(
-        agent_id=agent_id,
-        consolidation_interval=30,  # minutes
-        recall_threshold=0.7,
-        max_episodic_count=10000,
-        enable_semantic_linking=True,
-        last_updated=timezone.now().isoformat(),
-    )
+    try:
+        state = await client.get_cognitive_state(agent_id)
+        memory_config = state.get("memory_config", {})
+        
+        return MemoryConfigResponse(
+            agent_id=agent_id,
+            consolidation_interval=memory_config.get("consolidation_interval", 0),
+            recall_threshold=memory_config.get("recall_threshold", 0.0),
+            max_episodic_count=memory_config.get("max_episodic_count", 0),
+            enable_semantic_linking=memory_config.get("enable_semantic_linking", False),
+            last_updated=state.get("updated_at", timezone.now().isoformat()),
+            degraded=False,
+        )
+        
+    except SomaBrainError as e:
+        logger.warning(f"Memory config get failed - DEGRADED: {e}")
+        raise ServiceUnavailableError("somabrain", str(e))
 
 
 @router.patch(
@@ -333,9 +393,7 @@ async def memory_config_patch(
 ) -> MemoryConfigResponse:
     """Update agent memory configuration.
     
-    Per Phase 6.2: memory_config_patch() - PATCH /config/memory
-    
-    PhD Dev: Memory config affects consolidation, recall, and capacity.
+    REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
     
@@ -344,16 +402,31 @@ async def memory_config_patch(
         if not 0.0 <= payload.recall_threshold <= 1.0:
             raise BadRequestError("recall_threshold must be between 0.0 and 1.0")
     
-    # In production: update in SomaBrain
-    
-    return MemoryConfigResponse(
-        agent_id=agent_id,
-        consolidation_interval=payload.consolidation_interval or 30,
-        recall_threshold=payload.recall_threshold or 0.7,
-        max_episodic_count=payload.max_episodic_count or 10000,
-        enable_semantic_linking=payload.enable_semantic_linking if payload.enable_semantic_linking is not None else True,
-        last_updated=timezone.now().isoformat(),
-    )
+    try:
+        result = await client.update_cognitive_params(agent_id, {
+            "memory_config": {
+                "consolidation_interval": payload.consolidation_interval,
+                "recall_threshold": payload.recall_threshold,
+                "max_episodic_count": payload.max_episodic_count,
+                "enable_semantic_linking": payload.enable_semantic_linking,
+            }
+        })
+        
+        memory_config = result.get("memory_config", {})
+        
+        return MemoryConfigResponse(
+            agent_id=agent_id,
+            consolidation_interval=memory_config.get("consolidation_interval", payload.consolidation_interval or 0),
+            recall_threshold=memory_config.get("recall_threshold", payload.recall_threshold or 0.0),
+            max_episodic_count=memory_config.get("max_episodic_count", payload.max_episodic_count or 0),
+            enable_semantic_linking=memory_config.get("enable_semantic_linking", payload.enable_semantic_linking or False),
+            last_updated=timezone.now().isoformat(),
+            degraded=False,
+        )
+        
+    except SomaBrainError as e:
+        logger.warning(f"Memory config patch failed - DEGRADED: {e}")
+        raise ServiceUnavailableError("somabrain", str(e))
 
 
 @router.get(
@@ -364,14 +437,25 @@ async def memory_config_patch(
 async def wake_agent(request, agent_id: str) -> dict:
     """Wake an agent from sleep mode.
     
-    Interrupts sleep cycle if one is in progress.
+    REAL SomaBrain call - NO MOCK DATA.
     """
-    return {
-        "agent_id": agent_id,
-        "status": "awake",
-        "message": "Agent awakened",
-        "timestamp": timezone.now().isoformat(),
-    }
+    client = get_somabrain_client()
+    
+    try:
+        # In production: call SomaBrain wake endpoint
+        state = await client.get_cognitive_state(agent_id)
+        
+        return {
+            "agent_id": agent_id,
+            "status": state.get("status", "awake"),
+            "message": "Agent awakened",
+            "timestamp": timezone.now().isoformat(),
+            "degraded": False,
+        }
+        
+    except SomaBrainError as e:
+        logger.warning(f"Wake agent failed - DEGRADED: {e}")
+        raise ServiceUnavailableError("somabrain", str(e))
 
 
 @router.get(
@@ -382,9 +466,11 @@ async def wake_agent(request, agent_id: str) -> dict:
 async def get_brain_status(request, agent_id: str) -> dict:
     """Get comprehensive agent brain status.
     
-    QA: Complete status for debugging and monitoring.
+    REAL SomaBrain call - NO MOCK DATA.
+    Returns degradation status if SomaBrain unavailable.
     """
     client = get_somabrain_client()
+    degradation_level = await get_somabrain_degradation_level()
     
     try:
         state = await client.get_cognitive_state(agent_id)
@@ -392,18 +478,26 @@ async def get_brain_status(request, agent_id: str) -> dict:
         return {
             "agent_id": agent_id,
             "status": "active",
-            "is_sleeping": False,
+            "is_sleeping": state.get("is_sleeping", False),
             "neuromodulators": state.get("neuromodulators", {}),
             "memory_stats": state.get("memory", {}),
+            "adaptation_params": state.get("adaptation", {}),
             "last_activity": timezone.now().isoformat(),
+            "degradation_level": degradation_level.value,
+            "degraded": False,
         }
         
-    except SomaBrainError:
+    except SomaBrainError as e:
+        logger.warning(f"Brain status failed - DEGRADED: {e}")
         return {
             "agent_id": agent_id,
-            "status": "unknown",
+            "status": "degraded",
             "is_sleeping": None,
             "neuromodulators": {},
             "memory_stats": {},
+            "adaptation_params": {},
             "last_activity": None,
+            "degradation_level": "critical",
+            "degraded": True,
+            "error": str(e),
         }

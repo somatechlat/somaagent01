@@ -148,6 +148,40 @@ class SomaBrainClient:
             logger.error(f"SomaBrain recall failed: {e}")
             raise SomaBrainError(f"Failed to recall memories: {e}")
     
+    async def act(
+        self,
+        agent_id: str,
+        input_text: str,
+        context: Optional[dict] = None,
+        mode: str = "FULL",
+    ) -> dict:
+        """Execute an agent action with SomaBrain.
+        
+        REAL SomaBrain call - NO MOCK DATA.
+        
+        Args:
+            agent_id: Agent UUID
+            input_text: User input
+            context: Optional context dict
+            mode: FULL, MINIMAL, LITE, ADMIN
+        """
+        client = await self._get_client()
+        
+        payload = {
+            "agent_id": agent_id,
+            "input": input_text,
+            "context": context or {},
+            "mode": mode,
+        }
+        
+        try:
+            response = await client.post("/act", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain act failed: {e}")
+            raise SomaBrainError(f"Failed to execute action: {e}")
+    
     async def forget(self, memory_id: str, tenant_id: str) -> bool:
         """Delete a memory from SomaBrain.
         
