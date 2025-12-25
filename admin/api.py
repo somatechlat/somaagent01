@@ -309,6 +309,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/completions", completions_router)
 
+    # Feedback (User ratings)
+    from admin.feedback.api import router as feedback_router
+
+    safe_add_router("/feedback", feedback_router)
+
     return api
 
 
