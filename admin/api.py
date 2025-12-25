@@ -184,6 +184,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/ratelimit", ratelimit_router)
 
+    # Scheduling (Background jobs + Celery)
+    from admin.scheduling.api import router as scheduling_router
+
+    api.add_router("/scheduling", scheduling_router)
+
     return api
 
 
