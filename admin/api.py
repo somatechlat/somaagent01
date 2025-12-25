@@ -279,6 +279,16 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/tools", tools_router)
 
+    # Files V2 (Enhanced file management)
+    from admin.filesv2.api import router as filesv2_router
+
+    safe_add_router("/filesv2", filesv2_router)
+
+    # Knowledge (RAG document retrieval)
+    from admin.knowledge.api import router as knowledge_router
+
+    safe_add_router("/knowledge", knowledge_router)
+
     return api
 
 
