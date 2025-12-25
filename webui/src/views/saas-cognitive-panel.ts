@@ -754,7 +754,11 @@ export class SaasCognitivePanel extends LitElement {
         this._isLoading = true;
         try {
             // Call SomaBrain Cognitive API
-            const response = await apiClient.get('/cognitive/state/');
+            const response = await apiClient.get('/cognitive/state/') as {
+                neuromodulators?: NeuromodulatorLevel[];
+                params?: AdaptationParams;
+                cognitiveLoad?: number;
+            } | null;
             if (response) {
                 if (response.neuromodulators) {
                     this._neuromodulators = response.neuromodulators;
