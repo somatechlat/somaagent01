@@ -259,6 +259,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/users", users_router)
 
+    # Tools (Agent tools)
+    from admin.tools.api import router as tools_router
+
+    api.add_router("/tools", tools_router)
+
     return api
 
 
