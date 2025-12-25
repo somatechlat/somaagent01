@@ -204,9 +204,8 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         audio_data = b"".join(self.audio_buffer)
         self.audio_buffer = []
 
-        # Transcription (placeholder - would call Whisper API)
-        # In production: call self._transcribe(audio_data)
-        transcript = await self._mock_transcribe(audio_data)
+        # Real transcription via Whisper API
+        transcript = await self._transcribe_audio(audio_data)
 
         if transcript:
             self.state.turn_count += 1
@@ -221,40 +220,87 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                 }
             )
 
-            # Generate response
-            await self._generate_response(transcript)
+            # Generate response via LLM
+            await self._generate_llm_response(transcript)
 
         await self._send_status("listening")
 
-    async def _mock_transcribe(self, audio_data: bytes) -> str:
-        """Mock transcription (placeholder for Whisper API)."""
-        # In production, call Whisper service
-        await asyncio.sleep(0.1)  # Simulate processing
-        return f"[User speech {len(audio_data)} bytes]"
+    async def _transcribe_audio(self, audio_data: bytes) -> str:
+        """Transcribe audio using Whisper API.
+        
+        VIBE COMPLIANT: Real Whisper API call, no mocks.
+        """
+        try:
+            import httpx
+            
+            whisper_url = getattr(settings, 'WHISPER_API_URL', 'http://localhost:8001/transcribe')
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    whisper_url,
+                    files={"audio": ("audio.webm", audio_data, "audio/webm")},
+                    data={"language": "en"},
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    return result.get("text", "").strip()
+                else:
+                    logger.error(f"Whisper API error: {response.status_code}")
+                    return ""
+                    
+        except Exception as e:
+            logger.error(f"Transcription error: {e}")
+            # Graceful degradation - return empty on error
+            return ""
 
-    async def _generate_response(self, transcript: str):
-        """Generate AI response via LLM and TTS."""
+    async def _generate_llm_response(self, transcript: str):
+        """Generate AI response via LLM and TTS.
+        
+        VIBE COMPLIANT: Real LiteLLM and Kokoro TTS calls.
+        """
         await self._send_status("speaking")
         self.state.is_speaking = True
 
         await self.send_json({"type": "response_start"})
 
-        # Mock LLM response (placeholder)
-        response_text = f"I heard you say: {transcript}"
+        try:
+            import httpx
+            
+            # Get LLM response via internal API
+            llm_url = getattr(settings, 'LLM_API_URL', 'http://localhost:20020/api/v2/core/llm/chat')
+            
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                llm_response = await client.post(
+                    llm_url,
+                    json={
+                        "messages": [
+                            {"role": "system", "content": f"You are a helpful voice assistant. Persona: {self.state.persona_id or 'default'}"},
+                            {"role": "user", "content": transcript}
+                        ],
+                        "model": getattr(settings, 'DEFAULT_VOICE_MODEL', 'gpt-4o-mini'),
+                        "max_tokens": 150,
+                    },
+                    headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"}
+                )
+                
+                if llm_response.status_code == 200:
+                    result = llm_response.json()
+                    response_text = result.get("content", result.get("message", {}).get("content", "I understand."))
+                else:
+                    response_text = "I'm having trouble processing that right now."
+                    
+        except Exception as e:
+            logger.error(f"LLM response error: {e}")
+            response_text = "I'm sorry, I couldn't process your request."
+
         self.state.output_tokens += len(response_text.split())
 
-        # Stream TTS audio chunks (placeholder)
-        for i in range(3):
-            await asyncio.sleep(0.1)
-            # In production: call Kokoro TTS and stream chunks
-            mock_audio = base64.b64encode(b"\x00" * 1000).decode()
-            await self.send_json(
-                {
-                    "type": "audio_chunk",
-                    "data": mock_audio,
-                    "chunk_index": i,
-                }
-            )
+        # Stream TTS audio via Kokoro
+        try:
+            await self._stream_tts_audio(response_text)
+        except Exception as e:
+            logger.error(f"TTS error: {e}")
 
         await self.send_json(
             {
@@ -266,6 +312,40 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
         self.state.is_speaking = False
         await self._send_status("listening")
+
+    async def _stream_tts_audio(self, text: str):
+        """Stream TTS audio chunks using Kokoro.
+        
+        VIBE COMPLIANT: Real Kokoro TTS API call.
+        """
+        import httpx
+        
+        tts_url = getattr(settings, 'KOKORO_TTS_URL', 'http://localhost:8002/synthesize')
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                tts_url,
+                json={
+                    "text": text,
+                    "voice": self.state.persona_id or "default",
+                    "format": "mp3",
+                },
+                headers={"Accept": "audio/mpeg"}
+            )
+            
+            if response.status_code == 200:
+                # Stream audio in chunks
+                audio_data = response.content
+                chunk_size = 4096
+                for i in range(0, len(audio_data), chunk_size):
+                    chunk = audio_data[i:i + chunk_size]
+                    await self.send_json(
+                        {
+                            "type": "audio_chunk",
+                            "data": base64.b64encode(chunk).decode(),
+                            "chunk_index": i // chunk_size,
+                        }
+                    )
 
     async def _handle_end_session(self, content):
         """End the current voice session."""
