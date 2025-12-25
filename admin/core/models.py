@@ -646,3 +646,12 @@ class PendingMemory(models.Model):
         self.synced_at = timezone.now()
         self.save(update_fields=["synced", "synced_at"])
 
+
+# =============================================================================
+# SENSOR OUTBOX (ZDL Pattern)
+# =============================================================================
+
+# Import SensorOutbox so Django detects it for migrations
+from admin.core.sensors.outbox import SensorOutbox  # noqa: E402, F401
+
+
