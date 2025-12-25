@@ -289,6 +289,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/knowledge", knowledge_router)
 
+    # Embeddings (Vector generation)
+    from admin.embeddings.api import router as embeddings_router
+
+    safe_add_router("/embeddings", embeddings_router)
+
     return api
 
 
