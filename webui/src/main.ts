@@ -123,6 +123,14 @@ if (app) {
             return;
         }
 
+        // Tenant Billing
+        if (path === '/admin/billing' || path === '/tenant/billing') {
+            await import('./views/saas-tenant-billing.js');
+            app.appendChild(document.createElement('saas-tenant-billing'));
+            return;
+        }
+
+
         if (path === '/mode-select' || path === '/select-mode') {
             await import('./views/saas-mode-selection.js');
             app.appendChild(document.createElement('saas-mode-selection'));
