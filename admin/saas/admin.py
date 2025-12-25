@@ -12,8 +12,6 @@ VIBE COMPLIANT - Maximizing Django Admin features.
 """
 
 from django.contrib import admin
-from django.db.models import Count, Sum
-from django.utils import timezone
 from django.utils.html import format_html
 
 from admin.saas.models import (
@@ -40,8 +38,8 @@ class TenantUserInline(admin.TabularInline):
 
     model = TenantUser
     extra = 0
-    readonly_fields = ["created_at", "last_login_at"]
-    fields = ["email", "display_name", "role", "is_active", "created_at", "last_login_at"]
+    readonly_fields = ["created_at"]
+    fields = ["email", "display_name", "role", "is_active", "created_at"]
     ordering = ["-created_at"]
     show_change_link = True
 
@@ -52,7 +50,7 @@ class AgentInline(admin.TabularInline):
     model = Agent
     extra = 0
     readonly_fields = ["created_at"]
-    fields = ["name", "agent_type", "status", "created_at"]
+    fields = ["name", "slug", "status", "created_at"]
     ordering = ["-created_at"]
     show_change_link = True
     max_num = 10
@@ -63,7 +61,7 @@ class TierFeatureInline(admin.TabularInline):
 
     model = TierFeature
     extra = 0
-    fields = ["feature", "is_enabled", "limit_override"]
+    fields = ["feature", "is_enabled", "quota_limit"]
     ordering = ["feature__name"]
 
 
@@ -72,7 +70,7 @@ class AgentUserInline(admin.TabularInline):
 
     model = AgentUser
     extra = 0
-    fields = ["user_id", "email", "role", "is_active"]
+    fields = ["user_id", "role"]
     readonly_fields = ["created_at"]
 
 
@@ -88,16 +86,17 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
     list_display = [
         "name",
         "slug",
-        "monthly_price_display",
+        "price_display",
         "tenant_count",
         "is_active",
         "is_public",
+        "sort_order",
         "created_at",
     ]
     list_filter = ["is_active", "is_public", "billing_interval", "created_at"]
     search_fields = ["name", "slug", "description"]
     readonly_fields = ["id", "created_at", "updated_at", "tenant_count"]
-    ordering = ["monthly_price"]
+    ordering = ["sort_order", "base_price_cents"]
     list_per_page = 25
     prepopulated_fields = {"slug": ("name",)}
 
@@ -112,8 +111,7 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
             "Pricing",
             {
                 "fields": (
-                    "monthly_price",
-                    "annual_price",
+                    "base_price_cents",
                     "billing_interval",
                     "lago_plan_code",
                 ),
@@ -123,10 +121,10 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
             "Limits",
             {
                 "fields": (
-                    "max_users",
                     "max_agents",
-                    "max_conversations_per_month",
-                    "max_tokens_per_month",
+                    "max_users_per_agent",
+                    "max_monthly_voice_minutes",
+                    "max_monthly_api_calls",
                     "max_storage_gb",
                 ),
                 "classes": ("collapse",),
@@ -135,7 +133,7 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
         (
             "Status",
             {
-                "fields": ("is_active", "is_public", "trial_days"),
+                "fields": ("is_active", "is_public", "sort_order"),
             },
         ),
         (
@@ -151,11 +149,11 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
 
     actions = ["activate_tiers", "deactivate_tiers", "make_public", "make_private"]
 
-    @admin.display(description="Price/mo")
-    def monthly_price_display(self, obj):
-        if obj.monthly_price == 0:
+    @admin.display(description="Price")
+    def price_display(self, obj):
+        if obj.base_price_cents == 0:
             return format_html('<span style="color: #22c55e;">Free</span>')
-        return f"${obj.monthly_price}"
+        return f"${obj.base_price_cents / 100:.2f}/mo"
 
     @admin.display(description="Tenants")
     def tenant_count(self, obj):
@@ -205,7 +203,7 @@ class TenantAdmin(admin.ModelAdmin):
     ordering = ["-created_at"]
     list_per_page = 25
     date_hierarchy = "created_at"
-    list_select_related = ["tier"]  # 🔴 Performance optimization
+    list_select_related = ["tier"]
 
     fieldsets = (
         (
@@ -264,7 +262,6 @@ class TenantAdmin(admin.ModelAdmin):
     actions = [
         "activate_tenants",
         "suspend_tenants",
-        "send_billing_reminder",
     ]
 
     @admin.display(description="Status")
@@ -301,11 +298,6 @@ class TenantAdmin(admin.ModelAdmin):
         queryset.update(status="suspended")
         self.message_user(request, f"{queryset.count()} tenants suspended.")
 
-    @admin.action(description="Send billing reminder")
-    def send_billing_reminder(self, request, queryset):
-        # TODO: Integrate with email service
-        self.message_user(request, f"Billing reminders queued for {queryset.count()} tenants.")
-
 
 # =============================================================================
 # TENANT USER ADMIN
@@ -322,7 +314,6 @@ class TenantUserAdmin(admin.ModelAdmin):
         "tenant",
         "role_badge",
         "is_active",
-        "last_login_at",
         "created_at",
     ]
     list_filter = ["role", "is_active", "tenant", "created_at"]
@@ -331,7 +322,7 @@ class TenantUserAdmin(admin.ModelAdmin):
     ordering = ["-created_at"]
     list_per_page = 50
     list_select_related = ["tenant"]
-    raw_id_fields = ["tenant"]  # 🔴 Performance: FK picker
+    raw_id_fields = ["tenant"]
 
     fieldsets = (
         (
@@ -344,12 +335,6 @@ class TenantUserAdmin(admin.ModelAdmin):
             "Tenant & Role",
             {
                 "fields": ("tenant", "role", "is_active"),
-            },
-        ),
-        (
-            "Activity",
-            {
-                "fields": ("last_login_at",),
             },
         ),
         (
@@ -403,14 +388,14 @@ class AgentAdmin(admin.ModelAdmin):
 
     list_display = [
         "name",
+        "slug",
         "tenant",
-        "agent_type",
         "status_badge",
         "user_count",
         "created_at",
     ]
-    list_filter = ["status", "agent_type", "tenant", "created_at"]
-    search_fields = ["name", "description"]
+    list_filter = ["status", "tenant", "created_at"]
+    search_fields = ["name", "slug", "description"]
     readonly_fields = ["id", "created_at", "updated_at"]
     ordering = ["-created_at"]
     list_per_page = 25
@@ -421,7 +406,7 @@ class AgentAdmin(admin.ModelAdmin):
         (
             "Agent Information",
             {
-                "fields": ("id", "name", "description", "agent_type"),
+                "fields": ("id", "name", "slug", "description"),
             },
         ),
         (
@@ -433,7 +418,7 @@ class AgentAdmin(admin.ModelAdmin):
         (
             "Configuration",
             {
-                "fields": ("config", "metadata"),
+                "fields": ("config", "feature_settings", "skin_id"),
                 "classes": ("collapse",),
             },
         ),
@@ -474,7 +459,7 @@ class AgentAdmin(admin.ModelAdmin):
 
     @admin.display(description="Users")
     def user_count(self, obj):
-        return obj.users.count() if hasattr(obj, "users") else 0
+        return obj.agent_users.count() if hasattr(obj, "agent_users") else 0
 
     @admin.action(description="Activate agents")
     def activate_agents(self, request, queryset):
@@ -494,12 +479,16 @@ class AgentAdmin(admin.ModelAdmin):
 class AgentUserAdmin(admin.ModelAdmin):
     """Django Admin for Agent Users."""
 
-    list_display = ["email", "agent", "role", "is_active", "created_at"]
-    list_filter = ["role", "is_active", "created_at"]
-    search_fields = ["email", "user_id"]
+    list_display = ["user_id_short", "agent", "role", "created_at"]
+    list_filter = ["role", "created_at"]
+    search_fields = ["user_id"]
     ordering = ["-created_at"]
     list_select_related = ["agent"]
     raw_id_fields = ["agent"]
+
+    @admin.display(description="User ID")
+    def user_id_short(self, obj):
+        return str(obj.user_id)[:8] if obj.user_id else "-"
 
 
 # =============================================================================
@@ -513,35 +502,34 @@ class SaasFeatureAdmin(admin.ModelAdmin):
 
     list_display = [
         "name",
-        "slug",
+        "code",
         "category",
         "is_active",
-        "tier_count",
+        "sort_order",
         "created_at",
     ]
     list_filter = ["category", "is_active", "created_at"]
-    search_fields = ["name", "slug", "description"]
+    search_fields = ["name", "code", "description"]
     readonly_fields = ["id", "created_at", "updated_at"]
-    ordering = ["category", "name"]
-    prepopulated_fields = {"slug": ("name",)}
+    ordering = ["category", "sort_order", "name"]
 
     fieldsets = (
         (
             "Feature Information",
             {
-                "fields": ("id", "name", "slug", "description", "category"),
+                "fields": ("id", "name", "code", "description", "category"),
             },
         ),
         (
             "Limits",
             {
-                "fields": ("default_limit", "unit"),
+                "fields": ("default_quota", "quota_unit"),
             },
         ),
         (
-            "Status",
+            "Display",
             {
-                "fields": ("is_active",),
+                "fields": ("sort_order", "is_active"),
             },
         ),
         (
@@ -553,10 +541,6 @@ class SaasFeatureAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="Tiers")
-    def tier_count(self, obj):
-        return obj.tier_features.count() if hasattr(obj, "tier_features") else 0
-
 
 # =============================================================================
 # TIER FEATURE ADMIN
@@ -567,7 +551,7 @@ class SaasFeatureAdmin(admin.ModelAdmin):
 class TierFeatureAdmin(admin.ModelAdmin):
     """Django Admin for Tier-Feature mappings."""
 
-    list_display = ["tier", "feature", "is_enabled", "limit_override"]
+    list_display = ["tier", "feature", "is_enabled", "quota_limit"]
     list_filter = ["tier", "is_enabled"]
     search_fields = ["tier__name", "feature__name"]
     list_select_related = ["tier", "feature"]
@@ -582,9 +566,10 @@ class TierFeatureAdmin(admin.ModelAdmin):
 class FeatureProviderAdmin(admin.ModelAdmin):
     """Django Admin for Feature Providers."""
 
-    list_display = ["name", "provider_type", "is_active", "created_at"]
-    list_filter = ["provider_type", "is_active"]
-    search_fields = ["name", "description"]
+    list_display = ["name", "code", "feature", "is_default", "is_active", "created_at"]
+    list_filter = ["is_active", "is_default", "feature"]
+    search_fields = ["name", "code", "description"]
+    list_select_related = ["feature"]
 
 
 # =============================================================================
@@ -598,40 +583,50 @@ class UsageRecordAdmin(admin.ModelAdmin):
 
     list_display = [
         "tenant",
-        "metric",
+        "metric_code",
         "quantity",
-        "period_display",
-        "lago_event_id",
-        "created_at",
+        "unit",
+        "lago_synced_badge",
+        "recorded_at",
     ]
-    list_filter = ["metric", "period_start", "tenant"]
-    search_fields = ["tenant__name", "lago_event_id"]
+    list_filter = ["metric_code", "lago_synced", "recorded_at", "tenant"]
+    search_fields = ["tenant__name", "lago_event_id", "metric_code"]
     readonly_fields = [
         "id",
         "tenant",
-        "metric",
+        "agent",
+        "metric_code",
         "quantity",
+        "unit",
+        "lago_event_id",
+        "lago_synced",
+        "metadata",
+        "recorded_at",
         "period_start",
         "period_end",
-        "lago_event_id",
-        "created_at",
     ]
-    ordering = ["-created_at"]
+    ordering = ["-recorded_at"]
     list_per_page = 100
-    date_hierarchy = "period_start"
+    date_hierarchy = "recorded_at"
     list_select_related = ["tenant"]
 
-    @admin.display(description="Period")
-    def period_display(self, obj):
-        if obj.period_start and obj.period_end:
-            return f"{obj.period_start.strftime('%Y-%m-%d')} → {obj.period_end.strftime('%Y-%m-%d')}"
-        return "-"
+    @admin.display(description="Lago")
+    def lago_synced_badge(self, obj):
+        if obj.lago_synced:
+            return format_html(
+                '<span style="background: #22c55e; color: white; padding: 2px 6px; '
+                'border-radius: 4px; font-size: 10px;">✓</span>'
+            )
+        return format_html(
+            '<span style="background: #f59e0b; color: white; padding: 2px 6px; '
+            'border-radius: 4px; font-size: 10px;">Pending</span>'
+        )
 
     def has_add_permission(self, request):
-        return False  # 🔒 Usage records are created by system only
+        return False
 
     def has_delete_permission(self, request, obj=None):
-        return False  # 🔒 Cannot delete usage records (audit trail)
+        return False
 
 
 # =============================================================================
@@ -646,27 +641,27 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_display = [
         "created_at",
         "tenant",
-        "user_email",
+        "actor_email",
         "action",
         "resource_type",
         "resource_id_short",
         "ip_address",
     ]
     list_filter = ["action", "resource_type", "created_at", "tenant"]
-    search_fields = ["user_email", "resource_id", "ip_address", "details"]
+    search_fields = ["actor_email", "actor_id", "resource_id", "ip_address"]
     readonly_fields = [
         "id",
         "tenant",
-        "user_id",
-        "user_email",
+        "actor_id",
+        "actor_email",
         "action",
         "resource_type",
         "resource_id",
-        "old_values",
-        "new_values",
-        "details",
+        "old_value",
+        "new_value",
         "ip_address",
         "user_agent",
+        "request_id",
         "created_at",
     ]
     ordering = ["-created_at"]
@@ -684,7 +679,7 @@ class AuditLogAdmin(admin.ModelAdmin):
         (
             "Actor",
             {
-                "fields": ("tenant", "user_id", "user_email"),
+                "fields": ("tenant", "actor_id", "actor_email"),
             },
         ),
         (
@@ -696,13 +691,13 @@ class AuditLogAdmin(admin.ModelAdmin):
         (
             "Changes",
             {
-                "fields": ("old_values", "new_values", "details"),
+                "fields": ("old_value", "new_value"),
             },
         ),
         (
             "Request Info",
             {
-                "fields": ("ip_address", "user_agent"),
+                "fields": ("ip_address", "user_agent", "request_id"),
                 "classes": ("collapse",),
             },
         ),
@@ -715,10 +710,10 @@ class AuditLogAdmin(admin.ModelAdmin):
         return "-"
 
     def has_add_permission(self, request):
-        return False  # 🔒 Audit logs created by system only
+        return False
 
     def has_change_permission(self, request, obj=None):
-        return False  # 🔒 Cannot modify audit logs
+        return False
 
     def has_delete_permission(self, request, obj=None):
-        return False  # 🔒 Cannot delete audit logs (compliance)
+        return False

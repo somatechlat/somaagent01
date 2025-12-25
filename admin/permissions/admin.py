@@ -10,11 +10,11 @@ from django.utils.html import format_html
 from admin.permissions.models import (
     GranularPermission,
     PermissionAction,
+    PermissionCheckLog,
     PermissionGrant,
     PermissionResource,
     Role,
-    RoleAssignment,
-    UserPermissionCache,
+    UserRoleAssignment,
 )
 
 
@@ -33,10 +33,10 @@ class GranularPermissionInline(admin.TabularInline):
     ordering = ["action__name"]
 
 
-class RoleAssignmentInline(admin.TabularInline):
+class UserRoleAssignmentInline(admin.TabularInline):
     """Inline for viewing role assignments."""
 
-    model = RoleAssignment
+    model = UserRoleAssignment
     extra = 0
     fields = ["user_id", "scope_type", "scope_id", "granted_by", "created_at"]
     readonly_fields = ["created_at"]
@@ -165,7 +165,7 @@ class RoleAdmin(admin.ModelAdmin):
         ),
     )
 
-    inlines = [RoleAssignmentInline]
+    inlines = [UserRoleAssignmentInline]
 
     actions = ["set_as_default", "unset_default", "clone_role"]
 
@@ -220,17 +220,18 @@ class RoleAdmin(admin.ModelAdmin):
 
 
 # =============================================================================
-# ROLE ASSIGNMENT ADMIN
+# USER ROLE ASSIGNMENT ADMIN
 # =============================================================================
 
 
-@admin.register(RoleAssignment)
-class RoleAssignmentAdmin(admin.ModelAdmin):
-    """Django Admin for Role Assignments."""
+@admin.register(UserRoleAssignment)
+class UserRoleAssignmentAdmin(admin.ModelAdmin):
+    """Django Admin for User Role Assignments."""
 
     list_display = [
         "user_id_short",
         "role",
+        "tenant_id_short",
         "scope_type",
         "scope_id_short",
         "granted_by_short",
@@ -238,14 +239,18 @@ class RoleAssignmentAdmin(admin.ModelAdmin):
         "created_at",
     ]
     list_filter = ["scope_type", "role", "created_at"]
-    search_fields = ["user_id", "scope_id", "granted_by"]
+    search_fields = ["user_id", "scope_id", "granted_by", "tenant_id"]
     ordering = ["-created_at"]
     list_select_related = ["role"]
     raw_id_fields = ["role"]
 
     @admin.display(description="User")
     def user_id_short(self, obj):
-        return str(obj.user_id)[:8] if obj.user_id else "-"
+        return str(obj.user_id)[:12] if obj.user_id else "-"
+
+    @admin.display(description="Tenant")
+    def tenant_id_short(self, obj):
+        return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
 
     @admin.display(description="Scope ID")
     def scope_id_short(self, obj):
@@ -268,19 +273,24 @@ class PermissionGrantAdmin(admin.ModelAdmin):
     list_display = [
         "user_id_short",
         "permission",
+        "tenant_id_short",
         "scope_type",
         "scope_id_short",
         "expires_at",
         "created_at",
     ]
     list_filter = ["scope_type", "permission", "created_at"]
-    search_fields = ["user_id", "scope_id"]
+    search_fields = ["user_id", "scope_id", "tenant_id"]
     ordering = ["-created_at"]
     list_select_related = ["permission"]
 
     @admin.display(description="User")
     def user_id_short(self, obj):
-        return str(obj.user_id)[:8] if obj.user_id else "-"
+        return str(obj.user_id)[:12] if obj.user_id else "-"
+
+    @admin.display(description="Tenant")
+    def tenant_id_short(self, obj):
+        return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
 
     @admin.display(description="Scope ID")
     def scope_id_short(self, obj):
@@ -288,44 +298,60 @@ class PermissionGrantAdmin(admin.ModelAdmin):
 
 
 # =============================================================================
-# USER PERMISSION CACHE ADMIN
+# PERMISSION CHECK LOG ADMIN (Audit)
 # =============================================================================
 
 
-@admin.register(UserPermissionCache)
-class UserPermissionCacheAdmin(admin.ModelAdmin):
-    """Django Admin for Permission Cache - read-only debugging."""
+@admin.register(PermissionCheckLog)
+class PermissionCheckLogAdmin(admin.ModelAdmin):
+    """Django Admin for Permission Check Logs - fully read-only audit."""
 
-    list_display = ["user_id_short", "tenant_id_short", "permission_count", "expires_at"]
-    list_filter = ["expires_at"]
-    search_fields = ["user_id", "tenant_id"]
-    readonly_fields = ["user_id", "tenant_id", "permissions", "expires_at"]
-    ordering = ["-expires_at"]
+    list_display = [
+        "timestamp",
+        "user_id_short",
+        "permission_codename",
+        "allowed_badge",
+        "reason",
+        "ip_address",
+    ]
+    list_filter = ["allowed", "reason", "timestamp"]
+    search_fields = ["user_id", "permission_codename", "ip_address"]
+    readonly_fields = [
+        "id",
+        "timestamp",
+        "user_id",
+        "tenant_id",
+        "permission_codename",
+        "resource_id",
+        "allowed",
+        "reason",
+        "ip_address",
+    ]
+    ordering = ["-timestamp"]
+    list_per_page = 100
+    date_hierarchy = "timestamp"
 
     @admin.display(description="User")
     def user_id_short(self, obj):
-        return str(obj.user_id)[:8] if obj.user_id else "-"
+        return str(obj.user_id)[:12] if obj.user_id else "-"
 
-    @admin.display(description="Tenant")
-    def tenant_id_short(self, obj):
-        return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
-
-    @admin.display(description="Permissions")
-    def permission_count(self, obj):
-        if isinstance(obj.permissions, list):
-            return len(obj.permissions)
-        return 0
+    @admin.display(description="Allowed")
+    def allowed_badge(self, obj):
+        if obj.allowed:
+            return format_html(
+                '<span style="background: #22c55e; color: white; padding: 2px 8px; '
+                'border-radius: 4px; font-size: 11px;">✓ Yes</span>'
+            )
+        return format_html(
+            '<span style="background: #ef4444; color: white; padding: 2px 8px; '
+            'border-radius: 4px; font-size: 11px;">✗ No</span>'
+        )
 
     def has_add_permission(self, request):
-        return False  # Cache is system-managed
+        return False  # Logs are system-generated
 
     def has_change_permission(self, request, obj=None):
         return False
 
-    actions = ["clear_cache"]
-
-    @admin.action(description="Clear selected cache entries")
-    def clear_cache(self, request, queryset):
-        count = queryset.count()
-        queryset.delete()
-        self.message_user(request, f"{count} cache entries cleared.")
+    def has_delete_permission(self, request, obj=None):
+        return False  # Compliance - cannot delete audit logs
