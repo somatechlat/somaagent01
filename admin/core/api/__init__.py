@@ -12,6 +12,7 @@ from admin.core.api.llm import router as llm_router
 from admin.core.api.memory import router as memory_router
 from admin.core.api.migrate import router as migrate_router
 from admin.core.api.sessions import router as sessions_router
+from admin.core.infrastructure.api import router as infrastructure_router
 
 # Master router for core admin domain
 router = Router(tags=["admin"])
@@ -24,5 +25,6 @@ router.add_router("", sessions_router)  # /sessions endpoints
 router.add_router("/kafka", kafka_router)
 router.add_router("", memory_router)  # /memory endpoints
 router.add_router("/migrate", migrate_router)
+router.add_router("/infrastructure", infrastructure_router)  # Rate limits + infra
 
 __all__ = ["router"]
