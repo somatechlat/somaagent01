@@ -176,6 +176,23 @@ GRANULAR_PERMISSIONS = {
         "billing:view_subscription": "View subscription",
         "billing:change_plan": "Change plans",
     },
+    # =========================================================================
+    # VOICE (AgentVoice Vox)
+    # =========================================================================
+    "voice": {
+        "voice_persona:create": "Create voice personas",
+        "voice_persona:read": "View voice personas",
+        "voice_persona:update": "Update voice personas",
+        "voice_persona:delete": "Delete voice personas",
+        "voice_persona:set_default": "Set default persona",
+        "voice_session:create": "Start voice sessions",
+        "voice_session:read": "View voice sessions",
+        "voice_session:terminate": "Terminate sessions",
+        "voice_model:read": "View voice models",
+        "voice_model:create": "Create voice models (admin)",
+        "voice_model:update": "Update voice models (admin)",
+        "voice_model:delete": "Delete voice models (admin)",
+    },
 }
 
 
