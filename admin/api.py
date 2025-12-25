@@ -229,6 +229,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/apikeys", apikeys_router)
 
+    # Sessions (User session management)
+    from admin.sessions.api import router as sessions_router
+
+    api.add_router("/sessions", sessions_router)
+
     return api
 
 
