@@ -66,6 +66,16 @@ interface ServiceDependency {
   depended_by: string[];
 }
 
+interface HistoryRecord {
+  timestamp: number;
+  component_name: string;
+  degradation_level: string;
+  healthy: boolean;
+  response_time: number;
+  error_rate: number;
+  event_type: string;
+}
+
 // Material Symbol names for each service
 const SERVICE_ICONS: Record<string, string> = {
   postgresql: 'database',
@@ -88,6 +98,7 @@ export class SaasInfrastructureDashboard extends LitElement {
   @state() degradation: DegradationStatus | null = null;
   @state() components: ComponentHealth[] = [];
   @state() dependencies: ServiceDependency[] = [];
+  @state() history: HistoryRecord[] = [];
   @state() loading = true;
   @state() error = '';
   @state() activeTab: 'health' | 'ratelimits' | 'degradation' = 'health';
@@ -812,15 +823,19 @@ export class SaasInfrastructureDashboard extends LitElement {
 
   async fetchDegradation() {
     try {
-      const [statusRes, componentsRes] = await Promise.all([
+      const [statusRes, componentsRes, historyRes] = await Promise.all([
         fetch('/api/v2/core/infrastructure/degradation/status', { headers: this.getAuthHeaders() }),
         fetch('/api/v2/core/infrastructure/degradation/components', { headers: this.getAuthHeaders() }),
+        fetch('/api/v2/core/infrastructure/degradation/history?limit=50', { headers: this.getAuthHeaders() }),
       ]);
       if (statusRes.ok) {
         this.degradation = await statusRes.json();
       }
       if (componentsRes.ok) {
         this.components = await componentsRes.json();
+      }
+      if (historyRes.ok) {
+        this.history = await historyRes.json();
       }
     } catch (err) {
       console.error('Degradation fetch failed:', err);
@@ -1147,6 +1162,51 @@ export class SaasInfrastructureDashboard extends LitElement {
               </li>
             `)}
           </ul>
+        </div>
+      ` : nothing}
+
+      <!-- History Timeline -->
+      ${this.history.length > 0 ? html`
+        <h3 class="section-title" style="margin-top: 32px;">
+          <span class="material-symbols-outlined">history</span>
+          Event History
+        </h3>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Component</th>
+                <th>Level</th>
+                <th>Status</th>
+                <th>Response</th>
+                <th>Event</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this.history.slice(0, 20).map(h => html`
+                <tr>
+                  <td style="font-family: var(--saas-font-mono, monospace); font-size: 11px;">
+                    ${new Date(h.timestamp * 1000).toLocaleTimeString()}
+                  </td>
+                  <td><strong style="text-transform: capitalize;">${h.component_name}</strong></td>
+                  <td><span class="deg-badge ${h.degradation_level}">${h.degradation_level}</span></td>
+                  <td>
+                    <span class="status-badge ${h.healthy ? 'healthy' : 'down'}">
+                      <span class="status-dot ${h.healthy ? 'healthy' : 'down'}"></span>
+                      ${h.healthy ? 'healthy' : 'unhealthy'}
+                    </span>
+                  </td>
+                  <td style="font-family: var(--saas-font-mono, monospace); font-size: 11px;">
+                    ${h.response_time ? h.response_time.toFixed(3) + 's' : '-'}
+                  </td>
+                  <td>
+                    <span class="policy-badge ${h.event_type === 'failure' ? 'HARD' : 'SOFT'}">${h.event_type}</span>
+                  </td>
+                </tr>
+              `)}
+            </tbody>
+          </table>
         </div>
       ` : nothing}
     `;
