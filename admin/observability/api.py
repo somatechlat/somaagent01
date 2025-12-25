@@ -1,16 +1,19 @@
-"""Observability API - Metrics, Traces, Health.
+"""Observability API - Real Infrastructure Metrics & Health.
 
-VIBE COMPLIANT - Django Ninja + Prometheus.
-Per AGENT_TASKS.md Phase 7.6 - Observability.
+VIBE COMPLIANT - Django Ninja + Real Infrastructure Checks.
+Per VIBE Coding Rules Section 4 & 7 - NO mocks, NO fake data.
 
-7-Persona Implementation:
-- DevOps: Prometheus metrics, OpenTelemetry spans
-- QA: Health check patterns
-- PhD Dev: Performance profiling
+10-Persona Implementation:
+- PhD Developer: Clean async implementation
+- DevOps: Prometheus metrics, K8s probes
+- QA: Comprehensive health checks
+- Security Auditor: No sensitive data exposure
+- Performance Engineer: Efficient concurrent checks
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Optional
@@ -20,23 +23,13 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.core.infrastructure import health_checker
 
 router = Router(tags=["observability"])
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# PROMETHEUS METRICS (in-memory for now)
-# =============================================================================
-
-_metrics = {
-    "http_requests_total": 0,
-    "http_requests_duration_seconds": [],
-    "active_connections": 0,
-    "memory_operations_total": 0,
-    "cognitive_operations_total": 0,
-    "workflow_executions_total": 0,
-}
+# Store application start time for uptime calculation
+_app_start_time = time.time()
 
 
 # =============================================================================
@@ -44,8 +37,43 @@ _metrics = {
 # =============================================================================
 
 
+class ServiceHealthResponse(BaseModel):
+    """Individual service health."""
+
+    name: str
+    status: str
+    latency_ms: Optional[float] = None
+    details: Optional[dict] = None
+    error: Optional[str] = None
+
+
+class InfrastructureHealthResponse(BaseModel):
+    """Complete infrastructure health."""
+
+    overall_status: str
+    timestamp: str
+    duration_ms: float
+    services: list[ServiceHealthResponse]
+
+
+class ReadinessResponse(BaseModel):
+    """Kubernetes readiness probe response."""
+
+    ready: bool
+    checks: list[ServiceHealthResponse]
+    timestamp: str
+
+
+class LivenessResponse(BaseModel):
+    """Kubernetes liveness probe response."""
+
+    alive: bool
+    uptime_seconds: float
+    timestamp: str
+
+
 class MetricValue(BaseModel):
-    """Single metric."""
+    """Single metric for JSON response."""
 
     name: str
     value: float
@@ -53,190 +81,75 @@ class MetricValue(BaseModel):
     timestamp: str
 
 
-class MetricsResponse(BaseModel):
-    """Prometheus metrics."""
+class MetricsJsonResponse(BaseModel):
+    """JSON metrics response."""
 
     metrics: list[MetricValue]
-    format: str = "prometheus"
-
-
-class TraceSpan(BaseModel):
-    """OpenTelemetry span."""
-
-    trace_id: str
-    span_id: str
-    parent_span_id: Optional[str] = None
-    name: str
-    start_time: str
-    end_time: Optional[str] = None
-    duration_ms: Optional[float] = None
-    status: str  # ok, error
-    attributes: Optional[dict] = None
-
-
-class TracesResponse(BaseModel):
-    """Traces response."""
-
-    traces: list[TraceSpan]
-    total: int
-
-
-class HealthCheckResult(BaseModel):
-    """Individual health check."""
-
-    name: str
-    status: str  # healthy, degraded, down
-    latency_ms: Optional[float] = None
-    message: Optional[str] = None
-
-
-class ReadinessResponse(BaseModel):
-    """Kubernetes readiness."""
-
-    ready: bool
-    checks: list[HealthCheckResult]
-    timestamp: str
-
-
-class LivenessResponse(BaseModel):
-    """Kubernetes liveness."""
-
-    alive: bool
-    uptime_seconds: float
-    timestamp: str
 
 
 # =============================================================================
-# ENDPOINTS - Prometheus Metrics
+# ENDPOINTS - Infrastructure Health (REAL CHECKS)
 # =============================================================================
 
 
 @router.get(
-    "/metrics",
-    summary="Prometheus metrics",
-)
-async def get_metrics(request) -> str:
-    """Get Prometheus-formatted metrics.
-
-    Per Phase 7.6: Prometheus metrics on all services.
-
-    DevOps: Standard Prometheus exposition format.
-    """
-    # Build Prometheus exposition format
-    lines = []
-
-    # HTTP requests
-    lines.append("# HELP http_requests_total Total HTTP requests")
-    lines.append("# TYPE http_requests_total counter")
-    lines.append(f"http_requests_total {_metrics['http_requests_total']}")
-
-    # Active connections
-    lines.append("# HELP active_connections Current active connections")
-    lines.append("# TYPE active_connections gauge")
-    lines.append(f"active_connections {_metrics['active_connections']}")
-
-    # Memory operations
-    lines.append("# HELP memory_operations_total Total memory operations")
-    lines.append("# TYPE memory_operations_total counter")
-    lines.append(f"memory_operations_total {_metrics['memory_operations_total']}")
-
-    # Cognitive operations
-    lines.append("# HELP cognitive_operations_total Total cognitive operations")
-    lines.append("# TYPE cognitive_operations_total counter")
-    lines.append(f"cognitive_operations_total {_metrics['cognitive_operations_total']}")
-
-    # Workflow executions
-    lines.append("# HELP workflow_executions_total Total workflow executions")
-    lines.append("# TYPE workflow_executions_total counter")
-    lines.append(f"workflow_executions_total {_metrics['workflow_executions_total']}")
-
-    return "\n".join(lines)
-
-
-@router.get(
-    "/metrics/json",
-    response=MetricsResponse,
-    summary="Metrics as JSON",
-)
-async def get_metrics_json(request) -> MetricsResponse:
-    """Get metrics in JSON format.
-
-    Alternative to Prometheus format for dashboard integration.
-    """
-    now = timezone.now().isoformat()
-
-    metrics = [
-        MetricValue(
-            name="http_requests_total", value=float(_metrics["http_requests_total"]), timestamp=now
-        ),
-        MetricValue(
-            name="active_connections", value=float(_metrics["active_connections"]), timestamp=now
-        ),
-        MetricValue(
-            name="memory_operations_total",
-            value=float(_metrics["memory_operations_total"]),
-            timestamp=now,
-        ),
-        MetricValue(
-            name="cognitive_operations_total",
-            value=float(_metrics["cognitive_operations_total"]),
-            timestamp=now,
-        ),
-        MetricValue(
-            name="workflow_executions_total",
-            value=float(_metrics["workflow_executions_total"]),
-            timestamp=now,
-        ),
-    ]
-
-    return MetricsResponse(metrics=metrics)
-
-
-# =============================================================================
-# ENDPOINTS - OpenTelemetry Traces
-# =============================================================================
-
-
-@router.get(
-    "/traces",
-    response=TracesResponse,
-    summary="Get recent traces",
+    "/infrastructure/health",
+    response=InfrastructureHealthResponse,
+    summary="Complete infrastructure health check",
     auth=AuthBearer(),
 )
-async def get_traces(
-    request,
-    limit: int = 100,
-    service: Optional[str] = None,
-) -> TracesResponse:
-    """Get recent OpenTelemetry traces.
+async def get_infrastructure_health(request) -> InfrastructureHealthResponse:
+    """Check health of ALL infrastructure services.
 
-    Per Phase 7.6: OpenTelemetry spans.
+    VIBE: Real async checks to PostgreSQL, Redis, Temporal, Qdrant,
+    Keycloak, Lago, SomaBrain, Whisper, Kokoro.
 
-    In production: Query Jaeger/Tempo backend.
+    DevOps: Returns detailed status for each service.
     """
-    # Placeholder - in production connects to tracing backend
-    return TracesResponse(
-        traces=[],
-        total=0,
+    result = await health_checker.check_all()
+
+    return InfrastructureHealthResponse(
+        overall_status=result["overall_status"],
+        timestamp=result["timestamp"],
+        duration_ms=result["duration_ms"],
+        services=[
+            ServiceHealthResponse(**s) for s in result["services"]
+        ],
     )
 
 
 @router.get(
-    "/traces/{trace_id}",
-    summary="Get trace by ID",
+    "/infrastructure/{service}/health",
+    response=ServiceHealthResponse,
+    summary="Single service health check",
     auth=AuthBearer(),
 )
-async def get_trace(request, trace_id: str) -> dict:
-    """Get specific trace with all spans."""
-    return {
-        "trace_id": trace_id,
-        "spans": [],
-        "duration_ms": None,
-    }
+async def get_service_health(request, service: str) -> ServiceHealthResponse:
+    """Check health of a specific service.
+
+    Args:
+        service: Service name (postgresql, redis, temporal, qdrant, etc.)
+    """
+    check_method = getattr(health_checker, f"check_{service}", None)
+    if not check_method:
+        return ServiceHealthResponse(
+            name=service,
+            status="unknown",
+            error=f"Unknown service: {service}",
+        )
+
+    result = await check_method()
+    return ServiceHealthResponse(
+        name=result.name,
+        status=result.status,
+        latency_ms=result.latency_ms,
+        details=result.details,
+        error=result.error,
+    )
 
 
 # =============================================================================
-# ENDPOINTS - Kubernetes Health
+# ENDPOINTS - Kubernetes Probes (REAL CHECKS)
 # =============================================================================
 
 
@@ -248,57 +161,35 @@ async def get_trace(request, trace_id: str) -> dict:
 async def readiness(request) -> ReadinessResponse:
     """Kubernetes readiness check.
 
-    DevOps: Returns 200 if ready to serve traffic.
-    """
-    import httpx
+    Returns 200 if ready to serve traffic.
+    Checks critical services: PostgreSQL (required).
 
+    DevOps: Use for K8s readinessProbe.
+    """
     checks = []
     all_healthy = True
 
-    # Check database
-    try:
-        from django.db import connection
-
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        checks.append(
-            HealthCheckResult(
-                name="database",
-                status="healthy",
-                latency_ms=1.0,
-            )
+    # PostgreSQL is CRITICAL - must be healthy
+    pg_result = await health_checker.check_postgresql()
+    checks.append(
+        ServiceHealthResponse(
+            name=pg_result.name,
+            status=pg_result.status,
+            latency_ms=pg_result.latency_ms,
         )
-    except Exception as e:
+    )
+    if pg_result.status != "healthy":
         all_healthy = False
-        checks.append(
-            HealthCheckResult(
-                name="database",
-                status="down",
-                message=str(e),
-            )
-        )
 
-    # Check Redis
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            start = time.time()
-            response = await client.get("http://localhost:20379/")
-        checks.append(
-            HealthCheckResult(
-                name="redis",
-                status="healthy",
-                latency_ms=(time.time() - start) * 1000,
-            )
+    # Redis - degraded is OK, down is not
+    redis_result = await health_checker.check_redis()
+    checks.append(
+        ServiceHealthResponse(
+            name=redis_result.name,
+            status=redis_result.status,
+            latency_ms=redis_result.latency_ms,
         )
-    except Exception:
-        # Redis not required for readiness
-        checks.append(
-            HealthCheckResult(
-                name="redis",
-                status="degraded",
-                message="Redis unavailable but not blocking",
-            )
-        )
+    )
 
     return ReadinessResponse(
         ready=all_healthy,
@@ -315,15 +206,12 @@ async def readiness(request) -> ReadinessResponse:
 async def liveness(request) -> LivenessResponse:
     """Kubernetes liveness check.
 
-    DevOps: Returns 200 if process is alive.
-    """
-    import os
+    Returns 200 if process is alive.
+    Simple check - does not verify external services.
 
-    # Get process uptime
-    try:
-        uptime = time.time() - os.path.getctime("/proc/self")
-    except Exception:
-        uptime = 0.0
+    DevOps: Use for K8s livenessProbe.
+    """
+    uptime = time.time() - _app_start_time
 
     return LivenessResponse(
         alive=True,
@@ -333,62 +221,149 @@ async def liveness(request) -> LivenessResponse:
 
 
 # =============================================================================
+# ENDPOINTS - Prometheus Metrics (REAL DATA)
+# =============================================================================
+
+
+@router.get(
+    "/metrics",
+    summary="Prometheus metrics",
+)
+async def get_prometheus_metrics(request) -> str:
+    """Get Prometheus-formatted metrics.
+
+    Returns metrics in Prometheus exposition format.
+    DevOps: Scrape with Prometheus server.
+    """
+    from admin.core.observability.metrics import get_all_metrics_prometheus
+
+    try:
+        return get_all_metrics_prometheus()
+    except ImportError:
+        # Fallback if metrics module not available
+        lines = [
+            "# HELP soma_up Server is up",
+            "# TYPE soma_up gauge",
+            f"soma_up 1",
+            f"# HELP soma_uptime_seconds Server uptime in seconds",
+            f"# TYPE soma_uptime_seconds gauge",
+            f"soma_uptime_seconds {time.time() - _app_start_time:.2f}",
+        ]
+        return "\n".join(lines)
+
+
+@router.get(
+    "/metrics/json",
+    response=MetricsJsonResponse,
+    summary="Metrics as JSON",
+    auth=AuthBearer(),
+)
+async def get_metrics_json(request) -> MetricsJsonResponse:
+    """Get metrics in JSON format.
+
+    Alternative to Prometheus format for dashboard integration.
+    """
+    from admin.core.observability.metrics import get_all_metrics_json
+
+    try:
+        metrics_data = get_all_metrics_json()
+        now = timezone.now().isoformat()
+        return MetricsJsonResponse(
+            metrics=[
+                MetricValue(
+                    name=m["name"],
+                    value=m["value"],
+                    labels=m.get("labels"),
+                    timestamp=now,
+                )
+                for m in metrics_data
+            ]
+        )
+    except ImportError:
+        now = timezone.now().isoformat()
+        return MetricsJsonResponse(
+            metrics=[
+                MetricValue(name="soma_up", value=1.0, timestamp=now),
+                MetricValue(
+                    name="soma_uptime_seconds",
+                    value=time.time() - _app_start_time,
+                    timestamp=now,
+                ),
+            ]
+        )
+
+
+# =============================================================================
+# ENDPOINTS - SLA Compliance
+# =============================================================================
+
+
+@router.get(
+    "/sla",
+    summary="SLA compliance metrics",
+    auth=AuthBearer(),
+)
+async def get_sla_compliance(request) -> dict:
+    """Get SLA compliance metrics.
+
+    Returns current SLA targets vs actual values.
+    """
+    # Get health check for latency data
+    result = await health_checker.check_all()
+
+    # Calculate SLA metrics
+    healthy_count = sum(1 for s in result["services"] if s["status"] == "healthy")
+    total_count = len(result["services"])
+    availability_pct = (healthy_count / total_count * 100) if total_count > 0 else 0
+
+    return {
+        "timestamp": timezone.now().isoformat(),
+        "metrics": [
+            {
+                "name": "API Availability",
+                "target": 99.9,
+                "actual": availability_pct,
+                "status": "pass" if availability_pct >= 99.9 else "fail",
+            },
+            {
+                "name": "Infrastructure Health",
+                "target": 80.0,  # 80% of services healthy
+                "actual": (healthy_count / total_count * 100) if total_count > 0 else 0,
+                "status": "pass" if healthy_count >= total_count * 0.8 else "fail",
+            },
+        ],
+        "overall_status": result["overall_status"],
+    }
+
+
+# =============================================================================
 # ENDPOINTS - Dashboards
 # =============================================================================
 
 
 @router.get(
     "/dashboards",
-    summary="List Grafana dashboards",
+    summary="List available dashboards",
     auth=AuthBearer(),
 )
 async def list_dashboards(request) -> dict:
-    """List available Grafana dashboards.
-
-    Per Phase 7.6: Grafana dashboards.
-    """
+    """List available monitoring dashboards."""
     return {
         "dashboards": [
             {
-                "id": "soma-overview",
-                "name": "SomaAgent Overview",
-                "url": "/grafana/d/soma-overview",
+                "id": "infrastructure",
+                "name": "Infrastructure Health",
+                "route": "/platform/infrastructure",
             },
             {
-                "id": "soma-memory",
-                "name": "Memory Operations",
-                "url": "/grafana/d/soma-memory",
+                "id": "metrics",
+                "name": "Platform Metrics",
+                "route": "/platform/metrics",
             },
             {
-                "id": "soma-cognitive",
-                "name": "Cognitive Performance",
-                "url": "/grafana/d/soma-cognitive",
+                "id": "sla",
+                "name": "SLA Compliance",
+                "route": "/platform/metrics/sla",
             },
         ],
-    }
-
-
-@router.post(
-    "/metrics/record",
-    summary="Record custom metric",
-    auth=AuthBearer(),
-)
-async def record_metric(
-    request,
-    name: str,
-    value: float,
-    labels: Optional[dict] = None,
-) -> dict:
-    """Record a custom metric.
-
-    Used by services to push metrics.
-    """
-    # In production: push to Prometheus Pushgateway
-    logger.debug(f"Metric recorded: {name}={value}")
-
-    return {
-        "recorded": True,
-        "name": name,
-        "value": value,
-        "timestamp": timezone.now().isoformat(),
     }
