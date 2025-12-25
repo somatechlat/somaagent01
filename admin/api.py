@@ -254,6 +254,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/conversations", conversations_router)
 
+    # Users (User management)
+    from admin.users.api import router as users_router
+
+    api.add_router("/users", users_router)
+
     return api
 
 
