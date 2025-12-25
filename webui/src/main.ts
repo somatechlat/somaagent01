@@ -117,6 +117,13 @@ if (app) {
             return;
         }
 
+        // Rate Limits Dashboard
+        if (path === '/platform/infrastructure/redis/ratelimits' || path === '/platform/ratelimits') {
+            await import('./views/saas-rate-limits.js');
+            app.appendChild(document.createElement('saas-rate-limits'));
+            return;
+        }
+
         // Platform Integrations Dashboard
         if (path === '/platform/integrations' || path === '/saas/settings/integrations') {
             await import('./views/saas-integrations-dashboard.js');
