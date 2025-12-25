@@ -179,6 +179,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/config", config_router)
 
+    # Rate Limiting (Quotas + Throttling)
+    from admin.ratelimit.api import router as ratelimit_router
+
+    api.add_router("/ratelimit", ratelimit_router)
+
     return api
 
 
