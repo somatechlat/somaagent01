@@ -117,6 +117,13 @@ if (app) {
             return;
         }
 
+        // Platform Integrations Dashboard
+        if (path === '/platform/integrations' || path === '/saas/settings/integrations') {
+            await import('./views/saas-integrations-dashboard.js');
+            app.appendChild(document.createElement('saas-integrations-dashboard'));
+            return;
+        }
+
         if (path === '/platform/roles') {
             await import('./views/saas-admin-roles-list.js');
             app.appendChild(document.createElement('saas-admin-roles-list'));
