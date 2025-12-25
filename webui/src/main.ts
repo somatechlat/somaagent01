@@ -137,6 +137,13 @@ if (app) {
             return;
         }
 
+        // Tenant Creation Wizard
+        if (path === '/saas/tenants/new' || path === '/platform/tenants/new') {
+            await import('./views/saas-tenant-wizard.js');
+            app.appendChild(document.createElement('saas-tenant-wizard'));
+            return;
+        }
+
         if (path === '/saas/permissions' || path === '/platform/permissions') {
             await import('./views/saas-permissions.js');
             app.appendChild(document.createElement('saas-permissions'));
