@@ -219,6 +219,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/audit", audit_router)
 
+    # Permissions (RBAC)
+    from admin.permissions.api import router as permissions_router
+
+    api.add_router("/permissions", permissions_router)
+
     return api
 
 
