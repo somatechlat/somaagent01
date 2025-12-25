@@ -39,11 +39,10 @@ class TimestampedModel(models.Model):
 class TenantScopedModel(TimestampedModel):
     """Abstract base with tenant isolation."""
     
-    tenant = models.ForeignKey(
-        'core.Tenant',
-        on_delete=models.CASCADE,
-        related_name="%(class)s_set",
+    tenant_id = models.CharField(
+        max_length=255,
         db_index=True,
+        help_text="Tenant ID for multi-tenancy isolation",
     )
     
     class Meta:
@@ -192,7 +191,7 @@ class Role(TenantScopedModel):
     
     class Meta:
         db_table = "permissions_role"
-        unique_together = [["tenant", "slug"]]
+        unique_together = [["tenant_id", "slug"]]
         ordering = ["name"]
         
     def __str__(self):
@@ -235,7 +234,7 @@ class UserRoleAssignment(TenantScopedModel):
     class Meta:
         db_table = "permissions_user_role"
         indexes = [
-            models.Index(fields=["user_id", "tenant"]),
+            models.Index(fields=["user_id", "tenant_id"]),
             models.Index(fields=["user_id", "scope_type", "scope_id"]),
         ]
         
@@ -276,7 +275,7 @@ class PermissionGrant(TenantScopedModel):
     class Meta:
         db_table = "permissions_grant"
         indexes = [
-            models.Index(fields=["user_id", "tenant"]),
+            models.Index(fields=["user_id", "tenant_id"]),
             models.Index(fields=["user_id", "permission"]),
         ]
         

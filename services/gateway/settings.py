@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "admin.multimodal",
     "admin.notifications",
     "admin.orchestrator",
+    "admin.permissions",
     "admin.saas",
     "admin.tools",
     "admin.ui",
