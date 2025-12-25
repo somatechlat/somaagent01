@@ -1,18 +1,25 @@
-"""SomaBrain API Client.
+"""SomaBrain HTTP Client.
 
-VIBE COMPLIANT - Async HTTP client for SomaBrain cognitive memory.
-Per CANONICAL_USER_JOURNEYS_SRS.md UC-05: View/Manage Memories.
+VIBE COMPLIANT - httpx async client for SomaBrain API.
+Uses REAL endpoints from SomaBrain OpenAPI spec (localhost:9696).
 
-SomaBrain endpoints: http://localhost:9696
+Endpoints based on http://localhost:9696/api/openapi.json:
+- POST /api/cognitive/act - Execute action
+- POST /api/memory/recall - Recall memories
+- POST /api/memory/remember/remember - Store memory
+- GET /api/neuromod/state - Get neuromodulator state
+- POST /api/neuromod/adjust - Adjust neuromodulators
+- GET /api/sleep/state - Get sleep state
+- POST /api/sleep/brain/mode - Set brain sleep mode
+- GET /api/context/adaptation/state - Get adaptation state
+- POST /api/context/adaptation/reset - Reset adaptation
+- GET /api/health/health - Health check
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Optional
-from uuid import UUID
+from typing import Optional, Any
 
 import httpx
 from django.conf import settings
@@ -20,314 +27,398 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class SomaBrainConfig:
-    """SomaBrain API configuration."""
-    base_url: str = "http://localhost:9696"
-    timeout: float = 30.0
-    
-    @classmethod
-    def from_settings(cls) -> "SomaBrainConfig":
-        """Load config from Django settings."""
-        return cls(
-            base_url=getattr(settings, "SOMABRAIN_URL", "http://localhost:9696"),
-            timeout=getattr(settings, "SOMABRAIN_TIMEOUT", 30.0),
-        )
+class SomaBrainError(Exception):
+    """Exception for SomaBrain API errors."""
+    pass
 
 
 class SomaBrainClient:
-    """Async client for SomaBrain cognitive memory API.
+    """Async HTTP client for SomaBrain API.
     
-    VIBE COMPLIANT:
-    - Full async support
-    - Graceful degradation
-    - ZDL pattern ready
+    REAL SomaBrain calls based on OpenAPI spec.
+    No mock data - uses actual endpoints.
     """
     
-    def __init__(self, config: Optional[SomaBrainConfig] = None):
-        self.config = config or SomaBrainConfig.from_settings()
+    def __init__(
+        self,
+        base_url: str = None,
+        api_key: str = None,
+        timeout: float = 30.0,
+    ):
+        self.base_url = base_url or getattr(
+            settings, "SOMABRAIN_BASE_URL", "http://localhost:9696"
+        )
+        self.api_key = api_key or getattr(settings, "SOMABRAIN_API_KEY", "")
+        self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
     
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
-        if self._client is None or self._client.is_closed:
+        """Get or create async HTTP client."""
+        if self._client is None:
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            
             self._client = httpx.AsyncClient(
-                base_url=self.config.base_url,
-                headers={"Content-Type": "application/json"},
-                timeout=self.config.timeout,
+                base_url=self.base_url,
+                timeout=self.timeout,
+                headers=headers,
             )
         return self._client
     
     async def close(self) -> None:
         """Close the HTTP client."""
-        if self._client and not self._client.is_closed:
+        if self._client:
             await self._client.aclose()
+            self._client = None
+    
+    # =========================================================================
+    # HEALTH
+    # =========================================================================
     
     async def health_check(self) -> dict:
-        """Check SomaBrain health status."""
+        """GET /api/health/ - Main health endpoint with component status."""
         client = await self._get_client()
         try:
-            response = await client.get("/health")
-            return {"status": "healthy", "latency_ms": response.elapsed.total_seconds() * 1000}
-        except Exception as e:
-            return {"status": "down", "error": str(e)}
-    
-    # =========================================================================
-    # MEMORY OPERATIONS - Per UC-05
-    # =========================================================================
-    
-    async def remember(
-        self,
-        content: str,
-        tenant_id: str,
-        user_id: str,
-        memory_type: str = "episodic",
-        metadata: Optional[dict] = None,
-    ) -> dict:
-        """Store a memory in SomaBrain.
-        
-        Args:
-            content: Memory content (text)
-            tenant_id: Tenant UUID
-            user_id: User UUID
-            memory_type: episodic, semantic, procedural
-            metadata: Additional context
-        """
-        client = await self._get_client()
-        
-        payload = {
-            "content": content,
-            "tenant_id": tenant_id,
-            "user_id": user_id,
-            "memory_type": memory_type,
-            "metadata": metadata or {},
-        }
-        
-        try:
-            response = await client.post("/memory/remember", json=payload)
+            response = await client.get("/api/health/")
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"SomaBrain remember failed: {e}")
-            raise SomaBrainError(f"Failed to store memory: {e}")
+            logger.error(f"SomaBrain health check failed: {e}")
+            raise SomaBrainError(f"Health check failed: {e}")
     
-    async def recall(
-        self,
-        query: str,
-        tenant_id: str,
-        user_id: Optional[str] = None,
-        limit: int = 10,
-        memory_type: Optional[str] = None,
-    ) -> list[dict]:
-        """Recall memories from SomaBrain (semantic search).
-        
-        Args:
-            query: Search query
-            tenant_id: Tenant UUID
-            user_id: Optional user filter
-            limit: Max results
-            memory_type: Filter by type
-        """
-        client = await self._get_client()
-        
-        payload = {
-            "query": query,
-            "tenant_id": tenant_id,
-            "limit": limit,
-        }
-        if user_id:
-            payload["user_id"] = user_id
-        if memory_type:
-            payload["memory_type"] = memory_type
-        
-        try:
-            response = await client.post("/memory/recall", json=payload)
-            response.raise_for_status()
-            return response.json().get("memories", [])
-        except httpx.HTTPError as e:
-            logger.error(f"SomaBrain recall failed: {e}")
-            raise SomaBrainError(f"Failed to recall memories: {e}")
+    # =========================================================================
+    # COGNITIVE
+    # =========================================================================
     
     async def act(
         self,
-        agent_id: str,
-        input_text: str,
-        context: Optional[dict] = None,
-        mode: str = "FULL",
+        task: str,
+        top_k: int = 3,
+        universe: str = None,
     ) -> dict:
-        """Execute an agent action with SomaBrain.
+        """POST /api/cognitive/act - Execute action/task.
         
-        REAL SomaBrain call - NO MOCK DATA.
-        
-        Args:
-            agent_id: Agent UUID
-            input_text: User input
-            context: Optional context dict
-            mode: FULL, MINIMAL, LITE, ADMIN
+        Returns:
+            ActResponse with task, results, plan, plan_universe
         """
         client = await self._get_client()
-        
         payload = {
-            "agent_id": agent_id,
-            "input": input_text,
-            "context": context or {},
-            "mode": mode,
+            "task": task,
+            "top_k": top_k,
         }
+        if universe:
+            payload["universe"] = universe
         
         try:
-            response = await client.post("/act", json=payload)
+            response = await client.post("/api/cognitive/act", json=payload)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
             logger.error(f"SomaBrain act failed: {e}")
-            raise SomaBrainError(f"Failed to execute action: {e}")
+            raise SomaBrainError(f"Act failed: {e}")
     
-    async def forget(self, memory_id: str, tenant_id: str) -> bool:
-        """Delete a memory from SomaBrain.
-        
-        Args:
-            memory_id: Memory UUID
-            tenant_id: Tenant UUID (for authorization)
-        """
-        client = await self._get_client()
-        
-        try:
-            response = await client.delete(
-                f"/memory/{memory_id}",
-                params={"tenant_id": tenant_id},
-            )
-            return response.status_code == 200
-        except httpx.HTTPError as e:
-            logger.error(f"SomaBrain forget failed: {e}")
-            return False
-    
-    async def get_recent(
+    async def plan_suggest(
         self,
-        tenant_id: str,
-        user_id: Optional[str] = None,
-        limit: int = 20,
-    ) -> list[dict]:
-        """Get recent memories.
-        
-        Args:
-            tenant_id: Tenant UUID
-            user_id: Optional user filter
-            limit: Max results
-        """
-        client = await self._get_client()
-        
-        params = {"tenant_id": tenant_id, "limit": limit}
-        if user_id:
-            params["user_id"] = user_id
-        
-        try:
-            response = await client.get("/memory/recent", params=params)
-            response.raise_for_status()
-            return response.json().get("memories", [])
-        except httpx.HTTPError as e:
-            logger.error(f"SomaBrain get_recent failed: {e}")
-            return []
-    
-    async def get_pending_count(self, tenant_id: str) -> int:
-        """Get count of pending memory syncs.
-        
-        Used for degradation mode status display.
-        """
-        client = await self._get_client()
-        
-        try:
-            response = await client.get(
-                "/memory/pending",
-                params={"tenant_id": tenant_id},
-            )
-            response.raise_for_status()
-            return response.json().get("count", 0)
-        except httpx.HTTPError:
-            return 0
-    
-    # =========================================================================
-    # COGNITIVE OPERATIONS - Per UC-06
-    # =========================================================================
-    
-    async def get_cognitive_state(self, agent_id: str) -> dict:
-        """Get agent's cognitive state.
-        
-        Returns neuromodulator levels, adaptation parameters.
-        """
-        client = await self._get_client()
-        
-        try:
-            response = await client.get(f"/cognitive/state/{agent_id}")
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError as e:
-            logger.error(f"SomaBrain get_cognitive_state failed: {e}")
-            return {}
-    
-    async def update_cognitive_params(
-        self,
-        agent_id: str,
-        params: dict,
+        task_key: str,
+        max_steps: int = None,
+        rel_types: list = None,
+        universe: str = None,
     ) -> dict:
-        """Update agent's cognitive parameters.
-        
-        Args:
-            agent_id: Agent UUID
-            params: Parameters to update (temperature, creativity, etc.)
-        """
+        """POST /api/cognitive/plan/suggest - Suggest action plan."""
         client = await self._get_client()
+        payload = {"task_key": task_key}
+        if max_steps:
+            payload["max_steps"] = max_steps
+        if rel_types:
+            payload["rel_types"] = rel_types
+        if universe:
+            payload["universe"] = universe
         
         try:
-            response = await client.patch(
-                f"/cognitive/params/{agent_id}",
-                json=params,
-            )
+            response = await client.post("/api/cognitive/plan/suggest", json=payload)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"SomaBrain update_cognitive_params failed: {e}")
-            raise SomaBrainError(f"Failed to update params: {e}")
+            logger.error(f"SomaBrain plan_suggest failed: {e}")
+            raise SomaBrainError(f"Plan suggest failed: {e}")
     
-    async def trigger_sleep_cycle(self, agent_id: str) -> dict:
-        """Trigger agent sleep cycle for memory consolidation.
-        
-        Per SomaBrain cognitive architecture.
-        """
+    async def set_personality(self, traits: dict) -> dict:
+        """POST /api/cognitive/personality - Set personality traits."""
         client = await self._get_client()
-        
         try:
-            response = await client.post(f"/cognitive/sleep-cycle/{agent_id}")
+            response = await client.post("/api/cognitive/personality", json={"traits": traits})
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"SomaBrain trigger_sleep_cycle failed: {e}")
-            raise SomaBrainError(f"Failed to trigger sleep: {e}")
+            logger.error(f"SomaBrain set_personality failed: {e}")
+            raise SomaBrainError(f"Set personality failed: {e}")
     
-    async def adaptation_reset(self, agent_id: str) -> dict:
-        """Reset agent adaptation parameters to defaults."""
+    # =========================================================================
+    # MEMORY
+    # =========================================================================
+    
+    async def remember(
+        self,
+        tenant: str,
+        namespace: str,
+        key: str,
+        value: dict,
+        meta: dict = None,
+        importance: float = None,
+        novelty: float = None,
+        ttl_seconds: int = None,
+    ) -> dict:
+        """POST /api/memory/remember/remember - Store a memory.
+        
+        Returns:
+            MemoryWriteResponse with ok, tenant, namespace, coordinate, etc.
+        """
         client = await self._get_client()
+        payload = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "key": key,
+            "value": value,
+        }
+        if meta:
+            payload["meta"] = meta
+        if importance is not None:
+            payload["importance"] = importance
+        if novelty is not None:
+            payload["novelty"] = novelty
+        if ttl_seconds is not None:
+            payload["ttl_seconds"] = ttl_seconds
         
         try:
-            response = await client.post(f"/context/adaptation/reset/{agent_id}")
+            response = await client.post("/api/memory/remember/remember", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain remember failed: {e}")
+            raise SomaBrainError(f"Remember failed: {e}")
+    
+    async def remember_batch(
+        self,
+        tenant: str,
+        namespace: str,
+        items: list,
+        universe: str = None,
+    ) -> dict:
+        """POST /api/memory/remember/remember/batch - Store multiple memories."""
+        client = await self._get_client()
+        payload = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "items": items,
+        }
+        if universe:
+            payload["universe"] = universe
+        
+        try:
+            response = await client.post("/api/memory/remember/remember/batch", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain remember_batch failed: {e}")
+            raise SomaBrainError(f"Remember batch failed: {e}")
+    
+    async def recall(self, payload: dict) -> dict:
+        """POST /api/memory/recall - Recall memories via retrieval pipeline."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/memory/recall", params={"payload": payload})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain recall failed: {e}")
+            raise SomaBrainError(f"Recall failed: {e}")
+    
+    async def memory_metrics(self, tenant: str = None, namespace: str = None) -> dict:
+        """GET /api/memory/metrics - Get memory metrics."""
+        client = await self._get_client()
+        params = {}
+        if tenant:
+            params["tenant"] = tenant
+        if namespace:
+            params["namespace"] = namespace
+        
+        try:
+            response = await client.get("/api/memory/metrics", params=params)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain memory_metrics failed: {e}")
+            raise SomaBrainError(f"Memory metrics failed: {e}")
+    
+    # =========================================================================
+    # NEUROMODULATORS
+    # =========================================================================
+    
+    async def get_neuromod_state(self) -> dict:
+        """GET /api/neuromod/state - Get neuromodulator state."""
+        client = await self._get_client()
+        try:
+            response = await client.get("/api/neuromod/state")
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain get_neuromod_state failed: {e}")
+            raise SomaBrainError(f"Get neuromod state failed: {e}")
+    
+    async def adjust_neuromod(
+        self,
+        dopamine: float = None,
+        serotonin: float = None,
+        noradrenaline: float = None,
+        acetylcholine: float = None,
+    ) -> dict:
+        """POST /api/neuromod/adjust - Adjust neuromodulator values."""
+        client = await self._get_client()
+        payload = {}
+        if dopamine is not None:
+            payload["dopamine"] = dopamine
+        if serotonin is not None:
+            payload["serotonin"] = serotonin
+        if noradrenaline is not None:
+            payload["noradrenaline"] = noradrenaline
+        if acetylcholine is not None:
+            payload["acetylcholine"] = acetylcholine
+        
+        try:
+            response = await client.post("/api/neuromod/adjust", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain adjust_neuromod failed: {e}")
+            raise SomaBrainError(f"Adjust neuromod failed: {e}")
+    
+    # =========================================================================
+    # SLEEP
+    # =========================================================================
+    
+    async def get_sleep_state(self) -> dict:
+        """GET /api/sleep/state - Get current sleep state."""
+        client = await self._get_client()
+        try:
+            response = await client.get("/api/sleep/state")
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain get_sleep_state failed: {e}")
+            raise SomaBrainError(f"Get sleep state failed: {e}")
+    
+    async def set_sleep_state(self, payload: dict) -> dict:
+        """POST /api/sleep/state - Set sleep state (generic)."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/sleep/state", params={"payload": payload})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain set_sleep_state failed: {e}")
+            raise SomaBrainError(f"Set sleep state failed: {e}")
+    
+    async def brain_sleep_mode(self, payload: dict) -> dict:
+        """POST /api/sleep/brain/mode - Cognitive-level sleep state transition."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/sleep/brain/mode", params={"payload": payload})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain brain_sleep_mode failed: {e}")
+            raise SomaBrainError(f"Brain sleep mode failed: {e}")
+    
+    async def sleep_transition(self, payload: dict) -> dict:
+        """POST /api/sleep/transition - Transition based on trigger."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/sleep/transition", params={"payload": payload})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain sleep_transition failed: {e}")
+            raise SomaBrainError(f"Sleep transition failed: {e}")
+    
+    # =========================================================================
+    # CONTEXT / ADAPTATION
+    # =========================================================================
+    
+    async def get_adaptation_state(self, tenant_id: str = None) -> dict:
+        """GET /api/context/adaptation/state - Get adaptation weights."""
+        client = await self._get_client()
+        params = {}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        
+        try:
+            response = await client.get("/api/context/adaptation/state", params=params)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain get_adaptation_state failed: {e}")
+            raise SomaBrainError(f"Get adaptation state failed: {e}")
+    
+    async def adaptation_reset(self, payload: dict) -> dict:
+        """POST /api/context/adaptation/reset - Reset adaptation to defaults."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/context/adaptation/reset", params={"payload": payload})
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
             logger.error(f"SomaBrain adaptation_reset failed: {e}")
-            raise SomaBrainError(f"Failed to reset adaptation: {e}")
+            raise SomaBrainError(f"Adaptation reset failed: {e}")
+    
+    async def context_evaluate(self, payload: dict) -> dict:
+        """POST /api/context/evaluate - Evaluate context and return prompt with memories."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/context/evaluate", params={"payload": payload})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain context_evaluate failed: {e}")
+            raise SomaBrainError(f"Context evaluate failed: {e}")
+    
+    async def context_feedback(self, payload: dict) -> dict:
+        """POST /api/context/feedback - Record feedback for learning adaptation."""
+        client = await self._get_client()
+        try:
+            response = await client.post("/api/context/feedback", params={"payload": payload})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain context_feedback failed: {e}")
+            raise SomaBrainError(f"Context feedback failed: {e}")
+    
+    # =========================================================================
+    # CONFIG
+    # =========================================================================
+    
+    async def get_config(self) -> dict:
+        """GET /api/config/ - Get current configuration for tenant."""
+        client = await self._get_client()
+        try:
+            response = await client.get("/api/config/")
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"SomaBrain get_config failed: {e}")
+            raise SomaBrainError(f"Get config failed: {e}")
 
 
-class SomaBrainError(Exception):
-    """SomaBrain API error."""
-    pass
+# =========================================================================
+# SINGLETON
+# =========================================================================
 
-
-# Singleton instance
-_somabrain_client: Optional[SomaBrainClient] = None
+_client: Optional[SomaBrainClient] = None
 
 
 def get_somabrain_client() -> SomaBrainClient:
-    """Get the SomaBrain client singleton."""
-    global _somabrain_client
-    if _somabrain_client is None:
-        _somabrain_client = SomaBrainClient()
-    return _somabrain_client
+    """Get singleton SomaBrain client instance."""
+    global _client
+    if _client is None:
+        _client = SomaBrainClient()
+    return _client
