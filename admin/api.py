@@ -209,6 +209,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/plugins", plugins_router)
 
+    # Backup (Disaster recovery)
+    from admin.backup.api import router as backup_router
+
+    api.add_router("/backup", backup_router)
+
     return api
 
 
