@@ -339,6 +339,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/secrets", secrets_router)
 
+    # Scheduler (Job scheduling)
+    from admin.scheduler.api import router as scheduler_router
+
+    safe_add_router("/scheduler", scheduler_router)
+
     return api
 
 
