@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -11,7 +12,6 @@ from admin.core.observability.metrics import (
     MetricsTimer,
     set_health_status,
 )
-import os
 
 try:
     import httpx  # type: ignore

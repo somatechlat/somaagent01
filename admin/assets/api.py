@@ -22,7 +22,7 @@ from ninja import File, Router, UploadedFile
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, NotFoundError
+from admin.common.exceptions import BadRequestError
 
 router = Router(tags=["assets"])
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ MAX_ASSET_SIZE = 50 * 1024 * 1024  # 50MB
 
 class AssetUploadResponse(BaseModel):
     """Asset upload response."""
+
     asset_id: str
     content_hash: str
     size_bytes: int
@@ -53,6 +54,7 @@ class AssetUploadResponse(BaseModel):
 
 class AssetMetadata(BaseModel):
     """Asset metadata."""
+
     asset_id: str
     content_hash: str
     size_bytes: int
@@ -65,6 +67,7 @@ class AssetMetadata(BaseModel):
 
 class AssetListResponse(BaseModel):
     """Asset list."""
+
     assets: list[AssetMetadata]
     total: int
     next_cursor: Optional[str] = None
@@ -72,6 +75,7 @@ class AssetListResponse(BaseModel):
 
 class ProvenanceRecord(BaseModel):
     """Provenance record for an asset."""
+
     record_id: str
     asset_id: str
     action: str  # created, modified, accessed, deleted
@@ -83,6 +87,7 @@ class ProvenanceRecord(BaseModel):
 
 class ProvenanceChainResponse(BaseModel):
     """Full provenance chain."""
+
     asset_id: str
     records: list[ProvenanceRecord]
     chain_verified: bool
@@ -105,25 +110,25 @@ async def upload_asset(
     tags: Optional[str] = None,
 ) -> AssetUploadResponse:
     """Upload an asset to storage.
-    
+
     Per Phase 7.2: Asset storage
-    
+
     PhD Dev: Content-addressable storage using SHA-256 hash.
     Security Auditor: Size validation, content type checks.
     """
     # Read file content
     content = await file.aread() if hasattr(file, "aread") else file.read()
-    
+
     if len(content) > MAX_ASSET_SIZE:
         raise BadRequestError(f"File exceeds maximum size of {MAX_ASSET_SIZE // 1024 // 1024}MB")
-    
+
     # Generate content hash (SHA-256)
     content_hash = hashlib.sha256(content).hexdigest()
     asset_id = str(uuid4())
-    
+
     # Store asset (in production: S3 or local storage)
     # await storage.put(content_hash, content)
-    
+
     # Create provenance record
     await _record_provenance(
         asset_id=asset_id,
@@ -133,11 +138,11 @@ async def upload_asset(
             "filename": file.name,
             "content_type": file.content_type,
             "size_bytes": len(content),
-        }
+        },
     )
-    
+
     logger.info(f"Asset uploaded: {asset_id}, hash: {content_hash[:16]}...")
-    
+
     return AssetUploadResponse(
         asset_id=asset_id,
         content_hash=content_hash,
@@ -155,7 +160,7 @@ async def upload_asset(
 )
 async def get_asset(request, asset_id: str) -> dict:
     """Get asset metadata and download URL.
-    
+
     Per Phase 7.2: Asset retrieval
     """
     # Record access
@@ -164,7 +169,7 @@ async def get_asset(request, asset_id: str) -> dict:
         action="accessed",
         actor=str(getattr(request.auth, "sub", "unknown")),
     )
-    
+
     # In production: query from database/storage
     return {
         "asset_id": asset_id,
@@ -204,7 +209,7 @@ async def list_assets(
 )
 async def delete_asset(request, asset_id: str) -> dict:
     """Delete an asset.
-    
+
     Security Auditor: Soft delete with provenance trail.
     """
     await _record_provenance(
@@ -212,7 +217,7 @@ async def delete_asset(request, asset_id: str) -> dict:
         action="deleted",
         actor=str(getattr(request.auth, "sub", "unknown")),
     )
-    
+
     return {
         "asset_id": asset_id,
         "deleted": True,
@@ -233,9 +238,9 @@ async def delete_asset(request, asset_id: str) -> dict:
 )
 async def get_provenance(request, asset_id: str) -> ProvenanceChainResponse:
     """Get full provenance chain for an asset.
-    
+
     Per Phase 7.2: ProvenanceRecorder
-    
+
     PhD Dev: Immutable provenance chain for audit compliance.
     """
     # In production: query from immutable provenance store
@@ -248,7 +253,7 @@ async def get_provenance(request, asset_id: str) -> ProvenanceChainResponse:
             timestamp=timezone.now().isoformat(),
         )
     ]
-    
+
     return ProvenanceChainResponse(
         asset_id=asset_id,
         records=records,
@@ -268,7 +273,7 @@ async def add_provenance(
     metadata: Optional[dict] = None,
 ) -> dict:
     """Add a provenance record to an asset.
-    
+
     Used for custom provenance events.
     """
     record = await _record_provenance(
@@ -277,7 +282,7 @@ async def add_provenance(
         actor=str(getattr(request.auth, "sub", "unknown")),
         metadata=metadata,
     )
-    
+
     return {
         "record_id": record["record_id"],
         "asset_id": asset_id,
@@ -293,14 +298,14 @@ async def add_provenance(
 )
 async def verify_asset(request, asset_id: str) -> dict:
     """Verify asset integrity against stored hash.
-    
+
     Security Auditor: Tamper detection.
     """
     # In production:
     # 1. Fetch asset content
     # 2. Compute hash
     # 3. Compare with stored hash
-    
+
     return {
         "asset_id": asset_id,
         "integrity_verified": True,
@@ -322,15 +327,15 @@ async def _record_provenance(
     metadata: Optional[dict] = None,
 ) -> dict:
     """Record a provenance event.
-    
+
     In production: Write to immutable provenance store (append-only).
     """
     record_id = str(uuid4())
-    
+
     # In production: ProvenanceRecord.objects.create(...)
-    
+
     logger.debug(f"Provenance recorded: {asset_id} {action} by {actor}")
-    
+
     return {
         "record_id": record_id,
         "asset_id": asset_id,

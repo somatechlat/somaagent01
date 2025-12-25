@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-#     VectorStoreRepository,
-#     ConversationRepository,
-# )
+# Note: VectorStoreRepository, ConversationRepository commented out
+from admin.core.helpers.memory_replica import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

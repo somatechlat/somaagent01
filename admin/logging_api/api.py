@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class LogEntry(BaseModel):
     """Log entry."""
+
     log_id: str
     timestamp: str
     level: str  # debug, info, warning, error, critical
@@ -61,7 +62,7 @@ async def query_logs(
     limit: int = 100,
 ) -> dict:
     """Query logs.
-    
+
     DevOps: Log search.
     """
     return {
@@ -103,7 +104,7 @@ async def log_stats(
     period: str = "1h",
 ) -> dict:
     """Get log statistics.
-    
+
     DevOps: Log overview.
     """
     return {
@@ -129,7 +130,7 @@ async def error_logs(
     limit: int = 50,
 ) -> dict:
     """Get recent error logs.
-    
+
     DevOps: Error monitoring.
     """
     return {
@@ -155,11 +156,11 @@ async def export_logs(
     format: str = "json",
 ) -> dict:
     """Export logs.
-    
+
     Security Auditor: Audit export.
     """
     export_id = str(uuid4())
-    
+
     return {
         "export_id": export_id,
         "status": "generating",
@@ -179,7 +180,7 @@ async def export_logs(
 )
 async def get_retention(request) -> dict:
     """Get log retention settings.
-    
+
     Security Auditor: Retention policy.
     """
     return {

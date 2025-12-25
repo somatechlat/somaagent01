@@ -12,7 +12,6 @@ File upload, storage, and management.
 from __future__ import annotations
 
 import logging
-import hashlib
 from typing import Optional
 from uuid import uuid4
 
@@ -33,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class FileMetadata(BaseModel):
     """File metadata."""
+
     file_id: str
     filename: str
     content_type: str
@@ -48,6 +48,7 @@ class FileMetadata(BaseModel):
 
 class FileUploadRequest(BaseModel):
     """File upload request."""
+
     filename: str
     content_type: str
     size_bytes: int
@@ -55,6 +56,7 @@ class FileUploadRequest(BaseModel):
 
 class FileUploadResponse(BaseModel):
     """File upload response with presigned URL."""
+
     file_id: str
     upload_url: str
     expires_at: str
@@ -79,13 +81,13 @@ async def request_upload_url(
     tenant_id: str,
 ) -> FileUploadResponse:
     """Request a presigned upload URL.
-    
+
     DevOps: S3 presigned URLs.
     """
     file_id = str(uuid4())
-    
+
     logger.info(f"Upload URL requested: {filename} ({file_id})")
-    
+
     return FileUploadResponse(
         file_id=file_id,
         upload_url=f"https://storage.example.com/upload/{file_id}",
@@ -104,11 +106,11 @@ async def confirm_upload(
     checksum_sha256: str,
 ) -> dict:
     """Confirm file upload completed.
-    
+
     Security Auditor: Checksum verification.
     """
     logger.info(f"Upload confirmed: {file_id}")
-    
+
     return {
         "file_id": file_id,
         "confirmed": True,
@@ -133,7 +135,7 @@ async def list_files(
     limit: int = 50,
 ) -> dict:
     """List files.
-    
+
     PM: File browser.
     """
     return {
@@ -171,7 +173,7 @@ async def get_file(request, file_id: str) -> FileMetadata:
 async def delete_file(request, file_id: str) -> dict:
     """Delete a file."""
     logger.warning(f"File deleted: {file_id}")
-    
+
     return {
         "file_id": file_id,
         "deleted": True,
@@ -194,7 +196,7 @@ async def get_download_url(
     expires_minutes: int = 60,
 ) -> dict:
     """Get presigned download URL.
-    
+
     DevOps: S3 presigned download.
     """
     return {
@@ -221,7 +223,7 @@ async def share_file(
     permission: str = "read",  # read, write
 ) -> dict:
     """Share file with users.
-    
+
     PM: Collaboration.
     """
     return {
@@ -242,7 +244,7 @@ async def make_public(
     expires_hours: Optional[int] = None,
 ) -> dict:
     """Make file publicly accessible.
-    
+
     Security Auditor: Public access control.
     """
     return {
@@ -264,11 +266,11 @@ async def make_public(
 )
 async def scan_file(request, file_id: str) -> dict:
     """Trigger malware scan.
-    
+
     Security Auditor: File security.
     """
     scan_id = str(uuid4())
-    
+
     return {
         "file_id": file_id,
         "scan_id": scan_id,

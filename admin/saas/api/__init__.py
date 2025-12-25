@@ -11,10 +11,10 @@ from .dashboard import router as dashboard_router
 from .features import router as features_router
 from .health import router as health_router
 from .settings import router as settings_router
+from .tenant_agents import router as tenant_agents_router
 from .tenants import router as tenants_router
 from .tiers import router as tiers_router
 from .users import router as users_router
-from .tenant_agents import router as tenant_agents_router
 
 # Main SAAS router - mounts all sub-routers
 router = Router(tags=["SAAS Platform"])
@@ -34,4 +34,3 @@ router.add_router("/admin", users_router, tags=["Tenant Users"])
 router.add_router("/admin", tenant_agents_router, tags=["Tenant Agents"])
 
 __all__ = ["router"]
-

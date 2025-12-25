@@ -17,7 +17,6 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, List
 
-from ninja import Router
 from prometheus_client import make_asgi_app
 
 from .base_service import BaseSomaService

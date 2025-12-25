@@ -22,8 +22,6 @@ from typing import Any, Dict, List
 
 import httpx
 
-import os
-
 
 def _get_gateway_base() -> str:
     """Get gateway base URL. Fails fast if not configured."""

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Prompt(BaseModel):
     """Prompt template."""
+
     prompt_id: str
     name: str
     description: Optional[str] = None
@@ -46,6 +47,7 @@ class Prompt(BaseModel):
 
 class PromptVersion(BaseModel):
     """Prompt version."""
+
     version_id: str
     prompt_id: str
     version: int
@@ -56,6 +58,7 @@ class PromptVersion(BaseModel):
 
 class RenderedPrompt(BaseModel):
     """Rendered prompt."""
+
     prompt_id: str
     template: str
     rendered: str
@@ -79,7 +82,7 @@ async def list_prompts(
     limit: int = 50,
 ) -> dict:
     """List prompt templates.
-    
+
     PM: Prompt library.
     """
     return {
@@ -102,17 +105,18 @@ async def create_prompt(
     description: Optional[str] = None,
 ) -> Prompt:
     """Create a new prompt template.
-    
+
     PhD Dev: Prompt design.
     """
     prompt_id = str(uuid4())
-    
+
     # Extract variables from template ({{variable}})
     import re
-    variables = re.findall(r'\{\{(\w+)\}\}', template)
-    
+
+    variables = re.findall(r"\{\{(\w+)\}\}", template)
+
     logger.info(f"Prompt created: {name} ({prompt_id})")
-    
+
     return Prompt(
         prompt_id=prompt_id,
         name=name,
@@ -159,7 +163,7 @@ async def update_prompt(
     is_active: Optional[bool] = None,
 ) -> dict:
     """Update prompt template (creates new version).
-    
+
     PhD Dev: Prompt iteration.
     """
     return {
@@ -177,7 +181,7 @@ async def update_prompt(
 async def delete_prompt(request, prompt_id: str) -> dict:
     """Delete a prompt template."""
     logger.warning(f"Prompt deleted: {prompt_id}")
-    
+
     return {
         "prompt_id": prompt_id,
         "deleted": True,
@@ -201,15 +205,15 @@ async def render_prompt(
     variables: dict,
 ) -> RenderedPrompt:
     """Render a prompt with variables.
-    
+
     PhD Dev: Prompt execution.
     """
     template = "Hello {{name}}!"
     rendered = template
-    
+
     for key, value in variables.items():
         rendered = rendered.replace(f"{{{{{key}}}}}", str(value))
-    
+
     return RenderedPrompt(
         prompt_id=prompt_id,
         template=template,
@@ -229,14 +233,14 @@ async def preview_render(
     variables: dict,
 ) -> dict:
     """Preview prompt rendering without saving.
-    
+
     QA: Prompt testing.
     """
     rendered = template
-    
+
     for key, value in variables.items():
         rendered = rendered.replace(f"{{{{{key}}}}}", str(value))
-    
+
     return {
         "template": template,
         "rendered": rendered,
@@ -259,7 +263,7 @@ async def list_versions(
     prompt_id: str,
 ) -> dict:
     """List prompt versions.
-    
+
     PM: Version history.
     """
     return {
@@ -281,7 +285,7 @@ async def rollback_version(
 ) -> dict:
     """Rollback to a previous version."""
     logger.info(f"Prompt rollback: {prompt_id} to v{version}")
-    
+
     return {
         "prompt_id": prompt_id,
         "rolled_back_to": version,
@@ -300,7 +304,7 @@ async def rollback_version(
 )
 async def list_categories(request) -> dict:
     """List prompt categories.
-    
+
     PM: Organization.
     """
     return {

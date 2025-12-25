@@ -29,8 +29,8 @@ router = Router()
 # API KEYS
 # =============================================================================
 
-import secrets
 import hashlib
+import secrets
 from datetime import timedelta
 from uuid import uuid4
 
@@ -39,24 +39,27 @@ from django.utils import timezone
 
 class ApiKey:
     """API Key model - should be moved to models.py in production."""
+
     # This is a placeholder - real implementation would use Django model
     _keys: dict = {}  # In-memory store for demo
 
     @classmethod
-    def create(cls, name: str, tenant_id: Optional[str] = None, expires_in_days: Optional[int] = None):
+    def create(
+        cls, name: str, tenant_id: Optional[str] = None, expires_in_days: Optional[int] = None
+    ):
         """Create a new API key."""
         # Generate cryptographically secure key (32 bytes = 256 bits)
         raw_key = secrets.token_urlsafe(32)
         prefix = raw_key[:8]  # First 8 chars for identification
-        
+
         # Hash the key for storage (never store plaintext)
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        
+
         key_id = str(uuid4())
         expires_at = None
         if expires_in_days:
             expires_at = timezone.now() + timedelta(days=expires_in_days)
-        
+
         cls._keys[key_id] = {
             "id": key_id,
             "name": name,
@@ -67,7 +70,7 @@ class ApiKey:
             "expires_at": expires_at,
             "last_used": None,
         }
-        
+
         return key_id, raw_key, prefix
 
 
@@ -78,15 +81,17 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
     for key_id, key_data in ApiKey._keys.items():
         if tenant_id and key_data.get("tenant_id") != tenant_id:
             continue
-        keys.append(ApiKeyOut(
-            id=key_id,
-            name=key_data["name"],
-            prefix=key_data["prefix"],
-            tenant_id=key_data.get("tenant_id"),
-            created_at=key_data["created_at"],
-            last_used=key_data.get("last_used"),
-            expires_at=key_data.get("expires_at"),
-        ))
+        keys.append(
+            ApiKeyOut(
+                id=key_id,
+                name=key_data["name"],
+                prefix=key_data["prefix"],
+                tenant_id=key_data.get("tenant_id"),
+                created_at=key_data["created_at"],
+                last_used=key_data.get("last_used"),
+                expires_at=key_data.get("expires_at"),
+            )
+        )
     return keys
 
 
@@ -94,7 +99,7 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
 @transaction.atomic
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key.
-    
+
     VIBE COMPLIANT - Real cryptographic key generation.
     Returns plaintext key ONCE only - must be saved by client.
     """
@@ -103,7 +108,7 @@ def create_api_key(request, payload: ApiKeyCreate):
         tenant_id=payload.tenant_id,
         expires_in_days=payload.expires_in_days,
     )
-    
+
     # Return the full key ONCE - it cannot be retrieved again
     return {
         "id": key_id,

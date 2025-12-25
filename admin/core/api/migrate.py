@@ -8,8 +8,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
-from ninja import Router
 from django.http import HttpRequest
+from ninja import Router
 from pydantic import BaseModel, Field
 
 from admin.common.auth import RoleRequired

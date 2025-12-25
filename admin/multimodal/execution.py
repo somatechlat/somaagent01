@@ -42,6 +42,7 @@ MERMAID_CLI_URL = getattr(settings, "MERMAID_CLI_URL", "http://localhost:9300")
 
 class ImageGenerationRequest(BaseModel):
     """DALL-E image generation request."""
+
     prompt: str
     size: str = "1024x1024"  # 256x256, 512x512, 1024x1024
     quality: str = "standard"  # standard, hd
@@ -50,6 +51,7 @@ class ImageGenerationRequest(BaseModel):
 
 class ImageGenerationResponse(BaseModel):
     """Image generation response."""
+
     image_id: str
     url: str
     prompt: str
@@ -59,6 +61,7 @@ class ImageGenerationResponse(BaseModel):
 
 class DiagramRequest(BaseModel):
     """Mermaid diagram request."""
+
     code: str
     format: str = "svg"  # svg, png
     theme: str = "default"  # default, dark, forest, neutral
@@ -66,6 +69,7 @@ class DiagramRequest(BaseModel):
 
 class DiagramResponse(BaseModel):
     """Diagram response."""
+
     diagram_id: str
     format: str
     url: str
@@ -74,6 +78,7 @@ class DiagramResponse(BaseModel):
 
 class ScreenshotRequest(BaseModel):
     """Webpage screenshot request."""
+
     url: str
     width: int = 1920
     height: int = 1080
@@ -83,6 +88,7 @@ class ScreenshotRequest(BaseModel):
 
 class ScreenshotResponse(BaseModel):
     """Screenshot response."""
+
     screenshot_id: str
     url: str
     format: str
@@ -93,6 +99,7 @@ class ScreenshotResponse(BaseModel):
 
 class DAGNode(BaseModel):
     """DAG execution node."""
+
     node_id: str
     operation: str  # generate_image, render_diagram, screenshot, custom
     input: dict
@@ -101,12 +108,14 @@ class DAGNode(BaseModel):
 
 class DAGRequest(BaseModel):
     """DAG execution request."""
+
     nodes: list[DAGNode]
     parallel: bool = True
 
 
 class DAGNodeResult(BaseModel):
     """Single node execution result."""
+
     node_id: str
     status: str  # pending, running, completed, failed
     output: Optional[dict] = None
@@ -116,6 +125,7 @@ class DAGNodeResult(BaseModel):
 
 class DAGResponse(BaseModel):
     """DAG execution response."""
+
     dag_id: str
     status: str  # pending, running, completed, failed
     nodes: list[DAGNodeResult]
@@ -135,21 +145,21 @@ class DAGResponse(BaseModel):
 )
 async def generate_image(request, payload: ImageGenerationRequest) -> ImageGenerationResponse:
     """Generate image using OpenAI DALL-E.
-    
+
     Per Phase 7.3: OpenAI DALL-E adapter
-    
+
     ML Eng: High-quality image generation with prompt optimization.
     """
     import httpx
-    
+
     if not OPENAI_API_KEY:
         raise ServiceUnavailableError("openai", "OpenAI API key not configured")
-    
+
     if len(payload.prompt) > 4000:
         raise BadRequestError("Prompt exceeds maximum length of 4000 characters")
-    
+
     image_id = str(uuid4())
-    
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -164,11 +174,11 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
                     "n": 1,
                 },
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 image_data = data["data"][0]
-                
+
                 return ImageGenerationResponse(
                     image_id=image_id,
                     url=image_data.get("url", ""),
@@ -179,7 +189,7 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
             else:
                 logger.error(f"DALL-E error: {response.status_code}")
                 raise ServiceUnavailableError("openai", f"DALL-E error: {response.status_code}")
-                
+
     except httpx.HTTPError as e:
         logger.error(f"OpenAI connection error: {e}")
         raise ServiceUnavailableError("openai", "OpenAI service unavailable")
@@ -198,16 +208,16 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
 )
 async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
     """Render Mermaid diagram to image.
-    
+
     Per Phase 7.3: Mermaid diagram adapter
-    
+
     PhD Dev: Convert Mermaid code to visual diagrams.
     """
+
     import httpx
-    import base64
-    
+
     diagram_id = str(uuid4())
-    
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
@@ -218,7 +228,7 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
                     "theme": payload.theme,
                 },
             )
-            
+
             if response.status_code == 200:
                 # Store the diagram and return URL
                 return DiagramResponse(
@@ -229,7 +239,7 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
                 )
             else:
                 raise ServiceUnavailableError("mermaid", "Mermaid rendering failed")
-                
+
     except httpx.HTTPError:
         # Fallback: return pre-rendered placeholder
         logger.warning("Mermaid CLI unavailable, using fallback")
@@ -254,9 +264,9 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
 )
 async def capture_screenshot(request, payload: ScreenshotRequest) -> ScreenshotResponse:
     """Capture screenshot of a webpage using Playwright.
-    
+
     Per Phase 7.3: Playwright screenshot adapter
-    
+
     DevOps: Headless browser automation for screenshots.
     """
     # In production: use Playwright service
@@ -266,9 +276,9 @@ async def capture_screenshot(request, payload: ScreenshotRequest) -> ScreenshotR
     #     await page.goto(payload.url)
     #     screenshot = await page.screenshot(full_page=payload.full_page)
     #     await browser.close()
-    
+
     screenshot_id = str(uuid4())
-    
+
     return ScreenshotResponse(
         screenshot_id=screenshot_id,
         url=f"/api/v2/multimodal/screenshots/{screenshot_id}",
@@ -292,25 +302,25 @@ async def capture_screenshot(request, payload: ScreenshotRequest) -> ScreenshotR
 )
 async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
     """Execute a DAG of multimodal operations.
-    
+
     Per Phase 7.3: DAG execution engine
-    
+
     PhD Dev: Parallel execution with dependency resolution.
     """
     import asyncio
     import time
-    
+
     start = time.time()
     dag_id = str(uuid4())
-    
+
     # Build dependency graph
     node_map = {node.node_id: node for node in payload.nodes}
     results: dict[str, DAGNodeResult] = {}
-    
+
     async def execute_node(node: DAGNode) -> DAGNodeResult:
         """Execute a single DAG node."""
         node_start = time.time()
-        
+
         try:
             # Wait for dependencies
             if node.depends_on:
@@ -321,7 +331,7 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
                             status="failed",
                             error=f"Dependency {dep_id} failed",
                         )
-            
+
             # Execute based on operation type
             output = {}
             if node.operation == "generate_image":
@@ -332,14 +342,14 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
                 output = {"type": "screenshot", "status": "placeholder"}
             else:
                 output = {"type": "custom", "input": node.input}
-            
+
             return DAGNodeResult(
                 node_id=node.node_id,
                 status="completed",
                 output=output,
                 duration_ms=(time.time() - node_start) * 1000,
             )
-            
+
         except Exception as e:
             return DAGNodeResult(
                 node_id=node.node_id,
@@ -347,7 +357,7 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
                 error=str(e),
                 duration_ms=(time.time() - node_start) * 1000,
             )
-    
+
     # Execute nodes (parallel if enabled)
     if payload.parallel:
         tasks = [execute_node(node) for node in payload.nodes]
@@ -358,13 +368,13 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
             result = await execute_node(node)
             results[node.node_id] = result
             node_results.append(result)
-    
+
     total_duration = (time.time() - start) * 1000
-    
+
     # Determine overall status
     statuses = [r.status for r in node_results]
     overall = "completed" if "failed" not in statuses else "failed"
-    
+
     return DAGResponse(
         dag_id=dag_id,
         status=overall,

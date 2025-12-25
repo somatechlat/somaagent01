@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from admin.agents.services.agentiq_governor import GovernorDecision, TurnContext

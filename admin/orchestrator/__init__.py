@@ -15,9 +15,10 @@ The package follows the VIBE CODING RULES – no placeholders, real
 implementations only, and full type‑checked configuration.
 """
 
-from .config import CentralizedConfig, load_config
 from .cache_sync_service import CacheSyncService
+from .config import CentralizedConfig, load_config
 from .health_monitor import UnifiedHealthMonitor
+
 # from .main import app, main, run_orchestrator  # REMOVED TO PREVENT CIRCULAR DJANGO POPULATION
 from .orchestrator import SomaOrchestrator
 from .service_registry import ServiceDefinition, ServiceRegistry

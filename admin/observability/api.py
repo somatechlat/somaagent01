@@ -14,9 +14,7 @@ from __future__ import annotations
 import logging
 import time
 from typing import Optional
-from uuid import uuid4
 
-from django.conf import settings
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
@@ -48,6 +46,7 @@ _metrics = {
 
 class MetricValue(BaseModel):
     """Single metric."""
+
     name: str
     value: float
     labels: Optional[dict] = None
@@ -56,12 +55,14 @@ class MetricValue(BaseModel):
 
 class MetricsResponse(BaseModel):
     """Prometheus metrics."""
+
     metrics: list[MetricValue]
     format: str = "prometheus"
 
 
 class TraceSpan(BaseModel):
     """OpenTelemetry span."""
+
     trace_id: str
     span_id: str
     parent_span_id: Optional[str] = None
@@ -75,12 +76,14 @@ class TraceSpan(BaseModel):
 
 class TracesResponse(BaseModel):
     """Traces response."""
+
     traces: list[TraceSpan]
     total: int
 
 
 class HealthCheckResult(BaseModel):
     """Individual health check."""
+
     name: str
     status: str  # healthy, degraded, down
     latency_ms: Optional[float] = None
@@ -89,6 +92,7 @@ class HealthCheckResult(BaseModel):
 
 class ReadinessResponse(BaseModel):
     """Kubernetes readiness."""
+
     ready: bool
     checks: list[HealthCheckResult]
     timestamp: str
@@ -96,6 +100,7 @@ class ReadinessResponse(BaseModel):
 
 class LivenessResponse(BaseModel):
     """Kubernetes liveness."""
+
     alive: bool
     uptime_seconds: float
     timestamp: str
@@ -112,39 +117,39 @@ class LivenessResponse(BaseModel):
 )
 async def get_metrics(request) -> str:
     """Get Prometheus-formatted metrics.
-    
+
     Per Phase 7.6: Prometheus metrics on all services.
-    
+
     DevOps: Standard Prometheus exposition format.
     """
     # Build Prometheus exposition format
     lines = []
-    
+
     # HTTP requests
     lines.append("# HELP http_requests_total Total HTTP requests")
     lines.append("# TYPE http_requests_total counter")
     lines.append(f"http_requests_total {_metrics['http_requests_total']}")
-    
+
     # Active connections
     lines.append("# HELP active_connections Current active connections")
     lines.append("# TYPE active_connections gauge")
     lines.append(f"active_connections {_metrics['active_connections']}")
-    
+
     # Memory operations
     lines.append("# HELP memory_operations_total Total memory operations")
     lines.append("# TYPE memory_operations_total counter")
     lines.append(f"memory_operations_total {_metrics['memory_operations_total']}")
-    
+
     # Cognitive operations
     lines.append("# HELP cognitive_operations_total Total cognitive operations")
     lines.append("# TYPE cognitive_operations_total counter")
     lines.append(f"cognitive_operations_total {_metrics['cognitive_operations_total']}")
-    
+
     # Workflow executions
     lines.append("# HELP workflow_executions_total Total workflow executions")
     lines.append("# TYPE workflow_executions_total counter")
     lines.append(f"workflow_executions_total {_metrics['workflow_executions_total']}")
-    
+
     return "\n".join(lines)
 
 
@@ -155,19 +160,35 @@ async def get_metrics(request) -> str:
 )
 async def get_metrics_json(request) -> MetricsResponse:
     """Get metrics in JSON format.
-    
+
     Alternative to Prometheus format for dashboard integration.
     """
     now = timezone.now().isoformat()
-    
+
     metrics = [
-        MetricValue(name="http_requests_total", value=float(_metrics["http_requests_total"]), timestamp=now),
-        MetricValue(name="active_connections", value=float(_metrics["active_connections"]), timestamp=now),
-        MetricValue(name="memory_operations_total", value=float(_metrics["memory_operations_total"]), timestamp=now),
-        MetricValue(name="cognitive_operations_total", value=float(_metrics["cognitive_operations_total"]), timestamp=now),
-        MetricValue(name="workflow_executions_total", value=float(_metrics["workflow_executions_total"]), timestamp=now),
+        MetricValue(
+            name="http_requests_total", value=float(_metrics["http_requests_total"]), timestamp=now
+        ),
+        MetricValue(
+            name="active_connections", value=float(_metrics["active_connections"]), timestamp=now
+        ),
+        MetricValue(
+            name="memory_operations_total",
+            value=float(_metrics["memory_operations_total"]),
+            timestamp=now,
+        ),
+        MetricValue(
+            name="cognitive_operations_total",
+            value=float(_metrics["cognitive_operations_total"]),
+            timestamp=now,
+        ),
+        MetricValue(
+            name="workflow_executions_total",
+            value=float(_metrics["workflow_executions_total"]),
+            timestamp=now,
+        ),
     ]
-    
+
     return MetricsResponse(metrics=metrics)
 
 
@@ -188,9 +209,9 @@ async def get_traces(
     service: Optional[str] = None,
 ) -> TracesResponse:
     """Get recent OpenTelemetry traces.
-    
+
     Per Phase 7.6: OpenTelemetry spans.
-    
+
     In production: Query Jaeger/Tempo backend.
     """
     # Placeholder - in production connects to tracing backend
@@ -226,50 +247,59 @@ async def get_trace(request, trace_id: str) -> dict:
 )
 async def readiness(request) -> ReadinessResponse:
     """Kubernetes readiness check.
-    
+
     DevOps: Returns 200 if ready to serve traffic.
     """
     import httpx
-    
+
     checks = []
     all_healthy = True
-    
+
     # Check database
     try:
         from django.db import connection
+
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-        checks.append(HealthCheckResult(
-            name="database",
-            status="healthy",
-            latency_ms=1.0,
-        ))
+        checks.append(
+            HealthCheckResult(
+                name="database",
+                status="healthy",
+                latency_ms=1.0,
+            )
+        )
     except Exception as e:
         all_healthy = False
-        checks.append(HealthCheckResult(
-            name="database",
-            status="down",
-            message=str(e),
-        ))
-    
+        checks.append(
+            HealthCheckResult(
+                name="database",
+                status="down",
+                message=str(e),
+            )
+        )
+
     # Check Redis
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
             start = time.time()
             response = await client.get("http://localhost:20379/")
-        checks.append(HealthCheckResult(
-            name="redis",
-            status="healthy",
-            latency_ms=(time.time() - start) * 1000,
-        ))
+        checks.append(
+            HealthCheckResult(
+                name="redis",
+                status="healthy",
+                latency_ms=(time.time() - start) * 1000,
+            )
+        )
     except Exception:
         # Redis not required for readiness
-        checks.append(HealthCheckResult(
-            name="redis",
-            status="degraded",
-            message="Redis unavailable but not blocking",
-        ))
-    
+        checks.append(
+            HealthCheckResult(
+                name="redis",
+                status="degraded",
+                message="Redis unavailable but not blocking",
+            )
+        )
+
     return ReadinessResponse(
         ready=all_healthy,
         checks=checks,
@@ -284,17 +314,17 @@ async def readiness(request) -> ReadinessResponse:
 )
 async def liveness(request) -> LivenessResponse:
     """Kubernetes liveness check.
-    
+
     DevOps: Returns 200 if process is alive.
     """
     import os
-    
+
     # Get process uptime
     try:
         uptime = time.time() - os.path.getctime("/proc/self")
     except Exception:
         uptime = 0.0
-    
+
     return LivenessResponse(
         alive=True,
         uptime_seconds=uptime,
@@ -314,7 +344,7 @@ async def liveness(request) -> LivenessResponse:
 )
 async def list_dashboards(request) -> dict:
     """List available Grafana dashboards.
-    
+
     Per Phase 7.6: Grafana dashboards.
     """
     return {
@@ -350,12 +380,12 @@ async def record_metric(
     labels: Optional[dict] = None,
 ) -> dict:
     """Record a custom metric.
-    
+
     Used by services to push metrics.
     """
     # In production: push to Prometheus Pushgateway
     logger.debug(f"Metric recorded: {name}={value}")
-    
+
     return {
         "recorded": True,
         "name": name,

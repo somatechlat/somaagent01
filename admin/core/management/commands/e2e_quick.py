@@ -17,8 +17,6 @@ from typing import Optional
 
 import httpx
 
-import os
-
 
 def _get_base_url() -> str:
     """Get base URL from args or config. Fails fast if not configured."""

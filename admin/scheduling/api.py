@@ -42,6 +42,7 @@ TASK_QUEUE = "soma-scheduling"
 
 class ScheduledWorkflow(BaseModel):
     """Scheduled Temporal workflow."""
+
     workflow_id: str
     name: str
     workflow_type: str  # Temporal workflow name
@@ -55,6 +56,7 @@ class ScheduledWorkflow(BaseModel):
 
 class WorkflowExecution(BaseModel):
     """Temporal workflow execution."""
+
     run_id: str
     workflow_id: str
     workflow_type: str
@@ -68,6 +70,7 @@ class WorkflowExecution(BaseModel):
 
 class WorkflowTask(BaseModel):
     """Temporal activity/task."""
+
     task_id: str
     workflow_id: str
     activity_type: str
@@ -91,7 +94,7 @@ async def list_scheduled_workflows(
     enabled_only: bool = False,
 ) -> dict:
     """List all scheduled Temporal workflows.
-    
+
     DevOps: View scheduled workflows.
     """
     return {
@@ -138,12 +141,12 @@ async def create_scheduled_workflow(
     args: Optional[dict] = None,
 ) -> dict:
     """Create a new scheduled Temporal workflow.
-    
+
     DevOps: Schedule recurring workflows.
     PhD Dev: Durable execution.
     """
     workflow_id = f"{workflow_type.lower()}-{uuid4().hex[:8]}"
-    
+
     # In production: Register with Temporal schedules
     # client = await Client.connect(TEMPORAL_HOST)
     # await client.create_schedule(
@@ -157,9 +160,9 @@ async def create_scheduled_workflow(
     #         spec=ScheduleSpec(cron_expressions=[schedule]),
     #     ),
     # )
-    
+
     logger.info(f"Temporal scheduled workflow created: {name} ({workflow_id})")
-    
+
     return {
         "workflow_id": workflow_id,
         "name": name,
@@ -213,7 +216,7 @@ async def update_scheduled_workflow(
 async def delete_scheduled_workflow(request, workflow_id: str) -> dict:
     """Delete a scheduled workflow."""
     logger.info(f"Scheduled workflow deleted: {workflow_id}")
-    
+
     return {
         "workflow_id": workflow_id,
         "deleted": True,
@@ -227,11 +230,11 @@ async def delete_scheduled_workflow(request, workflow_id: str) -> dict:
 )
 async def trigger_workflow_now(request, workflow_id: str) -> dict:
     """Trigger immediate execution of a scheduled workflow.
-    
+
     DevOps: Manual trigger for testing/emergency.
     """
     run_id = str(uuid4())
-    
+
     # In production: Start workflow via Temporal client
     # client = await Client.connect(TEMPORAL_HOST)
     # handle = await client.start_workflow(
@@ -240,9 +243,9 @@ async def trigger_workflow_now(request, workflow_id: str) -> dict:
     #     id=workflow_id,
     #     task_queue=TASK_QUEUE,
     # )
-    
+
     logger.info(f"Workflow triggered manually: {workflow_id}")
-    
+
     return {
         "workflow_id": workflow_id,
         "run_id": run_id,
@@ -293,7 +296,7 @@ async def list_workflow_executions(
     limit: int = 20,
 ) -> dict:
     """List execution history for a workflow.
-    
+
     QA: Monitor workflow success/failure rates.
     """
     return {
@@ -330,7 +333,7 @@ async def get_execution(request, run_id: str) -> WorkflowExecution:
 async def cancel_execution(request, run_id: str) -> dict:
     """Cancel a running workflow execution."""
     logger.warning(f"Workflow execution cancelled: {run_id}")
-    
+
     return {
         "run_id": run_id,
         "cancelled": True,
@@ -348,11 +351,11 @@ async def terminate_execution(
     reason: str = "Terminated by admin",
 ) -> dict:
     """Forcefully terminate a workflow execution.
-    
+
     DevOps: Emergency termination.
     """
     logger.warning(f"Workflow execution terminated: {run_id}")
-    
+
     return {
         "run_id": run_id,
         "terminated": True,
@@ -372,7 +375,7 @@ async def terminate_execution(
 )
 async def temporal_cluster_status(request) -> dict:
     """Get Temporal cluster status.
-    
+
     DevOps: Monitor Temporal health.
     """
     return {
@@ -395,7 +398,7 @@ async def temporal_cluster_status(request) -> dict:
 )
 async def list_temporal_workers(request) -> dict:
     """List Temporal workers.
-    
+
     DevOps: Worker pool monitoring.
     """
     return {
@@ -429,7 +432,7 @@ async def list_temporal_workers(request) -> dict:
 )
 async def get_stats(request) -> dict:
     """Get scheduling statistics.
-    
+
     DevOps: Overview metrics.
     """
     return {

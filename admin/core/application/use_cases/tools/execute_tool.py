@@ -8,11 +8,16 @@ This use case coordinates:
 It contains NO infrastructure code - only business logic coordination.
 """
 
+from admin.core.application.ports import (
     EventBusPort,
     ExecutionEnginePort,
     ExecutionLimitsDTO,
     PolicyAdapterPort,
     PolicyRequestDTO,
+)
+from admin.core.application.use_cases.tools.schemas import (
+    ExecuteToolInput,
+    ExecuteToolOutput,
 )
 
 

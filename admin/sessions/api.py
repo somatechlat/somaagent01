@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
@@ -32,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class Session(BaseModel):
     """User session."""
+
     session_id: str
     user_id: str
     created_at: str
@@ -46,6 +46,7 @@ class Session(BaseModel):
 
 class SessionStats(BaseModel):
     """Session statistics."""
+
     active_sessions: int
     sessions_today: int
     unique_users_today: int
@@ -65,7 +66,7 @@ class SessionStats(BaseModel):
 )
 async def get_current_session(request) -> Session:
     """Get current session info.
-    
+
     Security Auditor: Self-inspection.
     """
     return Session(
@@ -85,7 +86,7 @@ async def get_current_session(request) -> Session:
 )
 async def refresh_session(request) -> dict:
     """Refresh current session token.
-    
+
     Security Auditor: Token rotation.
     """
     return {
@@ -102,7 +103,7 @@ async def refresh_session(request) -> dict:
 async def logout_current(request) -> dict:
     """Logout current session."""
     logger.info("User logged out")
-    
+
     return {
         "logged_out": True,
     }
@@ -124,7 +125,7 @@ async def list_user_sessions(
     active_only: bool = True,
 ) -> dict:
     """List all sessions for a user.
-    
+
     Security Auditor: Multi-device awareness.
     """
     return {
@@ -144,11 +145,11 @@ async def logout_user_everywhere(
     user_id: str,
 ) -> dict:
     """Force logout user from all sessions.
-    
+
     Security Auditor: Account compromise response.
     """
     logger.warning(f"Forced logout for user: {user_id}")
-    
+
     return {
         "user_id": user_id,
         "sessions_terminated": 0,
@@ -171,7 +172,7 @@ async def list_all_sessions(
     limit: int = 100,
 ) -> dict:
     """List all active sessions (admin).
-    
+
     DevOps: Platform-wide session monitoring.
     """
     return {
@@ -190,11 +191,11 @@ async def terminate_session(
     session_id: str,
 ) -> dict:
     """Terminate a specific session.
-    
+
     Security Auditor: Targeted session kill.
     """
     logger.warning(f"Session terminated: {session_id}")
-    
+
     return {
         "session_id": session_id,
         "terminated": True,
@@ -209,7 +210,7 @@ async def terminate_session(
 )
 async def get_session_stats(request) -> SessionStats:
     """Get session statistics.
-    
+
     DevOps: Usage monitoring.
     """
     return SessionStats(
@@ -235,11 +236,11 @@ async def terminate_all_sessions(
     except_current: bool = True,
 ) -> dict:
     """Terminate all sessions (emergency).
-    
+
     Security Auditor: Platform-wide emergency logout.
     """
     logger.critical("EMERGENCY: All sessions terminated")
-    
+
     return {
         "terminated": 0,
         "except_current": except_current,
@@ -256,11 +257,11 @@ async def terminate_by_ip(
     ip_address: str,
 ) -> dict:
     """Terminate all sessions from an IP.
-    
+
     Security Auditor: IP-based threat response.
     """
     logger.warning(f"Sessions terminated for IP: {ip_address}")
-    
+
     return {
         "ip_address": ip_address,
         "terminated": 0,
@@ -279,7 +280,7 @@ async def terminate_by_ip(
 )
 async def get_session_config(request) -> dict:
     """Get session configuration.
-    
+
     DevOps: Session settings.
     """
     return {

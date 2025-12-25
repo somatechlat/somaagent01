@@ -1,9 +1,9 @@
 import importlib
 import importlib.util
 import inspect
+import logging
 import os
 import re
-import logging
 from fnmatch import fnmatch
 from types import ModuleType
 from typing import Any, Type, TypeVar

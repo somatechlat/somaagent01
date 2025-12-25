@@ -5,19 +5,18 @@ Provides Keycloak-based authentication and authorization.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
-import logging
-from typing import Any
 from functools import lru_cache
+from typing import Any
 
 import httpx
+from jose import jwt, JWTError
 from ninja.security import HttpBearer
 from pydantic import BaseModel
-from jose import jwt, JWTError
 
-from admin.common.exceptions import UnauthorizedError, ForbiddenError
-
+from admin.common.exceptions import ForbiddenError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
 

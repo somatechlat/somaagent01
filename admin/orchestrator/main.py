@@ -28,11 +28,12 @@ from django.core.asgi import get_asgi_application
 from ninja import NinjaAPI, Router
 
 from admin.common.exceptions import ServiceError
+
+from .cache_sync_service import CacheSyncService
 from .config import load_config
 from .gateway_service import GatewayService
 from .orchestrator import SomaOrchestrator
 from .unified_memory_service import UnifiedMemoryService
-from .cache_sync_service import CacheSyncService
 
 LOGGER = logging.getLogger(__name__)
 

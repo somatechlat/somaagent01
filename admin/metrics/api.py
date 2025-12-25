@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class Metric(BaseModel):
     """System metric."""
+
     name: str
     type: str  # counter, gauge, histogram
     value: float
@@ -40,6 +41,7 @@ class Metric(BaseModel):
 
 class MetricSeries(BaseModel):
     """Metric time series."""
+
     name: str
     type: str
     values: list[dict]
@@ -56,7 +58,7 @@ class MetricSeries(BaseModel):
 )
 async def prometheus_export(request) -> str:
     """Export metrics in Prometheus format.
-    
+
     DevOps: Prometheus scraping.
     """
     # Prometheus text format
@@ -107,7 +109,7 @@ async def list_metrics(
     category: Optional[str] = None,
 ) -> dict:
     """List available metrics.
-    
+
     DevOps: Metric catalog.
     """
     return {
@@ -137,7 +139,7 @@ async def get_metric(
     step: str = "1m",
 ) -> dict:
     """Get metric values.
-    
+
     DevOps: Metric query.
     """
     return {
@@ -159,7 +161,7 @@ async def record_metric(
     labels: Optional[dict] = None,
 ) -> dict:
     """Record a custom metric.
-    
+
     DevOps: Custom instrumentation.
     """
     return {
@@ -181,7 +183,7 @@ async def record_metric(
 )
 async def system_health(request) -> dict:
     """Get system health metrics.
-    
+
     DevOps: Health overview.
     """
     return {
@@ -203,7 +205,7 @@ async def system_health(request) -> dict:
 )
 async def system_resources(request) -> dict:
     """Get system resource usage.
-    
+
     DevOps: Resource monitoring.
     """
     return {
@@ -232,7 +234,7 @@ async def performance_metrics(
     period: str = "1h",
 ) -> dict:
     """Get performance metrics.
-    
+
     QA: Performance tracking.
     """
     return {
@@ -253,7 +255,7 @@ async def performance_metrics(
 )
 async def endpoint_performance(request) -> dict:
     """Get per-endpoint performance.
-    
+
     QA: Endpoint analysis.
     """
     return {

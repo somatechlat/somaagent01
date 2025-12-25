@@ -252,4 +252,3 @@ class BadRequestError(ApiError):
     ) -> None:
         """Initialize bad request error."""
         super().__init__(message, **kwargs)
-

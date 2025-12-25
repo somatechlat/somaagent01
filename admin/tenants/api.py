@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Tenant(BaseModel):
     """Tenant definition."""
+
     tenant_id: str
     name: str
     slug: str
@@ -45,6 +46,7 @@ class Tenant(BaseModel):
 
 class TenantStats(BaseModel):
     """Tenant statistics."""
+
     total_users: int
     total_agents: int
     total_conversations: int
@@ -54,6 +56,7 @@ class TenantStats(BaseModel):
 
 class TenantInvite(BaseModel):
     """Tenant invitation."""
+
     invite_id: str
     email: str
     role: str
@@ -79,7 +82,7 @@ async def list_tenants(
     limit: int = 50,
 ) -> dict:
     """List all tenants (SAAS Admin).
-    
+
     PM: Platform overview.
     """
     return {
@@ -101,14 +104,14 @@ async def create_tenant(
     plan: str = "trial",
 ) -> Tenant:
     """Create a new tenant.
-    
+
     PM: Tenant onboarding.
     """
     tenant_id = str(uuid4())
     slug = name.lower().replace(" ", "-")
-    
+
     logger.info(f"Tenant created: {name} ({tenant_id})")
-    
+
     return Tenant(
         tenant_id=tenant_id,
         name=name,
@@ -168,11 +171,11 @@ async def update_tenant(
 )
 async def delete_tenant(request, tenant_id: str) -> dict:
     """Delete a tenant (GDPR).
-    
+
     Security Auditor: Complete data deletion.
     """
     logger.critical(f"Tenant deleted: {tenant_id}")
-    
+
     return {
         "tenant_id": tenant_id,
         "deleted": True,
@@ -196,11 +199,11 @@ async def suspend_tenant(
     reason: str,
 ) -> dict:
     """Suspend a tenant.
-    
+
     Security Auditor: Abuse response.
     """
     logger.warning(f"Tenant suspended: {tenant_id}, reason: {reason}")
-    
+
     return {
         "tenant_id": tenant_id,
         "status": "suspended",
@@ -215,7 +218,7 @@ async def suspend_tenant(
 async def activate_tenant(request, tenant_id: str) -> dict:
     """Activate a suspended tenant."""
     logger.info(f"Tenant activated: {tenant_id}")
-    
+
     return {
         "tenant_id": tenant_id,
         "status": "active",
@@ -235,7 +238,7 @@ async def activate_tenant(request, tenant_id: str) -> dict:
 )
 async def get_tenant_stats(request, tenant_id: str) -> TenantStats:
     """Get tenant statistics.
-    
+
     PM: Usage overview.
     """
     return TenantStats(
@@ -254,7 +257,7 @@ async def get_tenant_stats(request, tenant_id: str) -> TenantStats:
 )
 async def get_tenant_limits(request, tenant_id: str) -> dict:
     """Get tenant resource limits.
-    
+
     DevOps: Resource allocation.
     """
     return {
@@ -308,13 +311,13 @@ async def send_invite(
     role: str = "user",
 ) -> dict:
     """Invite user to tenant.
-    
+
     PM: User onboarding.
     """
     invite_id = str(uuid4())
-    
+
     logger.info(f"Invite sent: {email} -> {tenant_id}")
-    
+
     return {
         "invite_id": invite_id,
         "email": email,
@@ -356,11 +359,11 @@ async def upgrade_plan(
     new_plan: str,
 ) -> dict:
     """Upgrade tenant plan.
-    
+
     PM: Plan management.
     """
     logger.info(f"Plan upgraded: {tenant_id} -> {new_plan}")
-    
+
     return {
         "tenant_id": tenant_id,
         "new_plan": new_plan,

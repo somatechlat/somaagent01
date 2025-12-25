@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class VoiceSensor(BaseSensor):
     """Voice sensor for Zero Data Loss.
-    
+
     Captures:
     - Voice input (audio received)
     - Transcription results
@@ -29,10 +29,10 @@ class VoiceSensor(BaseSensor):
     - Speaker changes
     - Voice errors
     """
-    
+
     sensor_name = "voice"
     target_service = "somabrain"
-    
+
     def capture_voice_input(
         self,
         session_id: str,
@@ -52,7 +52,7 @@ class VoiceSensor(BaseSensor):
                 "metadata": metadata or {},
             },
         )
-    
+
     def capture_transcription(
         self,
         session_id: str,
@@ -74,7 +74,7 @@ class VoiceSensor(BaseSensor):
                 "duration_ms": duration_ms,
             },
         )
-    
+
     def capture_tts_output(
         self,
         session_id: str,
@@ -94,7 +94,7 @@ class VoiceSensor(BaseSensor):
                 "duration_ms": duration_ms,
             },
         )
-    
+
     def capture_speaker_change(
         self,
         session_id: str,
@@ -110,7 +110,7 @@ class VoiceSensor(BaseSensor):
                 "speaker_name": speaker_name,
             },
         )
-    
+
     def capture_voice_error(
         self,
         session_id: str,

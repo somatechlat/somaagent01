@@ -16,8 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from functools import cached_property
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import httpx
 from django.conf import settings
@@ -35,7 +34,7 @@ class SomaClientError(Exception):
 
 class SomaBrainClient:
     """Production SomaBrain HTTP client.
-    
+
     Thread-safe singleton pattern for connection pooling.
     Uses Django settings for configuration (VIBE Rule 13/32).
     """
@@ -49,7 +48,7 @@ class SomaBrainClient:
         timeout: float = 30.0,
     ) -> None:
         """Initialize SomaBrain client.
-        
+
         Args:
             base_url: SomaBrain API base URL (defaults to settings)
             timeout: Request timeout in seconds
@@ -61,23 +60,23 @@ class SomaBrainClient:
     @staticmethod
     def _get_base_url() -> str:
         """Get SomaBrain URL from Django settings or environment.
-        
+
         Implements VIBE Rule 32: HYBRID CONFIGURATION STANDARD.
         Prioritizes Django settings, falls back to environment.
         """
         import os
-        
+
         # Try Django settings first
         if hasattr(settings, "SOMABRAIN_URL"):
             return str(settings.SOMABRAIN_URL)
-        
+
         # Fallback to environment variable
         return os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:9696")
 
     @classmethod
     def get(cls) -> "SomaBrainClient":
         """Get or create singleton instance.
-        
+
         Thread-safe singleton pattern for connection pooling.
         """
         if cls._instance is None:
@@ -117,16 +116,16 @@ class SomaBrainClient:
         params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Make HTTP request to SomaBrain.
-        
+
         Args:
             method: HTTP method (GET, POST, PUT, DELETE)
             path: API path (e.g., "/v1/memory/recall")
             json: JSON body for POST/PUT
             params: Query parameters
-            
+
         Returns:
             Response JSON as dict
-            
+
         Raises:
             SomaClientError: On HTTP or connection errors
         """
@@ -165,12 +164,12 @@ class SomaBrainClient:
         namespace: str = "wm",
     ) -> Dict[str, Any]:
         """Store memory in SomaBrain.
-        
+
         Args:
             payload: Memory payload with value, key, tags, importance, novelty
             tenant: Tenant ID
             namespace: Memory namespace (wm=working memory)
-            
+
         Returns:
             Response with coordinate of stored memory
         """
@@ -193,7 +192,7 @@ class SomaBrainClient:
         tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Recall memories from SomaBrain.
-        
+
         Args:
             query: Search query
             top_k: Maximum results to return
@@ -201,7 +200,7 @@ class SomaBrainClient:
             namespace: Memory namespace
             universe: Universe scope
             tags: Tag filters
-            
+
         Returns:
             Response with memory results
         """
@@ -225,11 +224,11 @@ class SomaBrainClient:
         tenant: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Delete memory by coordinate.
-        
+
         Args:
             coordinate: Memory coordinate to delete
             tenant: Tenant ID
-            
+
         Returns:
             Deletion confirmation
         """
@@ -247,10 +246,10 @@ class SomaBrainClient:
         request: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Evaluate context for a conversation turn.
-        
+
         Args:
             request: Context evaluation request with query, session_id, etc.
-            
+
         Returns:
             Context evaluation response with memories and scores
         """
@@ -262,11 +261,11 @@ class SomaBrainClient:
         persona_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get current adaptation state.
-        
+
         Args:
             tenant_id: Tenant ID
             persona_id: Optional persona filter
-            
+
         Returns:
             Adaptation state with weights, history, learning rate
         """
@@ -283,12 +282,12 @@ class SomaBrainClient:
         reset_history: bool = True,
     ) -> Dict[str, Any]:
         """Reset adaptation state to defaults.
-        
+
         Args:
             tenant_id: Tenant ID
             base_lr: Base learning rate override
             reset_history: Whether to clear feedback history
-            
+
         Returns:
             Reset confirmation
         """
@@ -307,11 +306,11 @@ class SomaBrainClient:
         persona_id: Optional[str] = None,
     ) -> Dict[str, float]:
         """Get current neuromodulator state.
-        
+
         Args:
             tenant_id: Tenant ID
             persona_id: Persona filter
-            
+
         Returns:
             Neuromodulator levels (dopamine, serotonin, etc.)
         """
@@ -327,12 +326,12 @@ class SomaBrainClient:
         neuromodulators: Dict[str, float],
     ) -> Dict[str, Any]:
         """Update neuromodulator levels.
-        
+
         Args:
             tenant_id: Tenant ID
             persona_id: Persona ID
             neuromodulators: New neuromodulator levels
-            
+
         Returns:
             Update confirmation
         """
@@ -349,10 +348,10 @@ class SomaBrainClient:
 
     async def get_persona(self, persona_id: str) -> Dict[str, Any]:
         """Get persona by ID.
-        
+
         Args:
             persona_id: Persona ID
-            
+
         Returns:
             Persona data
         """
@@ -364,11 +363,11 @@ class SomaBrainClient:
         persona_data: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Create or update persona.
-        
+
         Args:
             persona_id: Persona ID
             persona_data: Persona data
-            
+
         Returns:
             Created/updated persona
         """
@@ -386,12 +385,12 @@ class SomaBrainClient:
         session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute a cognitive action.
-        
+
         Args:
             task: Task description
             universe: Universe scope
             session_id: Session ID
-            
+
         Returns:
             Action response with results and salience
         """
@@ -414,19 +413,19 @@ class SomaBrainClient:
         trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Transition brain to sleep state.
-        
+
         Args:
             target_state: One of "active", "light", "deep", "freeze"
             ttl_seconds: TTL for auto-revert
             trace_id: Trace ID for logging
-            
+
         Returns:
             Transition confirmation
         """
         valid_states = {"active", "light", "deep", "freeze"}
         if target_state not in valid_states:
             raise ValueError(f"Invalid sleep state: {target_state}. Must be one of {valid_states}")
-        
+
         body: Dict[str, Any] = {"target_state": target_state}
         if ttl_seconds is not None:
             body["ttl_seconds"] = ttl_seconds
@@ -436,7 +435,7 @@ class SomaBrainClient:
 
     async def sleep_status(self) -> Dict[str, Any]:
         """Get current sleep status.
-        
+
         Returns:
             Sleep status with current state and metrics
         """
@@ -444,7 +443,7 @@ class SomaBrainClient:
 
     async def micro_diag(self) -> Dict[str, Any]:
         """Get microcircuit diagnostics (admin mode).
-        
+
         Returns:
             Diagnostic information
         """
@@ -456,7 +455,7 @@ class SomaBrainClient:
 
     async def health_check(self) -> bool:
         """Check if SomaBrain is healthy.
-        
+
         Returns:
             True if healthy, False otherwise
         """
@@ -468,7 +467,7 @@ class SomaBrainClient:
 
     async def health(self) -> Dict[str, Any]:
         """Get health status from SomaBrain.
-        
+
         Returns:
             Health status dict with status and optional details
         """
@@ -486,10 +485,10 @@ class SomaBrainClient:
         persona_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get current model/provider weights.
-        
+
         Args:
             persona_id: Optional persona filter
-            
+
         Returns:
             Weight configuration
         """
@@ -502,11 +501,11 @@ class SomaBrainClient:
         messages: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """Build contextual augmentation for conversation.
-        
+
         Args:
             session_id: Session ID
             messages: Recent messages (last 10 recommended)
-            
+
         Returns:
             Additional context messages to prepend/append
         """
@@ -524,13 +523,13 @@ class SomaBrainClient:
         meta: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Publish reward/feedback signal.
-        
+
         Args:
             session_id: Session ID
             signal: Signal type
             value: Reward value
             meta: Additional metadata
-            
+
         Returns:
             True if published successfully
         """

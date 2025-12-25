@@ -42,7 +42,6 @@ GRANULAR_PERMISSIONS = {
         "platform:manage_features": "Enable/disable features",
         "platform:impersonate": "Impersonate tenant admins",
     },
-    
     # =========================================================================
     # TENANTS
     # =========================================================================
@@ -56,7 +55,6 @@ GRANULAR_PERMISSIONS = {
         "tenant:view_billing": "View billing information",
         "tenant:manage_users": "Manage tenant users",
     },
-    
     # =========================================================================
     # USERS
     # =========================================================================
@@ -71,7 +69,6 @@ GRANULAR_PERMISSIONS = {
         "user:manage_mfa": "Enable/disable MFA",
         "user:view_activity": "View user activity logs",
     },
-    
     # =========================================================================
     # AGENTS
     # =========================================================================
@@ -87,7 +84,6 @@ GRANULAR_PERMISSIONS = {
         "agent:view_logs": "View agent logs",
         "agent:export": "Export agent data",
     },
-    
     # =========================================================================
     # CONVERSATIONS
     # =========================================================================
@@ -101,7 +97,6 @@ GRANULAR_PERMISSIONS = {
         "conversation:export": "Export conversations",
         "conversation:search": "Search conversations",
     },
-    
     # =========================================================================
     # MEMORY
     # =========================================================================
@@ -114,7 +109,6 @@ GRANULAR_PERMISSIONS = {
         "memory:export": "Export memories",
         "memory:configure_retention": "Memory retention settings",
     },
-    
     # =========================================================================
     # TOOLS
     # =========================================================================
@@ -126,7 +120,6 @@ GRANULAR_PERMISSIONS = {
         "tool:delete": "Delete tools",
         "tool:approve": "Approve tool executions",
     },
-    
     # =========================================================================
     # FILES & ASSETS
     # =========================================================================
@@ -136,7 +129,6 @@ GRANULAR_PERMISSIONS = {
         "file:delete": "Delete files",
         "file:share": "Share files",
     },
-    
     # =========================================================================
     # API KEYS
     # =========================================================================
@@ -146,7 +138,6 @@ GRANULAR_PERMISSIONS = {
         "apikey:revoke": "Revoke API keys",
         "apikey:rotate": "Rotate API keys",
     },
-    
     # =========================================================================
     # INTEGRATIONS
     # =========================================================================
@@ -157,7 +148,6 @@ GRANULAR_PERMISSIONS = {
         "integration:delete": "Delete integrations",
         "integration:sync": "Trigger syncs",
     },
-    
     # =========================================================================
     # AUDIT
     # =========================================================================
@@ -166,7 +156,6 @@ GRANULAR_PERMISSIONS = {
         "audit:export": "Export audit logs",
         "audit:configure_retention": "Audit retention",
     },
-    
     # =========================================================================
     # BACKUP
     # =========================================================================
@@ -177,7 +166,6 @@ GRANULAR_PERMISSIONS = {
         "backup:delete": "Delete backups",
         "backup:configure_schedule": "Configure schedules",
     },
-    
     # =========================================================================
     # BILLING
     # =========================================================================
@@ -206,11 +194,18 @@ PREDEFINED_ROLES = {
         "name": "Tenant Administrator",
         "description": "Full tenant management",
         "permissions": [
-            "tenant:read", "tenant:update",
-            "user:*", "agent:*", "conversation:*",
-            "memory:*", "tool:*", "file:*",
-            "apikey:*", "integration:*",
-            "audit:read", "backup:read",
+            "tenant:read",
+            "tenant:update",
+            "user:*",
+            "agent:*",
+            "conversation:*",
+            "memory:*",
+            "tool:*",
+            "file:*",
+            "apikey:*",
+            "integration:*",
+            "audit:read",
+            "backup:read",
             "billing:view_*",
         ],
         "scope": "tenant",
@@ -220,9 +215,14 @@ PREDEFINED_ROLES = {
         "description": "Manage users and agents",
         "permissions": [
             "tenant:read",
-            "user:create", "user:read", "user:update",
-            "agent:*", "conversation:read",
-            "memory:read", "tool:read", "file:*",
+            "user:create",
+            "user:read",
+            "user:update",
+            "agent:*",
+            "conversation:read",
+            "memory:read",
+            "tool:read",
+            "file:*",
         ],
         "scope": "tenant",
     },
@@ -230,12 +230,20 @@ PREDEFINED_ROLES = {
         "name": "Agent Owner",
         "description": "Full control of assigned agents",
         "permissions": [
-            "agent:read", "agent:update", "agent:start", "agent:stop",
-            "agent:configure_personality", "agent:configure_tools",
-            "agent:view_logs", "agent:export",
-            "conversation:*", "memory:*",
-            "tool:read", "tool:execute",
-            "file:upload", "file:read",
+            "agent:read",
+            "agent:update",
+            "agent:start",
+            "agent:stop",
+            "agent:configure_personality",
+            "agent:configure_tools",
+            "agent:view_logs",
+            "agent:export",
+            "conversation:*",
+            "memory:*",
+            "tool:read",
+            "tool:execute",
+            "file:upload",
+            "file:read",
         ],
         "scope": "agent",
     },
@@ -243,11 +251,17 @@ PREDEFINED_ROLES = {
         "name": "Agent Operator",
         "description": "Operate agents, no config changes",
         "permissions": [
-            "agent:read", "agent:start", "agent:stop", "agent:view_logs",
+            "agent:read",
+            "agent:start",
+            "agent:stop",
+            "agent:view_logs",
             "conversation:*",
-            "memory:read", "memory:search",
-            "tool:read", "tool:execute",
-            "file:upload", "file:read",
+            "memory:read",
+            "memory:search",
+            "tool:read",
+            "tool:execute",
+            "file:upload",
+            "file:read",
         ],
         "scope": "agent",
     },
@@ -256,10 +270,13 @@ PREDEFINED_ROLES = {
         "description": "Chat and basic access",
         "permissions": [
             "agent:read",
-            "conversation:create", "conversation:read",
-            "conversation:send_message", "conversation:view_history",
+            "conversation:create",
+            "conversation:read",
+            "conversation:send_message",
+            "conversation:view_history",
             "memory:read",
-            "file:upload", "file:read",
+            "file:upload",
+            "file:read",
         ],
         "scope": "tenant",
     },
@@ -287,8 +304,10 @@ PREDEFINED_ROLES = {
         "name": "Security Auditor",
         "description": "Read-only security access",
         "permissions": [
-            "audit:read", "audit:export",
-            "user:read", "user:view_activity",
+            "audit:read",
+            "audit:export",
+            "user:read",
+            "user:view_activity",
             "apikey:read",
             "backup:read",
         ],
@@ -304,6 +323,7 @@ PREDEFINED_ROLES = {
 
 class GranularPermission(BaseModel):
     """Granular permission."""
+
     permission_id: str  # resource:action
     resource: str
     action: str
@@ -313,6 +333,7 @@ class GranularPermission(BaseModel):
 
 class CustomRole(BaseModel):
     """Custom role definition."""
+
     role_id: str
     name: str
     description: Optional[str] = None
@@ -325,6 +346,7 @@ class CustomRole(BaseModel):
 
 class PermissionGrant(BaseModel):
     """Permission grant to user."""
+
     grant_id: str
     user_id: str
     permission_id: str
@@ -350,15 +372,15 @@ async def list_granular_permissions(
     resource: Optional[str] = None,
 ) -> dict:
     """List all available granular permissions.
-    
+
     Security Auditor: Complete permission inventory.
     """
     permissions = []
-    
+
     for resource_name, perms in GRANULAR_PERMISSIONS.items():
         if resource and resource != resource_name:
             continue
-            
+
         for perm_id, description in perms.items():
             resource_part, action_part = perm_id.split(":", 1)
             permissions.append(
@@ -370,7 +392,7 @@ async def list_granular_permissions(
                     category=resource_name,
                 ).dict()
             )
-    
+
     return {
         "permissions": permissions,
         "total": len(permissions),
@@ -385,17 +407,17 @@ async def list_granular_permissions(
 )
 async def get_permission_matrix(request) -> dict:
     """Get full permission matrix.
-    
+
     PM: Visual matrix for role builder UI.
     """
     matrix = {}
-    
+
     for resource, perms in GRANULAR_PERMISSIONS.items():
         matrix[resource] = {
             "permissions": list(perms.keys()),
             "actions": [p.split(":")[1] for p in perms.keys()],
         }
-    
+
     return {
         "matrix": matrix,
         "resources": list(GRANULAR_PERMISSIONS.keys()),
@@ -414,21 +436,23 @@ async def get_permission_matrix(request) -> dict:
 )
 async def list_predefined_roles(request) -> dict:
     """List all predefined system roles.
-    
+
     PM: Standard role templates.
     """
     roles = []
-    
+
     for role_id, role_data in PREDEFINED_ROLES.items():
-        roles.append({
-            "role_id": role_id,
-            "name": role_data["name"],
-            "description": role_data["description"],
-            "permissions": role_data["permissions"],
-            "scope": role_data["scope"],
-            "is_custom": False,
-        })
-    
+        roles.append(
+            {
+                "role_id": role_id,
+                "name": role_data["name"],
+                "description": role_data["description"],
+                "permissions": role_data["permissions"],
+                "scope": role_data["scope"],
+                "is_custom": False,
+            }
+        )
+
     return {
         "roles": roles,
         "total": len(roles),
@@ -453,27 +477,27 @@ async def create_custom_role(
     description: Optional[str] = None,
 ) -> dict:
     """Create a custom role with selected permissions.
-    
+
     PM: Role builder for custom needs.
     Security Auditor: Validate permissions exist.
     """
     role_id = str(uuid4())
-    
+
     # Validate all permissions exist
     all_perms = set()
     for resource_perms in GRANULAR_PERMISSIONS.values():
         all_perms.update(resource_perms.keys())
-    
+
     invalid = [p for p in permissions if p not in all_perms and p != "*" and not p.endswith(":*")]
-    
+
     if invalid:
         return {
             "error": "Invalid permissions",
             "invalid_permissions": invalid,
         }
-    
+
     logger.info(f"Custom role created: {name} ({role_id})")
-    
+
     return {
         "role_id": role_id,
         "name": name,
@@ -493,7 +517,7 @@ async def list_custom_roles(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """List custom roles.
-    
+
     PM: View tenant's custom roles.
     """
     # In production: query from database
@@ -535,7 +559,7 @@ async def update_custom_role(
 ) -> dict:
     """Update a custom role."""
     logger.info(f"Custom role updated: {role_id}")
-    
+
     return {
         "role_id": role_id,
         "updated": True,
@@ -552,11 +576,11 @@ async def delete_custom_role(
     role_id: str,
 ) -> dict:
     """Delete a custom role.
-    
+
     Security Auditor: Check no users assigned.
     """
     logger.warning(f"Custom role deleted: {role_id}")
-    
+
     return {
         "role_id": role_id,
         "deleted": True,
@@ -582,18 +606,19 @@ async def grant_permission(
     expires_in_days: Optional[int] = None,
 ) -> dict:
     """Grant a specific permission to a user.
-    
+
     Security Auditor: Fine-grained access grant.
     """
     grant_id = str(uuid4())
-    
+
     logger.info(f"Permission granted: {permission_id} -> {user_id}")
-    
+
     expires_at = None
     if expires_in_days:
         from datetime import timedelta
+
         expires_at = (timezone.now() + timedelta(days=expires_in_days)).isoformat()
-    
+
     return {
         "grant_id": grant_id,
         "user_id": user_id,
@@ -632,11 +657,11 @@ async def revoke_permission(
     grant_id: str,
 ) -> dict:
     """Revoke a permission grant.
-    
+
     Security Auditor: Access revocation.
     """
     logger.warning(f"Permission revoked: {grant_id}")
-    
+
     return {
         "grant_id": grant_id,
         "revoked": True,
@@ -661,7 +686,7 @@ async def check_granular_permission(
     scope_id: Optional[str] = None,
 ) -> dict:
     """Check if user has a specific permission.
-    
+
     Django Architect: SpiceDB query for authorization.
     """
     # In production: query SpiceDB
@@ -670,7 +695,7 @@ async def check_granular_permission(
     #     permission=permission_id.replace(":", "_"),
     #     resource=f"{scope_type}:{scope_id or '*'}",
     # )
-    
+
     return {
         "user_id": user_id,
         "permission_id": permission_id,
@@ -693,11 +718,11 @@ async def get_effective_permissions(
     scope_id: Optional[str] = None,
 ) -> dict:
     """Get all effective permissions for a user.
-    
+
     Security Auditor: Complete access picture.
     """
     # In production: aggregate from roles + direct grants
-    
+
     return {
         "user_id": user_id,
         "scope_type": scope_type,

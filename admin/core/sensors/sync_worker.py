@@ -18,11 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
-from typing import List, Optional
-
-from django.db import transaction
-from django.utils import timezone
 
 from admin.core.sensors.outbox import SensorOutbox
 from admin.somabrain.client import get_somabrain_client, SomaBrainError
@@ -32,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class SyncResult:
     """Result of sync operation."""
-    
+
     def __init__(
         self,
         event_id: str,
@@ -48,12 +43,12 @@ class SyncResult:
 
 async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
     """Sync a single event to SomaBrain.
-    
+
     Returns:
         SyncResult with brain_ref on success
     """
     client = get_somabrain_client()
-    
+
     try:
         # Route based on event type
         if event.event_type.startswith("memory."):
@@ -65,7 +60,7 @@ async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
                 value=event.payload,
             )
             brain_ref = f"somabrain://memory/{event.event_id}"
-            
+
         elif event.event_type.startswith("conversation."):
             # Conversation events → Store as memory
             result = await client.remember(
@@ -75,12 +70,12 @@ async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
                 value=event.payload,
             )
             brain_ref = f"somabrain://conversation/{event.event_id}"
-            
+
         elif event.event_type.startswith("llm."):
             # LLM events → Analytics (Kafka path)
             # These go to Kafka, not directly to SomaBrain
             brain_ref = f"kafka://llm/{event.event_id}"
-            
+
         elif event.event_type.startswith("tool."):
             # Tool events → Store as memory
             result = await client.remember(
@@ -90,7 +85,7 @@ async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
                 value=event.payload,
             )
             brain_ref = f"somabrain://tool/{event.event_id}"
-            
+
         else:
             # Default: store as generic memory
             result = await client.remember(
@@ -100,13 +95,13 @@ async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
                 value=event.payload,
             )
             brain_ref = f"somabrain://events/{event.event_id}"
-        
+
         return SyncResult(
             event_id=event.event_id,
             success=True,
             brain_ref=brain_ref,
         )
-        
+
     except SomaBrainError as e:
         logger.warning(f"SomaBrain sync failed for {event.event_id}: {e}")
         return SyncResult(
@@ -121,26 +116,26 @@ async def process_outbox_batch(
     batch_size: int = 50,
 ) -> dict:
     """Process a batch of pending outbox events.
-    
+
     Returns:
         Dict with synced_count, failed_count, total_pending
     """
     # Get pending events
     pending = SensorOutbox.get_pending(target_service, limit=batch_size)
-    
+
     if not pending:
         return {
             "synced_count": 0,
             "failed_count": 0,
             "total_pending": 0,
         }
-    
+
     synced_count = 0
     failed_count = 0
-    
+
     for event in pending:
         result = await sync_event_to_somabrain(event)
-        
+
         if result.success:
             # Mark synced and CLEAR payload
             event.mark_synced(brain_ref=result.brain_ref)
@@ -150,9 +145,9 @@ async def process_outbox_batch(
             # Mark failed for retry
             event.mark_failed(result.error)
             failed_count += 1
-    
+
     total_pending = SensorOutbox.get_pending_count(target_service)
-    
+
     return {
         "synced_count": synced_count,
         "failed_count": failed_count,
@@ -165,25 +160,25 @@ async def sync_worker_loop(
     batch_size: int = 50,
 ) -> None:
     """Main sync worker loop.
-    
+
     Runs continuously, polling the outbox and syncing to SomaBrain.
     """
     logger.info("Starting outbox sync worker")
-    
+
     while True:
         try:
             result = await process_outbox_batch(batch_size=batch_size)
-            
+
             if result["synced_count"] > 0 or result["failed_count"] > 0:
                 logger.info(
                     f"Sync batch: {result['synced_count']} synced, "
                     f"{result['failed_count']} failed, "
                     f"{result['total_pending']} pending"
                 )
-            
+
         except Exception as e:
             logger.error(f"Sync worker error: {e}")
-        
+
         await asyncio.sleep(interval_seconds)
 
 

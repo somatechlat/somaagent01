@@ -17,8 +17,6 @@ from typing import Any, Dict, List
 
 import requests
 
-import os
-
 GATEWAY_BASE = (
     os.environ.get("SA01_GATEWAY_BASE_URL", "http://127.0.0.1:21016") or "http://127.0.0.1:21016"
 )

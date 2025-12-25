@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class User(BaseModel):
     """User definition."""
+
     user_id: str
     email: str
     name: str
@@ -45,6 +46,7 @@ class User(BaseModel):
 
 class UserProfile(BaseModel):
     """User profile."""
+
     user_id: str
     email: str
     name: str
@@ -72,7 +74,7 @@ async def list_users(
     limit: int = 50,
 ) -> dict:
     """List users.
-    
+
     PM: User directory.
     """
     return {
@@ -95,13 +97,13 @@ async def create_user(
     role: str = "user",
 ) -> User:
     """Create a new user.
-    
+
     PM: User registration.
     """
     user_id = str(uuid4())
-    
+
     logger.info(f"User created: {email} ({user_id})")
-    
+
     return User(
         user_id=user_id,
         email=email,
@@ -157,11 +159,11 @@ async def update_user(
 )
 async def delete_user(request, user_id: str) -> dict:
     """Delete a user.
-    
+
     Security Auditor: GDPR deletion.
     """
     logger.warning(f"User deleted: {user_id}")
-    
+
     return {
         "user_id": user_id,
         "deleted": True,
@@ -184,11 +186,11 @@ async def suspend_user(
     reason: str,
 ) -> dict:
     """Suspend a user.
-    
+
     Security Auditor: Access revocation.
     """
     logger.warning(f"User suspended: {user_id}")
-    
+
     return {
         "user_id": user_id,
         "status": "suspended",
@@ -261,11 +263,11 @@ async def update_profile(
 )
 async def reset_password(request, user_id: str) -> dict:
     """Send password reset email.
-    
+
     Security Auditor: Password reset flow.
     """
     logger.info(f"Password reset requested: {user_id}")
-    
+
     return {
         "user_id": user_id,
         "reset_sent": True,
@@ -279,7 +281,7 @@ async def reset_password(request, user_id: str) -> dict:
 )
 async def enable_mfa(request, user_id: str) -> dict:
     """Enable MFA for user.
-    
+
     Security Auditor: MFA enrollment.
     """
     return {
@@ -301,7 +303,7 @@ async def disable_mfa(
 ) -> dict:
     """Disable MFA for user."""
     logger.warning(f"MFA disabled: {user_id}")
-    
+
     return {
         "user_id": user_id,
         "mfa_enabled": False,
@@ -324,7 +326,7 @@ async def get_activity(
     limit: int = 50,
 ) -> dict:
     """Get user activity log.
-    
+
     Security Auditor: User activity audit.
     """
     return {

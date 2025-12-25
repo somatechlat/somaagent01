@@ -6,14 +6,14 @@ Django Ninja.
 
 from __future__ import annotations
 
-import uuid
 import logging
+import uuid
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from ninja import Router
 
-from admin.common.exceptions import NotFoundError, ForbiddenError
+from admin.common.exceptions import NotFoundError
 
 router = Router(tags=["attachments"])
 logger = logging.getLogger(__name__)
@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 def _get_store():
     from services.common.attachments_store import AttachmentsStore
-    from django.conf import settings
 
     return AttachmentsStore(dsn=settings.DATABASE_DSN)
 

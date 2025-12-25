@@ -4,13 +4,12 @@ The functions use the public HTTP API exposed by ``services/capsule_registry/mai
 """
 
 import json
+import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
 import httpx
-
-import os
 
 
 # Base URL – must be set via env var per VIBE rules (no hardcoded defaults)

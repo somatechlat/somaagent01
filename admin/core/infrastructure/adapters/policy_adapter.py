@@ -6,10 +6,12 @@ to the existing production PolicyClient implementation.
 
 from typing import Optional
 
-from services.common.policy_client import PolicyClient, PolicyRequest
+from admin.core.application.ports import (
     PolicyAdapterPort,
     PolicyRequestDTO,
 )
+
+from services.common.policy_client import PolicyClient, PolicyRequest
 
 
 class OPAPolicyAdapter(PolicyAdapterPort):

@@ -1,10 +1,9 @@
 """M3: Central secrets adapter for settings encryption & rotation"""
 
 import base64
+import os
 
 from cryptography.fernet import Fernet
-
-import os
 
 
 class VaultAdapter:

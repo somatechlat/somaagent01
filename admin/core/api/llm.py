@@ -18,7 +18,7 @@ from django.dispatch import Signal
 from ninja import Router
 from pydantic import BaseModel
 
-from admin.common.exceptions import ValidationError, ServiceError
+from admin.common.exceptions import ServiceError, ValidationError
 
 router = Router(tags=["llm"])
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class LlmInvokeResponse(BaseModel):
 # Centralized configuration via lazy getters to avoid blocking app population
 def get_default_model() -> str:
     """Get the default chat model from settings or environment.
-    
+
     Per VIBE Rules: Source from database first, then environment.
     """
     model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
@@ -69,11 +69,14 @@ def get_default_model() -> str:
         return "unconfigured"
     return model
 
+
 def get_multimodal_enabled() -> bool:
     return getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
 
+
 def get_confidence_enabled() -> bool:
     return getattr(settings, "CONFIDENCE_ENABLED", False)
+
 
 def get_confidence_aggregation() -> str:
     return getattr(settings, "CONFIDENCE_AGGREGATION", "average")
@@ -114,7 +117,7 @@ def _multimodal_instructions() -> str:
 
 async def _get_llm_client():
     """Get LLM client with Django caching for credentials."""
-    from services.gateway.main import get_secret_manager, _gateway_llm_client
+    from services.gateway.main import _gateway_llm_client, get_secret_manager
 
     return get_secret_manager(), _gateway_llm_client()
 
@@ -183,7 +186,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     temperature = overrides.get("temperature")
 
     if model == "unconfigured":
-         raise ServiceError("llm_not_configured: SAAS_DEFAULT_CHAT_MODEL is missing.")
+        raise ServiceError("llm_not_configured: SAAS_DEFAULT_CHAT_MODEL is missing.")
 
     # Build messages
     messages = (

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 import httpx
@@ -198,7 +198,7 @@ async def check_somabrain() -> ServiceHealth:
 )
 async def get_platform_health(request) -> PlatformHealth:
     """Check health of all platform services.
-    
+
     Returns individual service status and overall platform status.
     Per VIBE rules - real health checks, no mocks.
     """
@@ -274,13 +274,13 @@ async def check_somabrain_health(request) -> ServiceHealth:
 )
 async def get_degradation_status(request) -> dict:
     """Get current degradation mode status.
-    
+
     Returns which services are degraded and fallback modes active.
     """
     health = await get_platform_health(request)
-    
+
     degraded_services = [s.name for s in health.services if s.status != "healthy"]
-    
+
     return {
         "is_degraded": health.status != "healthy",
         "degraded_services": degraded_services,

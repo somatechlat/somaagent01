@@ -14,8 +14,8 @@ Features:
 """
 
 import os
-from dataclasses import dataclass, field
-from typing import Literal, Optional, Dict, Any
+from dataclasses import dataclass
+from typing import Any, Dict, Literal, Optional
 
 # Singleton instance
 _config_instance: Optional["ConfidenceConfig"] = None

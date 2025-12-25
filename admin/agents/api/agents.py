@@ -11,9 +11,6 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
-from django.db import transaction
-from django.db.models import Count
-from django.http import HttpRequest
 from ninja import Query, Router
 from pydantic import BaseModel
 

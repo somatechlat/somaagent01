@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class OAuthProvider(BaseModel):
     """OAuth provider configuration."""
+
     provider_id: str
     name: str
     provider_type: str  # google, github, microsoft, saml, oidc
@@ -42,6 +43,7 @@ class OAuthProvider(BaseModel):
 
 class MfaPolicy(BaseModel):
     """MFA policy."""
+
     required: bool
     allowed_methods: list[str]  # totp, sms, email
     grace_period_days: int = 7
@@ -49,6 +51,7 @@ class MfaPolicy(BaseModel):
 
 class PasswordPolicy(BaseModel):
     """Password policy."""
+
     min_length: int = 12
     require_uppercase: bool = True
     require_lowercase: bool = True
@@ -59,6 +62,7 @@ class PasswordPolicy(BaseModel):
 
 class PlatformAuthConfig(BaseModel):
     """Platform-wide auth configuration (defaults)."""
+
     mfa_policy: MfaPolicy
     password_policy: PasswordPolicy
     session_timeout_minutes: int = 60
@@ -68,6 +72,7 @@ class PlatformAuthConfig(BaseModel):
 
 class TenantAuthConfig(BaseModel):
     """Tenant-specific auth overrides."""
+
     tenant_id: str
     use_platform_defaults: bool = True
     mfa_policy_override: Optional[MfaPolicy] = None
@@ -78,6 +83,7 @@ class TenantAuthConfig(BaseModel):
 
 class EffectiveAuthConfig(BaseModel):
     """Merged effective auth config."""
+
     tenant_id: str
     source: str  # platform, tenant, merged
     mfa_policy: MfaPolicy
@@ -98,7 +104,7 @@ class EffectiveAuthConfig(BaseModel):
 )
 async def get_platform_config(request) -> PlatformAuthConfig:
     """Get platform-wide auth defaults.
-    
+
     Security Auditor: Platform policy review.
     """
     return PlatformAuthConfig(
@@ -126,11 +132,11 @@ async def update_platform_config(
     ip_whitelist_enabled: Optional[bool] = None,
 ) -> dict:
     """Update platform-wide auth defaults.
-    
+
     Security Auditor: Policy updates.
     """
     logger.info("Platform auth config updated")
-    
+
     return {
         "updated": True,
         "affects_all_tenants": True,
@@ -149,7 +155,7 @@ async def update_platform_config(
 )
 async def list_platform_providers(request) -> dict:
     """List platform OAuth providers.
-    
+
     DevOps: Provider management.
     """
     return {
@@ -189,13 +195,13 @@ async def add_platform_provider(
     client_secret: str,
 ) -> OAuthProvider:
     """Add OAuth provider to platform defaults.
-    
+
     DevOps: Add SSO provider.
     """
     provider_id = str(uuid4())
-    
+
     logger.info(f"Platform provider added: {name}")
-    
+
     return OAuthProvider(
         provider_id=provider_id,
         name=name,
@@ -213,7 +219,7 @@ async def add_platform_provider(
 )
 async def test_platform_provider(request, provider_id: str) -> dict:
     """Test OAuth provider connection.
-    
+
     DevOps: Validate SSO config.
     """
     return {
@@ -231,7 +237,7 @@ async def test_platform_provider(request, provider_id: str) -> dict:
 async def remove_platform_provider(request, provider_id: str) -> dict:
     """Remove platform OAuth provider."""
     logger.warning(f"Platform provider removed: {provider_id}")
-    
+
     return {
         "provider_id": provider_id,
         "deleted": True,
@@ -270,11 +276,11 @@ async def update_platform_mfa(
     grace_period_days: int = 7,
 ) -> dict:
     """Update platform MFA policy.
-    
+
     Security Auditor: MFA enforcement.
     """
     logger.info(f"Platform MFA policy updated: required={required}")
-    
+
     return {
         "updated": True,
         "required": required,
@@ -294,7 +300,7 @@ async def update_platform_mfa(
 )
 async def get_tenant_config(request, tenant_id: str) -> TenantAuthConfig:
     """Get tenant auth configuration.
-    
+
     PM: Tenant customization.
     """
     return TenantAuthConfig(
@@ -315,7 +321,7 @@ async def update_tenant_config(
     mfa_required: Optional[bool] = None,
 ) -> dict:
     """Update tenant auth overrides.
-    
+
     PM: Customize tenant auth.
     """
     return {
@@ -339,13 +345,13 @@ async def add_tenant_provider(
     client_secret: str,
 ) -> OAuthProvider:
     """Add custom OAuth provider for tenant.
-    
+
     PM: Custom SSO for tenant.
     """
     provider_id = str(uuid4())
-    
+
     logger.info(f"Tenant {tenant_id} provider added: {name}")
-    
+
     return OAuthProvider(
         provider_id=provider_id,
         name=name,
@@ -387,7 +393,7 @@ async def remove_tenant_provider(
 )
 async def get_effective_config(request, tenant_id: str) -> EffectiveAuthConfig:
     """Get merged effective auth config.
-    
+
     Platform defaults + tenant overrides = effective.
     """
     return EffectiveAuthConfig(
@@ -419,11 +425,11 @@ async def get_effective_config(request, tenant_id: str) -> EffectiveAuthConfig:
 )
 async def reset_tenant_config(request, tenant_id: str) -> dict:
     """Reset tenant to platform defaults.
-    
+
     PM: Revert customizations.
     """
     logger.info(f"Tenant {tenant_id} reset to platform defaults")
-    
+
     return {
         "tenant_id": tenant_id,
         "reset": True,

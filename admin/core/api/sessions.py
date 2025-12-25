@@ -10,16 +10,16 @@ from __future__ import annotations
 
 import asyncio
 import json
-import uuid
 import logging
-from typing import Any, AsyncGenerator, Optional
-
-from django.conf import settings
-from django.http import StreamingHttpResponse, JsonResponse
-from ninja import Router, Query
-from pydantic import BaseModel
+import uuid
+from typing import AsyncGenerator, Optional
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
+from django.http import StreamingHttpResponse
+from ninja import Query, Router
+from pydantic import BaseModel
+
 from admin.core.models import Session, SessionEvent
 
 router = Router(tags=["sessions"])
@@ -235,8 +235,8 @@ async def session_events_sse(
 async def post_session_message(payload: SessionMessageRequest) -> dict:
     """Enqueue a user message and persist a session event."""
     from admin.common.exceptions import ValidationError
-    from services.gateway import providers
     from services.conversation_worker.temporal_worker import ConversationWorkflow
+    from services.gateway import providers
 
     if not payload.message.strip():
         raise ValidationError("message required")

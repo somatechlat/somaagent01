@@ -14,9 +14,10 @@ Exported metrics:
 - llm_confidence_rejected_total: Counter for rejections
 """
 
-from prometheus_client import Counter, Gauge, Histogram, REGISTRY
-from typing import Optional
 import logging
+from typing import Optional
+
+from prometheus_client import Counter, Gauge, Histogram
 
 LOGGER = logging.getLogger(__name__)
 

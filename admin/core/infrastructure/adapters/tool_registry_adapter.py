@@ -6,10 +6,12 @@ to the existing production ToolRegistry implementation.
 
 from typing import Any, Dict, Iterable, Optional
 
-from services.tool_executor.tool_registry import ToolRegistry
+from admin.core.application.ports import (
     ToolDefinitionDTO,
     ToolRegistryPort,
 )
+
+from services.tool_executor.tool_registry import ToolRegistry
 
 
 class ToolRegistryAdapter(ToolRegistryPort):

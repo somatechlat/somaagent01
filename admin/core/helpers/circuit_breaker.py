@@ -9,12 +9,11 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import os
 import time
 from typing import Any, Callable, TypeVar
 
 from prometheus_client import Counter, start_http_server
-
-import os
 
 T = TypeVar("T")
 

@@ -9,52 +9,35 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional
 from urllib.parse import urlparse
 
 import nest_asyncio
 
 nest_asyncio.apply()
 
+from admin.core.helpers.session_store_adapter import save_context
 from agent import AgentContext, UserMessage
 from initialize import initialize_agent
+
 from admin.core.helpers.defer import DeferredTask
 from admin.core.helpers.print_style import PrintStyle
-from admin.core.helpers.session_store_adapter import save_context
 
 # Re-export models for backward compatibility
 from admin.core.helpers.scheduler_models import (
-    TaskState,
-    TaskType,
-    TaskSchedule,
-    TaskPlan,
-    BaseTask,
-    AdHocTask,
-    ScheduledTask,
-    PlannedTask,
     AnyTask,
-    task_schedule_evaluations_total,
-    task_schedule_latency_seconds,
+    TaskState,
 )
 
 # Re-export repository
 from admin.core.helpers.scheduler_repository import (
     SchedulerTaskList,
-    SCHEDULER_FOLDER,
 )
 
 # Re-export serialization helpers
 from admin.core.helpers.scheduler_serialization import (
-    serialize_datetime,
-    parse_datetime,
-    serialize_task_schedule,
-    parse_task_schedule,
-    serialize_task_plan,
-    parse_task_plan,
     serialize_task,
     serialize_tasks,
-    deserialize_task,
 )
 
 

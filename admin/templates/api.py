@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class AgentTemplate(BaseModel):
     """Agent template."""
+
     template_id: str
     name: str
     description: Optional[str] = None
@@ -46,6 +47,7 @@ class AgentTemplate(BaseModel):
 
 class PromptTemplate(BaseModel):
     """Prompt template."""
+
     template_id: str
     name: str
     content: str
@@ -56,6 +58,7 @@ class PromptTemplate(BaseModel):
 
 class TemplateVariable(BaseModel):
     """Template variable."""
+
     name: str
     type: str  # string, number, boolean, list
     required: bool = True
@@ -79,7 +82,7 @@ async def list_agent_templates(
     public_only: bool = False,
 ) -> dict:
     """List available agent templates.
-    
+
     PM: Template library for quick agent creation.
     """
     return {
@@ -128,13 +131,13 @@ async def create_agent_template(
     is_public: bool = False,
 ) -> dict:
     """Create a new agent template.
-    
+
     PhD Dev: Capture best configurations.
     """
     template_id = str(uuid4())
-    
+
     logger.info(f"Agent template created: {name} ({template_id})")
-    
+
     return {
         "template_id": template_id,
         "name": name,
@@ -211,11 +214,11 @@ async def clone_agent_template(
     new_name: str,
 ) -> dict:
     """Clone an agent template.
-    
+
     PM: Quick duplication for customization.
     """
     new_id = str(uuid4())
-    
+
     return {
         "original_id": template_id,
         "new_id": new_id,
@@ -239,7 +242,7 @@ async def list_prompt_templates(
     category: Optional[str] = None,
 ) -> dict:
     """List prompt templates.
-    
+
     PhD Dev: Prompt library for optimization.
     """
     return {
@@ -261,11 +264,12 @@ async def create_prompt_template(
 ) -> dict:
     """Create a prompt template."""
     template_id = str(uuid4())
-    
+
     # Extract variables from content
     import re
-    variables = re.findall(r'\{\{(\w+)\}\}', content)
-    
+
+    variables = re.findall(r"\{\{(\w+)\}\}", content)
+
     return {
         "template_id": template_id,
         "name": name,
@@ -285,12 +289,12 @@ async def render_prompt_template(
     variables: dict,
 ) -> dict:
     """Render a prompt template with variables.
-    
+
     QA: Validate variable substitution.
     """
     # In production: fetch template and substitute variables
     rendered = "Example rendered prompt"
-    
+
     return {
         "template_id": template_id,
         "rendered": rendered,
@@ -314,14 +318,14 @@ async def validate_template(
     config: dict,
 ) -> dict:
     """Validate a template configuration.
-    
+
     QA: Pre-save validation.
     """
     errors = []
     warnings = []
-    
+
     # In production: validate against schema
-    
+
     return {
         "valid": len(errors) == 0,
         "errors": errors,

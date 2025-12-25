@@ -1,6 +1,7 @@
 import json
-import uuid
 import time
+import uuid
+
 from kafka import KafkaProducer
 
 

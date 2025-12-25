@@ -35,7 +35,6 @@ class DLQItemResponse(BaseModel):
 
 def _get_dlq_store():
     from services.common.dlq_store import DLQStore
-    from django.conf import settings
 
     return DLQStore(dsn=settings.DATABASE_DSN)
 
@@ -78,7 +77,6 @@ class RequeueItemResponse(BaseModel):
 
 def _get_requeue_store():
     from services.common.requeue_store import RequeueStore
-    from django.conf import settings
 
     return RequeueStore(
         url=settings.REDIS_URL,

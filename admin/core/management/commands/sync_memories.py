@@ -13,18 +13,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-from typing import Optional
 
 from django.core.management.base import BaseCommand
-from django.db import transaction
-from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
     """Sync pending memories to SomaBrain.
-    
+
     When SomaBrain becomes available after degradation mode,
     this command flushes the pending memory queue.
     """
@@ -68,9 +65,9 @@ class Command(BaseCommand):
         run_once = options["once"]
         max_retries = options["max_retries"]
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Starting Memory Sync (batch={batch_size}, interval={interval}s)"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f"Starting Memory Sync (batch={batch_size}, interval={interval}s)")
+        )
 
         # Setup signal handlers
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -101,7 +98,7 @@ class Command(BaseCommand):
 
                 # Get pending count
                 pending_count = PendingMemory.objects.filter(synced=False).count()
-                
+
                 if pending_count == 0:
                     if run_once:
                         self.stdout.write(self.style.SUCCESS("No pending memories"))
@@ -113,7 +110,7 @@ class Command(BaseCommand):
 
                 # Sync batch
                 synced, failed = await self._sync_batch(batch_size, max_retries)
-                
+
                 self.stdout.write(
                     f"Synced: {synced}, Failed: {failed}, Remaining: {pending_count - synced}"
                 )
@@ -147,7 +144,7 @@ class Command(BaseCommand):
 
     async def _sync_batch(self, batch_size: int, max_retries: int) -> tuple[int, int]:
         """Sync a batch of pending memories.
-        
+
         Returns:
             (synced_count, failed_count)
         """
@@ -162,7 +159,9 @@ class Command(BaseCommand):
             PendingMemory.objects.filter(
                 synced=False,
                 sync_attempts__lt=max_retries,
-            ).order_by("created_at")[:batch_size]
+            ).order_by(
+                "created_at"
+            )[:batch_size]
         )
 
         if self._client is None:
@@ -195,7 +194,7 @@ class Command(BaseCommand):
 
 class MemorySyncService:
     """Django service for memory operations with degradation support.
-    
+
     Use this service instead of direct SomaBrainClient calls
     to ensure zero data loss during SomaBrain outages.
     """
@@ -211,16 +210,17 @@ class MemorySyncService:
         namespace: str = "wm",
     ) -> dict:
         """Store memory with guaranteed delivery.
-        
+
         If SomaBrain is available: sends directly.
         If SomaBrain is down: queues for later sync.
-        
+
         ZERO DATA LOSS GUARANTEED.
         """
-        from admin.core.models import PendingMemory, IdempotencyRecord
-        from admin.core.somabrain_client import SomaBrainClient
         import hashlib
         import json
+
+        from admin.core.models import IdempotencyRecord, PendingMemory
+        from admin.core.somabrain_client import SomaBrainClient
 
         # Generate idempotency key
         payload_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
@@ -264,7 +264,7 @@ class MemorySyncService:
                     "tenant_id": tenant_id,
                     "namespace": namespace,
                     "payload": payload,
-                }
+                },
             )
 
             return {

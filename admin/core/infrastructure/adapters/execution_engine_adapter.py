@@ -6,14 +6,16 @@ to the existing production ExecutionEngine implementation.
 
 from typing import Any, Dict, Optional
 
-from services.tool_executor.execution_engine import ExecutionEngine
-from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
-from services.tool_executor.sandbox_manager import SandboxManager
-from services.tool_executor.tool_registry import ToolRegistry
+from admin.core.application.ports import (
     ExecutionEnginePort,
     ExecutionLimitsDTO,
     ExecutionResultDTO,
 )
+
+from services.tool_executor.execution_engine import ExecutionEngine
+from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
+from services.tool_executor.sandbox_manager import SandboxManager
+from services.tool_executor.tool_registry import ToolRegistry
 
 
 class ExecutionEngineAdapter(ExecutionEnginePort):

@@ -1,7 +1,8 @@
+import os
+
 import aiohttp
 
 from admin.core.helpers import runtime
-import os
 
 
 def _get_searxng_url() -> str:

@@ -8,19 +8,18 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Protocol, TYPE_CHECKING
 
-from admin.core.observability.metrics import ContextBuilderMetrics
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 from admin.agents.services.somabrain_integration import SomaBrainClient, SomaClientError
+from admin.core.observability.metrics import ContextBuilderMetrics
 from services.common import degradation_monitor
 from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
-
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-
-import os
 
 if TYPE_CHECKING:
     from admin.agents.services.agentiq_governor import LanePlan

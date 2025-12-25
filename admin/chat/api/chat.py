@@ -7,14 +7,12 @@ Per CANONICAL_USER_JOURNEYS_SRS.md UC-01: Chat with AI Agent
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
 
-from django.db import transaction
 from django.utils import timezone
 from ninja import Query, Router
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ServiceError
@@ -40,6 +38,7 @@ class ChatSessionResponse(BaseModel):
 
 class ConversationOut(BaseModel):
     """Conversation list item."""
+
     id: str
     title: str
     agent_id: Optional[str] = None
@@ -52,6 +51,7 @@ class ConversationOut(BaseModel):
 
 class MessageOut(BaseModel):
     """Chat message."""
+
     id: str
     conversation_id: str
     role: str  # user, assistant, system
@@ -62,6 +62,7 @@ class MessageOut(BaseModel):
 
 class SendMessageRequest(BaseModel):
     """Send message request."""
+
     content: str
     stream: bool = True
     mode: str = "STD"  # STD, DEV, TRN, ADM, RO, DGR
@@ -69,6 +70,7 @@ class SendMessageRequest(BaseModel):
 
 class SendMessageResponse(BaseModel):
     """Send message response (sync mode)."""
+
     id: str
     conversation_id: str
     role: str = "assistant"
@@ -80,6 +82,7 @@ class SendMessageResponse(BaseModel):
 
 class CreateConversationRequest(BaseModel):
     """Create new conversation."""
+
     title: Optional[str] = None
     agent_id: Optional[str] = None
     memory_mode: str = "persistent"  # session, persistent
@@ -87,6 +90,7 @@ class CreateConversationRequest(BaseModel):
 
 class ConversationDetailOut(BaseModel):
     """Full conversation details."""
+
     id: str
     title: str
     agent_id: Optional[str] = None
@@ -113,38 +117,48 @@ async def list_conversations(
     per_page: int = Query(20, ge=1, le=100),
 ) -> dict:
     """List user's conversations.
-    
+
     Per SRS UC-01 Section 4.3:
     GET /api/v2/chat/conversations
     """
     from asgiref.sync import sync_to_async
-    
+
     @sync_to_async
     def _get_conversations():
         # Get current user's tenant from token
         # For now, return all sessions as conversations
         sessions = Session.objects.all().order_by("-updated_at")
         total = sessions.count()
-        
+
         offset = (page - 1) * per_page
         items = []
-        
-        for s in sessions[offset:offset + per_page]:
-            items.append(ConversationOut(
-                id=s.session_id,
-                title=s.session_id[:20] + "...",
-                agent_id=s.persona_id,
-                agent_name=s.persona_id,
-                last_message=None,
-                message_count=0,
-                created_at=s.created_at.isoformat() if hasattr(s, 'created_at') and s.created_at else timezone.now().isoformat(),
-                updated_at=s.updated_at.isoformat() if hasattr(s, 'updated_at') and s.updated_at else timezone.now().isoformat(),
-            ).model_dump())
-        
+
+        for s in sessions[offset : offset + per_page]:
+            items.append(
+                ConversationOut(
+                    id=s.session_id,
+                    title=s.session_id[:20] + "...",
+                    agent_id=s.persona_id,
+                    agent_name=s.persona_id,
+                    last_message=None,
+                    message_count=0,
+                    created_at=(
+                        s.created_at.isoformat()
+                        if hasattr(s, "created_at") and s.created_at
+                        else timezone.now().isoformat()
+                    ),
+                    updated_at=(
+                        s.updated_at.isoformat()
+                        if hasattr(s, "updated_at") and s.updated_at
+                        else timezone.now().isoformat()
+                    ),
+                ).model_dump()
+            )
+
         return items, total
-    
+
     items, total = await _get_conversations()
-    
+
     return paginated_response(
         items=items,
         total=total,
@@ -160,14 +174,14 @@ async def list_conversations(
 )
 async def create_conversation(request, payload: CreateConversationRequest) -> dict:
     """Create a new conversation.
-    
+
     Per SRS UC-02 Section 5.3:
     POST /api/v2/chat/conversations
     """
     from asgiref.sync import sync_to_async
-    
+
     conversation_id = str(uuid4())
-    
+
     @sync_to_async
     def _create():
         session = Session.objects.create(
@@ -176,11 +190,11 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
             tenant=None,  # Would come from request.user
         )
         return session
-    
+
     session = await _create()
-    
+
     title = payload.title or f"Conversation {conversation_id[:8]}"
-    
+
     return ConversationDetailOut(
         id=conversation_id,
         title=title,
@@ -200,20 +214,20 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 )
 async def get_conversation(request, conversation_id: str) -> dict:
     """Get conversation details.
-    
+
     Per SRS UC-01 Section 4.3.
     """
     from asgiref.sync import sync_to_async
-    
+
     @sync_to_async
     def _get():
         return Session.objects.filter(session_id=conversation_id).first()
-    
+
     session = await _get()
-    
+
     if not session:
         raise NotFoundError("conversation", conversation_id)
-    
+
     return ConversationDetailOut(
         id=session.session_id,
         title=session.session_id[:20] + "...",
@@ -243,7 +257,7 @@ async def get_messages(
     per_page: int = Query(50, ge=1, le=100),
 ) -> dict:
     """Get messages in a conversation.
-    
+
     Per SRS UC-01 Section 4.3:
     GET /api/v2/chat/messages/{conv_id}
     """
@@ -268,33 +282,33 @@ async def send_message(
     payload: SendMessageRequest,
 ) -> dict:
     """Send a message and get AI response.
-    
+
     Per SRS UC-01 Section 4.3:
     POST /api/v2/chat/messages
-    
+
     VIBE COMPLIANT:
     - Real implementation framework
     - Degradation handling ready
     - ZDL via OutboxMessage
     """
     from asgiref.sync import sync_to_async
-    
+
     # Verify conversation exists
     @sync_to_async
     def _verify():
         return Session.objects.filter(session_id=conversation_id).exists()
-    
+
     if not await _verify():
         raise NotFoundError("conversation", conversation_id)
-    
+
     message_id = str(uuid4())
-    
+
     # In production:
     # 1. Check DegradationMonitor for SomaBrain/LLM status
     # 2. Store user message
     # 3. Send to Kafka → Conversation Worker
     # 4. Return SSE stream or sync response
-    
+
     # For now, return structured response
     return SendMessageResponse(
         id=message_id,
@@ -345,4 +359,3 @@ async def get_chat_session(request, session_id: str) -> dict:
     except Exception as exc:
         logger.error(f"Session error: {exc}")
         raise ServiceError(f"session_error: {type(exc).__name__}")
-

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class Span(BaseModel):
     """Trace span."""
+
     span_id: str
     trace_id: str
     parent_span_id: Optional[str] = None
@@ -47,6 +48,7 @@ class Span(BaseModel):
 
 class Trace(BaseModel):
     """Distributed trace."""
+
     trace_id: str
     root_span_id: str
     service_count: int
@@ -75,7 +77,7 @@ async def list_traces(
     limit: int = 50,
 ) -> dict:
     """List traces.
-    
+
     DevOps: Trace search.
     """
     return {
@@ -113,7 +115,7 @@ async def get_trace_spans(
     trace_id: str,
 ) -> dict:
     """Get trace spans.
-    
+
     PhD Dev: Request flow.
     """
     return {
@@ -135,7 +137,7 @@ async def get_trace_spans(
 )
 async def list_services(request) -> dict:
     """List traced services.
-    
+
     DevOps: Service discovery.
     """
     return {
@@ -183,7 +185,7 @@ async def get_stats(
     period: str = "1h",
 ) -> dict:
     """Get tracing statistics.
-    
+
     DevOps: Performance overview.
     """
     return {
@@ -207,7 +209,7 @@ async def error_traces(
     limit: int = 20,
 ) -> dict:
     """Get error traces.
-    
+
     QA: Error debugging.
     """
     return {
@@ -233,11 +235,11 @@ async def export_traces(
     service: Optional[str] = None,
 ) -> dict:
     """Export traces.
-    
+
     DevOps: Trace export.
     """
     export_id = str(uuid4())
-    
+
     return {
         "export_id": export_id,
         "status": "generating",

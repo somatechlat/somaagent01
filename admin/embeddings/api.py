@@ -15,7 +15,6 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
@@ -32,12 +31,14 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingRequest(BaseModel):
     """Embedding request."""
+
     input: list[str]
     model: str = "text-embedding-ada-002"
 
 
 class EmbeddingResult(BaseModel):
     """Embedding result."""
+
     object: str = "list"
     model: str
     data: list[dict]
@@ -46,6 +47,7 @@ class EmbeddingResult(BaseModel):
 
 class ModelInfo(BaseModel):
     """Embedding model info."""
+
     model_id: str
     name: str
     dimensions: int
@@ -108,20 +110,21 @@ async def create_embeddings(
     model: str = "text-embedding-ada-002",
 ) -> EmbeddingResult:
     """Create embeddings for input texts.
-    
+
     ML Eng: Batch embedding generation.
     """
     # In production: call embedding model
-    
+
     data = [
         {
             "object": "embedding",
             "index": i,
-            "embedding": [0.0] * EMBEDDING_MODELS.get(model, EMBEDDING_MODELS["text-embedding-ada-002"])["dimensions"],
+            "embedding": [0.0]
+            * EMBEDDING_MODELS.get(model, EMBEDDING_MODELS["text-embedding-ada-002"])["dimensions"],
         }
         for i, _ in enumerate(input)
     ]
-    
+
     return EmbeddingResult(
         model=model,
         data=data,
@@ -144,14 +147,14 @@ async def create_batch_embeddings(
     batch_size: int = 100,
 ) -> dict:
     """Create embeddings in batches.
-    
+
     ML Eng: Large-scale embedding.
     DevOps: Batch processing.
     """
     batch_id = str(uuid4())
-    
+
     logger.info(f"Batch embedding started: {batch_id}, count={len(inputs)}")
-    
+
     return {
         "batch_id": batch_id,
         "model": model,
@@ -190,7 +193,7 @@ async def get_batch_status(
 )
 async def list_models(request) -> dict:
     """List available embedding models.
-    
+
     ML Eng: Model selection.
     """
     models = [
@@ -203,7 +206,7 @@ async def list_models(request) -> dict:
         ).dict()
         for model_id, info in EMBEDDING_MODELS.items()
     ]
-    
+
     return {
         "models": models,
         "total": len(models),
@@ -219,7 +222,7 @@ async def list_models(request) -> dict:
 async def get_model(request, model_id: str) -> ModelInfo:
     """Get model details."""
     info = EMBEDDING_MODELS.get(model_id, EMBEDDING_MODELS["text-embedding-ada-002"])
-    
+
     return ModelInfo(
         model_id=model_id,
         name=info["name"],
@@ -245,16 +248,16 @@ async def compute_similarity(
     embedding2: list[float],
 ) -> dict:
     """Compute cosine similarity.
-    
+
     ML Eng: Similarity scoring.
     """
     # Compute cosine similarity
-    dot_product = sum(a * b for a, b in zip(embedding1, embedding2))
+    dot_product = sum(a * b for a, b in zip(embedding1, embedding2, strict=False))
     norm1 = sum(a * a for a in embedding1) ** 0.5
     norm2 = sum(b * b for b in embedding2) ** 0.5
-    
+
     similarity = dot_product / (norm1 * norm2) if norm1 and norm2 else 0.0
-    
+
     return {
         "similarity": similarity,
     }
@@ -275,7 +278,7 @@ async def get_stats(
     tenant_id: Optional[str] = None,
 ) -> dict:
     """Get embedding usage statistics.
-    
+
     PM: Usage tracking.
     """
     return {
