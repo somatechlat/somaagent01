@@ -244,6 +244,11 @@ def create_api() -> NinjaAPI:
 
     api.add_router("/tenants", tenants_router)
 
+    # Usage (Metering and billing)
+    from admin.usage.api import router as usage_router
+
+    api.add_router("/usage", usage_router)
+
     return api
 
 
