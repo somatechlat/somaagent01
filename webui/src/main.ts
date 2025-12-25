@@ -103,6 +103,13 @@ if (app) {
             return;
         }
 
+        // Subscription Tier Builder
+        if (path === '/platform/tiers' || path === '/saas/tiers') {
+            await import('./views/saas-tier-builder.js');
+            app.appendChild(document.createElement('saas-tier-builder'));
+            return;
+        }
+
         if (path === '/platform/roles') {
             await import('./views/saas-admin-roles-list.js');
             app.appendChild(document.createElement('saas-admin-roles-list'));
