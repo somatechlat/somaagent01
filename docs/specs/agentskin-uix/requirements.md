@@ -12,7 +12,7 @@ This specification defines the requirements for the AgentSkin UIX (User Interfac
 |-----------|----------|--------|
 | Design Tokens | `webui/design-system/tokens.css` | ✅ 200+ CSS variables defined |
 | Theme Loader SDK | `webui/js/theme.js` | ✅ Basic implementation (loadLocal, loadRemote, validate, apply) |
-| Alpine Store | `webui/js/AlpineStore.js` | ❌ DEPRECATED - Use Lit Controllers |
+| Theme Controller | `webui/js/controllers/theme-controller.js` | ⏳ Lit Reactive Controller |
 | Theme Files | `webui/themes/*.json` | ✅ 2 themes (default, midnight) |
 | Main UI | `webui/index.html` | ⚠️ Monolithic (1323 lines, inline styles) |
 | App Styles | `webui/css/app.css` | ✅ Component styles using CSS variables |
