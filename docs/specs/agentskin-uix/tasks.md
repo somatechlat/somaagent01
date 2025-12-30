@@ -195,12 +195,12 @@ export class ThemeController {
 
 ### Task 4: Create Theme Gallery Component
 
-**File:** `somaAgent01/webui/components/theme-gallery.html` (create)
+**File:** `somaAgent01/webui/components/theme-gallery.js` (create)
 
 **Requirements:** US-AGS-001, US-AGS-002
 
 ### Acceptance Criteria
-- [ ] Creates theme gallery with search input
+- [ ] Creates theme gallery Lit Web Component with search input
 - [ ] Displays theme cards in responsive grid
 - [ ] Shows upload button for admin users only
 - [ ] Implements drag-drop zone for theme import
@@ -208,38 +208,82 @@ export class ThemeController {
 - [ ] Keyboard navigable (Tab, Enter, Escape)
 
 ### Implementation Notes
-```html
-<template id="theme-gallery-template">
-  <div x-data="themeGallery" class="theme-gallery">
-    <div class="gallery-header">
-      <input type="search" 
-             x-model="$store.theme.searchQuery" 
-             placeholder="Search themes..."
-             class="theme-search">
-      <template x-if="$store.theme.isAdmin">
-        <button @click="showUpload = true" class="btn-upload">
-          Upload Theme
-        </button>
-      </template>
-    </div>
-    
-    <div class="theme-grid" 
-         @dragover.prevent="dragOver = true"
-         @dragleave="dragOver = false"
-         @drop.prevent="handleDrop($event)">
-      <template x-for="theme in $store.theme.filteredThemes" :key="theme.name">
-        <div x-html="renderThemeCard(theme)"></div>
-      </template>
-    </div>
-  </div>
-</template>
+```javascript
+// webui/components/theme-gallery.js
+import { LitElement, html, css } from 'lit';
+import { ThemeController } from '../js/controllers/theme-controller.js';
+import './theme-card.js';
+
+export class ThemeGallery extends LitElement {
+  static properties = {
+    showUpload: { type: Boolean, state: true },
+    dragOver: { type: Boolean, state: true }
+  };
+
+  themeCtrl = new ThemeController(this);
+
+  static styles = css`
+    .theme-gallery { padding: var(--spacing-lg); }
+    .gallery-header { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
+    .theme-search { flex: 1; padding: var(--spacing-sm); border-radius: var(--radius-md); }
+    .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-lg); }
+    .theme-grid.drag-over { border: 2px dashed var(--accent-primary); }
+  `;
+
+  constructor() {
+    super();
+    this.showUpload = false;
+    this.dragOver = false;
+  }
+
+  render() {
+    return html`
+      <div class="theme-gallery">
+        <div class="gallery-header">
+          <input type="search"
+                 .value=${this.themeCtrl.searchQuery}
+                 @input=${e => this.themeCtrl.setSearchQuery(e.target.value)}
+                 placeholder="Search themes..."
+                 class="theme-search">
+          ${this.themeCtrl.isAdmin ? html`
+            <button @click=${() => this.showUpload = true} class="btn-upload">
+              Upload Theme
+            </button>
+          ` : ''}
+        </div>
+        
+        <div class="theme-grid ${this.dragOver ? 'drag-over' : ''}"
+             @dragover=${this._onDragOver}
+             @dragleave=${() => this.dragOver = false}
+             @drop=${this._onDrop}>
+          ${this.themeCtrl.filteredThemes.map(theme => html`
+            <theme-card .theme=${theme} .isAdmin=${this.themeCtrl.isAdmin}></theme-card>
+          `)}
+        </div>
+      </div>
+    `;
+  }
+
+  _onDragOver(e) {
+    e.preventDefault();
+    this.dragOver = true;
+  }
+
+  _onDrop(e) {
+    e.preventDefault();
+    this.dragOver = false;
+    const file = e.dataTransfer?.files[0];
+    if (file) this.themeCtrl.uploadTheme(file);
+  }
+}
+customElements.define('theme-gallery', ThemeGallery);
 ```
 
 ---
 
 ### Task 5: Create Theme Card Component
 
-**File:** `somaAgent01/webui/components/theme-card.html` (create)
+**File:** `somaAgent01/webui/components/theme-card.js` (create)
 
 **Requirements:** US-AGS-001, US-AGS-003
 
@@ -253,38 +297,87 @@ export class ThemeController {
 - [ ] Proper ARIA labels for accessibility
 
 ### Implementation Notes
-```html
-<template id="theme-card-template">
-  <div class="theme-card"
-       @mouseenter="$store.theme.previewTheme = theme"
-       @mouseleave="ThemeLoader.cancelPreview()"
-       role="article"
-       :aria-label="theme.name + ' theme'">
-    <div class="theme-preview" :style="getPreviewStyle(theme)">
-      <div class="color-swatch" :style="'background:' + theme.variables['--bg-primary']"></div>
-      <div class="color-swatch" :style="'background:' + theme.variables['--accent-primary']"></div>
-    </div>
-    <div class="theme-info">
-      <h3 x-text="theme.name"></h3>
-      <p x-text="theme.description || 'No description'"></p>
-      <span class="version">v<span x-text="theme.version"></span></span>
-    </div>
-    <div class="theme-actions">
-      <button @click="applyTheme(theme.name)" class="btn-apply">Apply</button>
-      <button @click="previewTheme(theme)" class="btn-preview">Preview</button>
-      <template x-if="$store.theme.isAdmin">
-        <button @click="deleteTheme(theme.id)" class="btn-delete">Delete</button>
-      </template>
-    </div>
-  </div>
-</template>
+```javascript
+// webui/components/theme-card.js
+import { LitElement, html, css } from 'lit';
+
+export class ThemeCard extends LitElement {
+  static properties = {
+    theme: { type: Object },
+    isAdmin: { type: Boolean }
+  };
+
+  static styles = css`
+    .theme-card {
+      width: 280px;
+      height: 180px;
+      border-radius: 12px;
+      background: var(--surface-1);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .theme-preview { display: flex; gap: 4px; padding: var(--spacing-sm); }
+    .color-swatch { width: 24px; height: 24px; border-radius: 4px; }
+    .theme-info { padding: var(--spacing-sm); }
+    .theme-info h3 { margin: 0; font-size: var(--font-size-md); }
+    .theme-info p { margin: 4px 0; color: var(--text-muted); font-size: var(--font-size-sm); }
+    .theme-actions { display: flex; gap: var(--spacing-sm); padding: var(--spacing-sm); }
+    .btn-apply, .btn-preview, .btn-delete { padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; }
+    .btn-delete { background: var(--error); color: white; }
+  `;
+
+  render() {
+    const { theme, isAdmin } = this;
+    return html`
+      <div class="theme-card"
+           @mouseenter=${this._onPreview}
+           @mouseleave=${this._onCancelPreview}
+           role="article"
+           aria-label="${theme.name} theme">
+        <div class="theme-preview">
+          <div class="color-swatch" style="background:${theme.variables?.['--bg-primary'] || '#000'}"></div>
+          <div class="color-swatch" style="background:${theme.variables?.['--accent-primary'] || '#0af'}"></div>
+        </div>
+        <div class="theme-info">
+          <h3>${theme.name}</h3>
+          <p>${theme.description || 'No description'}</p>
+          <span class="version">v${theme.version}</span>
+        </div>
+        <div class="theme-actions">
+          <button @click=${this._onApply} class="btn-apply">Apply</button>
+          <button @click=${this._onPreview} class="btn-preview">Preview</button>
+          ${isAdmin ? html`
+            <button @click=${this._onDelete} class="btn-delete">Delete</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  _onApply() {
+    this.dispatchEvent(new CustomEvent('theme-apply', { detail: this.theme, bubbles: true }));
+  }
+
+  _onPreview() {
+    this.dispatchEvent(new CustomEvent('theme-preview', { detail: this.theme, bubbles: true }));
+  }
+
+  _onCancelPreview() {
+    this.dispatchEvent(new CustomEvent('theme-cancel-preview', { bubbles: true }));
+  }
+
+  _onDelete() {
+    this.dispatchEvent(new CustomEvent('theme-delete', { detail: this.theme, bubbles: true }));
+  }
+}
+customElements.define('theme-card', ThemeCard);
 ```
 
 ---
 
 ### Task 6: Create Palette Editor Component
 
-**File:** `somaAgent01/webui/components/palette-editor.html` (create)
+**File:** `somaAgent01/webui/components/palette-editor.js` (create)
 
 **Requirements:** US-AGS-007
 
@@ -297,29 +390,87 @@ export class ThemeController {
 - [ ] Accessible color picker with keyboard support
 
 ### Implementation Notes
-```html
-<template id="palette-editor-template">
-  <div x-data="paletteEditor" class="palette-editor">
-    <h3>Custom Palette</h3>
-    <div class="color-inputs">
-      <template x-for="(value, key) in editableVariables" :key="key">
-        <div class="color-input-group">
-          <label x-text="formatLabel(key)"></label>
-          <input type="color" 
-                 :value="value"
-                 @input="updateColor(key, $event.target.value)">
-          <span x-show="!checkContrast(key)" class="contrast-warning">
-            ⚠️ Low contrast
-          </span>
+```javascript
+// webui/components/palette-editor.js
+import { LitElement, html, css } from 'lit';
+import { checkWcagAA } from '../js/theme.js';
+
+export class PaletteEditor extends LitElement {
+  static properties = {
+    editableVariables: { type: Object, state: true },
+    contrastWarnings: { type: Object, state: true }
+  };
+
+  static styles = css`
+    .palette-editor { padding: var(--spacing-lg); background: var(--surface-1); border-radius: var(--radius-lg); }
+    .color-inputs { display: grid; gap: var(--spacing-md); }
+    .color-input-group { display: flex; align-items: center; gap: var(--spacing-sm); }
+    .color-input-group label { flex: 1; }
+    .color-input-group input[type="color"] { width: 48px; height: 32px; border: none; cursor: pointer; }
+    .contrast-warning { color: var(--warning); font-size: var(--font-size-sm); }
+    .editor-actions { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  `;
+
+  constructor() {
+    super();
+    this.editableVariables = {};
+    this.contrastWarnings = {};
+  }
+
+  render() {
+    return html`
+      <div class="palette-editor">
+        <h3>Custom Palette</h3>
+        <div class="color-inputs">
+          ${Object.entries(this.editableVariables).map(([key, value]) => html`
+            <div class="color-input-group">
+              <label>${this._formatLabel(key)}</label>
+              <input type="color"
+                     .value=${value}
+                     @input=${e => this._updateColor(key, e.target.value)}
+                     aria-label="${this._formatLabel(key)} color picker">
+              ${this.contrastWarnings[key] ? html`
+                <span class="contrast-warning">⚠️ Low contrast</span>
+              ` : ''}
+            </div>
+          `)}
         </div>
-      </template>
-    </div>
-    <div class="editor-actions">
-      <button @click="saveAsVariant()">Save as New Theme</button>
-      <button @click="cancel()">Cancel</button>
-    </div>
-  </div>
-</template>
+        <div class="editor-actions">
+          <button @click=${this._saveAsVariant}>Save as New Theme</button>
+          <button @click=${this._cancel}>Cancel</button>
+        </div>
+      </div>
+    `;
+  }
+
+  _formatLabel(key) {
+    return key.replace(/^--/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  _updateColor(key, value) {
+    this.editableVariables = { ...this.editableVariables, [key]: value };
+    this._checkContrast(key, value);
+    document.documentElement.style.setProperty(key, value);
+  }
+
+  _checkContrast(key, value) {
+    const bgKey = key.includes('text') ? '--bg-primary' : null;
+    if (bgKey) {
+      const bgValue = this.editableVariables[bgKey] || getComputedStyle(document.documentElement).getPropertyValue(bgKey);
+      const passes = checkWcagAA(value, bgValue);
+      this.contrastWarnings = { ...this.contrastWarnings, [key]: !passes };
+    }
+  }
+
+  _saveAsVariant() {
+    this.dispatchEvent(new CustomEvent('palette-save', { detail: this.editableVariables, bubbles: true }));
+  }
+
+  _cancel() {
+    this.dispatchEvent(new CustomEvent('palette-cancel', { bubbles: true }));
+  }
+}
+customElements.define('palette-editor', PaletteEditor);
 ```
 
 ---
