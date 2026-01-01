@@ -69,6 +69,10 @@ class ServiceConfig(BaseModel):
     name: str = Field(description="Service name")
     environment: str = Field(description="Environment (DEV, STAGING, PROD)")
     deployment_mode: str = Field(description="Deployment mode")
+    deployment_target: str = Field(
+        default="LOCAL",
+        description="Deployment target (LOCAL, FARGATE, EKS, ECS_EC2, EC2, APP_RUNNER)",
+    )
     host: str = Field(default="0.0.0.0", description="Service host")
     metrics_host: str = Field(default="0.0.0.0", description="Metrics host address")
     port: int = Field(ge=1, le=65535, description="Service port")
@@ -91,6 +95,15 @@ class ServiceConfig(BaseModel):
         valid_modes = {"DEV", "STAGING", "PROD", "LOCAL", "TEST"}
         if v.upper() not in valid_modes:
             raise ValueError(f"Deployment mode must be one of: {valid_modes}")
+        return v.upper()
+
+    @field_validator("deployment_target")
+    @classmethod
+    def validate_deployment_target(cls, v: str) -> str:
+        """Validate deployment target."""
+        valid_targets = {"LOCAL", "FARGATE", "EKS", "ECS_EC2", "EC2", "APP_RUNNER"}
+        if v.upper() not in valid_targets:
+            raise ValueError(f"Deployment target must be one of: {valid_targets}")
         return v.upper()
 
 
@@ -322,6 +335,10 @@ class Config(BaseModel):
     def get_deployment_mode(self) -> str:
         """Get deployment mode."""
         return self.service.deployment_mode
+
+    def get_deployment_target(self) -> str:
+        """Get deployment target."""
+        return self.service.deployment_target
 
     def get_environment(self) -> str:
         """Get environment."""

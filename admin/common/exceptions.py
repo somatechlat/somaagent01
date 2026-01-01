@@ -89,8 +89,9 @@ class ForbiddenError(ApiError):
 
     def __init__(
         self,
-        action: str,
+        action: str | None = None,
         resource: str | None = None,
+        message: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize forbidden error.
@@ -98,13 +99,19 @@ class ForbiddenError(ApiError):
         Args:
             action: Action that was attempted
             resource: Resource access was attempted on
+            message: Custom error message (overrides auto-generated)
         """
-        if resource:
-            message = f"Access denied: cannot {action} {resource}"
+        if message:
+            final_message = message
+        elif action and resource:
+            final_message = f"Access denied: cannot {action} {resource}"
+        elif action:
+            final_message = f"Access denied: cannot {action}"
         else:
-            message = f"Access denied: cannot {action}"
-        super().__init__(message, **kwargs)
-        self.details["action"] = action
+            final_message = "Access denied"
+        super().__init__(final_message, **kwargs)
+        if action:
+            self.details["action"] = action
         if resource:
             self.details["resource"] = resource
 

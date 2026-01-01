@@ -9,33 +9,47 @@
 
 ```
 docs/
+├── README.md                      # Documentation entry point
+├── deployment/                    # Deployment guides (infra + software modes)
+│   ├── DEPLOYMENT.md
+│   └── SOFTWARE_DEPLOYMENT_MODES.md
+├── development/                   # Contributor and engineering rules
+│   ├── CONTRIBUTING.md
+│   └── VIBE_CODING_RULES.md
+├── design/                        # Design documents and inventories
+│   └── INVENTORY.md
+├── ui/                            # UI requirements and styling
+│   ├── requirements-ui.md
+│   └── UI_STYLE_GUIDE_EXTENSION.md
+├── onboarding/                    # Agent onboarding
+│   └── ONBOARDING_AGENT.md
+├── governance/                    # Governance and violations
+│   ├── steering/
+│   └── violations/
+│       ├── VIOLATIONS.md
+│       ├── VIOLATIONS_LOG.md
+│       └── VIOLATIONSLOG.md
+├── tasks/                         # Implementation tasks
+│   ├── AGENT_TASKS.md
+│   ├── TASKS-PHASE1-FOUNDATION.md
+│   ├── TASKS-PHASE2-AUTH.md
+│   ├── TASKS-PHASE3-ADMIN.md
+│   └── TASKS-PHASE4-AGENT.md
+├── legacy/                        # Legacy canonical docs (reference)
+│   ├── CANONICAL_REQUIREMENTS.md
+│   ├── CANONICAL_DESIGN.md
+│   ├── CANONICAL_RESILIENCE_SRS.md
+│   ├── CANONICAL_USER_JOURNEYS_SRS.md
+│   └── CANONICAL_SAAS_DESIGN.md
 ├── srs/                           # Software Requirements Specifications
 │   ├── INDEX.md                   # This file
 │   ├── SRS-SAAS-ADMIN.md          # 🔴 SAAS Platform Admin (God Mode)
 │   ├── SRS-TENANT-ADMIN.md        # 🟠🟡 Tenant Administration
 │   ├── SRS-AGENT-USER.md          # ⚪🔵🟣⚫ Agent User Interface
 │   ├── SRS-ERROR-HANDLING.md      # Error handling & edge cases
-│   └── SRS-AUTHENTICATION.md      # Auth & authorization
-│
-├── design/                        # Design Documents
-│   ├── DESIGN-ARCHITECTURE.md     # System architecture
-│   ├── DESIGN-DATABASE.md         # Database schema
-│   ├── DESIGN-API.md              # API design
-│   └── DESIGN-COMPONENTS.md       # UI component library
-│
-├── tasks/                         # Implementation Tasks
-│   ├── TASKS-PHASE1-FOUNDATION.md # Core infrastructure
-│   ├── TASKS-PHASE2-AUTH.md       # Authentication
-│   ├── TASKS-PHASE3-ADMIN.md      # Admin interfaces
-│   └── TASKS-PHASE4-AGENT.md      # Agent interfaces
-│
-└── CANONICAL_*.md                 # Legacy canonical docs (reference)
-    ├── CANONICAL_REQUIREMENTS.md
-    ├── CANONICAL_DESIGN.md
-    ├── CANONICAL_TASKS.md
-    ├── CANONICAL_RESILIENCE_SRS.md
-    ├── CANONICAL_USER_JOURNEYS_SRS.md
-    └── CANONICAL_SAAS_DESIGN.md
+│   ├── SRS-AUTHENTICATION.md      # Auth & authorization
+│   └── SRS-DEPLOYMENT-MODES.md    # Deployment targets & resource baselines
+└── specs/                         # Feature specs
 ```
 
 ---
@@ -62,6 +76,7 @@ docs/
 |----------|----------|-------------|
 | Error Handling | [SRS-ERROR-HANDLING.md](./SRS-ERROR-HANDLING.md) | All errors, edge cases, recovery |
 | Authentication | [SRS-AUTHENTICATION.md](./SRS-AUTHENTICATION.md) | Login, MFA, permissions, tokens |
+| Deployment | [SRS-DEPLOYMENT-MODES.md](./SRS-DEPLOYMENT-MODES.md) | Deployment targets & infra baselines |
 
 ---
 

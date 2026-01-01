@@ -290,6 +290,17 @@ export class SaasLogin extends LitElement {
             font-size: 13px;
         }
 
+        .input-error {
+            border-color: #ef4444 !important;
+        }
+
+        .field-error {
+            display: block;
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
         .footer {
             text-align: center;
             margin-top: 28px;
@@ -569,12 +580,58 @@ export class SaasLogin extends LitElement {
     @state() private _email = '';
     @state() private _password = '';
     @state() private _error = '';
+    @state() private _emailError = '';
     @state() private _isLoading = false;
     @state() private _rememberMe = false;
     @state() private _showSSOModal = false;
     @state() private _selectedProvider: SSOProvider = 'oidc';
     @state() private _testStatus: 'idle' | 'pending' | 'success' | 'error' = 'idle';
     @state() private _testMessage = '';
+
+    /**
+     * RFC 5322 compliant email validation regex.
+     * Per design.md Section 1.2, 2.1 - Email Validation
+     * 
+     * This pattern validates:
+     * - Local part: alphanumeric, dots, hyphens, underscores, plus signs
+     * - Domain: alphanumeric with dots and hyphens
+     * - TLD: 2+ characters
+     */
+    private static readonly EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+    /**
+     * Validate email format per RFC 5322.
+     * Per design.md Section 1.2 - Email Validation
+     */
+    private _validateEmail(email: string): boolean {
+        if (!email) return false;
+        if (email.length > 254) return false; // RFC 5321 max length
+        return SaasLogin.EMAIL_REGEX.test(email);
+    }
+
+    /**
+     * Handle email input with inline validation.
+     */
+    private _handleEmailInput(e: Event) {
+        const input = e.target as HTMLInputElement;
+        this._email = input.value;
+        
+        // Clear error when user starts typing
+        if (this._emailError && this._email) {
+            this._emailError = '';
+        }
+    }
+
+    /**
+     * Validate email on blur.
+     */
+    private _handleEmailBlur() {
+        if (this._email && !this._validateEmail(this._email)) {
+            this._emailError = 'Please enter a valid email address';
+        } else {
+            this._emailError = '';
+        }
+    }
 
     render() {
         const provider = SSO_PROVIDERS.find(p => p.id === this._selectedProvider)!;
@@ -632,10 +689,13 @@ export class SaasLogin extends LitElement {
                     <form @submit=${this._handleLogin}>
                         <div class="form-group">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-input" placeholder="name@company.com"
+                            <input type="email" class="form-input ${this._emailError ? 'input-error' : ''}" 
+                                placeholder="name@company.com"
                                 .value=${this._email}
-                                @input=${(e: Event) => this._email = (e.target as HTMLInputElement).value}
+                                @input=${this._handleEmailInput}
+                                @blur=${this._handleEmailBlur}
                                 required autocomplete="email">
+                            ${this._emailError ? html`<span class="field-error">${this._emailError}</span>` : ''}
                         </div>
 
                         <div class="form-group">
@@ -770,6 +830,13 @@ export class SaasLogin extends LitElement {
             this._error = 'Please enter both email and password';
             return;
         }
+        
+        // Validate email format per RFC 5322
+        if (!this._validateEmail(this._email)) {
+            this._emailError = 'Please enter a valid email address';
+            return;
+        }
+        
         if (this._password.length < 8) {
             this._error = 'Password must be at least 8 characters';
             return;

@@ -422,7 +422,7 @@ This document serves as the **Single Source of Truth** for all requirements of t
 
 - SomaBrain README: `somabrain/README.md`
 - SomaFractalMemory README: `somafractalmemory/README.md`
-- VIBE Coding Rules: `somaAgent01/VIBE_CODING_RULES.md`
+- VIBE Coding Rules: `somaAgent01/docs/development/VIBE_CODING_RULES.md`
 - Steering Files: `somaAgent01/.kiro/steering/`
 
 ---

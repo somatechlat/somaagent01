@@ -30,7 +30,7 @@ export class WebSocketClient {
 
     constructor(config: Partial<WebSocketConfig> = {}) {
         this.config = {
-            url: config.url ?? '/ws/v2/events',
+            url: config.url ?? '/ws/v2/chat',
             reconnect: config.reconnect ?? true,
             maxReconnectAttempts: config.maxReconnectAttempts ?? 10,
             reconnectDelay: config.reconnectDelay ?? 1000,
@@ -48,7 +48,7 @@ export class WebSocketClient {
     /**
      * Set authentication token.
      */
-    setToken(token: string): void {
+    setToken(token: string | null): void {
         this.token = token;
     }
 
@@ -170,14 +170,14 @@ export class WebSocketClient {
         this.ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                const { type, data } = message;
+                const { type, data, payload } = message;
 
                 if (type === 'pong') {
                     // Heartbeat response - ignore
                     return;
                 }
 
-                this._emit(type, data);
+                this._emit(type, data ?? payload);
             } catch (error) {
                 console.error('Failed to parse WebSocket message:', error);
             }

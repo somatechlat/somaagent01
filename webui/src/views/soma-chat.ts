@@ -335,10 +335,15 @@ export class SomaChat extends LitElement {
             this._handleIncomingMessage(data as ChatMessage);
         });
 
-        wsClient.on('chat.stream', (data: unknown) => {
-            const chunk = data as { content: string; done: boolean; confidence?: number };
-            this._handleStreamChunk(chunk);
+        wsClient.on('chat.delta', (data: unknown) => {
+            this._handleStreamDelta(data as { delta?: string; content?: string });
         });
+
+        wsClient.on('chat.done', (data: unknown) => {
+            this._handleStreamDone(data as { content?: string; confidence?: number });
+        });
+
+        wsClient.connect();
 
         if (this.sessionId) {
             await this._loadHistory();
@@ -455,6 +460,17 @@ export class SomaChat extends LitElement {
         const content = this._input.trim();
         if (!content || this._isStreaming) return;
 
+        const wsReady = await this._ensureWebSocket();
+        if (!wsReady) {
+            console.error('WebSocket not connected');
+            return;
+        }
+
+        if (!this.sessionId) {
+            console.error('Missing conversation/session id');
+            return;
+        }
+
         const userMessage: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'user',
@@ -469,8 +485,8 @@ export class SomaChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
 
         try {
-            wsClient.send('chat.send', {
-                session_id: this.sessionId,
+            wsClient.send('chat.message', {
+                conversation_id: this.sessionId,
                 content,
             });
         } catch (error) {
@@ -486,25 +502,49 @@ export class SomaChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
     }
 
-    private _handleStreamChunk(chunk: { content: string; done: boolean; confidence?: number }) {
-        this._streamContent += chunk.content;
-        if (chunk.done) {
-            const message: ChatMessage = {
-                id: `msg-${Date.now()}`,
-                role: 'assistant',
-                content: this._streamContent,
-                timestamp: new Date().toISOString(),
-                confidence: chunk.confidence,
-            };
-            this._handleIncomingMessage(message);
-        }
+    private _handleStreamDelta(chunk: { delta?: string; content?: string }) {
+        const delta = chunk.delta ?? chunk.content ?? '';
+        this._streamContent += delta;
         this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    private _handleStreamDone(chunk: { content?: string; confidence?: number }) {
+        const message: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: chunk.content ?? this._streamContent,
+            timestamp: new Date().toISOString(),
+            confidence: chunk.confidence,
+        };
+        this._handleIncomingMessage(message);
+    }
+
+    private async _ensureWebSocket(): Promise<boolean> {
+        if (wsClient.connected) {
+            return true;
+        }
+
+        wsClient.connect();
+
+        return new Promise(resolve => {
+            const unsubscribe = wsClient.on('connected', () => {
+                unsubscribe();
+                resolve(true);
+            });
+            const timeout = setTimeout(() => {
+                unsubscribe();
+                resolve(false);
+            }, 5000);
+        });
     }
 
     private async _loadHistory() {
         try {
-            const messages = await apiClient.get<ChatMessage[]>(`/chat/${this.sessionId}/messages`);
-            this._messages = messages;
+            const response = await apiClient.get(`/chat/conversations/${this.sessionId}/messages`);
+            const items = Array.isArray(response)
+                ? response
+                : (response as { data?: ChatMessage[] }).data || [];
+            this._messages = items as ChatMessage[];
         } catch (error) {
             console.error('Failed to load chat history:', error);
         }
