@@ -20,13 +20,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
 
 django.setup()
-
-from django.core.asgi import get_asgi_application
 from django.http import FileResponse, JsonResponse
 from django.views.static import serve
 
-# Import Django app
-django_asgi = get_asgi_application()
+# Import Channels-enabled ASGI app
+from services.gateway.asgi import application as django_asgi
 
 
 def main() -> None:

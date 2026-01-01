@@ -115,6 +115,7 @@ def load_config() -> Config:
             "name": "somaagent01",
             "environment": "DEV",
             "deployment_mode": "DEV",
+            "deployment_target": "LOCAL",
             "host": "0.0.0.0",
             "port": 8010,
             "metrics_port": 9400,
@@ -206,6 +207,9 @@ def load_config() -> Config:
     environment_env = os.getenv("SA01_ENVIRONMENT")
     if environment_env:
         default_cfg_dict["service"]["environment"] = environment_env
+    deployment_target_env = os.getenv("SA01_DEPLOYMENT_TARGET")
+    if deployment_target_env:
+        default_cfg_dict["service"]["deployment_target"] = deployment_target_env
 
     # Use the Pydantic v2 API – ``model_validate`` replaces the deprecated ``parse_obj``.
     cfg = Config.model_validate(default_cfg_dict)

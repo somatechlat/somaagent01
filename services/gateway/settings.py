@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third party
     "ninja",
+    "channels",
     # Local admin apps (alphabetical order)
     "admin.agents",
     "admin.capsules",
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # SPA static file serving
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "admin.common.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -65,6 +67,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "services.gateway.urls"
+ASGI_APPLICATION = "services.gateway.asgi.application"
 
 TEMPLATES = [
     {
@@ -211,6 +214,17 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": REDIS_URL,
+    }
+}
+
+# =============================================================================
+# DJANGO CHANNELS (Redis-backed)
+# =============================================================================
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [REDIS_URL]},
     }
 }
 

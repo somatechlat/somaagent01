@@ -74,7 +74,7 @@ const DEFAULT_SETTINGS: SettingsData = {
     external: {},
     connectivity: {
         api_base_url: '/api/v2',
-        ws_url: '/ws/v2/events',
+        ws_url: '/ws/v2/chat',
         timeout_ms: 30000,
         retry_attempts: 3,
     },

@@ -695,6 +695,36 @@ export class SaasChat extends LitElement {
             0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
             30% { transform: translateY(-6px); opacity: 1; }
         }
+
+        /* Reconnection Indicator */
+        .reconnecting-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--saas-status-warning, #f59e0b);
+            color: white;
+            padding: 8px 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            z-index: 50;
+        }
+
+        .reconnecting-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     `;
 
     @property({ type: String }) sessionId = '';
@@ -706,6 +736,10 @@ export class SaasChat extends LitElement {
     @state() private _currentMode: AgentMode = 'STD';
     @state() private _showModeDropdown = false;
     @state() private _activeConversationId = '';
+    @state() private _wsConnected = false;
+    @state() private _wsReconnecting = false;
+    @state() private _agents: { id: string; name: string; description: string }[] = [];
+    @state() private _selectedAgentId = '';
 
     @query('.messages') private _messagesContainer!: HTMLElement;
 
@@ -723,26 +757,115 @@ export class SaasChat extends LitElement {
     async connectedCallback() {
         super.connectedCallback();
 
-        // Sample conversations for demo
-        this._conversations = [
-            { id: '1', title: 'Database Configuration', lastMessage: 'User asked about PostgreSQL...', updatedAt: 'Dec 22', messageCount: 12 },
-            { id: '2', title: 'Server Setup Help', lastMessage: 'I need help with Docker...', updatedAt: 'Dec 21', messageCount: 8 },
-            { id: '3', title: 'Data Migration Query', lastMessage: 'How do I migrate from MySQL?', updatedAt: 'Dec 20', messageCount: 15 },
-            { id: '4', title: 'Code Review', lastMessage: 'Can you review this function?', updatedAt: 'Dec 19', messageCount: 5 },
-        ];
+        // Load agents from API (filtered by SpiceDB permissions)
+        await this._loadAgents();
+
+        await this._loadConversations();
 
         // Subscribe to WebSocket events
         this._unsubscribe = wsClient.on('chat.message', (data) => {
             this._handleIncomingMessage(data as ChatMessage);
         });
 
-        wsClient.on('chat.stream', (data: unknown) => {
-            const chunk = data as { content: string; done: boolean; confidence?: number };
-            this._handleStreamChunk(chunk);
+        wsClient.on('chat.delta', (data: unknown) => {
+            this._handleStreamDelta(data as { delta?: string; content?: string });
         });
+
+        wsClient.on('chat.done', (data: unknown) => {
+            this._handleStreamDone(data as { content?: string; confidence?: number });
+        });
+
+        // WebSocket connection status handlers
+        // Per design.md Section 11.7 - WebSocket Reconnection
+        wsClient.on('connected', () => {
+            this._wsConnected = true;
+            this._wsReconnecting = false;
+            console.log('[SaasChat] WebSocket connected');
+        });
+
+        wsClient.on('disconnected', () => {
+            this._wsConnected = false;
+            this._wsReconnecting = true;
+            console.log('[SaasChat] WebSocket disconnected, reconnecting...');
+        });
+
+        wsClient.on('error', () => {
+            this._wsReconnecting = true;
+        });
+
+        wsClient.connect();
 
         // Close dropdown on outside click
         document.addEventListener('click', this._handleOutsideClick);
+    }
+
+    /**
+     * Load agents from API (filtered by SpiceDB permissions).
+     * Per design.md Section 7.1-7.3 - Agent Selection
+     */
+    private async _loadAgents(): Promise<void> {
+        try {
+            const response = await apiClient.get('/agents');
+            if (response.ok) {
+                const data = await response.json();
+                this._agents = data.agents || [];
+                
+                // Auto-select if single agent per design.md Section 7.3
+                if (this._agents.length === 1) {
+                    this._selectedAgentId = this._agents[0].id;
+                }
+            }
+        } catch (error) {
+            console.error('[SaasChat] Failed to load agents:', error);
+        }
+    }
+
+    /**
+     * Load conversations from API.
+     */
+    private async _loadConversations(): Promise<void> {
+        try {
+            const response = await apiClient.get('/chat/conversations');
+            const items = Array.isArray(response)
+                ? response
+                : (response as { data?: Conversation[] }).data || [];
+
+            this._conversations = items.map((conv: any) => ({
+                id: conv.id,
+                title: conv.title ?? 'Untitled',
+                lastMessage: conv.last_message ?? '',
+                updatedAt: conv.updated_at ?? '',
+                messageCount: conv.message_count ?? 0,
+            }));
+            if (!this._activeConversationId && this._conversations.length > 0) {
+                this._activeConversationId = this._conversations[0].id;
+                await this._loadConversationMessages(this._activeConversationId);
+            }
+        } catch (error) {
+            console.error('[SaasChat] Failed to load conversations:', error);
+            this._conversations = [];
+        }
+    }
+
+    /**
+     * Create new conversation via API.
+     * Per design.md Section 8.1 - Conversation Creation
+     */
+    private async _createConversation(agentId: string): Promise<string | null> {
+        try {
+            const response = await apiClient.post('/chat/conversations', {
+                agent_id: agentId,
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.id;
+            }
+            return null;
+        } catch (error) {
+            console.error('[SaasChat] Failed to create conversation:', error);
+            return null;
+        }
     }
 
     disconnectedCallback() {
@@ -827,6 +950,14 @@ export class SaasChat extends LitElement {
 
             <!-- Main Chat Area -->
             <main class="main">
+                <!-- Reconnection Banner per design.md Section 11.7 -->
+                ${this._wsReconnecting ? html`
+                    <div class="reconnecting-banner">
+                        <div class="reconnecting-spinner"></div>
+                        Reconnecting...
+                    </div>
+                ` : ''}
+
                 <header class="header">
                     <div class="header-left">
                         <span class="agent-name">Support-AI</span>
@@ -971,6 +1102,27 @@ export class SaasChat extends LitElement {
         const content = this._input.trim();
         if (!content || this._isStreaming) return;
 
+        const wsReady = await this._ensureWebSocket();
+        if (!wsReady) {
+            console.error('[SaasChat] WebSocket not connected');
+            return;
+        }
+
+        let conversationId = this._activeConversationId;
+        if (!conversationId && this._selectedAgentId) {
+            conversationId = await this._createConversation(this._selectedAgentId);
+            if (!conversationId) {
+                console.error('[SaasChat] Failed to create conversation');
+                return;
+            }
+            this._activeConversationId = conversationId;
+            await this._loadConversations();
+        }
+        if (!conversationId) {
+            console.error('[SaasChat] No active conversation');
+            return;
+        }
+
         const userMessage: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'user',
@@ -989,8 +1141,9 @@ export class SaasChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
 
         try {
-            wsClient.send('chat.send', {
-                session_id: this.sessionId,
+            wsClient.send('chat.message', {
+                conversation_id: conversationId,
+                agent_id: this._selectedAgentId || undefined,
                 content,
                 mode: this._currentMode,
             });
@@ -1000,6 +1153,25 @@ export class SaasChat extends LitElement {
         }
     }
 
+    private async _ensureWebSocket(): Promise<boolean> {
+        if (wsClient.connected) {
+            return true;
+        }
+
+        wsClient.connect();
+
+        return new Promise(resolve => {
+            const unsubscribe = wsClient.on('connected', () => {
+                unsubscribe();
+                resolve(true);
+            });
+            const timeout = setTimeout(() => {
+                unsubscribe();
+                resolve(false);
+            }, 5000);
+        });
+    }
+
     private _handleIncomingMessage(msg: ChatMessage) {
         this._isStreaming = false;
         this._streamContent = '';
@@ -1007,19 +1179,21 @@ export class SaasChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
     }
 
-    private _handleStreamChunk(chunk: { content: string; done: boolean; confidence?: number }) {
-        this._streamContent += chunk.content;
-        if (chunk.done) {
-            const message: ChatMessage = {
-                id: `msg-${Date.now()}`,
-                role: 'assistant',
-                content: this._streamContent,
-                timestamp: new Date().toISOString(),
-                confidence: chunk.confidence,
-            };
-            this._handleIncomingMessage(message);
-        }
+    private _handleStreamDelta(chunk: { delta?: string; content?: string }) {
+        const delta = chunk.delta ?? chunk.content ?? '';
+        this._streamContent += delta;
         this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    private _handleStreamDone(chunk: { content?: string; confidence?: number }) {
+        const message: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: chunk.content ?? this._streamContent,
+            timestamp: new Date().toISOString(),
+            confidence: chunk.confidence,
+        };
+        this._handleIncomingMessage(message);
     }
 
     private _scrollToBottom() {
@@ -1028,14 +1202,41 @@ export class SaasChat extends LitElement {
         }
     }
 
-    private _startNewChat() {
+    private async _startNewChat() {
+        // Create conversation via API per design.md Section 8.1
+        if (this._selectedAgentId) {
+            const conversationId = await this._createConversation(this._selectedAgentId);
+            if (conversationId) {
+                this._activeConversationId = conversationId;
+                await this._loadConversations();
+            }
+        }
         this._messages = [];
-        this._activeConversationId = '';
     }
 
     private _selectConversation(id: string) {
         this._activeConversationId = id;
-        // Would load conversation history here
+        this._loadConversationMessages(id);
+    }
+
+    private async _loadConversationMessages(conversationId: string): Promise<void> {
+        try {
+            const response = await apiClient.get(`/chat/conversations/${conversationId}/messages`);
+            const items = Array.isArray(response)
+                ? response
+                : (response as { data?: ChatMessage[] }).data || [];
+
+            this._messages = items.map((msg: any) => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.created_at,
+                confidence: msg.metadata?.confidence,
+            }));
+            this.updateComplete.then(() => this._scrollToBottom());
+        } catch (error) {
+            console.error('[SaasChat] Failed to load messages:', error);
+        }
     }
 
     private _navigate(path: string) {

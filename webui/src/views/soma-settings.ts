@@ -309,7 +309,7 @@ export class SomaSettings extends LitElement {
                     ></soma-input>
                     <soma-input 
                         label="WebSocket URL" 
-                        .value=${data.ws_url || '/ws/v2/events'}
+                        .value=${data.ws_url || '/ws/v2/chat'}
                         @soma-input=${(e: CustomEvent) => this._updateField('connectivity', 'ws_url', e.detail.value)}
                     ></soma-input>
                 </div>

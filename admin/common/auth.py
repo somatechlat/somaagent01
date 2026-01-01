@@ -84,6 +84,7 @@ class TokenPayload(BaseModel):
     resource_access: dict[str, dict[str, list[str]]] | None = None
     scope: str | None = None
     tenant_id: str | None = None  # Custom claim for multi-tenancy
+    session_id: str | None = None  # Custom claim for session tracking
 
     @property
     def roles(self) -> list[str]:
@@ -197,7 +198,9 @@ class AuthBearer(HttpBearer):
     async def authenticate(self, request, token: str) -> TokenPayload | None:
         """Authenticate the bearer token."""
         try:
-            return await decode_token(token)
+            payload = await decode_token(token)
+            _apply_session_cookie(payload, request)
+            return payload
         except UnauthorizedError:
             return None
 
@@ -219,6 +222,7 @@ class RoleRequired(HttpBearer):
         """Authenticate and check roles."""
         try:
             payload = await decode_token(token)
+            _apply_session_cookie(payload, request)
 
             # Check if user has at least one required role
             user_roles = set(payload.roles)
@@ -247,6 +251,7 @@ class TenantRequired(HttpBearer):
         """Authenticate and extract tenant."""
         try:
             payload = await decode_token(token)
+            _apply_session_cookie(payload, request)
 
             # Tenant ID must be present
             if not payload.tenant_id:
@@ -278,6 +283,15 @@ def get_current_user(request) -> TokenPayload:
     if not hasattr(request, "auth") or request.auth is None:
         raise UnauthorizedError()
     return request.auth
+
+
+def _apply_session_cookie(payload: TokenPayload, request) -> None:
+    """Attach session_id from cookie to token payload when missing."""
+    if payload.session_id:
+        return
+    session_id = request.COOKIES.get("session_id")
+    if session_id:
+        payload.session_id = session_id
 
 
 def require_roles(*roles: str):

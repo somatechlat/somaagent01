@@ -15,11 +15,16 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from django.conf import settings
+from django.db import models
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
-from admin.common.auth import AuthBearer
+from admin.common.auth import AuthBearer, get_current_user
+from admin.common.exceptions import NotFoundError, ServiceError
+from admin.chat.models import Conversation as ConversationModel
+from admin.chat.models import Message as MessageModel
 
 router = Router(tags=["conversations"])
 logger = logging.getLogger(__name__)
@@ -86,9 +91,47 @@ async def list_conversations(
 
     PM: Conversation history.
     """
+    from asgiref.sync import sync_to_async
+
+    user = get_current_user(request)
+    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    effective_user_id = user_id or user.sub
+
+    @sync_to_async
+    def _get():
+        qs = ConversationModel.objects.all()
+        if tenant_id:
+            qs = qs.filter(tenant_id=tenant_id)
+        if agent_id:
+            qs = qs.filter(agent_id=agent_id)
+        if effective_user_id:
+            qs = qs.filter(user_id=effective_user_id)
+        if status:
+            qs = qs.filter(status=status)
+
+        total = qs.count()
+        items = []
+        for conv in qs.order_by("-updated_at")[:limit]:
+            items.append(
+                Conversation(
+                    conversation_id=str(conv.id),
+                    agent_id=str(conv.agent_id),
+                    user_id=str(conv.user_id),
+                    tenant_id=str(conv.tenant_id),
+                    title=conv.title,
+                    status=conv.status,
+                    message_count=conv.message_count,
+                    created_at=conv.created_at.isoformat(),
+                    updated_at=conv.updated_at.isoformat(),
+                ).model_dump()
+            )
+        return items, total
+
+    items, total = await _get()
+
     return {
-        "conversations": [],
-        "total": 0,
+        "conversations": items,
+        "total": total,
     }
 
 
@@ -109,21 +152,70 @@ async def start_conversation(
 
     PhD Dev: Conversation initialization.
     """
-    conversation_id = str(uuid4())
+    from services.common.chat_service import get_chat_service
+    from asgiref.sync import sync_to_async
 
-    logger.info(f"Conversation started: {conversation_id}")
+    user = get_current_user(request)
+    effective_user_id = user.sub
+    effective_tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
 
-    return Conversation(
-        conversation_id=conversation_id,
-        agent_id=agent_id,
-        user_id=user_id,
-        tenant_id=tenant_id,
-        title=title,
-        status="active",
-        message_count=0,
-        created_at=timezone.now().isoformat(),
-        updated_at=timezone.now().isoformat(),
-    )
+    chat_service = await get_chat_service()
+
+    try:
+        conv = await chat_service.create_conversation(
+            agent_id=agent_id,
+            user_id=effective_user_id,
+            tenant_id=effective_tenant_id,
+        )
+
+        # Initialize agent session (local session store, non-critical)
+        try:
+            await chat_service.initialize_agent_session(
+                agent_id=agent_id,
+                conversation_id=conv.id,
+                user_context={
+                    "user_id": effective_user_id,
+                    "tenant_id": effective_tenant_id,
+                },
+            )
+        except Exception as exc:
+            logger.warning(f"Agent session init failed (non-critical): {exc}")
+
+        # Recall memories for context (non-critical)
+        try:
+            await chat_service.recall_memories(
+                agent_id=agent_id,
+                user_id=effective_user_id,
+                query="user context",
+                limit=5,
+                tenant_id=effective_tenant_id,
+            )
+        except Exception as exc:
+            logger.warning(f"Memory recall failed (non-critical): {exc}")
+
+        if title:
+            @sync_to_async
+            def update_title():
+                ConversationModel.objects.filter(id=conv.id).update(title=title)
+
+            await update_title()
+
+        logger.info(f"Conversation started: {conv.id}")
+
+        return Conversation(
+            conversation_id=conv.id,
+            agent_id=agent_id,
+            user_id=effective_user_id,
+            tenant_id=effective_tenant_id,
+            title=title,
+            status="active",
+            message_count=0,
+            created_at=conv.created_at.isoformat(),
+            updated_at=conv.updated_at.isoformat(),
+        )
+    except Exception as exc:
+        logger.error(f"Conversation start failed: {exc}")
+        raise ServiceError(f"Failed to start conversation: {exc}")
 
 
 @router.get(
@@ -134,15 +226,35 @@ async def start_conversation(
 )
 async def get_conversation(request, conversation_id: str) -> Conversation:
     """Get conversation details."""
+    from asgiref.sync import sync_to_async
+
+    user = get_current_user(request)
+    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+
+    @sync_to_async
+    def _get():
+        try:
+            return ConversationModel.objects.get(id=conversation_id)
+        except ConversationModel.DoesNotExist:
+            return None
+
+    conv = await _get()
+    if not conv:
+        raise NotFoundError("conversation", conversation_id)
+
+    if tenant_id and str(conv.tenant_id) != tenant_id:
+        raise NotFoundError("conversation", conversation_id)
+
     return Conversation(
-        conversation_id=conversation_id,
-        agent_id="agent-1",
-        user_id="user-1",
-        tenant_id="tenant-1",
-        status="active",
-        message_count=0,
-        created_at=timezone.now().isoformat(),
-        updated_at=timezone.now().isoformat(),
+        conversation_id=str(conv.id),
+        agent_id=str(conv.agent_id),
+        user_id=str(conv.user_id),
+        tenant_id=str(conv.tenant_id),
+        title=conv.title,
+        status=conv.status,
+        message_count=conv.message_count,
+        created_at=conv.created_at.isoformat(),
+        updated_at=conv.updated_at.isoformat(),
     )
 
 
@@ -157,6 +269,16 @@ async def update_conversation(
     title: Optional[str] = None,
 ) -> dict:
     """Update conversation metadata."""
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _update():
+        return ConversationModel.objects.filter(id=conversation_id).update(title=title)
+
+    updated = await _update()
+    if not updated:
+        raise NotFoundError("conversation", conversation_id)
+
     return {
         "conversation_id": conversation_id,
         "updated": True,
@@ -170,6 +292,16 @@ async def update_conversation(
 )
 async def delete_conversation(request, conversation_id: str) -> dict:
     """Delete a conversation."""
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _delete():
+        return ConversationModel.objects.filter(id=conversation_id).update(status="deleted")
+
+    updated = await _delete()
+    if not updated:
+        raise NotFoundError("conversation", conversation_id)
+
     logger.warning(f"Conversation deleted: {conversation_id}")
 
     return {
@@ -198,10 +330,40 @@ async def list_messages(
 
     PM: Chat history.
     """
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _get_messages():
+        if not ConversationModel.objects.filter(id=conversation_id).exists():
+            return None, 0
+
+        qs = MessageModel.objects.filter(conversation_id=conversation_id)
+        if before:
+            qs = qs.filter(id__lt=before)
+        qs = qs.order_by("created_at")
+
+        items = []
+        for msg in qs[:limit]:
+            items.append(
+                Message(
+                    message_id=str(msg.id),
+                    conversation_id=str(msg.conversation_id),
+                    role=msg.role,
+                    content=msg.content,
+                    metadata=msg.metadata,
+                    created_at=msg.created_at.isoformat(),
+                ).model_dump()
+            )
+        return items, qs.count()
+
+    items, total = await _get_messages()
+    if items is None:
+        raise NotFoundError("conversation", conversation_id)
+
     return {
         "conversation_id": conversation_id,
-        "messages": [],
-        "total": 0,
+        "messages": items,
+        "total": total,
     }
 
 
@@ -221,16 +383,56 @@ async def send_message(
 
     PhD Dev: Message processing.
     """
-    message_id = str(uuid4())
+    from services.common.chat_service import get_chat_service
+    from asgiref.sync import sync_to_async
 
-    logger.debug(f"Message sent: {message_id}")
+    if role != "user":
+        raise ServiceError("Only user messages can be sent")
+
+    # Verify conversation exists and resolve agent
+    @sync_to_async
+    def _get_conversation():
+        try:
+            return ConversationModel.objects.get(id=conversation_id)
+        except ConversationModel.DoesNotExist:
+            return None
+
+    conv = await _get_conversation()
+    if not conv:
+        raise NotFoundError("conversation", conversation_id)
+
+    user = get_current_user(request)
+
+    chat_service = await get_chat_service()
+    response_tokens = []
+
+    async for token in chat_service.send_message(
+        conversation_id=conversation_id,
+        agent_id=str(conv.agent_id),
+        content=content,
+        user_id=user.sub,
+    ):
+        response_tokens.append(token)
+
+    full_response = "".join(response_tokens)
+
+    # Return assistant message snapshot
+    @sync_to_async
+    def _get_last_assistant():
+        return MessageModel.objects.filter(
+            conversation_id=conversation_id,
+            role="assistant",
+        ).order_by("-created_at").first()
+
+    msg = await _get_last_assistant()
 
     return Message(
-        message_id=message_id,
+        message_id=str(msg.id) if msg else str(uuid4()),
         conversation_id=conversation_id,
-        role=role,
-        content=content,
-        created_at=timezone.now().isoformat(),
+        role="assistant",
+        content=full_response,
+        metadata=msg.metadata if msg else None,
+        created_at=msg.created_at.isoformat() if msg else timezone.now().isoformat(),
     )
 
 
@@ -246,12 +448,29 @@ async def get_message(
     message_id: str,
 ) -> Message:
     """Get message details."""
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _get():
+        try:
+            return MessageModel.objects.get(
+                id=message_id,
+                conversation_id=conversation_id,
+            )
+        except MessageModel.DoesNotExist:
+            return None
+
+    msg = await _get()
+    if not msg:
+        raise NotFoundError("message", message_id)
+
     return Message(
-        message_id=message_id,
-        conversation_id=conversation_id,
-        role="user",
-        content="",
-        created_at=timezone.now().isoformat(),
+        message_id=str(msg.id),
+        conversation_id=str(msg.conversation_id),
+        role=msg.role,
+        content=msg.content,
+        metadata=msg.metadata,
+        created_at=msg.created_at.isoformat(),
     )
 
 
@@ -275,16 +494,43 @@ async def chat(
 
     PhD Dev: Full chat cycle.
     """
-    user_message_id = str(uuid4())
-    assistant_message_id = str(uuid4())
+    from services.common.chat_service import get_chat_service
+    from asgiref.sync import sync_to_async
 
-    # In production: call LLM
+    @sync_to_async
+    def _get_conversation():
+        try:
+            return ConversationModel.objects.get(id=conversation_id)
+        except ConversationModel.DoesNotExist:
+            return None
+
+    conv = await _get_conversation()
+    if not conv:
+        raise NotFoundError("conversation", conversation_id)
+
+    user = get_current_user(request)
+    chat_service = await get_chat_service()
+
+    if not stream:
+        response_tokens = []
+        async for token in chat_service.send_message(
+            conversation_id=conversation_id,
+            agent_id=str(conv.agent_id),
+            content=message,
+            user_id=user.sub,
+        ):
+            response_tokens.append(token)
+
+        return {
+            "conversation_id": conversation_id,
+            "response": "".join(response_tokens),
+        }
 
     return {
         "conversation_id": conversation_id,
-        "user_message_id": user_message_id,
-        "assistant_message_id": assistant_message_id,
-        "response": "Hello! How can I help you?",
+        "status": "streaming",
+        "message": "Connect to WebSocket for streaming response",
+        "websocket_url": f"/ws/v2/chat",
     }
 
 
@@ -303,8 +549,8 @@ async def get_stream_info(
     """
     return {
         "conversation_id": conversation_id,
-        "stream_url": f"/api/v2/conversations/{conversation_id}/stream/events",
-        "protocol": "sse",
+        "stream_url": "/ws/v2/chat",
+        "protocol": "websocket",
     }
 
 
@@ -360,13 +606,38 @@ async def get_conversation_stats(
 
     PM: Usage metrics.
     """
-    return ConversationStats(
-        total_tokens=0,
-        user_messages=0,
-        assistant_messages=0,
-        tool_calls=0,
-        duration_seconds=0,
-    )
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _get_stats():
+        if not ConversationModel.objects.filter(id=conversation_id).exists():
+            return None
+
+        qs = MessageModel.objects.filter(conversation_id=conversation_id)
+        total_tokens = qs.aggregate(models.Sum("token_count")).get("token_count__sum") or 0
+        user_messages = qs.filter(role="user").count()
+        assistant_messages = qs.filter(role="assistant").count()
+        tool_calls = 0
+
+        first = qs.order_by("created_at").first()
+        last = qs.order_by("-created_at").first()
+        duration_seconds = 0
+        if first and last:
+            duration_seconds = int((last.created_at - first.created_at).total_seconds())
+
+        return {
+            "total_tokens": total_tokens,
+            "user_messages": user_messages,
+            "assistant_messages": assistant_messages,
+            "tool_calls": tool_calls,
+            "duration_seconds": duration_seconds,
+        }
+
+    stats = await _get_stats()
+    if stats is None:
+        raise NotFoundError("conversation", conversation_id)
+
+    return ConversationStats(**stats)
 
 
 @router.post(
@@ -413,8 +684,43 @@ async def search_conversations(
 
     PM: Find past conversations.
     """
+    from asgiref.sync import sync_to_async
+
+    user = get_current_user(request)
+    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+
+    @sync_to_async
+    def _search():
+        qs = ConversationModel.objects.all()
+        if tenant_id:
+            qs = qs.filter(tenant_id=tenant_id)
+        if agent_id:
+            qs = qs.filter(agent_id=agent_id)
+        if query:
+            qs = qs.filter(models.Q(title__icontains=query) | models.Q(metadata__icontains=query))
+
+        total = qs.count()
+        results = []
+        for conv in qs.order_by("-updated_at")[:limit]:
+            results.append(
+                Conversation(
+                    conversation_id=str(conv.id),
+                    agent_id=str(conv.agent_id),
+                    user_id=str(conv.user_id),
+                    tenant_id=str(conv.tenant_id),
+                    title=conv.title,
+                    status=conv.status,
+                    message_count=conv.message_count,
+                    created_at=conv.created_at.isoformat(),
+                    updated_at=conv.updated_at.isoformat(),
+                ).model_dump()
+            )
+        return results, total
+
+    results, total = await _search()
+
     return {
         "query": query,
-        "results": [],
-        "total": 0,
+        "results": results,
+        "total": total,
     }

@@ -617,11 +617,10 @@ ToolExecutor ──────┘   │
 ## 15. Related Documents
 
 - **Requirements:** `CANONICAL_REQUIREMENTS.md`
-- **Tasks:** `CANONICAL_TASKS.md`
-- **VIBE Rules:** `VIBE_CODING_RULES.md`
+- **Tasks:** `AGENT_TASKS.md`
+- **VIBE Rules:** `docs/development/VIBE_CODING_RULES.md`
 
 ---
 
 **Last Updated:** 2025-12-21  
 **Maintained By:** Development Team
-

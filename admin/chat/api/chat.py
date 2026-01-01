@@ -2,6 +2,7 @@
 
 VIBE COMPLIANT - Django ORM, no legacy session_repository.
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-01: Chat with AI Agent
+Per login-to-chat-journey design.md Section 6.1
 """
 
 from __future__ import annotations
@@ -14,9 +15,10 @@ from django.utils import timezone
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.common.auth import AuthBearer
+from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.responses import paginated_response
+from admin.chat.models import Conversation, Message
 from admin.core.models import Session
 
 router = Router(tags=["chat"])
@@ -120,38 +122,49 @@ async def list_conversations(
 
     Per SRS UC-01 Section 4.3:
     GET /api/v2/chat/conversations
+    
+    Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
 
+    from django.conf import settings
+
+    user = get_current_user(request)
+    user_id = user.sub
+    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+
     @sync_to_async
     def _get_conversations():
-        # Get current user's tenant from token
-        # For now, return all sessions as conversations
-        sessions = Session.objects.all().order_by("-updated_at")
-        total = sessions.count()
+        # Query Conversation model
+        qs = Conversation.objects.filter(status="active")
+        
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        if tenant_id:
+            qs = qs.filter(tenant_id=tenant_id)
+            
+        qs = qs.order_by("-updated_at")
+        total = qs.count()
 
         offset = (page - 1) * per_page
         items = []
 
-        for s in sessions[offset : offset + per_page]:
+        for conv in qs[offset : offset + per_page]:
+            # Get last message
+            last_msg = Message.objects.filter(
+                conversation_id=conv.id
+            ).order_by("-created_at").first()
+            
             items.append(
                 ConversationOut(
-                    id=s.session_id,
-                    title=s.session_id[:20] + "...",
-                    agent_id=s.persona_id,
-                    agent_name=s.persona_id,
-                    last_message=None,
-                    message_count=0,
-                    created_at=(
-                        s.created_at.isoformat()
-                        if hasattr(s, "created_at") and s.created_at
-                        else timezone.now().isoformat()
-                    ),
-                    updated_at=(
-                        s.updated_at.isoformat()
-                        if hasattr(s, "updated_at") and s.updated_at
-                        else timezone.now().isoformat()
-                    ),
+                    id=str(conv.id),
+                    title=conv.title or f"Conversation {str(conv.id)[:8]}...",
+                    agent_id=str(conv.agent_id) if conv.agent_id else None,
+                    agent_name=None,  # Would join with Agent model
+                    last_message=last_msg.content[:100] if last_msg else None,
+                    message_count=conv.message_count,
+                    created_at=conv.created_at.isoformat(),
+                    updated_at=conv.updated_at.isoformat(),
                 ).model_dump()
             )
 
@@ -177,34 +190,82 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
     Per SRS UC-02 Section 5.3:
     POST /api/v2/chat/conversations
+    
+    Per login-to-chat-journey design.md Section 6.2:
+    - Creates conversation in PostgreSQL
+    - Initializes agent session in SomaBrain
+    - Recalls memories from SomaFractalMemory
     """
     from asgiref.sync import sync_to_async
+    from services.common.chat_service import get_chat_service
 
-    conversation_id = str(uuid4())
+    from django.conf import settings
 
-    @sync_to_async
-    def _create():
-        session = Session.objects.create(
-            session_id=conversation_id,
-            persona_id=payload.agent_id,
-            tenant=None,  # Would come from request.user
+    user = get_current_user(request)
+    user_id = user.sub
+    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    agent_id = payload.agent_id or str(uuid4())
+
+    # Create conversation using ChatService
+    chat_service = await get_chat_service()
+    
+    try:
+        conversation = await chat_service.create_conversation(
+            agent_id=agent_id,
+            user_id=user_id,
+            tenant_id=tenant_id,
         )
-        return session
+        
+        # Initialize agent session (local session store)
+        try:
+            await chat_service.initialize_agent_session(
+                agent_id=agent_id,
+                conversation_id=conversation.id,
+                user_context={
+                    "user_id": user_id,
+                    "tenant_id": tenant_id,
+                },
+            )
+        except Exception as e:
+            # Non-critical - log and continue
+            logger.warning(f"Agent session init failed (non-critical): {e}")
+        
+        # Recall memories for context
+        try:
+            memories = await chat_service.recall_memories(
+                agent_id=agent_id,
+                user_id=user_id,
+                query="user context",
+                limit=5,
+                tenant_id=tenant_id,
+            )
+            logger.debug(f"Recalled {len(memories)} memories for conversation")
+        except Exception as e:
+            logger.warning(f"Memory recall failed (non-critical): {e}")
 
-    session = await _create()
+        title = payload.title or f"Conversation {conversation.id[:8]}"
+        
+        # Update title if provided
+        if payload.title:
+            @sync_to_async
+            def update_title():
+                Conversation.objects.filter(id=conversation.id).update(title=payload.title)
+            await update_title()
 
-    title = payload.title or f"Conversation {conversation_id[:8]}"
-
-    return ConversationDetailOut(
-        id=conversation_id,
-        title=title,
-        agent_id=payload.agent_id,
-        agent_name=payload.agent_id,
-        memory_mode=payload.memory_mode,
-        message_count=0,
-        created_at=timezone.now().isoformat(),
-        updated_at=timezone.now().isoformat(),
-    ).model_dump()
+        return ConversationDetailOut(
+            id=conversation.id,
+            title=title,
+            agent_id=agent_id,
+            agent_name=None,
+            memory_mode=payload.memory_mode,
+            message_count=0,
+            created_at=conversation.created_at.isoformat(),
+            updated_at=conversation.updated_at.isoformat(),
+        ).model_dump()
+        
+    except Exception as e:
+        logger.error(f"Conversation creation failed: {e}")
+        raise ServiceError(f"Failed to create conversation: {e}")
 
 
 @router.get(
@@ -216,27 +277,38 @@ async def get_conversation(request, conversation_id: str) -> dict:
     """Get conversation details.
 
     Per SRS UC-01 Section 4.3.
+    Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
 
+    user = get_current_user(request)
+    user_id = user.sub
+
     @sync_to_async
     def _get():
-        return Session.objects.filter(session_id=conversation_id).first()
+        try:
+            conv = Conversation.objects.get(id=conversation_id)
+            # Verify ownership if user_id available
+            if user_id and str(conv.user_id) != user_id:
+                return None
+            return conv
+        except Conversation.DoesNotExist:
+            return None
 
-    session = await _get()
+    conv = await _get()
 
-    if not session:
+    if not conv:
         raise NotFoundError("conversation", conversation_id)
 
     return ConversationDetailOut(
-        id=session.session_id,
-        title=session.session_id[:20] + "...",
-        agent_id=session.persona_id,
-        agent_name=session.persona_id,
-        memory_mode="persistent",
-        message_count=0,
-        created_at=timezone.now().isoformat(),
-        updated_at=timezone.now().isoformat(),
+        id=str(conv.id),
+        title=conv.title or f"Conversation {str(conv.id)[:8]}...",
+        agent_id=str(conv.agent_id) if conv.agent_id else None,
+        agent_name=None,
+        memory_mode=conv.memory_mode,
+        message_count=conv.message_count,
+        created_at=conv.created_at.isoformat(),
+        updated_at=conv.updated_at.isoformat(),
     ).model_dump()
 
 
@@ -260,12 +332,45 @@ async def get_messages(
 
     Per SRS UC-01 Section 4.3:
     GET /api/v2/chat/messages/{conv_id}
+    
+    Per login-to-chat-journey design.md Section 6.2
     """
-    # In production, would query Message model
-    # For now, return empty list
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _get_messages():
+        # Verify conversation exists
+        if not Conversation.objects.filter(id=conversation_id).exists():
+            return None, 0
+            
+        qs = Message.objects.filter(conversation_id=conversation_id).order_by("created_at")
+        total = qs.count()
+        
+        offset = (page - 1) * per_page
+        items = []
+        
+        for msg in qs[offset : offset + per_page]:
+            items.append(
+                MessageOut(
+                    id=str(msg.id),
+                    conversation_id=str(msg.conversation_id),
+                    role=msg.role,
+                    content=msg.content,
+                    metadata=msg.metadata,
+                    created_at=msg.created_at.isoformat(),
+                ).model_dump()
+            )
+        
+        return items, total
+
+    items, total = await _get_messages()
+    
+    if items is None:
+        raise NotFoundError("conversation", conversation_id)
+
     return paginated_response(
-        items=[],
-        total=0,
+        items=items,
+        total=total,
         page=page,
         page_size=per_page,
     )
@@ -286,39 +391,107 @@ async def send_message(
     Per SRS UC-01 Section 4.3:
     POST /api/v2/chat/messages
 
+    Per login-to-chat-journey design.md Section 6.1:
+    - Sends message to SomaBrain
+    - Stores messages in database
+    - Returns response (sync mode) or initiates stream
+
     VIBE COMPLIANT:
-    - Real implementation framework
+    - Real ChatService integration
     - Degradation handling ready
     - ZDL via OutboxMessage
     """
     from asgiref.sync import sync_to_async
+    from services.common.chat_service import get_chat_service
 
-    # Verify conversation exists
+    user = get_current_user(request)
+    user_id = user.sub
+
+    # Verify conversation exists and get agent_id
     @sync_to_async
-    def _verify():
-        return Session.objects.filter(session_id=conversation_id).exists()
+    def _get_conversation():
+        try:
+            conv = Conversation.objects.get(id=conversation_id)
+            return conv
+        except Conversation.DoesNotExist:
+            return None
 
-    if not await _verify():
+    conv = await _get_conversation()
+    
+    if not conv:
         raise NotFoundError("conversation", conversation_id)
 
+    agent_id = str(conv.agent_id)
+
+    # For sync mode, collect full response
+    if not payload.stream:
+        chat_service = await get_chat_service()
+        
+        response_content = []
+        token_count = 0
+        
+        try:
+            async for token in chat_service.send_message(
+                conversation_id=conversation_id,
+                agent_id=agent_id,
+                content=payload.content,
+                user_id=user_id,
+            ):
+                response_content.append(token)
+                token_count += 1
+            
+            full_response = "".join(response_content)
+            
+            # Get the created message
+            @sync_to_async
+            def get_last_message():
+                return Message.objects.filter(
+                    conversation_id=conversation_id,
+                    role="assistant",
+                ).order_by("-created_at").first()
+            
+            msg = await get_last_message()
+            
+            return SendMessageResponse(
+                id=str(msg.id) if msg else str(uuid4()),
+                conversation_id=conversation_id,
+                role="assistant",
+                content=full_response,
+                tokens_used=token_count,
+                model=msg.model if msg else "",
+                created_at=msg.created_at.isoformat() if msg else timezone.now().isoformat(),
+            ).model_dump()
+            
+        except Exception as e:
+            logger.error(f"Message send failed: {e}")
+            raise ServiceError(f"Failed to send message: {e}")
+    
+    # For stream mode, return acknowledgment (actual streaming via WebSocket)
     message_id = str(uuid4())
+    
+    # Store user message
+    @sync_to_async
+    def store_user_message():
+        msg = Message.objects.create(
+            conversation_id=conversation_id,
+            role="user",
+            content=payload.content,
+            token_count=len(payload.content.split()),
+        )
+        Conversation.objects.filter(id=conversation_id).update(
+            message_count=Message.objects.filter(conversation_id=conversation_id).count()
+        )
+        return str(msg.id)
 
-    # In production:
-    # 1. Check DegradationMonitor for SomaBrain/LLM status
-    # 2. Store user message
-    # 3. Send to Kafka → Conversation Worker
-    # 4. Return SSE stream or sync response
-
-    # For now, return structured response
-    return SendMessageResponse(
-        id=message_id,
-        conversation_id=conversation_id,
-        role="assistant",
-        content=f"[Response to: {payload.content[:50]}...] - LLM integration pending",
-        tokens_used=0,
-        model="pending",
-        created_at=timezone.now().isoformat(),
-    ).model_dump()
+    user_msg_id = await store_user_message()
+    
+    return {
+        "id": user_msg_id,
+        "conversation_id": conversation_id,
+        "status": "streaming",
+        "message": "Connect to WebSocket for streaming response",
+        "websocket_url": f"/ws/chat/{agent_id}",
+    }
 
 
 # =============================================================================
