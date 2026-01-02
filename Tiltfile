@@ -18,6 +18,12 @@ print("""
 """)
 
 # =============================================================================
+# INFRASTRUCTURE - ALL CONTAINERS FROM docker-compose.yml
+# PRIMARY DEPLOYMENT CONFIGURATION FOR ALL SOMA REPOS
+# =============================================================================
+
+docker_compose(
+    'docker-compose.yml',
     profiles=['core'],  # Start with core services only
 )
 
