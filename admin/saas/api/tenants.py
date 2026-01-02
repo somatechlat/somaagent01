@@ -27,32 +27,32 @@ router = Router()
 @router.get("/check-slug")
 def check_slug_availability(request, slug: str) -> dict:
     """Check if a tenant slug is available.
-    
+
     Per SRS-SAAS-TENANT-CREATION.md Section 5.1:
     Real-time validation with suggestions for taken slugs.
     """
     # Normalize slug
     slug = slug.lower().strip()
-    
+
     # Check if exists
     exists = Tenant.objects.filter(slug=slug).exists()
-    
+
     if exists:
         # Generate suggestions
         suggestions = []
-        for suffix in ['-inc', '-global', '-ai', '-1']:
+        for suffix in ["-inc", "-global", "-ai", "-1"]:
             new_slug = f"{slug}{suffix}"
             if not Tenant.objects.filter(slug=new_slug).exists():
                 suggestions.append(new_slug)
                 if len(suggestions) >= 3:
                     break
-        
+
         return {
             "available": False,
             "slug": slug,
             "suggestions": suggestions,
         }
-    
+
     return {"available": True, "slug": slug}
 
 

@@ -167,9 +167,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 ).to_dict()
             )
 
-            logger.info(
-                f"WebSocket connected: user={self.user_id}, agent={self.agent_id}"
-            )
+            logger.info(f"WebSocket connected: user={self.user_id}, agent={self.agent_id}")
 
         except Exception as e:
             logger.error(f"WebSocket connect error: {e}")
@@ -188,9 +186,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # Track disconnection
         WS_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").dec()
 
-        logger.info(
-            f"WebSocket disconnected: user={self.user_id}, code={close_code}"
-        )
+        logger.info(f"WebSocket disconnected: user={self.user_id}, code={close_code}")
 
     async def receive_json(self, content: dict, **kwargs):
         """Handle incoming WebSocket message.
@@ -310,7 +306,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """
         payload = content.get("payload") or content.get("data") or {}
         message_content = payload.get("content", "")
-        conversation_id = payload.get("conversation_id") or payload.get("session_id") or self.conversation_id
+        conversation_id = (
+            payload.get("conversation_id") or payload.get("session_id") or self.conversation_id
+        )
 
         if not message_content:
             await self._send_error("Message content is required")
@@ -429,8 +427,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     return None, None  # Already has title
 
                 messages = list(
-                    Message.objects.filter(conversation_id=conversation_id)
-                    .order_by("created_at")[:5]
+                    Message.objects.filter(conversation_id=conversation_id).order_by("created_at")[
+                        :5
+                    ]
                 )
                 return conv, messages
             except Conversation.DoesNotExist:

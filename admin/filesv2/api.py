@@ -78,18 +78,18 @@ def list_files(
     tenant_id: Optional[str] = None,
 ):
     """List files with pagination.
-    
+
     VIBE COMPLIANT: Real Django ORM query.
     """
     from admin.filesv2.models import File
 
     offset = (page - 1) * per_page
-    
+
     # Get files with tenant isolation
     queryset = File.objects.filter(deleted_at__isnull=True)
     if tenant_id:
         queryset = queryset.filter(tenant_id=tenant_id)
-    
+
     total = queryset.count()
     files = queryset.order_by("-created_at")[offset : offset + per_page]
 
@@ -119,7 +119,7 @@ def list_files(
 @router.get("/{file_id}", response=FileOut)
 def get_file(request, file_id: str):
     """Get file details.
-    
+
     VIBE COMPLIANT: Real Django ORM query.
     """
     from admin.filesv2.models import File
@@ -153,7 +153,7 @@ def create_upload_url(
     user_id: str,
 ):
     """Create presigned upload URL.
-    
+
     VIBE COMPLIANT: Real S3 presigned URL generation.
     """
     import boto3
@@ -217,7 +217,7 @@ def create_upload_url(
 @router.delete("/{file_id}")
 def delete_file(request, file_id: str):
     """Soft delete a file.
-    
+
     VIBE COMPLIANT: Real Django ORM update.
     """
     from admin.filesv2.models import File
@@ -235,7 +235,7 @@ def delete_file(request, file_id: str):
 @router.get("/{file_id}/download-url")
 def get_download_url(request, file_id: str):
     """Get presigned download URL.
-    
+
     VIBE COMPLIANT: Real S3 presigned URL.
     """
     import boto3

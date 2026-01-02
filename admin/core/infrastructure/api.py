@@ -90,6 +90,7 @@ async def list_rate_limits(
 
     Security Auditor: Platform admin only (infra:view permission).
     """
+
     @sync_to_async
     def _get_limits():
         qs = RateLimitPolicy.objects.all()
@@ -116,6 +117,7 @@ async def get_rate_limit(request, key: str) -> dict:
 
     Security Auditor: Platform admin only.
     """
+
     @sync_to_async
     def _get_limit():
         try:
@@ -196,6 +198,7 @@ async def update_rate_limit(
     Security Auditor: Platform admin only (infra:configure permission).
     DevOps: Syncs to Redis for runtime enforcement.
     """
+
     @sync_to_async
     def _update():
         try:
@@ -234,6 +237,7 @@ async def update_rate_limit(
     # Sync to Redis for runtime enforcement
     try:
         from services.common.rate_limiter import get_rate_limiter
+
         limiter = await get_rate_limiter()
         await limiter.reset(key)  # Clear existing counter to apply new limits
         logger.debug(f"Rate limit synced to Redis: {key}")
@@ -253,6 +257,7 @@ async def delete_rate_limit(request, key: str) -> dict:
 
     Security Auditor: Platform admin only (infra:configure permission).
     """
+
     @sync_to_async
     def _delete():
         try:
@@ -302,7 +307,12 @@ async def seed_rate_limits(request) -> dict:
             "limit": 100000,
             "window_seconds": 86400,
             "policy": "SOFT",
-            "tier_overrides": {"free": 10000, "starter": 100000, "team": 1000000, "enterprise": 999999},
+            "tier_overrides": {
+                "free": 10000,
+                "starter": 100000,
+                "team": 1000000,
+                "enterprise": 999999,
+            },
         },
         {
             "key": "voice_minutes",

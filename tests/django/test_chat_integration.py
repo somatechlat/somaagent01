@@ -39,7 +39,7 @@ pytestmark = [
 
 class TestConversationCreation:
     """Test conversation creation flow.
-    
+
     Requirements: 8.1, 8.6
     """
 
@@ -49,7 +49,7 @@ class TestConversationCreation:
         from ninja.testing import TestClient
         from admin.chat.api.chat import router
         from ninja import NinjaAPI
-        
+
         test_api = NinjaAPI()
         test_api.add_router("/chat", router)
         return TestClient(test_api)
@@ -63,7 +63,7 @@ class TestConversationCreation:
 
     def test_create_conversation(self, chat_client: "TestClient", auth_token: str):
         """Test creating a new conversation.
-        
+
         Requirements: 8.1
         """
         response = chat_client.post(
@@ -73,45 +73,45 @@ class TestConversationCreation:
             },
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         # Should succeed with conversation ID
         assert response.status_code in [200, 201]
         data = response.json()
-        
+
         assert "id" in data
         assert data["id"] is not None
 
     def test_create_conversation_without_auth_fails(self, chat_client: "TestClient"):
         """Test that conversation creation fails without auth.
-        
+
         Requirements: 8.1
         """
         response = chat_client.post(
             "/chat/conversations",
             json={"agent_id": str(uuid4())},
         )
-        
+
         assert response.status_code == 401
 
     def test_list_conversations(self, chat_client: "TestClient", auth_token: str):
         """Test listing user's conversations.
-        
+
         Requirements: 8.6
         """
         response = chat_client.get(
             "/chat/conversations",
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Should return list (may be empty)
         assert "conversations" in data or isinstance(data, list)
 
     def test_get_conversation_by_id(self, chat_client: "TestClient", auth_token: str):
         """Test getting a specific conversation.
-        
+
         Requirements: 8.6
         """
         # First create a conversation
@@ -120,18 +120,18 @@ class TestConversationCreation:
             json={"agent_id": os.environ.get("TEST_AGENT_ID", str(uuid4()))},
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         if create_response.status_code not in [200, 201]:
             pytest.skip("Could not create conversation")
-        
+
         conversation_id = create_response.json()["id"]
-        
+
         # Get the conversation
         response = chat_client.get(
             f"/chat/conversations/{conversation_id}",
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == conversation_id
@@ -139,7 +139,7 @@ class TestConversationCreation:
 
 class TestMessageSending:
     """Test message sending and streaming.
-    
+
     Requirements: 9.1-9.4
     """
 
@@ -149,7 +149,7 @@ class TestMessageSending:
         from ninja.testing import TestClient
         from admin.chat.api.chat import router
         from ninja import NinjaAPI
-        
+
         test_api = NinjaAPI()
         test_api.add_router("/chat", router)
         return TestClient(test_api)
@@ -167,17 +167,15 @@ class TestMessageSending:
             json={"agent_id": os.environ.get("TEST_AGENT_ID", str(uuid4()))},
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         if response.status_code not in [200, 201]:
             pytest.skip("Could not create conversation")
-        
+
         return response.json()["id"]
 
-    def test_send_message(
-        self, chat_client: "TestClient", auth_token: str, conversation_id: str
-    ):
+    def test_send_message(self, chat_client: "TestClient", auth_token: str, conversation_id: str):
         """Test sending a message to a conversation.
-        
+
         Requirements: 9.1
         """
         response = chat_client.post(
@@ -188,7 +186,7 @@ class TestMessageSending:
             },
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         # Should succeed
         assert response.status_code in [200, 201, 202]
 
@@ -196,7 +194,7 @@ class TestMessageSending:
         self, chat_client: "TestClient", auth_token: str, conversation_id: str
     ):
         """Test getting messages from a conversation.
-        
+
         Requirements: 9.1
         """
         # First send a message
@@ -205,23 +203,23 @@ class TestMessageSending:
             json={"content": "Test message", "role": "user"},
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         # Get messages
         response = chat_client.get(
             f"/chat/conversations/{conversation_id}/messages",
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Should have messages
         assert "messages" in data or isinstance(data, list)
 
 
 class TestChatService:
     """Test ChatService integration with SomaBrain.
-    
+
     Requirements: 8.2, 8.3, 9.3
     """
 
@@ -229,12 +227,13 @@ class TestChatService:
     def chat_service(self):
         """Get ChatService instance."""
         from services.common.chat_service import ChatService
+
         return ChatService()
 
     @pytest.mark.asyncio
     async def test_initialize_agent_session(self, chat_service):
         """Test initializing an agent session with SomaBrain.
-        
+
         Requirements: 8.2
         """
         try:
@@ -243,7 +242,7 @@ class TestChatService:
                 user_id=str(uuid4()),
                 conversation_id=str(uuid4()),
             )
-            
+
             assert session is not None
         except Exception as e:
             # SomaBrain may not be available in test env
@@ -254,7 +253,7 @@ class TestChatService:
     @pytest.mark.asyncio
     async def test_recall_memories(self, chat_service):
         """Test recalling memories from SomaFractalMemory.
-        
+
         Requirements: 8.3
         """
         try:
@@ -264,7 +263,7 @@ class TestChatService:
                 query="test query",
                 limit=5,
             )
-            
+
             # Should return list (may be empty)
             assert isinstance(memories, list)
         except Exception as e:
@@ -276,7 +275,7 @@ class TestChatService:
     @pytest.mark.asyncio
     async def test_store_interaction(self, chat_service):
         """Test storing an interaction in memory.
-        
+
         Requirements: 9.6
         """
         try:
@@ -296,7 +295,7 @@ class TestChatService:
 
 class TestTitleGeneration:
     """Test conversation title generation.
-    
+
     Requirements: 9.8
     """
 
@@ -304,12 +303,13 @@ class TestTitleGeneration:
     def chat_service(self):
         """Get ChatService instance."""
         from services.common.chat_service import ChatService
+
         return ChatService()
 
     @pytest.mark.asyncio
     async def test_generate_title(self, chat_service):
         """Test generating a conversation title.
-        
+
         Requirements: 9.8
         """
         try:
@@ -319,7 +319,7 @@ class TestTitleGeneration:
                     {"role": "assistant", "content": "To configure PostgreSQL, you need to..."},
                 ]
             )
-            
+
             assert title is not None
             assert len(title) > 0
             assert len(title) <= 100  # Reasonable title length
@@ -331,27 +331,27 @@ class TestTitleGeneration:
 
 class TestWebSocketConsumer:
     """Test WebSocket chat consumer.
-    
+
     Requirements: 7.6, 9.1, 9.4, 9.7
     """
 
     @pytest.mark.asyncio
     async def test_websocket_connection_requires_auth(self):
         """Test that WebSocket connection requires authentication.
-        
+
         Requirements: 7.6
         """
         from channels.testing import WebsocketCommunicator
         from services.gateway.consumers.chat import ChatConsumer
-        
+
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
             "/ws/v2/chat/",
         )
-        
+
         # Should reject connection without auth
         connected, _ = await communicator.connect()
-        
+
         # Either rejected or will close shortly
         if connected:
             # Wait for close message
@@ -372,39 +372,41 @@ class TestWebSocketConsumer:
     @pytest.mark.asyncio
     async def test_websocket_heartbeat(self):
         """Test WebSocket heartbeat (ping/pong).
-        
+
         Requirements: 9.7
         """
         from channels.testing import WebsocketCommunicator
         from services.gateway.consumers.chat import ChatConsumer
-        
+
         # This test requires a valid auth token
         auth_token = os.environ.get("TEST_AUTH_TOKEN")
         if not auth_token:
             pytest.skip("No TEST_AUTH_TOKEN available")
-        
+
         communicator = WebsocketCommunicator(
             ChatConsumer.as_asgi(),
             f"/ws/v2/chat/?token={auth_token}",
         )
-        
+
         connected, _ = await communicator.connect()
-        
+
         if not connected:
             pytest.skip("Could not connect to WebSocket")
-        
+
         try:
             # Send ping
-            await communicator.send_json_to({
-                "type": "ping",
-            })
-            
+            await communicator.send_json_to(
+                {
+                    "type": "ping",
+                }
+            )
+
             # Should receive pong
             response = await asyncio.wait_for(
                 communicator.receive_json_from(),
                 timeout=5.0,
             )
-            
+
             assert response.get("type") == "pong"
         finally:
             await communicator.disconnect()
@@ -412,7 +414,7 @@ class TestWebSocketConsumer:
 
 class TestAgentSelection:
     """Test agent selection and filtering.
-    
+
     Requirements: 7.1-7.4
     """
 
@@ -422,7 +424,7 @@ class TestAgentSelection:
         from ninja.testing import TestClient
         from admin.agents.api import router
         from ninja import NinjaAPI
-        
+
         test_api = NinjaAPI()
         test_api.add_router("/agents", router)
         return TestClient(test_api)
@@ -436,33 +438,33 @@ class TestAgentSelection:
         self, agents_client: "TestClient", auth_token: str
     ):
         """Test that agent list is filtered by user permissions.
-        
+
         Requirements: 7.4
         """
         response = agents_client.get(
             "/agents",
             headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Should return list of agents (may be empty based on permissions)
         assert "agents" in data or isinstance(data, list)
 
     def test_list_agents_without_auth_fails(self, agents_client: "TestClient"):
         """Test that agent list fails without auth.
-        
+
         Requirements: 7.1
         """
         response = agents_client.get("/agents")
-        
+
         assert response.status_code == 401
 
 
 class TestMemoryIntegration:
     """Test memory integration with chat.
-    
+
     Requirements: 8.3, 9.6
     """
 
@@ -470,17 +472,18 @@ class TestMemoryIntegration:
     def chat_service(self):
         """Get ChatService instance."""
         from services.common.chat_service import ChatService
+
         return ChatService()
 
     @pytest.mark.asyncio
     async def test_memory_recall_on_session_init(self, chat_service):
         """Test that memories are recalled on session initialization.
-        
+
         Requirements: 8.3
         """
         user_id = str(uuid4())
         agent_id = os.environ.get("TEST_AGENT_ID", str(uuid4()))
-        
+
         try:
             # Initialize session (should trigger memory recall)
             session = await chat_service.initialize_agent_session(
@@ -488,7 +491,7 @@ class TestMemoryIntegration:
                 user_id=user_id,
                 conversation_id=str(uuid4()),
             )
-            
+
             # Session should have context (may be empty if no prior memories)
             assert session is not None
         except Exception as e:
@@ -499,13 +502,13 @@ class TestMemoryIntegration:
     @pytest.mark.asyncio
     async def test_memory_store_after_response(self, chat_service):
         """Test that interactions are stored in memory after response.
-        
+
         Requirements: 9.6
         """
         user_id = str(uuid4())
         agent_id = os.environ.get("TEST_AGENT_ID", str(uuid4()))
         conversation_id = str(uuid4())
-        
+
         try:
             # Store an interaction
             await chat_service.store_interaction(
@@ -515,7 +518,7 @@ class TestMemoryIntegration:
                 user_message="What is the capital of France?",
                 assistant_response="The capital of France is Paris.",
             )
-            
+
             # Recall should now include this interaction
             memories = await chat_service.recall_memories(
                 user_id=user_id,
@@ -523,7 +526,7 @@ class TestMemoryIntegration:
                 query="capital of France",
                 limit=5,
             )
-            
+
             # Should have at least one memory
             # Note: This depends on memory service being available
             assert isinstance(memories, list)

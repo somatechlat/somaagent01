@@ -164,9 +164,7 @@ async def get_webhook(request, webhook_id: str) -> Webhook:
     from asgiref.sync import sync_to_async
 
     try:
-        db_webhook = await sync_to_async(
-            WebhookModel.objects.get
-        )(id=webhook_id)
+        db_webhook = await sync_to_async(WebhookModel.objects.get)(id=webhook_id)
     except WebhookModel.DoesNotExist:
         raise NotFoundError("webhook", webhook_id)
 
@@ -182,7 +180,6 @@ async def get_webhook(request, webhook_id: str) -> Webhook:
         success_count=db_webhook.success_count,
         failure_count=db_webhook.failure_count,
     )
-
 
 
 @router.patch(

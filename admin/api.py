@@ -262,14 +262,10 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/usage", usage_router)
 
-
-
     # Users (User management)
     from admin.users.api import router as users_router
 
     safe_add_router("/users", users_router)
-
-
 
     # Files V2 (Enhanced file management)
     from admin.filesv2.api import router as filesv2_router

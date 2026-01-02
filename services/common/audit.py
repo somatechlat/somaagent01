@@ -261,7 +261,9 @@ class AuditPublisher:
                 tenant=tenant_id,
                 session_id=session_id,
             )
-            logger.info(f"Audit: logout user_id={user_id}", extra={"user_id": user_id, "reason": reason})
+            logger.info(
+                f"Audit: logout user_id={user_id}", extra={"user_id": user_id, "reason": reason}
+            )
         except Exception as e:
             logger.warning(f"Audit publish failed (logout): {e}")
             await self._store_locally(event)

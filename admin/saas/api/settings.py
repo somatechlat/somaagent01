@@ -42,13 +42,13 @@ from admin.saas.models.profiles import ApiKey
 @router.get("/api-keys", response=list[ApiKeyOut])
 def list_api_keys(request, tenant_id: Optional[str] = None):
     """Get all API keys, optionally filtered by tenant.
-    
+
     VIBE COMPLIANT - Real Django ORM queries.
     """
     queryset = ApiKey.objects.filter(is_active=True)
     if tenant_id:
         queryset = queryset.filter(tenant_id=tenant_id)
-    
+
     return [
         ApiKeyOut(
             id=str(key.id),
@@ -75,11 +75,11 @@ def create_api_key(request, payload: ApiKeyCreate):
     raw_key = secrets.token_urlsafe(32)
     key_prefix = raw_key[:8]
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-    
+
     expires_at = None
     if payload.expires_in_days:
         expires_at = timezone.now() + timedelta(days=payload.expires_in_days)
-    
+
     api_key = ApiKey.objects.create(
         key_type="tenant" if payload.tenant_id else "platform",
         name=payload.name,
@@ -104,7 +104,7 @@ def create_api_key(request, payload: ApiKeyCreate):
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
     """Revoke an API key.
-    
+
     VIBE COMPLIANT - Real Django ORM soft delete.
     """
     try:

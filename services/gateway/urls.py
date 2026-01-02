@@ -16,22 +16,24 @@ from admin.api import api
 
 def health_check(request):
     """Health check endpoint for Docker and load balancers."""
-    return JsonResponse({
-        "status": "ok",
-        "service": "somaagent-gateway",
-        "version": "1.0.0",
-    })
+    return JsonResponse(
+        {
+            "status": "ok",
+            "service": "somaagent-gateway",
+            "version": "1.0.0",
+        }
+    )
 
 
 def serve_spa(request, path=""):
     """
     Serve the SPA index.html for all client-side routes.
-    
+
     Django handles:
     - /admin/ → Django Admin
     - /api/v2/ → Django Ninja API
     - Everything else → SPA (React/Lit frontend)
-    
+
     VIBE COMPLIANT: Uses Django FileResponse for proper streaming.
     """
     index_path = settings.BASE_DIR / "webui" / "dist" / "index.html"
@@ -43,14 +45,11 @@ def serve_spa(request, path=""):
 urlpatterns = [
     # Django Admin
     path("admin/", admin.site.urls),
-    
     # Django Ninja API
     path("api/v2/", api.urls),
-    
     # Health endpoints
     path("api/health/", health_check),
     path("health/", health_check),
-    
     # SPA catch-all (must be last)
     re_path(r"^(?!admin/|api/).*$", serve_spa, name="spa"),
 ]

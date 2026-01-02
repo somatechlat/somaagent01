@@ -90,7 +90,7 @@ async def list_integrations(
             qs = qs.filter(status=status)
         if provider:
             qs = qs.filter(provider=provider)
-        
+
         items = []
         for i in qs:
             items.append(
@@ -142,9 +142,9 @@ async def create_integration(
             name=name,
             type=type,
             provider=provider,
-            status="connected", # Default to connected for api_key/webhook
+            status="connected",  # Default to connected for api_key/webhook
             config=config,
-            created_at=timezone.now()
+            created_at=timezone.now(),
         )
         return obj
 
@@ -262,9 +262,7 @@ async def start_oauth(
 
     # Get integration from database to retrieve OAuth config
     try:
-        integration = await sync_to_async(
-            IntegrationModel.objects.get
-        )(id=integration_id)
+        integration = await sync_to_async(IntegrationModel.objects.get)(id=integration_id)
     except IntegrationModel.DoesNotExist:
         raise NotFoundError("integration", integration_id)
 
@@ -279,20 +277,22 @@ async def start_oauth(
 
     # Build complete auth URL with state and redirect
     import urllib.parse
-    params = urllib.parse.urlencode({
-        "state": state,
-        "redirect_uri": redirect_uri,
-        "client_id": oauth_config.get("client_id", ""),
-        "scope": " ".join(oauth_config.get("scopes", [])),
-        "response_type": "code",
-    })
+
+    params = urllib.parse.urlencode(
+        {
+            "state": state,
+            "redirect_uri": redirect_uri,
+            "client_id": oauth_config.get("client_id", ""),
+            "scope": " ".join(oauth_config.get("scopes", [])),
+            "response_type": "code",
+        }
+    )
     full_auth_url = f"{authorization_url}?{params}"
 
     return {
         "authorization_url": full_auth_url,
         "state": state,
     }
-
 
 
 @router.post(

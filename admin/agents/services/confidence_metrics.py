@@ -30,19 +30,20 @@ CONFIDENCE_LABELS = ("tenant", "model", "endpoint")
 
 from prometheus_client import REGISTRY
 
+
 def _get_or_create_metric(cls, name, documentation, **kwargs):
     """Get existing metric from registry or create new one."""
     # Check if metric already exists in registry
     if name in REGISTRY._names_to_collectors:
         return REGISTRY._names_to_collectors[name]
-    
+
     # Check for Counter suffixes if applicable
     if cls == Counter:
         if f"{name}_total" in REGISTRY._names_to_collectors:
             return REGISTRY._names_to_collectors[f"{name}_total"]
 
     # If explicit registry was passed (rare), use it, otherwise default
-    registry = kwargs.pop('registry', REGISTRY)
+    registry = kwargs.pop("registry", REGISTRY)
     try:
         return cls(name, documentation, registry=registry, **kwargs)
     except ValueError:
@@ -52,6 +53,7 @@ def _get_or_create_metric(cls, name, documentation, **kwargs):
         if cls == Counter and f"{name}_total" in registry._names_to_collectors:
             return registry._names_to_collectors[f"{name}_total"]
         raise
+
 
 # -----------------------------------------------------------------------------
 # Histogram: Confidence Score Distribution

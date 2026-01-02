@@ -21,6 +21,7 @@ router = Router(tags=["Feature Flags"])
 
 # --- Pydantic Models ---
 
+
 class FeatureFlagBase(BaseModel):
     key: str
     name: str
@@ -131,6 +132,7 @@ _FLAGS_STORE: dict[str, dict] = {
 
 # --- API Endpoints ---
 
+
 @router.get("/", response=FeatureFlagListResponse)
 def list_feature_flags(
     request: HttpRequest,
@@ -142,12 +144,12 @@ def list_feature_flags(
     Permission: feature:list
     """
     flags = list(_FLAGS_STORE.values())
-    
+
     if status:
         flags = [f for f in flags if f["status"] == status]
     if scope:
         flags = [f for f in flags if f["scope"] == scope]
-    
+
     return FeatureFlagListResponse(
         items=[FeatureFlagResponse(**f) for f in flags],
         total=len(flags),
@@ -173,7 +175,7 @@ def create_feature_flag(request: HttpRequest, payload: FeatureFlagCreate):
     """
     if payload.key in _FLAGS_STORE:
         return {"error": f"Feature flag already exists: {payload.key}"}
-    
+
     flag = {
         "id": str(uuid4()),
         "key": payload.key,
@@ -195,7 +197,7 @@ def update_feature_flag(request: HttpRequest, flag_key: str, payload: FeatureFla
     """
     if flag_key not in _FLAGS_STORE:
         return {"error": f"Feature flag not found: {flag_key}"}
-    
+
     flag = _FLAGS_STORE[flag_key]
     if payload.name is not None:
         flag["name"] = payload.name
@@ -206,7 +208,7 @@ def update_feature_flag(request: HttpRequest, flag_key: str, payload: FeatureFla
     if payload.scope is not None:
         flag["scope"] = payload.scope
     flag["updated_at"] = datetime.now()
-    
+
     return FeatureFlagResponse(**flag)
 
 
@@ -218,7 +220,7 @@ def delete_feature_flag(request: HttpRequest, flag_key: str):
     """
     if flag_key not in _FLAGS_STORE:
         return {"success": False, "error": f"Feature flag not found: {flag_key}"}
-    
+
     del _FLAGS_STORE[flag_key]
     return {"success": True, "key": flag_key}
 
@@ -231,12 +233,12 @@ def toggle_feature_flag(request: HttpRequest, flag_key: str):
     """
     if flag_key not in _FLAGS_STORE:
         return {"success": False, "error": f"Feature flag not found: {flag_key}"}
-    
+
     flag = _FLAGS_STORE[flag_key]
     new_status = "off" if flag["status"] == "on" else "on"
     flag["status"] = new_status
     flag["updated_at"] = datetime.now()
-    
+
     return {"success": True, "key": flag_key, "status": new_status}
 
 
@@ -248,10 +250,10 @@ def check_flag_enabled(request: HttpRequest, flag_key: str, tenant_id: Optional[
     """
     if flag_key not in _FLAGS_STORE:
         return {"enabled": False, "reason": "not_found"}
-    
+
     flag = _FLAGS_STORE[flag_key]
     enabled = flag["status"] in ("on", "beta")
-    
+
     return {
         "key": flag_key,
         "enabled": enabled,

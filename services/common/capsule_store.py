@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 class CapsuleStore:
     def __init__(self, redis_url: Optional[str] = None):
         default_url = os.environ.get("SA01_REDIS_URL", "")
-        self.url = redis_url or os.environ.get("REDIS_URL", default_url) or "redis://localhost:6379/0"
+        self.url = (
+            redis_url or os.environ.get("REDIS_URL", default_url) or "redis://localhost:6379/0"
+        )
         self.client = redis.from_url(self.url, decode_responses=True)
         self.prefix = "capsule:v1"
 
@@ -38,7 +40,9 @@ class CapsuleStore:
             return None
         return self._deserialize(json.loads(data))
 
-    async def get_by_name_version(self, tenant_id: str, name: str, version: str) -> Optional[CapsuleRecord]:
+    async def get_by_name_version(
+        self, tenant_id: str, name: str, version: str
+    ) -> Optional[CapsuleRecord]:
         """Get capsule by name/version (scan)."""
         # Inefficient scan for Redis, but acceptable for config data
         async for key in self.client.scan_iter(f"{self.prefix}:*"):
@@ -81,10 +85,10 @@ class CapsuleStore:
         rec = await self.get(capsule_id)
         if not rec:
             return False
-        
+
         # Update attribute
         setattr(rec, field, value)
-        
+
         # Save back
         await self.create(rec)
         return True
@@ -102,5 +106,5 @@ class CapsuleStore:
             try:
                 data["status"] = CapsuleStatus(data["status"])
             except ValueError:
-                pass 
+                pass
         return CapsuleRecord(**data)

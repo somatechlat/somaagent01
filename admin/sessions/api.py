@@ -137,7 +137,9 @@ async def refresh_session(request) -> dict:
     if not updated:
         raise NotFoundError("session", session_id)
 
-    new_expires_at = (datetime.now(dt_timezone.utc) + timedelta(seconds=session_manager.session_ttl)).isoformat()
+    new_expires_at = (
+        datetime.now(dt_timezone.utc) + timedelta(seconds=session_manager.session_ttl)
+    ).isoformat()
 
     return {
         "refreshed": True,

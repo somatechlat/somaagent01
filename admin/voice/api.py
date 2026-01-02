@@ -570,7 +570,9 @@ def list_sessions(request, page: int = 1, page_size: int = 50, status: Optional[
 
     total = queryset.count()
     offset = (page - 1) * page_size
-    sessions = queryset.select_related("persona").order_by("-created_at")[offset : offset + page_size]
+    sessions = queryset.select_related("persona").order_by("-created_at")[
+        offset : offset + page_size
+    ]
 
     items = []
     for s in sessions:
@@ -678,4 +680,3 @@ def list_voice_models(request, active_only: bool = True):
     ]
 
     return VoiceModelListOut(items=items, total=len(items))
-

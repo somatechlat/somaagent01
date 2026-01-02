@@ -1,7 +1,7 @@
-
 import pytest
 from playwright.sync_api import Page, expect
 from tests.e2e.helpers.auth import get_auth_token, inject_auth_cookies
+
 
 def test_chat_interface_loads(page: Page):
     """
@@ -10,19 +10,19 @@ def test_chat_interface_loads(page: Page):
     """
     # 1. Get Real Token (VIBE: Programmatic Login, no UI automation for auth)
     token = get_auth_token()
-    
+
     # 2. Inject Context
     inject_auth_cookies(page.context, token)
-    
+
     # 3. Navigate
     page.goto("http://localhost:20173/chat")
-    
+
     # Check title (Updated to match reality)
     expect(page).to_have_title("SaaS Sys Admin — Enterprise Platform")
-    
+
     # Check for sidebar
     expect(page.locator(".sidebar")).to_be_visible(timeout=10000)
-    
+
     # Check for chat input
     expect(page.locator("textarea[placeholder*='Type']")).to_be_visible()
 
@@ -33,14 +33,14 @@ def test_chat_interface_loads(page: Page):
         # Locate input
         input_box = page.locator("textarea[placeholder*='Type']")
         expect(input_box).to_be_visible(timeout=10000)
-        
+
         # Type message
         message = "Hello Verification Agent"
         input_box.fill(message)
-        
+
         # Send (Press Enter)
         input_box.press("Enter")
-        
+
         # Verify user message appears in chat history
         # Using a more robust selector for the message bubble
         # Increased timeout to 20s to account for WebSocket connection latency
@@ -57,11 +57,11 @@ def test_chat_interface_loads(page: Page):
         # We expect a "thinking" indicator or an actual response message
         # Wait for network idle to ensure WS traffic settles
         page.wait_for_load_state("networkidle")
-        
+
     except Exception:
         page.screenshot(path="tmp/failure.png")
         raise
-    
+
     # Check for error toasts which usually indicate WebSocket auth failures
     if page.locator(".toast-error").is_visible():
         error = page.locator(".toast-error").inner_text()

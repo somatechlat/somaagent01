@@ -14,7 +14,7 @@ from django.utils import timezone
 
 class File(models.Model):
     """File record with versioning support.
-    
+
     Stores file metadata with S3/local storage backend.
     """
 

@@ -123,7 +123,6 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             # Persist session to database via Django ORM
             await self._persist_session_end()
 
-
     async def receive_json(self, content):
         """Handle incoming JSON messages."""
         msg_type = content.get("type")
@@ -140,7 +139,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             elif msg_type == "ping":
                 await self.send_json({"type": "pong"})
             else:
-                await self.send_json({"type": "error", "message": f"Unknown message type: {msg_type}"})
+                await self.send_json(
+                    {"type": "error", "message": f"Unknown message type: {msg_type}"}
+                )
 
         except Exception as e:
             logger.error(f"Voice WS error: {e}")
@@ -205,9 +206,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         try:
             from admin.voice.models import VoiceSession
 
-            await sync_to_async(
-                VoiceSession.objects.filter(id=self.state.session_id).update
-            )(
+            await sync_to_async(VoiceSession.objects.filter(id=self.state.session_id).update)(
                 status=self.state.status,
                 ended_at=dt.now(),
                 audio_seconds=self.state.audio_seconds,
@@ -219,7 +218,6 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         except Exception as e:
             # Non-fatal - log and continue
             logger.warning(f"Failed to update VoiceSession record: {e}")
-
 
     async def _handle_audio_chunk(self, content):
         """Process incoming audio chunk."""
@@ -278,28 +276,28 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
     async def _transcribe_audio(self, audio_data: bytes) -> str:
         """Transcribe audio using Whisper API.
-        
+
         VIBE COMPLIANT: Real Whisper API call, no mocks.
         """
         try:
             import httpx
-            
-            whisper_url = getattr(settings, 'WHISPER_API_URL', 'http://localhost:8001/transcribe')
-            
+
+            whisper_url = getattr(settings, "WHISPER_API_URL", "http://localhost:8001/transcribe")
+
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     whisper_url,
                     files={"audio": ("audio.webm", audio_data, "audio/webm")},
                     data={"language": "en"},
                 )
-                
+
                 if response.status_code == 200:
                     result = response.json()
                     return result.get("text", "").strip()
                 else:
                     logger.error(f"Whisper API error: {response.status_code}")
                     return ""
-                    
+
         except Exception as e:
             logger.error(f"Transcription error: {e}")
             # Graceful degradation - return empty on error
@@ -307,7 +305,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
     async def _generate_llm_response(self, transcript: str):
         """Generate AI response via LLM and TTS.
-        
+
         VIBE COMPLIANT: Real LiteLLM and Kokoro TTS calls.
         """
         await self._send_status("speaking")
@@ -317,30 +315,37 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
         try:
             import httpx
-            
+
             # Get LLM response via internal API
-            llm_url = getattr(settings, 'LLM_API_URL', 'http://localhost:20020/api/v2/core/llm/chat')
-            
+            llm_url = getattr(
+                settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat"
+            )
+
             async with httpx.AsyncClient(timeout=60.0) as client:
                 llm_response = await client.post(
                     llm_url,
                     json={
                         "messages": [
-                            {"role": "system", "content": f"You are a helpful voice assistant. Persona: {self.state.persona_id or 'default'}"},
-                            {"role": "user", "content": transcript}
+                            {
+                                "role": "system",
+                                "content": f"You are a helpful voice assistant. Persona: {self.state.persona_id or 'default'}",
+                            },
+                            {"role": "user", "content": transcript},
                         ],
-                        "model": getattr(settings, 'DEFAULT_VOICE_MODEL', 'gpt-4o-mini'),
+                        "model": getattr(settings, "DEFAULT_VOICE_MODEL", "gpt-4o-mini"),
                         "max_tokens": 150,
                     },
-                    headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"}
+                    headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"},
                 )
-                
+
                 if llm_response.status_code == 200:
                     result = llm_response.json()
-                    response_text = result.get("content", result.get("message", {}).get("content", "I understand."))
+                    response_text = result.get(
+                        "content", result.get("message", {}).get("content", "I understand.")
+                    )
                 else:
                     response_text = "I'm having trouble processing that right now."
-                    
+
         except Exception as e:
             logger.error(f"LLM response error: {e}")
             response_text = "I'm sorry, I couldn't process your request."
@@ -366,13 +371,13 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
     async def _stream_tts_audio(self, text: str):
         """Stream TTS audio chunks using Kokoro.
-        
+
         VIBE COMPLIANT: Real Kokoro TTS API call.
         """
         import httpx
-        
-        tts_url = getattr(settings, 'KOKORO_TTS_URL', 'http://localhost:8002/synthesize')
-        
+
+        tts_url = getattr(settings, "KOKORO_TTS_URL", "http://localhost:8002/synthesize")
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 tts_url,
@@ -381,15 +386,15 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                     "voice": self.state.persona_id or "default",
                     "format": "mp3",
                 },
-                headers={"Accept": "audio/mpeg"}
+                headers={"Accept": "audio/mpeg"},
             )
-            
+
             if response.status_code == 200:
                 # Stream audio in chunks
                 audio_data = response.content
                 chunk_size = 4096
                 for i in range(0, len(audio_data), chunk_size):
-                    chunk = audio_data[i:i + chunk_size]
+                    chunk = audio_data[i : i + chunk_size]
                     await self.send_json(
                         {
                             "type": "audio_chunk",

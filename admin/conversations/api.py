@@ -194,6 +194,7 @@ async def start_conversation(
             logger.warning(f"Memory recall failed (non-critical): {exc}")
 
         if title:
+
             @sync_to_async
             def update_title():
                 ConversationModel.objects.filter(id=conv.id).update(title=title)
@@ -419,10 +420,14 @@ async def send_message(
     # Return assistant message snapshot
     @sync_to_async
     def _get_last_assistant():
-        return MessageModel.objects.filter(
-            conversation_id=conversation_id,
-            role="assistant",
-        ).order_by("-created_at").first()
+        return (
+            MessageModel.objects.filter(
+                conversation_id=conversation_id,
+                role="assistant",
+            )
+            .order_by("-created_at")
+            .first()
+        )
 
     msg = await _get_last_assistant()
 

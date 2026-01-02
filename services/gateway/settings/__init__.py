@@ -1,13 +1,14 @@
 """Environment-based settings loader."""
+
 import os
 
-ENVIRONMENT = os.environ.get('DJANGO_ENV', 'development')
+ENVIRONMENT = os.environ.get("DJANGO_ENV", "development")
 
-if ENVIRONMENT == 'production':
+if ENVIRONMENT == "production":
     from .production import *  # noqa
-elif ENVIRONMENT == 'staging':
+elif ENVIRONMENT == "staging":
     from .staging import *  # noqa
 else:
     from .development import *  # noqa
 
-__all__ = ['ENVIRONMENT']
+__all__ = ["ENVIRONMENT"]

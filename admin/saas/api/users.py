@@ -455,6 +455,7 @@ def get_profile(request) -> dict:
 
     if not email:
         from admin.common.exceptions import UnauthorizedError
+
         raise UnauthorizedError("Email not found in auth context")
 
     roles = getattr(request.auth, "roles", ["saas_admin"])
@@ -474,7 +475,7 @@ def get_profile(request) -> dict:
                 "weeklyDigest": False,
                 "marketing": False,
             },
-        }
+        },
     )
 
     # Count related objects
@@ -495,7 +496,8 @@ def get_profile(request) -> dict:
             session_timeout=profile.session_timeout,
             active_sessions=session_count,
             api_key_count=api_key_count,
-            notifications=profile.notification_prefs or {
+            notifications=profile.notification_prefs
+            or {
                 "criticalAlerts": True,
                 "billingEvents": True,
                 "weeklyDigest": False,
@@ -522,8 +524,8 @@ def update_profile(
 
     if not email:
         from admin.common.exceptions import UnauthorizedError
-        raise UnauthorizedError("Email not found in auth context")
 
+        raise UnauthorizedError("Email not found in auth context")
 
     # Get or create profile
     profile, created = AdminProfile.objects.get_or_create(
@@ -532,7 +534,7 @@ def update_profile(
             "email": email,
             "display_name": name,
             "session_timeout": 30,
-        }
+        },
     )
 
     # Update fields
