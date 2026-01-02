@@ -58,9 +58,11 @@ local_resource(
     'somabrain',
     serve_cmd='.venv/bin/python manage.py runserver 0.0.0.0:30101',
     serve_dir='../somabrain',
+    # VIBE Rule 44: Port Sovereignty - Milvus mapped to 20530 on host
+    env={'SOMABRAIN_MILVUS_PORT': '20530', 'SOMABRAIN_MILVUS_HOST': 'localhost'},
     links=['http://localhost:30101/api/v1/docs'],
     labels=['soma-stack'],
-    resource_deps=['postgres', 'redis', 'somafractalmemory'],
+    resource_deps=['postgres', 'redis', 'somafractalmemory', 'milvus'],
 )
 
 # =============================================================================
