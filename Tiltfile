@@ -49,6 +49,33 @@ local_resource(
 # SOMA STACK SERVICES
 # =============================================================================
 
+# OPA Policy Engine (Port 20181)
+docker_build(
+    'somaagent-opa',
+    context='.',
+    dockerfile_contents='''FROM openpolicyagent/opa:latest
+USER 1000:1000
+''',
+    only=['policy/']
+)
+
+k8s_resource(
+    'opa',
+    port_forwards='20181:8181',
+    labels=['infrastructure'],
+    resource_deps=['postgres']
+)
+
+local_resource(
+    'opa',
+    serve_cmd='docker run --rm -p 20181:8181 -v $(pwd)/policy:/policy:ro openpolicyagent/opa:latest run --server --addr=:8181 --log-level=info /policy',
+    readiness_probe=probe(
+        http_get=http_get_action(port=20181, path='/health'),
+    ),
+    labels=['infrastructure'],
+)
+
+# SomaFractalMemory (Port 10101)
 local_resource(
     'somafractalmemory',
     serve_cmd='.venv/bin/python manage.py runserver 0.0.0.0:10101',
