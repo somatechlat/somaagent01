@@ -6,7 +6,8 @@ from pathlib import Path
 # Load .env file before importing any settings
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# services/gateway/settings/__init__.py -> services/gateway/settings -> services/gateway -> services -> PROJECT_ROOT
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 ENVIRONMENT = os.environ.get("DJANGO_ENV", "development")
