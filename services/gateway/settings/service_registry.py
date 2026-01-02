@@ -73,7 +73,7 @@ class ServiceRegistry:
         name="somafractalmemory",
         env_var="SOMA_MEMORY_URL",
         description="Memory system",
-        default_port=9595,
+        default_port=9101,
         required=True,
         health_check="/health",
     )
