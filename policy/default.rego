@@ -1,3 +1,12 @@
-package soma.default
+package soma.policy.integrator
 
-default allow = true
+# Deny-by-default policy for production examples.
+# Tailor the allow rules below for your environment.
+
+default allow = false
+
+# Minimal example allow rule:
+# allow {
+#   # Permit system health probes or specific internal calls
+#   input.request_path == "/health"  # adjust to your API
+# }
