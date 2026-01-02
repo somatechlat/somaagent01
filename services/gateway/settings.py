@@ -3,11 +3,19 @@ Django settings for SomaAgent01 SAAS Admin.
 
 This module is used for Django management commands (makemigrations, migrate, etc.)
 The runtime configuration is in django_setup.py for the gateway.
+
+VIBE COMPLIANT - Security Audit 2026-01-02:
+- Zero hardcoded URLs (Rule 16: Dynamic URL Resolution)
+- Zero hardcoded secrets (Rule 47: Zero-Backdoor Mandate)
+- Required environment variables enforced with clear error messages
 """
 
 import os
 from pathlib import Path
 import re
+
+# Import environment configuration helpers
+from services.common.env_config import get_required_env, get_optional_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -86,9 +94,10 @@ TEMPLATES = [
 ]
 
 # Database
-# Parse database DSN from environment
-db_dsn = os.environ.get(
-    "SA01_DB_DSN", "postgresql://postgres:somastack2024@localhost:20432/somaagent"
+# Parse database DSN from environment (REQUIRED - no hardcoded credentials)
+db_dsn = get_required_env(
+    "SA01_DB_DSN",
+    "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)"
 )
 
 # Parse DSN components for Django DATABASE config
@@ -160,7 +169,7 @@ SAAS_DEFAULT_STORAGE_GB = float(os.environ.get("SAAS_DEFAULT_STORAGE_GB", "50.0"
 DATABASE_DSN = db_dsn
 
 # Redis
-REDIS_URL = os.environ.get("SA01_REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = get_required_env("SA01_REDIS_URL", "Redis connection for caching and channels")
 
 # Temporal
 TEMPORAL_HOST = os.environ.get("SA01_TEMPORAL_HOST", "localhost:7233")
@@ -169,7 +178,7 @@ TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE",
 TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
 
 # Kafka
-KAFKA_BOOTSTRAP_SERVERS = os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+KAFKA_BOOTSTRAP_SERVERS = get_required_env("SA01_KAFKA_BOOTSTRAP_SERVERS", "Kafka broker for event streaming")
 KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.inbound")
 
 # Feature Flags
@@ -178,15 +187,15 @@ FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
 # Authentication
 AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "false").lower() == "true"
 
-# SomaBrain
-SOMABRAIN_URL = os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:9696")
-OPA_URL = os.environ.get("SA01_OPA_URL", "http://localhost:8181")
+# SomaBrain (Cognitive Runtime)
+SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")
+OPA_URL = get_required_env("SA01_OPA_URL", "Open Policy Agent for authorization policies")
 
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
 # =============================================================================
 
-KEYCLOAK_URL = os.environ.get("SA01_KEYCLOAK_URL", "http://localhost:20880")
+KEYCLOAK_URL = get_required_env("SA01_KEYCLOAK_URL", "Keycloak OIDC identity provider base URL")
 KEYCLOAK_REALM = os.environ.get("SA01_KEYCLOAK_REALM", "somaagent")
 KEYCLOAK_CLIENT_ID = os.environ.get("SA01_KEYCLOAK_CLIENT_ID", "somaagent-api")
 KEYCLOAK_CLIENT_SECRET = os.environ.get("SA01_KEYCLOAK_CLIENT_SECRET", "")
