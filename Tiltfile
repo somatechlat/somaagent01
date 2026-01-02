@@ -49,8 +49,12 @@ local_resource(
 # SOMA STACK SERVICES
 # =============================================================================
 
-# OPA Policy Engine (Port 20181) - VIBE Rule 47: Real Infrastructure
-docker_compose('docker-compose.yml', profiles=['security'])
+# OPA Policy Engine (Port 20181) - VIBE Rule 34+47: Real Infrastructure
+local_resource(
+    'opa',
+    serve_cmd='docker rm -f somaagent-opa 2>/dev/null || true && docker run --name somaagent-opa -p 20181:8181 -v $(pwd)/policy:/policy:ro openpolicyagent/opa:latest run --server --addr=:8181 --log-level=info /policy',
+    labels=['infrastructure'],
+)
 
 # SomaFractalMemory (Port 10101) - TODO: Migrate to 21000 range per SOMA enforcements
 local_resource(
