@@ -24,7 +24,7 @@ print("""
 
 docker_compose(
     'docker-compose.yml',
-    profiles=['core'],  # Start with core services only
+    profiles=['core', 'security'],  # Core + Security (OPA, SpiceDB)
 )
 
 # =============================================================================
