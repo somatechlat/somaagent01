@@ -73,8 +73,8 @@ async def test_chat_full_flow():
     await setup_data_manual()
     
     try:
-        # 2. Connect
-        uri = f"ws://127.0.0.1:8020/ws/chat/{agent_id}"
+        # 2. Connect (VIBE Rule 44: Port Sovereignty - SomaAgent01 uses 20xxx)
+        uri = f"ws://127.0.0.1:20020/ws/chat/{agent_id}"
         
         headers = {
             "Cookie": f"access_token={token}",

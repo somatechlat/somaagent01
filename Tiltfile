@@ -18,6 +18,22 @@ print("""
 """)
 
 # =============================================================================
+# INFRASTRUCTURE - Docker Compose
+# =============================================================================
+# VIBE Rule 51: Orchestrated Integration Testing requires real infrastructure
+
+# Load infrastructure services from docker-compose.yml
+# Profile 'core': Postgres, Redis, Kafka (required for chat)
+# Profile 'vectors': Milvus + etcd + MinIO (optional for memory)
+# Profile 'security': SpiceDB, OPA (optional for authz)
+# Profile 'observability': Prometheus, Grafana (optional for metrics)
+
+docker_compose(
+    'docker-compose.yml',
+    profiles=['core'],  # Start with core services only
+)
+
+# =============================================================================
 # WEBUI DEVELOPMENT
 # =============================================================================
 
@@ -30,13 +46,14 @@ local_resource(
 )
 
 # =============================================================================
-# DJANGO API
+# DJANGO API (Production ASGI Server)
 # =============================================================================
 
 local_resource(
     'django-api',
-    serve_cmd='.venv/bin/python manage.py runserver 0.0.0.0:20020',
+    serve_cmd='.venv/bin/uvicorn services.gateway.asgi:application --host 0.0.0.0 --port 20020 --reload',
     serve_dir='.',
     links=['http://localhost:20020/api/v2/docs'],
     labels=['backend'],
+    resource_deps=['postgres', 'redis', 'kafka'],  # Wait for infrastructure
 )

@@ -635,7 +635,7 @@ class ChatService:
                     conversation_id=conversation_id,
                     user_message=content,
                     assistant_response=full_response,
-                    tenant_id=tenant_id,
+                    tenant_id=current_tenant_id,  # Fixed: use tenant_id from conversation
                 )
             )
 
