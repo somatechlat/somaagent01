@@ -45,9 +45,10 @@ local_resource(
 # =============================================================================
 
 # SomaFractalMemory (Port 10101)
+# SomaFractalMemory (Port 10101) - Production-grade ASGI
 local_resource(
     'somafractalmemory',
-    serve_cmd='.venv/bin/python manage.py runserver 0.0.0.0:10101',
+    serve_cmd='.venv/bin/uvicorn somafractalmemory.asgi:application --host 0.0.0.0 --port 10101 --reload',
     serve_dir='../somafractalmemory',
     links=['http://localhost:10101/api/v1/docs'],
     labels=['soma-stack'],
@@ -56,7 +57,7 @@ local_resource(
 
 local_resource(
     'somabrain',
-    serve_cmd='.venv/bin/python manage.py runserver 0.0.0.0:30101',
+    serve_cmd='.venv/bin/uvicorn somabrain.asgi:application --host 0.0.0.0 --port 30101 --reload',
     serve_dir='../somabrain',
     # VIBE Rule 44: Port Sovereignty - Milvus mapped to 20530 on host
     env={'SOMABRAIN_MILVUS_PORT': '20530', 'SOMABRAIN_MILVUS_HOST': 'localhost'},
