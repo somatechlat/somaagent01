@@ -231,8 +231,14 @@ async def update_rate_limit(
 
     logger.info(f"Rate limit policy updated: {key}")
 
-    # TODO: Sync to Redis for runtime enforcement
-    # await _sync_to_redis(result)
+    # Sync to Redis for runtime enforcement
+    try:
+        from services.common.rate_limiter import get_rate_limiter
+        limiter = await get_rate_limiter()
+        await limiter.reset(key)  # Clear existing counter to apply new limits
+        logger.debug(f"Rate limit synced to Redis: {key}")
+    except Exception as e:
+        logger.warning(f"Redis sync failed for {key}: {e}")
 
     return {"limit": result, "updated": True}
 

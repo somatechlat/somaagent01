@@ -15,6 +15,7 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from django.conf import settings
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 # TEMPORAL CONFIGURATION
 # =============================================================================
 
-TEMPORAL_HOST = "localhost:7233"
+TEMPORAL_HOST = getattr(settings, "TEMPORAL_HOST", "localhost:7233")
 TEMPORAL_NAMESPACE = "soma-orchestrator"
 TASK_QUEUE = "soma-workflows"
 

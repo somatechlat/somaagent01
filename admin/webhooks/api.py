@@ -159,13 +159,30 @@ async def create_webhook(
 )
 async def get_webhook(request, webhook_id: str) -> Webhook:
     """Get webhook details."""
+    from admin.webhooks.models import Webhook as WebhookModel
+    from admin.common.exceptions import NotFoundError
+    from asgiref.sync import sync_to_async
+
+    try:
+        db_webhook = await sync_to_async(
+            WebhookModel.objects.get
+        )(id=webhook_id)
+    except WebhookModel.DoesNotExist:
+        raise NotFoundError("webhook", webhook_id)
+
     return Webhook(
-        webhook_id=webhook_id,
-        name="Example",
-        url="https://example.com/webhook",
-        events=["agent.created"],
-        created_at=timezone.now().isoformat(),
+        webhook_id=str(db_webhook.id),
+        name=db_webhook.name,
+        url=db_webhook.url,
+        events=db_webhook.events or [],
+        is_active=db_webhook.is_active,
+        secret=None,  # Never expose secret
+        created_at=db_webhook.created_at.isoformat(),
+        last_triggered=db_webhook.last_triggered.isoformat() if db_webhook.last_triggered else None,
+        success_count=db_webhook.success_count,
+        failure_count=db_webhook.failure_count,
     )
+
 
 
 @router.patch(

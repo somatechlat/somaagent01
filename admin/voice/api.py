@@ -307,7 +307,7 @@ async def transcribe_stream(request) -> dict:
     """
     return {
         "message": "Use WebSocket at /ws/voice for streaming transcription",
-        "websocket_url": "ws://localhost:8000/ws/voice",
+        "websocket_url": f"ws://{request.get_host()}/ws/voice",
     }
 
 

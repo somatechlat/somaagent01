@@ -180,17 +180,18 @@ async def get_invitation(request, token: str) -> InvitationStatusResponse:
 
     invitation = await _get_invitation()
 
-    # For now, return placeholder
-    # In production: check if invitation is None or expired
+    if invitation is None:
+        raise BadRequestError("Invalid or expired invitation token")
 
+    # Return actual invitation data once model is implemented
     return InvitationStatusResponse(
-        invitation_id="placeholder",
-        email="invited@example.com",
-        role="user",
-        status="pending",
-        created_at=timezone.now().isoformat(),
-        expires_at=(timezone.now() + timedelta(hours=72)).isoformat(),
-        accepted_at=None,
+        invitation_id=str(invitation.id),
+        email=invitation.email,
+        role=invitation.role,
+        status=invitation.status,
+        created_at=invitation.created_at.isoformat(),
+        expires_at=invitation.expires_at.isoformat(),
+        accepted_at=invitation.accepted_at.isoformat() if invitation.accepted_at else None,
     )
 
 

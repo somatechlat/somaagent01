@@ -83,7 +83,9 @@ async def setup_mfa(request) -> MFASetupResponse:
     import pyotp
 
     # Get user from auth context
-    user_email = "user@example.com"  # Would come from request.auth
+    user_email = getattr(request.auth, "email", None)
+    if not user_email:
+        raise UnauthorizedError("Email not found in auth context")
 
     # Generate TOTP secret
     secret = pyotp.random_base32()

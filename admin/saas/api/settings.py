@@ -26,7 +26,7 @@ router = Router()
 
 
 # =============================================================================
-# API KEYS
+# API KEYS - VIBE COMPLIANT using real Django model
 # =============================================================================
 
 import hashlib
@@ -36,63 +36,31 @@ from uuid import uuid4
 
 from django.utils import timezone
 
-
-class ApiKey:
-    """API Key model - should be moved to models.py in production."""
-
-    # This is a placeholder - real implementation would use Django model
-    _keys: dict = {}  # In-memory store for demo
-
-    @classmethod
-    def create(
-        cls, name: str, tenant_id: Optional[str] = None, expires_in_days: Optional[int] = None
-    ):
-        """Create a new API key."""
-        # Generate cryptographically secure key (32 bytes = 256 bits)
-        raw_key = secrets.token_urlsafe(32)
-        prefix = raw_key[:8]  # First 8 chars for identification
-
-        # Hash the key for storage (never store plaintext)
-        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-
-        key_id = str(uuid4())
-        expires_at = None
-        if expires_in_days:
-            expires_at = timezone.now() + timedelta(days=expires_in_days)
-
-        cls._keys[key_id] = {
-            "id": key_id,
-            "name": name,
-            "prefix": prefix,
-            "key_hash": key_hash,
-            "tenant_id": tenant_id,
-            "created_at": timezone.now(),
-            "expires_at": expires_at,
-            "last_used": None,
-        }
-
-        return key_id, raw_key, prefix
+from admin.saas.models.profiles import ApiKey
 
 
 @router.get("/api-keys", response=list[ApiKeyOut])
 def list_api_keys(request, tenant_id: Optional[str] = None):
-    """Get all API keys, optionally filtered by tenant."""
-    keys = []
-    for key_id, key_data in ApiKey._keys.items():
-        if tenant_id and key_data.get("tenant_id") != tenant_id:
-            continue
-        keys.append(
-            ApiKeyOut(
-                id=key_id,
-                name=key_data["name"],
-                prefix=key_data["prefix"],
-                tenant_id=key_data.get("tenant_id"),
-                created_at=key_data["created_at"],
-                last_used=key_data.get("last_used"),
-                expires_at=key_data.get("expires_at"),
-            )
+    """Get all API keys, optionally filtered by tenant.
+    
+    VIBE COMPLIANT - Real Django ORM queries.
+    """
+    queryset = ApiKey.objects.filter(is_active=True)
+    if tenant_id:
+        queryset = queryset.filter(tenant_id=tenant_id)
+    
+    return [
+        ApiKeyOut(
+            id=str(key.id),
+            name=key.name,
+            prefix=key.key_prefix,
+            tenant_id=str(key.tenant_id) if key.tenant_id else None,
+            created_at=key.created_at,
+            last_used=key.last_used_at,
+            expires_at=key.expires_at,
         )
-    return keys
+        for key in queryset.order_by("-created_at")
+    ]
 
 
 @router.post("/api-keys")
@@ -100,20 +68,33 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key.
 
-    VIBE COMPLIANT - Real cryptographic key generation.
+    VIBE COMPLIANT - Real cryptographic key generation with Django ORM.
     Returns plaintext key ONCE only - must be saved by client.
     """
-    key_id, raw_key, prefix = ApiKey.create(
+    # Generate cryptographically secure key
+    raw_key = secrets.token_urlsafe(32)
+    key_prefix = raw_key[:8]
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    
+    expires_at = None
+    if payload.expires_in_days:
+        expires_at = timezone.now() + timedelta(days=payload.expires_in_days)
+    
+    api_key = ApiKey.objects.create(
+        key_type="tenant" if payload.tenant_id else "platform",
         name=payload.name,
+        key_prefix=key_prefix,
+        key_hash=key_hash,
         tenant_id=payload.tenant_id,
-        expires_in_days=payload.expires_in_days,
+        scopes=[],
+        expires_at=expires_at,
     )
 
     # Return the full key ONCE - it cannot be retrieved again
     return {
-        "id": key_id,
-        "name": payload.name,
-        "prefix": prefix,
+        "id": str(api_key.id),
+        "name": api_key.name,
+        "prefix": key_prefix,
         "key": raw_key,  # Only returned on creation!
         "message": "Save this key now - it cannot be retrieved again",
     }
@@ -122,11 +103,17 @@ def create_api_key(request, payload: ApiKeyCreate):
 @router.delete("/api-keys/{key_id}", response=MessageResponse)
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
-    """Revoke an API key."""
-    if key_id in ApiKey._keys:
-        del ApiKey._keys[key_id]
+    """Revoke an API key.
+    
+    VIBE COMPLIANT - Real Django ORM soft delete.
+    """
+    try:
+        api_key = ApiKey.objects.get(id=key_id)
+        api_key.is_active = False
+        api_key.save()
         return MessageResponse(message=f"API key {key_id} revoked")
-    return MessageResponse(message=f"API key {key_id} not found", success=False)
+    except ApiKey.DoesNotExist:
+        return MessageResponse(message=f"API key {key_id} not found", success=False)
 
 
 # =============================================================================
