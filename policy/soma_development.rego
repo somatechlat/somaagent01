@@ -6,16 +6,16 @@ package soma.policy.integrator
 default allow = true
 
 # Allow all health checks
-allow {
+allow if {
     input.request_path == "/health"
 }
 
 # Allow all API endpoints in development
-allow {
+allow if {
     startswith(input.request_path, "/api/")
 }
 
 # Allow all admin endpoints
-allow {
+allow if {
     startswith(input.request_path, "/admin/")
 }
