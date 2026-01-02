@@ -120,8 +120,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                 f"duration={self.state.audio_seconds:.1f}s, "
                 f"turns={self.state.turn_count}"
             )
-            # TODO: Persist session to database via Django ORM
-            # VoiceSession.objects.filter(id=self.state.session_id).update(...)
+            # Persist session to database via Django ORM
+            await self._persist_session_end()
+
 
     async def receive_json(self, content):
         """Handle incoming JSON messages."""
@@ -155,8 +156,8 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         self.state.status = "listening"
         self.state.start_time = datetime.now()
 
-        # TODO: Create VoiceSession in database
-        # session = await sync_to_async(VoiceSession.objects.create)(...)
+        # Create VoiceSession in database
+        await self._create_session_record()
 
         await self.send_json(
             {
@@ -169,6 +170,56 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
         await self._send_status("listening")
         logger.info(f"Voice session started: {self.state.session_id}, persona={persona_id}")
+
+    async def _create_session_record(self):
+        """Create VoiceSession record in database."""
+        if not self.state:
+            return
+
+        from asgiref.sync import sync_to_async
+
+        try:
+            from admin.voice.models import VoiceSession
+
+            await sync_to_async(VoiceSession.objects.create)(
+                id=self.state.session_id,
+                tenant_id=self.state.tenant_id,
+                user_id=self.state.user_id,
+                persona_id=self.state.persona_id,
+                status="active",
+                started_at=self.state.start_time,
+            )
+            logger.debug(f"VoiceSession created: {self.state.session_id}")
+        except Exception as e:
+            # Non-fatal - log and continue
+            logger.warning(f"Failed to create VoiceSession record: {e}")
+
+    async def _persist_session_end(self):
+        """Update VoiceSession record on disconnect."""
+        if not self.state:
+            return
+
+        from asgiref.sync import sync_to_async
+        from datetime import datetime as dt
+
+        try:
+            from admin.voice.models import VoiceSession
+
+            await sync_to_async(
+                VoiceSession.objects.filter(id=self.state.session_id).update
+            )(
+                status=self.state.status,
+                ended_at=dt.now(),
+                audio_seconds=self.state.audio_seconds,
+                turn_count=self.state.turn_count,
+                input_tokens=self.state.input_tokens,
+                output_tokens=self.state.output_tokens,
+            )
+            logger.debug(f"VoiceSession updated: {self.state.session_id}")
+        except Exception as e:
+            # Non-fatal - log and continue
+            logger.warning(f"Failed to update VoiceSession record: {e}")
+
 
     async def _handle_audio_chunk(self, content):
         """Process incoming audio chunk."""

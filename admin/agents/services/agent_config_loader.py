@@ -19,7 +19,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-# from services.common.ui_settings_store import UiSettingsStore  # TODO: Fix or remove
+# This import is used on line 60 - DO NOT COMMENT OUT
+from services.common.ui_settings_store import UiSettingsStore
 from admin.agents.services.agent_context import AgentConfig
 
 LOGGER = logging.getLogger(__name__)

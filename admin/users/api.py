@@ -20,6 +20,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from asgiref.sync import sync_to_async
 
 router = Router(tags=["users"])
 logger = logging.getLogger(__name__)
@@ -123,15 +124,28 @@ async def create_user(
 )
 async def get_user(request, user_id: str) -> User:
     """Get user details."""
+    from django.contrib.auth import get_user_model
+    from admin.common.exceptions import NotFoundError
+
+    UserModel = get_user_model()
+
+    try:
+        db_user = await sync_to_async(UserModel.objects.get)(id=user_id)
+    except UserModel.DoesNotExist:
+        raise NotFoundError("user", user_id)
+
     return User(
-        user_id=user_id,
-        email="user@example.com",
-        name="Example User",
-        tenant_id="tenant-1",
-        status="active",
-        role="user",
-        created_at=timezone.now().isoformat(),
+        user_id=str(db_user.id),
+        email=db_user.email,
+        name=db_user.get_full_name() or db_user.username,
+        tenant_id=getattr(db_user, "tenant_id", "") or "",
+        status="active" if db_user.is_active else "suspended",
+        role="admin" if db_user.is_staff else "user",
+        created_at=db_user.date_joined.isoformat(),
+        last_login=db_user.last_login.isoformat() if db_user.last_login else None,
+        mfa_enabled=getattr(db_user, "mfa_enabled", False),
     )
+
 
 
 @router.patch(
@@ -223,12 +237,26 @@ async def activate_user(request, user_id: str) -> dict:
 )
 async def get_profile(request, user_id: str) -> UserProfile:
     """Get user profile."""
+    from django.contrib.auth import get_user_model
+    from admin.common.exceptions import NotFoundError
+
+    UserModel = get_user_model()
+
+    try:
+        db_user = await sync_to_async(UserModel.objects.get)(id=user_id)
+    except UserModel.DoesNotExist:
+        raise NotFoundError("user", user_id)
+
     return UserProfile(
-        user_id=user_id,
-        email="user@example.com",
-        name="Example User",
-        preferences={},
+        user_id=str(db_user.id),
+        email=db_user.email,
+        name=db_user.get_full_name() or db_user.username,
+        avatar_url=getattr(db_user, "avatar_url", None),
+        timezone=getattr(db_user, "timezone", "UTC") or "UTC",
+        language=getattr(db_user, "language", "en") or "en",
+        preferences=getattr(db_user, "preferences", {}) or {},
     )
+
 
 
 @router.patch(

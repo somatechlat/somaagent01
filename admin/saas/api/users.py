@@ -450,9 +450,13 @@ def get_profile(request) -> dict:
     from admin.auth.api import _get_permissions_for_roles
     from admin.saas.models import AdminProfile, UserSession, ApiKey
 
-    user_id = getattr(request.auth, "sub", "unknown")
-    email = getattr(request.auth, "email", "admin@example.com")
-    name = getattr(request.auth, "name", "Admin User")
+    user_id = getattr(request.auth, "sub", None)
+    email = getattr(request.auth, "email", None)
+
+    if not email:
+        from admin.common.exceptions import UnauthorizedError
+        raise UnauthorizedError("Email not found in auth context")
+
     roles = getattr(request.auth, "roles", ["saas_admin"])
 
     permissions = _get_permissions_for_roles(roles)
@@ -513,9 +517,13 @@ def update_profile(
     """Update current user's profile settings."""
     from admin.saas.models import AdminProfile
 
-    user_id = getattr(request.auth, "sub", "unknown")
-    email = getattr(request.auth, "email", "admin@example.com")
-    name = getattr(request.auth, "name", "Admin User")
+    user_id = getattr(request.auth, "sub", None)
+    email = getattr(request.auth, "email", None)
+
+    if not email:
+        from admin.common.exceptions import UnauthorizedError
+        raise UnauthorizedError("Email not found in auth context")
+
 
     # Get or create profile
     profile, created = AdminProfile.objects.get_or_create(

@@ -212,15 +212,46 @@ async def start_oauth(
 
     Security Auditor: Secure OAuth 2.0 flow.
     """
+    from admin.integrations.models import Integration as IntegrationModel
+    from admin.common.exceptions import NotFoundError
+    from asgiref.sync import sync_to_async
+    import os
+
     state = str(uuid4())
 
-    # In production: generate actual OAuth URL
-    auth_url = f"https://example.com/oauth?state={state}"
+    # Get integration from database to retrieve OAuth config
+    try:
+        integration = await sync_to_async(
+            IntegrationModel.objects.get
+        )(id=integration_id)
+    except IntegrationModel.DoesNotExist:
+        raise NotFoundError("integration", integration_id)
+
+    # Build OAuth URL from stored config
+    oauth_config = integration.config.get("oauth", {})
+    authorization_url = oauth_config.get("authorization_url")
+
+    if not authorization_url:
+        raise ValueError(
+            f"Integration {integration_id} does not have OAuth authorization URL configured"
+        )
+
+    # Build complete auth URL with state and redirect
+    import urllib.parse
+    params = urllib.parse.urlencode({
+        "state": state,
+        "redirect_uri": redirect_uri,
+        "client_id": oauth_config.get("client_id", ""),
+        "scope": " ".join(oauth_config.get("scopes", [])),
+        "response_type": "code",
+    })
+    full_auth_url = f"{authorization_url}?{params}"
 
     return {
-        "authorization_url": auth_url,
+        "authorization_url": full_auth_url,
         "state": state,
     }
+
 
 
 @router.post(

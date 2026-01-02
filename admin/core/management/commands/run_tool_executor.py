@@ -112,10 +112,16 @@ class Command(BaseCommand):
         )
 
         try:
-            # TODO: Integrate with tool registry
-            # from admin.tools.registry import ToolRegistry
-            # result = await ToolRegistry.execute(tool_name, tool_input)
-            result = {"status": "executed", "tool_name": tool_name}
+            # Execute via tool registry
+            from admin.tools.registry import get_tool_registry
+
+            registry = get_tool_registry()
+            tool = registry.get_tool(tool_name)
+
+            if tool is None:
+                raise ValueError(f"Tool not found: {tool_name}")
+
+            result = await tool.execute(tool_input)
 
             sensor.capture_execution_result(
                 tool_name=tool_name,

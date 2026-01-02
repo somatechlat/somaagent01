@@ -114,8 +114,20 @@ class Command(BaseCommand):
 
         logger.info(f"Processed message for session {session_id}")
 
-        # TODO: Integrate with LLM use case for response generation
-        # from admin.cogno.use_cases import GenerateResponseUseCase
-        # response = await GenerateResponseUseCase().execute(...)
+        # Generate response via ChatService
+        try:
+            from services.common.chat_service import ChatService
 
-        return {"status": "processed", "session_id": session_id}
+            chat_service = ChatService()
+            response = await chat_service.generate_response(
+                conversation_id=session_id,
+                message_content=message.get("content", ""),
+                user_id=event.get("user_id"),
+                tenant_id=tenant_id,
+            )
+            logger.debug(f"Response generated for session {session_id}")
+        except Exception as e:
+            logger.error(f"Failed to generate response for session {session_id}: {e}")
+            response = None
+
+        return {"status": "processed", "session_id": session_id, "response": response}
