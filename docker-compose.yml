@@ -461,62 +461,21 @@ services:
       com.somastack.tier: "observability"
 
   # ==========================================================================
-  # IDENTITY: Keycloak 24 (Port 20880)
-  # Production: Optimized startup, health probes
+  # IDENTITY: Keycloak - MOVED TO SHARED SERVICE
   # ==========================================================================
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    container_name: somaagent-keycloak
-    profiles: [ "auth" ]
-    restart: unless-stopped
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER:-postgres}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-somastack2024}
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
-      KC_HTTP_PORT: 8080
-      KC_PROXY: edge
-      KC_HEALTH_ENABLED: "true"
-      KC_METRICS_ENABLED: "true"
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-somastack2024}
-      # JVM settings for constrained environment
-      JAVA_OPTS_APPEND: "-Xms256m -Xmx512m"
-    command: start-dev
-    ports:
-      - "20880:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      <<: *common-healthcheck
-      test:
-        [
-          "CMD-SHELL",
-          "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r
-
-            Host: localhost\r
-
-            \r
-
-            ' >&3 && timeout 1 cat <&3 | grep -q '200'"
-        ]
-      start_period: 180s
-      interval: 60s
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-          cpus: "1.0"
-        reservations:
-          memory: 384M
-          cpus: "0.25"
-    logging: *common-logging
-    labels:
-      <<: *common-labels
-      com.somastack.service: "keycloak"
-      com.somastack.tier: "identity"
+  # Keycloak has been moved to shared services for all SOMA projects to use.
+  #
+  # Location: shared/keycloak/cluster/docker-compose.yml
+  # Port: 49010
+  #
+  # To start shared Keycloak:
+  #   cd shared/keycloak/cluster && docker compose up -d
+  #
+  # Environment variables for this project:
+  #   KEYCLOAK_URL=http://host.docker.internal:49010
+  #   KEYCLOAK_REALM=somaagent
+  #   KEYCLOAK_CLIENT_ID=eye-of-god
+  # ==========================================================================
 
   # ==========================================================================
   # APPLICATION: Django Backend (Port 20020)
@@ -600,7 +559,6 @@ services:
       <<: *common-labels
       com.somastack.service: "frontend"
       com.somastack.tier: "application"
-
   # ==========================================================================
   # AGENT CORE: Gateway - REMOVED (Migrating to Django Ninja)
   # ==========================================================================
