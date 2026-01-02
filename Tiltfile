@@ -46,6 +46,28 @@ local_resource(
 )
 
 # =============================================================================
+# SOMA STACK SERVICES
+# =============================================================================
+
+local_resource(
+    'somafractalmemory',
+    serve_cmd='python manage.py runserver 0.0.0.0:10101',
+    serve_dir='../somafractalmemory',
+    links=['http://localhost:10101/api/v1/docs'],
+    labels=['soma-stack'],
+    resource_deps=['postgres'],
+)
+
+local_resource(
+    'somabrain',
+    serve_cmd='python manage.py runserver 0.0.0.0:30101',
+    serve_dir='../somabrain',
+    links=['http://localhost:30101/api/v1/docs'],
+    labels=['soma-stack'],
+    resource_deps=['postgres', 'redis', 'somafractalmemory'],
+)
+
+# =============================================================================
 # DJANGO API (Production ASGI Server)
 # =============================================================================
 
@@ -55,5 +77,5 @@ local_resource(
     serve_dir='.',
     links=['http://localhost:20020/api/v2/docs'],
     labels=['backend'],
-    resource_deps=['postgres', 'redis', 'kafka'],  # Wait for infrastructure
+    resource_deps=['postgres', 'redis', 'kafka', 'somabrain', 'somafractalmemory'],
 )
