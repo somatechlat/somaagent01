@@ -24,7 +24,8 @@ print("""
 
 docker_compose(
     'docker-compose.yml',
-    profiles=['core', 'security'],  # Core + Security (OPA, SpiceDB)
+    # VIBE: Full stack deployment per user request ("ALL OF THEM")
+    profiles=['core', 'vectors', 'security', 'observability'],
 )
 
 # =============================================================================
