@@ -18,18 +18,6 @@ print("""
 """)
 
 # =============================================================================
-# INFRASTRUCTURE - Docker Compose
-# =============================================================================
-# VIBE Rule 51: Orchestrated Integration Testing requires real infrastructure
-
-# Load infrastructure services from docker-compose.yml
-# Profile 'core': Postgres, Redis, Kafka (required for chat)
-# Profile 'vectors': Milvus + etcd + MinIO (optional for memory)
-# Profile 'security': SpiceDB, OPA (optional for authz)
-# Profile 'observability': Prometheus, Grafana (optional for metrics)
-
-docker_compose(
-    'docker-compose.yml',
     profiles=['core'],  # Start with core services only
 )
 
