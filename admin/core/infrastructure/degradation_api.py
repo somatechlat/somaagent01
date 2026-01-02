@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 class ComponentHealthSchema(BaseModel):
     """Health status of a single component."""
-    
+
     name: str
     healthy: bool
     response_time: float
@@ -50,7 +50,7 @@ class ComponentHealthSchema(BaseModel):
 
 class DegradationStatusSchema(BaseModel):
     """Overall system degradation status."""
-    
+
     overall_level: str
     affected_components: List[str]
     healthy_components: List[str]
@@ -62,7 +62,7 @@ class DegradationStatusSchema(BaseModel):
 
 class HistoryRecordSchema(BaseModel):
     """A degradation history record."""
-    
+
     timestamp: float
     component_name: str
     degradation_level: str
@@ -74,7 +74,7 @@ class HistoryRecordSchema(BaseModel):
 
 class DependencySchema(BaseModel):
     """Service dependency information."""
-    
+
     service: str
     depends_on: List[str]
     depended_by: List[str]
@@ -82,7 +82,7 @@ class DependencySchema(BaseModel):
 
 class MonitoringStatusSchema(BaseModel):
     """Monitoring status response."""
-    
+
     monitoring_active: bool
     message: str
     timestamp: str
@@ -101,7 +101,7 @@ class MonitoringStatusSchema(BaseModel):
 async def get_degradation_status(request) -> DegradationStatusSchema:
     """
     Get the current degradation status of the entire system.
-    
+
     Returns:
     - overall_level: NONE, MINOR, MODERATE, SEVERE, or CRITICAL
     - affected_components: List of degraded component names
@@ -112,9 +112,9 @@ async def get_degradation_status(request) -> DegradationStatusSchema:
     # Initialize if not already done
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
-    
+
     status = await degradation_monitor.get_degradation_status()
-    
+
     return DegradationStatusSchema(
         overall_level=status.overall_level.value,
         affected_components=status.affected_components,
@@ -134,7 +134,7 @@ async def get_degradation_status(request) -> DegradationStatusSchema:
 async def get_component_health(request) -> List[ComponentHealthSchema]:
     """
     Get health status of all monitored components.
-    
+
     Returns detailed metrics for each component:
     - response_time: Latest response time in seconds
     - error_rate: Error rate (0.0 to 1.0)
@@ -143,19 +143,21 @@ async def get_component_health(request) -> List[ComponentHealthSchema]:
     """
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
-    
+
     components = []
     for comp in degradation_monitor.components.values():
-        components.append(ComponentHealthSchema(
-            name=comp.name,
-            healthy=comp.healthy,
-            response_time=comp.response_time,
-            error_rate=comp.error_rate,
-            degradation_level=comp.degradation_level.value,
-            circuit_state=comp.circuit_state.value,
-            last_check=comp.last_check,
-        ))
-    
+        components.append(
+            ComponentHealthSchema(
+                name=comp.name,
+                healthy=comp.healthy,
+                response_time=comp.response_time,
+                error_rate=comp.error_rate,
+                degradation_level=comp.degradation_level.value,
+                circuit_state=comp.circuit_state.value,
+                last_check=comp.last_check,
+            )
+        )
+
     return components
 
 
@@ -171,11 +173,11 @@ async def get_degradation_history(
 ) -> List[HistoryRecordSchema]:
     """
     Get degradation event history.
-    
+
     Args:
         limit: Maximum number of records (default 100, max 1000)
         component: Filter by component name (optional)
-    
+
     Returns history records with event types:
     - check: Regular health check
     - failure: Component failure detected
@@ -183,12 +185,12 @@ async def get_degradation_history(
     - cascading: Cascading failure propagated
     """
     limit = min(limit, 1000)
-    
+
     history = degradation_monitor.get_history(
         limit=limit,
         component_name=component,
     )
-    
+
     return [
         HistoryRecordSchema(
             timestamp=r["timestamp"],
@@ -211,20 +213,22 @@ async def get_degradation_history(
 async def get_dependencies(request) -> List[DependencySchema]:
     """
     Get the service dependency graph.
-    
+
     Shows which services depend on which, used for
     cascading failure detection and analysis.
     """
     dependencies = []
-    
+
     for service, deps in degradation_monitor.SERVICE_DEPENDENCIES.items():
         depended_by = degradation_monitor.get_dependent_services(service)
-        dependencies.append(DependencySchema(
-            service=service,
-            depends_on=deps,
-            depended_by=depended_by,
-        ))
-    
+        dependencies.append(
+            DependencySchema(
+                service=service,
+                depends_on=deps,
+                depended_by=depended_by,
+            )
+        )
+
     return dependencies
 
 
@@ -236,7 +240,7 @@ async def get_dependencies(request) -> List[DependencySchema]:
 async def start_monitoring(request) -> MonitoringStatusSchema:
     """
     Start the continuous degradation monitoring loop.
-    
+
     The monitoring loop:
     - Runs every 30 seconds
     - Checks all registered components
@@ -249,10 +253,10 @@ async def start_monitoring(request) -> MonitoringStatusSchema:
             message="Monitoring already active",
             timestamp=timezone.now().isoformat(),
         )
-    
+
     await degradation_monitor.start_monitoring()
     logger.info("Degradation monitoring started via API")
-    
+
     return MonitoringStatusSchema(
         monitoring_active=True,
         message="Monitoring started successfully",
@@ -275,10 +279,10 @@ async def stop_monitoring(request) -> MonitoringStatusSchema:
             message="Monitoring not active",
             timestamp=timezone.now().isoformat(),
         )
-    
+
     await degradation_monitor.stop_monitoring()
     logger.info("Degradation monitoring stopped via API")
-    
+
     return MonitoringStatusSchema(
         monitoring_active=False,
         message="Monitoring stopped successfully",
@@ -297,12 +301,13 @@ async def get_component(request, component_name: str) -> ComponentHealthSchema:
     """
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
-    
+
     component = degradation_monitor.components.get(component_name)
     if not component:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Component '{component_name}' not found")
-    
+
     return ComponentHealthSchema(
         name=component.name,
         healthy=component.healthy,

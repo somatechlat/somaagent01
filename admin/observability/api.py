@@ -112,9 +112,7 @@ async def get_infrastructure_health(request) -> InfrastructureHealthResponse:
         overall_status=result["overall_status"],
         timestamp=result["timestamp"],
         duration_ms=result["duration_ms"],
-        services=[
-            ServiceHealthResponse(**s) for s in result["services"]
-        ],
+        services=[ServiceHealthResponse(**s) for s in result["services"]],
     )
 
 

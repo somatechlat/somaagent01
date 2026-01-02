@@ -189,7 +189,15 @@ class DegradationMonitor:
             )
 
         # Initialize circuit breakers for critical components
-        critical_components = ["somabrain", "database", "kafka", "llm", "audio_tts", "audio_stt", "storage"]
+        critical_components = [
+            "somabrain",
+            "database",
+            "kafka",
+            "llm",
+            "audio_tts",
+            "audio_stt",
+            "storage",
+        ]
         for component in critical_components:
             self.circuit_breakers[component] = CircuitBreaker(
                 failure_threshold=5, recovery_timeout=60, expected_exception=Exception  # 1 minute
@@ -577,7 +585,9 @@ class DegradationMonitor:
             storage_ok = await multimodal_degradation_service.get_available_storage() is not None
 
             component.healthy = voice_ok or storage_ok
-            component.error_rate = 0.0 if (voice_ok and storage_ok) else (0.5 if component.healthy else 1.0)
+            component.error_rate = (
+                0.0 if (voice_ok and storage_ok) else (0.5 if component.healthy else 1.0)
+            )
 
         except Exception as e:
             component.healthy = False

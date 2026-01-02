@@ -122,7 +122,7 @@ async def list_conversations(
 
     Per SRS UC-01 Section 4.3:
     GET /api/v2/chat/conversations
-    
+
     Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
@@ -137,12 +137,12 @@ async def list_conversations(
     def _get_conversations():
         # Query Conversation model
         qs = Conversation.objects.filter(status="active")
-        
+
         if user_id:
             qs = qs.filter(user_id=user_id)
         if tenant_id:
             qs = qs.filter(tenant_id=tenant_id)
-            
+
         qs = qs.order_by("-updated_at")
         total = qs.count()
 
@@ -151,10 +151,10 @@ async def list_conversations(
 
         for conv in qs[offset : offset + per_page]:
             # Get last message
-            last_msg = Message.objects.filter(
-                conversation_id=conv.id
-            ).order_by("-created_at").first()
-            
+            last_msg = (
+                Message.objects.filter(conversation_id=conv.id).order_by("-created_at").first()
+            )
+
             items.append(
                 ConversationOut(
                     id=str(conv.id),
@@ -190,7 +190,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
     Per SRS UC-02 Section 5.3:
     POST /api/v2/chat/conversations
-    
+
     Per login-to-chat-journey design.md Section 6.2:
     - Creates conversation in PostgreSQL
     - Initializes agent session in SomaBrain
@@ -208,14 +208,14 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
     # Create conversation using ChatService
     chat_service = await get_chat_service()
-    
+
     try:
         conversation = await chat_service.create_conversation(
             agent_id=agent_id,
             user_id=user_id,
             tenant_id=tenant_id,
         )
-        
+
         # Initialize agent session (local session store)
         try:
             await chat_service.initialize_agent_session(
@@ -229,7 +229,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
         except Exception as e:
             # Non-critical - log and continue
             logger.warning(f"Agent session init failed (non-critical): {e}")
-        
+
         # Recall memories for context
         try:
             memories = await chat_service.recall_memories(
@@ -244,12 +244,14 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
             logger.warning(f"Memory recall failed (non-critical): {e}")
 
         title = payload.title or f"Conversation {conversation.id[:8]}"
-        
+
         # Update title if provided
         if payload.title:
+
             @sync_to_async
             def update_title():
                 Conversation.objects.filter(id=conversation.id).update(title=payload.title)
+
             await update_title()
 
         return ConversationDetailOut(
@@ -262,7 +264,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
             created_at=conversation.created_at.isoformat(),
             updated_at=conversation.updated_at.isoformat(),
         ).model_dump()
-        
+
     except Exception as e:
         logger.error(f"Conversation creation failed: {e}")
         raise ServiceError(f"Failed to create conversation: {e}")
@@ -332,7 +334,7 @@ async def get_messages(
 
     Per SRS UC-01 Section 4.3:
     GET /api/v2/chat/messages/{conv_id}
-    
+
     Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
@@ -342,13 +344,13 @@ async def get_messages(
         # Verify conversation exists
         if not Conversation.objects.filter(id=conversation_id).exists():
             return None, 0
-            
+
         qs = Message.objects.filter(conversation_id=conversation_id).order_by("created_at")
         total = qs.count()
-        
+
         offset = (page - 1) * per_page
         items = []
-        
+
         for msg in qs[offset : offset + per_page]:
             items.append(
                 MessageOut(
@@ -360,11 +362,11 @@ async def get_messages(
                     created_at=msg.created_at.isoformat(),
                 ).model_dump()
             )
-        
+
         return items, total
 
     items, total = await _get_messages()
-    
+
     if items is None:
         raise NotFoundError("conversation", conversation_id)
 
@@ -417,7 +419,7 @@ async def send_message(
             return None
 
     conv = await _get_conversation()
-    
+
     if not conv:
         raise NotFoundError("conversation", conversation_id)
 
@@ -426,10 +428,10 @@ async def send_message(
     # For sync mode, collect full response
     if not payload.stream:
         chat_service = await get_chat_service()
-        
+
         response_content = []
         token_count = 0
-        
+
         try:
             async for token in chat_service.send_message(
                 conversation_id=conversation_id,
@@ -439,19 +441,23 @@ async def send_message(
             ):
                 response_content.append(token)
                 token_count += 1
-            
+
             full_response = "".join(response_content)
-            
+
             # Get the created message
             @sync_to_async
             def get_last_message():
-                return Message.objects.filter(
-                    conversation_id=conversation_id,
-                    role="assistant",
-                ).order_by("-created_at").first()
-            
+                return (
+                    Message.objects.filter(
+                        conversation_id=conversation_id,
+                        role="assistant",
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+
             msg = await get_last_message()
-            
+
             return SendMessageResponse(
                 id=str(msg.id) if msg else str(uuid4()),
                 conversation_id=conversation_id,
@@ -461,14 +467,14 @@ async def send_message(
                 model=msg.model if msg else "",
                 created_at=msg.created_at.isoformat() if msg else timezone.now().isoformat(),
             ).model_dump()
-            
+
         except Exception as e:
             logger.error(f"Message send failed: {e}")
             raise ServiceError(f"Failed to send message: {e}")
-    
+
     # For stream mode, return acknowledgment (actual streaming via WebSocket)
     message_id = str(uuid4())
-    
+
     # Store user message
     @sync_to_async
     def store_user_message():
@@ -484,7 +490,7 @@ async def send_message(
         return str(msg.id)
 
     user_msg_id = await store_user_message()
-    
+
     return {
         "id": user_msg_id,
         "conversation_id": conversation_id,

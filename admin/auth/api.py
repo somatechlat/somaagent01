@@ -686,8 +686,14 @@ async def test_sso_connection(request, payload: SSOTestRequest):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(discovery_url)
                 if response.status_code == 200:
-                    return {"success": True, "message": "OIDC provider is reachable and configured correctly."}
-                return {"success": False, "detail": f"OIDC discovery failed: HTTP {response.status_code}"}
+                    return {
+                        "success": True,
+                        "message": "OIDC provider is reachable and configured correctly.",
+                    }
+                return {
+                    "success": False,
+                    "detail": f"OIDC discovery failed: HTTP {response.status_code}",
+                }
 
         elif provider == "ldap" or provider == "ad":
             # For LDAP/AD, we need async ldap library - return placeholder
@@ -695,7 +701,10 @@ async def test_sso_connection(request, payload: SSOTestRequest):
             if not server_url:
                 return {"success": False, "detail": "Server URL is required"}
             # Real LDAP test would use ldap3 library
-            return {"success": True, "message": f"LDAP server {server_url} configuration validated."}
+            return {
+                "success": True,
+                "message": f"LDAP server {server_url} configuration validated.",
+            }
 
         elif provider in ["okta", "azure", "ping", "onelogin"]:
             # These providers have specific discovery endpoints
@@ -754,7 +763,7 @@ async def login_with_email(request, payload: LoginRequest, response):
 
     VIBE COMPLIANT - Real authentication via Keycloak with account lockout.
     Per login-to-chat-journey design.md Section 2.1, 2.5
-    
+
     Security features:
     - Rate limiting: 10 requests per minute per IP
     - Account lockout after 5 failed attempts (15 min)
@@ -765,16 +774,17 @@ async def login_with_email(request, payload: LoginRequest, response):
     from admin.common.session_manager import get_session_manager
     from admin.common.exceptions import ForbiddenError
     from admin.common.rate_limit import check_rate_limit
-    
+
     # Rate limit check FIRST (per IP)
-    client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or \
-                request.META.get("REMOTE_ADDR", "unknown")
+    client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
+        0
+    ].strip() or request.META.get("REMOTE_ADDR", "unknown")
     await check_rate_limit(client_ip, "/api/v2/auth/login", limit=10, window=60)
-    
+
     # Check account lockout (before any auth attempt)
     lockout_service = await get_lockout_service()
     lockout_status = await lockout_service.check_lockout(payload.email)
-    
+
     if lockout_status.is_locked:
         logger.warning(f"Login blocked - account locked: email={payload.email}")
         raise ForbiddenError(
@@ -783,7 +793,7 @@ async def login_with_email(request, payload: LoginRequest, response):
             message=f"Account locked. Try again in {lockout_status.retry_after // 60} minutes.",
             details={"retry_after": lockout_status.retry_after},
         )
-    
+
     # Try Keycloak authentication
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
@@ -804,14 +814,14 @@ async def login_with_email(request, payload: LoginRequest, response):
             if response.status_code == 200:
                 # SUCCESS - Clear lockout attempts
                 await lockout_service.record_successful_login(payload.email)
-                
+
                 token_data = response.json()
                 token_payload = await decode_token(token_data["access_token"])
                 redirect_path = _determine_redirect_path(token_payload)
-                
+
                 # Create session in Redis with SpiceDB permission resolution
                 session_manager = await get_session_manager()
-                
+
                 # Resolve permissions from SpiceDB + role-based fallback
                 # Per design.md Section 5.3
                 permissions = await session_manager.resolve_permissions(
@@ -819,7 +829,7 @@ async def login_with_email(request, payload: LoginRequest, response):
                     tenant_id=token_payload.tenant_id or "",
                     roles=token_payload.roles,
                 )
-                
+
                 session = await session_manager.create_session(
                     user_id=token_payload.sub,
                     tenant_id=token_payload.tenant_id or "",
@@ -829,10 +839,11 @@ async def login_with_email(request, payload: LoginRequest, response):
                     ip_address=request.META.get("REMOTE_ADDR", ""),
                     user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
-                
+
                 # Audit log successful login
                 try:
                     from services.common.audit import get_audit_publisher
+
                     audit_publisher = await get_audit_publisher()
                     if audit_publisher:
                         await audit_publisher.log_login(
@@ -848,7 +859,7 @@ async def login_with_email(request, payload: LoginRequest, response):
                         )
                 except Exception as audit_err:
                     logger.warning(f"Audit logging failed (non-critical): {audit_err}")
-                
+
                 logger.info(
                     f"Login successful: email={payload.email}, "
                     f"user_id={token_payload.sub}, session={session.session_id}"
@@ -902,10 +913,11 @@ async def login_with_email(request, payload: LoginRequest, response):
 
             # FAILURE - Record failed attempt
             new_status = await lockout_service.record_failed_attempt(payload.email)
-            
+
             # Audit log failed login
             try:
                 from services.common.audit import get_audit_publisher
+
                 audit_publisher = await get_audit_publisher()
                 if audit_publisher:
                     result = "locked" if new_status.is_locked else "failure"
@@ -922,7 +934,7 @@ async def login_with_email(request, payload: LoginRequest, response):
                     )
             except Exception as audit_err:
                 logger.warning(f"Audit logging failed (non-critical): {audit_err}")
-            
+
             if new_status.is_locked:
                 logger.warning(f"Account locked after failed attempt: email={payload.email}")
                 raise ForbiddenError(
@@ -931,7 +943,7 @@ async def login_with_email(request, payload: LoginRequest, response):
                     message=f"Account locked. Try again in {new_status.retry_after // 60} minutes.",
                     details={"retry_after": new_status.retry_after},
                 )
-            
+
             logger.info(
                 f"Login failed: email={payload.email}, "
                 f"attempts={new_status.attempts}, remaining={new_status.remaining_attempts}"
@@ -984,9 +996,9 @@ async def oauth_initiate(request, provider: str):
 
     VIBE COMPLIANT - Real PKCE implementation per RFC 7636.
     Per login-to-chat-journey design.md Section 3.1
-    
+
     Supported providers: google, github
-    
+
     Flow:
     1. Generate code_verifier (43-128 chars, cryptographically random)
     2. Compute code_challenge = base64url(SHA256(code_verifier))
@@ -994,9 +1006,9 @@ async def oauth_initiate(request, provider: str):
     4. Redirect to Keycloak with PKCE parameters
     """
     from urllib.parse import urlencode
-    
+
     from admin.common.pkce import generate_code_challenge, get_oauth_state_store
-    
+
     # Validate provider
     supported_providers = {"google", "github"}
     if provider not in supported_providers:
@@ -1004,25 +1016,25 @@ async def oauth_initiate(request, provider: str):
             message=f"Unsupported OAuth provider: {provider}",
             details={"supported": list(supported_providers)},
         )
-    
+
     # Build redirect URI
     base_url = request.build_absolute_uri("/").rstrip("/")
     redirect_uri = f"{base_url}/api/v2/auth/oauth/callback"
-    
+
     # Store OAuth state with PKCE parameters
     state_store = await get_oauth_state_store()
     oauth_state = await state_store.store_state(
         provider=provider,
         redirect_uri=redirect_uri,
     )
-    
+
     # Compute code_challenge from code_verifier
     code_challenge = generate_code_challenge(oauth_state.code_verifier)
-    
+
     # Build Keycloak authorization URL
     config = get_keycloak_config()
     auth_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/auth"
-    
+
     params = {
         "client_id": config.client_id,
         "response_type": "code",
@@ -1033,11 +1045,11 @@ async def oauth_initiate(request, provider: str):
         "code_challenge_method": "S256",
         "kc_idp_hint": provider,  # Keycloak identity provider hint
     }
-    
+
     redirect_url = f"{auth_url}?{urlencode(params)}"
-    
+
     logger.info(f"OAuth initiated: provider={provider}, state={oauth_state.state[:8]}...")
-    
+
     return OAuthInitiateResponse(
         redirect_url=redirect_url,
         state=oauth_state.state,
@@ -1050,30 +1062,30 @@ async def oauth_callback(request, code: str, state: str):
 
     VIBE COMPLIANT - Real PKCE validation and token exchange.
     Per login-to-chat-journey design.md Section 3.2, 3.3
-    
+
     Flow:
     1. Validate state against Redis (one-time use)
     2. Exchange authorization code with code_verifier
     3. Create session and return tokens
     """
     from django.http import HttpResponseRedirect
-    
+
     from admin.common.pkce import get_oauth_state_store
     from admin.common.session_manager import get_session_manager
-    
+
     # Validate and consume OAuth state (one-time use)
     state_store = await get_oauth_state_store()
     oauth_state = await state_store.consume_state(state)
-    
+
     if oauth_state is None:
         logger.warning(f"OAuth callback with invalid/expired state: state={state[:8]}...")
         # Redirect to login with error
         return HttpResponseRedirect("/login?error=oauth_state_invalid")
-    
+
     # Exchange authorization code for tokens with PKCE
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
-    
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
@@ -1086,30 +1098,30 @@ async def oauth_callback(request, code: str, state: str):
                     "code_verifier": oauth_state.code_verifier,  # PKCE verification
                 },
             )
-            
+
             if response.status_code != 200:
                 logger.warning(
                     f"OAuth token exchange failed: status={response.status_code}, "
                     f"provider={oauth_state.provider}"
                 )
                 return HttpResponseRedirect("/login?error=oauth_token_exchange_failed")
-            
+
             token_data = response.json()
-    
+
     except httpx.HTTPError as e:
         logger.error(f"OAuth token exchange error: {e}")
         return HttpResponseRedirect("/login?error=oauth_service_unavailable")
-    
+
     # Decode token and create session
     try:
         token_payload = await decode_token(token_data["access_token"])
     except Exception as e:
         logger.error(f"OAuth token decode error: {e}")
         return HttpResponseRedirect("/login?error=oauth_token_invalid")
-    
+
     # Create session in Redis with SpiceDB permission resolution
     session_manager = await get_session_manager()
-    
+
     # Resolve permissions from SpiceDB + role-based fallback
     # Per design.md Section 5.3
     permissions = await session_manager.resolve_permissions(
@@ -1117,7 +1129,7 @@ async def oauth_callback(request, code: str, state: str):
         tenant_id=token_payload.tenant_id or "",
         roles=token_payload.roles,
     )
-    
+
     session = await session_manager.create_session(
         user_id=token_payload.sub,
         tenant_id=token_payload.tenant_id or "",
@@ -1127,21 +1139,21 @@ async def oauth_callback(request, code: str, state: str):
         ip_address=request.META.get("REMOTE_ADDR", ""),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
     )
-    
+
     # Update last login
     await _update_last_login(token_payload)
-    
+
     # Determine redirect path based on roles
     redirect_path = _determine_redirect_path(token_payload)
-    
+
     logger.info(
         f"OAuth login successful: provider={oauth_state.provider}, "
         f"user_id={token_payload.sub}, session={session.session_id}"
     )
-    
+
     # Build redirect response with cookies
     response = HttpResponseRedirect(redirect_path)
-    
+
     # Set httpOnly cookies for tokens
     max_age = token_data.get("expires_in", 900)
     response.set_cookie(
@@ -1152,7 +1164,7 @@ async def oauth_callback(request, code: str, state: str):
         secure=True,
         samesite="Lax",
     )
-    
+
     if token_data.get("refresh_token"):
         response.set_cookie(
             "refresh_token",
@@ -1162,7 +1174,7 @@ async def oauth_callback(request, code: str, state: str):
             secure=True,
             samesite="Lax",
         )
-    
+
     response.set_cookie(
         "session_id",
         session.session_id,
@@ -1171,7 +1183,7 @@ async def oauth_callback(request, code: str, state: str):
         secure=True,
         samesite="Lax",
     )
-    
+
     return response
 
 

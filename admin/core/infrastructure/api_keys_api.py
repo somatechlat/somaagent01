@@ -21,6 +21,7 @@ router = Router(tags=["API Keys"])
 
 # --- Pydantic Models ---
 
+
 class ApiKeyBase(BaseModel):
     provider: str
     type: str = "llm"  # llm, service
@@ -45,6 +46,7 @@ class ApiKeyListResponse(BaseModel):
 
 
 # --- Secure key storage (in production, use Django model with encryption) ---
+
 
 def _mask_key(key: str) -> str:
     """Mask API key, showing only last 4 characters"""
@@ -72,7 +74,7 @@ def _init_default_keys():
         ("TAVILY_API_KEY", "tavily", "service", "Tavily Search"),
         ("LAGO_API_KEY", "lago", "service", "Lago Billing"),
     ]
-    
+
     for env_var, provider, key_type, name in env_keys:
         key_value = os.getenv(env_var)
         if key_value:
@@ -101,11 +103,13 @@ def _init_default_keys():
                 "created_at": datetime.now(),
             }
 
+
 # Initialize on module load
 _init_default_keys()
 
 
 # --- API Endpoints ---
+
 
 @router.get("/", response=ApiKeyListResponse)
 def list_api_keys(
@@ -118,12 +122,12 @@ def list_api_keys(
     Permission: apikey:list
     """
     keys = list(_KEYS_STORE.values())
-    
+
     if type:
         keys = [k for k in keys if k["type"] == type]
     if status:
         keys = [k for k in keys if k["status"] == status]
-    
+
     return ApiKeyListResponse(
         items=[ApiKeyResponse(**k) for k in keys],
         total=len(keys),
@@ -170,13 +174,13 @@ def update_api_key(request: HttpRequest, provider: str, payload: ApiKeyCreate):
     if provider not in _KEYS_STORE:
         # Create new
         return create_api_key(request, payload)
-    
+
     key_data = _KEYS_STORE[provider]
     key_data["key_masked"] = _mask_key(payload.key_value)
     key_data["key_hash"] = _hash_key(payload.key_value)
     key_data["status"] = "valid"
     key_data["last_used"] = None  # Reset on update
-    
+
     return ApiKeyResponse(**key_data)
 
 
@@ -188,7 +192,7 @@ def delete_api_key(request: HttpRequest, provider: str):
     """
     if provider not in _KEYS_STORE:
         return {"success": False, "error": f"API key not found: {provider}"}
-    
+
     del _KEYS_STORE[provider]
     return {"success": True, "provider": provider}
 
@@ -201,11 +205,11 @@ def validate_api_key(request: HttpRequest, provider: str):
     """
     if provider not in _KEYS_STORE:
         return {"valid": False, "error": "Key not found"}
-    
+
     key_data = _KEYS_STORE[provider]
     if key_data["status"] == "missing":
         return {"valid": False, "error": "Key not configured"}
-    
+
     # In production, would make actual test request to provider
     # For now, assume valid if present
     return {
@@ -222,8 +226,16 @@ def list_providers(request: HttpRequest):
     """
     return {
         "llm": [
-            {"id": "openai", "name": "OpenAI", "models": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]},
-            {"id": "anthropic", "name": "Anthropic", "models": ["claude-3.5-sonnet", "claude-3-opus"]},
+            {
+                "id": "openai",
+                "name": "OpenAI",
+                "models": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
+            },
+            {
+                "id": "anthropic",
+                "name": "Anthropic",
+                "models": ["claude-3.5-sonnet", "claude-3-opus"],
+            },
             {"id": "google", "name": "Google", "models": ["gemini-pro", "gemini-1.5-flash"]},
             {"id": "groq", "name": "Groq", "models": ["llama-3.1-70b", "mixtral-8x7b"]},
         ],

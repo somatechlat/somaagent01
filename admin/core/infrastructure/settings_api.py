@@ -21,6 +21,7 @@ router = Router(tags=["Settings"])
 
 class SettingsResponse(BaseModel):
     """Settings for a specific service"""
+
     entity: str
     values: dict
     source: str  # 'database', 'env', 'default'
@@ -29,6 +30,7 @@ class SettingsResponse(BaseModel):
 
 class SettingsUpdateRequest(BaseModel):
     """Request to update settings"""
+
     values: dict
 
 
@@ -86,6 +88,7 @@ def get_settings_from_db(entity: str) -> Optional[dict]:
     """Get settings from database if stored there"""
     try:
         from admin.core.models import ServiceConfig
+
         config = ServiceConfig.objects.filter(service_name=entity, is_active=True).first()
         if config:
             return config.config_json
@@ -99,9 +102,9 @@ def save_settings_to_db(entity: str, values: dict) -> bool:
     """Save settings to database"""
     try:
         from admin.core.models import ServiceConfig
+
         config, created = ServiceConfig.objects.update_or_create(
-            service_name=entity,
-            defaults={"config_json": values, "is_active": True}
+            service_name=entity, defaults={"config_json": values, "is_active": True}
         )
         return True
     except Exception as e:
@@ -123,7 +126,7 @@ def get_settings(request: HttpRequest, entity: str):
             values=db_settings,
             source="database",
         )
-    
+
     # Fall back to defaults
     if entity in DEFAULT_SETTINGS:
         return SettingsResponse(
@@ -131,7 +134,7 @@ def get_settings(request: HttpRequest, entity: str):
             values=DEFAULT_SETTINGS[entity],
             source="default",
         )
-    
+
     return SettingsResponse(
         entity=entity,
         values={},
@@ -148,10 +151,10 @@ def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRe
     # Validate entity
     if entity not in DEFAULT_SETTINGS:
         return {"success": False, "error": f"Unknown entity: {entity}"}
-    
+
     # Merge with defaults (don't lose fields)
     merged = {**DEFAULT_SETTINGS.get(entity, {}), **payload.values}
-    
+
     # Save to database
     if save_settings_to_db(entity, merged):
         return {"success": True, "entity": entity, "message": "Settings saved"}

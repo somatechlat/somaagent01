@@ -116,7 +116,7 @@ def get_metrics_snapshot(request: HttpRequest):
     # Calculate derived metrics
     requests = RUNTIME_METRICS.get("requests_total", 1247892)
     rpm = requests / max(uptime / 60, 1)
-    
+
     llm_calls = RUNTIME_METRICS.get("llm_calls", 45600)
     tool_execs = RUNTIME_METRICS.get("tool_executions", 89000)
     tool_success = RUNTIME_METRICS.get("tool_successes", 86330)

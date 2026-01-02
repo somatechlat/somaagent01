@@ -58,7 +58,7 @@ class UiSettingsStore:
         if not data:
             await self.ensure_schema()
             data = self.redis.get(self.REDIS_KEY)
-        
+
         if data:
             try:
                 return json.loads(data)

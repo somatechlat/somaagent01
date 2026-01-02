@@ -38,5 +38,3 @@ router.add_router("/flags", feature_flags_router)  # Feature flags
 router.add_router("/apikeys", api_keys_router)  # API keys management
 
 __all__ = ["router"]
-
-

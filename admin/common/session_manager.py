@@ -68,9 +68,10 @@ SESSION_OPERATION_DURATION = Histogram(
 @dataclass
 class Session:
     """User session data stored in Redis.
-    
+
     Per design.md Section 5.1 Session Creation.
     """
+
     session_id: str
     user_id: str
     tenant_id: str
@@ -81,22 +82,22 @@ class Session:
     last_activity: str = ""
     ip_address: str = ""
     user_agent: str = ""
-    
+
     def __post_init__(self):
         if not self.created_at:
             self.created_at = datetime.now(timezone.utc).isoformat()
         if not self.last_activity:
             self.last_activity = self.created_at
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary for Redis storage."""
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "Session":
         """Create Session from dictionary."""
         return cls(**data)
-    
+
     def update_activity(self) -> None:
         """Update last_activity timestamp."""
         self.last_activity = datetime.now(timezone.utc).isoformat()
@@ -109,28 +110,28 @@ class Session:
 
 class SessionManager:
     """Redis-backed session manager.
-    
+
     Implements session lifecycle per design.md:
     - create_session(): Create new session with Redis storage
     - get_session(): Retrieve session by ID
     - update_activity(): Extend TTL on activity
     - delete_session(): Remove single session
     - delete_user_sessions(): Remove all sessions for user
-    
+
     Key format: session:{user_id}:{session_id}
     TTL: 900 seconds (15 minutes) by default, extended on activity
     """
-    
+
     SESSION_TTL = 900  # 15 minutes per design.md
     SESSION_PREFIX = "session:"
-    
+
     def __init__(
         self,
         redis_url: Optional[str] = None,
         session_ttl: int = SESSION_TTL,
     ):
         """Initialize SessionManager.
-        
+
         Args:
             redis_url: Redis connection URL. Defaults to REDIS_URL env var.
             session_ttl: Session TTL in seconds. Defaults to 900 (15 min).
@@ -139,7 +140,7 @@ class SessionManager:
         self.session_ttl = session_ttl
         self._redis: Optional[redis.Redis] = None
         self._connected = False
-    
+
     async def connect(self) -> None:
         """Connect to Redis."""
         if not self._connected:
@@ -151,33 +152,33 @@ class SessionManager:
             await self._redis.ping()
             self._connected = True
             logger.info(f"SessionManager connected to Redis: {self.redis_url}")
-    
+
     async def close(self) -> None:
         """Close Redis connection."""
         if self._redis:
             await self._redis.close()
             self._connected = False
             logger.info("SessionManager disconnected from Redis")
-    
+
     async def _ensure_connected(self) -> None:
         """Ensure Redis connection is established."""
         if not self._connected:
             await self.connect()
-    
+
     def _make_key(self, user_id: str, session_id: str) -> str:
         """Build Redis key for session.
-        
+
         Format: session:{user_id}:{session_id}
         """
         return f"{self.SESSION_PREFIX}{user_id}:{session_id}"
-    
+
     def _make_user_pattern(self, user_id: str) -> str:
         """Build Redis key pattern for all user sessions.
-        
+
         Format: session:{user_id}:*
         """
         return f"{self.SESSION_PREFIX}{user_id}:*"
-    
+
     async def create_session(
         self,
         user_id: str,
@@ -189,12 +190,12 @@ class SessionManager:
         user_agent: str,
     ) -> Session:
         """Create new session in Redis.
-        
+
         Per design.md Section 5.1:
         - Generate UUID4 session_id
         - Store with TTL matching access_token expiry (15 min)
         - Include all required session data
-        
+
         Args:
             user_id: User UUID from Keycloak
             tenant_id: Tenant UUID
@@ -203,15 +204,15 @@ class SessionManager:
             permissions: List of resolved permissions (from SpiceDB)
             ip_address: Client IP address
             user_agent: Client user agent string
-            
+
         Returns:
             Created Session object
         """
         await self._ensure_connected()
-        
+
         with SESSION_OPERATION_DURATION.labels("create").time():
             session_id = str(uuid.uuid4())
-            
+
             session = Session(
                 session_id=session_id,
                 user_id=user_id,
@@ -222,45 +223,45 @@ class SessionManager:
                 ip_address=ip_address,
                 user_agent=user_agent[:500] if user_agent else "",  # Truncate long user agents
             )
-            
+
             key = self._make_key(user_id, session_id)
-            
+
             await self._redis.setex(
                 key,
                 self.session_ttl,
                 json.dumps(session.to_dict()),
             )
-            
+
             SESSION_CREATED.labels(tenant_id).inc()
             logger.info(
                 f"Session created: user={user_id}, session={session_id}, "
                 f"tenant={tenant_id}, ttl={self.session_ttl}s"
             )
-            
+
             return session
-    
+
     async def get_session(self, user_id: str, session_id: str) -> Optional[Session]:
         """Retrieve session from Redis.
-        
+
         Args:
             user_id: User UUID
             session_id: Session UUID
-            
+
         Returns:
             Session if found and valid, None otherwise
         """
         await self._ensure_connected()
-        
+
         with SESSION_OPERATION_DURATION.labels("get").time():
             key = self._make_key(user_id, session_id)
-            
+
             data = await self._redis.get(key)
-            
+
             if data is None:
                 SESSION_RETRIEVED.labels("not_found").inc()
                 logger.debug(f"Session not found: {key}")
                 return None
-            
+
             try:
                 session = Session.from_dict(json.loads(data))
                 SESSION_RETRIEVED.labels("found").inc()
@@ -269,24 +270,24 @@ class SessionManager:
                 SESSION_RETRIEVED.labels("invalid").inc()
                 logger.warning(f"Invalid session data for {key}: {e}")
                 return None
-    
+
     async def get_session_by_id(self, session_id: str) -> Optional[Session]:
         """Retrieve session by session_id only (scans for user_id).
-        
+
         Less efficient than get_session() - use when user_id unknown.
-        
+
         Args:
             session_id: Session UUID
-            
+
         Returns:
             Session if found, None otherwise
         """
         await self._ensure_connected()
-        
+
         with SESSION_OPERATION_DURATION.labels("get_by_id").time():
             # Scan for matching session
             pattern = f"{self.SESSION_PREFIX}*:{session_id}"
-            
+
             async for key in self._redis.scan_iter(match=pattern, count=100):
                 data = await self._redis.get(key)
                 if data:
@@ -297,119 +298,119 @@ class SessionManager:
                             return session
                     except (json.JSONDecodeError, TypeError, KeyError):
                         continue
-            
+
             SESSION_RETRIEVED.labels("not_found").inc()
             return None
-    
+
     async def update_activity(self, user_id: str, session_id: str) -> bool:
         """Update last_activity and extend TTL.
-        
+
         Per design.md Section 5.5:
         - Update last_activity timestamp
         - Extend TTL on each authenticated request
-        
+
         Args:
             user_id: User UUID
             session_id: Session UUID
-            
+
         Returns:
             True if session was updated, False if not found
         """
         await self._ensure_connected()
-        
+
         with SESSION_OPERATION_DURATION.labels("update_activity").time():
             key = self._make_key(user_id, session_id)
-            
+
             data = await self._redis.get(key)
             if data is None:
                 return False
-            
+
             try:
                 session = Session.from_dict(json.loads(data))
                 session.update_activity()
-                
+
                 # Update with extended TTL
                 await self._redis.setex(
                     key,
                     self.session_ttl,
                     json.dumps(session.to_dict()),
                 )
-                
+
                 return True
             except (json.JSONDecodeError, TypeError, KeyError) as e:
                 logger.warning(f"Failed to update session {key}: {e}")
                 return False
-    
+
     async def delete_session(self, user_id: str, session_id: str) -> bool:
         """Delete session from Redis.
-        
+
         Args:
             user_id: User UUID
             session_id: Session UUID
-            
+
         Returns:
             True if session was deleted, False if not found
         """
         await self._ensure_connected()
-        
+
         with SESSION_OPERATION_DURATION.labels("delete").time():
             key = self._make_key(user_id, session_id)
-            
+
             deleted = await self._redis.delete(key)
-            
+
             if deleted:
                 SESSION_DELETED.labels("explicit").inc()
                 logger.info(f"Session deleted: {key}")
                 return True
-            
+
             return False
-    
+
     async def delete_user_sessions(self, user_id: str) -> int:
         """Delete all sessions for a user.
-        
+
         Used for:
         - Logout from all devices
         - Account security actions
         - User deletion
-        
+
         Args:
             user_id: User UUID
-            
+
         Returns:
             Number of sessions deleted
         """
         await self._ensure_connected()
-        
+
         with SESSION_OPERATION_DURATION.labels("delete_all").time():
             pattern = self._make_user_pattern(user_id)
-            
+
             deleted_count = 0
             keys_to_delete = []
-            
+
             async for key in self._redis.scan_iter(match=pattern, count=100):
                 keys_to_delete.append(key)
-            
+
             if keys_to_delete:
                 deleted_count = await self._redis.delete(*keys_to_delete)
                 SESSION_DELETED.labels("bulk").inc(deleted_count)
                 logger.info(f"Deleted {deleted_count} sessions for user {user_id}")
-            
+
             return deleted_count
-    
+
     async def count_user_sessions(self, user_id: str) -> int:
         """Count active sessions for a user.
-        
+
         Args:
             user_id: User UUID
-            
+
         Returns:
             Number of active sessions
         """
         await self._ensure_connected()
-        
+
         pattern = self._make_user_pattern(user_id)
         count = 0
-        
+
         async for _ in self._redis.scan_iter(match=pattern, count=100):
             count += 1
 
@@ -491,9 +492,7 @@ class SessionManager:
             )
         except Exception as e:
             # FAIL-OPEN for permissions (use role-based fallback)
-            logger.warning(
-                f"SpiceDB unavailable, using role-based permissions: {e}"
-            )
+            logger.warning(f"SpiceDB unavailable, using role-based permissions: {e}")
 
         # Add role-based permissions as fallback/supplement
         role_permissions = self._get_permissions_for_roles(roles)
@@ -512,21 +511,37 @@ class SessionManager:
 
         role_permission_map = {
             "admin": [
-                "view", "use", "develop", "train", "administrate", "manage",
-                "agents:create", "agents:delete", "agents:configure",
-                "users:manage", "tenants:manage",
+                "view",
+                "use",
+                "develop",
+                "train",
+                "administrate",
+                "manage",
+                "agents:create",
+                "agents:delete",
+                "agents:configure",
+                "users:manage",
+                "tenants:manage",
             ],
             "developer": [
-                "view", "use", "develop", "train",
-                "agents:create", "agents:configure",
+                "view",
+                "use",
+                "develop",
+                "train",
+                "agents:create",
+                "agents:configure",
             ],
             "trainer": [
-                "view", "use", "train",
+                "view",
+                "use",
+                "train",
                 "agents:train",
             ],
             "user": [
-                "view", "use",
-                "conversations:create", "conversations:view",
+                "view",
+                "use",
+                "conversations:create",
+                "conversations:view",
             ],
         }
 
@@ -562,9 +577,7 @@ class SessionManager:
                 resource_type="agent",
                 permission="view",
             )
-            logger.debug(
-                f"Accessible agents resolved: user={user_id}, count={len(agent_ids)}"
-            )
+            logger.debug(f"Accessible agents resolved: user={user_id}, count={len(agent_ids)}")
             return agent_ids
         except Exception as e:
             logger.warning(f"SpiceDB lookup failed, returning empty list: {e}")
@@ -580,7 +593,7 @@ _session_manager_instance: Optional[SessionManager] = None
 
 async def get_session_manager() -> SessionManager:
     """Get or create the singleton SessionManager.
-    
+
     Usage:
         session_manager = await get_session_manager()
         session = await session_manager.create_session(...)

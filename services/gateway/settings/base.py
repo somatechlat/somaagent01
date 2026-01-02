@@ -21,7 +21,7 @@ from services.common.env_config import get_required_env, get_optional_env
 from .service_registry import SERVICES
 
 # Determine environment (overridden in dev/staging/prod modules)
-ENVIRONMENT = 'development'
+ENVIRONMENT = "development"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -103,7 +103,7 @@ TEMPLATES = [
 # Parse database DSN from environment (REQUIRED - no hardcoded credentials)
 db_dsn = get_required_env(
     "SA01_DB_DSN",
-    "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)"
+    "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)",
 )
 
 # Parse DSN components for Django DATABASE config
@@ -184,7 +184,7 @@ TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE",
 TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
 
 # Kafka
-KAFKA_BOOTSTRAP_SERVERS = SERVICES.KAFKA.get_url(ENVIRONMENT).replace('http://', '')
+KAFKA_BOOTSTRAP_SERVERS = SERVICES.KAFKA.get_url(ENVIRONMENT).replace("http://", "")
 KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.inbound")
 
 # Feature Flags

@@ -3,7 +3,7 @@
 Migrated from: memory_exports.py + memory_mutations.py
 Django Ninja with streaming exports.
 
-Role: System of Record ("Bookkeeper"). 
+Role: System of Record ("Bookkeeper").
 SomaBrain handles Cognition; this API handles Persistence.
 
 VIBE COMPLIANT - All 7 Personas:
@@ -70,18 +70,18 @@ async def export_memory(
     📚 ISO Doc: Returns NDJSON for machine-readable export
     ⚡ Perf: Streaming response for large datasets
     """
-    
+
     @sync_to_async
     def _get_iterator():
         # VIBE: Use Django ORM with iterator() for memory efficiency
         qs = MemoryReplica.objects.all().order_by("-created_at")
-        
+
         if tenant:
             qs = qs.filter(tenant=tenant)
-        # Note: 'namespace' is not a direct field on MemoryReplica, 
+        # Note: 'namespace' is not a direct field on MemoryReplica,
         # it might be in metadata or we might filter by other fields.
         # For now, we ignore it or treat it as a filter if we add a namespace field later.
-        
+
         # Generator to yield strings
         def generate():
             for mem in qs.iterator(chunk_size=1000):
@@ -94,7 +94,7 @@ async def export_memory(
                     "created_at": mem.created_at.isoformat(),
                 }
                 yield json.dumps(data) + "\n"
-        
+
         return generate
 
     generator = await _get_iterator()
@@ -114,7 +114,7 @@ async def create_export_job(
 
     🔒 Security: Job scoped to tenant
     """
-    
+
     @sync_to_async
     def _create_job():
         job_id = uuid.uuid4()
@@ -142,7 +142,7 @@ async def get_export_job(
     job_id: str,
 ) -> dict:
     """Get export job status."""
-    
+
     @sync_to_async
     def _get_job():
         try:
@@ -175,6 +175,7 @@ async def download_export(
 
     VIBE: Data from PostgreSQL (Job result), not filesystem.
     """
+
     @sync_to_async
     def _get_result():
         try:
@@ -190,7 +191,7 @@ async def download_export(
     # If result is already a dict/list, json dump it
     # If it's a URL (S3), redirect (future)
     # Here we assume it's the data itself
-    
+
     return StreamingHttpResponse(
         iter([json.dumps(result_data)]),
         content_type="application/x-ndjson",
@@ -210,7 +211,7 @@ async def memory_batch(
     req: MemoryBatchRequest,
 ) -> dict:
     """Batch insert memories."""
-    
+
     @sync_to_async
     def _bulk_create():
         replicas = []
@@ -227,7 +228,7 @@ async def memory_batch(
                     wal_timestamp=item.get("timestamp"),
                 )
             )
-        
+
         created = MemoryReplica.objects.bulk_create(replicas)
         return len(created)
 
@@ -245,7 +246,7 @@ async def memory_delete(
     mem_id: str,
 ) -> dict:
     """Delete a memory by Event ID."""
-    
+
     @sync_to_async
     def _delete():
         # Deleting by event_id vs id. mem_id is str, so assumes event_id.

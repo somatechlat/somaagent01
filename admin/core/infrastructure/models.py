@@ -102,7 +102,11 @@ class RateLimitPolicy(models.Model):
         verbose_name_plural = "Rate Limit Policies"
 
     def __str__(self):
-        window_str = f"{self.window_seconds // 3600}h" if self.window_seconds >= 3600 else f"{self.window_seconds}s"
+        window_str = (
+            f"{self.window_seconds // 3600}h"
+            if self.window_seconds >= 3600
+            else f"{self.window_seconds}s"
+        )
         return f"{self.key}: {self.limit}/{window_str} ({self.policy})"
 
     def get_limit_for_tier(self, tier_slug: str) -> int:
@@ -197,14 +201,10 @@ class ServiceHealth(models.Model):
         help_text="Additional service-specific details (version, connections, etc.)",
     )
 
-    error_message = models.TextField(
-        blank=True, help_text="Error message if status is not healthy"
-    )
+    error_message = models.TextField(blank=True, help_text="Error message if status is not healthy")
 
     # Configuration
-    check_url = models.CharField(
-        max_length=500, blank=True, help_text="Health check endpoint URL"
-    )
+    check_url = models.CharField(max_length=500, blank=True, help_text="Health check endpoint URL")
 
     check_interval_seconds = models.IntegerField(
         default=30, help_text="How often to check this service"
@@ -228,7 +228,9 @@ class ServiceHealth(models.Model):
     def __str__(self):
         return f"{self.display_name or self.service_name}: {self.status}"
 
-    def update_status(self, status: str, latency_ms: float = None, details: dict = None, error: str = None):
+    def update_status(
+        self, status: str, latency_ms: float = None, details: dict = None, error: str = None
+    ):
         """Update the health status."""
         self.status = status
         self.last_check = timezone.now()
@@ -282,9 +284,7 @@ class InfrastructureConfig(models.Model):
         max_length=100, help_text="Configuration key (e.g., 'host', 'port', 'pool_size')"
     )
 
-    value = models.TextField(
-        blank=True, help_text="Configuration value (encrypted if is_secret)"
-    )
+    value = models.TextField(blank=True, help_text="Configuration value (encrypted if is_secret)")
 
     is_secret = models.BooleanField(
         default=False, help_text="Whether this value should be encrypted/hidden"
@@ -294,13 +294,9 @@ class InfrastructureConfig(models.Model):
         default=True, help_text="Whether this can be edited through UI"
     )
 
-    description = models.TextField(
-        blank=True, help_text="Description of this configuration option"
-    )
+    description = models.TextField(blank=True, help_text="Description of this configuration option")
 
-    default_value = models.TextField(
-        blank=True, help_text="Default value for this configuration"
-    )
+    default_value = models.TextField(blank=True, help_text="Default value for this configuration")
 
     value_type = models.CharField(
         max_length=20,

@@ -148,22 +148,17 @@ class ChatService:
         """Initialize ChatService.
 
         Args:
-            somabrain_url: SomaBrain API URL. Defaults to SOMABRAIN_URL env var.
-            memory_url: SomaFractalMemory API URL. Defaults to SOMA_MEMORY_URL env var.
+            somabrain_url: SomaBrain API URL. Defaults to Service Registry.
+            memory_url: SomaFractalMemory API URL. Defaults to Service Registry.
             timeout: HTTP timeout in seconds.
         """
-        self.somabrain_url = (
-            somabrain_url
-            or os.getenv("SOMABRAIN_URL")
-            or os.getenv("SA01_SOMA_BASE_URL", "http://localhost:9696")
+        from django.conf import settings
+
+        self.somabrain_url = somabrain_url or settings.SOMABRAIN_URL
+        self.memory_url = memory_url or settings.SOMAFRACTALMEMORY_URL
+        self.memory_api_token = (
+            os.getenv("SOMA_MEMORY_API_TOKEN") or os.getenv("SOMA_API_TOKEN") or ""
         )
-        self.memory_url = (
-            memory_url
-            or os.getenv("SOMA_MEMORY_URL")
-            or os.getenv("SOMA_FRACTAL_MEMORY_URL")
-            or "http://localhost:9595"
-        )
-        self.memory_api_token = os.getenv("SOMA_MEMORY_API_TOKEN") or os.getenv("SOMA_API_TOKEN") or ""
         self.timeout = timeout
 
         # HTTP client for external services
@@ -261,8 +256,7 @@ class ChatService:
             CHAT_REQUESTS.labels(method="create_conversation", result="success").inc()
 
             logger.info(
-                f"Conversation created: id={conversation.id}, "
-                f"agent={agent_id}, user={user_id}"
+                f"Conversation created: id={conversation.id}, " f"agent={agent_id}, user={user_id}"
             )
 
             return conversation
@@ -345,8 +339,9 @@ class ChatService:
                 ConversationModel.objects.filter(
                     user_id=user_id,
                     tenant_id=tenant_id,
-                )
-                .order_by("-updated_at")[offset : offset + limit]
+                ).order_by(
+                    "-updated_at"
+                )[offset : offset + limit]
             )
 
         db_convs = await list_from_db()
@@ -479,9 +474,7 @@ class ChatService:
             )
             # Update conversation message count
             ConversationModel.objects.filter(id=conversation_id).update(
-                message_count=MessageModel.objects.filter(
-                    conversation_id=conversation_id
-                ).count()
+                message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
             )
             return str(msg.id)
 
@@ -519,24 +512,30 @@ class ChatService:
             # Load basic history first for the governor (without snippets)
             @sync_to_async
             def load_raw_history():
-                conv = ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
+                conv = (
+                    ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
+                )
                 if not conv:
                     # Should be handled by logic above, but safety first
                     raise ValueError(f"Conversation {conversation_id} not found")
-                    
-                qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by("-created_at")[:20]
+
+                qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by(
+                    "-created_at"
+                )[:20]
                 return list(qs)[::-1], str(conv.tenant_id)
-            
+
             raw_history_objs, current_tenant_id = await load_raw_history()
             raw_history = [{"role": m.role, "content": m.content} for m in raw_history_objs]
-            
+
             turn_context = TurnContext(
                 turn_id=str(uuid4()),
-                session_id=str(uuid4()), # We should probably reuse a session if we had one, but strict statelessness for now
+                session_id=str(
+                    uuid4()
+                ),  # We should probably reuse a session if we had one, but strict statelessness for now
                 tenant_id=current_tenant_id,
                 user_message=content,
                 history=raw_history,
-                system_prompt="You are SomaAgent01.", # Default prompt
+                system_prompt="You are SomaAgent01.",  # Default prompt
             )
 
             # 2. Govern
@@ -550,7 +549,7 @@ class ChatService:
             # 3. Build Context
             # Use ContextBuilder to retrieve snippets, summarize, and budget
             somabrain_client = await SomaBrainClient.get_async()
-            
+
             # Simple token counter for Builder
             def simple_token_counter(text: str) -> int:
                 return len(text.split())
@@ -560,7 +559,7 @@ class ChatService:
                 metrics=self.metrics,
                 token_counter=simple_token_counter,
             )
-            
+
             # Pass turn dict as expected by builder
             turn_dict = {
                 "tenant_id": current_tenant_id,
@@ -718,9 +717,7 @@ class ChatService:
             )
 
             if response.status_code != 200:
-                logger.warning(
-                    f"Memory recall failed: status={response.status_code}"
-                )
+                logger.warning(f"Memory recall failed: status={response.status_code}")
                 return []
 
             data = response.json()
@@ -762,8 +759,7 @@ class ChatService:
             CHAT_REQUESTS.labels(method="recall_memories", result="success").inc()
 
             logger.debug(
-                f"Memories recalled: agent={agent_id}, user={user_id}, "
-                f"count={len(memories)}"
+                f"Memories recalled: agent={agent_id}, user={user_id}, " f"count={len(memories)}"
             )
 
             return memories
@@ -806,7 +802,9 @@ class ChatService:
 
             seed = f"{content}|{metadata.get('conversation_id','')}|{metadata.get('timestamp','')}"
             digest = hashlib.sha256(seed.encode("utf-8")).digest()
-            coord_values = [int.from_bytes(digest[i : i + 2], "big") / 65535.0 for i in range(0, 6, 2)]
+            coord_values = [
+                int.from_bytes(digest[i : i + 2], "big") / 65535.0 for i in range(0, 6, 2)
+            ]
             coord = ",".join(f"{value:.6f}" for value in coord_values)
             payload = {
                 "content": content,
@@ -927,9 +925,7 @@ class ChatService:
             llm = get_chat_model(provider=provider, name=model_name, **util_kwargs)
 
             # Build context from messages
-            context = "\n".join(
-                f"{m.role}: {m.content[:200]}" for m in messages[:5]
-            )
+            context = "\n".join(f"{m.role}: {m.content[:200]}" for m in messages[:5])
 
             title_tokens = []
             title_prompt = (
@@ -956,9 +952,7 @@ class ChatService:
             # Update database
             @sync_to_async
             def update_title():
-                ConversationModel.objects.filter(id=conversation_id).update(
-                    title=title
-                )
+                ConversationModel.objects.filter(id=conversation_id).update(title=title)
 
             await update_title()
 

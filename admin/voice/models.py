@@ -245,12 +245,8 @@ class VoiceSession(TenantScopedModel):
         self.status = "completed"
         self.terminated_at = timezone.now()
         if self.started_at:
-            self.duration_seconds = (
-                self.terminated_at - self.started_at
-            ).total_seconds()
-        self.save(
-            update_fields=["status", "terminated_at", "duration_seconds", "updated_at"]
-        )
+            self.duration_seconds = (self.terminated_at - self.started_at).total_seconds()
+        self.save(update_fields=["status", "terminated_at", "duration_seconds", "updated_at"])
 
     def terminate(self, reason: str = ""):
         """Terminate session."""
@@ -258,9 +254,7 @@ class VoiceSession(TenantScopedModel):
         self.terminated_at = timezone.now()
         self.error_message = reason
         if self.started_at:
-            self.duration_seconds = (
-                self.terminated_at - self.started_at
-            ).total_seconds()
+            self.duration_seconds = (self.terminated_at - self.started_at).total_seconds()
         self.save()
 
     def to_dict(self):
@@ -287,9 +281,7 @@ class VoiceSession(TenantScopedModel):
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "terminated_at": (
-                self.terminated_at.isoformat() if self.terminated_at else None
-            ),
+            "terminated_at": (self.terminated_at.isoformat() if self.terminated_at else None),
         }
 
 

@@ -127,9 +127,7 @@ class VoicePersonaAdmin(admin.ModelAdmin):
         if queryset.exists():
             # Clear existing defaults for same tenant
             first = queryset.first()
-            VoicePersona.objects.filter(tenant_id=first.tenant_id).update(
-                is_default=False
-            )
+            VoicePersona.objects.filter(tenant_id=first.tenant_id).update(is_default=False)
             first.is_default = True
             first.save()
             self.message_user(request, f"{first.name} set as default.")

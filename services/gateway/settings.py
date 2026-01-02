@@ -97,7 +97,7 @@ TEMPLATES = [
 # Parse database DSN from environment (REQUIRED - no hardcoded credentials)
 db_dsn = get_required_env(
     "SA01_DB_DSN",
-    "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)"
+    "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)",
 )
 
 # Parse DSN components for Django DATABASE config
@@ -178,7 +178,9 @@ TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE",
 TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
 
 # Kafka
-KAFKA_BOOTSTRAP_SERVERS = get_required_env("SA01_KAFKA_BOOTSTRAP_SERVERS", "Kafka broker for event streaming")
+KAFKA_BOOTSTRAP_SERVERS = get_required_env(
+    "SA01_KAFKA_BOOTSTRAP_SERVERS", "Kafka broker for event streaming"
+)
 KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.inbound")
 
 # Feature Flags

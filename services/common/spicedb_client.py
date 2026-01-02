@@ -138,8 +138,7 @@ class SpiceDBClient:
 
         except ImportError:
             logger.warning(
-                "SpiceDB protobuf stubs not installed. "
-                "Install with: pip install authzed"
+                "SpiceDB protobuf stubs not installed. " "Install with: pip install authzed"
             )
             raise
         except Exception as e:

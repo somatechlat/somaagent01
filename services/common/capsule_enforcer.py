@@ -43,6 +43,7 @@ class CapsuleStatus(str, Enum):
     DRAFT = "draft"
     DISABLED = "disabled"
 
+
 __all__ = [
     "EnforcementResult",
     "EnforcementAction",

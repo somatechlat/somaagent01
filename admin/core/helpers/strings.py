@@ -3,8 +3,6 @@ import sys
 import time
 
 
-
-
 def sanitize_string(s: str, encoding: str = "utf-8") -> str:
     # Replace surrogates and invalid unicode with replacement character
     if not isinstance(s, str):

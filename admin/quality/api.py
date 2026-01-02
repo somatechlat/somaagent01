@@ -406,15 +406,15 @@ async def _evaluate_criterion(
     asset_type: str,
 ) -> QualityScore:
     """Evaluate a single quality criterion using LLM.
-    
+
     VIBE COMPLIANT: Real LLM evaluation, no mocks.
     """
     import httpx
     from django.conf import settings
-    
+
     try:
-        llm_url = getattr(settings, 'LLM_API_URL', 'http://localhost:20020/api/v2/core/llm/chat')
-        
+        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat")
+
         prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
         
 Content: {content[:500] if content else 'No content provided'}
@@ -427,14 +427,15 @@ Respond with ONLY a JSON object in this format:
                 llm_url,
                 json={
                     "messages": [{"role": "user", "content": prompt}],
-                    "model": getattr(settings, 'QUALITY_EVAL_MODEL', 'gpt-4o-mini'),
+                    "model": getattr(settings, "QUALITY_EVAL_MODEL", "gpt-4o-mini"),
                     "max_tokens": 100,
                 },
-                headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"}
+                headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"},
             )
-            
+
             if response.status_code == 200:
                 import json
+
                 result = response.json()
                 content_text = result.get("content", result.get("message", {}).get("content", ""))
                 # Parse JSON from response
@@ -447,11 +448,13 @@ Respond with ONLY a JSON object in this format:
                     )
                 except json.JSONDecodeError:
                     # Fallback parsing
-                    return QualityScore(criterion=criterion, score=0.7, feedback="Evaluation complete")
-                    
+                    return QualityScore(
+                        criterion=criterion, score=0.7, feedback="Evaluation complete"
+                    )
+
     except Exception as e:
         logger.error(f"Quality evaluation error: {e}")
-        
+
     # Graceful degradation
     return QualityScore(criterion=criterion, score=0.7, feedback="Evaluation unavailable")
 
@@ -462,18 +465,18 @@ def _generate_critique(
     rubric: Optional[dict],
 ) -> tuple[str, list[str], list[str], list[str]]:
     """Generate critique for an asset using content analysis.
-    
+
     VIBE COMPLIANT: Real content analysis, no mocks.
     """
     # Real content analysis based on content length and complexity
     word_count = len(content.split()) if content else 0
     char_count = len(content) if content else 0
-    
+
     # Analyze structure
-    has_headings = '#' in content if content else False
-    has_lists = any(marker in content for marker in ['- ', '* ', '1.']) if content else False
-    has_code = '```' in content if content else False
-    
+    has_headings = "#" in content if content else False
+    has_lists = any(marker in content for marker in ["- ", "* ", "1."]) if content else False
+    has_code = "```" in content if content else False
+
     # Determine assessment based on real analysis
     if word_count > 100 and has_headings and has_lists:
         assessment = "excellent"
@@ -494,30 +497,36 @@ def _generate_critique(
         assessment = "needs_improvement"
         strengths = ["Initial attempt made"]
         weaknesses = ["Too brief", "Lacks organization", "Missing key details"]
-        suggestions = ["Significantly expand content", "Add structure with headings", "Include examples"]
+        suggestions = [
+            "Significantly expand content",
+            "Add structure with headings",
+            "Include examples",
+        ]
 
     return assessment, strengths, [w for w in weaknesses if w], [s for s in suggestions if s]
 
 
 async def _execute_operation(operation_type: str, input_data: dict) -> dict:
     """Execute an operation via appropriate service.
-    
+
     VIBE COMPLIANT: Real service calls.
     """
     import httpx
     from django.conf import settings
-    
+
     # Route to appropriate service
     service_urls = {
-        "generate_image": getattr(settings, 'IMAGE_GEN_URL', 'http://localhost:8003/generate'),
-        "render_diagram": getattr(settings, 'DIAGRAM_URL', 'http://localhost:8004/render'),
-        "llm_completion": getattr(settings, 'LLM_API_URL', 'http://localhost:20020/api/v2/core/llm/chat'),
+        "generate_image": getattr(settings, "IMAGE_GEN_URL", "http://localhost:8003/generate"),
+        "render_diagram": getattr(settings, "DIAGRAM_URL", "http://localhost:8004/render"),
+        "llm_completion": getattr(
+            settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat"
+        ),
     }
-    
+
     url = service_urls.get(operation_type)
     if not url:
         return {"result": "unknown_operation", "type": operation_type}
-        
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, json=input_data)
@@ -532,15 +541,15 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 
 async def _quick_quality_check(output: dict) -> float:
     """Quick quality check for retry logic.
-    
+
     VIBE COMPLIANT: Real quality assessment based on output.
     """
     # Assess quality based on actual output characteristics
     if not output:
         return 0.0
-        
+
     result = output.get("result", "")
-    
+
     if result == "completed" and output.get("data"):
         data = output.get("data", {})
         # Check data completeness

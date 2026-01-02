@@ -11,6 +11,7 @@ import os
 # Django setup MUST happen before any Django-dependent imports
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 import uvicorn

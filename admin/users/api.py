@@ -147,7 +147,6 @@ async def get_user(request, user_id: str) -> User:
     )
 
 
-
 @router.patch(
     "/{user_id}",
     summary="Update user",
@@ -256,7 +255,6 @@ async def get_profile(request, user_id: str) -> UserProfile:
         language=getattr(db_user, "language", "en") or "en",
         preferences=getattr(db_user, "preferences", {}) or {},
     )
-
 
 
 @router.patch(

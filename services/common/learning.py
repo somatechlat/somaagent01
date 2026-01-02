@@ -30,13 +30,12 @@ LOGGER = logging.getLogger(__name__)
 
 def _get_somabrain_url() -> str:
     """Get SomaBrain URL from Django settings or environment.
-    
+
     Implements VIBE Rule 32: HYBRID CONFIGURATION STANDARD.
     """
     if hasattr(settings, "SOMABRAIN_URL"):
         return str(settings.SOMABRAIN_URL)
     return os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:9696")
-
 
 
 LEARNING_REQUESTS_TOTAL = Counter(
