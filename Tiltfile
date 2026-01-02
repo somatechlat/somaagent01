@@ -51,7 +51,7 @@ local_resource(
 
 local_resource(
     'somafractalmemory',
-    serve_cmd='python manage.py runserver 0.0.0.0:10101',
+    serve_cmd='../.venv/bin/python manage.py runserver 0.0.0.0:10101',
     serve_dir='../somafractalmemory',
     links=['http://localhost:10101/api/v1/docs'],
     labels=['soma-stack'],
@@ -60,7 +60,7 @@ local_resource(
 
 local_resource(
     'somabrain',
-    serve_cmd='python manage.py runserver 0.0.0.0:30101',
+    serve_cmd='../.venv/bin/python manage.py runserver 0.0.0.0:30101',
     serve_dir='../somabrain',
     links=['http://localhost:30101/api/v1/docs'],
     labels=['soma-stack'],
