@@ -31,6 +31,18 @@ import httpx
 from asgiref.sync import sync_to_async
 from prometheus_client import Counter, Histogram
 
+from admin.agents.services.agentiq_governor import (
+    AgentIQGovernor,
+    TurnContext,
+    create_governor,
+)
+from admin.agents.services.context_builder import ContextBuilder
+from admin.core.observability.metrics import ContextBuilderMetrics
+from admin.core.somabrain_client import SomaBrainClient
+from services.common.budget_manager import BudgetManager
+from services.common.capsule_store import CapsuleStore
+from services.common.degradation_monitor import DegradationMonitor
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -156,6 +168,17 @@ class ChatService:
 
         # HTTP client for external services
         self._http_client: Optional[httpx.AsyncClient] = None
+
+        # Governor dependencies
+        self.degradation_monitor = DegradationMonitor()
+        self.capsule_store = CapsuleStore()
+        self.budget_manager = BudgetManager()
+        self.governor = create_governor(
+            capsule_store=self.capsule_store,
+            degradation_monitor=self.degradation_monitor,
+            budget_manager=self.budget_manager,
+        )
+        self.metrics = ContextBuilderMetrics()
 
     def _build_memory_headers(self, tenant_id: Optional[str]) -> dict:
         headers = {"Content-Type": "application/json"}
@@ -490,37 +513,81 @@ class ChatService:
 
             llm = get_chat_model(provider=provider, name=model_name, **chat_kwargs)
 
-            max_ctx_tokens = int(settings.chat_model_ctx_length * settings.chat_model_ctx_history)
+            # --- AGENTIQ GOVERNOR & CONTEXT BUILDER INTEGRATION ---
 
+            # 1. Prepare TurnContext
+            # Load basic history first for the governor (without snippets)
             @sync_to_async
-            def load_context():
+            def load_raw_history():
                 conv = ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
-                tenant_id = str(conv.tenant_id) if conv else None
+                if not conv:
+                    # Should be handled by logic above, but safety first
+                    raise ValueError(f"Conversation {conversation_id} not found")
+                    
+                qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by("-created_at")[:20]
+                return list(qs)[::-1], str(conv.tenant_id)
+            
+            raw_history_objs, current_tenant_id = await load_raw_history()
+            raw_history = [{"role": m.role, "content": m.content} for m in raw_history_objs]
+            
+            turn_context = TurnContext(
+                turn_id=str(uuid4()),
+                session_id=str(uuid4()), # We should probably reuse a session if we had one, but strict statelessness for now
+                tenant_id=current_tenant_id,
+                user_message=content,
+                history=raw_history,
+                system_prompt="You are SomaAgent01.", # Default prompt
+            )
 
-                token_total = 0
-                selected = []
-                qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by(
-                    "-created_at"
-                )
-                for msg in qs.iterator(chunk_size=100):
-                    tokens = msg.token_count or len(msg.content.split())
-                    if token_total + tokens > max_ctx_tokens and selected:
-                        break
-                    selected.append(msg)
-                    token_total += tokens
-                selected.reverse()
-                return selected, tenant_id
+            # 2. Govern
+            # Execute governor logic to get lane plan and degradation decision
+            max_total_tokens = int(settings.chat_model_ctx_length)
+            decision = await self.governor.govern_with_fallback(
+                turn=turn_context,
+                max_tokens=max_total_tokens,
+            )
 
-            history_messages, tenant_id = await load_context()
+            # 3. Build Context
+            # Use ContextBuilder to retrieve snippets, summarize, and budget
+            somabrain_client = await SomaBrainClient.get_async()
+            
+            # Simple token counter for Builder
+            def simple_token_counter(text: str) -> int:
+                return len(text.split())
 
+            builder = ContextBuilder(
+                somabrain=somabrain_client,
+                metrics=self.metrics,
+                token_counter=simple_token_counter,
+            )
+            
+            # Pass turn dict as expected by builder
+            turn_dict = {
+                "tenant_id": current_tenant_id,
+                "session_id": turn_context.session_id,
+                "user_message": content,
+                "history": raw_history,
+                "system_prompt": turn_context.system_prompt,
+            }
+
+            built_context = await builder.build_for_turn(
+                turn=turn_dict,
+                max_prompt_tokens=max_total_tokens,
+                lane_plan=decision.lane_plan,
+            )
+
+            # 4. Invoke LLM
+            # Map BuiltContext messages to LangChain format
             lc_messages = []
-            for msg in history_messages:
-                if msg.role == "assistant":
-                    lc_messages.append(AIMessage(content=msg.content))
-                elif msg.role == "system":
-                    lc_messages.append(SystemMessage(content=msg.content))
+            for msg in built_context.messages:
+                role = msg.get("role")
+                content = msg.get("content")
+                if role == "assistant":
+                    lc_messages.append(AIMessage(content=content))
+                elif role == "system":
+                    lc_messages.append(SystemMessage(content=content))
                 else:
-                    lc_messages.append(HumanMessage(content=msg.content))
+                    lc_messages.append(HumanMessage(content=content))
 
             response_content = []
             async for chunk in llm._astream(messages=lc_messages):
@@ -737,8 +804,8 @@ class ChatService:
 
             import hashlib
 
-            seed = f\"{content}|{metadata.get('conversation_id','')}|{metadata.get('timestamp','')}\"
-            digest = hashlib.sha256(seed.encode(\"utf-8\")).digest()
+            seed = f"{content}|{metadata.get('conversation_id','')}|{metadata.get('timestamp','')}"
+            digest = hashlib.sha256(seed.encode("utf-8")).digest()
             coord_values = [int.from_bytes(digest[i : i + 2], "big") / 65535.0 for i in range(0, 6, 2)]
             coord = ",".join(f"{value:.6f}" for value in coord_values)
             payload = {

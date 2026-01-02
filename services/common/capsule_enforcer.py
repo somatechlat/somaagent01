@@ -35,6 +35,14 @@ class CapsuleRecord:
     example_store_policy: str = "allow"
 
 
+class CapsuleStatus(str, Enum):
+    """Status of a capsule."""
+
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    DRAFT = "draft"
+    DISABLED = "disabled"
+
 __all__ = [
     "EnforcementResult",
     "EnforcementAction",
@@ -43,6 +51,7 @@ __all__ = [
     "ResourceEnforcer",
     "HITLEnforcer",
     "ExportEnforcer",
+    "CapsuleStatus",
 ]
 
 

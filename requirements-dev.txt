@@ -74,3 +74,4 @@ black==25.9.0
 ruff==0.13.3
 pytest==8.3.3
 pytest-asyncio==0.24.0
+pytest-django==4.11.1

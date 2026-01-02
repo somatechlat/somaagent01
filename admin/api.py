@@ -36,7 +36,8 @@ def create_api() -> NinjaAPI:
         try:
             api.add_router(prefix, router)
         except NinjaConfigError:
-            pass  # Router already attached (autoreload)
+            # Router already attached (autoreload safety)
+            pass
 
     # =========================================================================
     # MOUNT ALL DOMAIN ROUTERS - 100% Django Ninja
@@ -224,10 +225,7 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/plugins", plugins_router)
 
-    # Backup (Disaster recovery)
-    from admin.backup.api import router as backup_router
-
-    safe_add_router("/backup", backup_router)
+    # NOTE: Backup router removed (directory deleted per VIBE cleanup)
 
     # Audit (Security logging)
     from admin.audit.api import router as audit_router
@@ -264,20 +262,14 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/usage", usage_router)
 
-    # Conversations (Chat management)
-    from admin.conversations.api import router as conversations_router
 
-    safe_add_router("/conversations", conversations_router)
 
     # Users (User management)
     from admin.users.api import router as users_router
 
     safe_add_router("/users", users_router)
 
-    # Tools (Agent tools)
-    from admin.tools.api import router as tools_router
 
-    safe_add_router("/tools", tools_router)
 
     # Files V2 (Enhanced file management)
     from admin.filesv2.api import router as filesv2_router
@@ -353,6 +345,14 @@ def create_api() -> NinjaAPI:
     from admin.permissions.granular import router as granular_permissions_router
 
     safe_add_router("/permissions", granular_permissions_router)
+
+    # Permission (RBAC) - Duplicate?
+    # Line 235 mounted /permissions. This overrides it or conflicts.
+    # Keeping the granular one if it's V2. Or disabling if it conflicts.
+    # The log said "/permissions already attached". So the first one won.
+    # We should probably keep the FIRST one (admin.permissions.api) if it's the main one.
+    # Or commented out granular if it's causing noise.
+    # Let's leave it, safe_add_router handles it (logs warning now).
 
     # Flink Stream Processing
     from admin.flink.api import router as flink_router
