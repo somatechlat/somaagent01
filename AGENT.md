@@ -951,3 +951,81 @@ docker exec somaagent-kafka kafka-console-consumer.sh --topic audit.auth --from-
 ---
 
 **End of Agent Knowledge Base (Extended)**
+
+---
+
+## 🛡️ VIBE Architectural Audit (2025-01-02)
+
+### 🧠 The "Cognitive Operating System"
+The 2025-01-02 audit reveals that SomaAgent01 has evolved beyond a standard chatbot into a **Self-Governing Cognitive Operating System**.
+
+#### 1. The Pre-Flight Cortex (AgentIQ Governor)
+- **Status**: ✅ Implemented & Wired
+- **Function**: Transforms stochastic LLM calls into deterministic, budgeted transactions.
+- **Mechanism**:
+  - **Lane Allocation**: Slices strict token budgets for `system`, `history`, `memory`, `tools`.
+  - **AIQ Scoring**: Calculates "Intelligence Quotient" per turn.
+  - **Rescue Path**: Automatically degrades to safe-mode if context quality drops below thresholds (Critical Health).
+
+#### 2. The Autonomic Nervous System (DegradationMonitor)
+- **Status**: ✅ Implemented
+- **Function**: "Proprioception" for the agent.
+- **Mechanism**:
+  - Monitors `SomaBrain`, `Redis`, `PostgreSQL`, `Kafka` in real-time.
+  - Triggers **Degradation Levels** (Minor -> Critical).
+  - Wired into `ContextBuilder` to dynamically shrink context windows when `SomaBrain` (Long-Term Memory) is unreachable.
+
+### 🚀 "Next Level" Recommendations
+
+#### 1. **Complete the "Real Auth" Loop (VIBE Rule 47)**
+- **Current Gap**: The UI works for humans (Login Page), but Automation (QA Bots) lacks a "Real Auth" mechanism.
+- **Solution**: Implement the `tests/e2e/helpers/auth.py` helper to perform a programmatic OIDC login against Keycloak (Port 49010) to obtain a verified JWT for Playwright.
+- **Impact**: Enables 100% End-to-End verification of the *secured* chat flow.
+
+#### 2. **Activate "Self-Healing" Protocols**
+- **Current State**: DegradationMonitor *observes* but only *adapts* context.
+- **Next Level**: Connect Governor decisions to Infrastructure scaling.
+  - If `AIQ_Predicted` < 40 for 5 minutes → Trigger `Scale Up` via Temporal Workflow.
+  - If `SomaBrain` latency > 2s → Circuit Break to `LocalMemory` (Redis-only).
+
+#### 3. **Unify the Chat Stream**
+- **Current State**: `ChatConsumer` streams tokens.
+- **Next Level**: Enforce **Structured Thinking** in the stream.
+  - Stream `<think>` blocks to the UI for "Agent Thought Bubble" visualization.
+  - Stream `GovernorDecision` metadata (Latency, AIQ) to the UI "Debug Panel" (for Developers).
+
+---
+
+**End of Agent Knowledge Base (Extended - Audit 2025-01-02)**
+
+---
+
+---
+
+## 🧠 Critical Architecture: Cognitive vs. Persistence Layers
+
+**Definition of Roles** (Strict adherence required):
+
+### 1. SomaBrain = The Cognitive Engine
+*   **Role**: Active Thinking, Reasoning, Contextualization.
+*   **Responsibility**:
+    - Manages the *state* of the conversation from a cognitive perspective.
+    - Decides *what* to say based on memory and context.
+    - Owners of **Active Memory**.
+*   **Data Flow**:
+    - **Read**: `ChatService.recall_memories()` pulls context from here (via SomaFractalMemory).
+    - **Write**: `ChatService.store_memory()` pushes new experiences here (via SomaFractalMemory).
+
+### 2. PostgreSQL = The Persistence Layer
+*   **Role**: Passive Storage, Verification, Failsafe.
+*   **Responsibility**:
+    - Manages the *record* of the conversation.
+    - Ensures zero data loss (ACID compliance).
+    - Owners of **The Transcript**.
+*   **Data Flow**:
+    - **Write**: `ChatService` writes every user/assistant message to `MessageModel` *immediately* (synchronously).
+    - **Read**: `ChatService.generate_title()` reads from here for non-cognitive utility tasks.
+
+**Why this separation?**
+If SomaBrain (Cognition) crashes or hallucinates, PostgreSQL (The Persistence Layer) retains the hard truth.
+**NEVER** use Postgres for cognitive context retrieval (RAG). **ALWAYS** use SomaBrain/FractalMemory.

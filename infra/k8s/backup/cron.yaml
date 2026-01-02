@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  namespace: soma
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: alpine:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # VIBE-HARDENED: Real Infra Installation
+              # We install dependencies at runtime to ensure we have the 'Muscle' (pg_dump) and 'Wings' (aws-cli)
+              apk add --no-cache postgresql-client aws-cli gzip
+
+              echo "Starting VIBE-Compliant backup of somaagent..."
+              timestamp=$(date +%Y%m%d_%H%M%S)
+              filename="backup_${timestamp}.sql.gz"
+              
+              # 1. Dump (The Spine)
+              PGPASSWORD=$PGPASSWORD pg_dump -h postgres -U postgres -d somaagent | gzip > /tmp/$filename
+              
+              # 2. Upload (The Cloud)
+              if [ -n "$AWS_S3_BUCKET" ]; then
+                echo "Uploading to s3://${AWS_S3_BUCKET}/backups/postgres/$filename..."
+                aws s3 cp /tmp/$filename s3://${AWS_S3_BUCKET}/backups/postgres/$filename
+                echo "✅ Backup Uploaded Successfully: s3://${AWS_S3_BUCKET}/backups/postgres/$filename"
+              else
+                echo "❌ CRITICAL: AWS_S3_BUCKET not set. Backup failed Rule 34 (Real Infra)."
+                exit 1
+              fi
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: postgres-password
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: system-config
+                  key: aws-s3-bucket
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secrets
+                  key: access-key-id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secrets
+                  key: secret-access-key
+                  optional: true
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: system-config
+                  key: aws-region
+                  optional: true
+          restartPolicy: OnFailure

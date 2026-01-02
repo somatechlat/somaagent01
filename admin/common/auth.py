@@ -54,7 +54,7 @@ class KeycloakConfig(BaseModel):
 def get_keycloak_config() -> KeycloakConfig:
     """Get cached Keycloak configuration from environment."""
     return KeycloakConfig(
-        server_url=os.environ.get("KEYCLOAK_URL", "http://localhost:20880"),
+        server_url=os.environ.get("KEYCLOAK_URL", "http://localhost:49010"),
         realm=os.environ.get("KEYCLOAK_REALM", "somaagent"),
         client_id=os.environ.get("KEYCLOAK_CLIENT_ID", "eye-of-god"),
         client_secret=os.environ.get("KEYCLOAK_CLIENT_SECRET"),

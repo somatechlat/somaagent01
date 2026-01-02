@@ -2,7 +2,7 @@ import re
 import sys
 import time
 
-from admin.core.helpers import files
+
 
 
 def sanitize_string(s: str, encoding: str = "utf-8") -> str:
@@ -177,6 +177,8 @@ def replace_file_includes(text: str, placeholder_pattern: str = r"§§include\((
     # Replace include aliases with file content
     if not text:
         return text
+
+    from admin.core.helpers import files
 
     def _repl(match):
         path = match.group(1)

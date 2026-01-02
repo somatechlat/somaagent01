@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, TYPE_CHECKING
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from admin.agents.services.somabrain_integration import SomaBrainClient, SomaClientError
+from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from admin.core.observability.metrics import ContextBuilderMetrics
 from services.common import degradation_monitor
 from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError

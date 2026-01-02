@@ -28,7 +28,37 @@ CONFIDENCE_LABELS = ("tenant", "model", "endpoint")
 # Histogram: Confidence Score Distribution
 # -----------------------------------------------------------------------------
 
-LLM_CONFIDENCE_HISTOGRAM = Histogram(
+from prometheus_client import REGISTRY
+
+def _get_or_create_metric(cls, name, documentation, **kwargs):
+    """Get existing metric from registry or create new one."""
+    # Check if metric already exists in registry
+    if name in REGISTRY._names_to_collectors:
+        return REGISTRY._names_to_collectors[name]
+    
+    # Check for Counter suffixes if applicable
+    if cls == Counter:
+        if f"{name}_total" in REGISTRY._names_to_collectors:
+            return REGISTRY._names_to_collectors[f"{name}_total"]
+
+    # If explicit registry was passed (rare), use it, otherwise default
+    registry = kwargs.pop('registry', REGISTRY)
+    try:
+        return cls(name, documentation, registry=registry, **kwargs)
+    except ValueError:
+        # Race condition or other duplicate error, try to find it again
+        if name in registry._names_to_collectors:
+            return registry._names_to_collectors[name]
+        if cls == Counter and f"{name}_total" in registry._names_to_collectors:
+            return registry._names_to_collectors[f"{name}_total"]
+        raise
+
+# -----------------------------------------------------------------------------
+# Histogram: Confidence Score Distribution
+# -----------------------------------------------------------------------------
+
+LLM_CONFIDENCE_HISTOGRAM = _get_or_create_metric(
+    Histogram,
     "llm_confidence_histogram",
     "Distribution of LLM confidence scores",
     labelnames=CONFIDENCE_LABELS,
@@ -39,7 +69,8 @@ LLM_CONFIDENCE_HISTOGRAM = Histogram(
 # Gauge: Average Confidence (for dashboards)
 # -----------------------------------------------------------------------------
 
-LLM_CONFIDENCE_AVERAGE = Gauge(
+LLM_CONFIDENCE_AVERAGE = _get_or_create_metric(
+    Gauge,
     "llm_confidence_average",
     "Average LLM confidence score (sliding window)",
     labelnames=CONFIDENCE_LABELS,
@@ -49,7 +80,8 @@ LLM_CONFIDENCE_AVERAGE = Gauge(
 # Counter: Missing Logprobs
 # -----------------------------------------------------------------------------
 
-LLM_CONFIDENCE_MISSING_TOTAL = Counter(
+LLM_CONFIDENCE_MISSING_TOTAL = _get_or_create_metric(
+    Counter,
     "llm_confidence_missing_total",
     "Total count of LLM responses with missing logprobs",
     labelnames=CONFIDENCE_LABELS,
@@ -59,7 +91,8 @@ LLM_CONFIDENCE_MISSING_TOTAL = Counter(
 # Counter: Rejected Responses
 # -----------------------------------------------------------------------------
 
-LLM_CONFIDENCE_REJECTED_TOTAL = Counter(
+LLM_CONFIDENCE_REJECTED_TOTAL = _get_or_create_metric(
+    Counter,
     "llm_confidence_rejected_total",
     "Total count of LLM responses rejected due to low confidence",
     labelnames=CONFIDENCE_LABELS,
@@ -69,7 +102,8 @@ LLM_CONFIDENCE_REJECTED_TOTAL = Counter(
 # Counter: Flagged Responses
 # -----------------------------------------------------------------------------
 
-LLM_CONFIDENCE_FLAGGED_TOTAL = Counter(
+LLM_CONFIDENCE_FLAGGED_TOTAL = _get_or_create_metric(
+    Counter,
     "llm_confidence_flagged_total",
     "Total count of LLM responses flagged with LOW_CONFIDENCE",
     labelnames=CONFIDENCE_LABELS,

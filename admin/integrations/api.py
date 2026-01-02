@@ -78,29 +78,39 @@ async def list_integrations(
     """List all integrations.
 
     PM: View connected services.
+    VIBE: Real DB Query.
     """
+    from admin.integrations.models import Integration as IntegrationModel
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _get_integrations():
+        qs = IntegrationModel.objects.all()
+        if status:
+            qs = qs.filter(status=status)
+        if provider:
+            qs = qs.filter(provider=provider)
+        
+        items = []
+        for i in qs:
+            items.append(
+                Integration(
+                    integration_id=str(i.id),
+                    name=i.name,
+                    type=i.type,
+                    provider=i.provider,
+                    status=i.status,
+                    config=i.config,
+                    created_at=i.created_at.isoformat(),
+                    last_sync=i.last_sync.isoformat() if i.last_sync else None,
+                ).dict()
+            )
+        return items, qs.count()
+
+    items, total = await _get_integrations()
     return {
-        "integrations": [
-            Integration(
-                integration_id="1",
-                name="Slack Notifications",
-                type="oauth",
-                provider="slack",
-                status="connected",
-                config={"channel": "#alerts"},
-                created_at=timezone.now().isoformat(),
-            ).dict(),
-            Integration(
-                integration_id="2",
-                name="OpenAI GPT-4",
-                type="api_key",
-                provider="openai",
-                status="connected",
-                config={"model": "gpt-4"},
-                created_at=timezone.now().isoformat(),
-            ).dict(),
-        ],
-        "total": 2,
+        "integrations": items,
+        "total": total,
     }
 
 
@@ -119,15 +129,32 @@ async def create_integration(
     """Create a new integration.
 
     DevOps: Connect external services.
+    VIBE: Real DB Creation.
     """
-    integration_id = str(uuid4())
+    from admin.integrations.models import Integration as IntegrationModel
+    from asgiref.sync import sync_to_async
 
+    @sync_to_async
+    def _create():
+        integration_id = uuid4()
+        obj = IntegrationModel.objects.create(
+            id=integration_id,
+            name=name,
+            type=type,
+            provider=provider,
+            status="connected", # Default to connected for api_key/webhook
+            config=config,
+            created_at=timezone.now()
+        )
+        return obj
+
+    obj = await _create()
     logger.info(f"Integration created: {name} ({provider})")
 
     return {
-        "integration_id": integration_id,
-        "name": name,
-        "provider": provider,
+        "integration_id": str(obj.id),
+        "name": obj.name,
+        "provider": obj.provider,
         "created": True,
     }
 
@@ -184,7 +211,21 @@ async def delete_integration(
     """Delete an integration.
 
     Security Auditor: Revoke access, cleanup.
+    VIBE: Real DB Deletion.
     """
+    from admin.integrations.models import Integration as IntegrationModel
+    from admin.common.exceptions import NotFoundError
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _delete():
+        count, _ = IntegrationModel.objects.filter(id=integration_id).delete()
+        return count
+
+    count = await _delete()
+    if count == 0:
+        raise NotFoundError("integration", integration_id)
+
     logger.info(f"Integration deleted: {integration_id}")
 
     return {
