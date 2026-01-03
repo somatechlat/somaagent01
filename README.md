@@ -12,7 +12,7 @@
 
 **Deploy AI agents with cryptographic identity, persistent memory, and governed autonomy.**
 
-[Features](#-what-makes-it-different) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [Ecosystem](#-somastack-ecosystem)
+[Website](https://www.somatech.dev) · [Features](#-what-makes-it-different) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [Ecosystem](#-somastack-ecosystem)
 
 </div>
 
