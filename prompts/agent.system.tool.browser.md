@@ -7,7 +7,7 @@ do not reset if iterating
 be precise descriptive like: open google login and end task, log in using ... and end task
 when following up start: considering open pages
 dont use phrase wait for instructions use end task
-downloads default in /git/agent-zero/tmp/downloads
+downloads default in /git/somaagent01/tmp/downloads
 pass secrets and variables in message when needed
 
 usage:

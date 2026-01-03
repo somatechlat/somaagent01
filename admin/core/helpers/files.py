@@ -360,14 +360,14 @@ def deabsolute_path(path: str):
 
 
 def fix_dev_path(path: str):
-    "Convert legacy /a0/ paths to modern /git/agent-zero/ paths"
+    "Convert legacy /a0/ paths to modern /git/somaagent01/ paths"
     from admin.core.helpers.runtime import is_development
 
     if is_development():
         if path.startswith("/a0/"):
             path = path.replace("/a0/", "")
-        elif path.startswith("/git/agent-zero/"):
-            path = path.replace("/git/agent-zero/", "")
+        elif path.startswith("/git/somaagent01/"):
+            path = path.replace("/git/somaagent01/", "")
     return get_abs_path(path)
 
 

@@ -21,7 +21,7 @@ Example:
   ],
   "tool_name": "response",
   "tool_args": {
-    "text": "# Here is the report from subordinate agent:\n\n§§include(/git/agent-zero/tmp/chats/guid/messages/11.txt)"
+    "text": "# Here is the report from subordinate agent:\n\n§§include(/git/somaagent01/tmp/chats/guid/messages/11.txt)"
   }
 }
 ~~~
