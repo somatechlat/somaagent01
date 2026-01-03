@@ -101,7 +101,7 @@ def turn_off_logging():
 
 
 # dedicated logger for LLM call tracing (no secrets)
-llm_logger = logging.getLogger("agent_zero.llm")
+llm_logger = logging.getLogger("somaagent01.llm")
 if not llm_logger.handlers:
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
