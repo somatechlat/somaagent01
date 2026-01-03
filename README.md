@@ -2,10 +2,11 @@
 
 # 🤖 SomaAgent01
 
-### *Enterprise AI Agent Orchestration Gateway*
+### *Enterprise AI Agent Orchestration Platform*
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Django 5.0+](https://img.shields.io/badge/Django-5.0+-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
+[![Django Ninja](https://img.shields.io/badge/Django_Ninja-API-00C7B7?style=for-the-badge)](https://django-ninja.rest-framework.com)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)]()
 
@@ -21,7 +22,7 @@
 
 ## 🎯 Overview
 
-**SomaAgent01** is the intelligent gateway that orchestrates AI agents, managing LLM routing, tool execution, and agent lifecycle. Designed for **enterprise-grade reliability** with automatic failover, rate limiting, cryptographic identity (Capsules), and comprehensive audit logging.
+**SomaAgent01** is the central platform for AI agent orchestration, built on **Django + Django Ninja** with **Lit Web Components** for the UI. It manages LLM routing, tool execution, agent lifecycle, and the complete SaaS administration layer.
 
 ---
 
@@ -63,12 +64,12 @@
 </td>
 <td>
 
-### 📊 Enterprise Features
+### 📊 Enterprise SaaS Features
 
 - **Multi-tenant isolation**
-- **Rate limiting** per user/tenant/agent
-- **Audit logging** for compliance
-- **Circuit breakers** for resilience
+- **62 Django Ninja routers** (80+ endpoints)
+- **Keycloak JWT authentication**
+- **GDPR/HIPAA compliant** audit logging
 
 </td>
 </tr>
@@ -80,46 +81,80 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           SOMAAGENT01 GATEWAY                                   │
+│                          USER'S BROWSER                                         │
+├──────────────────────────────┬──────────────────────────────────────────────────┤
+│   Custom UI (Lit/Vite)       │           Django Admin (Built-in)                │
+│   Our branded interface      │           Auto-generated forms                   │
+│   Port 5173 (dev)            │           /django-admin/                         │
+├──────────────────────────────┴──────────────────────────────────────────────────┤
+│                                                                                 │
+│                     HTTP Requests (JSON or HTML)                                │
+│                                                                                 │
 ├─────────────────────────────────────────────────────────────────────────────────┤
+│                           DJANGO SERVER (ASGI/Uvicorn)                          │
 │                                                                                 │
-│    ┌─────────────────────────────────────────────────────────────────────┐     │
-│    │                    CONVERSATION ROUTER                               │     │
-│    │              (WebSocket + HTTP Streaming + REST)                     │     │
-│    └───────────────────────────────┬─────────────────────────────────────┘     │
-│                                    │                                            │
-│    ┌───────────────┬───────────────┼───────────────┬───────────────┐           │
-│    │               │               │               │               │           │
-│    ▼               ▼               ▼               ▼               ▼           │
-│  ┌─────┐       ┌─────┐       ┌─────────┐     ┌─────────┐     ┌─────────┐      │
-│  │Auth │       │Rate │       │   LLM   │     │  Tool   │     │ Capsule │      │
-│  │     │       │Limit│       │Degrade  │     │Executor │     │Enforcer │      │
-│  └─────┘       └─────┘       └────┬────┘     └────┬────┘     └─────────┘      │
-│                                   │               │                            │
-│                                   ▼               ▼                            │
-│    ┌──────────────────────────────────────────────────────────────────────┐   │
-│    │                     LLM PROVIDER POOL                                 │   │
-│    │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐    │   │
-│    │  │ OpenAI  │  │Anthropic│  │ Groq    │  │OpenRouter│  │ Custom  │    │   │
-│    │  │ GPT-4o  │  │Claude3.5│  │ Llama3  │  │ Mixtral │  │  LLM    │    │   │
-│    │  │  ✓ OK   │  │  ✓ OK   │  │ ⚠ Slow  │  │  ✓ OK   │  │  ✗ Down │    │   │
-│    │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘    │   │
-│    └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                                 │
-│    ┌──────────────────────────────────────────────────────────────────────┐   │
-│    │                       TOOL REGISTRY                                   │   │
-│    │  🔧 code_execute  │  🌐 http_fetch  │  📁 file_ops  │  📄 doc_ingest │   │
-│    │  ⏰ timestamp     │  🔊 echo        │  🖼️ canvas    │  🔍 search     │   │
-│    └──────────────────────────────────────────────────────────────────────┘   │
+│             ┌─────────────────────┬─────────────────────┐                       │
+│             │  Django Ninja API   │  Django Admin Views │                       │
+│             │  /api/v2/*          │  /django-admin/*    │                       │
+│             │  JWT Auth (Keycloak)│  Session Auth       │                       │
+│             │  62 Routers         │  Auto-generated     │                       │
+│             │  80+ Endpoints      │  CRUD Forms         │                       │
+│             └──────────┬──────────┴──────────┬──────────┘                       │
+│                        │                     │                                  │
+│                        └──────────┬──────────┘                                  │
+│                                   │                                             │
+│    ┌──────────────────────────────┼──────────────────────────────────────┐     │
+│    │                              │                                      │     │
+│    │                   ┌──────────▼──────────┐                          │     │
+│    │                   │     Django ORM      │                          │     │
+│    │                   │     (Shared)        │                          │     │
+│    │                   └──────────┬──────────┘                          │     │
+│    │                              │                                      │     │
+│    │   ┌──────────────────────────┼──────────────────────────┐          │     │
+│    │   │                          │                          │          │     │
+│    │   ▼                          ▼                          ▼          │     │
+│    │ ┌─────────────┐  ┌───────────────────┐  ┌─────────────────────┐   │     │
+│    │ │   SAAS      │  │   CAPSULE         │  │   LLM DEGRADATION   │   │     │
+│    │ │   ADMIN     │  │   ENFORCER        │  │   SERVICE           │   │     │
+│    │ │             │  │                   │  │                     │   │     │
+│    │ │ • Tenants   │  │ • Ed25519 Signs   │  │ • Health Monitor    │   │     │
+│    │ │ • Users     │  │ • Provenance      │  │ • Fallback Chains   │   │     │
+│    │ │ • Plans     │  │ • Constitution    │  │ • Cost Routing      │   │     │
+│    │ │ • Features  │  │ • Lifecycle       │  │ • Multi-provider    │   │     │
+│    │ └─────────────┘  └───────────────────┘  └─────────────────────┘   │     │
+│    │                                                                    │     │
+│    │   ┌──────────────────────────────────────────────────────────┐    │     │
+│    │   │                    TOOL EXECUTOR                          │    │     │
+│    │   │                                                          │    │     │
+│    │   │  🔧 code_execute  │  🌐 http_fetch  │  📁 file_ops       │    │     │
+│    │   │  ⏰ timestamp     │  🔊 echo        │  📄 doc_ingest     │    │     │
+│    │   │  🖼️ canvas       │  🔍 search      │  🔗 mcp_tools      │    │     │
+│    │   └──────────────────────────────────────────────────────────┘    │     │
+│    │                         SERVICES LAYER                             │     │
+│    └────────────────────────────────────────────────────────────────────┘     │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                       │
-              ┌───────────────────────┼───────────────────────────┐
-              │                       │                           │
-        ┌─────▼─────┐          ┌──────▼──────┐          ┌─────────▼─────────┐
-        │ SomaBrain │          │   Redis     │          │       Kafka       │
-        │  Memory   │          │   Cache     │          │      Events       │
-        └───────────┘          └─────────────┘          └───────────────────┘
+        ┌─────────────────────────────┼─────────────────────────────┐
+        │                             │                             │
+  ┌─────▼─────┐              ┌────────▼────────┐           ┌────────▼────────┐
+  │ PostgreSQL │              │    SomaBrain    │           │      Redis      │
+  │  Database  │              │ Cognitive Memory│           │      Cache      │
+  │  (Django)  │              │   (Port 9696)   │           │    Sessions     │
+  └───────────┘              └─────────────────┘           └─────────────────┘
+        │                             │                             │
+        │                    ┌────────▼────────┐                    │
+        │                    │   Milvus        │                    │
+        │                    │   Vectors       │                    │
+        │                    └─────────────────┘                    │
+        │                                                           │
+  ┌─────▼─────────────────────────────────────────────────────────────▼─────┐
+  │                              LLM PROVIDERS                              │
+  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐      │
+  │  │ OpenAI  │  │Anthropic│  │  Groq   │  │OpenRouter│  │ Custom  │      │
+  │  │ GPT-4o  │  │Claude3.5│  │ Llama3  │  │ Mixtral │  │  LLM    │      │
+  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘      │
+  └───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -131,8 +166,9 @@
 | Requirement | Version | Purpose |
 |-------------|---------|---------|
 | Python | 3.11+ | Runtime |
-| Redis | 7+ | Caching & sessions |
-| PostgreSQL | 15+ | State storage (optional) |
+| PostgreSQL | 15+ | Database |
+| Redis | 7+ | Cache & sessions |
+| Node.js | 18+ | UI development |
 
 ### Installation
 
@@ -150,10 +186,16 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
+# Edit .env with your credentials
 
-# Start the gateway
-python -m services.gateway.main
+# Run migrations
+python manage.py migrate
+
+# Start the Django server
+python manage.py runserver 8000
+
+# In another terminal, start the UI
+cd webui && npm install && npm run dev
 ```
 
 ### 🐳 Docker Deployment
@@ -166,38 +208,45 @@ docker-compose up -d
 
 ## 📡 API Reference
 
-### Create Conversation
+### Django Ninja API Structure
+
+```
+/api/v2/
+├── saas/           # SaaS Admin APIs
+│   ├── tenants/    # Tenant management
+│   ├── plans/      # Subscription plans
+│   └── features/   # Feature catalog
+├── agents/         # Agent lifecycle
+│   ├── capsules/   # Cryptographic identity
+│   └── sessions/   # Conversation sessions
+├── memory/         # Memory operations
+│   ├── store/      # Store memories
+│   └── recall/     # Recall memories
+└── tools/          # Tool execution
+    └── execute/    # Run tools
+```
+
+### Example: Create Tenant
 
 ```bash
-curl -X POST http://localhost:8001/api/v2/conversations \
+curl -X POST http://localhost:8000/api/v2/saas/tenants \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
-    "agent_id": "agent-123",
-    "initial_message": "Hello!"
+    "name": "Acme Corp",
+    "slug": "acme",
+    "tier": "professional"
   }'
 ```
 
-### Send Message (Streaming)
+### Example: Execute Tool
 
 ```bash
-curl -X POST http://localhost:8001/api/v2/conversations/{id}/messages \
-  -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" \
-  -d '{
-    "content": "What is the weather in NYC?",
-    "stream": true
-  }'
-```
-
-### Execute Tool
-
-```bash
-curl -X POST http://localhost:8001/api/v2/tools/execute \
+curl -X POST http://localhost:8000/api/v2/tools/execute \
   -H "Content-Type: application/json" \
   -d '{
     "tool": "http_fetch",
-    "args": {"url": "https://api.weather.com/nyc"}
+    "args": {"url": "https://api.example.com/data"}
   }'
 ```
 
@@ -236,11 +285,33 @@ curl -X POST http://localhost:8001/api/v2/tools/execute \
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](docs/srs/SRS-ARCHITECTURE.md) | System architecture |
-| [Capsule Lifecycle](docs/srs/SRS-CAPSULE-LIFECYCLE-COMPLETE-ISO.md) | Agent identity system |
+| [Architecture](docs/srs/SRS-ARCHITECTURE.md) | Django + Django Ninja architecture |
+| [Capsule Lifecycle](docs/srs/SRS-CAPSULE-LIFECYCLE-COMPLETE-ISO.md) | Agent identity system (ISO 29148) |
 | [Settings](docs/srs/SRS-SOMAAGENT01-SETTINGS.md) | All 89 configuration options |
 | [User Journeys](docs/srs/SRS-SOMASTACK-USER-JOURNEYS.md) | Complete user flows |
 | [Permission Matrix](docs/srs/SRS-SOMASTACK-PERMISSION-MATRIX.md) | 78 permissions, 9 roles |
+| [SaaS Index](docs/srs/SRS-SOMASTACK-SAAS-INDEX.md) | Master documentation index |
+
+---
+
+## 🏗️ Project Structure
+
+```
+somaAgent01/
+├── admin/                  # Django Admin & SaaS models
+│   ├── saas/              # Tenants, Plans, Features
+│   ├── permissions/       # RBAC models
+│   └── api.py             # 62 Django Ninja routers
+├── services/              # Service layer
+│   ├── gateway/           # ASGI gateway (Django)
+│   ├── common/            # Shared utilities (68 modules)
+│   └── tool_executor/     # Tool execution engine
+├── webui/                 # Lit Web Components UI
+│   └── eyeofgod/         # SomaStack SaaS Admin UI
+├── docs/                  # Documentation
+│   └── srs/              # 43 SRS documents
+└── manage.py             # Django management
+```
 
 ---
 
