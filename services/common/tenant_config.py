@@ -8,7 +8,7 @@ from typing import Dict, Optional
 
 import yaml
 
-from src.core.config import cfg
+import os
 
 
 @dataclass
@@ -23,7 +23,7 @@ class TenantConfig:
     """Loads tenant configuration from YAML with simple caching."""
 
     def __init__(self, path: Optional[str] = None) -> None:
-        self.path = path or cfg.env("TENANT_CONFIG_PATH", "conf/tenants.yaml")
+        self.path = path or os.environ.get("TENANT_CONFIG_PATH", "conf/tenants.yaml")
         self._cache: dict[str, TenantSettings] | None = None
         self._mtime: float | None = None
 

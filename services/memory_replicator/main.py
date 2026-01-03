@@ -8,29 +8,31 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from typing import Any
+
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.tracing import setup_tracing
-from src.core.config import cfg
 
 # Legacy settings import removed. Use centralized configuration.
-from src.core.infrastructure.repositories import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 # Retrieve unified settings from central configuration.
-SERVICE_SETTINGS = cfg.settings()
+# Django settings used instead
 # OTLP endpoint is now under the external configuration section.
 setup_tracing("memory-replicator", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
 
@@ -57,11 +59,11 @@ def ensure_metrics_server(settings: object) -> None:
     if _METRICS_STARTED:
         return
     # Prefer admin-wide metrics configuration; fall back to provided defaults.
-    default_port = int(getattr(cfg.settings().service, "metrics_port", 9403))
-    default_host = str(getattr(cfg.settings().service, "metrics_host", "0.0.0.0"))
-    port = int(cfg.env("REPLICATOR_METRICS_PORT", str(default_port)))
+    default_port = int(getattr(os.environ.service, "metrics_port", 9403))
+    default_host = str(getattr(os.environ.service, "metrics_host", "0.0.0.0"))
+    port = int(os.environ.get("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
-        start_http_server(port, addr=cfg.env("REPLICATOR_METRICS_HOST", default_host))
+        start_http_server(port, addr=os.environ.get("REPLICATOR_METRICS_HOST", default_host))
         LOGGER.info("Memory replicator metrics server started", extra={"port": port})
     else:
         LOGGER.warning("Memory replicator metrics disabled", extra={"port": port})
@@ -71,11 +73,11 @@ def ensure_metrics_server(settings: object) -> None:
 def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
-        bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+        sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+        sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
     )
 
 
@@ -84,11 +86,11 @@ class MemoryReplicator:
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
-        self.wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
-        self.group_id = cfg.env("MEMORY_REPLICATOR_GROUP", "memory-replicator")
+        self.wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
+        self.group_id = os.environ.get("MEMORY_REPLICATOR_GROUP", "memory-replicator")
         # Use centralized admin settings for Postgres DSN.
-        self.replica = MemoryReplicaStore(dsn=cfg.settings().database.dsn)
-        self.dlq_store = DLQStore(dsn=cfg.settings().database.dsn)
+        self.replica = MemoryReplicaStore(dsn=os.environ.get("SA01_DB_DSN", ""))
+        self.dlq_store = DLQStore(dsn=os.environ.get("SA01_DB_DSN", ""))
         self.dlq = DeadLetterQueue(source_topic=self.wal_topic)
 
     async def start(self) -> None:

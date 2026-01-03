@@ -28,7 +28,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 import os
 
-from src.core.config import cfg
+import os
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ def _load_fernet_key() -> Fernet:
 
     The environment variable must contain a url‑safe base64‑encoded 32‑byte key.
     """
-    raw_key = os.environ.get("SA01_CRYPTO_FERNET_KEY") or cfg.env("SA01_CRYPTO_FERNET_KEY")
+    raw_key = os.environ.get("SA01_CRYPTO_FERNET_KEY") or os.environ.get("SA01_CRYPTO_FERNET_KEY")
     if not raw_key:
         raise RuntimeError(
             "SA01_CRYPTO_FERNET_KEY is required – provide a urlsafe base64 32‑byte key"
@@ -72,7 +72,7 @@ class SecretManager:
 
     def __init__(self) -> None:
         # VIBE Rule #1: NO ALTERNATES - Fail fast if Redis unavailable
-        redis_url = os.environ.get("SA01_REDIS_URL") or cfg.env("SA01_REDIS_URL")
+        redis_url = os.environ.get("SA01_REDIS_URL") or os.environ.get("SA01_REDIS_URL")
         if not redis_url:
             raise RuntimeError(
                 "SA01_REDIS_URL environment variable required for SecretManager. "
@@ -80,9 +80,9 @@ class SecretManager:
                 "No alternate sources per VIBE Coding Rules. "
                 "Set SA01_REDIS_URL=redis://host:6379/0 in your environment."
             )
-        
+
         self._redis = redis.from_url(redis_url, decode_responses=True)
-        
+
         # Defer Fernet creation until first use. This allows the manager to be
         # instantiated in test environments where the encryption key may be
         # intentionally omitted.

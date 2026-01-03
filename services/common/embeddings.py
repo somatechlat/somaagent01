@@ -31,13 +31,15 @@ class OpenAIEmbeddings(EmbeddingsProvider):
     def __init__(
         self, *, api_key: str | None = None, base_url: str | None = None, model: str | None = None
     ) -> None:
-        from src.core.config import cfg
+        import os
 
-        self.api_key = api_key or cfg.env("OPENAI_API_KEY") or ""
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY") or ""
         self.base_url = (
-            base_url or cfg.env("OPENAI_BASE_URL") or "https://api.openai.com/v1"
+            base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
         ).rstrip("/")
-        self.model = (model or cfg.env("EMBEDDINGS_MODEL") or "text-embedding-3-small").strip()
+        self.model = (
+            model or os.environ.get("EMBEDDINGS_MODEL") or "text-embedding-3-small"
+        ).strip()
 
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
         provider = "openai"
@@ -53,10 +55,10 @@ class OpenAIEmbeddings(EmbeddingsProvider):
                 }
                 payload = {"input": list(texts), "model": self.model}
                 url = f"{self.base_url}/embeddings"
-                from src.core.config import cfg
+                import os
 
                 async with httpx.AsyncClient(
-                    timeout=float(cfg.env("EMBEDDINGS_TIMEOUT", "15"))
+                    timeout=float(os.environ.get("EMBEDDINGS_TIMEOUT", "15"))
                 ) as client:
                     resp = await client.post(url, json=payload, headers=headers)
                     resp.raise_for_status()
@@ -87,17 +89,17 @@ async def maybe_embed(text: str) -> list[float] | list | None:
     - Respects EMBEDDINGS_MAX_CHARS limit before sending to provider.
     """
     # Centralized feature toggle via runtime_config facade (C1 migration)
-    from src.core.config import cfg
+    import os
 
-    use_feature = cfg.flag("embeddings_ingest")
+    use_feature = os.environ.get("embeddings_ingest")
     if not use_feature:
         return None
     if not isinstance(text, str) or not text.strip():
         return None
     try:
-        from src.core.config import cfg
+        import os
 
-        max_chars = int(cfg.env("EMBEDDINGS_MAX_CHARS", "2000"))
+        max_chars = int(os.environ.get("EMBEDDINGS_MAX_CHARS", "2000"))
     except ValueError:
         max_chars = 2000
     clipped = text if len(text) <= max_chars else text[:max_chars]
@@ -108,7 +110,7 @@ async def maybe_embed(text: str) -> list[float] | list | None:
         return cached
 
     # Deterministic test-mode embedding path (no network)
-    if cfg.env("EMBEDDINGS_TEST_MODE", "false").lower() in {"1", "true", "yes", "on"}:
+    if os.environ.get("EMBEDDINGS_TEST_MODE", "false").lower() in {"1", "true", "yes", "on"}:
         # Produce a stable pseudo-vector from hash chunks
         import hashlib
 

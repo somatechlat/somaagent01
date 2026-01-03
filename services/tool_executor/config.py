@@ -1,32 +1,33 @@
 """Configuration helpers for tool executor service."""
 
 from services.common.event_bus import KafkaSettings
-from src.core.config import cfg
+import os
 
-SERVICE_SETTINGS = cfg.settings()
+SERVICE_SETTINGS = os.environ
 
 
 def kafka_settings() -> KafkaSettings:
     """Build Kafka connection settings from configuration."""
     return KafkaSettings(
-        bootstrap_servers=cfg.env(
-            "KAFKA_BOOTSTRAP_SERVERS", cfg.settings().kafka.bootstrap_servers
+        bootstrap_servers=os.environ.get(
+            "KAFKA_BOOTSTRAP_SERVERS",
+            os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         ),
-        security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-        sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-        sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+        security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+        sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+        sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
     )
 
 
 def redis_url() -> str:
     """Get Redis URL from configuration."""
-    return cfg.env("REDIS_URL", cfg.settings().redis.url)
+    return os.environ.get("REDIS_URL", os.environ.get("SA01_REDIS_URL", ""))
 
 
 def tenant_config_path() -> str:
     """Get tenant configuration file path."""
-    return cfg.env(
+    return os.environ.get(
         "TENANT_CONFIG_PATH",
         SERVICE_SETTINGS.extra.get("tenant_config_path", "conf/tenants.yaml"),
     )
@@ -34,7 +35,7 @@ def tenant_config_path() -> str:
 
 def policy_requeue_prefix() -> str:
     """Get Redis prefix for policy requeue operations."""
-    return cfg.env(
+    return os.environ.get(
         "POLICY_REQUEUE_PREFIX",
         SERVICE_SETTINGS.extra.get("policy_requeue_prefix", "policy:requeue"),
     )
@@ -51,9 +52,13 @@ def get_stream_config() -> dict[str, str]:
         },
     )
     return {
-        "requests": cfg.env(
+        "requests": os.environ.get(
             "TOOL_REQUESTS_TOPIC", stream_defaults.get("requests", "tool.requests")
         ),
-        "results": cfg.env("TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")),
-        "group": cfg.env("TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")),
+        "results": os.environ.get(
+            "TOOL_RESULTS_TOPIC", stream_defaults.get("results", "tool.results")
+        ),
+        "group": os.environ.get(
+            "TOOL_EXECUTOR_GROUP", stream_defaults.get("group", "tool-executor")
+        ),
     }

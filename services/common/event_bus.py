@@ -20,7 +20,7 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanContext, SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 TRACER = trace.get_tracer(__name__)
@@ -37,11 +37,11 @@ class KafkaSettings:
     @classmethod
     def from_env(cls) -> "KafkaSettings":
         return cls(
-            bootstrap_servers=cfg.env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-            security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-            sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-            sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+            bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+            security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+            sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+            sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
         )
 
 

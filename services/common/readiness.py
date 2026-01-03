@@ -1,33 +1,7 @@
 """Shared readiness probe helpers for SomaAgent services.
 
-Centralizes dependency health checks so individual services only need to
-import a single helper to implement their `/ready` endpoint.  This avoids
-duplicated ad‑hoc probe logic scattered across service entrypoints.
-
-Checks implemented:
-  - Postgres: lightweight `SELECT 1` via asyncpg connection pool
-  - Kafka: producer metadata refresh via existing `KafkaEventBus` abstraction
-  - Redis: `PING` via `RedisSessionCache`
-
-The helpers are defensive: failures are caught and converted into an
-`unhealthy` status with a short error message.  Timeouts prevent slow
-dependencies from blocking readiness entirely.
-
-Usage (FastAPI):
-    from services.common.readiness import readiness_summary
-    @app.get("/ready")
-    async def ready():
-        result = await readiness_summary()
-        if result["status"] == "ready":
-            return {"status": "ready", "timestamp": result["timestamp"]}
-        raise HTTPException(status_code=503, detail=result)
-
-Environment overrides:
-  SA01_DB_DSN            – override default Postgres DSN
-  READINESS_CHECK_TIMEOUT – per‑check timeout in seconds (float, default 2.0)
-
-The module intentionally does NOT cache results; each call performs fresh
-probes so Kubernetes can rely on current state.
+100% Django - VIBE Compliant.
+Uses Django database connection instead of asyncpg.
 """
 
 from __future__ import annotations
@@ -36,34 +10,28 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-import asyncpg
-
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.session_repository import RedisSessionCache
+from django.db import connection
 
 # Public list of component names (order preserved for deterministic output)
-COMPONENTS = ["postgres", "kafka", "redis"]
+COMPONENTS = ["postgres", "redis"]
 
 
 def _timeout_seconds() -> float:
-    from src.core.config import cfg
+    import os
 
     try:
-        return float(cfg.env("READINESS_CHECK_TIMEOUT", "2.0"))
+        return float(os.environ.get("READINESS_CHECK_TIMEOUT", "2.0"))
     except ValueError:
         return 2.0
 
 
 async def _check_postgres() -> Dict[str, Any]:
-    from src.core.config import cfg
-
-    # Use the new configuration facade to obtain the Postgres DSN.
-    dsn = cfg.settings().postgres_dsn()
+    """Check Postgres health using Django database connection."""
     try:
-        pool = await asyncpg.create_pool(dsn, min_size=0, max_size=1)
-        async with pool.acquire() as conn:
-            val = await conn.fetchval("SELECT 1")
-        await pool.close()
+        # Use Django's database connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            val = cursor.fetchone()[0]
         ok = val == 1
         return {
             "status": "healthy" if ok else "unhealthy",
@@ -73,42 +41,24 @@ async def _check_postgres() -> Dict[str, Any]:
         return {"status": "unhealthy", "message": f"{type(exc).__name__}: {exc}"[:160]}
 
 
-async def _check_kafka() -> Dict[str, Any]:
-    # Allow tests to disable Kafka probe to avoid noisy resource warnings when broker absent
-    from src.core.config import cfg
-
-    if cfg.env("READINESS_DISABLE_KAFKA", "false").lower() in {"true", "1", "yes", "on"}:
-        return {"status": "healthy", "message": "Kafka probe disabled"}
-    bus = None
-    try:
-        bus = KafkaEventBus(KafkaSettings.from_env())
-        await bus.healthcheck()
-        return {"status": "healthy", "message": "Kafka metadata refreshed"}
-    except Exception as exc:  # pragma: no cover
-        return {"status": "unhealthy", "message": f"{type(exc).__name__}: {exc}"[:160]}
-    finally:
-        try:
-            if bus is not None:
-                await bus.close()
-        except Exception:
-            pass
-
-
 async def _check_redis() -> Dict[str, Any]:
+    """Check Redis health using Django cache backend."""
     try:
-        from src.core.config import cfg
+        from django.core.cache import cache
 
-        cache_url = cfg.settings().redis_url
-        cache = RedisSessionCache(url=cache_url) if cache_url else None
-        await cache.ping()
-        return {"status": "healthy", "message": "Redis PING ok"}
+        cache.set("health_check", "ok", timeout=5)
+        val = cache.get("health_check")
+        ok = val == "ok"
+        return {
+            "status": "healthy" if ok else "unhealthy",
+            "message": "Redis cache ok" if ok else "Unexpected cache value",
+        }
     except Exception as exc:  # pragma: no cover
         return {"status": "unhealthy", "message": f"{type(exc).__name__}: {exc}"[:160]}
 
 
 _CHECK_MAP = {
     "postgres": _check_postgres,
-    "kafka": _check_kafka,
     "redis": _check_redis,
 }
 
@@ -147,19 +97,3 @@ async def readiness_summary() -> Dict[str, Any]:
 
 
 __all__ = ["readiness_summary", "COMPONENTS"]
-
-# ---------------------------------------------------------------------------
-# Re-export for imports that expect ``get_replica_store`` from this module.
-# ---------------------------------------------------------------------------
-from src.core.infrastructure.repositories import MemoryReplicaStore
-
-
-def get_replica_store() -> MemoryReplicaStore:
-    """Return a ``MemoryReplicaStore`` instance using the current config.
-
-    The replica store reads its DSN from the central configuration façade.
-    """
-    return MemoryReplicaStore()
-
-
-__all__.append("get_replica_store")

@@ -14,7 +14,7 @@ import datetime as _dt
 import hashlib as _hashlib
 from typing import Any, Mapping, Optional
 
-from src.core.config import cfg
+import os
 
 
 def _iso(ts: float) -> str:
@@ -45,12 +45,14 @@ def generate_for_memory_payload(
     now_seconds: Optional[float] = None,
 ) -> str:
     meta = payload.get("metadata") or {}
-    tenant = payload.get("tenant") or meta.get("tenant") or cfg.env("SA01_TENANT_ID", "default")
+    tenant = (
+        payload.get("tenant") or meta.get("tenant") or os.environ.get("SA01_TENANT_ID", "default")
+    )
     ns = (
         payload.get("namespace")
         or meta.get("namespace")
         or namespace
-        or cfg.env("SA01_MEMORY_NAMESPACE", "wm")
+        or os.environ.get("SA01_MEMORY_NAMESPACE", "wm")
     )
     session_id = str(payload.get("session_id") or meta.get("session_id") or "")
     role = str(payload.get("role") or meta.get("role") or "event")

@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 class PlaywrightProvider(MultimodalProvider):
     """Provider for Playwright screenshot capture.
-    
+
     Uses Playwright to capture full-page or viewport screenshots
     of web pages in PNG or JPEG format.
-    
+
     Requirements:
         - playwright package installed
         - Browser binaries installed (playwright install)
-        
+
     Usage:
         provider = PlaywrightProvider()
         result = await provider.generate(GenerationRequest(
@@ -50,10 +50,10 @@ class PlaywrightProvider(MultimodalProvider):
 
     # Default viewport size
     DEFAULT_VIEWPORT = {"width": 1280, "height": 720}
-    
+
     # Maximum viewport dimensions
     MAX_VIEWPORT = {"width": 3840, "height": 2160}
-    
+
     # Supported browsers
     BROWSERS = ["chromium", "firefox", "webkit"]
 
@@ -64,7 +64,7 @@ class PlaywrightProvider(MultimodalProvider):
         timeout_ms: int = 30000,
     ) -> None:
         """Initialize Playwright provider.
-        
+
         Args:
             browser_type: Browser to use (chromium, firefox, webkit).
             headless: Run browser in headless mode.
@@ -107,9 +107,9 @@ class PlaywrightProvider(MultimodalProvider):
                     self.provider_id,
                     error_code="DEPENDENCY_MISSING",
                 )
-            
+
             self._playwright = await async_playwright().start()
-            
+
             if self._browser_type == "chromium":
                 self._browser = await self._playwright.chromium.launch(headless=self._headless)
             elif self._browser_type == "firefox":
@@ -121,15 +121,15 @@ class PlaywrightProvider(MultimodalProvider):
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         """Capture a screenshot of a web page.
-        
+
         Args:
             request: Generation request with URL in prompt
-            
+
         Returns:
             GenerationResult with screenshot image data
         """
         start_time = time.time()
-        
+
         # Validate first
         errors = self.validate(request)
         if errors:
@@ -139,64 +139,69 @@ class PlaywrightProvider(MultimodalProvider):
                 error_message="; ".join(errors),
                 provider=self.provider_id,
             )
-        
+
         url = request.prompt.strip()
         output_format = request.format or "png"
         full_page = request.parameters.get("full_page", False)
         viewport = request.parameters.get("viewport", self.DEFAULT_VIEWPORT)
         wait_for = request.parameters.get("wait_for", "networkidle")
-        
+
         page = None
         try:
             await self._ensure_browser()
-            
+
             # Create new context with viewport
             context = await self._browser.new_context(
                 viewport=viewport,
                 device_scale_factor=request.parameters.get("device_scale_factor", 1),
             )
-            
+
             page = await context.new_page()
-            
+
             # Navigate to URL
             logger.info("Navigating to: %s", url)
             await page.goto(url, wait_until=wait_for, timeout=self._timeout_ms)
-            
+
             # Wait for additional selector if specified
             wait_selector = request.parameters.get("wait_for_selector")
             if wait_selector:
                 await page.wait_for_selector(wait_selector, timeout=self._timeout_ms // 2)
-            
+
             # Capture screenshot
             screenshot_options = {
                 "type": output_format,
                 "full_page": full_page,
             }
-            
+
             if output_format == "jpeg":
                 screenshot_options["quality"] = request.parameters.get("quality", 80)
-            
+
             content = await page.screenshot(**screenshot_options)
-            
+
             latency_ms = int((time.time() - start_time) * 1000)
-            
+
             # Get actual page dimensions
             dimensions = viewport.copy()
             if full_page:
-                dimensions = await page.evaluate("""
+                dimensions = await page.evaluate(
+                    """
                     () => ({
                         width: document.documentElement.scrollWidth,
                         height: document.documentElement.scrollHeight
                     })
-                """)
-            
+                """
+                )
+
             content_type = f"image/{output_format}"
-            
+
             logger.info(
                 "Captured screenshot: %d bytes, %dx%d, %dms",
-                len(content), dimensions["width"], dimensions["height"], latency_ms
+                len(content),
+                dimensions["width"],
+                dimensions["height"],
+                latency_ms,
             )
-            
+
             return GenerationResult(
                 success=True,
                 content=content,
@@ -209,18 +214,18 @@ class PlaywrightProvider(MultimodalProvider):
                 model_version=f"playwright-{self._browser_type}",
                 quality_hints={"url": url, "full_page": full_page},
             )
-            
+
         except Exception as exc:
             error_msg = str(exc)
             error_code = "INTERNAL_ERROR"
-            
+
             if "Timeout" in error_msg:
                 error_code = "TIMEOUT"
             elif "net::ERR" in error_msg:
                 error_code = "NETWORK_ERROR"
             elif "Navigation" in error_msg:
                 error_code = "NAVIGATION_ERROR"
-            
+
             logger.exception("Screenshot capture failed: %s", exc)
             return GenerationResult(
                 success=False,
@@ -235,21 +240,23 @@ class PlaywrightProvider(MultimodalProvider):
     def validate(self, request: GenerationRequest) -> List[str]:
         """Validate screenshot request."""
         errors: List[str] = []
-        
+
         if not request.prompt:
             errors.append("URL is required in prompt")
             return errors
-        
+
         url = request.prompt.strip()
-        
+
         # Basic URL validation
         if not url.startswith(("http://", "https://")):
             errors.append("URL must start with http:// or https://")
-        
+
         # Validate format
         if request.format and request.format not in self.supported_formats:
-            errors.append(f"Unsupported format: {request.format}. Supported: {self.supported_formats}")
-        
+            errors.append(
+                f"Unsupported format: {request.format}. Supported: {self.supported_formats}"
+            )
+
         # Validate viewport dimensions
         viewport = request.parameters.get("viewport", {})
         max_dims = self.max_dimensions
@@ -258,7 +265,7 @@ class PlaywrightProvider(MultimodalProvider):
                 errors.append(f"Viewport width exceeds maximum: {max_dims['width']}")
             if viewport.get("height", 0) > max_dims["height"]:
                 errors.append(f"Viewport height exceeds maximum: {max_dims['height']}")
-        
+
         return errors
 
     def estimate_cost(self, request: GenerationRequest) -> int:
@@ -269,6 +276,7 @@ class PlaywrightProvider(MultimodalProvider):
         """Check if Playwright is available."""
         try:
             from playwright.async_api import async_playwright
+
             return True
         except ImportError:
             return False

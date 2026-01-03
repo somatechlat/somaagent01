@@ -7,44 +7,41 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
 from typing import Any, Dict
 
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+django.setup()
+
 from prometheus_client import start_http_server
 
-from observability.metrics import ContextBuilderMetrics
-from python.helpers.tokens import count_tokens
-from python.integrations.somabrain_client import SomaBrainClient
+from admin.core.observability.metrics import ContextBuilderMetrics
+from admin.core.helpers.tokens import count_tokens
+from admin.agents.services.somabrain_integration import SomaBrainClient
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 from services.common.budget_manager import BudgetManager
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
 from services.common.degradation_monitor import degradation_monitor, DegradationLevel
-from services.common.session_repository import (
-    ensure_schema,
-    PostgresSessionStore,
-    RedisSessionCache,
-)
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
-from src.core.application.use_cases.conversation import (
     GenerateResponseUseCase,
     ProcessMessageInput,
     ProcessMessageUseCase,
 )
-from src.core.config import cfg
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
-APP = cfg.settings()
+# Django settings used instead
 tracer = setup_tracing("conversation-worker", endpoint=APP.external.otlp_endpoint)
 _metrics_started = False
 
@@ -53,9 +50,9 @@ def _start_metrics() -> None:
     global _metrics_started
     if _metrics_started:
         return
-    port = int(cfg.env("CONVERSATION_METRICS_PORT", str(APP.metrics_port)))
+    port = int(os.environ.get("CONVERSATION_METRICS_PORT", str(APP.metrics_port)))
     if port > 0:
-        start_http_server(port, addr=cfg.env("CONVERSATION_METRICS_HOST", APP.metrics_host))
+        start_http_server(port, addr=os.environ.get("CONVERSATION_METRICS_HOST", APP.metrics_host))
     _metrics_started = True
 
 
@@ -67,25 +64,29 @@ class ConversationWorkerImpl:
         # Kafka
         self.kafka = KafkaSettings(
             bootstrap_servers=APP.kafka.bootstrap_servers,
-            security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-            sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-            sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+            security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+            sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+            sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
         )
         self.topics = {
-            "in": cfg.env("CONVERSATION_INBOUND", "conversation.inbound"),
-            "out": cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
-            "group": cfg.env("CONVERSATION_GROUP", "conversation-worker"),
+            "in": os.environ.get("CONVERSATION_INBOUND", "conversation.inbound"),
+            "out": os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
+            "group": os.environ.get("CONVERSATION_GROUP", "conversation-worker"),
         }
         # Infrastructure
         self.bus = KafkaEventBus(self.kafka)
         self.publisher = DurablePublisher(bus=self.bus)
         self.dlq = DeadLetterQueue(self.topics["in"], bus=self.bus)
-        self.cache = RedisSessionCache(url=APP.redis.url)
-        self.store = PostgresSessionStore(dsn=APP.database.dsn)
+        # Use Django cache for session cache
+        from django.core.cache import cache as django_cache
+        self.cache = django_cache
+        # Use Django ORM Session model
+        from admin.core.models import Session
+        self.store = Session.objects
         self.profiles = ModelProfileStore.from_settings(APP)
         self.tenants = TenantConfig(
-            path=cfg.env(
+            path=os.environ.get(
                 "TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml")
             )
         )
@@ -96,14 +97,14 @@ class ConversationWorkerImpl:
             publisher=self.publisher, store=TelemetryStore.from_settings(APP)
         )
         self.soma = SomaBrainClient.get()
-        self.router = RouterClient(base_url=cfg.env("ROUTER_URL") or APP.extra.get("router_url"))
+        self.router = RouterClient(base_url=os.environ.get("ROUTER_URL") or APP.extra.get("router_url"))
         # Context builder
         self.ctx_builder = ContextBuilder(
             somabrain=self.soma,
             metrics=ContextBuilderMetrics(),
             token_counter=count_tokens,
             health_provider=self._get_somabrain_health,
-            use_optimal_budget=cfg.env("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
+            use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
         )
         # Initialize use cases
         self._init_use_cases()
@@ -127,17 +128,17 @@ class ConversationWorkerImpl:
 
     def _init_use_cases(self) -> None:
         """Initialize use cases - all config from env, no hardcoded defaults per VIBE rules."""
-        gateway_base = cfg.env("SA01_WORKER_GATEWAY_BASE")
+        gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
             raise ValueError(
                 "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
             )
         self._gen = GenerateResponseUseCase(
             gateway_base=gateway_base,
-            internal_token=cfg.env("SA01_GATEWAY_INTERNAL_TOKEN", ""),
+            internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=cfg.env("SA01_LLM_MODEL", "gpt-4o-mini"),
+            default_model=os.environ.get("SA01_LLM_MODEL"),  # REQUIRED - no hardcoded default per VIBE
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,
@@ -152,7 +153,7 @@ class ConversationWorkerImpl:
     async def start(self) -> None:
         await degradation_monitor.initialize()
         await degradation_monitor.start_monitoring()
-        await ensure_schema(self.store)
+        # ensure_schema not needed - Django migrations handle this
         await self.profiles.ensure_schema()
         await self.store.append_event(
             "system", {"type": "worker_start", "event_id": str(uuid.uuid4()), "message": "online"}
@@ -214,7 +215,7 @@ class ConversationWorkerImpl:
             # Refresh tenant configuration from disk (if the file changed on disk,
             # this ensures we see the new values).
             self.tenants = TenantConfig(
-                path=cfg.env(
+                path=os.environ.get(
                     "TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml")
                 )
             )

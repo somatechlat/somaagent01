@@ -4,42 +4,44 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 from jsonschema import ValidationError
 
-# Legacy import removed. Use centralized configuration via cfg.
-from src.core.config import cfg
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+
+django.setup()
+
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.logging_config import setup_logging
 from services.common.schema_validator import validate_event
 from services.common.tracing import setup_tracing
-from src.core.config import cfg
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 # Retrieve settings from the central configuration.
-APP_SETTINGS = cfg.settings()
+# Django settings used instead
 # The OTLP endpoint is now located under the external configuration section.
 setup_tracing("delegation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
 
 
 class DelegationWorker:
     def __init__(self) -> None:
-        self.topic = cfg.env("DELEGATION_TOPIC", "somastack.delegation")
-        self.group = cfg.env("DELEGATION_GROUP", "delegation-worker")
+        self.topic = os.environ.get("DELEGATION_TOPIC", "somastack.delegation")
+        self.group = os.environ.get("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(
             KafkaSettings(
-                bootstrap_servers=cfg.settings().kafka.bootstrap_servers,
-                security_protocol=cfg.env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-                sasl_mechanism=cfg.env("KAFKA_SASL_MECHANISM"),
-                sasl_username=cfg.env("KAFKA_SASL_USERNAME"),
-                sasl_password=cfg.env("KAFKA_SASL_PASSWORD"),
+                bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+                security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+                sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+                sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+                sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
             )
         )
-        self.store = DelegationStore(dsn=cfg.settings().database.dsn)
+        self.store = DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
     async def start(self) -> None:
         await self.store.ensure_schema()

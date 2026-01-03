@@ -24,7 +24,7 @@ from services.multimodal.base_provider import (
     RateLimitError,
     QuotaExceededError,
 )
-from src.core.config import cfg
+import os
 
 __all__ = ["DalleProvider"]
 
@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 
 class DalleProvider(MultimodalProvider):
     """Provider for OpenAI DALL-E image generation.
-    
+
     Uses the OpenAI Images API to generate images from text prompts.
     Supports DALL-E 3 with various size and quality options.
-    
+
     Environment:
         OPENAI_API_KEY: Required API key
-        
+
     Usage:
         provider = DalleProvider()
         result = await provider.generate(GenerationRequest(
@@ -53,21 +53,21 @@ class DalleProvider(MultimodalProvider):
 
     # DALL-E 3 supported sizes
     SIZES = ["1024x1024", "1792x1024", "1024x1792"]
-    
+
     # Quality options
     QUALITIES = ["standard", "hd"]
-    
+
     # Style options
     STYLES = ["vivid", "natural"]
-    
+
     # Cost estimates in cents (approximate)
     COST_PER_IMAGE = {
-        ("standard", "1024x1024"): 4,    # $0.04
-        ("standard", "1792x1024"): 8,    # $0.08
-        ("standard", "1024x1792"): 8,    # $0.08
-        ("hd", "1024x1024"): 8,          # $0.08
-        ("hd", "1792x1024"): 12,         # $0.12
-        ("hd", "1024x1792"): 12,         # $0.12
+        ("standard", "1024x1024"): 4,  # $0.04
+        ("standard", "1792x1024"): 8,  # $0.08
+        ("standard", "1024x1792"): 8,  # $0.08
+        ("hd", "1024x1024"): 8,  # $0.08
+        ("hd", "1792x1024"): 12,  # $0.12
+        ("hd", "1024x1792"): 12,  # $0.12
     }
 
     def __init__(
@@ -77,13 +77,13 @@ class DalleProvider(MultimodalProvider):
         timeout_seconds: int = 60,
     ) -> None:
         """Initialize DALL-E provider.
-        
+
         Args:
             api_key: OpenAI API key. Uses env var if not provided.
             model: Model to use (dall-e-3 or dall-e-2).
             timeout_seconds: Request timeout.
         """
-        self._api_key = api_key or cfg.env("OPENAI_API_KEY")
+        self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self._model = model
         self._timeout = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None
@@ -122,15 +122,15 @@ class DalleProvider(MultimodalProvider):
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         """Generate an image using DALL-E.
-        
+
         Args:
             request: Generation request with prompt
-            
+
         Returns:
             GenerationResult with PNG image data
         """
         start_time = time.time()
-        
+
         # Check API key
         if not self._api_key:
             return GenerationResult(
@@ -139,7 +139,7 @@ class DalleProvider(MultimodalProvider):
                 error_message="OPENAI_API_KEY not configured",
                 provider=self.provider_id,
             )
-        
+
         # Validate first
         errors = self.validate(request)
         if errors:
@@ -149,15 +149,15 @@ class DalleProvider(MultimodalProvider):
                 error_message="; ".join(errors),
                 provider=self.provider_id,
             )
-        
+
         # Extract parameters
         size = request.parameters.get("size", "1024x1024")
         quality = request.parameters.get("quality", "standard")
         style = request.parameters.get("style", "vivid")
-        
+
         try:
             client = await self._get_client()
-            
+
             payload = {
                 "model": self._model,
                 "prompt": request.prompt,
@@ -167,17 +167,16 @@ class DalleProvider(MultimodalProvider):
                 "style": style,
                 "response_format": "b64_json",
             }
-            
+
             logger.info(
-                "Calling DALL-E API: model=%s, size=%s, quality=%s",
-                self._model, size, quality
+                "Calling DALL-E API: model=%s, size=%s, quality=%s", self._model, size, quality
             )
-            
+
             response = await client.post(
                 "https://api.openai.com/v1/images/generations",
                 json=payload,
             )
-            
+
             if response.status_code == 429:
                 retry_after = response.headers.get("Retry-After")
                 raise RateLimitError(
@@ -185,13 +184,13 @@ class DalleProvider(MultimodalProvider):
                     self.provider_id,
                     retry_after_seconds=int(retry_after) if retry_after else 60,
                 )
-            
+
             if response.status_code == 402 or "insufficient_quota" in response.text:
                 raise QuotaExceededError(
                     "OpenAI quota exceeded",
                     self.provider_id,
                 )
-            
+
             if response.status_code != 200:
                 error_data = response.json() if response.text else {}
                 error_msg = error_data.get("error", {}).get("message", response.text)
@@ -201,26 +200,29 @@ class DalleProvider(MultimodalProvider):
                     error_message=error_msg,
                     provider=self.provider_id,
                 )
-            
+
             # Parse response
             data = response.json()
             image_data = data["data"][0]
-            
+
             # Decode base64 image
             import base64
+
             content = base64.b64decode(image_data["b64_json"])
-            
+
             latency_ms = int((time.time() - start_time) * 1000)
             cost_cents = self.COST_PER_IMAGE.get((quality, size), 8)
-            
+
             # Extract dimensions from size
             width, height = map(int, size.split("x"))
-            
+
             logger.info(
                 "Generated DALL-E image: %d bytes, %dms, %d cents",
-                len(content), latency_ms, cost_cents
+                len(content),
+                latency_ms,
+                cost_cents,
             )
-            
+
             return GenerationResult(
                 success=True,
                 content=content,
@@ -237,7 +239,7 @@ class DalleProvider(MultimodalProvider):
                     "style": style,
                 },
             )
-            
+
         except (RateLimitError, QuotaExceededError):
             raise
         except httpx.TimeoutException:
@@ -259,29 +261,29 @@ class DalleProvider(MultimodalProvider):
     def validate(self, request: GenerationRequest) -> List[str]:
         """Validate DALL-E generation request."""
         errors: List[str] = []
-        
+
         if not request.prompt:
             errors.append("Prompt is required")
             return errors
-        
+
         if len(request.prompt) > 4000:
             errors.append("Prompt exceeds maximum length of 4000 characters")
-        
+
         # Validate size
         size = request.parameters.get("size", "1024x1024")
         if size not in self.SIZES:
             errors.append(f"Invalid size: {size}. Supported: {self.SIZES}")
-        
+
         # Validate quality
         quality = request.parameters.get("quality", "standard")
         if quality not in self.QUALITIES:
             errors.append(f"Invalid quality: {quality}. Supported: {self.QUALITIES}")
-        
+
         # Validate style
         style = request.parameters.get("style", "vivid")
         if style not in self.STYLES:
             errors.append(f"Invalid style: {style}. Supported: {self.STYLES}")
-        
+
         return errors
 
     def estimate_cost(self, request: GenerationRequest) -> int:
@@ -294,7 +296,7 @@ class DalleProvider(MultimodalProvider):
         """Check if OpenAI API is accessible."""
         if not self._api_key:
             return False
-        
+
         try:
             client = await self._get_client()
             response = await client.get(

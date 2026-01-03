@@ -4,7 +4,7 @@ import logging
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from src.core.config import cfg
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,16 +48,16 @@ def ensure_metrics_server(settings: object) -> None:
     if _METRICS_SERVER_STARTED:
         return
 
-    default_port = int(cfg.settings().service.metrics_port)
-    default_host = str(cfg.settings().service.metrics_host)
+    default_port = int(os.environ.service.metrics_port)
+    default_host = str(os.environ.service.metrics_host)
 
-    port = int(cfg.env("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
+    port = int(os.environ.get("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
     if port <= 0:
         LOGGER.warning("Tool executor metrics disabled", extra={"port": port})
         _METRICS_SERVER_STARTED = True
         return
 
-    host = cfg.env("TOOL_EXECUTOR_METRICS_HOST", default_host)
+    host = os.environ.get("TOOL_EXECUTOR_METRICS_HOST", default_host)
     start_http_server(port, addr=host)
     LOGGER.info("Tool executor metrics server started", extra={"host": host, "port": port})
     _METRICS_SERVER_STARTED = True

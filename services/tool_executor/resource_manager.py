@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
-from src.core.config import cfg
+import os
 
 
 @dataclass
@@ -20,7 +20,7 @@ class ResourceManager:
     """Tracks concurrent executions to avoid exhausting the host."""
 
     def __init__(self, max_concurrent: int | None = None) -> None:
-        raw_limit = cfg.env("TOOL_EXECUTOR_MAX_CONCURRENT", "4")
+        raw_limit = os.environ.get("TOOL_EXECUTOR_MAX_CONCURRENT", "4")
         try:
             limit = int(raw_limit)
         except (TypeError, ValueError):
@@ -52,14 +52,14 @@ class ResourceManager:
 
 def default_limits() -> ExecutionLimits:
     def _float(name: str, default: float) -> float:
-        raw = cfg.env(name, str(default))
+        raw = os.environ.get(name, str(default))
         try:
             return float(raw)
         except (TypeError, ValueError):
             return default
 
     def _int(name: str, default: int) -> int:
-        raw = cfg.env(name, str(default))
+        raw = os.environ.get(name, str(default))
         try:
             return int(raw)
         except (TypeError, ValueError):

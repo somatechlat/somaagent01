@@ -88,3 +88,41 @@ llm-key-new.pem
 .gitignore
 .gitignore
 llm-key.pem
+
+# === VIBE CLEANUP - Added 2024-12-23 ===
+# Cache directories
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE project files
+.kiro/
+
+# Large files
+*.bin
+*.onnx
+*.pt
+*.pth
+
+# Postgres backups
+postgres-backups/
+
+# Alembic (deprecated)
+alembic/
+alembic.ini
+
+# Heavy files - NEVER commit
+ui/frontend/node_modules/
+*.map
+*.wasm
+*.bin
+*.onnx
+*.pt
+*.pth
+
+# Backup files
+*.bak
+*.backup
+*_backup*
