@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional
 
 from services.common.policy_client import PolicyClient, PolicyRequest
-from src.core.config import cfg
 
 
 class ConversationPolicyEnforcer:

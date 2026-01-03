@@ -33,7 +33,7 @@ from services.multimodal.base_provider import (
 from services.multimodal.dalle_provider import DalleProvider
 from services.multimodal.mermaid_provider import MermaidProvider
 from services.multimodal.playwright_provider import PlaywrightProvider
-from src.core.config import cfg
+import os
 
 __all__ = ["MultimodalExecutor", "ExecutorError"]
 
@@ -46,10 +46,10 @@ class ExecutorError(Exception):
 
 class MultimodalExecutor:
     """Orchestrates multimodal job execution.
-    
+
     Coordinates providers, asset storage, and execution tracking to fulfill
     multimodal job plans. Handles dependency resolution and error recovery.
-    
+
     Usage:
         executor = MultimodalExecutor()
         await executor.initialize()
@@ -67,7 +67,7 @@ class MultimodalExecutor:
         policy_router: Optional[PolicyGraphRouter] = None,
     ) -> None:
         """Initialize executor with services.
-        
+
         Args:
             dsn: Database connection string
             asset_store: AssetStore instance
@@ -77,7 +77,7 @@ class MultimodalExecutor:
             soma_brain_client: SomaBrainOutcomesStore instance for learning
             policy_router: PolicyGraphRouter instance for provider selection
         """
-        self._dsn = dsn or cfg.settings().database.dsn
+        self._dsn = dsn or os.environ.get("SA01_DB_DSN", "")
         self._asset_store = asset_store or AssetStore(dsn=self._dsn)
         self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
         self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
@@ -86,7 +86,7 @@ class MultimodalExecutor:
         self._policy_router = policy_router or PolicyGraphRouter(dsn=self._dsn)
         self._provenance_recorder = ProvenanceRecorder(dsn=self._dsn)
         self._initialized = False
-        
+
         # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
         from services.common.llm_adapter import LLMAdapter
@@ -96,9 +96,9 @@ class MultimodalExecutor:
         sm = SecretManager()
         api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
         self._llm_adapter = LLMAdapter(api_key_resolver=api_key_resolver)
-        
+
         self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)
-        
+
         # Initialize providers registry
         self._providers: Dict[str, MultimodalProvider] = {}
         self._capability_map: Dict[ProviderCapability, List[str]] = {}
@@ -118,7 +118,7 @@ class MultimodalExecutor:
         # Register default providers
         await self.register_provider(MermaidProvider())
         await self.register_provider(PlaywrightProvider())
-        
+
         # Only register DALL-E if API key is present
         dalle = DalleProvider()
         if await dalle.health_check():
@@ -130,18 +130,18 @@ class MultimodalExecutor:
 
     async def register_provider(self, provider: MultimodalProvider) -> None:
         """Register a provider instance.
-        
+
         Args:
             provider: Provider instance to register
         """
         self._providers[provider.name] = provider
-        
+
         # Update capability map
         for cap in provider.capabilities:
             if cap not in self._capability_map:
                 self._capability_map[cap] = []
             self._capability_map[cap].append(provider.name)
-            
+
         logger.info("Registered provider: %s", provider.name)
 
     async def run_pending(self, poll_interval: float = 2.0) -> None:
@@ -167,10 +167,10 @@ class MultimodalExecutor:
 
     async def execute_plan(self, plan_id: UUID) -> bool:
         """Execute a full job plan.
-        
+
         Args:
             plan_id: UUID of plan to execute
-            
+
         Returns:
             True if execution completed successfully
         """
@@ -178,19 +178,19 @@ class MultimodalExecutor:
         plan = await self._job_planner.get(plan_id)
         if not plan:
             raise ExecutorError(f"Plan {plan_id} not found")
-        
+
         if plan.status in (JobStatus.COMPLETED, JobStatus.CANCELLED):
             logger.info("Plan %s already finished via status %s", plan_id, plan.status)
             return True
-            
+
         # Update status to RUNNING
         await self._job_planner.update_status(plan.id, JobStatus.RUNNING)
-        
+
         context: Dict[str, Any] = {}
         failed = False
         error_msg = None
         budget_used_cents = plan.budget_used_cents or 0
-        
+
         try:
             # Execute tasks in order (plan.tasks is already topologically sorted)
             for i, task in enumerate(plan.tasks):
@@ -204,7 +204,7 @@ class MultimodalExecutor:
                         if asset:
                             context[task.task_id] = asset
                     continue
-                
+
                 # Execute step with retry loop
                 success, step_error, step_cost = await self._execute_step(plan, i, task, context)
                 if not success:
@@ -212,15 +212,16 @@ class MultimodalExecutor:
                     # Check if failure was due to quality gate exhaustion
                     error_msg = step_error or f"Step {task.task_id} failed after max attempts"
                     break
-                    
+
                 if step_cost:
                     budget_used_cents += step_cost
                     plan.budget_used_cents = budget_used_cents
-                    if plan.budget_limit_cents is not None and budget_used_cents > plan.budget_limit_cents:
+                    if (
+                        plan.budget_limit_cents is not None
+                        and budget_used_cents > plan.budget_limit_cents
+                    ):
                         failed = True
-                        error_msg = (
-                            f"budget_exceeded: used {budget_used_cents} > limit {plan.budget_limit_cents}"
-                        )
+                        error_msg = f"budget_exceeded: used {budget_used_cents} > limit {plan.budget_limit_cents}"
                         break
 
                 # Update progress
@@ -230,7 +231,7 @@ class MultimodalExecutor:
                     completed_steps=i + 1,
                     budget_used_cents=budget_used_cents,
                 )
-            
+
             # Final status update
             status = JobStatus.FAILED if failed else JobStatus.COMPLETED
             await self._job_planner.update_status(
@@ -240,7 +241,7 @@ class MultimodalExecutor:
                 budget_used_cents=budget_used_cents,
             )
             return not failed
-            
+
         except Exception as exc:
             logger.exception("Plan execution failed: %s", exc)
             await self._job_planner.update_status(
@@ -385,11 +386,19 @@ class MultimodalExecutor:
                 else:
 
                     asset_type = AssetType.IMAGE
-                    if task.step_type == StepType.CAPTURE_SCREENSHOT or task.modality == "screenshot":
+                    if (
+                        task.step_type == StepType.CAPTURE_SCREENSHOT
+                        or task.modality == "screenshot"
+                    ):
                         asset_type = AssetType.SCREENSHOT
-                    elif task.step_type == StepType.GENERATE_DIAGRAM or task.modality in {"diagram", "image_diagram"}:
+                    elif task.step_type == StepType.GENERATE_DIAGRAM or task.modality in {
+                        "diagram",
+                        "image_diagram",
+                    }:
                         asset_type = AssetType.DIAGRAM
-                    elif task.step_type == StepType.GENERATE_VIDEO or task.modality.startswith("video"):
+                    elif task.step_type == StepType.GENERATE_VIDEO or task.modality.startswith(
+                        "video"
+                    ):
                         asset_type = AssetType.VIDEO
                     elif task.step_type == StepType.COMPOSE_DOCUMENT or task.modality == "document":
                         asset_type = AssetType.DOCUMENT
@@ -426,7 +435,9 @@ class MultimodalExecutor:
                         if task.constraints.get("min_width"):
                             rubric.min_width = task.constraints.get("min_width")
 
-                        evaluation = await self._asset_critic.evaluate(asset, rubric, context=context)
+                        evaluation = await self._asset_critic.evaluate(
+                            asset, rubric, context=context
+                        )
                         quality_gate_passed = evaluation.passed
                         evaluation_score = evaluation.score
                         evaluation_feedback = {
@@ -532,7 +543,7 @@ class MultimodalExecutor:
 
     def _resolve_dependencies(self, prompt: str, context: Dict[str, Any]) -> str:
         """Resolve dependency tokens in prompt.
-        
+
         Replaces {{task_id.url}} or similar patterns with actual values
         from context.
         """

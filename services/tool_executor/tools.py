@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 try:
     import fitz  # PyMuPDF
@@ -70,7 +70,7 @@ class TimestampTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         fmt = args.get("format", "%Y-%m-%dT%H:%M:%SZ")
         try:
-            now = datetime.datetime.utcnow().strftime(fmt)
+            now = datetime.datetime.now(datetime.timezone.utc).strftime(fmt)
         except Exception as exc:
             LOGGER.warning(
                 "Tool validation failed",
@@ -80,7 +80,7 @@ class TimestampTool(BaseTool):
                     "tool_data": str(args)[:100],  # truncate for logging
                 },
             )
-            now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         return {"message": now}
 
     def input_schema(self) -> Dict[str, Any] | None:
@@ -164,7 +164,7 @@ class FileReadTool(BaseTool):
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
             raise ToolExecutionError("'path' argument is required")
-        base_dir = Path(cfg.env("TOOL_WORK_DIR", "work_dir")).resolve()
+        base_dir = Path(os.environ.get("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
             raise ToolExecutionError("Access outside work directory is not allowed")
@@ -228,7 +228,7 @@ class CanvasAppendTool(BaseTool):
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
 
-        canvas_url = cfg.env("CANVAS_SERVICE_URL")
+        canvas_url = os.environ.get("CANVAS_SERVICE_URL")
         if not canvas_url:
             raise RuntimeError("CANVAS_SERVICE_URL must be set for canvas tool execution.")
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
@@ -240,7 +240,7 @@ class CanvasAppendTool(BaseTool):
             "persona_id": persona_id,
         }
         async with httpx.AsyncClient(
-            timeout=float(cfg.env("CANVAS_SERVICE_TIMEOUT", "5"))
+            timeout=float(os.environ.get("CANVAS_SERVICE_TIMEOUT", "5"))
         ) as client:
             response = await client.post(endpoint, json=payload)
             response.raise_for_status()
@@ -291,13 +291,13 @@ class IngestDocumentTool(BaseTool):
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             raise ToolExecutionError("'attachment_id' is required")
 
-        base = cfg.env("SA01_GATEWAY_BASE")
+        base = os.environ.get("SA01_GATEWAY_BASE")
         if not base:
             raise ToolExecutionError(
                 "SA01_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
             )
         base = base.rstrip("/")
-        token = cfg.env("SA01_GATEWAY_INTERNAL_TOKEN")
+        token = os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN")
         if not token:
             raise ToolExecutionError(
                 "SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded defaults per VIBE rules."
@@ -308,7 +308,7 @@ class IngestDocumentTool(BaseTool):
             headers["X-Tenant-Id"] = str(tenant_header)
         try:
             async with httpx.AsyncClient(
-                timeout=float(cfg.env("TOOL_FETCH_TIMEOUT", "15"))
+                timeout=float(os.environ.get("TOOL_FETCH_TIMEOUT", "15"))
             ) as client:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:

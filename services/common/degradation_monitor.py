@@ -5,14 +5,15 @@ Production-ready degradation detection and management system.
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
 from temporalio.client import Client as TemporalClient
 
-from observability.metrics import Counter, Gauge, Histogram, metrics_collector
-from services.gateway.circuit_breakers import CircuitBreaker, CircuitState
+from admin.core.observability.metrics import Counter, Gauge, Histogram, metrics_collector
+from services.common.circuit_breakers import CircuitBreaker, CircuitState
 
 # Prometheus metrics for degradation monitoring
 SERVICE_HEALTH_STATE = Gauge(
@@ -113,15 +114,26 @@ class DegradationMonitor:
     # When a dependency fails, dependents are marked as degraded
     SERVICE_DEPENDENCIES: Dict[str, List[str]] = {
         "gateway": ["database", "redis", "kafka", "temporal"],
-        "tool_executor": ["database", "kafka", "somabrain", "temporal"],
-        "conversation_worker": ["database", "kafka", "somabrain", "redis", "temporal"],
+        "tool_executor": ["database", "kafka", "somabrain", "temporal", "llm"],
+        "conversation_worker": ["database", "kafka", "somabrain", "redis", "temporal", "llm"],
         "auth_service": ["database", "redis"],
+        # Multimodal services
+        "voice_service": ["llm", "audio_tts", "audio_stt"],
+        "upload_service": ["database", "storage"],
+        "multimodal": ["llm", "voice_service", "upload_service"],
+        # Background services
+        "backup_service": ["database", "storage"],
+        "task_scheduler": ["database", "redis", "temporal"],
         # Core services have no dependencies (they ARE the dependencies)
         "somabrain": [],
         "database": [],
         "kafka": [],
         "redis": [],
         "temporal": [],
+        "llm": [],  # LLM providers (can operate independently)
+        "audio_tts": [],  # Text-to-speech providers
+        "audio_stt": [],  # Speech-to-text providers
+        "storage": [],  # File storage (S3, local, etc.)
     }
 
     # Maximum history records to keep in memory
@@ -154,6 +166,17 @@ class DegradationMonitor:
             "gateway",
             "auth_service",
             "tool_executor",
+            "llm",  # LLM providers
+            # Multimodal services
+            "voice_service",
+            "audio_tts",
+            "audio_stt",
+            "upload_service",
+            "multimodal",
+            "storage",
+            # Background services
+            "backup_service",
+            "task_scheduler",
         ]
 
         for component in core_components:
@@ -166,7 +189,15 @@ class DegradationMonitor:
             )
 
         # Initialize circuit breakers for critical components
-        critical_components = ["somabrain", "database", "kafka"]
+        critical_components = [
+            "somabrain",
+            "database",
+            "kafka",
+            "llm",
+            "audio_tts",
+            "audio_stt",
+            "storage",
+        ]
         for component in critical_components:
             self.circuit_breakers[component] = CircuitBreaker(
                 failure_threshold=5, recovery_timeout=60, expected_exception=Exception  # 1 minute
@@ -243,6 +274,16 @@ class DegradationMonitor:
                 await self._check_redis_health(component)
             elif component_name == "temporal":
                 await self._check_temporal_health(component)
+            elif component_name == "llm":
+                await self._check_llm_health(component)
+            elif component_name in ("audio_tts", "audio_stt", "voice_service"):
+                await self._check_audio_health(component)
+            elif component_name in ("storage", "upload_service"):
+                await self._check_storage_health(component)
+            elif component_name == "multimodal":
+                await self._check_multimodal_health(component)
+            elif component_name in ("backup_service", "task_scheduler"):
+                await self._check_background_service_health(component)
             else:
                 # Generic health check for other components
                 await self._check_generic_component(component)
@@ -299,7 +340,7 @@ class DegradationMonitor:
     async def _check_somabrain_health(self, component: ComponentHealth) -> None:
         """Check SomaBrain health specifically."""
         try:
-            from python.integrations.soma_client import SomaClient
+            from admin.core.soma_client import SomaClient
 
             client = SomaClient.get()
             health_result = await client.health()
@@ -317,36 +358,19 @@ class DegradationMonitor:
     async def _check_database_health(self, component: ComponentHealth) -> None:
         """Check database health with REAL PostgreSQL connection.
 
-        VIBE COMPLIANT: No test doubles, no mocks. Real database connectivity check.
-        Uses asyncpg to execute a simple query against PostgreSQL.
+        VIBE COMPLIANT: Uses Django database connection - no asyncpg.
         """
         try:
-            import asyncpg
+            from django.db import connection
 
-            from src.core.config import cfg
+            # Real connection test using Django
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()[0]
+            component.healthy = result == 1
+            component.error_rate = 0.0 if component.healthy else 1.0
+            logger.debug(f"Database health check passed: SELECT 1 = {result}")
 
-            dsn = cfg.settings().database.dsn
-            if not dsn:
-                component.healthy = False
-                component.error_rate = 1.0
-                logger.warning("Database health check failed: No DSN configured")
-                return
-
-            # Real connection test with timeout
-            conn = await asyncio.wait_for(asyncpg.connect(dsn), timeout=5.0)
-            try:
-                # Execute a simple query to verify the connection works
-                result = await conn.fetchval("SELECT 1")
-                component.healthy = result == 1
-                component.error_rate = 0.0 if component.healthy else 1.0
-                logger.debug(f"Database health check passed: SELECT 1 = {result}")
-            finally:
-                await conn.close()
-
-        except asyncio.TimeoutError:
-            component.healthy = False
-            component.error_rate = 1.0
-            logger.warning("Database health check failed: Connection timeout")
         except Exception as e:
             component.healthy = False
             component.error_rate = 1.0
@@ -361,9 +385,9 @@ class DegradationMonitor:
         try:
             from aiokafka import AIOKafkaProducer
 
-            from src.core.config import cfg
+            import os
 
-            bootstrap_servers = cfg.settings().kafka_bootstrap_servers
+            bootstrap_servers = os.environ.kafka_bootstrap_servers
             if not bootstrap_servers:
                 component.healthy = False
                 component.error_rate = 1.0
@@ -403,9 +427,9 @@ class DegradationMonitor:
         try:
             import redis.asyncio as aioredis
 
-            from src.core.config import cfg
+            import os
 
-            redis_url = cfg.settings().redis.url
+            redis_url = os.environ.get("SA01_REDIS_URL", "")
             if not redis_url:
                 component.healthy = False
                 component.error_rate = 1.0
@@ -442,12 +466,162 @@ class DegradationMonitor:
 
     async def _check_temporal_health(self, component: ComponentHealth) -> None:
         """Check Temporal server health via system info."""
-        host = cfg.env("SA01_TEMPORAL_HOST", "temporal:7233")
+        host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
         if self._temporal_client is None:
             self._temporal_client = await TemporalClient.connect(host)
         info = await self._temporal_client.workflow_service.get_system_info()
         component.healthy = info is not None
         component.error_rate = 0.0 if component.healthy else 1.0
+
+    async def _check_llm_health(self, component: ComponentHealth) -> None:
+        """Check LLM providers health via LLMDegradationService.
+
+        VIBE COMPLIANT: Integrates with centralized LLM degradation service.
+        """
+        try:
+            from services.common.llm_degradation import llm_degradation_service
+
+            # Initialize if needed
+            if not llm_degradation_service._provider_health:
+                await llm_degradation_service.initialize()
+
+            # Get summary of LLM status
+            summary = llm_degradation_service.get_degradation_summary()
+
+            # LLM is healthy if at least one provider is available
+            healthy_count = len(summary.get("healthy_providers", []))
+            degraded_count = len(summary.get("degraded_providers", []))
+            unavailable_count = len(summary.get("unavailable_providers", []))
+            total = healthy_count + degraded_count + unavailable_count
+
+            if total == 0:
+                # No providers configured - assume healthy (will fail on actual call)
+                component.healthy = True
+                component.error_rate = 0.0
+            elif healthy_count > 0:
+                component.healthy = True
+                component.error_rate = unavailable_count / total if total > 0 else 0.0
+            elif degraded_count > 0:
+                component.healthy = True  # Still operational via fallback
+                component.error_rate = 0.5
+            else:
+                # All providers unavailable
+                component.healthy = False
+                component.error_rate = 1.0
+
+            logger.debug(
+                f"LLM health check: healthy={healthy_count}, "
+                f"degraded={degraded_count}, unavailable={unavailable_count}"
+            )
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"LLM health check failed: {e}")
+
+    async def _check_audio_health(self, component: ComponentHealth) -> None:
+        """Check audio service health (TTS/STT).
+
+        VIBE COMPLIANT: Integrates with MultimodalDegradationService.
+        """
+        try:
+            from services.common.multimodal_degradation import multimodal_degradation_service
+
+            # Initialize if needed
+            if not multimodal_degradation_service._initialized:
+                await multimodal_degradation_service.initialize()
+
+            # Check provider availability based on component
+            if component.name == "audio_tts":
+                provider = await multimodal_degradation_service.get_available_tts()
+                component.healthy = provider is not None
+            elif component.name == "audio_stt":
+                provider = await multimodal_degradation_service.get_available_stt()
+                component.healthy = provider is not None
+            elif component.name == "voice_service":
+                component.healthy = multimodal_degradation_service.is_voice_available()
+            else:
+                component.healthy = True
+
+            component.error_rate = 0.0 if component.healthy else 1.0
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Audio health check failed for {component.name}: {e}")
+
+    async def _check_storage_health(self, component: ComponentHealth) -> None:
+        """Check storage service health.
+
+        VIBE COMPLIANT: Checks storage provider availability.
+        """
+        try:
+            from services.common.multimodal_degradation import multimodal_degradation_service
+
+            if not multimodal_degradation_service._initialized:
+                await multimodal_degradation_service.initialize()
+
+            provider = await multimodal_degradation_service.get_available_storage()
+            component.healthy = provider is not None
+            component.error_rate = 0.0 if component.healthy else 1.0
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Storage health check failed: {e}")
+
+    async def _check_multimodal_health(self, component: ComponentHealth) -> None:
+        """Check overall multimodal service health.
+
+        Multimodal is healthy if at least voice OR storage is available.
+        """
+        try:
+            from services.common.multimodal_degradation import multimodal_degradation_service
+
+            if not multimodal_degradation_service._initialized:
+                await multimodal_degradation_service.initialize()
+
+            voice_ok = multimodal_degradation_service.is_voice_available()
+            storage_ok = await multimodal_degradation_service.get_available_storage() is not None
+
+            component.healthy = voice_ok or storage_ok
+            component.error_rate = (
+                0.0 if (voice_ok and storage_ok) else (0.5 if component.healthy else 1.0)
+            )
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Multimodal health check failed: {e}")
+
+    async def _check_background_service_health(self, component: ComponentHealth) -> None:
+        """Check background service health (backup, task scheduler).
+
+        Background services depend on database and temporal.
+        """
+        try:
+            # Check database dependency
+            db_health = self.components.get("database")
+            temporal_health = self.components.get("temporal")
+
+            db_ok = db_health and db_health.healthy if db_health else True
+            temporal_ok = temporal_health and temporal_health.healthy if temporal_health else True
+
+            if component.name == "backup_service":
+                storage_health = self.components.get("storage")
+                storage_ok = storage_health and storage_health.healthy if storage_health else True
+                component.healthy = db_ok and storage_ok
+            elif component.name == "task_scheduler":
+                component.healthy = db_ok and temporal_ok
+            else:
+                component.healthy = db_ok
+
+            component.error_rate = 0.0 if component.healthy else 0.5
+
+        except Exception as e:
+            component.healthy = False
+            component.error_rate = 1.0
+            logger.warning(f"Background service health check failed: {e}")
 
     def _calculate_degradation_level(self, component: ComponentHealth) -> DegradationLevel:
         """Calculate degradation level for a component."""
@@ -693,9 +867,7 @@ class DegradationMonitor:
 
         logger.debug(f"Recorded success for {component_name}: {response_time:.3f}s")
 
-    def _record_history(
-        self, component: ComponentHealth, event_type: str = "check"
-    ) -> None:
+    def _record_history(self, component: ComponentHealth, event_type: str = "check") -> None:
         """Record a degradation event to history.
 
         VIBE COMPLIANT: Real history storage, not a test double.

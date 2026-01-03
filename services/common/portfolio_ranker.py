@@ -14,11 +14,13 @@ from services.common.soma_brain_outcomes import SomaBrainOutcomesStore, Multimod
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class CandidateScore:
     provider_name: str
     score: float
     metrics: Dict[str, float]
+
 
 class PortfolioRanker:
     """Ranks provider candidates based on historical performance."""
@@ -74,50 +76,45 @@ class PortfolioRanker:
         """Calculate aggregate stats for a provider."""
         relevant = [h for h in history if h.provider == provider]
         count = len(relevant)
-        
+
         if count == 0:
             # Cold start: Give a neutral baseline
-            return {
-                "success_rate": 0.8,
-                "avg_quality": 0.7,
-                "avg_latency": 2000.0,
-                "avg_cost": 0.0
-            }
+            return {"success_rate": 0.8, "avg_quality": 0.7, "avg_latency": 2000.0, "avg_cost": 0.0}
 
         successes = [1 for h in relevant if h.success]
         success_rate = sum(successes) / count
-        
+
         latencies = [h.latency_ms for h in relevant if h.success]
         avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
-        
+
         qualities = [h.quality_score or 0.5 for h in relevant if h.success]
         avg_quality = sum(qualities) / len(qualities) if qualities else 0.5
-        
+
         costs = [h.cost_cents for h in relevant]
         avg_cost = sum(costs) / count
-        
+
         return {
             "success_rate": success_rate,
             "avg_quality": avg_quality,
             "avg_latency": avg_latency,
-            "avg_cost": avg_cost
+            "avg_cost": avg_cost,
         }
 
     def _calculate_score(self, stats: Dict[str, float]) -> float:
         """Apply scoring formula.
-        
+
         Score = 0.4*Success + 0.3*Quality + 0.2*(1-NormLatency) + 0.1*(1-NormCost)
         """
         # Normalize latency (soft cap at 10s = 10000ms)
         norm_latency = min(stats["avg_latency"] / 10000.0, 1.0)
-        
+
         # Normalize cost (soft cap at 10 cents)
         norm_cost = min(stats["avg_cost"] / 10.0, 1.0)
-        
+
         score = (
-            0.4 * stats["success_rate"] +
-            0.3 * stats["avg_quality"] +
-            0.2 * (1.0 - norm_latency) +
-            0.1 * (1.0 - norm_cost)
+            0.4 * stats["success_rate"]
+            + 0.3 * stats["avg_quality"]
+            + 0.2 * (1.0 - norm_latency)
+            + 0.1 * (1.0 - norm_cost)
         )
         return score

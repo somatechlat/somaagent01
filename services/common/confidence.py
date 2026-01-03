@@ -27,7 +27,9 @@ def _clean_logprobs(logprobs: Iterable[float | None]) -> List[float]:
     return cleaned
 
 
-def calculate_confidence(logprobs: Iterable[float | None], aggregation: str = "average") -> Optional[float]:
+def calculate_confidence(
+    logprobs: Iterable[float | None], aggregation: str = "average"
+) -> Optional[float]:
     """Calculate normalized confidence scalar in [0,1].
 
     Args:

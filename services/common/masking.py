@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
 
-from src.core.config import cfg
+import os
 
 try:  # Metrics are optional in some test contexts
     from prometheus_client import Counter
@@ -84,8 +84,8 @@ def _init_metrics() -> None:
 
 
 def _load_rules_from_env() -> List[MaskRule]:
-    raw = cfg.env("SA01_MASK_RULES")
-    path = cfg.env("SA01_MASK_RULES_FILE")
+    raw = os.environ.get("SA01_MASK_RULES")
+    path = os.environ.get("SA01_MASK_RULES_FILE")
     rules: list[dict[str, str]] = []
     if path:
         try:

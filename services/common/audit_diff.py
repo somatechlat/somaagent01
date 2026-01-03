@@ -10,7 +10,6 @@ MASK_PATTERNS = [r"(?i)(password|secret|token|key)\b.*", r"(?i)api_key.*", r"(?i
 
 
 def mask_value(value: str) -> str:
-    """Replace secret values with placeholder."""
     return "***MASKED***"
 
 

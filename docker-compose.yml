@@ -52,7 +52,6 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaagent-postgres
-    profiles: [ "core", "auth" ]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -63,7 +62,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - somaagent_postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infrastructure/postgres/init_dbs.sql:/docker-entrypoint-initdb.d/init_dbs.sql
     ports:
       - "20432:5432"
     command: >
@@ -92,7 +91,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: somaagent-redis
-    profiles: [ "core" ]
     restart: unless-stopped
     user: redis
     command: >
@@ -125,7 +123,6 @@ services:
   kafka:
     image: apache/kafka:3.7.0
     container_name: somaagent-kafka
-    profiles: [ "core" ]
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -184,7 +181,6 @@ services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.11
     container_name: somaagent-etcd
-    profiles: [ "vectors" ]
     restart: unless-stopped
     <<: *common-security
     cap_add:
@@ -204,11 +200,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "0.5"
+          memory: 1G
+          cpus: "1.0"
         reservations:
-          memory: 128M
-          cpus: "0.1"
+          memory: 512M
+          cpus: "0.25"
     logging: *common-logging
     labels:
       <<: *common-labels
@@ -222,7 +218,6 @@ services:
   minio:
     image: minio/minio:latest
     container_name: somaagent-minio
-    profiles: [ "vectors" ]
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
@@ -242,11 +237,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "0.5"
+          memory: 1G
+          cpus: "1.0"
         reservations:
-          memory: 256M
-          cpus: "0.1"
+          memory: 512M
+          cpus: "0.25"
     logging: *common-logging
     labels:
       <<: *common-labels
@@ -260,7 +255,6 @@ services:
   milvus:
     image: milvusdb/milvus:v2.3.4
     container_name: somaagent-milvus
-    profiles: [ "vectors" ]
     restart: unless-stopped
     depends_on:
       etcd:
@@ -270,8 +264,8 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_PASSWORD:-somastack2024}
+      MINIO_ACCESS_KEY_ID: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:-somastack2024}
       # Production settings
       CACHE_SIZE: 1073741824
       INDEX_DISK_CACHE_SIZE: 1073741824
@@ -288,11 +282,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: "2.0"
+          memory: 8G
+          cpus: "4.0"
         reservations:
-          memory: 1G
-          cpus: "0.5"
+          memory: 4G
+          cpus: "1.0"
     logging: *common-logging
     labels:
       <<: *common-labels
@@ -306,7 +300,6 @@ services:
   spicedb:
     image: authzed/spicedb:v1.29.0
     container_name: somaagent-spicedb
-    profiles: [ "security" ]
     restart: unless-stopped
     depends_on:
       postgres:
@@ -347,7 +340,6 @@ services:
   opa:
     image: openpolicyagent/opa:latest
     container_name: somaagent-opa
-    profiles: [ "security" ]
     restart: unless-stopped
     <<: *common-security
     user: "1000:1000"
@@ -381,7 +373,6 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: somaagent-prometheus
-    profiles: [ "observability" ]
     restart: unless-stopped
     <<: *common-security
     user: "65534:65534"
@@ -414,109 +405,25 @@ services:
       com.somastack.service: "prometheus"
       com.somastack.tier: "observability"
 
-  # ==========================================================================
-  # OBSERVABILITY: Grafana 10.2 (Port 20300)
-  # Production: Provisioning, security
-  # ==========================================================================
-  grafana:
-    image: grafana/grafana:10.2.2
-    container_name: somaagent-grafana
-    profiles: [ "observability" ]
-    restart: unless-stopped
-    <<: *common-security
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
-    depends_on:
-      - prometheus
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-somastack2024}
-      GF_SECURITY_DISABLE_GRAVATAR: "true"
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: "http://localhost:20300"
-      GF_LOG_MODE: console
-      GF_LOG_LEVEL: warn
-    volumes:
-      - somaagent_grafana_data:/var/lib/grafana
-      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "20300:3000"
-    healthcheck:
-      <<: *common-healthcheck
-      test: [ "CMD-SHELL", "wget --spider -q http://localhost:3000/api/health" ]
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "0.5"
-        reservations:
-          memory: 128M
-          cpus: "0.1"
-    logging: *common-logging
-    labels:
-      <<: *common-labels
-      com.somastack.service: "grafana"
-      com.somastack.tier: "observability"
+  # GRAFANA REMOVED PER USER REQUEST
+
 
   # ==========================================================================
-  # IDENTITY: Keycloak 24 (Port 20880)
-  # Production: Optimized startup, health probes
+  # IDENTITY: Keycloak - MOVED TO SHARED SERVICE
   # ==========================================================================
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    container_name: somaagent-keycloak
-    profiles: [ "auth" ]
-    restart: unless-stopped
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER:-postgres}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-somastack2024}
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
-      KC_HTTP_PORT: 8080
-      KC_PROXY: edge
-      KC_HEALTH_ENABLED: "true"
-      KC_METRICS_ENABLED: "true"
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-somastack2024}
-      # JVM settings for constrained environment
-      JAVA_OPTS_APPEND: "-Xms256m -Xmx512m"
-    command: start-dev
-    ports:
-      - "20880:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      <<: *common-healthcheck
-      test:
-        [
-          "CMD-SHELL",
-          "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r
-
-            Host: localhost\r
-
-            \r
-
-            ' >&3 && timeout 1 cat <&3 | grep -q '200'"
-        ]
-      start_period: 180s
-      interval: 60s
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-          cpus: "1.0"
-        reservations:
-          memory: 384M
-          cpus: "0.25"
-    logging: *common-logging
-    labels:
-      <<: *common-labels
-      com.somastack.service: "keycloak"
-      com.somastack.tier: "identity"
+  # Keycloak has been moved to shared services for all SOMA projects to use.
+  #
+  # Location: shared/keycloak/cluster/docker-compose.yml
+  # Port: 49010
+  #
+  # To start shared Keycloak:
+  #   cd shared/keycloak/cluster && docker compose up -d
+  #
+  # Environment variables for this project:
+  #   KEYCLOAK_URL=http://host.docker.internal:49010
+  #   KEYCLOAK_REALM=somaagent
+  #   KEYCLOAK_CLIENT_ID=eye-of-god
+  # ==========================================================================
 
   # ==========================================================================
   # APPLICATION: Django Backend (Port 20020)
@@ -600,169 +507,24 @@ services:
       <<: *common-labels
       com.somastack.service: "frontend"
       com.somastack.tier: "application"
+  # ==========================================================================
+  # AGENT CORE: Gateway - REMOVED (Migrating to Django Ninja)
+  # ==========================================================================
+  # gateway container removed - using Django Ninja API (/admin/api.py)
+  # Run: python manage.py runserver 0.0.0.0:8000
+
+
 
   # ==========================================================================
-  # AGENT CORE: Gateway (FastAPI) (Port 21016)
+  # AGENT WORKERS - REMOVED (Migrating to Django Management Commands)
   # ==========================================================================
-  gateway:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somaagent-gateway:latest
-    container_name: somaagent-gateway
-    profiles: [ "core" ]
-    restart: unless-stopped
-    ports:
-      - "21016:8010"
-    environment:
-      # Canonical Configuration (SA01_*)
-      SA01_DEPLOYMENT_MODE: "DEV"
-      SA01_AUTH_REQUIRED: "false"
-      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
-      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
-      SA01_POLICY_URL: "http://opa:8181"
-      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
-      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
-      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
-      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  # conversation-worker, tool-executor, memory-replicator containers removed
+  # Using Django management commands:
+  #   python manage.py run_sync_worker
+  #   python manage.py run_conversation_worker (TODO)
+  #   python manage.py run_tool_executor (TODO)
 
-      # Integration Config
-      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-      SA01_GATEWAY_PORT: 8010
 
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    logging: *common-logging
-    labels:
-      <<: *common-labels
-      com.somastack.service: "gateway"
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: "1.0"
-        reservations:
-          memory: 1G
-          cpus: "0.25"
-
-  conversation-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somaagent-gateway:latest # Reuse same image
-    container_name: somaagent-conversation-worker
-    profiles: [ "core" ]
-    restart: unless-stopped
-    command: [ "python", "-m", "services.conversation_worker.main" ]
-    environment:
-      SA01_DEPLOYMENT_MODE: "DEV"
-      SA01_AUTH_REQUIRED: "false"
-      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
-      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
-      SA01_POLICY_URL: "http://opa:8181"
-      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
-      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
-      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
-      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-      SA01_WORKER_GATEWAY_BASE: "http://gateway:8010"
-      SA01_GATEWAY_INTERNAL_TOKEN: "dev-internal-token"
-    depends_on:
-      - gateway
-    logging: *common-logging
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: "1.0"
-        reservations:
-          memory: 1G
-          cpus: "0.25"
-
-  tool-executor:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somaagent-gateway:latest
-    container_name: somaagent-tool-executor
-    profiles: [ "core" ]
-    restart: unless-stopped
-    command: [ "python", "-m", "services.tool_executor.main" ]
-    environment:
-      SA01_DEPLOYMENT_MODE: "DEV"
-      SA01_AUTH_REQUIRED: "false"
-      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
-      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
-      SA01_POLICY_URL: "http://opa:8181"
-      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
-      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
-      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
-      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-    depends_on:
-      - gateway
-    logging: *common-logging
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: "1.0"
-        reservations:
-          memory: 1G
-          cpus: "0.25"
-
-  memory-replicator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somaagent-gateway:latest
-    container_name: somaagent-memory-replicator
-    profiles: [ "core" ]
-    restart: unless-stopped
-    command: [ "python", "-m", "services.memory_replicator.main" ]
-    environment:
-      SA01_DEPLOYMENT_MODE: "DEV"
-      SA01_AUTH_REQUIRED: "false"
-      SA01_AUTH_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH__JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_JWT_SECRET: "${JWT_SECRET:-supersecretjwtkey}"
-      SA01_AUTH_INTERNAL_TOKEN: "dev-internal-token"
-      SA01_CRYPTO_FERNET_KEY: "${FERNET_KEY:-t7w9_6F8qX0u_7kG2r5v8x4z1n3m8j9k0l1p2o3i4u5y6t=}"
-      SA01_POLICY_URL: "http://opa:8181"
-      SA01_POLICY_DECISION_PATH: "/v1/data/soma/allow"
-      SA01_DB_DSN: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-somastack2024}@postgres:5432/${POSTGRES_DB:-somaagent}
-      SA01_REDIS_URL: redis://:${REDIS_PASSWORD:-somastack2024}@redis:6379/0
-      SA01_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SOMABRAIN_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-      SA01_SOMA_BASE_URL: ${SOMABRAIN_URL:-http://host.docker.internal:8030}
-    depends_on:
-      - gateway
-    logging: *common-logging
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: "0.5"
-        reservations:
-          memory: 512M
-          cpus: "0.1"
   # ==========================================================================
   # WORKER: Kafka Consumer (Event Processing)
   # Processes events from Kafka topics

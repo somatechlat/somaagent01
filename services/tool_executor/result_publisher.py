@@ -12,12 +12,12 @@ import time
 import uuid
 from typing import Any, TYPE_CHECKING
 
-from python.integrations.soma_client import SomaClientError
+from admin.core.soma_client import SomaClientError
 from services.common.idempotency import generate_for_memory_payload
 from services.common.policy_client import PolicyRequest
 from services.tool_executor.metrics import TOOL_FEEDBACK_TOTAL
 from services.tool_executor.validation import validate_tool_result
-from src.core.config import cfg
+import os
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor
@@ -112,7 +112,7 @@ class ResultPublisher:
                 "type": "tool.result",
             }
             await self._executor.publisher.publish(
-                cfg.env("CONVERSATION_OUTBOUND", "conversation.outbound"),
+                os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
                 outbound_event,
                 dedupe_key=outbound_event.get("event_id"),
                 session_id=str(result_event.get("session_id")),
@@ -141,7 +141,7 @@ class ResultPublisher:
         except Exception as exc:
             try:
                 await self._executor.publisher.publish(
-                    cfg.env("TASK_FEEDBACK_TOPIC", "task.feedback.dlq"),
+                    os.environ.get("TASK_FEEDBACK_TOPIC", "task.feedback.dlq"),
                     {"payload": feedback, "error": str(exc)},
                     dedupe_key=str(result_event.get("event_id")),
                     session_id=str(result_event.get("session_id")),
@@ -195,7 +195,7 @@ class ResultPublisher:
                 **str_metadata,
                 "agent_profile_id": (result_event.get("metadata") or {}).get("agent_profile_id"),
                 "universe_id": (result_event.get("metadata") or {}).get("universe_id")
-                or cfg.env("SA01_NAMESPACE"),
+                or os.environ.get("SA01_NAMESPACE"),
             },
             "status": result_event.get("status"),
         }
@@ -224,7 +224,7 @@ class ResultPublisher:
                 )
 
             if allow_memory:
-                wal_topic = cfg.env("MEMORY_WAL_TOPIC", "memory.wal")
+                wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self._executor.soma.remember(memory_payload)
                 try:
                     wal_event = {

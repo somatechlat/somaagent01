@@ -10,7 +10,7 @@ import asyncio
 import logging
 from typing import Any, Dict
 
-from fastapi import FastAPI
+from ninja import Router
 
 from orchestrator.base_service import BaseService
 from orchestrator.config import CentralizedConfig
@@ -79,11 +79,11 @@ class ConversationWorkerService(BaseService):
         except Exception as exc:
             LOGGER.error(f"Error during {self.service_name} service shutdown: {exc}")
 
-    def register_routes(self, app: FastAPI) -> None:
+    def register_routes(self, app: Router) -> None:
         """Register health check endpoints for the conversation worker service."""
 
         # Add a health check endpoint for the orchestrator
-        @app.get("/health")
+        @app.api_route("/health")
         async def health_check():
             status = "healthy"
             details = {"service": self.service_name}
@@ -106,7 +106,7 @@ class ConversationWorkerService(BaseService):
             return {"status": status, "details": details}
 
         # Add a metrics endpoint
-        @app.get("/metrics")
+        @app.api_route("/metrics")
         async def metrics():
             """Return basic metrics about the conversation worker service."""
             return {

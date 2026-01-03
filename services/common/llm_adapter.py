@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, List, Union
 
 import httpx
 
-from src.core.config import cfg
+import os
 
 
 @dataclass
@@ -58,7 +58,7 @@ class LLMAdapter:
         self.service_url = service_url.rstrip("/") if service_url else None
         self.api_key = api_key
         self.api_key_resolver = api_key_resolver
-        self._client = httpx.AsyncClient(timeout=float(cfg.env("LLM_HTTP_TIMEOUT", 30)))
+        self._client = httpx.AsyncClient(timeout=float(os.environ.get("LLM_HTTP_TIMEOUT", 30)))
 
     async def close(self) -> None:
         """Close underlying HTTP client."""
@@ -82,7 +82,9 @@ class LLMAdapter:
                 return maybe
         return self.api_key
 
-    async def _post_json(self, url: str, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
+    async def _post_json(
+        self, url: str, payload: dict[str, Any], headers: dict[str, str]
+    ) -> dict[str, Any]:
         resp = await self._client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         return resp.json()
@@ -92,7 +94,11 @@ class LLMAdapter:
         url = self._build_url(self.service_url, "messages")
         api_key = await self._resolve_api_key()
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-        payload = {"role": message.role, "content": message.content, "metadata": message.metadata or {}}
+        payload = {
+            "role": message.role,
+            "content": message.content,
+            "metadata": message.metadata or {},
+        }
         return await self._post_json(url, payload, headers)
 
     async def get_service_health(self, service_name: str) -> Dict[str, Any]:

@@ -8,16 +8,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
-from python.integrations.somabrain_client import SomaBrainClient
+# Django setup for logging and ORM
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+
+django.setup()
+
+from admin.core.somabrain_client import SomaBrainClient
 from services.common.audit_store import AuditStore as _AuditStore, from_env as audit_store_from_env
 from services.common.event_bus import KafkaEventBus
-from services.common.logging_config import setup_logging
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.requeue_store import RequeueStore
-from services.common.session_repository import PostgresSessionStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 
@@ -39,9 +44,7 @@ from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.tool_executor.tool_registry import ToolRegistry
 from services.tool_executor.multimodal_executor import MultimodalExecutor
-from src.core.config import cfg
 
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 
 setup_tracing("tool-executor", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
@@ -57,10 +60,13 @@ class ToolExecutor:
         self.publisher = DurablePublisher(bus=self.bus)
         self.tenant_config = TenantConfig(path=tenant_config_path())
         self.policy = PolicyClient(
-            base_url=cfg.env("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
+            base_url=os.environ.get("POLICY_BASE_URL", SERVICE_SETTINGS.external.opa_url),
             tenant_config=self.tenant_config,
         )
-        self.store = PostgresSessionStore(dsn=cfg.settings().database.dsn)
+        # Use Django ORM Session model instead of PostgresSessionStore
+        from admin.core.models import Session
+
+        self.store = Session.objects
         self.requeue = RequeueStore(url=redis_url(), prefix=policy_requeue_prefix())
         self.resources = ResourceManager()
         self.sandbox = SandboxManager()
@@ -111,11 +117,13 @@ class ToolExecutor:
             LOGGER.debug("Audit store schema ensure failed (tool-executor)", exc_info=True)
 
         # Multimodal job executor (polling pending plans)
-        if cfg.env("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
+        if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
             try:
-                self._multimodal_executor = MultimodalExecutor(dsn=cfg.settings().database.dsn)
+                self._multimodal_executor = MultimodalExecutor(
+                    dsn=os.environ.get("SA01_DB_DSN", "")
+                )
                 await self._multimodal_executor.initialize()
-                poll_raw = cfg.env("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
+                poll_raw = os.environ.get("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
                 try:
                     poll_interval = float(poll_raw)
                 except ValueError:

@@ -10,7 +10,7 @@ from typing import Any, Dict
 from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-from src.core.config import cfg
+import os
 
 DLQ_CONSUMED_TOTAL = Counter(
     "sa01_dlq_events_total",
@@ -25,7 +25,7 @@ class DLQConsumer:
     def __init__(self, topic: str, group: str = "dlq-consumer") -> None:
         self.topic = topic
         self.group = group
-        kafka_cfg = cfg.settings().kafka
+        kafka_cfg = os.environ.kafka
         self.bus = KafkaEventBus(
             KafkaSettings(
                 bootstrap_servers=kafka_cfg.bootstrap_servers,

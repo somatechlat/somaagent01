@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class ProviderError(Exception):
     """Base exception for provider errors."""
-    
+
     def __init__(
         self,
         message: str,
@@ -49,12 +49,13 @@ class ProviderError(Exception):
 
 class ValidationError(ProviderError):
     """Raised when request validation fails."""
+
     pass
 
 
 class RateLimitError(ProviderError):
     """Raised when provider rate limit is hit."""
-    
+
     def __init__(
         self,
         message: str,
@@ -67,11 +68,13 @@ class RateLimitError(ProviderError):
 
 class QuotaExceededError(ProviderError):
     """Raised when provider quota is exceeded."""
+
     pass
 
 
 class ProviderCapability(str, Enum):
     """Types of content a provider can generate."""
+
     IMAGE = "image"
     DIAGRAM = "diagram"
     SCREENSHOT = "screenshot"
@@ -82,7 +85,7 @@ class ProviderCapability(str, Enum):
 @dataclass(slots=True)
 class GenerationRequest:
     """Request for multimodal generation.
-    
+
     Attributes:
         tenant_id: Owning tenant
         session_id: Session context
@@ -97,6 +100,7 @@ class GenerationRequest:
         timeout_ms: Timeout in milliseconds
         metadata: Additional metadata
     """
+
     tenant_id: str
     session_id: str
     modality: str
@@ -114,7 +118,7 @@ class GenerationRequest:
 @dataclass(slots=True)
 class GenerationResult:
     """Result of multimodal generation.
-    
+
     Attributes:
         success: Whether generation succeeded
         content: Generated content bytes
@@ -130,6 +134,7 @@ class GenerationResult:
         error_message: Error message if failed
         metadata: Additional result metadata
     """
+
     success: bool
     content: Optional[bytes] = None
     content_type: Optional[str] = None
@@ -153,20 +158,20 @@ class GenerationResult:
 
 class MultimodalProvider(ABC):
     """Abstract base class for multimodal providers.
-    
+
     All provider adapters must inherit from this class and implement
     the abstract methods.
-    
+
     Example:
         class DalleProvider(MultimodalProvider):
             @property
             def name(self) -> str:
                 return "dalle3_image_gen"
-            
+
             @property
             def provider_id(self) -> str:
                 return "openai"
-            
+
             async def generate(self, request: GenerationRequest) -> GenerationResult:
                 # Implementation here
                 ...
@@ -203,10 +208,10 @@ class MultimodalProvider(ABC):
     @abstractmethod
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         """Generate content from request.
-        
+
         Args:
             request: Generation request with prompt and parameters
-            
+
         Returns:
             GenerationResult with content or error details
         """
@@ -215,10 +220,10 @@ class MultimodalProvider(ABC):
     @abstractmethod
     def validate(self, request: GenerationRequest) -> List[str]:
         """Validate request before generation.
-        
+
         Args:
             request: Request to validate
-            
+
         Returns:
             List of validation error messages (empty if valid)
         """
@@ -227,10 +232,10 @@ class MultimodalProvider(ABC):
     @abstractmethod
     def estimate_cost(self, request: GenerationRequest) -> int:
         """Estimate cost in cents for the request.
-        
+
         Args:
             request: Request to estimate
-            
+
         Returns:
             Estimated cost in cents
         """
@@ -238,7 +243,7 @@ class MultimodalProvider(ABC):
 
     async def health_check(self) -> bool:
         """Check if the provider is healthy.
-        
+
         Returns:
             True if provider is available and responding
         """
