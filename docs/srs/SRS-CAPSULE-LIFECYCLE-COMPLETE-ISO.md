@@ -2777,8 +2777,248 @@ groups:
 
 ---
 
+# 19. SIMPLE, ELEGANT, OBSERVABLE CORE
+
+> **Design Philosophy**: Simple, elegant, mathematically provable. 
+> No over-engineering. The power comes from cryptographic guarantees and clear invariants.
+
+## 19.1 Mathematical Invariants
+
+### 19.1.1 Core Formal Specification
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        CAPSULE SYSTEM INVARIANTS                             ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  1. CERTIFICATION INVARIANT                                                  ║
+║     ∀ capsule ∈ ACTIVE:                                                      ║
+║       ∃ σ: verify(σ, H(capsule.soul ⊕ capsule.body ⊕ capsule.const_ref)) = ✓ ║
+║                                                                              ║
+║  2. CONSTITUTION BINDING                                                     ║
+║     ∀ capsule ∈ ACTIVE:                                                      ║
+║       H(capsule.constitution_ref) = H(active_constitution)                   ║
+║                                                                              ║
+║  3. IMMUTABILITY                                                             ║
+║     ∀ capsule: certified(capsule) = true ⟹ immutable(capsule) = true        ║
+║                                                                              ║
+║  4. VERSION CHAIN                                                            ║
+║     ∀ edit(v1): ∃ v2: parent(v2) = v1 ∧ status(v2) = DRAFT                   ║
+║                                                                              ║
+║  5. INJECTION GATE                                                           ║
+║     ∀ inject(capsule): verify(capsule) = true ∨ reject(capsule)              ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Where:
+  H(x)     = SHA-256(JCS_canonicalize(x))
+  σ        = Ed25519 signature
+  ⊕        = JSON merge
+  verify() = Ed25519 verification
+```
+
+### 19.1.2 State Transition Proof
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT : create()
+    DRAFT --> ACTIVE : certify() [σ = sign(H(capsule))]
+    ACTIVE --> DRAFT : edit() [spawn_child()]
+    ACTIVE --> ARCHIVED : archive() [preserve(σ)]
+    
+    note right of ACTIVE
+        INVARIANT: σ ≠ null
+        INVARIANT: verify(σ) = true
+    end note
+```
+
+## 19.2 Simple Core Implementation
+
+### 19.2.1 Capsule Verification (10 Lines)
+```python
+def verify_capsule(capsule: Capsule) -> bool:
+    """
+    Simple. Elegant. Perfect.
+    Returns True iff capsule is cryptographically valid.
+    """
+    if not capsule.registry_signature:
+        return False
+    
+    payload = jcs.canonicalize({
+        "soul": capsule.soul,
+        "body": capsule.body,
+        "constitution_ref": capsule.constitution_ref,
+    })
+    
+    return VERIFY_KEY.verify(payload, capsule.registry_signature)
+```
+
+### 19.2.2 Capsule Certification (15 Lines)
+```python
+def certify_capsule(capsule: Capsule) -> Capsule:
+    """
+    Simple. Elegant. Perfect.
+    Signs capsule and binds to active Constitution.
+    """
+    assert capsule.status == "draft", "Only drafts can be certified"
+    
+    constitution = Constitution.objects.get(is_active=True)
+    capsule.constitution_ref = {
+        "checksum": constitution.content_hash,
+        "url": settings.SOMABRAIN_URL,
+    }
+    
+    payload = jcs.canonicalize({
+        "soul": capsule.soul,
+        "body": capsule.body,
+        "constitution_ref": capsule.constitution_ref,
+    })
+    
+    capsule.registry_signature = SIGNING_KEY.sign(payload)
+    capsule.status = "active"
+    capsule.certified_at = timezone.now()
+    capsule.save()
+    
+    return capsule
+```
+
+### 19.2.3 Capsule Injection (8 Lines)
+```python
+def inject_capsule(capsule_id: UUID) -> InjectedCapsule:
+    """
+    Simple. Elegant. Perfect.
+    Loads and verifies capsule for runtime use.
+    """
+    capsule = Capsule.objects.get(id=capsule_id, status="active")
+    
+    if not verify_capsule(capsule):
+        raise IntegrityError("Capsule verification failed")
+    
+    return InjectedCapsule(capsule)
+```
+
+### 19.2.4 Version-on-Edit (12 Lines)
+```python
+def edit_capsule(capsule: Capsule, updates: dict) -> Capsule:
+    """
+    Simple. Elegant. Perfect.
+    Active capsules spawn new version; drafts update in place.
+    """
+    if capsule.status == "draft":
+        for key, value in updates.items():
+            setattr(capsule, key, value)
+        capsule.save()
+        return capsule
+    
+    # Clone for active capsules
+    new_version = Capsule.objects.create(
+        parent_id=capsule.id,
+        name=capsule.name,
+        version=increment_version(capsule.version),
+        status="draft",
+        **{**capsule.to_dict(), **updates},
+    )
+    return new_version
+```
+
+## 19.3 Essential Observability
+
+### 19.3.1 Observable Flow
+```mermaid
+flowchart LR
+    subgraph Operations["OPERATIONS"]
+        CERT[Certify]
+        VERIFY[Verify]
+        INJECT[Inject]
+        ENFORCE[Enforce]
+    end
+    
+    subgraph Observe["OBSERVE"]
+        M[Metrics]
+        L[Logs]
+        T[Traces]
+    end
+    
+    Operations --> Observe
+```
+
+### 19.3.2 Core Metrics (Only What Matters)
+```python
+# 4 Essential Metrics - No More, No Less
+
+capsule_operations_total = Counter(
+    'capsule_operations_total',
+    'Capsule operations count',
+    ['operation', 'status']  # certify|verify|inject|enforce, success|failure
+)
+
+capsule_verification_seconds = Histogram(
+    'capsule_verification_seconds',
+    'Time to verify capsule signature',
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1]
+)
+
+constitution_decisions_total = Counter(
+    'constitution_decisions_total',
+    'Constitution enforcement decisions',
+    ['decision']  # allow|deny
+)
+
+active_capsules_gauge = Gauge(
+    'active_capsules_total',
+    'Number of active certified capsules',
+    ['tenant_id']
+)
+```
+
+### 19.3.3 Core Logs (Structured, Minimal)
+```python
+# Log only what matters for debugging and audit
+
+@dataclass
+class CapsuleEvent:
+    timestamp: datetime
+    event: str           # certified | verified | injected | denied
+    capsule_id: UUID
+    result: str          # success | failure
+    reason: str | None   # Only on failure
+    duration_ms: float
+```
+
+### 19.3.4 Simple Dashboard
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CAPSULE SYSTEM HEALTH                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Certifications/hr    Verifications/hr    Active Capsules    Constitution  │
+│  ┌─────────────┐      ┌─────────────┐     ┌─────────────┐    ┌───────────┐ │
+│  │     127     │      │    4,521    │     │     89      │    │  HEALTHY  │ │
+│  └─────────────┘      └─────────────┘     └─────────────┘    └───────────┘ │
+│                                                                             │
+│  ──────────────────────────────────────────────────────────────────────────│
+│                                                                             │
+│  Verification Latency (p99)              Enforcement Decisions              │
+│  ┌────────────────────────────┐          ┌────────────────────────────┐    │
+│  │  ▁▂▃▂▁▂▃▄▃▂▁▂▃▂▁  5.2ms   │          │  ALLOW: 98.7%  DENY: 1.3%  │    │
+│  └────────────────────────────┘          └────────────────────────────┘    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 19.4 Core Requirements (Minimal, Complete)
+
+| ID | Requirement | Proof |
+|----|-------------|-------|
+| REQ-CORE-001 | Certification produces valid signature | `verify(sign(H(x))) = true` |
+| REQ-CORE-002 | Verification rejects tampered capsules | `verify(σ, H(x')) = false` when `x' ≠ x` |
+| REQ-CORE-003 | Active capsules are immutable | State machine: no `ACTIVE → ACTIVE` transition |
+| REQ-CORE-004 | Edits create new version | `edit(v1) → spawn(v2, parent=v1)` |
+| REQ-CORE-005 | Injection requires verification | `inject(c) ⟹ verify(c) = true` |
+| REQ-CORE-006 | All operations observable | Metrics + Logs for every operation |
+
+---
+
 **END OF DOCUMENT**
 
-*SRS-CAPSULE-LIFECYCLE-001 v5.0.0*  
+*SRS-CAPSULE-LIFECYCLE-001 v6.0.0*  
 *ISO/IEC/IEEE 29148:2018 Compliant*  
-*Full Traceability, Event Sourcing, Replay, Regression, Injection Security & Observability*
+*Simple. Elegant. Observable. Mathematically Provable.*
