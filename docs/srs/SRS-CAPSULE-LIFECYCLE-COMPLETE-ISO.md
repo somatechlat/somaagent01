@@ -3017,8 +3017,347 @@ class CapsuleEvent:
 
 ---
 
+# 20. MULTI-TENANT SAAS & DEPLOYMENT MODES
+
+> **Architecture Goal**: Same codebase, same Capsule, seamlessly scales from local experimentation to millions of users in production.
+
+## 20.1 Deployment Mode Architecture
+
+### 20.1.1 The Three Modes
+```mermaid
+flowchart TB
+    subgraph Modes["SOMAAGENT01 DEPLOYMENT MODES"]
+        direction TB
+        
+        subgraph M1["MODE 1: STANDALONE"]
+            SA1["Single User"]
+            SA2["Local SQLite/Postgres"]
+            SA3["Local Auth"]
+            SA4["No Billing"]
+        end
+        
+        subgraph M2["MODE 2: SANDBOX"]
+            SB1["Multi-User Dev/Test"]
+            SB2["Shared Infrastructure"]
+            SB3["Keycloak Auth"]
+            SB4["Mock Billing"]
+        end
+        
+        subgraph M3["MODE 3: PRODUCTION"]
+            PR1["Multi-Tenant SaaS"]
+            PR2["Full Infrastructure"]
+            PR3["SpiceDB + Keycloak"]
+            PR4["Lago Billing"]
+        end
+        
+        M1 -->|"Switch"| M2 -->|"Switch"| M3
+    end
+```
+
+### 20.1.2 Mode Comparison Matrix
+| Feature | StandAlone | Sandbox | Production |
+|---------|------------|---------|------------|
+| **Users** | 1 | Multi-user | Millions |
+| **Tenants** | N/A | 1-10 | Unlimited |
+| **Database** | SQLite/Local PG | Shared PG | Isolated PG/Shards |
+| **Auth** | Local JWT | Keycloak | SpiceDB + Keycloak |
+| **Billing** | Disabled | Mock/Dev | Lago + Stripe |
+| **Capsule Store** | Local file | Shared DB | Tenant-isolated |
+| **Constitution** | Local JSON | Dev SomaBrain | Prod SomaBrain |
+| **Infrastructure** | Docker Compose | Tilt/K8s Dev | EKS/GKE Prod |
+| **Data Isolation** | None | Soft | Hard (Row-level) |
+
+### 20.1.3 Configuration
+```bash
+# Environment variable to set mode
+SOMASTACK_SOFTWARE_MODE=StandAlone|SomaStackClusterMode
+
+# Within SomaStackClusterMode, deployment target
+SA01_DEPLOYMENT_TARGET=LOCAL|SANDBOX|PRODUCTION
+
+# Mode detection logic
+if SOMASTACK_SOFTWARE_MODE == "StandAlone":
+    # Single user, local everything
+elif SA01_DEPLOYMENT_TARGET == "SANDBOX":
+    # Multi-user development
+else:
+    # Full production SaaS
+```
+
+## 20.2 Multi-Tenant Architecture
+
+### 20.2.1 Tenant Hierarchy
+```mermaid
+flowchart TB
+    subgraph TenantHierarchy["TENANT HIERARCHY"]
+        direction TB
+        
+        PLATFORM["🌐 PLATFORM (Eye of God)"]
+        
+        PLATFORM --> T1["🏢 Tenant A"]
+        PLATFORM --> T2["🏢 Tenant B"]
+        PLATFORM --> TN["🏢 Tenant N..."]
+        
+        T1 --> A1["🤖 Agent 1"]
+        T1 --> A2["🤖 Agent 2"]
+        
+        A1 --> C1["🧬 Capsule v1.0"]
+        A1 --> C2["🧬 Capsule v1.1"]
+        
+        A1 --> U1["👤 User 1"]
+        A1 --> U2["👤 User 2"]
+    end
+```
+
+### 20.2.2 Tenant Isolation
+```mermaid
+flowchart TB
+    subgraph Isolation["DATA ISOLATION"]
+        direction TB
+        
+        subgraph Shared["SHARED (Platform-Level)"]
+            CONST["📜 Constitution"]
+            TOOLS["🔧 Tool Registry"]
+            MODELS["🧠 LLM Models"]
+        end
+        
+        subgraph Isolated["ISOLATED (Per-Tenant)"]
+            CAP["🧬 Capsules"]
+            AGENTS["🤖 Agents"]
+            USERS["👤 Users"]
+            SESSIONS["💬 Sessions"]
+            AUDIT["📋 Audit Logs"]
+            MEMORY["🧠 Memory (SFM)"]
+        end
+    end
+```
+
+### 20.2.3 Capsule Tenant Isolation
+```python
+class Capsule(models.Model):
+    """
+    Capsules are TENANT-ISOLATED.
+    tenant_id is MANDATORY on all operations.
+    """
+    id = models.UUIDField(primary_key=True)
+    tenant_id = models.CharField(max_length=36, db_index=True)  # MANDATORY
+    
+    # All queries MUST filter by tenant_id
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenant_id', 'status']),
+            models.Index(fields=['tenant_id', 'name', 'version']),
+        ]
+
+
+class CapsuleManager(models.Manager):
+    """
+    Enforces tenant isolation on ALL queries.
+    """
+    def for_tenant(self, tenant_id: str):
+        return self.filter(tenant_id=tenant_id)
+    
+    def get_queryset(self):
+        # Never return cross-tenant data
+        raise TenantRequiredError("Must use for_tenant()")
+```
+
+## 20.3 User Permission Matrix
+
+### 20.3.1 Role Hierarchy
+```mermaid
+flowchart TB
+    subgraph Roles["ROLE HIERARCHY"]
+        direction TB
+        
+        GOD["👁️ SAAS Super Admin (God Mode)"]
+        
+        GOD --> TSA["🏢 Tenant SysAdmin"]
+        TSA --> TA["👔 Tenant Admin"]
+        TA --> AA["🤖 Agent Admin"]
+        AA --> DEV["💻 Developer"]
+        AA --> TRN["🎓 Trainer"]
+        DEV --> USR["👤 User"]
+        TRN --> USR
+        USR --> VWR["👀 Viewer"]
+    end
+```
+
+### 20.3.2 Capsule Permission Matrix
+| Action | God | TenantSysAdmin | TenantAdmin | AgentAdmin | Developer | Trainer | User | Viewer |
+|--------|-----|----------------|-------------|------------|-----------|---------|------|--------|
+| **Create Capsule** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Edit Draft** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Certify Capsule** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **View Capsule** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Use Capsule (Chat)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Archive Capsule** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **View Audit Log** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Replay Session** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Cross-Tenant View** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### 20.3.3 SpiceDB Schema for Capsules
+```zed
+definition capsule {
+    relation tenant: tenant
+    relation owner: user
+    relation admin: user
+    relation developer: user
+    relation user: user
+    relation viewer: user
+    
+    // Core permissions
+    permission create = tenant->administrate
+    permission edit = owner + admin
+    permission certify = tenant->administrate
+    permission view = edit + developer + user + viewer
+    permission use = edit + developer + user
+    permission archive = tenant->administrate
+    
+    // Audit permissions
+    permission view_audit = edit + developer
+    permission replay = edit + developer
+}
+
+definition tenant {
+    relation platform: platform
+    relation sysadmin: user
+    relation admin: user
+    relation member: user
+    
+    permission manage = platform->god + sysadmin
+    permission administrate = manage + admin
+    permission participate = administrate + member
+}
+
+definition platform {
+    relation god: user
+    
+    permission manage_all = god
+    permission view_all = god
+}
+```
+
+## 20.4 Mode Switching (Sandbox → Production)
+
+### 20.4.1 Switch Flow
+```mermaid
+flowchart TD
+    subgraph ModeSwitching["MODE SWITCHING"]
+        START([User in StandAlone]) --> PLAY[Play Locally]
+        PLAY --> READY{Ready for Prod?}
+        
+        READY -->|No| PLAY
+        READY -->|Yes| REGISTER[Register SaaS Account]
+        REGISTER --> CONNECT[Connect to Platform]
+        CONNECT --> SYNC[Sync Capsules]
+        SYNC --> VERIFY{Verify Signatures}
+        
+        VERIFY -->|Invalid| RESIGN[Re-certify with Prod Key]
+        VERIFY -->|Valid| BIND[Bind to Tenant]
+        RESIGN --> BIND
+        
+        BIND --> PROD([Running in Production])
+    end
+```
+
+### 20.4.2 Capsule Migration
+```python
+def migrate_capsule_to_production(
+    local_capsule: Capsule,
+    tenant_id: str,
+    production_constitution: Constitution
+) -> Capsule:
+    """
+    Migrate capsule from StandAlone to Production.
+    Re-certification is REQUIRED (different signing keys).
+    """
+    # 1. Create draft copy in production
+    prod_capsule = Capsule.objects.create(
+        tenant_id=tenant_id,
+        name=local_capsule.name,
+        version=local_capsule.version,
+        status="draft",
+        soul=local_capsule.soul,
+        body=local_capsule.body,
+        # Clear local signature
+        registry_signature=None,
+        constitution_ref=None,
+    )
+    
+    # 2. Re-certify with production key
+    prod_capsule = certify_capsule(prod_capsule)  # Uses PROD signing key
+    
+    # 3. Log migration event
+    CapsuleAuditLog.objects.create(
+        capsule=prod_capsule,
+        event_type="migrated",
+        old_values={"source": "standalone"},
+        performed_by=f"tenant:{tenant_id}",
+    )
+    
+    return prod_capsule
+```
+
+## 20.5 Scaling Architecture
+
+### 20.5.1 Scale Diagram
+```mermaid
+flowchart TB
+    subgraph Scale["SCALING FOR MILLIONS"]
+        direction TB
+        
+        subgraph LB["LOAD BALANCING"]
+            ALB[AWS ALB / GCP GLB]
+        end
+        
+        subgraph API["API LAYER (HPA)"]
+            A1[API Pod 1]
+            A2[API Pod 2]
+            AN[API Pod N...]
+        end
+        
+        subgraph DATA["DATA LAYER"]
+            PG[(PostgreSQL<br/>Read Replicas)]
+            REDIS[(Redis Cluster)]
+            KAFKA[(Kafka Cluster)]
+        end
+        
+        subgraph CAPSULE["CAPSULE CACHE"]
+            C1[Per-Tenant Cache]
+            C2[Global Tool Cache]
+        end
+        
+        ALB --> API
+        API --> DATA
+        API --> CAPSULE
+    end
+```
+
+### 20.5.2 Tenant Sharding Strategy
+| Metric | Strategy |
+|--------|----------|
+| < 1K tenants | Single DB, row-level isolation |
+| 1K - 10K tenants | Schema-per-tenant |
+| 10K+ tenants | DB sharding by tenant_id hash |
+
+## 20.6 SaaS Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| REQ-SAAS-001 | All capsules require tenant_id | P0 |
+| REQ-SAAS-002 | Cross-tenant queries forbidden | P0 |
+| REQ-SAAS-003 | SpiceDB permission check on all operations | P0 |
+| REQ-SAAS-004 | Mode detected from environment | P0 |
+| REQ-SAAS-005 | Sandbox → Production migration path | P0 |
+| REQ-SAAS-006 | Re-certification on production migration | P0 |
+| REQ-SAAS-007 | Tenant-scoped metrics | P1 |
+| REQ-SAAS-008 | Billing integration (Lago) for capsule usage | P1 |
+
+---
+
 **END OF DOCUMENT**
 
-*SRS-CAPSULE-LIFECYCLE-001 v6.0.0*  
+*SRS-CAPSULE-LIFECYCLE-001 v7.0.0*  
 *ISO/IEC/IEEE 29148:2018 Compliant*  
-*Simple. Elegant. Observable. Mathematically Provable.*
+*Multi-Tenant SaaS Architecture for Millions of Users*
