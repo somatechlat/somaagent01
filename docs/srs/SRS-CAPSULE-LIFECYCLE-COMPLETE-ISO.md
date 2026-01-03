@@ -1004,7 +1004,6 @@ sequenceDiagram
 | REQ-SEC-001 | Ed25519 signatures | P0 | §11.1 |
 | REQ-SEC-002 | Constitution hash binding | P0 | §11.1 |
 | REQ-ENF-001 | Runtime policy enforcement | P0 | §8.1 |
-
 ---
 
 # 15. IMPLEMENTATION ROADMAP
@@ -1036,7 +1035,1145 @@ gantt
 
 ---
 
+# 16. COMPLETE TRACEABILITY SYSTEM
+
+## 16.1 Traceability Overview
+```mermaid
+flowchart TB
+    subgraph Traceability["FULL CAPSULE TRACEABILITY"]
+        direction TB
+        
+        subgraph L1["Level 1: PROVENANCE"]
+            BIRTH[Birth Record]
+            CONST_BIND[Constitution Binding]
+            CERT[Certification Event]
+        end
+        
+        subgraph L2["Level 2: LINEAGE"]
+            PARENT[Parent Version]
+            CHILDREN[Child Versions]
+            DIFF[Version Diffs]
+        end
+        
+        subgraph L3["Level 3: LIFECYCLE"]
+            EVENTS[State Transitions]
+            MUTATIONS[Field Changes]
+            ARCHIVES[Archival Records]
+        end
+        
+        subgraph L4["Level 4: EXECUTION"]
+            SESSIONS[Session Logs]
+            TOOLS[Tool Calls]
+            DECISIONS[Enforcement Decisions]
+        end
+        
+        L1 --> L2 --> L3 --> L4
+    end
+```
+
+## 16.2 Audit Data Models
+
+### 16.2.1 Entity Relationship Diagram
+```mermaid
+erDiagram
+    CAPSULE ||--o{ CAPSULE_AUDIT_LOG : tracks
+    CAPSULE ||--o{ CAPSULE_VERSION_LINK : "parent/child"
+    CAPSULE ||--o{ CAPSULE_CERTIFICATION_LOG : certifies
+    CAPSULE ||--o{ CAPSULE_SESSION : executes
+    CAPSULE_SESSION ||--o{ CAPSULE_EXECUTION_LOG : contains
+    
+    CAPSULE_AUDIT_LOG {
+        uuid id PK
+        uuid capsule_id FK
+        string event_type
+        json old_values
+        json new_values
+        json diff
+        string performed_by
+        string ip_address
+        string user_agent
+        datetime created_at
+    }
+    
+    CAPSULE_VERSION_LINK {
+        uuid id PK
+        uuid parent_id FK
+        uuid child_id FK
+        string relationship
+        json version_diff
+        datetime linked_at
+    }
+    
+    CAPSULE_CERTIFICATION_LOG {
+        uuid id PK
+        uuid capsule_id FK
+        uuid constitution_id FK
+        string action
+        string constitution_hash
+        string signature_full
+        string signing_key_id
+        json payload_snapshot
+        string performed_by
+        datetime created_at
+    }
+    
+    CAPSULE_SESSION {
+        uuid id PK
+        uuid capsule_id FK
+        string session_id
+        string user_id
+        string tenant_id
+        datetime started_at
+        datetime ended_at
+        string end_reason
+        json metrics
+    }
+    
+    CAPSULE_EXECUTION_LOG {
+        uuid id PK
+        uuid session_id FK
+        string event_type
+        string tool_name
+        json tool_args
+        string decision
+        string denial_reason
+        float risk_score
+        boolean hitl_required
+        boolean hitl_approved
+        datetime created_at
+    }
+```
+
+### 16.2.2 Model Definitions
+```python
+class CapsuleAuditLog(models.Model):
+    """
+    Immutable audit trail for ALL capsule changes.
+    Every mutation generates a record.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    capsule = models.ForeignKey(Capsule, on_delete=models.CASCADE)
+    
+    # Event Classification
+    event_type = models.CharField(max_length=50, choices=[
+        ('created', 'Created'),
+        ('updated', 'Updated'),
+        ('certified', 'Certified'),
+        ('verified', 'Verified'),
+        ('cloned', 'Cloned'),
+        ('archived', 'Archived'),
+        ('restored', 'Restored'),
+        ('deleted', 'Deleted'),
+    ])
+    
+    # Change Tracking
+    old_values = models.JSONField(null=True)  # Previous field values
+    new_values = models.JSONField(null=True)  # New field values
+    diff = models.JSONField(null=True)        # Computed diff
+    
+    # Attribution
+    performed_by = models.CharField(max_length=255)
+    ip_address = models.GenericIPAddressField(null=True)
+    user_agent = models.TextField(null=True)
+    
+    # Immutable timestamp
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['capsule_id', 'event_type']),
+            models.Index(fields=['created_at']),
+        ]
+
+
+class CapsuleCertificationLog(models.Model):
+    """
+    Immutable record of every certification event.
+    Full cryptographic audit trail.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    capsule = models.ForeignKey(Capsule, on_delete=models.CASCADE)
+    constitution = models.ForeignKey(Constitution, on_delete=models.PROTECT)
+    
+    # Certification Details
+    action = models.CharField(max_length=20, choices=[
+        ('certified', 'Certified'),
+        ('revoked', 'Revoked'),
+        ('re_certified', 'Re-Certified'),
+    ])
+    
+    # Cryptographic Proof
+    constitution_hash = models.CharField(max_length=64)  # SHA-256
+    signature_full = models.TextField()                   # Full Ed25519 signature
+    signing_key_id = models.CharField(max_length=64)      # Key fingerprint
+    payload_snapshot = models.JSONField()                 # Exact payload signed
+    
+    # Attribution
+    performed_by = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class CapsuleSession(models.Model):
+    """
+    Runtime execution session for a capsule.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    capsule = models.ForeignKey(Capsule, on_delete=models.PROTECT)
+    session_id = models.CharField(max_length=255, unique=True)
+    user_id = models.CharField(max_length=255)
+    tenant_id = models.CharField(max_length=255)
+    
+    # Lifecycle
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True)
+    end_reason = models.CharField(max_length=50, null=True)  # completed, timeout, error
+    
+    # Metrics
+    metrics = models.JSONField(default=dict)  # token_count, tool_calls, duration
+
+
+class CapsuleExecutionLog(models.Model):
+    """
+    Per-action execution log within a session.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    session = models.ForeignKey(CapsuleSession, on_delete=models.CASCADE)
+    
+    # Event
+    event_type = models.CharField(max_length=50)  # tool_call, llm_request, etc.
+    tool_name = models.CharField(max_length=100, null=True)
+    tool_args = models.JSONField(null=True)
+    
+    # Enforcement Decision
+    decision = models.CharField(max_length=20)  # ALLOW, DENY, REQUIRE_HITL
+    denial_reason = models.TextField(null=True)
+    risk_score = models.FloatField(null=True)
+    
+    # HITL
+    hitl_required = models.BooleanField(default=False)
+    hitl_approved = models.BooleanField(null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+```
+
+## 16.3 Provenance Chain
+
+### 16.3.1 Full Provenance Diagram
+```mermaid
+flowchart TD
+    subgraph Origin["ORIGIN"]
+        CONST[/"📜 Constitution v4.0.0<br/>Hash: 8f51eb38..."/]
+    end
+    
+    subgraph Birth["BIRTH"]
+        CREATE["Capsule Created"]
+        CREATE -->|"Draft"| CAP1
+        CAP1[/"🧬 agent-alpha v1.0.0<br/>ID: uuid-1111"/]
+    end
+    
+    subgraph Certification["CERTIFICATION"]
+        CAP1 -->|"Bind + Sign"| CERT1
+        CERT1["Certified"]
+        CERT1 -->|"Active"| CAP1_ACTIVE
+        CAP1_ACTIVE[/"🧬 agent-alpha v1.0.0<br/>Signature: abc123<br/>Status: ACTIVE"/]
+        CONST -.->|"Bound"| CAP1_ACTIVE
+    end
+    
+    subgraph Evolution["VERSION EVOLUTION"]
+        CAP1_ACTIVE -->|"Edit"| CAP2
+        CAP2[/"🧬 agent-alpha v1.1.0<br/>Parent: uuid-1111<br/>Status: DRAFT"/]
+        CAP2 -->|"Certify"| CAP2_ACTIVE
+        CAP2_ACTIVE[/"🧬 agent-alpha v1.1.0<br/>Status: ACTIVE"/]
+    end
+    
+    subgraph Execution["EXECUTION"]
+        CAP2_ACTIVE -->|"Session"| SESS
+        SESS["Session: sess-abc"]
+        SESS -->|"Tool"| TOOL1["web_search"]
+        SESS -->|"Tool"| TOOL2["code_exec"]
+        TOOL1 -->|"ALLOW"| LOG1
+        TOOL2 -->|"DENY"| LOG2
+        LOG1["ExecutionLog"]
+        LOG2["ExecutionLog"]
+    end
+```
+
+### 16.3.2 Provenance Query API
+```yaml
+GET /api/capsules/{id}/provenance
+
+Response:
+{
+  "capsule_id": "uuid-1111",
+  "name": "agent-alpha",
+  "version": "1.0.0",
+  
+  "provenance": {
+    "constitution": {
+      "id": "uuid-const",
+      "version": "4.0.0",
+      "name": "THE SOMA COVENANT",
+      "content_hash": "8f51eb38...",
+      "bound_at": "2026-01-03T09:00:00Z"
+    },
+    
+    "certification": {
+      "signature": "abc123...",
+      "signing_key_id": "key-001",
+      "certified_at": "2026-01-03T09:00:00Z",
+      "certified_by": "admin@soma.ai"
+    },
+    
+    "lineage": {
+      "parent_id": null,
+      "children": ["uuid-2222", "uuid-3333"],
+      "generation": 1
+    },
+    
+    "lifecycle": [
+      {"event": "created", "at": "2026-01-03T08:00:00Z"},
+      {"event": "updated", "at": "2026-01-03T08:30:00Z"},
+      {"event": "certified", "at": "2026-01-03T09:00:00Z"}
+    ]
+  }
+}
+```
+
+## 16.4 Version Lineage
+
+### 16.4.1 Lineage Tree Diagram
+```mermaid
+flowchart TD
+    subgraph LineageTree["VERSION LINEAGE TREE"]
+        V1["v1.0.0<br/>Status: ARCHIVED"]
+        V1 -->|clone| V1_1["v1.1.0<br/>Status: ARCHIVED"]
+        V1 -->|clone| V1_2["v1.2.0<br/>Status: ARCHIVED"]
+        V1_1 -->|clone| V1_1_1["v1.1.1<br/>Status: ACTIVE"]
+        V1_2 -->|clone| V1_2_1["v1.2.1<br/>Status: ACTIVE"]
+        V1_2_1 -->|clone| V2_0["v2.0.0<br/>Status: DRAFT"]
+    end
+```
+
+### 16.4.2 Lineage Query API
+```yaml
+GET /api/capsules/{id}/lineage
+
+Response:
+{
+  "capsule_id": "uuid-1111",
+  "current_version": "1.1.1",
+  
+  "ancestors": [
+    {"id": "uuid-1110", "version": "1.1.0", "status": "archived"},
+    {"id": "uuid-1000", "version": "1.0.0", "status": "archived"}
+  ],
+  
+  "descendants": [
+    {"id": "uuid-1112", "version": "1.1.2", "status": "draft"}
+  ],
+  
+  "siblings": [
+    {"id": "uuid-1200", "version": "1.2.0", "status": "archived"}
+  ],
+  
+  "root": {
+    "id": "uuid-1000",
+    "version": "1.0.0"
+  }
+}
+```
+
+### 16.4.3 Version Diff API
+```yaml
+GET /api/capsules/{id}/diff/{other_id}
+
+Response:
+{
+  "base": {"id": "uuid-1000", "version": "1.0.0"},
+  "target": {"id": "uuid-1111", "version": "1.1.0"},
+  
+  "diff": {
+    "soul": {
+      "system_prompt": {
+        "old": "You are a helpful...",
+        "new": "You are an expert..."
+      }
+    },
+    "body": {
+      "capabilities_whitelist": {
+        "added": ["database_query"],
+        "removed": []
+      }
+    }
+  }
+}
+```
+
+## 16.5 Audit Log Queries
+
+### 16.5.1 Audit Timeline Sequence
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant API as GET /capsules/{id}/audit
+    participant DB as PostgreSQL
+    
+    U->>API: Request audit trail
+    API->>DB: SELECT * FROM capsule_audit_log WHERE capsule_id=?
+    DB-->>API: audit_events[]
+    
+    API->>DB: SELECT * FROM capsule_certification_log WHERE capsule_id=?
+    DB-->>API: cert_events[]
+    
+    API->>DB: SELECT * FROM capsule_session WHERE capsule_id=?
+    DB-->>API: sessions[]
+    
+    API->>API: Merge and sort by timestamp
+    API-->>U: Complete audit trail
+```
+
+### 16.5.2 Audit Query API
+```yaml
+GET /api/capsules/{id}/audit?from=2026-01-01&to=2026-01-31&event_type=certified
+
+Response:
+{
+  "capsule_id": "uuid-1111",
+  "audit_trail": [
+    {
+      "id": "log-001",
+      "event_type": "created",
+      "timestamp": "2026-01-03T08:00:00Z",
+      "performed_by": "admin@soma.ai",
+      "ip_address": "192.168.1.1",
+      "changes": null
+    },
+    {
+      "id": "log-002",
+      "event_type": "updated",
+      "timestamp": "2026-01-03T08:30:00Z",
+      "performed_by": "admin@soma.ai",
+      "changes": {
+        "system_prompt": {
+          "old": "You are...",
+          "new": "You are an expert..."
+        }
+      }
+    },
+    {
+      "id": "log-003",
+      "event_type": "certified",
+      "timestamp": "2026-01-03T09:00:00Z",
+      "performed_by": "admin@soma.ai",
+      "certification": {
+        "constitution_hash": "8f51eb38...",
+        "signature_prefix": "abc123..."
+      }
+    }
+  ],
+  "total": 3,
+  "page": 1
+}
+```
+
+## 16.6 Execution Trace
+
+### 16.6.1 Session Execution Flow
+```mermaid
+flowchart TD
+    subgraph Session["SESSION EXECUTION TRACE"]
+        START([Session Start]) --> V[Verify Capsule]
+        V --> INIT[Initialize Enforcer]
+        INIT --> LOOP{More Requests?}
+        
+        LOOP -->|Yes| REQ[Tool Request]
+        REQ --> ENF{Enforce}
+        
+        ENF -->|ALLOW| EXEC[Execute]
+        EXEC --> LOG_A[Log: ALLOW]
+        LOG_A --> LOOP
+        
+        ENF -->|DENY| LOG_D[Log: DENY]
+        LOG_D --> LOOP
+        
+        ENF -->|HITL| WAIT[Wait for Approval]
+        WAIT --> LOG_H[Log: HITL Decision]
+        LOG_H --> LOOP
+        
+        LOOP -->|No| END([Session End])
+    end
+```
+
+### 16.6.2 Execution Query API
+```yaml
+GET /api/capsules/{id}/sessions/{session_id}/execution
+
+Response:
+{
+  "session_id": "sess-abc",
+  "capsule_id": "uuid-1111",
+  "started_at": "2026-01-03T10:00:00Z",
+  "ended_at": "2026-01-03T10:05:00Z",
+  "status": "completed",
+  
+  "execution_log": [
+    {
+      "id": "exec-001",
+      "timestamp": "2026-01-03T10:00:05Z",
+      "event_type": "tool_call",
+      "tool_name": "web_search",
+      "decision": "ALLOW",
+      "risk_score": 0.2
+    },
+    {
+      "id": "exec-002",
+      "timestamp": "2026-01-03T10:00:10Z",
+      "event_type": "tool_call",
+      "tool_name": "file_system",
+      "decision": "DENY",
+      "denial_reason": "Tool not in whitelist"
+    },
+    {
+      "id": "exec-003",
+      "timestamp": "2026-01-03T10:00:15Z",
+      "event_type": "tool_call",
+      "tool_name": "database_query",
+      "decision": "REQUIRE_HITL",
+      "risk_score": 0.85,
+      "hitl_approved": true
+    }
+  ],
+  
+  "metrics": {
+    "total_requests": 10,
+    "allowed": 8,
+    "denied": 1,
+    "hitl_required": 1,
+    "tokens_used": 4500,
+    "duration_seconds": 300
+  }
+}
+```
+
+## 16.7 Screen: Capsule Audit Trail
+```mermaid
+graph TD
+    subgraph AuditScreen["Capsule Audit Trail"]
+        direction TB
+        H1[/"📋 Audit Trail: agent-alpha v1.0.0"\]
+        
+        subgraph Filters["Filters"]
+            F1["Date Range: [2026-01-01] to [2026-01-31]"]
+            F2["Event Type: [All ▼]"]
+            F3["[ Apply ]"]
+        end
+        
+        subgraph Timeline["Audit Timeline"]
+            E1["🔏 2026-01-03 09:00 | CERTIFIED | admin@soma.ai<br/>Constitution: THE SOMA COVENANT v4.0.0"]
+            E2["✏️ 2026-01-03 08:30 | UPDATED | admin@soma.ai<br/>Changed: system_prompt"]
+            E3["➕ 2026-01-03 08:00 | CREATED | admin@soma.ai<br/>Initial creation"]
+        end
+        
+        subgraph Actions["Actions"]
+            A1["[ Export CSV ]"]
+            A2["[ View Provenance ]"]
+        end
+    end
+```
+
+## 16.8 Traceability Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| REQ-TRACE-001 | Every capsule mutation generates audit log | P0 |
+| REQ-TRACE-002 | Audit logs are immutable (append-only) | P0 |
+| REQ-TRACE-003 | Certification events include full signature | P0 |
+| REQ-TRACE-004 | Version lineage tracked via parent_id | P0 |
+| REQ-TRACE-005 | Session execution logs all enforcement decisions | P0 |
+| REQ-TRACE-006 | Provenance API returns complete chain | P0 |
+| REQ-TRACE-007 | Audit logs retain 7 years minimum | P1 |
+| REQ-TRACE-008 | Export capability (CSV, JSON) | P1 |
+| REQ-TRACE-009 | Diff API for version comparison | P1 |
+
+---
+
+# 17. EVENT SOURCING, REPLAY, AND REGRESSION SYSTEM
+
+## 17.1 Overview
+```mermaid
+flowchart TB
+    subgraph EventSourcing["EVENT SOURCING ARCHITECTURE"]
+        direction TB
+        
+        subgraph Capture["EVENT CAPTURE"]
+            API[API Operations]
+            ENF[Enforcement Decisions]
+            SESS[Session Events]
+        end
+        
+        subgraph Store["EVENT STORE"]
+            KAFKA[Kafka Event Log]
+            PG[(PostgreSQL Snapshots)]
+            REDIS[(Redis Cache)]
+        end
+        
+        subgraph Capabilities["CAPABILITIES"]
+            REPLAY[Replay Engine]
+            REGRESS[Regression Tester]
+            DEBUG[Time-Travel Debugger]
+        end
+        
+        Capture --> KAFKA
+        KAFKA --> PG
+        KAFKA --> REDIS
+        Store --> Capabilities
+    end
+```
+
+## 17.2 Event Schema
+
+### 17.2.1 Event Envelope
+```python
+@dataclass
+class CapsuleEvent:
+    """
+    Immutable event envelope for all capsule operations.
+    Published to Kafka topic: capsule.events
+    """
+    # Identity
+    event_id: UUID                    # Unique event ID
+    event_type: str                   # Event classification
+    aggregate_id: UUID                # Capsule ID
+    aggregate_version: int            # Monotonic version number
+    
+    # Causation Chain
+    correlation_id: UUID              # Request correlation
+    causation_id: Optional[UUID]      # Preceding event ID
+    
+    # Payload
+    payload: Dict[str, Any]           # Event-specific data
+    
+    # Metadata
+    timestamp: datetime               # Event time (UTC)
+    actor_id: str                     # User/System ID
+    tenant_id: str                    # Multi-tenant isolation
+    
+    # Replay Support
+    schema_version: int               # Payload schema version
+    idempotency_key: str              # Deduplication key
+```
+
+### 17.2.2 Event Types
+| Event Type | Description | Payload |
+|------------|-------------|---------|
+| `capsule.created` | New capsule created | Full capsule state |
+| `capsule.updated` | Capsule fields modified | Diff + new state |
+| `capsule.certified` | Capsule signed | Signature, constitution_ref |
+| `capsule.verified` | Integrity check | Result, timestamp |
+| `capsule.cloned` | Version created | Parent ID, new ID |
+| `capsule.archived` | Capsule archived | Reason, timestamp |
+| `capsule.restored` | Capsule restored | Approver, timestamp |
+| `session.started` | Session began | Capsule ID, user |
+| `session.tool_call` | Tool execution | Tool, args, decision |
+| `session.ended` | Session completed | Metrics, duration |
+
+## 17.3 Kafka Infrastructure
+
+### 17.3.1 Topic Architecture
+```mermaid
+flowchart LR
+    subgraph Topics["KAFKA TOPICS"]
+        T1["capsule.events<br/>Partitions: 12<br/>Retention: 30d"]
+        T2["capsule.snapshots<br/>Partitions: 6<br/>Compacted"]
+        T3["session.events<br/>Partitions: 24<br/>Retention: 7d"]
+        T4["enforcement.decisions<br/>Partitions: 12<br/>Retention: 7d"]
+    end
+    
+    subgraph Consumers["CONSUMER GROUPS"]
+        C1["audit-writer"]
+        C2["snapshot-builder"]
+        C3["regression-runner"]
+        C4["replay-engine"]
+    end
+    
+    T1 --> C1
+    T1 --> C2
+    T1 --> C3
+    T1 --> C4
+    T3 --> C1
+    T4 --> C1
+```
+
+### 17.3.2 Event Publishing
+```python
+class CapsuleEventPublisher:
+    """
+    Publishes capsule events to Kafka.
+    Guarantees ordering per aggregate (capsule_id as partition key).
+    """
+    
+    def __init__(self, kafka_producer: KafkaProducer):
+        self.producer = kafka_producer
+        self.topic = "capsule.events"
+    
+    async def publish(self, event: CapsuleEvent) -> None:
+        """
+        Publish event with exactly-once semantics.
+        """
+        key = str(event.aggregate_id).encode()
+        value = json.dumps(asdict(event), default=str).encode()
+        
+        await self.producer.send(
+            self.topic,
+            key=key,
+            value=value,
+            headers=[
+                ("event_type", event.event_type.encode()),
+                ("schema_version", str(event.schema_version).encode()),
+                ("correlation_id", str(event.correlation_id).encode()),
+            ]
+        )
+```
+
+## 17.4 Replay Engine
+
+### 17.4.1 Replay Architecture
+```mermaid
+flowchart TD
+    subgraph ReplayEngine["REPLAY ENGINE"]
+        START([Replay Request]) --> FETCH[Fetch Events from Kafka]
+        FETCH --> FILTER{Filter by Time/ID}
+        FILTER --> ORDER[Order by Sequence]
+        ORDER --> APPLY{Apply Events}
+        APPLY --> |Event N| STATE[Build State N]
+        STATE --> |Next| APPLY
+        APPLY --> |Done| RESULT([Reconstructed State])
+    end
+```
+
+### 17.4.2 Replay API
+```yaml
+POST /api/capsules/{id}/replay
+
+Request:
+{
+  "target_timestamp": "2026-01-03T08:30:00Z",
+  "mode": "snapshot"  # snapshot | stream | diff
+}
+
+Response:
+{
+  "capsule_id": "uuid-1111",
+  "replay_timestamp": "2026-01-03T08:30:00Z",
+  "events_replayed": 5,
+  
+  "reconstructed_state": {
+    "name": "agent-alpha",
+    "version": "1.0.0",
+    "status": "draft",
+    "system_prompt": "You are...",
+    ...
+  },
+  
+  "event_sequence": [
+    {"event_id": "e001", "type": "capsule.created", "at": "2026-01-03T08:00:00Z"},
+    {"event_id": "e002", "type": "capsule.updated", "at": "2026-01-03T08:15:00Z"},
+    {"event_id": "e003", "type": "capsule.updated", "at": "2026-01-03T08:30:00Z"}
+  ]
+}
+```
+
+### 17.4.3 Replay Sequence
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant API as POST /capsules/{id}/replay
+    participant K as Kafka
+    participant RE as ReplayEngine
+    participant C as Cache
+    
+    U->>API: Replay to timestamp T
+    API->>K: Fetch events for capsule_id
+    K-->>API: events[]
+    
+    API->>RE: replay(events, target_time=T)
+    RE->>RE: Sort by sequence
+    RE->>RE: Filter events <= T
+    
+    loop For each event
+        RE->>RE: Apply event to state
+    end
+    
+    RE-->>API: reconstructed_state
+    API->>C: Cache result (TTL=5m)
+    API-->>U: State at time T
+```
+
+## 17.5 Regression Testing System
+
+### 17.5.1 Regression Architecture
+```mermaid
+flowchart TD
+    subgraph RegressionSystem["REGRESSION TESTING SYSTEM"]
+        RECORD([Record Mode]) --> CAPTURE[Capture Events]
+        CAPTURE --> STORE[(Golden Events)]
+        
+        TEST([Test Mode]) --> LOAD[Load Golden Events]
+        LOAD --> REPLAY[Replay Engine]
+        REPLAY --> COMPARE{Compare Results}
+        COMPARE -->|Match| PASS[✅ PASS]
+        COMPARE -->|Differ| FAIL[❌ FAIL + Diff]
+    end
+```
+
+### 17.5.2 Regression Test Model
+```python
+class CapsuleRegressionTest(models.Model):
+    """
+    Stored regression test case.
+    """
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    
+    # Test Configuration
+    capsule_id = models.UUIDField()           # Target capsule
+    scenario_type = models.CharField(max_length=50)  # certification, session, etc.
+    
+    # Golden Data
+    input_events = models.JSONField()          # Events to replay
+    expected_state = models.JSONField()        # Expected final state
+    expected_decisions = models.JSONField()    # Expected enforcement decisions
+    
+    # Metadata
+    created_by = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_run_at = models.DateTimeField(null=True)
+    last_run_result = models.CharField(max_length=20, null=True)
+
+
+class RegressionTestRun(models.Model):
+    """
+    Individual test execution.
+    """
+    id = models.UUIDField(primary_key=True)
+    test = models.ForeignKey(CapsuleRegressionTest, on_delete=models.CASCADE)
+    
+    # Execution
+    started_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True)
+    
+    # Results
+    status = models.CharField(max_length=20)  # passed, failed, error
+    actual_state = models.JSONField(null=True)
+    actual_decisions = models.JSONField(null=True)
+    diff = models.JSONField(null=True)
+    
+    # Context
+    environment = models.CharField(max_length=50)  # dev, staging, prod
+    code_version = models.CharField(max_length=100)
+```
+
+### 17.5.3 Regression API
+```yaml
+# Record golden test case
+POST /api/regression/record
+{
+  "name": "certification_flow_v1",
+  "capsule_id": "uuid-1111",
+  "scenario_type": "certification",
+  "from_timestamp": "2026-01-03T08:00:00Z",
+  "to_timestamp": "2026-01-03T09:00:00Z"
+}
+
+Response:
+{
+  "test_id": "test-001",
+  "events_captured": 15,
+  "expected_state_snapshot": {...}
+}
+
+# Run regression test
+POST /api/regression/run/{test_id}
+
+Response:
+{
+  "run_id": "run-001",
+  "test_id": "test-001",
+  "status": "passed",
+  "events_replayed": 15,
+  "assertions_passed": 12,
+  "assertions_failed": 0,
+  "duration_ms": 450
+}
+
+# List test runs
+GET /api/regression/runs?test_id=test-001
+
+Response:
+{
+  "runs": [
+    {"run_id": "run-001", "status": "passed", "at": "2026-01-03T10:00:00Z"},
+    {"run_id": "run-002", "status": "failed", "at": "2026-01-03T11:00:00Z"}
+  ]
+}
+```
+
+### 17.5.4 Regression Test Flow
+```mermaid
+sequenceDiagram
+    participant CI as CI/CD Pipeline
+    participant API as Regression API
+    participant K as Kafka
+    participant RE as ReplayEngine
+    participant DB as PostgreSQL
+    
+    CI->>API: POST /regression/run/{test_id}
+    API->>DB: Load test case
+    DB-->>API: {input_events, expected_state}
+    
+    API->>RE: replay(input_events)
+    RE->>RE: Apply all events
+    RE-->>API: actual_state
+    
+    API->>API: Compare expected vs actual
+    
+    alt States Match
+        API->>DB: INSERT run (status=passed)
+        API-->>CI: ✅ PASSED
+    else States Differ
+        API->>API: Compute diff
+        API->>DB: INSERT run (status=failed, diff)
+        API-->>CI: ❌ FAILED + diff
+    end
+```
+
+## 17.6 Time-Travel Debugging
+
+### 17.6.1 Time-Travel UI Flow
+```mermaid
+flowchart TD
+    subgraph TimeTravelDebug["TIME-TRAVEL DEBUGGER"]
+        SELECT([Select Capsule]) --> TIMELINE[Load Event Timeline]
+        TIMELINE --> SLIDER{Timeline Slider}
+        SLIDER --> |Move to T| REPLAY[Replay to T]
+        REPLAY --> STATE[Show State at T]
+        STATE --> INSPECT{Inspect}
+        INSPECT --> |Next Event| STEP_F[Step Forward]
+        INSPECT --> |Prev Event| STEP_B[Step Backward]
+        STEP_F --> STATE
+        STEP_B --> STATE
+    end
+```
+
+### 17.6.2 Time-Travel API
+```yaml
+# Get event timeline
+GET /api/capsules/{id}/timeline?from=2026-01-01&to=2026-01-31
+
+Response:
+{
+  "capsule_id": "uuid-1111",
+  "events": [
+    {"id": "e001", "type": "created", "at": "2026-01-03T08:00:00Z"},
+    {"id": "e002", "type": "updated", "at": "2026-01-03T08:15:00Z"},
+    {"id": "e003", "type": "updated", "at": "2026-01-03T08:30:00Z"},
+    {"id": "e004", "type": "certified", "at": "2026-01-03T09:00:00Z"}
+  ],
+  "total_events": 4
+}
+
+# Step to specific event
+POST /api/capsules/{id}/step
+{
+  "to_event_id": "e003"
+}
+
+Response:
+{
+  "current_event": "e003",
+  "state_at_event": {...},
+  "next_event": "e004",
+  "previous_event": "e002"
+}
+```
+
+### 17.6.3 Screen: Time-Travel Debugger
+```mermaid
+graph TD
+    subgraph TTScreen["Time-Travel Debugger"]
+        direction TB
+        H1[/"🕰️ Time-Travel: agent-alpha"\]
+        
+        subgraph Timeline["Event Timeline"]
+            T1["●───○───○───○───●───→"]
+            T2["08:00  08:15  08:30  09:00  NOW"]
+            T3["▲ Current: 08:30 (e003)"]
+        end
+        
+        subgraph CurrentState["State at 08:30"]
+            S1["Status: DRAFT"]
+            S2["System Prompt: 'You are an expert...'"]
+            S3["Tools: web_search, code_exec"]
+        end
+        
+        subgraph Events["Event Details"]
+            E1["Event: capsule.updated"]
+            E2["Changed: system_prompt"]
+            E3["By: admin@soma.ai"]
+        end
+        
+        subgraph Controls["Controls"]
+            C1["[ ⏮ First ]"]
+            C2["[ ◀ Back ]"]
+            C3["[ Forward ▶ ]"]
+            C4["[ Last ⏭ ]"]
+        end
+    end
+```
+
+## 17.7 Session Replay
+
+### 17.7.1 Session Replay Flow
+```mermaid
+flowchart TD
+    subgraph SessionReplay["SESSION REPLAY"]
+        SELECT([Select Session]) --> LOAD[Load Session Events]
+        LOAD --> REPLAY{Replay Mode}
+        REPLAY --> |Full| FULL[Replay All Decisions]
+        REPLAY --> |Step| STEP[Step Through]
+        FULL --> COMPARE[Compare to Original]
+        STEP --> INSPECT[Inspect Each Decision]
+        COMPARE --> REPORT[Generate Report]
+        INSPECT --> REPORT
+    end
+```
+
+### 17.7.2 Session Replay API
+```yaml
+POST /api/sessions/{session_id}/replay
+{
+  "mode": "full",
+  "compare_enforcement": true
+}
+
+Response:
+{
+  "session_id": "sess-abc",
+  "capsule_id": "uuid-1111",
+  "original_duration_ms": 5000,
+  "replay_duration_ms": 450,
+  
+  "tool_calls": [
+    {
+      "sequence": 1,
+      "tool": "web_search",
+      "original_decision": "ALLOW",
+      "replay_decision": "ALLOW",
+      "match": true
+    },
+    {
+      "sequence": 2,
+      "tool": "file_system",
+      "original_decision": "DENY",
+      "replay_decision": "DENY",
+      "match": true
+    },
+    {
+      "sequence": 3,
+      "tool": "database_query",
+      "original_decision": "REQUIRE_HITL",
+      "replay_decision": "ALLOW",
+      "match": false,
+      "reason": "Policy changed since original execution"
+    }
+  ],
+  
+  "summary": {
+    "total_calls": 10,
+    "matching": 9,
+    "divergent": 1
+  }
+}
+```
+
+## 17.8 Infrastructure Configuration
+
+### 17.8.1 Kafka Configuration
+```yaml
+# kafka-config.yaml
+topics:
+  capsule.events:
+    partitions: 12
+    replication_factor: 3
+    retention_ms: 2592000000  # 30 days
+    cleanup_policy: delete
+    
+  capsule.snapshots:
+    partitions: 6
+    replication_factor: 3
+    cleanup_policy: compact
+    
+  session.events:
+    partitions: 24
+    replication_factor: 3
+    retention_ms: 604800000  # 7 days
+    
+  enforcement.decisions:
+    partitions: 12
+    replication_factor: 3
+    retention_ms: 604800000  # 7 days
+
+consumer_groups:
+  audit-writer:
+    offset_reset: earliest
+    enable_auto_commit: false
+    
+  replay-engine:
+    offset_reset: earliest
+    enable_auto_commit: true
+```
+
+### 17.8.2 Environment Variables
+```bash
+# Kafka
+KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+KAFKA_SECURITY_PROTOCOL=SASL_SSL
+KAFKA_SASL_MECHANISM=PLAIN
+
+# Event Sourcing
+EVENT_STORE_TOPIC=capsule.events
+EVENT_STORE_CONSUMER_GROUP=soma-event-processor
+
+# Replay
+REPLAY_CACHE_TTL_SECONDS=300
+REPLAY_MAX_EVENTS_PER_REQUEST=10000
+
+# Regression
+REGRESSION_GOLDEN_BUCKET=s3://soma-regression-golden
+REGRESSION_RESULTS_BUCKET=s3://soma-regression-results
+```
+
+## 17.9 Replay & Regression Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| REQ-REPLAY-001 | All mutations publish events to Kafka | P0 |
+| REQ-REPLAY-002 | Events are ordered per aggregate | P0 |
+| REQ-REPLAY-003 | Replay reconstructs exact state | P0 |
+| REQ-REPLAY-004 | Time-travel to any point in history | P0 |
+| REQ-REPLAY-005 | Session replay reproduces decisions | P0 |
+| REQ-REGRESS-001 | Record golden test cases from production | P0 |
+| REQ-REGRESS-002 | Run regression suite in CI/CD | P0 |
+| REQ-REGRESS-003 | Diff reporting on failures | P0 |
+| REQ-REGRESS-004 | Event schema versioning | P1 |
+| REQ-REGRESS-005 | Regression results persisted | P1 |
+
+---
+
 **END OF DOCUMENT**
 
-*SRS-CAPSULE-LIFECYCLE-001 v2.0.0*  
-*ISO/IEC/IEEE 29148:2018 Compliant*
+*SRS-CAPSULE-LIFECYCLE-001 v4.0.0*  
+*ISO/IEC/IEEE 29148:2018 Compliant*  
+*Full Traceability, Event Sourcing, Replay & Regression System*
