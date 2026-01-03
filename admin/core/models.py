@@ -52,20 +52,94 @@ class SessionEvent(models.Model):
 
 
 # =============================================================================
+# CONSTITUTION MODELS (The Supreme Law)
+# =============================================================================
+
+
+class Constitution(models.Model):
+    """The Supreme Regulatory Document.
+
+    IMMUTABLE: Once signed, this record cannot be changed.
+    All Capsules must reference a valid, active Constitution.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    version = models.CharField(max_length=50, help_text="Semantic Version (e.g., 1.0.0)")
+
+    # Cryptographic Proof
+    content_hash = models.CharField(
+        max_length=64, unique=True, help_text="SHA-256 Hash of normalized content"
+    )
+    signature = models.TextField(help_text="Ed25519 Signature of the content_hash")
+
+    # The Law
+    content = models.JSONField(help_text="The VIBE Rules and Regulations")
+
+    # Metadata
+    is_active = models.BooleanField(default=False, help_text="Only one can be active at a time")
+    created_at = models.DateTimeField(auto_now_add=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "constitutions"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["content_hash"]),
+        ]
+
+    def __str__(self):
+        return f"Constitution(v{self.version}:{self.content_hash[:8]})"
+
+
+# =============================================================================
 # CAPSULE MODELS (replaces capsule_store.py)
 # =============================================================================
 
 
 class Capsule(models.Model):
-    """Capsule definition - replaces CapsuleStore."""
+    """Capsule definition - The Atomic Unit of Agent Identity.
+
+    Contains the 'Soul' (Persona) and 'Body' (Capabilities).
+    Must be certified by the Registry and bound to a Constitution.
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     version = models.CharField(max_length=50, default="1.0.0")
     tenant = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True)
-    schema = models.JSONField(default=dict)
-    config = models.JSONField(default=dict)
+
+    # Governance & Security
+    constitution = models.ForeignKey(
+        Constitution,
+        on_delete=models.PROTECT,
+        related_name="capsules",
+        null=True,
+        help_text="The binding legal framework",
+    )
+    registry_signature = models.TextField(
+        null=True, blank=True, help_text="Ed25519 Signature from Registry Authority"
+    )
+
+    # The Soul (Identity)
+    system_prompt = models.TextField(default="", help_text="Base cognitive instruction set")
+    personality_traits = models.JSONField(
+        default=dict, help_text="Big 5 Traits (Openness, etc.) 0.0-1.0"
+    )
+    neuromodulator_baseline = models.JSONField(
+        default=dict, help_text="Baseline chemical state (Dopamine, etc.)"
+    )
+
+    # The Body (Capabilities)
+    schema = models.JSONField(default=dict, help_text="Legacy: Tool schemas")
+    config = models.JSONField(default=dict, help_text="Legacy: Configuration")
+    capabilities_whitelist = models.JSONField(default=list, help_text="List of allowed Tool IDs")
+    resource_limits = models.JSONField(
+        default=dict, help_text="Max wall clock, concurrency, etc."
+    )
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

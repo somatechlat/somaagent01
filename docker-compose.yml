@@ -52,7 +52,6 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: somaagent-postgres
-    profiles: [ "core", "auth" ]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -63,7 +62,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - somaagent_postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infrastructure/postgres/init_dbs.sql:/docker-entrypoint-initdb.d/init_dbs.sql
     ports:
       - "20432:5432"
     command: >
@@ -92,7 +91,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: somaagent-redis
-    profiles: [ "core" ]
     restart: unless-stopped
     user: redis
     command: >
@@ -125,7 +123,6 @@ services:
   kafka:
     image: apache/kafka:3.7.0
     container_name: somaagent-kafka
-    profiles: [ "core" ]
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -184,7 +181,6 @@ services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.11
     container_name: somaagent-etcd
-    profiles: [ "vectors" ]
     restart: unless-stopped
     <<: *common-security
     cap_add:
@@ -204,11 +200,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "0.5"
+          memory: 1G
+          cpus: "1.0"
         reservations:
-          memory: 128M
-          cpus: "0.1"
+          memory: 512M
+          cpus: "0.25"
     logging: *common-logging
     labels:
       <<: *common-labels
@@ -222,7 +218,6 @@ services:
   minio:
     image: minio/minio:latest
     container_name: somaagent-minio
-    profiles: [ "vectors" ]
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
@@ -242,11 +237,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "0.5"
+          memory: 1G
+          cpus: "1.0"
         reservations:
-          memory: 256M
-          cpus: "0.1"
+          memory: 512M
+          cpus: "0.25"
     logging: *common-logging
     labels:
       <<: *common-labels
@@ -260,7 +255,6 @@ services:
   milvus:
     image: milvusdb/milvus:v2.3.4
     container_name: somaagent-milvus
-    profiles: [ "vectors" ]
     restart: unless-stopped
     depends_on:
       etcd:
@@ -270,8 +264,8 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_PASSWORD:-somastack2024}
+      MINIO_ACCESS_KEY_ID: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:-somastack2024}
       # Production settings
       CACHE_SIZE: 1073741824
       INDEX_DISK_CACHE_SIZE: 1073741824
@@ -288,11 +282,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: "2.0"
+          memory: 8G
+          cpus: "4.0"
         reservations:
-          memory: 1G
-          cpus: "0.5"
+          memory: 4G
+          cpus: "1.0"
     logging: *common-logging
     labels:
       <<: *common-labels
@@ -306,7 +300,6 @@ services:
   spicedb:
     image: authzed/spicedb:v1.29.0
     container_name: somaagent-spicedb
-    profiles: [ "security" ]
     restart: unless-stopped
     depends_on:
       postgres:
@@ -347,7 +340,6 @@ services:
   opa:
     image: openpolicyagent/opa:latest
     container_name: somaagent-opa
-    profiles: [ "security" ]
     restart: unless-stopped
     <<: *common-security
     user: "1000:1000"
@@ -381,7 +373,6 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: somaagent-prometheus
-    profiles: [ "observability" ]
     restart: unless-stopped
     <<: *common-security
     user: "65534:65534"
@@ -414,51 +405,8 @@ services:
       com.somastack.service: "prometheus"
       com.somastack.tier: "observability"
 
-  # ==========================================================================
-  # OBSERVABILITY: Grafana 10.2 (Port 20300)
-  # Production: Provisioning, security
-  # ==========================================================================
-  grafana:
-    image: grafana/grafana:10.2.2
-    container_name: somaagent-grafana
-    profiles: [ "observability" ]
-    restart: unless-stopped
-    <<: *common-security
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
-    depends_on:
-      - prometheus
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-somastack2024}
-      GF_SECURITY_DISABLE_GRAVATAR: "true"
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: "http://localhost:20300"
-      GF_LOG_MODE: console
-      GF_LOG_LEVEL: warn
-    volumes:
-      - somaagent_grafana_data:/var/lib/grafana
-      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "20300:3000"
-    healthcheck:
-      <<: *common-healthcheck
-      test: [ "CMD-SHELL", "wget --spider -q http://localhost:3000/api/health" ]
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "0.5"
-        reservations:
-          memory: 128M
-          cpus: "0.1"
-    logging: *common-logging
-    labels:
-      <<: *common-labels
-      com.somastack.service: "grafana"
-      com.somastack.tier: "observability"
+  # GRAFANA REMOVED PER USER REQUEST
+
 
   # ==========================================================================
   # IDENTITY: Keycloak - MOVED TO SHARED SERVICE
