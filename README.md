@@ -46,7 +46,7 @@
 
 - **Sandboxed execution** with timeout controls
 - **Human-in-the-loop** approval workflows
-- **17+ built-in tools** (code, HTTP, files, docs)
+- **26+ built-in tools** (code, HTTP, files, docs, memory, browser, vision)
 - **MCP protocol support** for extensibility
 
 </td>
@@ -67,7 +67,7 @@
 ### 📊 Enterprise SaaS Features
 
 - **Multi-tenant isolation**
-- **62 Django Ninja routers** (80+ endpoints)
+- **53 Django Ninja routers** (682 endpoints)
 - **Keycloak JWT authentication**
 - **GDPR/HIPAA compliant** audit logging
 
@@ -261,9 +261,15 @@ curl -X POST http://localhost:8000/api/v2/tools/execute \
 | `code_execute` | Code | Execute Python in sandbox |
 | `http_fetch` | Network | Fetch URL content |
 | `file_read` | Files | Read from work directory |
-| `file_write` | Files | Write to work directory |
-| `document_ingest` | Documents | Ingest PDF/images |
+| `document_ingest` | Documents | Ingest PDF/images (OCR) |
 | `canvas_append` | UI | Append to UI canvas |
+| `memory_save` / `memory_load` | Memory | Save/recall agent memories |
+| `browser_agent` | Browser | Autonomous web browsing |
+| `vision_load` | Vision | Load and process images |
+| `a2a_chat` | A2A | Agent-to-Agent communication |
+| `call_subordinate` | Delegation | Delegate to subordinate agents |
+| `scheduler` | Scheduling | Schedule delayed tasks |
+| `search_engine` | Search | Web search integration |
 
 ---
 
@@ -298,18 +304,20 @@ curl -X POST http://localhost:8000/api/v2/tools/execute \
 
 ```
 somaAgent01/
-├── admin/                  # Django Admin & SaaS models
+├── admin/                  # Django Admin & SaaS models (61 modules)
 │   ├── saas/              # Tenants, Plans, Features
-│   ├── permissions/       # RBAC models
-│   └── api.py             # 62 Django Ninja routers
+│   ├── tools/             # 19 tool implementations
+│   ├── permissions/       # RBAC models (78 permissions)
+│   └── api.py             # 53 Django Ninja routers (682 endpoints)
 ├── services/              # Service layer
 │   ├── gateway/           # ASGI gateway (Django)
 │   ├── common/            # Shared utilities (68 modules)
-│   └── tool_executor/     # Tool execution engine
-├── webui/                 # Lit Web Components UI
-│   └── eyeofgod/         # SomaStack SaaS Admin UI
+│   └── tool_executor/     # Tool execution engine (18 modules)
+├── webui/                 # Lit 3 Web Components UI (112 files)
+│   ├── src/components/   # 34 Lit components
+│   └── src/views/        # 61 view components
 ├── docs/                  # Documentation
-│   └── srs/              # 43 SRS documents
+│   └── srs/              # 39 SRS documents
 └── manage.py             # Django management
 ```
 
