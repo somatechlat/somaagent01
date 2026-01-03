@@ -103,13 +103,44 @@ class Capsule(models.Model):
 
     Contains the 'Soul' (Persona) and 'Body' (Capabilities).
     Must be certified by the Registry and bound to a Constitution.
+    
+    Lifecycle: DRAFT → ACTIVE → ARCHIVED
     """
+    
+    # Status choices for lifecycle management
+    STATUS_DRAFT = "draft"
+    STATUS_ACTIVE = "active"
+    STATUS_ARCHIVED = "archived"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_ARCHIVED, "Archived"),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     version = models.CharField(max_length=50, default="1.0.0")
     tenant = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True)
+    
+    # Lifecycle Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+        db_index=True,
+        help_text="Lifecycle state: draft, active, archived"
+    )
+    
+    # Version Lineage (for edit-spawns-new-version pattern)
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='children',
+        help_text="Parent capsule this was cloned from"
+    )
 
     # Governance & Security
     constitution = models.ForeignKey(
@@ -119,8 +150,16 @@ class Capsule(models.Model):
         null=True,
         help_text="The binding legal framework",
     )
+    constitution_ref = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Cross-system reference: {'checksum': str, 'url': str}"
+    )
     registry_signature = models.TextField(
         null=True, blank=True, help_text="Ed25519 Signature from Registry Authority"
+    )
+    certified_at = models.DateTimeField(
+        null=True, blank=True, help_text="Timestamp of certification"
     )
 
     # The Soul (Identity)
@@ -147,9 +186,36 @@ class Capsule(models.Model):
     class Meta:
         db_table = "capsules"
         unique_together = [["name", "version", "tenant"]]
+        indexes = [
+            models.Index(fields=["tenant", "status"]),
+            models.Index(fields=["tenant", "name", "version"]),
+        ]
 
     def __str__(self):
-        return f"Capsule({self.name}:{self.version})"
+        return f"Capsule({self.name}:{self.version}:{self.status})"
+    
+    @property
+    def is_certified(self) -> bool:
+        """Check if capsule has been certified."""
+        return bool(self.registry_signature and self.status == self.STATUS_ACTIVE)
+    
+    @property
+    def soul(self) -> dict:
+        """Return Soul (identity) as dict."""
+        return {
+            "system_prompt": self.system_prompt,
+            "personality_traits": self.personality_traits,
+            "neuromodulator_baseline": self.neuromodulator_baseline,
+        }
+    
+    @property
+    def body(self) -> dict:
+        """Return Body (capabilities) as dict."""
+        return {
+            "capabilities_whitelist": self.capabilities_whitelist,
+            "resource_limits": self.resource_limits,
+        }
+
 
 
 class CapsuleInstance(models.Model):
