@@ -49,8 +49,18 @@ docker-compose up -d
 - Use managed services for Postgres (RDS), Redis (ElastiCache), Kafka (MSK), and S3 storage.
 - Store secrets in AWS Secrets Manager or SSM.
 
-## 4. Database Migrations
-**CRITICAL**: Migrations must run on every deployment before traffic is switched.
+## 4. Database Migrations (Resilient)
+**CRITICAL**: Migrations are the "Beat" of the system.
+
+### Local Development (Tilt)
+Tilt uses the **"Perfect Startup"** protocol to automate this.
+- **Resource**: `database-migrations`
+- **Mode**: `SA01_DEPLOYMENT_MODE=PROD` (Enforced)
+- **Sequence**: Memory → Brain → Agent (Strict Order)
+- **Constraint**: Application services **WILL NOT START** until this resource completes successfully.
+
+### Production (Manual/CI)
+Run migrations explicitly before rolling updates:
 ```bash
 # Run migrations via the Gateway service
 docker-compose exec gateway python manage.py migrate

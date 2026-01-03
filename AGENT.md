@@ -57,6 +57,36 @@
 - SomaBrain: Port 30xxx (cognitive runtime)
 - SomaFractalMemory: Port 9xxx (memory storage)
 
+### ⚡ The "Perfect Startup" Protocol (Tilt Orchestrated)
+
+**Tilt is the commander.** It enforces a strict, resilient startup sequence to guarantee production parity locally.
+
+1.  **Infrastructure Initialization**: `postgres`, `redis`, `milvus` start first.
+    *   *Auto-Provisioning*: `postgres` runs `init_dbs.sql` to create `somabrain`, `somafractalmemory`, `somaagent` DBs automatically.
+2.  **Automated Migrations**: `database-migrations` resource runs *before* any app code.
+    *   **Database Name Priority**: Services MUST prioritize `SOMA_DB_NAME` environment variable over parsed connection strings. This ensures Tilt can strictly control database targets during migrations (`SOMA_DB_NAME=somafractalmemory` overrides legacy defaults).
+    *   **Service Dependency**: `somafractalmemory` and `somabrain` must NOT start until `database-migrations` exits successfully (Exit Code 0).
+    *   **Mode Enforcement**: Migrations MUST run with `SA01_DEPLOYMENT_MODE=PROD` to trigger actual schema changes and ensure production-grade resilience.
+    *   **Sequence**: SomaFractalMemory (Layer 1) → SomaBrain (Layer 2) → SomaAgent01 (Layer 3).
+    *   **Fail-Fast**: Any migration failure halts the entire stack (`set -e`).
+3.  **Application Launch**: Apps (`django-api`, `somabrain`, `somafractalmemory`) are blocked until migrations complete.
+    *   **Production Runners**: All Python services run via `uvicorn` (ASGI), matching production.
+
+### 🛡️ Resilience & Recovery
+
+**Command**: `make reset-infra`
+
+This is the definitive "Panic Button" for local development. If the stack becomes unstable, orphaned, or corrupted (e.g., "Update error" in Tilt), run this command.
+
+**What it does (via `scripts/reset_infrastructure.sh`):**
+1.  **Destruction**: `docker compose down -v` (Wipes all volumes/state).
+2.  **Hydration**: Starts `postgres` and **waits** for readiness (no race conditions).
+3.  **Migration**: Runs `spicedb migrate head` automatically (prevents "invalid datastore" crashes).
+4.  **Launch**: Brings up the full stack.
+
+**Core Infrastructure Rule**:
+*   **NO PROFILES**: Core services (`postgres`, `redis`, `kafka`, `milvus`, `spicedb`, `opa`) MUST NOT use `profiles: [...]` in `docker-compose.yml`. They must be visible to Tilt at all times to prevent dependency graph failures.
+
 ---
 
 ## 🧭 Software Deployment Modes

@@ -137,3 +137,11 @@ restart-gateway: build-gateway
 # Check health
 health:
 	@curl -s http://localhost:8010/api/health/ | python -m json.tool || echo "Gateway not responding"
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+
+reset-infra:
+	@echo "🔄 Running resilient infrastructure reset..."
+	@./scripts/reset_infrastructure.sh
