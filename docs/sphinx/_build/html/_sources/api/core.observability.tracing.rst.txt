@@ -1,7 +1,7 @@
 core.observability.tracing module
 =================================
 
-.. automodule:: core.observability.tracing
+.. automodule:: admin.core.observability.tracing
    :members:
    :show-inheritance:
    :undoc-members:

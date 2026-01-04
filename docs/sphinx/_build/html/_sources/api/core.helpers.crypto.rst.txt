@@ -1,7 +1,7 @@
 core.helpers.crypto module
 ==========================
 
-.. automodule:: core.helpers.crypto
+.. automodule:: admin.core.helpers.crypto
    :members:
    :show-inheritance:
    :undoc-members:

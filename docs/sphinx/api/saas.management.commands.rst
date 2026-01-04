@@ -1,7 +1,7 @@
 saas.management.commands package
 ================================
 
-.. automodule:: saas.management.commands
+.. automodule:: admin.saas.management.commands
    :members:
    :show-inheritance:
    :undoc-members:

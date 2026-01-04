@@ -1,7 +1,7 @@
 permissions.migrations package
 ==============================
 
-.. automodule:: permissions.migrations
+.. automodule:: admin.permissions.migrations
    :members:
    :show-inheritance:
    :undoc-members:

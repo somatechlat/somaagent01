@@ -6,7 +6,7 @@ import uuid
 from channels.db import database_sync_to_async
 from tests.e2e.helpers.auth import get_auth_token
 
-# VIBE: Modern websockets API (v14.0+)
+# Modern websockets API (v14.0+)
 from websockets.asyncio.client import connect
 
 from admin.chat.models import Message
@@ -76,7 +76,7 @@ async def test_chat_full_flow():
     await setup_data_manual()
 
     try:
-        # 2. Connect (VIBE Rule 44: Port Sovereignty - SomaAgent01 uses 20xxx)
+        # 2. Connect (Port Sovereignty - SomaAgent01 uses 20xxx)
         uri = f"ws://127.0.0.1:20020/ws/chat/{agent_id}"
 
         headers = {"Cookie": f"access_token={token}", "Origin": "http://localhost:20173"}

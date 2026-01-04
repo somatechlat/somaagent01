@@ -1,7 +1,7 @@
 chat.apps module
 ================
 
-.. automodule:: chat.apps
+.. automodule:: admin.chat.apps
    :members:
    :show-inheritance:
    :undoc-members:

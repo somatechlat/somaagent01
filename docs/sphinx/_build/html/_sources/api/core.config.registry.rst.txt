@@ -1,7 +1,7 @@
 core.config.registry module
 ===========================
 
-.. automodule:: core.config.registry
+.. automodule:: admin.core.config.registry
    :members:
    :show-inheritance:
    :undoc-members:

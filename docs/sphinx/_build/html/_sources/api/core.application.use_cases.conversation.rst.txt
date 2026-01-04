@@ -1,7 +1,7 @@
 core.application.use\_cases.conversation package
 ================================================
 
-.. automodule:: core.application.use_cases.conversation
+.. automodule:: admin.core.application.use_cases.conversation
    :members:
    :show-inheritance:
    :undoc-members:

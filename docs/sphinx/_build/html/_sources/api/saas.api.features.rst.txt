@@ -1,7 +1,7 @@
 saas.api.features module
 ========================
 
-.. automodule:: saas.api.features
+.. automodule:: admin.saas.api.features
    :members:
    :show-inheritance:
    :undoc-members:

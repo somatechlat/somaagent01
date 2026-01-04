@@ -1,7 +1,7 @@
 core.infrastructure.models module
 =================================
 
-.. automodule:: core.infrastructure.models
+.. automodule:: admin.core.infrastructure.models
    :members:
    :show-inheritance:
    :undoc-members:

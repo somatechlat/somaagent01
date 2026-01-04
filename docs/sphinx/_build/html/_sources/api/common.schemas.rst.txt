@@ -1,7 +1,7 @@
 common.schemas module
 =====================
 
-.. automodule:: common.schemas
+.. automodule:: admin.common.schemas
    :members:
    :show-inheritance:
    :undoc-members:

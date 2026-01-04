@@ -1,7 +1,7 @@
 common.messages module
 ======================
 
-.. automodule:: common.messages
+.. automodule:: admin.common.messages
    :members:
    :show-inheritance:
    :undoc-members:

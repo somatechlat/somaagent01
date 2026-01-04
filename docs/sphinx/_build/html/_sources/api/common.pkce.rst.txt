@@ -1,7 +1,7 @@
 common.pkce module
 ==================
 
-.. automodule:: common.pkce
+.. automodule:: admin.common.pkce
    :members:
    :show-inheritance:
    :undoc-members:

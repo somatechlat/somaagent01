@@ -1,7 +1,7 @@
 agents.api.agents module
 ========================
 
-.. automodule:: agents.api.agents
+.. automodule:: admin.agents.api.agents
    :members:
    :show-inheritance:
    :undoc-members:

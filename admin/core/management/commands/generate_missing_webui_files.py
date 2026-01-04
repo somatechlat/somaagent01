@@ -3,6 +3,11 @@ import json
 import os
 from pathlib import Path
 
+"""
+Management command to identify and generate missing WebUI files.
+Compares reference implementation with target directory.
+"""
+
 repo_root = Path(__file__).resolve().parents[1]
 ref_webui = repo_root / "tmp" / "agent_zero" / "webui"
 tgt_webui = repo_root / "webui"

@@ -1,7 +1,7 @@
 saas.migrations package
 =======================
 
-.. automodule:: saas.migrations
+.. automodule:: admin.saas.migrations
    :members:
    :show-inheritance:
    :undoc-members:

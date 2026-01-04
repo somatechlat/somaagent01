@@ -1,7 +1,7 @@
 permissions.admin module
 ========================
 
-.. automodule:: permissions.admin
+.. automodule:: admin.permissions.admin
    :members:
    :show-inheritance:
    :undoc-members:

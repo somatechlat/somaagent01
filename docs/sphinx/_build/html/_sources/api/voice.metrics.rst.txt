@@ -1,7 +1,7 @@
 voice.metrics module
 ====================
 
-.. automodule:: voice.metrics
+.. automodule:: admin.voice.metrics
    :members:
    :show-inheritance:
    :undoc-members:

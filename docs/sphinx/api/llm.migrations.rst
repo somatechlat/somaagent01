@@ -1,7 +1,7 @@
 llm.migrations package
 ======================
 
-.. automodule:: llm.migrations
+.. automodule:: admin.llm.migrations
    :members:
    :show-inheritance:
    :undoc-members:

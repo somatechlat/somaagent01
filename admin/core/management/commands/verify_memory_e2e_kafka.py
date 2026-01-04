@@ -6,6 +6,7 @@ from kafka import KafkaProducer
 
 
 def produce_message():
+    """Produce a test message to Kafka for E2E memory verification."""
     producer = KafkaProducer(
         bootstrap_servers=["kafka:9092"], value_serializer=lambda x: json.dumps(x).encode("utf-8")
     )

@@ -1,7 +1,7 @@
 voice.schemas module
 ====================
 
-.. automodule:: voice.schemas
+.. automodule:: admin.voice.schemas
    :members:
    :show-inheritance:
    :undoc-members:

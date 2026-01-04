@@ -1,7 +1,7 @@
 core.sensors.tool module
 ========================
 
-.. automodule:: core.sensors.tool
+.. automodule:: admin.core.sensors.tool
    :members:
    :show-inheritance:
    :undoc-members:

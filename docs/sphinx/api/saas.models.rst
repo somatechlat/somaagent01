@@ -1,7 +1,7 @@
 saas.models package
 ===================
 
-.. automodule:: saas.models
+.. automodule:: admin.saas.models
    :members:
    :show-inheritance:
    :undoc-members:

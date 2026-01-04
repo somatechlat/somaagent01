@@ -1,7 +1,7 @@
 agents.services.context\_builder module
 =======================================
 
-.. automodule:: agents.services.context_builder
+.. automodule:: admin.agents.services.context_builder
    :members:
    :show-inheritance:
    :undoc-members:

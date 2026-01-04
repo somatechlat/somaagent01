@@ -1,7 +1,7 @@
 core.helpers.memory module
 ==========================
 
-.. automodule:: core.helpers.memory
+.. automodule:: admin.core.helpers.memory
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.helpers.images module
 ==========================
 
-.. automodule:: core.helpers.images
+.. automodule:: admin.core.helpers.images
    :members:
    :show-inheritance:
    :undoc-members:

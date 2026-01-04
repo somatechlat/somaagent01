@@ -1,7 +1,7 @@
 core.api.migrate module
 =======================
 
-.. automodule:: core.api.migrate
+.. automodule:: admin.core.api.migrate
    :members:
    :show-inheritance:
    :undoc-members:

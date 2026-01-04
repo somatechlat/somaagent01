@@ -1,7 +1,7 @@
 tools.api package
 =================
 
-.. automodule:: tools.api
+.. automodule:: admin.tools.api
    :members:
    :show-inheritance:
    :undoc-members:

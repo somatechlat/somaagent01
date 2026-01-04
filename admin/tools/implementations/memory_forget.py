@@ -4,6 +4,7 @@ from admin.tools.implementations.memory_load import DEFAULT_THRESHOLD
 
 
 class MemoryForget(Tool):
+    """Tool for forgetting memories based on a query and threshold."""
 
     async def execute(self, query="", threshold=DEFAULT_THRESHOLD, filter="", **kwargs):
         db = await Memory.get(self.agent)

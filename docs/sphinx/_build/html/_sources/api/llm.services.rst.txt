@@ -1,7 +1,7 @@
 llm.services package
 ====================
 
-.. automodule:: llm.services
+.. automodule:: admin.llm.services
    :members:
    :show-inheritance:
    :undoc-members:

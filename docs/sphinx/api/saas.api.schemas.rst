@@ -1,7 +1,7 @@
 saas.api.schemas module
 =======================
 
-.. automodule:: saas.api.schemas
+.. automodule:: admin.saas.api.schemas
    :members:
    :show-inheritance:
    :undoc-members:

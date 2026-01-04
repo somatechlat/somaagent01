@@ -1,7 +1,7 @@
 llm package
 ===========
 
-.. automodule:: llm
+.. automodule:: admin.llm
    :members:
    :show-inheritance:
    :undoc-members:

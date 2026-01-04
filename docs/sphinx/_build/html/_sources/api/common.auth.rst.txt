@@ -1,7 +1,7 @@
 common.auth module
 ==================
 
-.. automodule:: common.auth
+.. automodule:: admin.common.auth
    :members:
    :show-inheritance:
    :undoc-members:

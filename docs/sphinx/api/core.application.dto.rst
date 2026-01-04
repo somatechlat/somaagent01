@@ -1,7 +1,7 @@
 core.application.dto package
 ============================
 
-.. automodule:: core.application.dto
+.. automodule:: admin.core.application.dto
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 voice.routing module
 ====================
 
-.. automodule:: voice.routing
+.. automodule:: admin.voice.routing
    :members:
    :show-inheritance:
    :undoc-members:

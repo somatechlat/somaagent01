@@ -1,7 +1,7 @@
 """SomaBrain Integration Tests - Django Framework.
 
 Tests the migrated SomaBrain client against REAL infrastructure.
-NO MOCKS - VIBE COMPLIANT.
+NO MOCKS.
 
 Real Infrastructure:
 - SomaBrain: localhost:9696
@@ -77,7 +77,7 @@ class TestSomaBrainDjangoIntegration:
         try:
             memory_payload = {
                 "id": "django-test-memory-001",
-                "content": "Django migration test memory - VIBE compliant",
+                "content": "Django migration test memory",
                 "type": "django_test",
                 "metadata": {"source": "test_somabrain_django_integration", "framework": "Django"},
             }

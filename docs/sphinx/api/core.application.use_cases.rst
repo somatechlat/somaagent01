@@ -1,7 +1,7 @@
 core.application.use\_cases package
 ===================================
 
-.. automodule:: core.application.use_cases
+.. automodule:: admin.core.application.use_cases
    :members:
    :show-inheritance:
    :undoc-members:

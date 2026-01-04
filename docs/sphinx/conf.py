@@ -10,7 +10,7 @@ import django
 sys.path.insert(0, os.path.abspath('../..'))
 
 # Initialize Django for model introspection
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'admin.core.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'services.gateway.settings')
 try:
     django.setup()
 except Exception:

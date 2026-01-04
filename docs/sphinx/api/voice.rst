@@ -1,7 +1,7 @@
 voice package
 =============
 
-.. automodule:: voice
+.. automodule:: admin.voice
    :members:
    :show-inheritance:
    :undoc-members:

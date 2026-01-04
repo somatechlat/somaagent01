@@ -1,7 +1,7 @@
 saas.api.audit module
 =====================
 
-.. automodule:: saas.api.audit
+.. automodule:: admin.saas.api.audit
    :members:
    :show-inheritance:
    :undoc-members:

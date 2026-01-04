@@ -6,9 +6,9 @@ from tests.e2e.helpers.auth import get_auth_token, inject_auth_cookies
 def test_chat_interface_loads(page: Page):
     """
     Verify that the chat interface loads and is accessible with Real Auth.
-    VIBE Rule 47: Valid OIDC Session required.
+    Valid OIDC Session required.
     """
-    # 1. Get Real Token (VIBE: Programmatic Login, no UI automation for auth)
+    # 1. Get Real Token (Programmatic Login, no UI automation for auth)
     token = get_auth_token()
 
     # 2. Inject Context

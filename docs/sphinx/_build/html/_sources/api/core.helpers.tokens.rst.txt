@@ -1,7 +1,7 @@
 core.helpers.tokens module
 ==========================
 
-.. automodule:: core.helpers.tokens
+.. automodule:: admin.core.helpers.tokens
    :members:
    :show-inheritance:
    :undoc-members:

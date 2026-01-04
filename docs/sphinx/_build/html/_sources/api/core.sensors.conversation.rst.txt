@@ -1,7 +1,7 @@
 core.sensors.conversation module
 ================================
 
-.. automodule:: core.sensors.conversation
+.. automodule:: admin.core.sensors.conversation
    :members:
    :show-inheritance:
    :undoc-members:

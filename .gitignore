@@ -126,3 +126,4 @@ ui/frontend/node_modules/
 *.bak
 *.backup
 *_backup*
+docs/sphinx/_build/

@@ -1,7 +1,7 @@
 voice.audio\_capture module
 ===========================
 
-.. automodule:: voice.audio_capture
+.. automodule:: admin.voice.audio_capture
    :members:
    :show-inheritance:
    :undoc-members:

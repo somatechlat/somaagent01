@@ -1,7 +1,7 @@
 core.helpers.guids module
 =========================
 
-.. automodule:: core.helpers.guids
+.. automodule:: admin.core.helpers.guids
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.infrastructure.repositories package
 ========================================
 
-.. automodule:: core.infrastructure.repositories
+.. automodule:: admin.core.infrastructure.repositories
    :members:
    :show-inheritance:
    :undoc-members:

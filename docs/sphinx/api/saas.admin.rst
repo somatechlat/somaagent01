@@ -1,7 +1,7 @@
 saas.admin module
 =================
 
-.. automodule:: saas.admin
+.. automodule:: admin.saas.admin
    :members:
    :show-inheritance:
    :undoc-members:

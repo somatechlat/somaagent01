@@ -1,7 +1,7 @@
 chat.api package
 ================
 
-.. automodule:: chat.api
+.. automodule:: admin.chat.api
    :members:
    :show-inheritance:
    :undoc-members:

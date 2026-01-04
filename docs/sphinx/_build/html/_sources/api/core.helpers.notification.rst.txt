@@ -1,7 +1,7 @@
 core.helpers.notification module
 ================================
 
-.. automodule:: core.helpers.notification
+.. automodule:: admin.core.helpers.notification
    :members:
    :show-inheritance:
    :undoc-members:

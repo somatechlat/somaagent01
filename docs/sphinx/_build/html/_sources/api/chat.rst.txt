@@ -1,7 +1,7 @@
 chat package
 ============
 
-.. automodule:: chat
+.. automodule:: admin.chat
    :members:
    :show-inheritance:
    :undoc-members:

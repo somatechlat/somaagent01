@@ -1,7 +1,7 @@
 core package
 ============
 
-.. automodule:: core
+.. automodule:: admin.core
    :members:
    :show-inheritance:
    :undoc-members:

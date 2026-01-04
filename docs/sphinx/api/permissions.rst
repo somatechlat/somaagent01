@@ -1,7 +1,7 @@
 permissions package
 ===================
 
-.. automodule:: permissions
+.. automodule:: admin.permissions
    :members:
    :show-inheritance:
    :undoc-members:

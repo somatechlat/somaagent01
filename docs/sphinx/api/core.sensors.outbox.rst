@@ -1,7 +1,7 @@
 core.sensors.outbox module
 ==========================
 
-.. automodule:: core.sensors.outbox
+.. automodule:: admin.core.sensors.outbox
    :members:
    :show-inheritance:
    :undoc-members:

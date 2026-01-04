@@ -1,7 +1,7 @@
 voice.api module
 ================
 
-.. automodule:: voice.api
+.. automodule:: admin.voice.api
    :members:
    :show-inheritance:
    :undoc-members:

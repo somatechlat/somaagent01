@@ -1,7 +1,7 @@
 tools package
 =============
 
-.. automodule:: tools
+.. automodule:: admin.tools
    :members:
    :show-inheritance:
    :undoc-members:

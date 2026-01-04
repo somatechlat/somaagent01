@@ -1,7 +1,7 @@
 llm.exceptions module
 =====================
 
-.. automodule:: llm.exceptions
+.. automodule:: admin.llm.exceptions
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.helpers.tunnel\_manager module
 ===================================
 
-.. automodule:: core.helpers.tunnel_manager
+.. automodule:: admin.core.helpers.tunnel_manager
    :members:
    :show-inheritance:
    :undoc-members:

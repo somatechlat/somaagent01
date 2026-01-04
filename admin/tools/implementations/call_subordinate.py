@@ -8,6 +8,7 @@ from python.extensions.hist_add_tool_result import (
 
 
 class Delegation(Tool):
+    """Tool for delegating tasks to a subordinate agent."""
 
     async def execute(self, message="", reset="", **kwargs):
         # create subordinate agent using the data object on this agent and set superior agent to his data object

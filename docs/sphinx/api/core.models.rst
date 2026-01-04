@@ -1,7 +1,7 @@
 core.models module
 ==================
 
-.. automodule:: core.models
+.. automodule:: admin.core.models
    :members:
    :show-inheritance:
    :undoc-members:

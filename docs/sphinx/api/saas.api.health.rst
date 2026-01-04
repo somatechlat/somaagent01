@@ -1,7 +1,7 @@
 saas.api.health module
 ======================
 
-.. automodule:: saas.api.health
+.. automodule:: admin.saas.api.health
    :members:
    :show-inheritance:
    :undoc-members:
