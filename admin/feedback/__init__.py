@@ -1,1 +1,0 @@
-"""Feedback module - User ratings."""

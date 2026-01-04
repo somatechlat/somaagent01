@@ -1,0 +1,6 @@
+Reference webui dir: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/core/management/tmp/agent_zero/webui
+Target webui dir: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/core/management/webui
+Total reference files: 0
+Total target files: 0
+Missing files (present in reference, missing in target): 0
+
