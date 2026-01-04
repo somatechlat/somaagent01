@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/features.py
 Pure Django Ninja implementation with Django settings and centralized config.
 
-VIBE COMPLIANT - Django patterns, no hardcoded values, I18N ready.
+
 """
 
 from __future__ import annotations

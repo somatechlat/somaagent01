@@ -2,7 +2,7 @@
 UiSettingsStore service.
 
 Provides a Redis-backed store for UI settings, used by AgentConfig loader.
-VIBE COMPLIANT - Real implementation, no mocks.
+
 """
 
 import json

@@ -1,6 +1,6 @@
 """Scheduler API - Job scheduling.
 
-VIBE COMPLIANT - Django Ninja.
+
 Cron-like job scheduling and management.
 
 7-Persona Implementation:

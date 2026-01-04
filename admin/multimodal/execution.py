@@ -1,6 +1,6 @@
 """Multimodal Execution API.
 
-VIBE COMPLIANT - Django Ninja + DAG execution.
+
 Per AGENT_TASKS.md Phase 7.3 - Multimodal Execution.
 
 7-Persona Implementation:

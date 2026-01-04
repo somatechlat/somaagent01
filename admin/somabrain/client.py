@@ -1,6 +1,6 @@
 """SomaBrain HTTP Client.
 
-VIBE COMPLIANT - httpx async client for SomaBrain API.
+
 Uses REAL endpoints from SomaBrain OpenAPI spec (localhost:9696).
 
 Endpoints based on http://localhost:9696/api/openapi.json:

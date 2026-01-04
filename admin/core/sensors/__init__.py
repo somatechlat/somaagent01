@@ -1,6 +1,6 @@
 """Core Sensors Package.
 
-VIBE COMPLIANT - Django ORM + ZDL pattern.
+
 Sensors capture ALL agent data and queue for sync.
 
 6 Sensors:

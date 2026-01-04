@@ -1,6 +1,6 @@
 """Flink Stream Processing package.
 
-VIBE COMPLIANT - Django + Kafka + Flink.
+
 Real-time stream processing for analytics, metering, monitoring.
 
 Use Cases:

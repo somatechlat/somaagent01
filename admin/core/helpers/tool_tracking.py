@@ -1,6 +1,6 @@
 """Tool execution tracking for SomaBrain learning.
 
-VIBE COMPLIANT: Real implementation that sends feedback to SomaBrain.
+
 Queues events when SomaBrain is unavailable for later retry.
 """
 

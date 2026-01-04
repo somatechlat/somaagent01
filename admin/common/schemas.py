@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 
 def _utc_now() -> datetime:
-    """Return timezone-aware UTC datetime (VIBE Rule 28)."""
+    """Return timezone-aware UTC datetime ("""
     return datetime.now(timezone.utc)
 
 

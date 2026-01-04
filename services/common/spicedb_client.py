@@ -1,6 +1,6 @@
 """SpiceDB client wrapper for fine-grained authorization.
 
-VIBE COMPLIANT - Real gRPC integration with SpiceDB, no mocks.
+
 Per login-to-chat-journey design.md Section 5.1
 
 Implements:

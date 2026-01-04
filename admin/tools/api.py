@@ -1,6 +1,6 @@
 """Tools API - Agent tool management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Tool registration and execution for agents.
 
 7-Persona Implementation:

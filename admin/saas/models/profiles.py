@@ -2,7 +2,7 @@
 Profile Models for SAAS Admin
 Following the 5-level profile hierarchy from SRS.
 
-VIBE COMPLIANT:
+
 - Django ORM models
 - JSONB for flexible preferences
 - All 10 personas applied

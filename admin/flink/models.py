@@ -1,6 +1,6 @@
 """Flink Sink Tables Migration.
 
-VIBE COMPLIANT - Django ORM.
+
 PostgreSQL tables for Flink streaming output.
 
 7-Persona Implementation:

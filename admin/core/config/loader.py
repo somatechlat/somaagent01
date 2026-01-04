@@ -20,7 +20,7 @@ convenience, :func:`get_config` caches the most recent successful load so that
 the rest of the codebase can import ``cfg`` from ``src.core.config`` and rely on
 the same instance throughout the process lifecycle.
 
-All code follows the VIBE coding rules – no shims, no hidden defaults, no
+All code follows the 
 duplicate logic, and full type safety.
 """
 
@@ -102,7 +102,7 @@ def load_config() -> Config:
     2. ``config.yaml`` *or* ``config.json`` located at the repository root.
 
     If validation fails a :class:`pydantic.ValidationError` is raised – this is
-    intentional because silent handling would violate the VIBE rules.
+    intentional because silent handling would violate the 
     """
     # 1️⃣ Load from environment via the Pydantic model – this respects the
     #    ``SA01_`` prefix automatically.
@@ -273,7 +273,7 @@ class EnvironmentMapping:
     The loader respects the ``SA01_`` prefix via the Pydantic model.
     This helper provides ``env_mapping.get_env_value`` for callers.
 
-    VIBE COMPLIANT: Only SA01_ prefix is supported. No legacy support.
+    
     """
 
     sa01_prefix: str = "SA01_"

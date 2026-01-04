@@ -1,6 +1,6 @@
 """Logging API - Structured logging.
 
-VIBE COMPLIANT - Django Ninja.
+
 Log aggregation and search.
 
 7-Persona Implementation:

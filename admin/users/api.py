@@ -1,6 +1,6 @@
 """Users API - User management.
 
-VIBE COMPLIANT - Django Ninja + Django Auth.
+
 User lifecycle and profile management.
 
 7-Persona Implementation:

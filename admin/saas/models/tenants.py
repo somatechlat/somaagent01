@@ -1,6 +1,6 @@
 """Tenant and TenantUser Models.
 
-VIBE COMPLIANT - Multi-tenant isolation, Keycloak integration.
+
 Per SAAS_ADMIN_SRS.md Section 4.2, 4.4
 """
 

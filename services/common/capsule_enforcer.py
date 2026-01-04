@@ -19,7 +19,6 @@ class CapsuleRecord:
 
     capsule_id: str
     egress_mode: str = "open"
-    # Persona Identity (VIBE Rule: Agent Owns Identity)
     system_prompt: str = ""
     personality_traits: Dict[str, float] = field(default_factory=dict)
     neuromodulator_baseline: Dict[str, float] = field(default_factory=dict)

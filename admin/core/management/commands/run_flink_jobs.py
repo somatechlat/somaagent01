@@ -1,6 +1,6 @@
 """Django Management Command: run_flink_jobs.
 
-VIBE COMPLIANT - Django pattern for Flink job submission.
+
 Submits PyFlink SQL jobs to cluster.
 
 Usage:

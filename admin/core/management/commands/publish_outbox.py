@@ -5,7 +5,7 @@ Run the transactional outbox publisher as a Django worker.
 Usage:
     python manage.py publish_outbox --batch-size=100 --interval=1
 
-VIBE COMPLIANT: Pure Django management command pattern.
+
 """
 
 from __future__ import annotations

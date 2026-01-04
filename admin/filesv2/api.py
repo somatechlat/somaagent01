@@ -1,6 +1,6 @@
 """Files V2 API Router.
 
-VIBE COMPLIANT - Django Ninja, real S3 integration.
+
 Enhanced file management with versioning and metadata.
 
 10-Persona Implementation:
@@ -79,7 +79,7 @@ def list_files(
 ):
     """List files with pagination.
 
-    VIBE COMPLIANT: Real Django ORM query.
+    
     """
     from admin.filesv2.models import File
 
@@ -120,7 +120,7 @@ def list_files(
 def get_file(request, file_id: str):
     """Get file details.
 
-    VIBE COMPLIANT: Real Django ORM query.
+    
     """
     from admin.filesv2.models import File
 
@@ -154,7 +154,7 @@ def create_upload_url(
 ):
     """Create presigned upload URL.
 
-    VIBE COMPLIANT: Real S3 presigned URL generation.
+    
     """
     import boto3
     from botocore.config import Config
@@ -218,7 +218,7 @@ def create_upload_url(
 def delete_file(request, file_id: str):
     """Soft delete a file.
 
-    VIBE COMPLIANT: Real Django ORM update.
+    
     """
     from admin.filesv2.models import File
     from django.utils import timezone
@@ -236,7 +236,7 @@ def delete_file(request, file_id: str):
 def get_download_url(request, file_id: str):
     """Get presigned download URL.
 
-    VIBE COMPLIANT: Real S3 presigned URL.
+    
     """
     import boto3
     from botocore.config import Config

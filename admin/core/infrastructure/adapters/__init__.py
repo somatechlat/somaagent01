@@ -1,6 +1,6 @@
 """Infrastructure adapters implementing domain ports.
 
-VIBE COMPLIANT - These adapters wrap existing production implementations.
+
 Session adapters removed - use Django ORM directly via admin.core.models.Session.
 """
 

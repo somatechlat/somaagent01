@@ -1,6 +1,6 @@
 """Auth Config API - Hierarchical authentication configuration.
 
-VIBE COMPLIANT - Django Ninja.
+
 Platform Defaults → Tenant Overrides architecture.
 
 7-Persona Implementation:

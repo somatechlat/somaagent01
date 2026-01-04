@@ -43,7 +43,7 @@ class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
 class RealPresidioRedactor:
     """Production-grade sensitive data redaction using Presidio.
 
-    VIBE COMPLIANCE:
+    
     - Real implementation (no mocks) using presidio-analyzer/anonymizer
     - Lazy loading to reduce startup time
     - Handles PII entities: PHONE_NUMBER, EMAIL_ADDRESS, IBAN, CREDIT_CARD
@@ -319,7 +319,6 @@ class ContextBuilder:
         }
         try:
             with self.metrics.time_retrieval(state=state.value):
-                # VIBE: Resilience (Circuit Breaker + Retries)
                 # We use specific exception catching to avoid retrying on 4xx if possible,
                 # but SomaClientError might be generic.
                 @retry(

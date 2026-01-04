@@ -1,6 +1,6 @@
 """LLM Django Admin.
 
-VIBE COMPLIANT - Full Django Admin capabilities.
+
 7-Persona Implementation for LLM Model Configuration.
 """
 

@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/ui_settings.py
 Pure Django Ninja with Django ORM and signals.
 
-VIBE COMPLIANT - Django patterns, observable, verifiable.
+
 """
 
 from __future__ import annotations

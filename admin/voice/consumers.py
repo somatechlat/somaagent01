@@ -1,6 +1,6 @@
 """Voice WebSocket Consumer - Real-time Voice Streaming.
 
-VIBE COMPLIANT - Django Channels WebSocket.
+
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
 7-Persona Implementation:
@@ -277,7 +277,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
     async def _transcribe_audio(self, audio_data: bytes) -> str:
         """Transcribe audio using Whisper API.
 
-        VIBE COMPLIANT: Real Whisper API call, no mocks.
+        
         """
         try:
             import httpx
@@ -306,7 +306,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
     async def _generate_llm_response(self, transcript: str):
         """Generate AI response via LLM and TTS.
 
-        VIBE COMPLIANT: Real LiteLLM and Kokoro TTS calls.
+        
         """
         await self._send_status("speaking")
         self.state.is_speaking = True
@@ -372,7 +372,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
     async def _stream_tts_audio(self, text: str):
         """Stream TTS audio chunks using Kokoro.
 
-        VIBE COMPLIANT: Real Kokoro TTS API call.
+        
         """
         import httpx
 

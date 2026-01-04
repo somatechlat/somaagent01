@@ -1,7 +1,7 @@
 """
 Feature Flags API - Django Ninja CRUD endpoints
 
-VIBE COMPLIANT:
+
 - Pure Django Ninja implementation
 - Django ORM for persistence
 - Global/tenant/tier scope support

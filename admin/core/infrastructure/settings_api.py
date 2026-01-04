@@ -1,7 +1,7 @@
 """
 Settings API - Django Ninja endpoints for service configuration
 
-VIBE COMPLIANT:
+
 - Pure Django Ninja implementation
 - Django ORM for persistence
 - Permission-aware read/write

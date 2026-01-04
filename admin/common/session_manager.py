@@ -1,6 +1,6 @@
 """Session Manager for Redis-backed user sessions.
 
-VIBE COMPLIANT - Real Redis backend, no mocks.
+
 Per login-to-chat-journey design.md Section: SessionManager
 
 Implements:

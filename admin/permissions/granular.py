@@ -1,6 +1,6 @@
 """Granular Permissions System - Full Django RBAC.
 
-VIBE COMPLIANT - Django Ninja + Django Auth + SpiceDB.
+
 Granular resource:action permissions with custom role builder.
 
 7-Persona Implementation:

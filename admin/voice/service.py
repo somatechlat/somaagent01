@@ -3,7 +3,7 @@
 The :class:`VoiceService` class glues together the capture, provider client,
 adapter and speaker components.  It also records metrics and tracing spans.
 All heavy‑weight objects are created lazily in ``__init__`` so that importing the
-module has no side effects (VIBE rule **NO SIDE‑EFFECTS AT IMPORT**).
+module has no side effects (
 
 Typical usage inside a Django Ninja endpoint::
 

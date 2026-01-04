@@ -1,6 +1,6 @@
 """Voice Django ORM Models.
 
-VIBE COMPLIANT - 100% Django ORM.
+
 AgentVoice Vox integration for voice personas, sessions, and models.
 
 Per SRS Section 6: VoicePersona, VoiceSession, VoiceModel

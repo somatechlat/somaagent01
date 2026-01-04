@@ -1,6 +1,6 @@
 """Subscription Tier Model.
 
-VIBE COMPLIANT - Django ORM, Lago integration, proper indexes.
+
 Per SAAS_ADMIN_SRS.md Section 4.3
 """
 

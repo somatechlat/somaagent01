@@ -1,6 +1,6 @@
 """Sensor Outbox Sync Worker.
 
-VIBE COMPLIANT - Temporal workflow for syncing outbox to SomaBrain.
+
 Polls PostgreSQL outbox, syncs to SomaBrain, clears payload after sync.
 
 Architecture:

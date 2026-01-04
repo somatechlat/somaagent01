@@ -1,6 +1,6 @@
 """Pure Django ASGI Gateway Entrypoint.
 
-VIBE COMPLIANT - Migrated from FastAPI to pure Django.
+
 All routers now use Django Ninja.
 
 🎓 PhD Dev - Clean ASGI architecture

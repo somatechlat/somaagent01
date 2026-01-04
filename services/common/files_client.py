@@ -1,6 +1,6 @@
 """Files Service Client.
 
-VIBE COMPLIANT - Real HTTP integration with external files-service.
+
 No mocks, no placeholders, no hardcoded URLs.
 
 7-Persona Implementation:
@@ -128,7 +128,7 @@ class FilesServiceError(Exception):
 class FilesClient:
     """HTTP client for external files-service.
 
-    VIBE COMPLIANT:
+    
     - Uses FILES_SERVICE_URL from environment
     - Real HTTP calls via httpx
     - Prometheus metrics

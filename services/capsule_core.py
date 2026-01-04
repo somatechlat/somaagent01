@@ -9,7 +9,7 @@ The 4 core operations as defined in SRS Section 19:
 3. inject_capsule  - Load verified capsule for runtime
 4. edit_capsule    - Clone-on-edit for active capsules
 
-VIBE COMPLIANCE:
+
 - Mathematically provable invariants
 - No over-engineering
 - Observable (metrics for each operation)

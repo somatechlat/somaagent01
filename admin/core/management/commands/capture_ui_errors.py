@@ -14,7 +14,7 @@ part of CI.
 Usage:
     python -m scripts.capture_ui_errors
 
-The script follows VIBE rules: no shims, no bypass – it directly uses the
+The script follows 
 Playwright API and writes plain logs.
 """
 

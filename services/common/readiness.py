@@ -1,6 +1,6 @@
 """Shared readiness probe helpers for SomaAgent services.
 
-100% Django - VIBE Compliant.
+100% Django - 
 Uses Django database connection instead of asyncpg.
 """
 

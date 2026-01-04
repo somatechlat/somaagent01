@@ -1,0 +1,1512 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>random &mdash; SomaAgent01 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=fb57f298" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            SomaAgent01
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-1-clone-configure">Step 1: Clone &amp; Configure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart.html#required-environment-variables">Required Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-2-start-infrastructure">Step 2: Start Infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-3-verify-health">Step 3: Verify Health</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-4-access-services">Step 4: Access Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../agent-quickstart.html">Agent Context Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#before-you-code">Before You Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#vibe-coding-rules-summary">VIBE Coding Rules Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#technology-stack-strict">Technology Stack (STRICT)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#key-files-reference">Key Files Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../agent-quickstart.html#backend-python-django">Backend (Python/Django)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#user-roles">User Roles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#testing-requirements">Testing Requirements</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../deployment/index.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../deployment/index.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../deployment/index.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deployment/index.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/common.html">common package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/common.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.account_lockout.html">common.account_lockout module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.auth.html">common.auth module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.exceptions.html">common.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.handlers.html">common.handlers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.messages.html">common.messages module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.middleware.html">common.middleware module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.pkce.html">common.pkce module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.rate_limit.html">common.rate_limit module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.responses.html">common.responses module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.schemas.html">common.schemas module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/common.session_manager.html">common.session_manager module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/core.html">core package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/core.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.api.html">core.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.application.html">core.application package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.config.html">core.config package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.helpers.html">core.helpers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.infrastructure.html">core.infrastructure package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.management.html">core.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.migrations.html">core.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.observability.html">core.observability package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.sensors.html">core.sensors package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/core.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.apps.html">core.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.models.html">core.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.permissions.html">core.permissions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.repositories.html">core.repositories module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.signals.html">core.signals module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.soma_client.html">core.soma_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/core.somabrain_client.html">core.somabrain_client module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/auth.html">auth package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/auth.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.api.html">auth.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.invitations.html">auth.invitations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.mfa.html">auth.mfa module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.password_reset.html">auth.password_reset module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/auth_config.html">auth_config package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/auth_config.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth_config.api.html">auth_config.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/permissions.html">permissions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/permissions.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/permissions.management.html">permissions.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/permissions.migrations.html">permissions.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/permissions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/permissions.admin.html">permissions.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/permissions.api.html">permissions.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/permissions.granular.html">permissions.granular module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/permissions.models.html">permissions.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/agents.html">agents package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/agents.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.services.html">agents.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/agents.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.apps.html">agents.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/chat.html">chat package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/chat.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.api.html">chat.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.migrations.html">chat.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/chat.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.apps.html">chat.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.models.html">chat.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/sessions.html">sessions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/sessions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/sessions.api.html">sessions.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/saas.html">saas package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/saas.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/saas.api.html">saas.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/saas.management.html">saas.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/saas.migrations.html">saas.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/saas.models.html">saas.models package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/saas.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/saas.admin.html">saas.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/saas.apps.html">saas.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/tenants.html">tenants package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/tenants.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/tenants.api.html">tenants.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/billing.html">billing package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/billing.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/billing.lago_client.html">billing.lago_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/billing.webhooks.html">billing.webhooks module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/somabrain.html">somabrain package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/somabrain.html#somabrain-brain-inspired-cognitive-ai-system">SomaBrain: Brain-Inspired Cognitive AI System</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/somabrain.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.tests.html">somabrain.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/somabrain.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.admin_api.html">somabrain.admin_api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.api.html">somabrain.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.client.html">somabrain.client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.cognitive.html">somabrain.cognitive module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.core_brain.html">somabrain.core_brain module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/somabrain.event_bridge.html">somabrain.event_bridge module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/knowledge.html">knowledge package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/knowledge.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/knowledge.api.html">knowledge.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/embeddings.html">embeddings package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/embeddings.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/embeddings.api.html">embeddings.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/audit.html">audit package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/audit.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/audit.api.html">audit.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/observability.html">observability package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/observability.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/observability.api.html">observability.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/metrics.html">metrics package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/metrics.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/metrics.api.html">metrics.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/flink.html">flink package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/flink.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.migrations.html">flink.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/flink.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.api.html">flink.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.models.html">flink.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.somabrain_jobs.html">flink.somabrain_jobs module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/utils.html">utils package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/utils.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/utils.api.html">utils.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/utils.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/utils.apps.html">utils.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/voice.html">voice package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/voice.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.migrations.html">voice.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/voice.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.admin.html">voice.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.api.html">voice.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.apps.html">voice.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.audio_capture.html">voice.audio_capture module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.consumers.html">voice.consumers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.exceptions.html">voice.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.metrics.html">voice.metrics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.models.html">voice.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.provider_selector.html">voice.provider_selector module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.response_normalizer.html">voice.response_normalizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.routing.html">voice.routing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.schemas.html">voice.schemas module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.service.html">voice.service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.speaker.html">voice.speaker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.tracing.html">voice.tracing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/voice.voice_adapter.html">voice.voice_adapter module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/workflows.html">workflows package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/workflows.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/workflows.api.html">workflows.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../admin/index.html">Admin Applications</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../services/index.html">Services Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../services/index.html#module-services.gateway.auth">Gateway Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.gateway.auth.authorize_request"><code class="docutils literal notranslate"><span class="pre">authorize_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../services/index.html#module-services.common.audit">Common Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent"><code class="docutils literal notranslate"><span class="pre">AuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">AuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">AuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">AuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">AuditEvent.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.to_dict"><code class="docutils literal notranslate"><span class="pre">AuditEvent.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.email"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.email</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.method"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.result"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.result</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.failure_reason"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.failure_reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.mfa_used"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.mfa_used</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.reason"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.action"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.action</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.permissions"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.permissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.permission"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.permission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.endpoint"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.endpoint</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher"><code class="docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher.__init__"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher.publish"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.publish()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher.log_login"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_login()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher.log_logout"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_logout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher.log_session"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_session()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher.log_permission_denied"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_permission_denied()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.get_audit_publisher"><code class="docutils literal notranslate"><span class="pre">get_audit_publisher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RedisRateLimiter"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RedisRateLimiter.__init__"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RedisRateLimiter.connect"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.connect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RedisRateLimiter.close"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.close()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RedisRateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RedisRateLimiter.reset"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.reset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RateLimitResult"><code class="docutils literal notranslate"><span class="pre">RateLimitResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RateLimitResult.allowed"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.allowed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RateLimitResult.remaining"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.remaining</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RateLimitResult.reset_at"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.reset_at</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RateLimitResult.retry_after"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.retry_after</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.RateLimitResult.__init__"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.get_rate_limiter"><code class="docutils literal notranslate"><span class="pre">get_rate_limiter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.rate_limiter.get_limit_for_endpoint"><code class="docutils literal notranslate"><span class="pre">get_limit_for_endpoint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SomaAgent01</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">random</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for random</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Random variable generators.</span>
+
+<span class="sd">    bytes</span>
+<span class="sd">    -----</span>
+<span class="sd">           uniform bytes (values between 0 and 255)</span>
+
+<span class="sd">    integers</span>
+<span class="sd">    --------</span>
+<span class="sd">           uniform within range</span>
+
+<span class="sd">    sequences</span>
+<span class="sd">    ---------</span>
+<span class="sd">           pick random element</span>
+<span class="sd">           pick random sample</span>
+<span class="sd">           pick weighted random sample</span>
+<span class="sd">           generate random permutation</span>
+
+<span class="sd">    distributions on the real line:</span>
+<span class="sd">    ------------------------------</span>
+<span class="sd">           uniform</span>
+<span class="sd">           triangular</span>
+<span class="sd">           normal (Gaussian)</span>
+<span class="sd">           lognormal</span>
+<span class="sd">           negative exponential</span>
+<span class="sd">           gamma</span>
+<span class="sd">           beta</span>
+<span class="sd">           pareto</span>
+<span class="sd">           Weibull</span>
+
+<span class="sd">    distributions on the circle (angles 0 to 2pi)</span>
+<span class="sd">    ---------------------------------------------</span>
+<span class="sd">           circular uniform</span>
+<span class="sd">           von Mises</span>
+
+<span class="sd">    discrete distributions</span>
+<span class="sd">    ----------------------</span>
+<span class="sd">           binomial</span>
+
+
+<span class="sd">General notes on the underlying Mersenne Twister core generator:</span>
+
+<span class="sd">* The period is 2**19937-1.</span>
+<span class="sd">* It is one of the most extensively tested generators in existence.</span>
+<span class="sd">* The random() method is implemented in C, executes in a single Python step,</span>
+<span class="sd">  and is, therefore, threadsafe.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Translated by Guido van Rossum from C source provided by</span>
+<span class="c1"># Adrian Baddeley.  Adapted by Raymond Hettinger for use with</span>
+<span class="c1"># the Mersenne Twister  and os.urandom() core generators.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span> <span class="k">as</span> <span class="n">_warn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_log</span><span class="p">,</span> <span class="n">exp</span> <span class="k">as</span> <span class="n">_exp</span><span class="p">,</span> <span class="n">pi</span> <span class="k">as</span> <span class="n">_pi</span><span class="p">,</span> <span class="n">e</span> <span class="k">as</span> <span class="n">_e</span><span class="p">,</span> <span class="n">ceil</span> <span class="k">as</span> <span class="n">_ceil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">sqrt</span> <span class="k">as</span> <span class="n">_sqrt</span><span class="p">,</span> <span class="n">acos</span> <span class="k">as</span> <span class="n">_acos</span><span class="p">,</span> <span class="n">cos</span> <span class="k">as</span> <span class="n">_cos</span><span class="p">,</span> <span class="n">sin</span> <span class="k">as</span> <span class="n">_sin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">tau</span> <span class="k">as</span> <span class="n">TWOPI</span><span class="p">,</span> <span class="n">floor</span> <span class="k">as</span> <span class="n">_floor</span><span class="p">,</span> <span class="n">isfinite</span> <span class="k">as</span> <span class="n">_isfinite</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">lgamma</span> <span class="k">as</span> <span class="n">_lgamma</span><span class="p">,</span> <span class="n">fabs</span> <span class="k">as</span> <span class="n">_fabs</span><span class="p">,</span> <span class="n">log2</span> <span class="k">as</span> <span class="n">_log2</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">os</span><span class="w"> </span><span class="kn">import</span> <span class="n">urandom</span> <span class="k">as</span> <span class="n">_urandom</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">_collections_abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span> <span class="k">as</span> <span class="n">_Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">operator</span><span class="w"> </span><span class="kn">import</span> <span class="n">index</span> <span class="k">as</span> <span class="n">_index</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">accumulate</span> <span class="k">as</span> <span class="n">_accumulate</span><span class="p">,</span> <span class="n">repeat</span> <span class="k">as</span> <span class="n">_repeat</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bisect</span><span class="w"> </span><span class="kn">import</span> <span class="n">bisect</span> <span class="k">as</span> <span class="n">_bisect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">_random</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># hashlib is pretty heavy to load, try lean internal module first</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">_sha2</span><span class="w"> </span><span class="kn">import</span> <span class="n">sha512</span> <span class="k">as</span> <span class="n">_sha512</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="c1"># fallback to official implementation</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">hashlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">sha512</span> <span class="k">as</span> <span class="n">_sha512</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Random&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SystemRandom&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;betavariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;binomialvariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;choice&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;choices&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;expovariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gammavariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gauss&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;getrandbits&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;getstate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;lognormvariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;normalvariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;paretovariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;randbytes&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;randint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;random&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;randrange&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;seed&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;setstate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;shuffle&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;triangular&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;vonmisesvariate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;weibullvariate&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">NV_MAGICCONST</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">_exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">/</span> <span class="n">_sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">LOG4</span> <span class="o">=</span> <span class="n">_log</span><span class="p">(</span><span class="mf">4.0</span><span class="p">)</span>
+<span class="n">SG_MAGICCONST</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">_log</span><span class="p">(</span><span class="mf">4.5</span><span class="p">)</span>
+<span class="n">BPF</span> <span class="o">=</span> <span class="mi">53</span>        <span class="c1"># Number of bits in a float</span>
+<span class="n">RECIP_BPF</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="o">-</span><span class="n">BPF</span>
+<span class="n">_ONE</span> <span class="o">=</span> <span class="mi">1</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Random</span><span class="p">(</span><span class="n">_random</span><span class="o">.</span><span class="n">Random</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Random number generator base class used by bound module functions.</span>
+
+<span class="sd">    Used to instantiate instances of Random to get generators that don&#39;t</span>
+<span class="sd">    share state.</span>
+
+<span class="sd">    Class Random can also be subclassed if you want to use a different basic</span>
+<span class="sd">    generator of your own devising: in that case, override the following</span>
+<span class="sd">    methods:  random(), seed(), getstate(), and setstate().</span>
+<span class="sd">    Optionally, implement a getrandbits() method so that randrange()</span>
+<span class="sd">    can cover arbitrarily large ranges.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">VERSION</span> <span class="o">=</span> <span class="mi">3</span>     <span class="c1"># used by getstate/setstate</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an instance.</span>
+
+<span class="sd">        Optional argument x controls seeding, as for Random.seed().</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize internal state from a seed.</span>
+
+<span class="sd">        The only supported seed types are None, int, float,</span>
+<span class="sd">        str, bytes, and bytearray.</span>
+
+<span class="sd">        None or no argument seeds from current time or from an operating</span>
+<span class="sd">        system specific randomness source if available.</span>
+
+<span class="sd">        If *a* is an int, all bits are used.</span>
+
+<span class="sd">        For version 2 (the default), all of the bits are used if *a* is a str,</span>
+<span class="sd">        bytes, or bytearray.  For version 1 (provided for reproducing random</span>
+<span class="sd">        sequences from older versions of Python), the algorithm for str and</span>
+<span class="sd">        bytes generates a narrower range of seeds.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">version</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)):</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;latin-1&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">a</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">ord</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span> <span class="k">if</span> <span class="n">a</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="nb">ord</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="p">((</span><span class="mi">1000003</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">^</span> <span class="n">c</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFFFFFFFFFF</span>
+            <span class="n">x</span> <span class="o">^=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span> <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="n">x</span>
+
+        <span class="k">elif</span> <span class="n">version</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">_sha512</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">())</span>
+
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;The only supported seed types are: None,</span><span class="se">\n</span><span class="s1">&#39;</span>
+                            <span class="s1">&#39;int, float, str, bytes, and bytearray.&#39;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">getstate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return internal state; can be passed to setstate() later.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">VERSION</span><span class="p">,</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">getstate</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setstate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restore internal state from object returned by getstate().&quot;&quot;&quot;</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">version</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">version</span><span class="p">,</span> <span class="n">internalstate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">setstate</span><span class="p">(</span><span class="n">internalstate</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">version</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">version</span><span class="p">,</span> <span class="n">internalstate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="c1"># In version 2, the state was saved as signed ints, which causes</span>
+            <span class="c1">#   inconsistencies between 32/64-bit systems. The state is</span>
+            <span class="c1">#   really unsigned 32-bit ints, so we convert negative ints from</span>
+            <span class="c1">#   version 2 to positive longs for version 3.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">internalstate</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="mi">32</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">internalstate</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">setstate</span><span class="p">(</span><span class="n">internalstate</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;state with version </span><span class="si">%s</span><span class="s2"> passed to &quot;</span>
+                             <span class="s2">&quot;Random.setstate() of version </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                             <span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">VERSION</span><span class="p">))</span>
+
+
+    <span class="c1">## -------------------------------------------------------</span>
+    <span class="c1">## ---- Methods below this point do not need to be overridden or extended</span>
+    <span class="c1">## ---- when subclassing for the purpose of using a different core generator.</span>
+
+
+    <span class="c1">## -------------------- pickle support  -------------------</span>
+
+    <span class="c1"># Issue 17489: Since __reduce__ was defined to fix #759889 this is no</span>
+    <span class="c1"># longer called; we leave it here because it has been here since random was</span>
+    <span class="c1"># rewritten back in 2001 and why risk breaking something.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># for pickle</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getstate</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>  <span class="c1"># for pickle</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setstate</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getstate</span><span class="p">()</span>
+
+
+    <span class="c1">## ---- internal support method for evenly distributed integers ----</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Control how subclasses generate random integers.</span>
+
+<span class="sd">        The algorithm a subclass can use depends on the random() and/or</span>
+<span class="sd">        getrandbits() implementation available to it and determines</span>
+<span class="sd">        whether it can generate random integers from arbitrarily large</span>
+<span class="sd">        ranges.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;_randbelow&#39;</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="c1"># just inherit it</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="s1">&#39;getrandbits&#39;</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_randbelow</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_randbelow_with_getrandbits</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="s1">&#39;random&#39;</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_randbelow</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_randbelow_without_getrandbits</span>
+                <span class="k">break</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_randbelow_with_getrandbits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="s2">&quot;Return a random int in the range [0,n).  Defined for n &gt; 0.&quot;</span>
+
+        <span class="n">getrandbits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getrandbits</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">bit_length</span><span class="p">()</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">getrandbits</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>  <span class="c1"># 0 &lt;= r &lt; 2**k</span>
+        <span class="k">while</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">getrandbits</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">r</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_randbelow_without_getrandbits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="o">&lt;&lt;</span><span class="n">BPF</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a random int in the range [0,n).  Defined for n &gt; 0.</span>
+
+<span class="sd">        The implementation does not use getrandbits, but only random.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="n">maxsize</span><span class="p">:</span>
+            <span class="n">_warn</span><span class="p">(</span><span class="s2">&quot;Underlying random() generator does not supply </span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;enough bits to choose from a population range this large.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;To remove the range limitation, add a getrandbits() method.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_floor</span><span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">rem</span> <span class="o">=</span> <span class="n">maxsize</span> <span class="o">%</span> <span class="n">n</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="p">(</span><span class="n">maxsize</span> <span class="o">-</span> <span class="n">rem</span><span class="p">)</span> <span class="o">/</span> <span class="n">maxsize</span>   <span class="c1"># int(limit * maxsize) % n == 0</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+        <span class="k">while</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="n">limit</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">_floor</span><span class="p">(</span><span class="n">r</span> <span class="o">*</span> <span class="n">maxsize</span><span class="p">)</span> <span class="o">%</span> <span class="n">n</span>
+
+    <span class="n">_randbelow</span> <span class="o">=</span> <span class="n">_randbelow_with_getrandbits</span>
+
+
+    <span class="c1">## --------------------------------------------------------</span>
+    <span class="c1">## ---- Methods below this point generate custom distributions</span>
+    <span class="c1">## ---- based on the methods defined above.  They do not</span>
+    <span class="c1">## ---- directly touch the underlying generator and only</span>
+    <span class="c1">## ---- access randomness through the methods:  random(),</span>
+    <span class="c1">## ---- getrandbits(), or _randbelow().</span>
+
+
+    <span class="c1">## -------------------- bytes methods ---------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">randbytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate n random bytes.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getrandbits</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="mi">8</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s1">&#39;little&#39;</span><span class="p">)</span>
+
+
+    <span class="c1">## -------------------- integer methods  -------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">randrange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">_ONE</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Choose a random item from range(stop) or range(start, stop[, step]).</span>
+
+<span class="sd">        Roughly equivalent to ``choice(range(start, stop, step))`` but</span>
+<span class="sd">        supports arbitrarily large ranges and is optimized for common cases.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># This code is a bit messy to make it fast for the</span>
+        <span class="c1"># common case while still doing adequate error checking.</span>
+        <span class="n">istart</span> <span class="o">=</span> <span class="n">_index</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># We don&#39;t check for &quot;step != 1&quot; because it hasn&#39;t been</span>
+            <span class="c1"># type checked and converted to an integer yet.</span>
+            <span class="k">if</span> <span class="n">step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_ONE</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Missing a non-None stop argument&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">istart</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_randbelow</span><span class="p">(</span><span class="n">istart</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;empty range for randrange()&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Stop argument supplied.</span>
+        <span class="n">istop</span> <span class="o">=</span> <span class="n">_index</span><span class="p">(</span><span class="n">stop</span><span class="p">)</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">istop</span> <span class="o">-</span> <span class="n">istart</span>
+        <span class="n">istep</span> <span class="o">=</span> <span class="n">_index</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+        <span class="c1"># Fast path.</span>
+        <span class="k">if</span> <span class="n">istep</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">istart</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_randbelow</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;empty range in randrange(</span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">stop</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Non-unit step argument supplied.</span>
+        <span class="k">if</span> <span class="n">istep</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="n">width</span> <span class="o">+</span> <span class="n">istep</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">istep</span>
+        <span class="k">elif</span> <span class="n">istep</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="n">width</span> <span class="o">+</span> <span class="n">istep</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">istep</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;zero step for randrange()&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;empty range in randrange(</span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">stop</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">istart</span> <span class="o">+</span> <span class="n">istep</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_randbelow</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">randint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return random integer in range [a, b], including both end points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+
+    <span class="c1">## -------------------- sequence methods  -------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">choice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seq</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Choose a random element from a non-empty sequence.&quot;&quot;&quot;</span>
+
+        <span class="c1"># As an accommodation for NumPy, we don&#39;t use &quot;if not seq&quot;</span>
+        <span class="c1"># because bool(numpy.array()) raises a ValueError.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">&#39;Cannot choose from an empty sequence&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">seq</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_randbelow</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">))]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shuffle list x in place, and return None.&quot;&quot;&quot;</span>
+
+        <span class="n">randbelow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_randbelow</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))):</span>
+            <span class="c1"># pick an element in x[:i+1] with which to exchange x[i]</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="n">randbelow</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">counts</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Chooses k unique random elements from a population sequence.</span>
+
+<span class="sd">        Returns a new list containing elements from the population while</span>
+<span class="sd">        leaving the original population unchanged.  The resulting list is</span>
+<span class="sd">        in selection order so that all sub-slices will also be valid random</span>
+<span class="sd">        samples.  This allows raffle winners (the sample) to be partitioned</span>
+<span class="sd">        into grand prize and second place winners (the subslices).</span>
+
+<span class="sd">        Members of the population need not be hashable or unique.  If the</span>
+<span class="sd">        population contains repeats, then each occurrence is a possible</span>
+<span class="sd">        selection in the sample.</span>
+
+<span class="sd">        Repeated elements can be specified one at a time or with the optional</span>
+<span class="sd">        counts parameter.  For example:</span>
+
+<span class="sd">            sample([&#39;red&#39;, &#39;blue&#39;], counts=[4, 2], k=5)</span>
+
+<span class="sd">        is equivalent to:</span>
+
+<span class="sd">            sample([&#39;red&#39;, &#39;red&#39;, &#39;red&#39;, &#39;red&#39;, &#39;blue&#39;, &#39;blue&#39;], k=5)</span>
+
+<span class="sd">        To choose a sample from a range of integers, use range() for the</span>
+<span class="sd">        population argument.  This is especially fast and space efficient</span>
+<span class="sd">        for sampling from a large population:</span>
+
+<span class="sd">            sample(range(10000000), 60)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Sampling without replacement entails tracking either potential</span>
+        <span class="c1"># selections (the pool) in a list or previous selections in a set.</span>
+
+        <span class="c1"># When the number of selections is small compared to the</span>
+        <span class="c1"># population, then tracking selections is efficient, requiring</span>
+        <span class="c1"># only a small set and an occasional reselection.  For</span>
+        <span class="c1"># a larger number of selections, the pool tracking method is</span>
+        <span class="c1"># preferred since the list takes less space than the</span>
+        <span class="c1"># set and it doesn&#39;t suffer from frequent reselections.</span>
+
+        <span class="c1"># The number of calls to _randbelow() is kept at or near k, the</span>
+        <span class="c1"># theoretical minimum.  This is important because running time</span>
+        <span class="c1"># is dominated by _randbelow() and because it extracts the</span>
+        <span class="c1"># least entropy from the underlying random number generators.</span>
+
+        <span class="c1"># Memory requirements are kept to the smaller of a k-length</span>
+        <span class="c1"># set or an n-length list.</span>
+
+        <span class="c1"># There are other sampling algorithms that do not require</span>
+        <span class="c1"># auxiliary memory, but they were rejected because they made</span>
+        <span class="c1"># too many calls to _randbelow(), making them slower and</span>
+        <span class="c1"># causing them to eat more entropy than necessary.</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="n">_Sequence</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Population must be a sequence.  &quot;</span>
+                            <span class="s2">&quot;For dicts or sets, use sorted(d).&quot;</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">counts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cum_counts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_accumulate</span><span class="p">(</span><span class="n">counts</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cum_counts</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The number of counts does not match the population&#39;</span><span class="p">)</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="n">cum_counts</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Counts must be integers&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Total of counts must be greater than zero&#39;</span><span class="p">)</span>
+            <span class="n">selections</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">total</span><span class="p">),</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">bisect</span> <span class="o">=</span> <span class="n">_bisect</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">population</span><span class="p">[</span><span class="n">bisect</span><span class="p">(</span><span class="n">cum_counts</span><span class="p">,</span> <span class="n">s</span><span class="p">)]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">selections</span><span class="p">]</span>
+        <span class="n">randbelow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_randbelow</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Sample larger than population or is negative&quot;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">k</span>
+        <span class="n">setsize</span> <span class="o">=</span> <span class="mi">21</span>        <span class="c1"># size of a small set minus size of an empty list</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">setsize</span> <span class="o">+=</span> <span class="mi">4</span> <span class="o">**</span> <span class="n">_ceil</span><span class="p">(</span><span class="n">_log</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>  <span class="c1"># table size for big sets</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="n">setsize</span><span class="p">:</span>
+            <span class="c1"># An n-length list is smaller than a k-length set.</span>
+            <span class="c1"># Invariant:  non-selected at pool[0 : n-i]</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                <span class="n">j</span> <span class="o">=</span> <span class="n">randbelow</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">pool</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                <span class="n">pool</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">pool</span><span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># move non-selected item into vacancy</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">selected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="n">selected_add</span> <span class="o">=</span> <span class="n">selected</span><span class="o">.</span><span class="n">add</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                <span class="n">j</span> <span class="o">=</span> <span class="n">randbelow</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">selected</span><span class="p">:</span>
+                    <span class="n">j</span> <span class="o">=</span> <span class="n">randbelow</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">selected_add</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">choices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">cum_weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a k sized list of population elements chosen with replacement.</span>
+
+<span class="sd">        If the relative weights or cumulative weights are not specified,</span>
+<span class="sd">        the selections are made with equal probability.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cum_weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">floor</span> <span class="o">=</span> <span class="n">_floor</span>
+                <span class="n">n</span> <span class="o">+=</span> <span class="mf">0.0</span>    <span class="c1"># convert to float for a small speed improvement</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">population</span><span class="p">[</span><span class="n">floor</span><span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="n">n</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_repeat</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cum_weights</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_accumulate</span><span class="p">(</span><span class="n">weights</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                    <span class="k">raise</span>
+                <span class="n">k</span> <span class="o">=</span> <span class="n">weights</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;The number of choices must be a keyword argument: </span><span class="si">{</span><span class="n">k</span><span class="si">=}</span><span class="s1">&#39;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">elif</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Cannot specify both weights and cumulative weights&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cum_weights</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The number of weights does not match the population&#39;</span><span class="p">)</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">cum_weights</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.0</span>   <span class="c1"># convert to float</span>
+        <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Total of weights must be greater than zero&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_isfinite</span><span class="p">(</span><span class="n">total</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Total of weights must be finite&#39;</span><span class="p">)</span>
+        <span class="n">bisect</span> <span class="o">=</span> <span class="n">_bisect</span>
+        <span class="n">hi</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">population</span><span class="p">[</span><span class="n">bisect</span><span class="p">(</span><span class="n">cum_weights</span><span class="p">,</span> <span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="n">total</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hi</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_repeat</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
+
+
+    <span class="c1">## -------------------- real-valued distributions  -------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">uniform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a random number in the range [a, b) or [a, b] depending on rounding.</span>
+
+<span class="sd">        The mean (expected value) and variance of the random variable are:</span>
+
+<span class="sd">            E[X] = (a + b) / 2</span>
+<span class="sd">            Var[X] = (b - a) ** 2 / 12</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="p">(</span><span class="n">b</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">triangular</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">low</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Triangular distribution.</span>
+
+<span class="sd">        Continuous distribution bounded by given lower and upper limits,</span>
+<span class="sd">        and having a given mode value in-between.</span>
+
+<span class="sd">        http://en.wikipedia.org/wiki/Triangular_distribution</span>
+
+<span class="sd">        The mean (expected value) and variance of the random variable are:</span>
+
+<span class="sd">            E[X] = (low + high + mode) / 3</span>
+<span class="sd">            Var[X] = (low**2 + high**2 + mode**2 - low*high - low*mode - high*mode) / 18</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="k">if</span> <span class="n">mode</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">mode</span> <span class="o">-</span> <span class="n">low</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">high</span> <span class="o">-</span> <span class="n">low</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ZeroDivisionError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">low</span>
+        <span class="k">if</span> <span class="n">u</span> <span class="o">&gt;</span> <span class="n">c</span><span class="p">:</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">u</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">c</span>
+            <span class="n">low</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">high</span><span class="p">,</span> <span class="n">low</span>
+        <span class="k">return</span> <span class="n">low</span> <span class="o">+</span> <span class="p">(</span><span class="n">high</span> <span class="o">-</span> <span class="n">low</span><span class="p">)</span> <span class="o">*</span> <span class="n">_sqrt</span><span class="p">(</span><span class="n">u</span> <span class="o">*</span> <span class="n">c</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">normalvariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normal distribution.</span>
+
+<span class="sd">        mu is the mean, and sigma is the standard deviation.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Uses Kinderman and Monahan method. Reference: Kinderman,</span>
+        <span class="c1"># A.J. and Monahan, J.F., &quot;Computer generation of random</span>
+        <span class="c1"># variables using the ratio of uniform deviates&quot;, ACM Trans</span>
+        <span class="c1"># Math Software, 3, (1977), pp257-260.</span>
+
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">u1</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+            <span class="n">u2</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">random</span><span class="p">()</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">NV_MAGICCONST</span> <span class="o">*</span> <span class="p">(</span><span class="n">u1</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">/</span> <span class="n">u2</span>
+            <span class="n">zz</span> <span class="o">=</span> <span class="n">z</span> <span class="o">*</span> <span class="n">z</span> <span class="o">/</span> <span class="mf">4.0</span>
+            <span class="k">if</span> <span class="n">zz</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="n">_log</span><span class="p">(</span><span class="n">u2</span><span class="p">):</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">z</span> <span class="o">*</span> <span class="n">sigma</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">gauss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gaussian distribution.</span>
+
+<span class="sd">        mu is the mean, and sigma is the standard deviation.  This is</span>
+<span class="sd">        slightly faster than the normalvariate() function.</span>
+
+<span class="sd">        Not thread-safe without a lock around calls.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># When x and y are two variables from [0, 1), uniformly</span>
+        <span class="c1"># distributed, then</span>
+        <span class="c1">#</span>
+        <span class="c1">#    cos(2*pi*x)*sqrt(-2*log(1-y))</span>
+        <span class="c1">#    sin(2*pi*x)*sqrt(-2*log(1-y))</span>
+        <span class="c1">#</span>
+        <span class="c1"># are two *independent* variables with normal distribution</span>
+        <span class="c1"># (mu = 0, sigma = 1).</span>
+        <span class="c1"># (Lambert Meertens)</span>
+        <span class="c1"># (corrected version; bug discovered by Mike Miller, fixed by LM)</span>
+
+        <span class="c1"># Multithreading note: When two threads call this function</span>
+        <span class="c1"># simultaneously, it is possible that they will receive the</span>
+        <span class="c1"># same return value.  The window is very small though.  To</span>
+        <span class="c1"># avoid this, you have to use a lock around all calls.  (I</span>
+        <span class="c1"># didn&#39;t want to slow this down in the serial case by using a</span>
+        <span class="c1"># lock here.)</span>
+
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">z</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x2pi</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="n">TWOPI</span>
+            <span class="n">g2rad</span> <span class="o">=</span> <span class="n">_sqrt</span><span class="p">(</span><span class="o">-</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">_log</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">random</span><span class="p">()))</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">_cos</span><span class="p">(</span><span class="n">x2pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">g2rad</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gauss_next</span> <span class="o">=</span> <span class="n">_sin</span><span class="p">(</span><span class="n">x2pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">g2rad</span>
+
+        <span class="k">return</span> <span class="n">mu</span> <span class="o">+</span> <span class="n">z</span> <span class="o">*</span> <span class="n">sigma</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">lognormvariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Log normal distribution.</span>
+
+<span class="sd">        If you take the natural logarithm of this distribution, you&#39;ll get a</span>
+<span class="sd">        normal distribution with mean mu and standard deviation sigma.</span>
+<span class="sd">        mu can have any value, and sigma must be greater than zero.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">normalvariate</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">expovariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lambd</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Exponential distribution.</span>
+
+<span class="sd">        lambd is 1.0 divided by the desired mean.  It should be</span>
+<span class="sd">        nonzero.  (The parameter would be called &quot;lambda&quot;, but that is</span>
+<span class="sd">        a reserved word in Python.)  Returned values range from 0 to</span>
+<span class="sd">        positive infinity if lambd is positive, and from negative</span>
+<span class="sd">        infinity to 0 if lambd is negative.</span>
+
+<span class="sd">        The mean (expected value) and variance of the random variable are:</span>
+
+<span class="sd">            E[X] = 1 / lambd</span>
+<span class="sd">            Var[X] = 1 / lambd ** 2</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># we use 1-random() instead of random() to preclude the</span>
+        <span class="c1"># possibility of taking the log of zero.</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="n">_log</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span><span class="p">())</span> <span class="o">/</span> <span class="n">lambd</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">vonmisesvariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">kappa</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Circular data distribution.</span>
+
+<span class="sd">        mu is the mean angle, expressed in radians between 0 and 2*pi, and</span>
+<span class="sd">        kappa is the concentration parameter, which must be greater than or</span>
+<span class="sd">        equal to zero.  If kappa is equal to zero, this distribution reduces</span>
+<span class="sd">        to a uniform random angle over the range 0 to 2*pi.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Based upon an algorithm published in: Fisher, N.I.,</span>
+        <span class="c1"># &quot;Statistical Analysis of Circular Data&quot;, Cambridge</span>
+        <span class="c1"># University Press, 1993.</span>
+
+        <span class="c1"># Thanks to Magnus Kessler for a correction to the</span>
+        <span class="c1"># implementation of step 4.</span>
+
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+        <span class="k">if</span> <span class="n">kappa</span> <span class="o">&lt;=</span> <span class="mf">1e-6</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">TWOPI</span> <span class="o">*</span> <span class="n">random</span><span class="p">()</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="n">kappa</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">s</span> <span class="o">+</span> <span class="n">_sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">s</span> <span class="o">*</span> <span class="n">s</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">u1</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">_cos</span><span class="p">(</span><span class="n">_pi</span> <span class="o">*</span> <span class="n">u1</span><span class="p">)</span>
+
+            <span class="n">d</span> <span class="o">=</span> <span class="n">z</span> <span class="o">/</span> <span class="p">(</span><span class="n">r</span> <span class="o">+</span> <span class="n">z</span><span class="p">)</span>
+            <span class="n">u2</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">u2</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">d</span> <span class="o">*</span> <span class="n">d</span> <span class="ow">or</span> <span class="n">u2</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="n">_exp</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+                <span class="k">break</span>
+
+        <span class="n">q</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">r</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">q</span> <span class="o">+</span> <span class="n">z</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">q</span> <span class="o">*</span> <span class="n">z</span><span class="p">)</span>
+        <span class="n">u3</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">u3</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span> <span class="o">+</span> <span class="n">_acos</span><span class="p">(</span><span class="n">f</span><span class="p">))</span> <span class="o">%</span> <span class="n">TWOPI</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span> <span class="o">-</span> <span class="n">_acos</span><span class="p">(</span><span class="n">f</span><span class="p">))</span> <span class="o">%</span> <span class="n">TWOPI</span>
+
+        <span class="k">return</span> <span class="n">theta</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">gammavariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gamma distribution.  Not the gamma function!</span>
+
+<span class="sd">        Conditions on the parameters are alpha &gt; 0 and beta &gt; 0.</span>
+
+<span class="sd">        The probability distribution function is:</span>
+
+<span class="sd">                    x ** (alpha - 1) * math.exp(-x / beta)</span>
+<span class="sd">          pdf(x) =  --------------------------------------</span>
+<span class="sd">                      math.gamma(alpha) * beta ** alpha</span>
+
+<span class="sd">        The mean (expected value) and variance of the random variable are:</span>
+
+<span class="sd">            E[X] = alpha * beta</span>
+<span class="sd">            Var[X] = alpha * beta ** 2</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Warning: a few older sources define the gamma distribution in terms</span>
+        <span class="c1"># of alpha &gt; -1.0</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">beta</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;gammavariate: alpha and beta must be &gt; 0.0&#39;</span><span class="p">)</span>
+
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
+
+            <span class="c1"># Uses R.C.H. Cheng, &quot;The generation of Gamma</span>
+            <span class="c1"># variables with non-integral shape parameters&quot;,</span>
+            <span class="c1"># Applied Statistics, (1977), 26, No. 1, p71-74</span>
+
+            <span class="n">ainv</span> <span class="o">=</span> <span class="n">_sqrt</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">bbb</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">-</span> <span class="n">LOG4</span>
+            <span class="n">ccc</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">+</span> <span class="n">ainv</span>
+
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">u1</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="mf">1e-7</span> <span class="o">&lt;</span> <span class="n">u1</span> <span class="o">&lt;</span> <span class="mf">0.9999999</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">u2</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">random</span><span class="p">()</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">_log</span><span class="p">(</span><span class="n">u1</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">u1</span><span class="p">))</span> <span class="o">/</span> <span class="n">ainv</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">_exp</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">z</span> <span class="o">=</span> <span class="n">u1</span> <span class="o">*</span> <span class="n">u1</span> <span class="o">*</span> <span class="n">u2</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">bbb</span> <span class="o">+</span> <span class="n">ccc</span> <span class="o">*</span> <span class="n">v</span> <span class="o">-</span> <span class="n">x</span>
+                <span class="k">if</span> <span class="n">r</span> <span class="o">+</span> <span class="n">SG_MAGICCONST</span> <span class="o">-</span> <span class="mf">4.5</span> <span class="o">*</span> <span class="n">z</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="n">_log</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">beta</span>
+
+        <span class="k">elif</span> <span class="n">alpha</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="c1"># expovariate(1/beta)</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">_log</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">random</span><span class="p">())</span> <span class="o">*</span> <span class="n">beta</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># alpha is between 0 and 1 (exclusive)</span>
+            <span class="c1"># Uses ALGORITHM GS of Statistical Computing - Kennedy &amp; Gentle</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">u</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+                <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">_e</span> <span class="o">+</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">/</span> <span class="n">_e</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">b</span> <span class="o">*</span> <span class="n">u</span>
+                <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+                    <span class="n">x</span> <span class="o">=</span> <span class="n">p</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">alpha</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">x</span> <span class="o">=</span> <span class="o">-</span><span class="n">_log</span><span class="p">((</span><span class="n">b</span> <span class="o">-</span> <span class="n">p</span><span class="p">)</span> <span class="o">/</span> <span class="n">alpha</span><span class="p">)</span>
+                <span class="n">u1</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">u1</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">**</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">):</span>
+                        <span class="k">break</span>
+                <span class="k">elif</span> <span class="n">u1</span> <span class="o">&lt;=</span> <span class="n">_exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">):</span>
+                    <span class="k">break</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">beta</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">betavariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Beta distribution.</span>
+
+<span class="sd">        Conditions on the parameters are alpha &gt; 0 and beta &gt; 0.</span>
+<span class="sd">        Returned values range between 0 and 1.</span>
+
+<span class="sd">        The mean (expected value) and variance of the random variable are:</span>
+
+<span class="sd">            E[X] = alpha / (alpha + beta)</span>
+<span class="sd">            Var[X] = alpha * beta / ((alpha + beta)**2 * (alpha + beta + 1))</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">## See</span>
+        <span class="c1">## http://mail.python.org/pipermail/python-bugs-list/2001-January/003752.html</span>
+        <span class="c1">## for Ivan Frohne&#39;s insightful analysis of why the original implementation:</span>
+        <span class="c1">##</span>
+        <span class="c1">##    def betavariate(self, alpha, beta):</span>
+        <span class="c1">##        # Discrete Event Simulation in C, pp 87-88.</span>
+        <span class="c1">##</span>
+        <span class="c1">##        y = self.expovariate(alpha)</span>
+        <span class="c1">##        z = self.expovariate(1.0/beta)</span>
+        <span class="c1">##        return z/(y+z)</span>
+        <span class="c1">##</span>
+        <span class="c1">## was dead wrong, and how it probably got that way.</span>
+
+        <span class="c1"># This version due to Janne Sinkkonen, and matches all the std</span>
+        <span class="c1"># texts (e.g., Knuth Vol 2 Ed 3 pg 134 &quot;the beta distribution&quot;).</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gammavariate</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">y</span> <span class="o">/</span> <span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">gammavariate</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">paretovariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pareto distribution.  alpha is the shape parameter.&quot;&quot;&quot;</span>
+        <span class="c1"># Jain, pg. 495</span>
+
+        <span class="n">u</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">u</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">alpha</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">weibullvariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Weibull distribution.</span>
+
+<span class="sd">        alpha is the scale parameter and beta is the shape parameter.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Jain, pg. 499; bug fix courtesy Bill Arms</span>
+
+        <span class="n">u</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="n">_log</span><span class="p">(</span><span class="n">u</span><span class="p">))</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">beta</span><span class="p">)</span>
+
+
+    <span class="c1">## -------------------- discrete  distributions  ---------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">binomialvariate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Binomial random variable.</span>
+
+<span class="sd">        Gives the number of successes for *n* independent trials</span>
+<span class="sd">        with the probability of success in each trial being *p*:</span>
+
+<span class="sd">            sum(random() &lt; p for i in range(n))</span>
+
+<span class="sd">        Returns an integer in the range:   0 &lt;= X &lt;= n</span>
+
+<span class="sd">        The mean (expected value) and variance of the random variable are:</span>
+
+<span class="sd">            E[X] = n * p</span>
+<span class="sd">            Var[x] = n * p * (1 - p)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Error check inputs and handle edge cases</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n must be non-negative&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">p</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">p</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">n</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;p must be in the range 0.0 &lt;= p &lt;= 1.0&quot;</span><span class="p">)</span>
+
+        <span class="n">random</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random</span>
+
+        <span class="c1"># Fast path for a common case</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_index</span><span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">p</span><span class="p">)</span>
+
+        <span class="c1"># Exploit symmetry to establish:  p &lt;= 0.5</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">n</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">binomialvariate</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">p</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">n</span> <span class="o">*</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="mf">10.0</span><span class="p">:</span>
+            <span class="c1"># BG: Geometric method by Devroye with running time of O(np).</span>
+            <span class="c1"># https://dl.acm.org/doi/pdf/10.1145/42372.42381</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">_log2</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">p</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">x</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">+=</span> <span class="n">_floor</span><span class="p">(</span><span class="n">_log2</span><span class="p">(</span><span class="n">random</span><span class="p">())</span> <span class="o">/</span> <span class="n">c</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">y</span> <span class="o">&gt;</span> <span class="n">n</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">x</span>
+                <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># BTRS: Transformed rejection with squeeze method by Wolfgang Hörmann</span>
+        <span class="c1"># https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.47.8407&amp;rep=rep1&amp;type=pdf</span>
+        <span class="k">assert</span> <span class="n">n</span><span class="o">*</span><span class="n">p</span> <span class="o">&gt;=</span> <span class="mf">10.0</span> <span class="ow">and</span> <span class="n">p</span> <span class="o">&lt;=</span> <span class="mf">0.5</span>
+        <span class="n">setup_complete</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">spq</span> <span class="o">=</span> <span class="n">_sqrt</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">p</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">p</span><span class="p">))</span>  <span class="c1"># Standard deviation of the distribution</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="mf">1.15</span> <span class="o">+</span> <span class="mf">2.53</span> <span class="o">*</span> <span class="n">spq</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.0873</span> <span class="o">+</span> <span class="mf">0.0248</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="n">p</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">p</span> <span class="o">+</span> <span class="mf">0.5</span>
+        <span class="n">vr</span> <span class="o">=</span> <span class="mf">0.92</span> <span class="o">-</span> <span class="mf">4.2</span> <span class="o">/</span> <span class="n">b</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+
+            <span class="n">u</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+            <span class="n">u</span> <span class="o">-=</span> <span class="mf">0.5</span>
+            <span class="n">us</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">-</span> <span class="n">_fabs</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">_floor</span><span class="p">((</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">a</span> <span class="o">/</span> <span class="n">us</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="n">u</span> <span class="o">+</span> <span class="n">c</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="n">n</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># The early-out &quot;squeeze&quot; test substantially reduces</span>
+            <span class="c1"># the number of acceptance condition evaluations.</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">random</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">us</span> <span class="o">&gt;=</span> <span class="mf">0.07</span> <span class="ow">and</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="n">vr</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">k</span>
+
+            <span class="c1"># Acceptance-rejection test.</span>
+            <span class="c1"># Note, the original paper erroneously omits the call to log(v)</span>
+            <span class="c1"># when comparing to the log of the rescaled binomial distribution.</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">setup_complete</span><span class="p">:</span>
+                <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.83</span> <span class="o">+</span> <span class="mf">5.1</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="n">spq</span>
+                <span class="n">lpq</span> <span class="o">=</span> <span class="n">_log</span><span class="p">(</span><span class="n">p</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">p</span><span class="p">))</span>
+                <span class="n">m</span> <span class="o">=</span> <span class="n">_floor</span><span class="p">((</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">p</span><span class="p">)</span>         <span class="c1"># Mode of the distribution</span>
+                <span class="n">h</span> <span class="o">=</span> <span class="n">_lgamma</span><span class="p">(</span><span class="n">m</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">_lgamma</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">m</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">setup_complete</span> <span class="o">=</span> <span class="kc">True</span>           <span class="c1"># Only needs to be done once</span>
+            <span class="n">v</span> <span class="o">*=</span> <span class="n">alpha</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="n">us</span> <span class="o">*</span> <span class="n">us</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">_log</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">h</span> <span class="o">-</span> <span class="n">_lgamma</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">_lgamma</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="n">m</span><span class="p">)</span> <span class="o">*</span> <span class="n">lpq</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">k</span>
+
+
+<span class="c1">## ------------------------------------------------------------------</span>
+<span class="c1">## --------------- Operating System Random Source  ------------------</span>
+
+
+<div class="viewcode-block" id="SystemRandom">
+<a class="viewcode-back" href="../api/secrets.html#secrets.SystemRandom">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SystemRandom</span><span class="p">(</span><span class="n">Random</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Alternate random number generator using sources provided</span>
+<span class="sd">    by the operating system (such as /dev/urandom on Unix or</span>
+<span class="sd">    CryptGenRandom on Windows).</span>
+
+<span class="sd">     Not available on all systems (see os.urandom() for details).</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SystemRandom.random">
+<a class="viewcode-back" href="../api/secrets.html#secrets.SystemRandom.random">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the next random number in the range 0.0 &lt;= X &lt; 1.0.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">_urandom</span><span class="p">(</span><span class="mi">7</span><span class="p">))</span> <span class="o">&gt;&gt;</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">RECIP_BPF</span></div>
+
+
+<div class="viewcode-block" id="SystemRandom.getrandbits">
+<a class="viewcode-back" href="../api/secrets.html#secrets.SystemRandom.getrandbits">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">getrandbits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;getrandbits(k) -&gt; x.  Generates an int with k random bits.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;number of bits must be non-negative&#39;</span><span class="p">)</span>
+        <span class="n">numbytes</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">7</span><span class="p">)</span> <span class="o">//</span> <span class="mi">8</span>                       <span class="c1"># bits / 8 and rounded up</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">_urandom</span><span class="p">(</span><span class="n">numbytes</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="n">numbytes</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span>                <span class="c1"># trim excess bits</span></div>
+
+
+<div class="viewcode-block" id="SystemRandom.randbytes">
+<a class="viewcode-back" href="../api/secrets.html#secrets.SystemRandom.randbytes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">randbytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate n random bytes.&quot;&quot;&quot;</span>
+        <span class="c1"># os.urandom(n) fails with ValueError for n &lt; 0</span>
+        <span class="c1"># and returns an empty bytes string for n == 0.</span>
+        <span class="k">return</span> <span class="n">_urandom</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SystemRandom.seed">
+<a class="viewcode-back" href="../api/secrets.html#secrets.SystemRandom.seed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+        <span class="s2">&quot;Stub method.  Not used for a system random number generator.&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_notimplemented</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+        <span class="s2">&quot;Method should not be called for a system random number generator.&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;System entropy source does not have state.&#39;</span><span class="p">)</span>
+    <span class="n">getstate</span> <span class="o">=</span> <span class="n">setstate</span> <span class="o">=</span> <span class="n">_notimplemented</span></div>
+
+
+
+<span class="c1"># ----------------------------------------------------------------------</span>
+<span class="c1"># Create one instance, seeded from current time, and export its methods</span>
+<span class="c1"># as module-level functions.  The functions share state across all uses</span>
+<span class="c1"># (both in the user&#39;s code and in the Python libraries), but that&#39;s fine</span>
+<span class="c1"># for most programs and is easier for the casual user than making them</span>
+<span class="c1"># instantiate their own Random() instance.</span>
+
+<span class="n">_inst</span> <span class="o">=</span> <span class="n">Random</span><span class="p">()</span>
+<span class="n">seed</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">seed</span>
+<span class="n">random</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">random</span>
+<span class="n">uniform</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">uniform</span>
+<span class="n">triangular</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">triangular</span>
+<span class="n">randint</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">randint</span>
+<span class="n">choice</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">choice</span>
+<span class="n">randrange</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">randrange</span>
+<span class="n">sample</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">sample</span>
+<span class="n">shuffle</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">shuffle</span>
+<span class="n">choices</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">choices</span>
+<span class="n">normalvariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">normalvariate</span>
+<span class="n">lognormvariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">lognormvariate</span>
+<span class="n">expovariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">expovariate</span>
+<span class="n">vonmisesvariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">vonmisesvariate</span>
+<span class="n">gammavariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">gammavariate</span>
+<span class="n">gauss</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">gauss</span>
+<span class="n">betavariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">betavariate</span>
+<span class="n">binomialvariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">binomialvariate</span>
+<span class="n">paretovariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">paretovariate</span>
+<span class="n">weibullvariate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">weibullvariate</span>
+<span class="n">getstate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">getstate</span>
+<span class="n">setstate</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">setstate</span>
+<span class="n">getrandbits</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">getrandbits</span>
+<span class="n">randbytes</span> <span class="o">=</span> <span class="n">_inst</span><span class="o">.</span><span class="n">randbytes</span>
+
+
+<span class="c1">## ------------------------------------------------------</span>
+<span class="c1">## ----------------- test program -----------------------</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_test_generator</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">statistics</span><span class="w"> </span><span class="kn">import</span> <span class="n">stdev</span><span class="p">,</span> <span class="n">fmean</span> <span class="k">as</span> <span class="n">mean</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="kn">import</span> <span class="n">perf_counter</span>
+
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_repeat</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">n</span><span class="p">)]</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="n">perf_counter</span><span class="p">()</span>
+
+    <span class="n">xbar</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">stdev</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">xbar</span><span class="p">)</span>
+    <span class="n">low</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">high</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">t1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> sec, </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s1"> times </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}{</span><span class="n">args</span><span class="si">!r}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;avg </span><span class="si">%g</span><span class="s1">, stddev </span><span class="si">%g</span><span class="s1">, min </span><span class="si">%g</span><span class="s1">, max </span><span class="si">%g</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">xbar</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_test</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">10_000</span><span class="p">):</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">random</span><span class="p">,</span> <span class="p">())</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">normalvariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">lognormvariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">vonmisesvariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">binomialvariate</span><span class="p">,</span> <span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mf">0.60</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">binomialvariate</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gammavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">200.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">gauss</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">betavariate</span><span class="p">,</span> <span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>
+    <span class="n">_test_generator</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">triangular</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">))</span>
+
+
+<span class="c1">## ------------------------------------------------------</span>
+<span class="c1">## ------------------ fork support  ---------------------</span>
+
+<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">_os</span><span class="p">,</span> <span class="s2">&quot;fork&quot;</span><span class="p">):</span>
+    <span class="n">_os</span><span class="o">.</span><span class="n">register_at_fork</span><span class="p">(</span><span class="n">after_in_child</span><span class="o">=</span><span class="n">_inst</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">_test</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SomaTech.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

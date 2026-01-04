@@ -1,7 +1,7 @@
 """Real Infrastructure Health Checker.
 
-VIBE COMPLIANT - Tests REAL infrastructure, no mocks.
-Per VIBE Coding Rules Section 4 & 7 - Real implementations only.
+
+Per 
 
 10-Persona Implementation:
 - PhD Developer: Async health checks with proper error handling
@@ -57,7 +57,7 @@ class InfrastructureHealthChecker:
     """Real infrastructure health checker.
 
     Connects to actual services and verifies they are operational.
-    No mocks, no fake data - VIBE compliant.
+    No mocks, no fake data - 
     """
 
     def __init__(self):

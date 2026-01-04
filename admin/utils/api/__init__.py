@@ -1,6 +1,6 @@
 """Utils API routers - Django Ninja.
 
-VIBE Compliant - No placeholders.
+
 """
 
 from ninja import Router

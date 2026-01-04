@@ -1,6 +1,6 @@
 """SomaBrain Admin API - Service management.
 
-VIBE COMPLIANT - Django Ninja, ADMIN mode only.
+
 Per AGENT_TASKS.md Phase 6.4 - Admin Endpoints.
 
 7-Persona Implementation:

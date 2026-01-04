@@ -2,7 +2,7 @@
 Redis Rate Limiter for API Endpoints
 Per CANONICAL_REQUIREMENTS.md REQ-SEC-006
 
-VIBE COMPLIANT:
+
 - Real Redis backend
 - Sliding window algorithm
 - Per-tenant rate limiting

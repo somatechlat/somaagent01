@@ -4,7 +4,7 @@ The implementation uses the :pypi:`sounddevice` library when it is available –
 provides a thin wrapper around PortAudio and works on macOS, Linux and Windows.
 If the library cannot be imported (e.g. in a minimal CI environment) the
 module raises :class:`VoiceProcessingError` at runtime.  This behaviour satisfies
-the VIBE rule **NO OPTIONAL DEPENDENCIES AT IMPORT TIME** – the optional import is
+the 
 performed lazily inside the ``AudioCapture`` constructor.
 
 The public API consists of a single ``AudioCapture`` class exposing an async

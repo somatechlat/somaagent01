@@ -2,7 +2,7 @@
 Django Management Command: seed_saas_data
 Seed initial SAAS data including tiers, features, roles, and rate limits.
 
-VIBE COMPLIANT:
+
 - Pure Django ORM
 - Real data from SRS-SEED-DATA.md
 - Idempotent (safe to re-run)

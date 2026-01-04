@@ -1,6 +1,6 @@
 """Audit API - Security audit logging.
 
-VIBE COMPLIANT - Django Ninja.
+
 Comprehensive audit trail for compliance.
 
 7-Persona Implementation:

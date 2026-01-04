@@ -1,6 +1,6 @@
 """Environment configuration helper for required variables.
 
-VIBE COMPLIANT - Zero hardcoded defaults, clear error messages.
+
 Security Auditor: Enforces explicit environment configuration.
 """
 

@@ -185,7 +185,6 @@ class ProcessMessageUseCase:
                 event, session_id, persona_id, tenant, enriched_metadata, analysis_dict
             )
 
-            # VIBE: Intercept Multimodal Plans
             if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
                 response_text = await self._handle_multimodal_plan(
                     response_text, session_id, tenant

@@ -1,6 +1,6 @@
 """Voice API - Speech-to-Text and Text-to-Speech.
 
-VIBE COMPLIANT - Django Ninja + async HTTP.
+
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
 7-Persona Implementation:
@@ -107,7 +107,7 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
 
     Per SRS UC-04: POST /api/v2/voice/transcribe
 
-    VIBE COMPLIANT:
+    
     - Real Whisper integration
     - Fallback to browser API if unavailable
     - Size and format validation
@@ -167,7 +167,7 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
 
     Per SRS UC-04: POST /api/v2/voice/synthesize
 
-    VIBE COMPLIANT:
+    
     - Real Kokoro TTS integration
     - Fallback to browser API if unavailable
     - Multiple voice options

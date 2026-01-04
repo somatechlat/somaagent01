@@ -1,6 +1,6 @@
 """Secrets API - Secure credential management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Encrypted secret storage (Vault-like).
 
 7-Persona Implementation:

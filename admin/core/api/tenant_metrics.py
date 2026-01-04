@@ -2,7 +2,7 @@
 Tenant Usage Metrics API
 Report usage and cost breakdown for tenant agents.
 
-VIBE COMPLIANT:
+
 - Django Ninja router
 - Real Prometheus metrics (with fallback)
 - Per SRS-METRICS-DASHBOARDS.md Section 3.2
@@ -119,7 +119,7 @@ async def get_tenant_usage(
 async def _get_usage_from_prometheus(request) -> list[UsageMetric]:
     """Fetch usage metrics from Prometheus.
 
-    VIBE COMPLIANT: Real Prometheus integration.
+    
     """
     import httpx
 

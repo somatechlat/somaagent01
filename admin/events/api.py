@@ -1,6 +1,6 @@
 """Events API - Real-time streaming and SSE.
 
-VIBE COMPLIANT - Django Ninja + SSE patterns.
+
 Server-Sent Events for real-time updates.
 
 7-Persona Implementation:

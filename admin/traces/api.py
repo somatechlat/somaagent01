@@ -1,6 +1,6 @@
 """Traces API - Distributed tracing.
 
-VIBE COMPLIANT - Django Ninja.
+
 OpenTelemetry-compatible trace export.
 
 7-Persona Implementation:

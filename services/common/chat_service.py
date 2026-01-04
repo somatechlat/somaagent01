@@ -1,6 +1,6 @@
 """ChatService for LLM + memory integration and conversation management.
 
-VIBE COMPLIANT - Real HTTP integration with SomaFractalMemory and real LLM calls, no mocks.
+
 Per login-to-chat-journey design.md Section 6.1 (design doc missing from repo).
 
 Implements:

@@ -1,6 +1,6 @@
 """Voice WebSocket URL Routing.
 
-VIBE COMPLIANT - Django Channels routing.
+
 """
 
 from django.urls import path

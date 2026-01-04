@@ -2,7 +2,7 @@
 
 Django signals for automatic outbox entry creation.
 
-VIBE COMPLIANT: Pure Django signals pattern.
+
 """
 
 from __future__ import annotations

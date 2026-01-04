@@ -1,6 +1,6 @@
 """PKCE (Proof Key for Code Exchange) utilities for OAuth 2.0.
 
-VIBE COMPLIANT - Real cryptographic implementation, no mocks.
+
 Per login-to-chat-journey design.md Section 3.1: PKCE
 
 Implements:

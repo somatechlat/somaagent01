@@ -1,6 +1,6 @@
 """Configuration API - System and tenant configuration.
 
-VIBE COMPLIANT - Django Ninja.
+
 System-wide and tenant-specific configuration management.
 
 7-Persona Implementation:
@@ -305,7 +305,6 @@ async def check_feature_flag(
         try:
             flag = FeatureFlagModel.objects.get(name=key)
             # Basic check: is_enabled OR rollout logic
-            # For strict VIBE, we should implement the rollout logic here.
             # But simplistic is better than broken.
             return flag.is_enabled
         except FeatureFlagModel.DoesNotExist:
@@ -334,7 +333,6 @@ async def list_secrets(request) -> dict:
 
     Security Auditor: Only key names, not values.
     """
-    # VIBE: Secrets are Env Vars or Vault.
     # Return existence check.
     secrets = ["OPENAI_API_KEY", "LAGO_API_KEY", "SOMABRAIN_TOKEN", "DATABASE_DSN"]
 

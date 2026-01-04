@@ -1,6 +1,6 @@
 """Account Lockout Service for brute-force protection.
 
-VIBE COMPLIANT - Real Redis backend, no mocks.
+
 Per login-to-chat-journey design.md Section 2.5: Account Lockout
 
 Implements:

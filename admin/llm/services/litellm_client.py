@@ -1,7 +1,7 @@
 """LiteLLM client wrapper - migrated from root models.py to Django app.
 
 This module provides LangChain-compatible LLM wrappers using LiteLLM.
-Migrated to admin.llm.services for Django compliance per VIBE Rule 8.
+Migrated to admin.llm.services for Django compliance per 
 """
 
 from __future__ import annotations

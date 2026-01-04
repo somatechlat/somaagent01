@@ -280,7 +280,6 @@ class Config(BaseModel):
     extra: Dict[str, Any] = Field(default_factory=dict, description="Additional configuration")
 
     # -----------------------------------------------------------------
-    # Voice configuration – added for real‑time audio pipeline (VIBE
     # compliant). All fields have sensible defaults; the provider selector
     # reads this section at runtime.
     # -----------------------------------------------------------------

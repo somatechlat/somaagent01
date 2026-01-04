@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/multimodal.py
 Django Ninja with streaming responses and OPA auth.
 
-VIBE COMPLIANT - Django patterns, security-first.
+
 """
 
 from __future__ import annotations

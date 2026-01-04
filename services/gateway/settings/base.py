@@ -4,7 +4,7 @@ Django settings for SomaAgent01 SAAS Admin.
 This module is used for Django management commands (makemigrations, migrate, etc.)
 The runtime configuration is in django_setup.py for the gateway.
 
-VIBE COMPLIANT - Security Audit 2026-01-02:
+
 - Zero hardcoded URLs (Rule 16: Dynamic URL Resolution)
 - Zero hardcoded secrets (Rule 47: Zero-Backdoor Mandate)
 - Required environment variables enforced with clear error messages
@@ -158,7 +158,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Default tenant for unauthenticated requests (development only)
 SAAS_DEFAULT_TENANT_ID = os.environ.get("SAAS_DEFAULT_TENANT_ID", None)
 
-# Default AI model for new agents (REQUIRED - no hardcoded default per VIBE Rule 4)
 SAAS_DEFAULT_CHAT_MODEL = os.environ.get("SAAS_DEFAULT_CHAT_MODEL")
 
 # Default tier limits (can be overridden per-tier in database)

@@ -1,6 +1,6 @@
 """Tool Sensor.
 
-VIBE COMPLIANT - Django ORM + ZDL pattern.
+
 Captures every tool execution for cognitive learning.
 
 PhD Dev: This IS action. Agent's impact on the world.

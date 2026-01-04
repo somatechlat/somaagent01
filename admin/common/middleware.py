@@ -1,6 +1,6 @@
 """Session Middleware for Django Ninja API.
 
-VIBE COMPLIANT - Real Redis session validation, no mocks.
+
 Per login-to-chat-journey design.md Section: SessionMiddleware
 
 Implements:

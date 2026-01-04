@@ -44,7 +44,7 @@ Example:
     >>> api.title
     'SomaAgent Platform API'
 
-VIBE Compliance:
+
     - Rule 1: NO BULLSHIT - Real Django Ninja, no abstractions
     - Rule 4: REAL IMPLEMENTATIONS ONLY - Production-grade router
 
@@ -275,7 +275,6 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/plugins", plugins_router)
 
-    # NOTE: Backup router removed (directory deleted per VIBE cleanup)
 
     # Audit (Security logging)
     from admin.audit.api import router as audit_router

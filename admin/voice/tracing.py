@@ -2,7 +2,7 @@
 
 The module provides a thin wrapper around the OpenTelemetry SDK.  Tracing is
 optional – if the SDK is not installed the functions become no‑ops, which keeps
-the import side‑effect‑free (VIBE rule **NO SIDE‑EFFECTS AT IMPORT**).
+the import side‑effect‑free (
 """
 
 from __future__ import annotations

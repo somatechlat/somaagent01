@@ -1,6 +1,6 @@
 """LLM app - Django-compliant LLM wrappers and services.
 
-Migrated from root models.py per VIBE Rule 8 (Django capabilities ONLY).
+Migrated from root models.py per 
 Uses lazy imports for Django models to avoid AppRegistryNotReady errors.
 """
 

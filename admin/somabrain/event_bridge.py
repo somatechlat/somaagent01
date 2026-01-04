@@ -1,6 +1,6 @@
 """SomaBrain Event Bridge - Kafka/Flink Integration.
 
-VIBE COMPLIANT - Django + Kafka + Flink → SomaBrain.
+
 Captures ALL agent observable events for cognitive learning.
 
 Architecture:

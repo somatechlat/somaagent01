@@ -1,6 +1,6 @@
 """Prompts API - Prompt template management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Prompt versioning and rendering.
 
 7-Persona Implementation:

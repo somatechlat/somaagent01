@@ -1,6 +1,6 @@
 """Scheduling API - Temporal-based workflow orchestration.
 
-VIBE COMPLIANT - Django Ninja + Temporal.
+
 Durable workflow scheduling and execution.
 
 7-Persona Implementation:

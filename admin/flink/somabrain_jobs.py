@@ -1,6 +1,6 @@
 """SomaBrain PyFlink SQL Jobs.
 
-VIBE COMPLIANT - PyFlink SQL for processing agent events.
+
 Processes Kafka events and persists to SomaBrain.
 
 Architecture:

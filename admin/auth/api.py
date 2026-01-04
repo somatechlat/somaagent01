@@ -3,7 +3,7 @@
 This module provides token-based authentication endpoints using Django Ninja
 with Keycloak as the OIDC identity provider.
 
-**VIBE COMPLIANT**: 100% Django Ninja, real Keycloak integration, no mocks.
+**
 
 Endpoints:
     POST /auth/token
@@ -126,7 +126,7 @@ class UserResponse(Schema):
 async def get_token(request, payload: TokenRequest, response):
     """Get access token via password grant or OAuth code exchange.
 
-    VIBE COMPLIANT - Real Keycloak token exchange, no mocks.
+    
     """
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
@@ -243,7 +243,7 @@ async def get_token(request, payload: TokenRequest, response):
 async def refresh_token(request, payload: RefreshRequest, response):
     """Refresh access token using refresh token.
 
-    VIBE COMPLIANT - Real Keycloak token refresh.
+    
     """
     config = get_keycloak_config()
 
@@ -348,7 +348,7 @@ async def refresh_token(request, payload: RefreshRequest, response):
 async def get_current_user(request):
     """Get current authenticated user info.
 
-    VIBE COMPLIANT - Real token validation, tenant lookup.
+    
     """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -402,7 +402,7 @@ async def get_current_user(request):
 async def logout(request):
     """Logout and revoke tokens.
 
-    VIBE COMPLIANT - Real Keycloak session termination.
+    
     """
     auth_header = request.headers.get("Authorization", "")
     refresh_token = request.POST.get("refresh_token")
@@ -589,7 +589,7 @@ class ImpersonationResponse(Schema):
 async def impersonate_tenant(request, payload: ImpersonationRequest):
     """Generate impersonation token to act as tenant admin.
 
-    VIBE COMPLIANT - Security Critical:
+    
     - Only SAAS super_admin can impersonate
     - Short-lived tokens (1 hour max)
     - Full audit trail
@@ -713,7 +713,7 @@ class SSOTestRequest(Schema):
 async def test_sso_connection(request, payload: SSOTestRequest):
     """Test SSO provider connection.
 
-    VIBE COMPLIANT - Real connection test to identity provider.
+    
     """
     import httpx
 
@@ -774,7 +774,7 @@ async def test_sso_connection(request, payload: SSOTestRequest):
 async def configure_sso(request, payload: SSOConfigRequest):
     """Save SSO provider configuration.
 
-    VIBE COMPLIANT - Stores SSO config for tenant.
+    
     """
     # In production, this would save to TenantAuthConfig model
     logger.info(f"SSO configured: provider={payload.provider}")
@@ -807,7 +807,7 @@ class RegisterRequest(Schema):
 async def login_with_email(request, payload: LoginRequest, response):
     """Login with email and password.
 
-    VIBE COMPLIANT - Real authentication via Keycloak with account lockout.
+    
     Per login-to-chat-journey design.md Section 2.1, 2.5
 
     Security features:
@@ -1005,7 +1005,7 @@ async def login_with_email(request, payload: LoginRequest, response):
 async def register_user(request, payload: RegisterRequest):
     """Register a new user.
 
-    VIBE COMPLIANT - Creates user in Keycloak.
+    
     """
     config = get_keycloak_config()
 
@@ -1040,7 +1040,7 @@ class OAuthCallbackRequest(Schema):
 async def oauth_initiate(request, provider: str):
     """Initiate OAuth flow with PKCE.
 
-    VIBE COMPLIANT - Real PKCE implementation per RFC 7636.
+    
     Per login-to-chat-journey design.md Section 3.1
 
     Supported providers: google, github
@@ -1106,7 +1106,7 @@ async def oauth_initiate(request, provider: str):
 async def oauth_callback(request, code: str, state: str):
     """Handle OAuth callback from Keycloak.
 
-    VIBE COMPLIANT - Real PKCE validation and token exchange.
+    
     Per login-to-chat-journey design.md Section 3.2, 3.3
 
     Flow:

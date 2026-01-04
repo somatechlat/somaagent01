@@ -1,6 +1,6 @@
 """SomaBrain Memory API Router.
 
-VIBE COMPLIANT - Django Ninja endpoints.
+
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-05: View/Manage Memories.
 """
 
@@ -88,7 +88,7 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
 
     Per SRS UC-05: POST /api/v2/memory/search
 
-    VIBE COMPLIANT:
+    
     - Real SomaBrain integration
     - Graceful degradation if unavailable
     """

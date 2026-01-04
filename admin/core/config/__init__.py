@@ -80,14 +80,14 @@ def gateway_port() -> int:
 def soma_base_url() -> str:
     """Get SomaBrain base URL.
 
-    VIBE COMPLIANT: Only SA01_SOMA_BASE_URL is supported.
+    
     No legacy SOMA_BASE_URL support.
     """
     cfg_obj = settings()
     url = cfg_obj.external.somabrain_base_url or env("SA01_SOMA_BASE_URL")
     if not url:
         raise RuntimeError(
-            "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per VIBE rules."
+            "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per "
         )
     return str(url).rstrip("/")
 

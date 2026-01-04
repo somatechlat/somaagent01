@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/sessions.py
 Pure Django ORM implementation - NO session_repository.
 
-VIBE COMPLIANT - Django ORM, no legacy stores.
+
 """
 
 from __future__ import annotations

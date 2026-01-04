@@ -1,7 +1,7 @@
 """
 Audit wire-tap publisher for policy/tool/task decisions.
 
-VIBE COMPLIANT - Real Kafka integration, no mocks.
+
 Per login-to-chat-journey design.md Section 9.1
 
 Extended with:

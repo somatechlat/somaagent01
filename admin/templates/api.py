@@ -1,6 +1,6 @@
 """Templates API - Agent and conversation templates.
 
-VIBE COMPLIANT - Django Ninja.
+
 Template management for agents and prompts.
 
 7-Persona Implementation:

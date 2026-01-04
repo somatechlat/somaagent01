@@ -1,6 +1,6 @@
 """Embeddings API - Vector embedding generation.
 
-VIBE COMPLIANT - Django Ninja.
+
 Embedding endpoint for RAG and semantic search.
 
 7-Persona Implementation:

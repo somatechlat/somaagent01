@@ -1,6 +1,6 @@
 """Permissions Django Admin.
 
-VIBE COMPLIANT - Full Django Admin for RBAC.
+
 7-Persona Implementation for Granular Permissions System.
 """
 

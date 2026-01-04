@@ -1,6 +1,6 @@
 """Django Management Command: run_conversation_worker.
 
-VIBE COMPLIANT - Django pattern for Kafka consumer worker.
+
 Replaces: services/conversation_worker/main.py (FastAPI container)
 
 Usage:

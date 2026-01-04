@@ -1,6 +1,6 @@
 """Capability Registry API.
 
-VIBE COMPLIANT - Django Ninja + Circuit Breakers.
+
 Per AGENT_TASKS.md Phase 7.1 - Capability Registry.
 
 7-Persona Implementation:

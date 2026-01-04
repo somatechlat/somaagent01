@@ -1,7 +1,7 @@
 """Tenant User Management API.
 
 Pure Django ORM + Django Ninja implementation.
-VIBE COMPLIANT - No SQLAlchemy.
+
 """
 
 from __future__ import annotations

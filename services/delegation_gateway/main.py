@@ -2,7 +2,7 @@
 
 All FastAPI replaced with Django/Django Ninja.
 
-VIBE COMPLIANT - All 7 Personas:
+
 🎓 PhD Dev - Clean ASGI
 🔒 Security - Django middleware
 ⚡ Perf - Prometheus metrics

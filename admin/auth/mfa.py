@@ -1,6 +1,6 @@
 """MFA Authentication API.
 
-VIBE COMPLIANT - Django Ninja + pyotp.
+
 Per AGENT_TASKS.md Phase 2.2 - MFA Setup.
 """
 

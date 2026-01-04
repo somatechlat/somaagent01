@@ -3,7 +3,7 @@
 Loads AgentIQ and Confidence configuration from YAML and environment variables.
 Supports hot-reload via Settings cache.
 
-VIBE COMPLIANT:
+
 - Real configuration loading (no mocks)
 - Integrates with existing src/core/config system
 - Validates all configuration values

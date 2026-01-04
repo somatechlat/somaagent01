@@ -1,7 +1,7 @@
 """Observability API - Real Infrastructure Metrics & Health.
 
-VIBE COMPLIANT - Django Ninja + Real Infrastructure Checks.
-Per VIBE Coding Rules Section 4 & 7 - NO mocks, NO fake data.
+
+Per 
 
 10-Persona Implementation:
 - PhD Developer: Clean async implementation

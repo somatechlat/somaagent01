@@ -3,7 +3,7 @@
 The project’s *canonical* roadmap specifies a single orchestrator implementation.  The previous
 file accidentally contained two completely different orchestrator classes – a lightweight
 ``BaseSomaService``‑based version and a much larger process‑manager version.  Keeping both
-confuses type‑checkers and makes the public API ambiguous.  According to the VIBE rules we must
+confuses type‑checkers and makes the public API ambiguous.  According to the 
 provide a **single, well‑documented implementation**.
 
 This file now contains only the lightweight version that works with ``BaseSomaService``
@@ -59,7 +59,7 @@ class SomaOrchestrator:
     The orchestrator is deliberately minimal: it registers a health router, then
     starts and stops each ``BaseSomaService`` instance in the order they were
     registered.  This satisfies the *single‑orchestrator* goal from the roadmap
-    and follows the VIBE rule **NO UNNECESSARY FILES** – we keep only one
+    and follows the 
     implementation.
     """
 
@@ -140,5 +140,4 @@ class SomaOrchestrator:
 
 # NOTE: The original complex process‑manager implementation has been removed.
 # The lightweight ``BaseSomaService``‑based orchestrator defined above is the
-# single source of truth for the project, satisfying the VIBE rule
 # **NO UNNECESSARY FILES**.

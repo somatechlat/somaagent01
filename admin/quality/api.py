@@ -1,6 +1,6 @@
 """Quality Gating API - Asset Critic and Retry Logic.
 
-VIBE COMPLIANT - Django Ninja + LLM evaluation.
+
 Per AGENT_TASKS.md Phase 7.4 - Quality Gating.
 
 7-Persona Implementation:
@@ -407,7 +407,7 @@ async def _evaluate_criterion(
 ) -> QualityScore:
     """Evaluate a single quality criterion using LLM.
 
-    VIBE COMPLIANT: Real LLM evaluation, no mocks.
+    
     """
     import httpx
     from django.conf import settings
@@ -466,7 +466,7 @@ def _generate_critique(
 ) -> tuple[str, list[str], list[str], list[str]]:
     """Generate critique for an asset using content analysis.
 
-    VIBE COMPLIANT: Real content analysis, no mocks.
+    
     """
     # Real content analysis based on content length and complexity
     word_count = len(content.split()) if content else 0
@@ -509,7 +509,7 @@ def _generate_critique(
 async def _execute_operation(operation_type: str, input_data: dict) -> dict:
     """Execute an operation via appropriate service.
 
-    VIBE COMPLIANT: Real service calls.
+    
     """
     import httpx
     from django.conf import settings
@@ -542,7 +542,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 async def _quick_quality_check(output: dict) -> float:
     """Quick quality check for retry logic.
 
-    VIBE COMPLIANT: Real quality assessment based on output.
+    
     """
     # Assess quality based on actual output characteristics
     if not output:

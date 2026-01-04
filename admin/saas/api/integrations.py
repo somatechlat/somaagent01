@@ -2,7 +2,7 @@
 Platform Integrations API
 Manage external service connections: Lago, Keycloak, SMTP, LLM, Storage.
 
-VIBE COMPLIANT:
+
 - Django Ninja router
 - Real connection tests (no mocks)
 - Secret masking
@@ -230,7 +230,7 @@ async def update_integration(
 async def test_connection(request, provider: str) -> ConnectionTestResult:
     """Test integration connection.
 
-    VIBE COMPLIANT: Real connection tests, no mocks.
+    
     """
     import time
     import httpx

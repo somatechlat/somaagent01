@@ -6,9 +6,9 @@ voice‑related error while still being able to handle specific cases such as a
 processing failure or an unsupported provider.
 
 These classes are deliberately tiny – they carry no hidden state – in order to
-comply with the VIBE rule **NO BULLSHIT** (no magic attributes, no implicit
+comply with the 
 behaviour).  Each exception has an informative docstring so that the generated
-documentation is accurate (VIBE rule **DOCUMENTATION = TRUTH**).
+documentation is accurate (
 """
 
 from __future__ import annotations

@@ -5,7 +5,7 @@ This manager satisfies the system's dependency injection needs by providing
 singleton access to either Service Adapters (for secrets/keys) or
 native Django Model Managers (for core persistence entities).
 
-VIBE COMPLIANT:
+
 - 100% Real implementations.
 - Zero Shims/Mocks.
 - Direct Django ORM usage for database entities.

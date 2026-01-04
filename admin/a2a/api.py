@@ -1,6 +1,6 @@
 """A2A (Agent-to-Agent) Workflow API.
 
-VIBE COMPLIANT - Django Ninja + Temporal patterns.
+
 Per AGENT_TASKS.md Phase 7.5 - A2A Workflows.
 
 7-Persona Implementation:

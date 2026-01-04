@@ -14,7 +14,7 @@ Prerequisites:
     - ``playwright`` must be installed (``pip install playwright``).
     - Browser binaries must be installed (run ``playwright install`` once).
 
-The script follows the project's VIBE coding rules: clear docstring, type
+The script follows the project's 
 annotations, minimal external dependencies, and explicit error handling.
 """
 

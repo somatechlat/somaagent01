@@ -1,6 +1,6 @@
 """SomaBrain Core Endpoints API.
 
-VIBE COMPLIANT - Django Ninja + SomaBrain client.
+
 REAL SomaBrain calls ONLY - NO MOCK DATA.
 Uses DegradationMonitor for fallback when SomaBrain is unavailable.
 

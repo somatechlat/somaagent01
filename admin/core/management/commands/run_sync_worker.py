@@ -1,6 +1,6 @@
 """Django Management Command: run_sync_worker.
 
-VIBE COMPLIANT - Django pattern for background tasks.
+
 Syncs SensorOutbox to SomaBrain with ZDL guarantees.
 
 Usage:

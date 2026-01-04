@@ -1,6 +1,6 @@
 """Voice API Schemas - Pydantic models for API.
 
-VIBE COMPLIANT - Django Ninja schemas.
+
 7-Persona Implementation for Voice API.
 """
 

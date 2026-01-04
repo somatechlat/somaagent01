@@ -1,9 +1,9 @@
 """AgentConfig loader from database.
 
 Loads AgentConfig from ui_settings PostgreSQL instead of hardcoded defaults.
-Following VIBE CODING RULES - NO MOCKS, real database only.
+Following 
 
-AS ALL 7 VIBE PERSONAS:
+AS ALL 7 
 - Developer: Real async PostgreSQL loading
 - Analyst: Proper data flow from DB to AgentConfig
 - QA: Validation of loaded values

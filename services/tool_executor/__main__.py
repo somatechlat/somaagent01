@@ -1,7 +1,7 @@
 """Entry point for the tool executor service when run as a standalone process.
 
 This allows the orchestrator to start the tool executor service as a subprocess.
-VIBE COMPLIANT: Uses Django LOGGING configuration.
+
 """
 
 import asyncio

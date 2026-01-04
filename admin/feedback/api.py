@@ -1,6 +1,6 @@
 """Feedback API - User feedback and ratings.
 
-VIBE COMPLIANT - Django Ninja.
+
 Conversation ratings and improvement signals.
 
 7-Persona Implementation:

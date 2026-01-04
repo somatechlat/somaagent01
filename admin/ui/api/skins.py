@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/skins.py
 Pure Django Ninja with XSS validation and OPA authorization.
 
-VIBE COMPLIANT - Django patterns, security-first.
+
 """
 
 from __future__ import annotations

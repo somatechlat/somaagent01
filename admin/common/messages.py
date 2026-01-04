@@ -1,6 +1,6 @@
 """Centralized Error Codes and Messages.
 
-VIBE COMPLIANT - No hardcoded strings, centralized management.
+
 """
 
 from enum import Enum

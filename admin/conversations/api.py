@@ -1,6 +1,6 @@
 """Conversations API - Chat conversations management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Conversation lifecycle and messaging.
 
 7-Persona Implementation:

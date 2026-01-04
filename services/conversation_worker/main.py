@@ -127,11 +127,11 @@ class ConversationWorkerImpl:
         return SomabrainHealthState.NORMAL
 
     def _init_use_cases(self) -> None:
-        """Initialize use cases - all config from env, no hardcoded defaults per VIBE rules."""
+        """Initialize use cases - all config from env, no hardcoded defaults per """
         gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
             raise ValueError(
-                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
+                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per "
             )
         self._gen = GenerateResponseUseCase(
             gateway_base=gateway_base,

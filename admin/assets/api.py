@@ -1,6 +1,6 @@
 """Asset Storage and Provenance API.
 
-VIBE COMPLIANT - Django Ninja + Django ORM.
+
 Per AGENT_TASKS.md Phase 7.2 - Asset Storage.
 
 7-Persona Implementation:

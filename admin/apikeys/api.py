@@ -1,6 +1,6 @@
 """API Keys API - Programmatic access management.
 
-VIBE COMPLIANT - Django Ninja.
+
 API key lifecycle management.
 
 7-Persona Implementation:
