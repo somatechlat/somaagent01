@@ -41,15 +41,14 @@ class SomaBrainMemoryAdapter(MemoryAdapterPort):
     ) -> List[Dict[str, Any]]:
         """Execute build context.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: The payload.
+        """
 
         return await build_context_async(payload)
 
     async def get_weights(self) -> Dict[str, Any]:
-        """Retrieve weights.
-            """
+        """Retrieve weights."""
 
         return await get_weights_async()
 
@@ -59,9 +58,9 @@ class SomaBrainMemoryAdapter(MemoryAdapterPort):
     ) -> Dict[str, Any]:
         """Execute publish reward.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: The payload.
+        """
 
         return await publish_reward_async(payload)
 

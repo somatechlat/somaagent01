@@ -125,23 +125,21 @@ def get_persistent_id() -> str:
 
 
 @overload
-    """Execute call development function.
-
-        Args:
-            func: The func.
-        """
-
 async def call_development_function(func: Callable[..., Awaitable[T]], *args, **kwargs) -> T: ...
+    """Execute call development function.
+    
+    Args:
+    func: The func.
+    """
 
 
 @overload
-    """Execute call development function.
-
-        Args:
-            func: The func.
-        """
-
 async def call_development_function(func: Callable[..., T], *args, **kwargs) -> T: ...
+    """Execute call development function.
+    
+    Args:
+    func: The func.
+    """
 
 
 async def call_development_function(

@@ -1,9 +1,9 @@
 """AgentConfig loader from database.
 
 Loads AgentConfig from ui_settings PostgreSQL instead of hardcoded defaults.
-Following 
+Following
 
-AS ALL 7 
+AS ALL 7
 - Developer: Real async PostgreSQL loading
 - Analyst: Proper data flow from DB to AgentConfig
 - QA: Validation of loaded values

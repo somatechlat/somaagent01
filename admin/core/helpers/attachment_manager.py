@@ -29,9 +29,9 @@ class AttachmentManager:
     def is_allowed_file(self, filename: str) -> bool:
         """Check if allowed file.
 
-            Args:
-                filename: The filename.
-            """
+        Args:
+            filename: The filename.
+        """
 
         ext = self.get_file_extension(filename)
         all_allowed = set().union(*self.ALLOWED_EXTENSIONS.values())
@@ -40,9 +40,9 @@ class AttachmentManager:
     def get_file_type(self, filename: str) -> str:
         """Retrieve file type.
 
-            Args:
-                filename: The filename.
-            """
+        Args:
+            filename: The filename.
+        """
 
         ext = self.get_file_extension(filename)
         for file_type, extensions in self.ALLOWED_EXTENSIONS.items():
@@ -54,18 +54,18 @@ class AttachmentManager:
     def get_file_extension(filename: str) -> str:
         """Retrieve file extension.
 
-            Args:
-                filename: The filename.
-            """
+        Args:
+            filename: The filename.
+        """
 
         return filename.rsplit(".", 1)[1].lower() if "." in filename else ""
 
     def validate_mime_type(self, file) -> bool:
         """Execute validate mime type.
 
-            Args:
-                file: The file.
-            """
+        Args:
+            file: The file.
+        """
 
         try:
             mime_type = file.content_type
@@ -106,10 +106,10 @@ class AttachmentManager:
     def generate_image_preview(self, image_path: str, max_size: int = 800) -> Optional[str]:
         """Execute generate image preview.
 
-            Args:
-                image_path: The image_path.
-                max_size: The max_size.
-            """
+        Args:
+            image_path: The image_path.
+            max_size: The max_size.
+        """
 
         try:
             with Image.open(image_path) as img:

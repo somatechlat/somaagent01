@@ -9,27 +9,27 @@ Endpoints:
     POST /auth/token
         Get access token via password grant or OAuth code exchange.
         Supports: password grant, authorization_code grant.
-        
+
     POST /auth/refresh
         Refresh access token using refresh token from cookie or body.
-        
+
     GET /auth/me
         Get current authenticated user info including roles and permissions.
-        
+
     POST /auth/logout
         Logout and revoke tokens in Keycloak.
-        
+
     POST /auth/login
         Email/password login with account lockout protection.
         Security: Rate limited (10/min), lockout after 5 failures.
-        
+
     POST /auth/impersonate
         Generate impersonation token for SaaS admin to act as tenant admin.
         Requires: saas_admin role. Audit logged.
-        
+
     POST /auth/sso/test
         Test SSO provider connection (OIDC, LDAP, AD, Okta, Azure, etc.)
-        
+
     POST /auth/sso/configure
         Save SSO provider configuration for tenant.
 
@@ -124,10 +124,7 @@ class UserResponse(Schema):
 
 @router.post("/token", response=TokenResponse)
 async def get_token(request, payload: TokenRequest, response):
-    """Get access token via password grant or OAuth code exchange.
-
-    
-    """
+    """Get access token via password grant or OAuth code exchange."""
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
@@ -241,10 +238,7 @@ async def get_token(request, payload: TokenRequest, response):
 
 @router.post("/refresh", response=TokenResponse)
 async def refresh_token(request, payload: RefreshRequest, response):
-    """Refresh access token using refresh token.
-
-    
-    """
+    """Refresh access token using refresh token."""
     config = get_keycloak_config()
 
     # Get refresh token from request body or cookie
@@ -346,10 +340,7 @@ async def refresh_token(request, payload: RefreshRequest, response):
 
 @router.get("/me", response=UserResponse)
 async def get_current_user(request):
-    """Get current authenticated user info.
-
-    
-    """
+    """Get current authenticated user info."""
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise UnauthorizedError()
@@ -400,10 +391,7 @@ async def get_current_user(request):
 
 @router.post("/logout")
 async def logout(request):
-    """Logout and revoke tokens.
-
-    
-    """
+    """Logout and revoke tokens."""
     auth_header = request.headers.get("Authorization", "")
     refresh_token = request.POST.get("refresh_token")
 
@@ -553,8 +541,7 @@ async def _update_last_login(payload: TokenPayload) -> None:
 
         @sync_to_async
         def update_login():
-            """Execute update login.
-                """
+            """Execute update login."""
 
             TenantUser.objects.filter(user_id=payload.sub).update(last_login_at=timezone.now())
 
@@ -591,7 +578,7 @@ class ImpersonationResponse(Schema):
 async def impersonate_tenant(request, payload: ImpersonationRequest):
     """Generate impersonation token to act as tenant admin.
 
-    
+
     - Only SAAS super_admin can impersonate
     - Short-lived tokens (1 hour max)
     - Full audit trail
@@ -623,8 +610,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
     # Verify target tenant exists
     @sync_to_async
     def get_tenant():
-        """Retrieve tenant.
-            """
+        """Retrieve tenant."""
 
         try:
             return Tenant.objects.get(id=payload.tenant_id, status="active")
@@ -659,8 +645,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
     # Create audit log entry
     @sync_to_async
     def create_audit():
-        """Execute create audit.
-            """
+        """Execute create audit."""
 
         from admin.saas.models import AuditLog
 
@@ -718,10 +703,7 @@ class SSOTestRequest(Schema):
 
 @router.post("/sso/test")
 async def test_sso_connection(request, payload: SSOTestRequest):
-    """Test SSO provider connection.
-
-    
-    """
+    """Test SSO provider connection."""
     import httpx
 
     provider = payload.provider
@@ -779,10 +761,7 @@ async def test_sso_connection(request, payload: SSOTestRequest):
 
 @router.post("/sso/configure")
 async def configure_sso(request, payload: SSOConfigRequest):
-    """Save SSO provider configuration.
-
-    
-    """
+    """Save SSO provider configuration."""
     # In production, this would save to TenantAuthConfig model
     logger.info(f"SSO configured: provider={payload.provider}")
     return {"success": True, "message": f"{payload.provider} configured successfully."}
@@ -814,7 +793,7 @@ class RegisterRequest(Schema):
 async def login_with_email(request, payload: LoginRequest, response):
     """Login with email and password.
 
-    
+
     Per login-to-chat-journey design.md Section 2.1, 2.5
 
     Security features:
@@ -1010,10 +989,7 @@ async def login_with_email(request, payload: LoginRequest, response):
 
 @router.post("/register")
 async def register_user(request, payload: RegisterRequest):
-    """Register a new user.
-
-    
-    """
+    """Register a new user."""
     config = get_keycloak_config()
 
     # In production, this would create user in Keycloak admin API
@@ -1047,7 +1023,7 @@ class OAuthCallbackRequest(Schema):
 async def oauth_initiate(request, provider: str):
     """Initiate OAuth flow with PKCE.
 
-    
+
     Per login-to-chat-journey design.md Section 3.1
 
     Supported providers: google, github
@@ -1113,7 +1089,7 @@ async def oauth_initiate(request, provider: str):
 async def oauth_callback(request, code: str, state: str):
     """Handle OAuth callback from Keycloak.
 
-    
+
     Per login-to-chat-journey design.md Section 3.2, 3.3
 
     Flow:

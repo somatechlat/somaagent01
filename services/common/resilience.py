@@ -52,8 +52,7 @@ class AsyncCircuitBreaker:
 
     @property
     def current_state(self) -> str:
-        """Execute current state.
-            """
+        """Execute current state."""
 
         return self._state.value
 

@@ -20,8 +20,7 @@ class RateLimiter:
         self._lock = asyncio.Lock()
 
     def add(self, **kwargs: int):
-        """Execute add.
-            """
+        """Execute add."""
 
         now = time.time()
         for key, value in kwargs.items():
@@ -30,8 +29,7 @@ class RateLimiter:
             self.values[key].append((now, value))
 
     async def cleanup(self):
-        """Execute cleanup.
-            """
+        """Execute cleanup."""
 
         async with self._lock:
             now = time.time()
@@ -42,9 +40,9 @@ class RateLimiter:
     async def get_total(self, key: str) -> int:
         """Retrieve total.
 
-            Args:
-                key: The key.
-            """
+        Args:
+            key: The key.
+        """
 
         async with self._lock:
             if key not in self.values:
@@ -57,9 +55,9 @@ class RateLimiter:
     ):
         """Execute wait.
 
-            Args:
-                callback: The callback.
-            """
+        Args:
+            callback: The callback.
+        """
 
         while True:
             await self.cleanup()

@@ -405,10 +405,7 @@ async def _evaluate_criterion(
     content: Optional[str],
     asset_type: str,
 ) -> QualityScore:
-    """Evaluate a single quality criterion using LLM.
-
-    
-    """
+    """Evaluate a single quality criterion using LLM."""
     import httpx
     from django.conf import settings
 
@@ -417,7 +414,7 @@ async def _evaluate_criterion(
 
         prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
         
-Content: {content[:500] if content else 'No content provided'}
+Content: {content[:500] if content else "No content provided"}
 
 Respond with ONLY a JSON object in this format:
 {{"score": 0.X, "feedback": "Brief explanation"}}"""
@@ -464,10 +461,7 @@ def _generate_critique(
     content: str,
     rubric: Optional[dict],
 ) -> tuple[str, list[str], list[str], list[str]]:
-    """Generate critique for an asset using content analysis.
-
-    
-    """
+    """Generate critique for an asset using content analysis."""
     # Real content analysis based on content length and complexity
     word_count = len(content.split()) if content else 0
     char_count = len(content) if content else 0
@@ -507,10 +501,7 @@ def _generate_critique(
 
 
 async def _execute_operation(operation_type: str, input_data: dict) -> dict:
-    """Execute an operation via appropriate service.
-
-    
-    """
+    """Execute an operation via appropriate service."""
     import httpx
     from django.conf import settings
 
@@ -540,10 +531,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 
 
 async def _quick_quality_check(output: dict) -> float:
-    """Quick quality check for retry logic.
-
-    
-    """
+    """Quick quality check for retry logic."""
     # Assess quality based on actual output characteristics
     if not output:
         return 0.0

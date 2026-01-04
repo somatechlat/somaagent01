@@ -44,9 +44,9 @@ class KnowledgeImport(TypedDict):
 def calculate_checksum(file_path: str) -> str:
     """Execute calculate checksum.
 
-        Args:
-            file_path: The file_path.
-        """
+    Args:
+        file_path: The file_path.
+    """
 
     hasher = hashlib.md5()
     with open(file_path, "rb") as f:

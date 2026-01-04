@@ -126,8 +126,7 @@ def main() -> None:
     if args.dry_run:
 
         async def _smoke():
-            """Execute smoke.
-                """
+            """Execute smoke."""
 
             orch = _orchestrator
             await orch._start_all()

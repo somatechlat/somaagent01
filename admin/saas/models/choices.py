@@ -1,7 +1,4 @@
-"""SAAS Admin Model Choices (Enums).
-
-
-"""
+"""SAAS Admin Model Choices (Enums)."""
 
 from django.db import models
 

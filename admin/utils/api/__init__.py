@@ -1,7 +1,4 @@
-"""Utils API routers - Django Ninja.
-
-
-"""
+"""Utils API routers - Django Ninja."""
 
 from ninja import Router
 

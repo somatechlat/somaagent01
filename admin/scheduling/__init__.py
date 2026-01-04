@@ -1,4 +1,1 @@
-"""Scheduling module - Background jobs and tasks.
-
-
-"""
+"""Scheduling module - Background jobs and tasks."""

@@ -1,7 +1,7 @@
 """Rate Limiting API - Request throttling and quota enforcement.
 
 
-Per 
+Per
 
 7-Persona Implementation:
 - Security Auditor: Rate limiting, abuse prevention

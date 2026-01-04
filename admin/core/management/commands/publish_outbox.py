@@ -39,9 +39,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--batch-size",
@@ -174,8 +174,7 @@ class Command(BaseCommand):
             )
             .filter(
                 # Only get messages ready for retry
-                models.Q(next_retry_at__isnull=True)
-                | models.Q(next_retry_at__lte=timezone.now())
+                models.Q(next_retry_at__isnull=True) | models.Q(next_retry_at__lte=timezone.now())
             )
             .order_by("created_at")[:batch_size]
         )

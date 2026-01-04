@@ -34,9 +34,9 @@ class RequeueStore:
     def _key(self, identifier: str) -> str:
         """Execute key.
 
-            Args:
-                identifier: The identifier.
-            """
+        Args:
+            identifier: The identifier.
+        """
 
         return f"{self.prefix}:{identifier}"
 
@@ -68,9 +68,9 @@ class RequeueStore:
     async def remove(self, identifier: str) -> None:
         """Execute remove.
 
-            Args:
-                identifier: The identifier.
-            """
+        Args:
+            identifier: The identifier.
+        """
 
         key = self._key(identifier)
         await self.client.delete(key)
@@ -79,9 +79,9 @@ class RequeueStore:
     async def get(self, identifier: str) -> Optional[dict[str, Any]]:
         """Execute get.
 
-            Args:
-                identifier: The identifier.
-            """
+        Args:
+            identifier: The identifier.
+        """
 
         key = self._key(identifier)
         raw = await self.client.get(key)
@@ -90,8 +90,7 @@ class RequeueStore:
         return json.loads(raw)
 
     async def list(self) -> list[dict[str, Any]]:
-        """Execute list.
-            """
+        """Execute list."""
 
         identifiers = await self.client.smembers(self.keyset)
         results: list[dict[str, Any]] = []

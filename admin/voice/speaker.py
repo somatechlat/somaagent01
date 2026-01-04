@@ -80,8 +80,7 @@ class Speaker:
         outdata[:] = np.frombuffer(raw, dtype=np.int16).reshape(outdata.shape)
 
     async def _start_stream(self) -> None:
-        """Execute start stream.
-            """
+        """Execute start stream."""
 
         if self._wrapper is not None:
             return

@@ -1,4 +1,1 @@
-"""Tools module - Agent tools.
-
-
-"""
+"""Tools module - Agent tools."""

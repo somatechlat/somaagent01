@@ -21,8 +21,7 @@ class TunnelManager:
 
     @classmethod
     def get_instance(cls):
-        """Retrieve instance.
-            """
+        """Retrieve instance."""
 
         with cls._lock:
             if cls._instance is None:
@@ -40,10 +39,10 @@ class TunnelManager:
     def start_tunnel(self, port=80, provider="serveo"):
         """Execute start tunnel.
 
-            Args:
-                port: The port.
-                provider: The provider.
-            """
+        Args:
+            port: The port.
+            provider: The provider.
+        """
 
         if not _FLAREDANTIC_AVAILABLE:
             raise RuntimeError(
@@ -56,8 +55,7 @@ class TunnelManager:
         try:
 
             def run_tunnel():
-                """Execute run tunnel.
-                    """
+                """Execute run tunnel."""
 
                 try:
                     if self.provider == "cloudflared":
@@ -91,8 +89,7 @@ class TunnelManager:
             return None
 
     def stop_tunnel(self):
-        """Execute stop tunnel.
-            """
+        """Execute stop tunnel."""
 
         if not _FLAREDANTIC_AVAILABLE:
             raise RuntimeError(
@@ -110,8 +107,7 @@ class TunnelManager:
         return False
 
     def get_tunnel_url(self):
-        """Retrieve tunnel url.
-            """
+        """Retrieve tunnel url."""
 
         if not _FLAREDANTIC_AVAILABLE:
             raise RuntimeError(

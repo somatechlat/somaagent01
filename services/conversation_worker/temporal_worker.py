@@ -9,6 +9,7 @@ import os
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 from temporalio import activity, workflow
@@ -61,10 +62,13 @@ def _build_use_case():
     dlq = DeadLetterQueue(os.environ.get("CONVERSATION_INBOUND", "conversation.inbound"), bus=bus)
     # Use Django ORM Session model
     from admin.core.models import Session
+
     store = Session.objects
     profiles = ModelProfileStore.from_settings(APP)
     tenants = TenantConfig(
-        path=os.environ.get("TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml"))
+        path=os.environ.get(
+            "TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml")
+        )
     )
     budgets = BudgetManager(url=APP.redis.url, tenant_config=tenants)
     policy_client = PolicyClient(base_url=APP.external.opa_url, tenant_config=tenants)
@@ -77,7 +81,8 @@ def _build_use_case():
         metrics=None,
         token_counter=count_tokens,
         health_provider=_somabrain_health,
-        use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
+        use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower()
+        == "true",
     )
     gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
     if not gateway_base:

@@ -41,17 +41,16 @@ class DLQConsumer:
         )
 
     async def start(self) -> None:
-        """Execute start.
-            """
+        """Execute start."""
 
         await self.bus.consume(self.topic, self.group, self._handle_event)
 
     async def _handle_event(self, event: Dict[str, Any]) -> None:
         """Execute handle event.
 
-            Args:
-                event: The event.
-            """
+        Args:
+            event: The event.
+        """
 
         try:
             LOGGER.error("DLQ event", extra={"topic": self.topic, "event": event})

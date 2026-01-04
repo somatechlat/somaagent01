@@ -5,6 +5,7 @@ Usage examples:
   python scripts/persona_training.py start --persona biology_researcher
   python scripts/persona_training.py close --persona biology_researcher
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,11 +30,11 @@ close.add_argument("--repository", default="http://localhost:8011")
 async def call_gateway(persona: str, gateway: str, message: str) -> None:
     """Execute call gateway.
 
-        Args:
-            persona: The persona.
-            gateway: The gateway.
-            message: The message.
-        """
+    Args:
+        persona: The persona.
+        gateway: The gateway.
+        message: The message.
+    """
 
     async with httpx.AsyncClient() as client:
         payload = {
@@ -48,11 +49,11 @@ async def call_gateway(persona: str, gateway: str, message: str) -> None:
 async def post_persona_notes(persona: str, notes: str, repository: str) -> None:
     """Execute post persona notes.
 
-        Args:
-            persona: The persona.
-            notes: The notes.
-            repository: The repository.
-        """
+    Args:
+        persona: The persona.
+        notes: The notes.
+        repository: The repository.
+    """
 
     async with httpx.AsyncClient() as client:
         payload = {
@@ -67,8 +68,7 @@ async def post_persona_notes(persona: str, notes: str, repository: str) -> None:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     args = parser.parse_args()
     if args.command == "start":

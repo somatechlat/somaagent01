@@ -1,4 +1,4 @@
-"""SomaBrain Client - Django 
+"""SomaBrain Client - Django
 
 Production-grade HTTP client for SomaBrain memory service.
 100% Django patterns - No FastAPI, No SQLAlchemy.
@@ -63,7 +63,7 @@ class SomaBrainClient:
     def _get_base_url() -> str:
         """Get SomaBrain URL from Django settings or environment.
 
-        Implements 
+        Implements
         Prioritizes Django settings, falls back to environment.
         """
         import os

@@ -1,4 +1,1 @@
-"""A2A module - Agent-to-Agent Workflows.
-
-
-"""
+"""A2A module - Agent-to-Agent Workflows."""

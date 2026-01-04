@@ -49,8 +49,7 @@ def _ensure_pythonpath(env: Dict[str, str]) -> None:
 
 
 def _default_env() -> Dict[str, str]:
-    """Execute default env.
-        """
+    """Execute default env."""
 
     env = os.environ.copy()
     env.setdefault("LOG_LEVEL", "INFO")
@@ -61,11 +60,11 @@ def _default_env() -> Dict[str, str]:
 def _process_specs(enable_reload: bool, host: str, port: str) -> List[ProcessSpec]:
     """Execute process specs.
 
-        Args:
-            enable_reload: The enable_reload.
-            host: The host.
-            port: The port.
-        """
+    Args:
+        enable_reload: The enable_reload.
+        host: The host.
+        port: The port.
+    """
 
     gateway_cmd = [
         "uvicorn",
@@ -89,11 +88,11 @@ def _process_specs(enable_reload: bool, host: str, port: str) -> List[ProcessSpe
 async def _launch(name: str, cmd: List[str], env: Dict[str, str]) -> asyncio.subprocess.Process:
     """Execute launch.
 
-        Args:
-            name: The name.
-            cmd: The cmd.
-            env: The env.
-        """
+    Args:
+        name: The name.
+        cmd: The cmd.
+        env: The env.
+    """
 
     print(f"[runstack] starting {name}: {' '.join(cmd)}")
     process = await asyncio.create_subprocess_exec(*cmd, env=env)
@@ -103,10 +102,10 @@ async def _launch(name: str, cmd: List[str], env: Dict[str, str]) -> asyncio.sub
 async def _shutdown(processes: Dict[str, asyncio.subprocess.Process], reason: str) -> None:
     """Execute shutdown.
 
-        Args:
-            processes: The processes.
-            reason: The reason.
-        """
+    Args:
+        processes: The processes.
+        reason: The reason.
+    """
 
     print(f"[runstack] stopping all services ({reason})")
     for name, proc in processes.items():
@@ -139,18 +138,18 @@ async def _wait_for_exit(
 ) -> Tuple[str, int | None]:
     """Execute wait for exit.
 
-        Args:
-            processes: The processes.
-            stop_event: The stop_event.
-        """
+    Args:
+        processes: The processes.
+        stop_event: The stop_event.
+    """
 
     async def _proc_waiter(name: str, proc: asyncio.subprocess.Process):
         """Execute proc waiter.
 
-            Args:
-                name: The name.
-                proc: The proc.
-            """
+        Args:
+            name: The name.
+            proc: The proc.
+        """
 
         rc = await proc.wait()
         return name, rc
@@ -158,8 +157,7 @@ async def _wait_for_exit(
     waiters = [asyncio.create_task(_proc_waiter(name, proc)) for name, proc in processes.items()]
 
     async def _stop_waiter():
-        """Execute stop waiter.
-            """
+        """Execute stop waiter."""
 
         await stop_event.wait()
         return ("signal", None)
@@ -176,9 +174,9 @@ async def _wait_for_exit(
 def _load_env_files(paths: Iterable[Path]) -> None:
     """Execute load env files.
 
-        Args:
-            paths: The paths.
-        """
+    Args:
+        paths: The paths.
+    """
 
     for path in paths:
         if not path:
@@ -193,9 +191,9 @@ def _load_env_files(paths: Iterable[Path]) -> None:
 def parse_args(argv: List[str]) -> argparse.Namespace:
     """Execute parse args.
 
-        Args:
-            argv: The argv.
-        """
+    Args:
+        argv: The argv.
+    """
 
     parser = argparse.ArgumentParser(description="Run Agent Zero runtime services locally.")
     parser.add_argument(
@@ -226,9 +224,9 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 async def main(argv: List[str]) -> int:
     """Execute main.
 
-        Args:
-            argv: The argv.
-        """
+    Args:
+        argv: The argv.
+    """
 
     args = parse_args(argv)
 
@@ -253,9 +251,9 @@ async def main(argv: List[str]) -> int:
     def _handle_signal(sig: int) -> None:
         """Execute handle signal.
 
-            Args:
-                sig: The sig.
-            """
+        Args:
+            sig: The sig.
+        """
 
         name = signal.Signals(sig).name
         print(f"[runstack] received {name}, shutting down...", flush=True)

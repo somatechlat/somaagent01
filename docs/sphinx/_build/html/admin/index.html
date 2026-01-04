@@ -21,7 +21,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Services Layer" href="../services/index.html" />
-    <link rel="prev" title="workflows.api module" href="../api/workflows.api.html" /> 
+    <link rel="prev" title="voice.voice_adapter module" href="../api/voice.voice_adapter.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -75,6 +75,10 @@
 <p class="caption" role="heading"><span class="caption-text">Deployment</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../deployment/index.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../deployment/local.html">Local Deployment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment/docker.html">Docker Deployment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment/aws.html">AWS Deployment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment/kubernetes.html">Kubernetes Deployment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../deployment/index.html#overview">Overview</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../deployment/index.html#port-namespace">Port Namespace</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../deployment/index.html#quick-start">Quick Start</a></li>
@@ -86,60 +90,101 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/a2a.html">a2a package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/a2a.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/a2a.api.html">a2a.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/agents.html">agents package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/agents.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.services.html">agents.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/agents.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/agents.apps.html">agents.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/analytics.html">analytics package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/analytics.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/analytics.api.html">analytics.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/api.html">api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/apikeys.html">apikeys package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/apikeys.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/apikeys.api.html">apikeys.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/assets.html">assets package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/assets.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/assets.api.html">assets.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/audit.html">audit package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/audit.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/audit.api.html">audit.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/auth.html">auth package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/auth.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.api.html">auth.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.invitations.html">auth.invitations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.mfa.html">auth.mfa module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth.password_reset.html">auth.password_reset module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/auth_config.html">auth_config package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/auth_config.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/auth_config.api.html">auth_config.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/billing.html">billing package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/billing.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/billing.lago_client.html">billing.lago_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/billing.webhooks.html">billing.webhooks module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/capabilities.html">capabilities package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/capabilities.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/capabilities.api.html">capabilities.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/chat.html">chat package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/chat.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.api.html">chat.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.migrations.html">chat.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/chat.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.apps.html">chat.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/chat.models.html">chat.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../api/common.html">common package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.ApiError"><code class="docutils literal notranslate"><span class="pre">ApiError</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ApiError.__init__"><code class="docutils literal notranslate"><span class="pre">ApiError.__init__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ApiError.error_code"><code class="docutils literal notranslate"><span class="pre">ApiError.error_code</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ApiError.status_code"><code class="docutils literal notranslate"><span class="pre">ApiError.status_code</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ApiError.to_dict"><code class="docutils literal notranslate"><span class="pre">ApiError.to_dict()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.NotFoundError"><code class="docutils literal notranslate"><span class="pre">NotFoundError</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.NotFoundError.__init__"><code class="docutils literal notranslate"><span class="pre">NotFoundError.__init__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.NotFoundError.error_code"><code class="docutils literal notranslate"><span class="pre">NotFoundError.error_code</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.NotFoundError.status_code"><code class="docutils literal notranslate"><span class="pre">NotFoundError.status_code</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.ForbiddenError"><code class="docutils literal notranslate"><span class="pre">ForbiddenError</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ForbiddenError.__init__"><code class="docutils literal notranslate"><span class="pre">ForbiddenError.__init__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ForbiddenError.error_code"><code class="docutils literal notranslate"><span class="pre">ForbiddenError.error_code</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ForbiddenError.status_code"><code class="docutils literal notranslate"><span class="pre">ForbiddenError.status_code</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.ValidationError"><code class="docutils literal notranslate"><span class="pre">ValidationError</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ValidationError.__init__"><code class="docutils literal notranslate"><span class="pre">ValidationError.__init__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ValidationError.error_code"><code class="docutils literal notranslate"><span class="pre">ValidationError.error_code</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ValidationError.status_code"><code class="docutils literal notranslate"><span class="pre">ValidationError.status_code</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.api_response"><code class="docutils literal notranslate"><span class="pre">api_response()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.paginated_response"><code class="docutils literal notranslate"><span class="pre">paginated_response()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest.model_config"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest.model_config</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest.offset"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest.offset</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest.page"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest.page</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest.page_size"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest.page_size</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest.sort_by"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest.sort_by</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedRequest.sort_order"><code class="docutils literal notranslate"><span class="pre">PaginatedRequest.sort_order</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.PaginatedResponse"><code class="docutils literal notranslate"><span class="pre">PaginatedResponse</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedResponse.model_config"><code class="docutils literal notranslate"><span class="pre">PaginatedResponse.model_config</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedResponse.success"><code class="docutils literal notranslate"><span class="pre">PaginatedResponse.success</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedResponse.data"><code class="docutils literal notranslate"><span class="pre">PaginatedResponse.data</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedResponse.pagination"><code class="docutils literal notranslate"><span class="pre">PaginatedResponse.pagination</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.PaginatedResponse.timestamp"><code class="docutils literal notranslate"><span class="pre">PaginatedResponse.timestamp</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse"><code class="docutils literal notranslate"><span class="pre">ErrorResponse</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse.model_config"><code class="docutils literal notranslate"><span class="pre">ErrorResponse.model_config</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse.success"><code class="docutils literal notranslate"><span class="pre">ErrorResponse.success</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse.error"><code class="docutils literal notranslate"><span class="pre">ErrorResponse.error</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse.message"><code class="docutils literal notranslate"><span class="pre">ErrorResponse.message</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse.details"><code class="docutils literal notranslate"><span class="pre">ErrorResponse.details</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/common.html#admin.common.ErrorResponse.timestamp"><code class="docutils literal notranslate"><span class="pre">ErrorResponse.timestamp</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l3"><a class="reference internal" href="../api/common.html#submodules">Submodules</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../api/common.account_lockout.html">common.account_lockout module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/common.auth.html">common.auth module</a></li>
@@ -152,6 +197,27 @@
 <li class="toctree-l4"><a class="reference internal" href="../api/common.responses.html">common.responses module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/common.schemas.html">common.schemas module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/common.session_manager.html">common.session_manager module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/completions.html">completions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/completions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/completions.api.html">completions.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/config.html">config package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/config.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/config.api.html">config.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/conversations.html">conversations package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/conversations.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/conversations.api.html">conversations.api module</a></li>
 </ul>
 </li>
 </ul>
@@ -181,19 +247,170 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/auth.html">auth package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/auth.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/auth.api.html">auth.api module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/auth.invitations.html">auth.invitations module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/auth.mfa.html">auth.mfa module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/auth.password_reset.html">auth.password_reset module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/embeddings.html">embeddings package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/embeddings.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/embeddings.api.html">embeddings.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/auth_config.html">auth_config package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/auth_config.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/auth_config.api.html">auth_config.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/events.html">events package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/events.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/events.api.html">events.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/export.html">export package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/export.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/export.api.html">export.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/features.html">features package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/features.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/features.api.html">features.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/features.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/features.apps.html">features.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/feedback.html">feedback package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/feedback.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/feedback.api.html">feedback.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/files.html">files package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/files.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/files.api.html">files.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/files.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/files.apps.html">files.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/filesv2.html">filesv2 package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/filesv2.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/filesv2.api.html">filesv2.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/filesv2.apps.html">filesv2.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/filesv2.models.html">filesv2.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/flink.html">flink package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/flink.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.migrations.html">flink.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/flink.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.api.html">flink.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.models.html">flink.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/flink.somabrain_jobs.html">flink.somabrain_jobs module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/integrations.html">integrations package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/integrations.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/integrations.api.html">integrations.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/knowledge.html">knowledge package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/knowledge.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/knowledge.api.html">knowledge.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/llm.html">llm package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.LLMNotConfiguredError"><code class="docutils literal notranslate"><span class="pre">LLMNotConfiguredError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.get_litellm_chat_wrapper"><code class="docutils literal notranslate"><span class="pre">get_litellm_chat_wrapper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.get_browser_compatible_chat_wrapper"><code class="docutils literal notranslate"><span class="pre">get_browser_compatible_chat_wrapper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.get_chat_generation_result"><code class="docutils literal notranslate"><span class="pre">get_chat_generation_result()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.get_chat_chunk"><code class="docutils literal notranslate"><span class="pre">get_chat_chunk()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.get_api_key"><code class="docutils literal notranslate"><span class="pre">get_api_key()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.get_rate_limiter"><code class="docutils literal notranslate"><span class="pre">get_rate_limiter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#admin.llm.turn_off_logging"><code class="docutils literal notranslate"><span class="pre">turn_off_logging()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/llm.migrations.html">llm.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/llm.services.html">llm.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/llm.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/llm.admin.html">llm.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/llm.apps.html">llm.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/llm.exceptions.html">llm.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/llm.models.html">llm.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/logging_api.html">logging_api package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/logging_api.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/logging_api.api.html">logging_api.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/metrics.html">metrics package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/metrics.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/metrics.api.html">metrics.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/models.html">models package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/models.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/models.api.html">models.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/notifications.html">notifications package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/notifications.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/notifications.api.html">notifications.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/notifications.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/notifications.api.html">notifications.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/notifications.apps.html">notifications.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/observability.html">observability package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/observability.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/observability.api.html">observability.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/orchestrator.html">orchestrator package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/orchestrator.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.api.html">orchestrator.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.apps.html">orchestrator.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.base_service.html">orchestrator.base_service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.cache_sync_service.html">orchestrator.cache_sync_service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.config.html">orchestrator.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.core.html">orchestrator.core module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.gateway_service.html">orchestrator.gateway_service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.health_monitor.html">orchestrator.health_monitor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.health_router.html">orchestrator.health_router module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.main.html">orchestrator.main module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.orchestrator.html">orchestrator.orchestrator module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.service_registry.html">orchestrator.service_registry module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/orchestrator.unified_memory_service.html">orchestrator.unified_memory_service module</a></li>
 </ul>
 </li>
 </ul>
@@ -213,35 +430,30 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/agents.html">agents package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/agents.html#subpackages">Subpackages</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/agents.api.html">agents.api package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/agents.services.html">agents.services package</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/agents.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/agents.api.html">agents.api package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/agents.apps.html">agents.apps module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/plugins.html">plugins package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/plugins.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/plugins.api.html">plugins.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/chat.html">chat package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/chat.html#subpackages">Subpackages</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/chat.api.html">chat.api package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/chat.migrations.html">chat.migrations package</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/chat.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/chat.apps.html">chat.apps module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/chat.models.html">chat.models module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/prompts.html">prompts package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/prompts.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/prompts.api.html">prompts.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/sessions.html">sessions package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/sessions.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/sessions.api.html">sessions.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/quality.html">quality package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/quality.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/quality.api.html">quality.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/ratelimit.html">ratelimit package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/ratelimit.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/ratelimit.api.html">ratelimit.api module</a></li>
 </ul>
 </li>
 </ul>
@@ -261,17 +473,69 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/tenants.html">tenants package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/tenants.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/tenants.api.html">tenants.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/scheduler.html">scheduler package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/scheduler.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/scheduler.api.html">scheduler.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/billing.html">billing package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/billing.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/billing.lago_client.html">billing.lago_client module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/billing.webhooks.html">billing.webhooks module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/scheduling.html">scheduling package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/scheduling.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/scheduling.api.html">scheduling.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/search.html">search package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/search.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/search.api.html">search.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/secrets.html">secrets package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.choice"><code class="docutils literal notranslate"><span class="pre">choice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.randbelow"><code class="docutils literal notranslate"><span class="pre">randbelow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.randbits"><code class="docutils literal notranslate"><span class="pre">randbits()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom"><code class="docutils literal notranslate"><span class="pre">SystemRandom</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom.getrandbits"><code class="docutils literal notranslate"><span class="pre">SystemRandom.getrandbits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom.getstate"><code class="docutils literal notranslate"><span class="pre">SystemRandom.getstate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom.randbytes"><code class="docutils literal notranslate"><span class="pre">SystemRandom.randbytes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom.random"><code class="docutils literal notranslate"><span class="pre">SystemRandom.random()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom.seed"><code class="docutils literal notranslate"><span class="pre">SystemRandom.seed()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.html#secrets.SystemRandom.setstate"><code class="docutils literal notranslate"><span class="pre">SystemRandom.setstate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.token_bytes"><code class="docutils literal notranslate"><span class="pre">token_bytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.token_hex"><code class="docutils literal notranslate"><span class="pre">token_hex()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.token_urlsafe"><code class="docutils literal notranslate"><span class="pre">token_urlsafe()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#secrets.compare_digest"><code class="docutils literal notranslate"><span class="pre">compare_digest()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/secrets.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/secrets.api.html">secrets.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/services.html">services package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/services.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.common.html">services.common package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.conversation_worker.html">services.conversation_worker package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.gateway.html">services.gateway package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.multimodal.html">services.multimodal package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.tool_executor.html">services.tool_executor package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/services.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.capsule_core.html">services.capsule_core module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/services.registry_service.html">services.registry_service module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api/sessions.html">sessions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/sessions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/sessions.api.html">sessions.api module</a></li>
 </ul>
 </li>
 </ul>
@@ -293,50 +557,49 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/knowledge.html">knowledge package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/knowledge.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/knowledge.api.html">knowledge.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/templates.html">templates package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/templates.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/templates.api.html">templates.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/embeddings.html">embeddings package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/embeddings.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/embeddings.api.html">embeddings.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/tenants.html">tenants package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/tenants.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/tenants.api.html">tenants.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/audit.html">audit package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/audit.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/audit.api.html">audit.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/tools.html">tools package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/tools.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/tools.api.html">tools.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api/tools.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/tools.api.html">tools.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/tools.apps.html">tools.apps module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/observability.html">observability package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/observability.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/observability.api.html">observability.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/traces.html">traces package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/traces.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/traces.api.html">traces.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/metrics.html">metrics package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/metrics.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/metrics.api.html">metrics.api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/usage.html">usage package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/usage.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/usage.api.html">usage.api module</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/flink.html">flink package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/flink.html#subpackages">Subpackages</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/flink.migrations.html">flink.migrations package</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="../api/flink.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/flink.api.html">flink.api module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/flink.models.html">flink.models module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/flink.somabrain_jobs.html">flink.somabrain_jobs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/users.html">users package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/users.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/users.api.html">users.api module</a></li>
 </ul>
 </li>
 </ul>
@@ -384,13 +647,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../api/workflows.html">workflows package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/workflows.html#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/workflows.api.html">workflows.api module</a></li>
-</ul>
-</li>
-</ul>
-</li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Admin Applications</a><ul class="simple">
@@ -410,6 +666,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">AuditEvent.ip_address</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_agent</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">AuditEvent.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.__post_init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__post_init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.to_dict"><code class="docutils literal notranslate"><span class="pre">AuditEvent.to_dict()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.AuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__init__()</span></code></a></li>
 </ul>
@@ -420,20 +677,44 @@
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.result"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.result</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.failure_reason"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.failure_reason</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.mfa_used"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.mfa_used</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.__post_init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__post_init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LoginAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.metadata</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.reason"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.reason</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.__post_init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__post_init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.LogoutAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.metadata</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.action"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.action</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.session_id</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.permissions"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.permissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.__post_init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__post_init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.SessionAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.metadata</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent</span></code></a><ul>
@@ -441,7 +722,15 @@
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_id</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.permission"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.permission</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.endpoint"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.endpoint</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.__post_init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__post_init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../services/index.html#services.common.audit.PermissionDeniedAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.metadata</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../services/index.html#services.common.audit.AuditPublisher"><code class="docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a><ul>
@@ -476,6 +765,11 @@
 </li>
 </ul>
 </li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/vibe-rules.html">VIBE Coding Rules</a></li>
 </ul>
 
         </div>
@@ -521,7 +815,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../api/workflows.api.html" class="btn btn-neutral float-left" title="workflows.api module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../api/voice.voice_adapter.html" class="btn btn-neutral float-left" title="voice.voice_adapter module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../services/index.html" class="btn btn-neutral float-right" title="Services Layer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

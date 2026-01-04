@@ -38,9 +38,9 @@ class FileBrowser:
     def _check_file_size(self, file) -> bool:
         """Execute check file size.
 
-            Args:
-                file: The file.
-            """
+        Args:
+            file: The file.
+        """
 
         try:
             file.seek(0, os.SEEK_END)
@@ -53,11 +53,11 @@ class FileBrowser:
     def save_file_b64(self, current_path: str, filename: str, base64_content: str):
         """Execute save file b64.
 
-            Args:
-                current_path: The current_path.
-                filename: The filename.
-                base64_content: The base64_content.
-            """
+        Args:
+            current_path: The current_path.
+            filename: The filename.
+            base64_content: The base64_content.
+        """
 
         try:
             # Resolve the target directory path
@@ -140,19 +140,19 @@ class FileBrowser:
 
         """Execute is allowed file.
 
-            Args:
-                filename: The filename.
-                file: The file.
-            """
+        Args:
+            filename: The filename.
+            file: The file.
+        """
 
         return True  # Allow the file if it passes the checks
 
     def _get_file_extension(self, filename: str) -> str:
         """Execute get file extension.
 
-            Args:
-                filename: The filename.
-            """
+        Args:
+            filename: The filename.
+        """
 
         return filename.rsplit(".", 1)[1].lower() if "." in filename else ""
 
@@ -271,9 +271,9 @@ class FileBrowser:
     def get_files(self, current_path: str = "") -> Dict:
         """Retrieve files.
 
-            Args:
-                current_path: The current_path.
-            """
+        Args:
+            current_path: The current_path.
+        """
 
         try:
             # Resolve the full path while preventing directory traversal
@@ -321,9 +321,9 @@ class FileBrowser:
     def _get_file_type(self, filename: str) -> str:
         """Execute get file type.
 
-            Args:
-                filename: The filename.
-            """
+        Args:
+            filename: The filename.
+        """
 
         ext = self._get_file_extension(filename)
         for file_type, extensions in self.ALLOWED_EXTENSIONS.items():

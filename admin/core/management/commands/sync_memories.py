@@ -38,9 +38,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--batch-size",
@@ -167,9 +167,7 @@ class Command(BaseCommand):
             PendingMemory.objects.filter(
                 synced=False,
                 sync_attempts__lt=max_retries,
-            ).order_by(
-                "created_at"
-            )[:batch_size]
+            ).order_by("created_at")[:batch_size]
         )
 
         if self._client is None:

@@ -22,10 +22,10 @@ class TenantFlagCache:
     def get(self, tenant: str, flag: str) -> Optional[bool]:
         """Execute get.
 
-            Args:
-                tenant: The tenant.
-                flag: The flag.
-            """
+        Args:
+            tenant: The tenant.
+            flag: The flag.
+        """
 
         key = (tenant or "default", flag)
         now = time.time()
@@ -48,10 +48,10 @@ _CACHE_INSTANCE: TenantFlagCache | None = None
 def init_tenant_flag_cache(fetcher: Callable[[str, str], bool], ttl: float) -> TenantFlagCache:
     """Execute init tenant flag cache.
 
-        Args:
-            fetcher: The fetcher.
-            ttl: The ttl.
-        """
+    Args:
+        fetcher: The fetcher.
+        ttl: The ttl.
+    """
 
     global _CACHE_INSTANCE
     _CACHE_INSTANCE = TenantFlagCache(fetcher=fetcher, ttl=ttl)
@@ -61,10 +61,10 @@ def init_tenant_flag_cache(fetcher: Callable[[str, str], bool], ttl: float) -> T
 def get_tenant_flag(tenant: str | None, flag: str) -> Optional[bool]:
     """Retrieve tenant flag.
 
-        Args:
-            tenant: The tenant.
-            flag: The flag.
-        """
+    Args:
+        tenant: The tenant.
+        flag: The flag.
+    """
 
     if _CACHE_INSTANCE is None:
         return None
@@ -72,8 +72,7 @@ def get_tenant_flag(tenant: str | None, flag: str) -> Optional[bool]:
 
 
 def cache_instance() -> TenantFlagCache | None:
-    """Execute cache instance.
-        """
+    """Execute cache instance."""
 
     return _CACHE_INSTANCE
 
@@ -81,9 +80,9 @@ def cache_instance() -> TenantFlagCache | None:
 def set_flag_fetcher(fetcher: Callable[[str, str], bool]) -> None:
     """Set flag fetcher.
 
-        Args:
-            fetcher: The fetcher.
-        """
+    Args:
+        fetcher: The fetcher.
+    """
 
     if _CACHE_INSTANCE is None:
         return

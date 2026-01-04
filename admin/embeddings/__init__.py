@@ -1,4 +1,1 @@
-"""Embeddings module - Vector generation.
-
-
-"""
+"""Embeddings module - Vector generation."""

@@ -1,64 +1,62 @@
-===============
 API Reference
-===============
-
-Complete API documentation auto-generated from source code docstrings.
+=============
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Core Modules
+   :maxdepth: 1
 
-   admin
-   common
-   core
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Authentication & Authorization
-
+   a2a
+   agents
+   analytics
+   api
+   apikeys
+   assets
+   audit
    auth
    auth_config
-   permissions
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Agents & Chat
-
-   agents
-   chat
-   capsules
-   sessions
-
-.. toctree::
-   :maxdepth: 2
-   :caption: SaaS & Multi-Tenancy
-
-   saas
-   tenants
    billing
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Memory & Cognitive
-
-   memory
-   somabrain
-   knowledge
+   capabilities
+   chat
+   common
+   completions
+   config
+   conversations
+   core
    embeddings
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Infrastructure
-
-   audit
-   observability
-   metrics
+   events
+   export
+   features
+   feedback
+   files
+   filesv2
    flink
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Utilities
-
+   integrations
+   knowledge
+   llm
+   logging_api
+   metrics
+   models
+   notifications
+   observability
+   orchestrator
+   permissions
+   plugins
+   prompts
+   quality
+   ratelimit
+   saas
+   scheduler
+   scheduling
+   search
+   secrets
+   services
+   sessions
+   somabrain
+   templates
+   tenants
+   tools
+   traces
+   usage
+   users
    utils
    voice
-   workflows
+

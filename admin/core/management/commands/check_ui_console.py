@@ -14,7 +14,7 @@ Prerequisites:
     - ``playwright`` must be installed (``pip install playwright``).
     - Browser binaries must be installed (run ``playwright install`` once).
 
-The script follows the project's 
+The script follows the project's
 annotations, minimal external dependencies, and explicit error handling.
 """
 
@@ -57,8 +57,7 @@ def format_message(msg: ConsoleMessage) -> str:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = argparse.ArgumentParser(description="Capture UI console logs via Playwright")
     parser.add_argument(

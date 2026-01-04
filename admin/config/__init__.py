@@ -1,4 +1,1 @@
-"""Config module - Configuration and feature flags.
-
-
-"""
+"""Config module - Configuration and feature flags."""

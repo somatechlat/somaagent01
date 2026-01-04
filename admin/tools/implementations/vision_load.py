@@ -17,12 +17,11 @@ class VisionLoad(Tool):
     """Visionload class implementation."""
 
     async def execute(self, paths: list[str] = [], **kwargs) -> Response:
-
         """Execute execute.
 
-            Args:
-                paths: The paths.
-            """
+        Args:
+            paths: The paths.
+        """
 
         self.images_dict = {}
 
@@ -67,13 +66,12 @@ class VisionLoad(Tool):
         return Response(message=message, break_loop=False)
 
     async def after_execution(self, response: Response, **kwargs):
-
         # build image data messages for LLMs, or error message
         """Execute after execution.
 
-            Args:
-                response: The response.
-            """
+        Args:
+            response: The response.
+        """
 
         content = []
         if self.images_dict:

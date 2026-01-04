@@ -43,8 +43,7 @@ except ValueError:
 
 
 def get_policy_client() -> PolicyClient:
-    """Retrieve policy client.
-        """
+    """Retrieve policy client."""
 
     return PolicyClient()
 
@@ -134,13 +133,12 @@ def require_policy(action: str, resource: str) -> Callable:
 
     def _decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
         @wraps(func)
-        """Execute decorator.
+        async def _inner(*args, request: HttpRequest, **kwargs):
+            """Execute decorator.
 
             Args:
-                func: The func.
+            func: The func.
             """
-
-        async def _inner(*args, request: HttpRequest, **kwargs):
             """Execute inner.
                 """
 

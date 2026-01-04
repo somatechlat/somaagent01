@@ -11,6 +11,7 @@ Exit Codes:
     0 - All required variables set
     1 - Missing required variables
 """
+
 import os
 import sys
 
@@ -66,8 +67,7 @@ def validate_optional():
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     print("=" * 80)
     print("SOMA Stack Environment Validation")

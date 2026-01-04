@@ -47,22 +47,19 @@ class MCPServerRemote(BaseModel):
         self.update(config)
 
     def get_error(self) -> str:
-        """Retrieve error.
-            """
+        """Retrieve error."""
 
         with self.__lock:
             return self.__client.error
 
     def get_log(self) -> str:
-        """Retrieve log.
-            """
+        """Retrieve log."""
 
         with self.__lock:
             return self.__client.get_log()
 
     def get_tools(self) -> List[dict[str, Any]]:
-        """Retrieve tools.
-            """
+        """Retrieve tools."""
 
         with self.__lock:
             return self.__client.tools
@@ -70,9 +67,9 @@ class MCPServerRemote(BaseModel):
     def has_tool(self, tool_name: str) -> bool:
         """Check if tool.
 
-            Args:
-                tool_name: The tool_name.
-            """
+        Args:
+            tool_name: The tool_name.
+        """
 
         with self.__lock:
             return self.__client.has_tool(tool_name)
@@ -80,10 +77,10 @@ class MCPServerRemote(BaseModel):
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         """Execute call tool.
 
-            Args:
-                tool_name: The tool_name.
-                input_data: The input_data.
-            """
+        Args:
+            tool_name: The tool_name.
+            input_data: The input_data.
+        """
 
         with self.__lock:
             return await self.__client.call_tool(tool_name, input_data)
@@ -91,9 +88,9 @@ class MCPServerRemote(BaseModel):
     def update(self, config: dict[str, Any]) -> "MCPServerRemote":
         """Execute update.
 
-            Args:
-                config: The config.
-            """
+        Args:
+            config: The config.
+        """
 
         with self.__lock:
             for key, value in config.items():
@@ -117,8 +114,7 @@ class MCPServerRemote(BaseModel):
             return asyncio.run(self.__on_update())
 
     async def __on_update(self) -> "MCPServerRemote":
-        """Execute on update.
-            """
+        """Execute on update."""
 
         await self.__client.update_tools()
         return self
@@ -153,22 +149,19 @@ class MCPServerLocal(BaseModel):
         self.update(config)
 
     def get_error(self) -> str:
-        """Retrieve error.
-            """
+        """Retrieve error."""
 
         with self.__lock:
             return self.__client.error
 
     def get_log(self) -> str:
-        """Retrieve log.
-            """
+        """Retrieve log."""
 
         with self.__lock:
             return self.__client.get_log()
 
     def get_tools(self) -> List[dict[str, Any]]:
-        """Retrieve tools.
-            """
+        """Retrieve tools."""
 
         with self.__lock:
             return self.__client.tools
@@ -176,9 +169,9 @@ class MCPServerLocal(BaseModel):
     def has_tool(self, tool_name: str) -> bool:
         """Check if tool.
 
-            Args:
-                tool_name: The tool_name.
-            """
+        Args:
+            tool_name: The tool_name.
+        """
 
         with self.__lock:
             return self.__client.has_tool(tool_name)
@@ -186,10 +179,10 @@ class MCPServerLocal(BaseModel):
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         """Execute call tool.
 
-            Args:
-                tool_name: The tool_name.
-                input_data: The input_data.
-            """
+        Args:
+            tool_name: The tool_name.
+            input_data: The input_data.
+        """
 
         with self.__lock:
             return await self.__client.call_tool(tool_name, input_data)
@@ -197,9 +190,9 @@ class MCPServerLocal(BaseModel):
     def update(self, config: dict[str, Any]) -> "MCPServerLocal":
         """Execute update.
 
-            Args:
-                config: The config.
-            """
+        Args:
+            config: The config.
+        """
 
         with self.__lock:
             for key, value in config.items():
@@ -222,8 +215,7 @@ class MCPServerLocal(BaseModel):
             return asyncio.run(self.__on_update())
 
     async def __on_update(self) -> "MCPServerLocal":
-        """Execute on update.
-            """
+        """Execute on update."""
 
         await self.__client.update_tools()
         return self

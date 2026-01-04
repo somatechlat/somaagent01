@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, TypeVar
 
 from .loader import ConfigLoader, get_config_loader
-from .models import Config
+from .models import Config as ConfigModel
 
 T = TypeVar("T")
 
@@ -21,7 +21,7 @@ T = TypeVar("T")
 class ConfigSubscription:
     """Configuration subscription details."""
 
-    callback: Callable[[Config], None]
+    callback: Callable[[ConfigModel], None]
     name: str
     owner: str
 
@@ -40,7 +40,7 @@ class ConfigRegistry:
             config_loader: Configuration loader instance
         """
         self._config_loader = config_loader or get_config_loader()
-        self._current_config: Optional[Config] = None
+        self._current_config: Optional[ConfigModel] = None
         self._subscriptions: Dict[str, ConfigSubscription] = {}
         self._lock = threading.RLock()
         self._initialized = False
@@ -58,11 +58,11 @@ class ConfigRegistry:
             self._current_config = self._config_loader.load_config()
             self._initialized = True
 
-    def get_config(self) -> Config:
+    def get_config(self) -> ConfigModel:
         """Get current configuration.
 
         Returns:
-            Config: Current configuration
+            ConfigModel: Current configuration
 
         Raises:
             RuntimeError: If registry not initialized
@@ -95,7 +95,7 @@ class ConfigRegistry:
             if old_config != new_config:
                 self._notify_subscribers(new_config)
 
-    def subscribe(self, callback: Callable[[Config], None], name: str, owner: str) -> None:
+    def subscribe(self, callback: Callable[[ConfigModel], None], name: str, owner: str) -> None:
         """Subscribe to configuration changes.
 
         Args:
@@ -124,7 +124,7 @@ class ConfigRegistry:
             key = f"{owner}.{name}"
             self._subscriptions.pop(key, None)
 
-    def _notify_subscribers(self, new_config: Config) -> None:
+    def _notify_subscribers(self, new_config: ConfigModel) -> None:
         """Notify subscribers of configuration changes.
 
         Args:
@@ -142,56 +142,56 @@ class ConfigRegistry:
                     f"Error in config subscription {subscription.name} from {subscription.owner}: {e}"
                 )
 
-    def get_service_config(self) -> Config.ServiceConfig:
+    def get_service_config(self) -> ConfigModel.ServiceConfig:
         """Get service configuration.
 
         Returns:
-            Config.ServiceConfig: Service configuration
+            ConfigModel.ServiceConfig: Service configuration
         """
         config = self.get_config()
         return config.service
 
-    def get_database_config(self) -> Config.DatabaseConfig:
+    def get_database_config(self) -> ConfigModel.DatabaseConfig:
         """Get database configuration.
 
         Returns:
-            Config.DatabaseConfig: Database configuration
+            ConfigModel.DatabaseConfig: Database configuration
         """
         config = self.get_config()
         return config.database
 
-    def get_kafka_config(self) -> Config.KafkaConfig:
+    def get_kafka_config(self) -> ConfigModel.KafkaConfig:
         """Get Kafka configuration.
 
         Returns:
-            Config.KafkaConfig: Kafka configuration
+            ConfigModel.KafkaConfig: Kafka configuration
         """
         config = self.get_config()
         return config.kafka
 
-    def get_redis_config(self) -> Config.RedisConfig:
+    def get_redis_config(self) -> ConfigModel.RedisConfig:
         """Get Redis configuration.
 
         Returns:
-            Config.RedisConfig: Redis configuration
+            ConfigModel.RedisConfig: Redis configuration
         """
         config = self.get_config()
         return config.redis
 
-    def get_external_config(self) -> Config.ExternalServiceConfig:
+    def get_external_config(self) -> ConfigModel.ExternalServiceConfig:
         """Get external service configuration.
 
         Returns:
-            Config.ExternalServiceConfig: External service configuration
+            ConfigModel.ExternalServiceConfig: External service configuration
         """
         config = self.get_config()
         return config.external
 
-    def get_auth_config(self) -> Config.AuthConfig:
+    def get_auth_config(self) -> ConfigModel.AuthConfig:
         """Get authentication configuration.
 
         Returns:
-            Config.AuthConfig: Authentication configuration
+            ConfigModel.AuthConfig: Authentication configuration
         """
         config = self.get_config()
         return config.auth
@@ -223,14 +223,14 @@ class ConfigRegistry:
         return config.extra.get(key, default)
 
     @contextmanager
-    def config_context(self, override_config: Optional[Config] = None) -> Config:
+    def config_context(self, override_config: Optional[ConfigModel] = None) -> ConfigModel:
         """Context manager for configuration access.
 
         Args:
             override_config: Optional configuration to override current config
 
         Yields:
-            Config: Configuration object
+            ConfigModel: Configuration object
         """
         with self._lock:
             original_config = self._current_config
@@ -346,11 +346,11 @@ def initialize_config(config_file_path: Optional[str] = None) -> None:
     config_registry.initialize()
 
 
-def get_config() -> Config:
+def get_config() -> ConfigModel:
     """Get global configuration.
 
     Returns:
-        Config: Global configuration
+        ConfigModel: Global configuration
     """
     registry = get_config_registry()
     return registry.get_config()
@@ -362,7 +362,7 @@ def refresh_config() -> None:
     registry.refresh_config()
 
 
-def subscribe_to_config(callback: Callable[[Config], None], name: str, owner: str) -> None:
+def subscribe_to_config(callback: Callable[[ConfigModel], None], name: str, owner: str) -> None:
     """Subscribe to global configuration changes.
 
     Args:
@@ -385,7 +385,7 @@ def unsubscribe_from_config(name: str, owner: str) -> None:
     registry.unsubscribe(name, owner)
 
 
-def get_service_config() -> Config.ServiceConfig:
+def get_service_config() -> ConfigModel.ServiceConfig:
     """Get global service configuration.
 
     Returns:
@@ -395,7 +395,7 @@ def get_service_config() -> Config.ServiceConfig:
     return registry.get_service_config()
 
 
-def get_database_config() -> Config.DatabaseConfig:
+def get_database_config() -> ConfigModel.DatabaseConfig:
     """Get global database configuration.
 
     Returns:
@@ -405,7 +405,7 @@ def get_database_config() -> Config.DatabaseConfig:
     return registry.get_database_config()
 
 
-def get_kafka_config() -> Config.KafkaConfig:
+def get_kafka_config() -> ConfigModel.KafkaConfig:
     """Get global Kafka configuration.
 
     Returns:
@@ -415,7 +415,7 @@ def get_kafka_config() -> Config.KafkaConfig:
     return registry.get_kafka_config()
 
 
-def get_redis_config() -> Config.RedisConfig:
+def get_redis_config() -> ConfigModel.RedisConfig:
     """Get global Redis configuration.
 
     Returns:
@@ -425,7 +425,7 @@ def get_redis_config() -> Config.RedisConfig:
     return registry.get_redis_config()
 
 
-def get_external_config() -> Config.ExternalServiceConfig:
+def get_external_config() -> ConfigModel.ExternalServiceConfig:
     """Get global external service configuration.
 
     Returns:
@@ -435,7 +435,7 @@ def get_external_config() -> Config.ExternalServiceConfig:
     return registry.get_external_config()
 
 
-def get_auth_config() -> Config.AuthConfig:
+def get_auth_config() -> ConfigModel.AuthConfig:
     """Get global authentication configuration.
 
     Returns:
@@ -474,7 +474,7 @@ def get_extra_config(key: str, default: Optional[Any] = None) -> Optional[Any]:
 
 
 @contextmanager
-def config_context(override_config: Optional[Config] = None) -> Config:
+def config_context(override_config: Optional[ConfigModel] = None) -> ConfigModel:
     """Context manager for global configuration access.
 
     Args:

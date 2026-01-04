@@ -22,9 +22,9 @@ import os
 async def handle_tool_request(event: dict) -> dict:
     """Execute handle tool request.
 
-        Args:
-            event: The event.
-        """
+    Args:
+        event: The event.
+    """
 
     kcfg = kafka_settings()
     bus = KafkaEventBus(kcfg)
@@ -47,9 +47,8 @@ async def handle_tool_request(event: dict) -> dict:
 @workflow.defn
 class ToolExecutorWorkflow:
     @workflow.run
-    """Toolexecutorworkflow class implementation."""
-
     async def run(self, event: dict) -> dict:
+        """Toolexecutorworkflow class implementation."""
         """Execute run.
 
             Args:
@@ -64,8 +63,7 @@ class ToolExecutorWorkflow:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_TOOL_QUEUE", "tool-executor")

@@ -43,9 +43,9 @@ PROGRESS_MAX_LEN: int = 120
 def _truncate_heading(text: str | None) -> str:
     """Execute truncate heading.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     if text is None:
         return ""
@@ -55,9 +55,9 @@ def _truncate_heading(text: str | None) -> str:
 def _truncate_progress(text: str | None) -> str:
     """Execute truncate progress.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     if text is None:
         return ""
@@ -67,9 +67,9 @@ def _truncate_progress(text: str | None) -> str:
 def _truncate_key(text: str) -> str:
     """Execute truncate key.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     return truncate_text_by_ratio(str(text), KEY_MAX_LEN, "...", ratio=1.0)
 
@@ -78,9 +78,9 @@ def _truncate_value(val: T) -> T:
     # If dict, recursively truncate each value
     """Execute truncate value.
 
-        Args:
-            val: The val.
-        """
+    Args:
+        val: The val.
+    """
 
     if isinstance(val, dict):
         for k in list(val.keys()):
@@ -118,9 +118,9 @@ def _truncate_value(val: T) -> T:
 def _truncate_content(text: str | None) -> str:
     """Execute truncate content.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     if text is None:
         return ""
@@ -176,8 +176,7 @@ class LogItem:
     guid: str = ""
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         self.guid = self.log.guid
 
@@ -193,14 +192,14 @@ class LogItem:
     ):
         """Execute update.
 
-            Args:
-                type: The type.
-                heading: The heading.
-                content: The content.
-                kvps: The kvps.
-                temp: The temp.
-                update_progress: The update_progress.
-            """
+        Args:
+            type: The type.
+            heading: The heading.
+            content: The content.
+            kvps: The kvps.
+            temp: The temp.
+            update_progress: The update_progress.
+        """
 
         if self.guid == self.log.guid:
             self.log._update_item(
@@ -222,10 +221,10 @@ class LogItem:
     ):
         """Execute stream.
 
-            Args:
-                heading: The heading.
-                content: The content.
-            """
+        Args:
+            heading: The heading.
+            content: The content.
+        """
 
         if heading is not None:
             self.update(heading=self.heading + heading)
@@ -237,8 +236,7 @@ class LogItem:
             self.update(**{k: prev + v})
 
     def output(self):
-        """Execute output.
-            """
+        """Execute output."""
 
         return {
             "no": self.no,
@@ -252,7 +250,6 @@ class LogItem:
 
 
 class Log:
-
     """Log class implementation."""
 
     def __init__(self):
@@ -274,19 +271,18 @@ class Log:
         id: Optional[str] = None,  # Add id parameter
         **kwargs,
     ) -> LogItem:
-
         # add a minimal item to the log
         """Execute log.
 
-            Args:
-                type: The type.
-                heading: The heading.
-                content: The content.
-                kvps: The kvps.
-                temp: The temp.
-                update_progress: The update_progress.
-                id: The id.
-            """
+        Args:
+            type: The type.
+            heading: The heading.
+            content: The content.
+            kvps: The kvps.
+            temp: The temp.
+            update_progress: The update_progress.
+            id: The id.
+        """
 
         item = LogItem(
             log=self,
@@ -323,16 +319,16 @@ class Log:
     ):
         """Execute update item.
 
-            Args:
-                no: The no.
-                type: The type.
-                heading: The heading.
-                content: The content.
-                kvps: The kvps.
-                temp: The temp.
-                update_progress: The update_progress.
-                id: The id.
-            """
+        Args:
+            no: The no.
+            type: The type.
+            heading: The heading.
+            content: The content.
+            kvps: The kvps.
+            temp: The temp.
+            update_progress: The update_progress.
+            id: The id.
+        """
 
         item = self.logs[no]
 
@@ -375,11 +371,11 @@ class Log:
     def set_progress(self, progress: str, no: int = 0, active: bool = True):
         """Set progress.
 
-            Args:
-                progress: The progress.
-                no: The no.
-                active: The active.
-            """
+        Args:
+            progress: The progress.
+            no: The no.
+            active: The active.
+        """
 
         progress = _mask_recursive(progress)
         progress = _truncate_progress(progress)
@@ -390,18 +386,17 @@ class Log:
         self.progress_active = active
 
     def set_initial_progress(self):
-        """Set initial progress.
-            """
+        """Set initial progress."""
 
         self.set_progress("Waiting for input", 0, False)
 
     def output(self, start=None, end=None):
         """Execute output.
 
-            Args:
-                start: The start.
-                end: The end.
-            """
+        Args:
+            start: The start.
+            end: The end.
+        """
 
         if start is None:
             start = 0
@@ -418,8 +413,7 @@ class Log:
         return out
 
     def reset(self):
-        """Execute reset.
-            """
+        """Execute reset."""
 
         self.guid = str(uuid.uuid4())
         self.updates = []
@@ -429,9 +423,9 @@ class Log:
     def _update_progress_from_item(self, item: LogItem):
         """Execute update progress from item.
 
-            Args:
-                item: The item.
-            """
+        Args:
+            item: The item.
+        """
 
         if item.heading and item.update_progress != "none":
             if item.no >= self.progress_no:

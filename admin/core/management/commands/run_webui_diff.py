@@ -25,9 +25,9 @@ os.makedirs(ASSET, exist_ok=True)
 def sha256(path: Path):
     """Execute sha256.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -39,9 +39,9 @@ def sha256(path: Path):
 def is_text(path: Path):
     """Check if text.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     try:
         suf = path.suffix.lower()
@@ -59,9 +59,9 @@ def is_text(path: Path):
 def relpaths(base: Path):
     """Execute relpaths.
 
-        Args:
-            base: The base.
-        """
+    Args:
+        base: The base.
+    """
 
     files = []
     if not base.exists():

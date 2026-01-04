@@ -1,4 +1,1 @@
-"""Metrics module - Operational telemetry.
-
-
-"""
+"""Metrics module - Operational telemetry."""

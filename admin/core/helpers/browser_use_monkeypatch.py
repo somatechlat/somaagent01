@@ -20,9 +20,9 @@ LOGGER = logging.getLogger(__name__)
 def gemini_clean_and_conform(text: str):
     """Execute gemini clean and conform.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     obj = None
     try:
@@ -113,9 +113,9 @@ def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
         def resolve_refs(obj: Any) -> Any:
             """Execute resolve refs.
 
-                Args:
-                    obj: The obj.
-                """
+            Args:
+                obj: The obj.
+            """
 
             if isinstance(obj, dict):
                 if "$ref" in obj:
@@ -143,9 +143,9 @@ def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
     def clean_schema(obj: Any) -> Any:
         """Execute clean schema.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         if isinstance(obj, dict):
             # Remove unsupported properties

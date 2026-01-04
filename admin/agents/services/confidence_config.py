@@ -62,10 +62,10 @@ class ConfidenceConfig:
         def parse_bool(val: str, default: bool) -> bool:
             """Execute parse bool.
 
-                Args:
-                    val: The val.
-                    default: The default.
-                """
+            Args:
+                val: The val.
+                default: The default.
+            """
 
             if not val:
                 return default
@@ -74,10 +74,10 @@ class ConfidenceConfig:
         def parse_float(val: str, default: float) -> float:
             """Execute parse float.
 
-                Args:
-                    val: The val.
-                    default: The default.
-                """
+            Args:
+                val: The val.
+                default: The default.
+            """
 
             if not val:
                 return default
@@ -89,10 +89,10 @@ class ConfidenceConfig:
         def parse_int(val: str, default: int) -> int:
             """Execute parse int.
 
-                Args:
-                    val: The val.
-                    default: The default.
-                """
+            Args:
+                val: The val.
+                default: The default.
+            """
 
             if not val:
                 return default
@@ -104,9 +104,9 @@ class ConfidenceConfig:
         def parse_aggregation(val: str) -> Literal["average", "min", "percentile_90"]:
             """Execute parse aggregation.
 
-                Args:
-                    val: The val.
-                """
+            Args:
+                val: The val.
+            """
 
             if val in ("average", "min", "percentile_90"):
                 return val  # type: ignore
@@ -115,9 +115,9 @@ class ConfidenceConfig:
         def parse_on_low(val: str) -> Literal["allow", "flag", "reject"]:
             """Execute parse on low.
 
-                Args:
-                    val: The val.
-                """
+            Args:
+                val: The val.
+            """
 
             if val in ("allow", "flag", "reject"):
                 return val  # type: ignore

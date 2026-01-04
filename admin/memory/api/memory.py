@@ -73,8 +73,7 @@ async def export_memory(
 
     @sync_to_async
     def _get_iterator():
-        """Execute get iterator.
-            """
+        """Execute get iterator."""
 
         qs = MemoryReplica.objects.all().order_by("-created_at")
 
@@ -86,8 +85,7 @@ async def export_memory(
 
         # Generator to yield strings
         def generate():
-            """Execute generate.
-                """
+            """Execute generate."""
 
             for mem in qs.iterator(chunk_size=1000):
                 data = {
@@ -122,8 +120,7 @@ async def create_export_job(
 
     @sync_to_async
     def _create_job():
-        """Execute create job.
-            """
+        """Execute create job."""
 
         job_id = uuid.uuid4()
         job = Job.objects.create(
@@ -153,8 +150,7 @@ async def get_export_job(
 
     @sync_to_async
     def _get_job():
-        """Execute get job.
-            """
+        """Execute get job."""
 
         try:
             return Job.objects.get(id=job_id)
@@ -189,8 +185,7 @@ async def download_export(
 
     @sync_to_async
     def _get_result():
-        """Execute get result.
-            """
+        """Execute get result."""
 
         try:
             job = Job.objects.get(id=job_id)
@@ -228,8 +223,7 @@ async def memory_batch(
 
     @sync_to_async
     def _bulk_create():
-        """Execute bulk create.
-            """
+        """Execute bulk create."""
 
         replicas = []
         for item in req.items:
@@ -267,8 +261,7 @@ async def memory_delete(
     @sync_to_async
     def _delete():
         # Deleting by event_id vs id. mem_id is str, so assumes event_id.
-        """Execute delete.
-            """
+        """Execute delete."""
 
         count, _ = MemoryReplica.objects.filter(event_id=mem_id).delete()
         return count

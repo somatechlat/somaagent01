@@ -19,9 +19,9 @@ class ToolDefinition:
     async def run(self, args: dict[str, object]) -> dict[str, object]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         return await self.handler.run(args)  # type: ignore[arg-type]
 
@@ -43,9 +43,9 @@ class ToolRegistry:
     def register(self, tool: BaseTool, *, description: Optional[str] = None) -> None:
         """Execute register.
 
-            Args:
-                tool: The tool.
-            """
+        Args:
+            tool: The tool.
+        """
 
         definition = ToolDefinition(name=tool.name, handler=tool, description=description)
         self._tools[tool.name] = definition
@@ -53,14 +53,13 @@ class ToolRegistry:
     def get(self, name: str) -> Optional[ToolDefinition]:
         """Execute get.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return self._tools.get(name)
 
     def list(self) -> Iterable[ToolDefinition]:
-        """Execute list.
-            """
+        """Execute list."""
 
         return self._tools.values()

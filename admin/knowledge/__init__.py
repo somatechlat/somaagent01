@@ -1,4 +1,1 @@
-"""Knowledge module - RAG document retrieval.
-
-
-"""
+"""Knowledge module - RAG document retrieval."""

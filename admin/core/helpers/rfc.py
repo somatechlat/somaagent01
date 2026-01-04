@@ -35,14 +35,14 @@ async def call_rfc(
 ):
     """Execute call rfc.
 
-        Args:
-            url: The url.
-            password: The password.
-            module: The module.
-            function_name: The function_name.
-            args: The args.
-            kwargs: The kwargs.
-        """
+    Args:
+        url: The url.
+        password: The password.
+        module: The module.
+        function_name: The function_name.
+        args: The args.
+        kwargs: The kwargs.
+    """
 
     input = RFCInput(
         module=module,
@@ -58,10 +58,10 @@ async def call_rfc(
 async def handle_rfc(rfc_call: RFCCall, password: str):
     """Execute handle rfc.
 
-        Args:
-            rfc_call: The rfc_call.
-            password: The password.
-        """
+    Args:
+        rfc_call: The rfc_call.
+        password: The password.
+    """
 
     if not crypto.verify_data(rfc_call["rfc_input"], rfc_call["hash"], password):
         raise Exception("Invalid RFC hash")
@@ -75,10 +75,10 @@ async def handle_rfc(rfc_call: RFCCall, password: str):
 async def _call_function(module: str, function_name: str, *args, **kwargs):
     """Execute call function.
 
-        Args:
-            module: The module.
-            function_name: The function_name.
-        """
+    Args:
+        module: The module.
+        function_name: The function_name.
+    """
 
     func = _get_function(module, function_name)
     if inspect.iscoroutinefunction(func):
@@ -91,10 +91,10 @@ def _get_function(module: str, function_name: str):
     # import module
     """Execute get function.
 
-        Args:
-            module: The module.
-            function_name: The function_name.
-        """
+    Args:
+        module: The module.
+        function_name: The function_name.
+    """
 
     imp = importlib.import_module(module)
     # get function by the name
@@ -105,10 +105,10 @@ def _get_function(module: str, function_name: str):
 async def _send_json_data(url: str, data):
     """Execute send json data.
 
-        Args:
-            url: The url.
-            data: The data.
-        """
+    Args:
+        url: The url.
+        data: The data.
+    """
 
     async with aiohttp.ClientSession() as session:
         async with session.post(

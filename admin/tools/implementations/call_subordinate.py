@@ -16,10 +16,10 @@ class Delegation(Tool):
         # create subordinate agent using the data object on this agent and set superior agent to his data object
         """Execute execute.
 
-            Args:
-                message: The message.
-                reset: The reset.
-            """
+        Args:
+            message: The message.
+            reset: The reset.
+        """
 
         if (
             self.agent.get_data(Agent.DATA_NAME_SUBORDINATE) is None
@@ -57,8 +57,7 @@ class Delegation(Tool):
         return Response(message=result, break_loop=False, additional=additional)
 
     def get_log_object(self):
-        """Retrieve log object.
-            """
+        """Retrieve log object."""
 
         return self.agent.context.log.log(
             type="tool",

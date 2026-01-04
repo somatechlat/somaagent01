@@ -69,8 +69,7 @@ class AnalysisResult:
     tags: List[str]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return {"intent": self.intent, "sentiment": self.sentiment, "tags": self.tags}
 
@@ -81,9 +80,9 @@ class MessageAnalyzer:
     def analyze(self, message: str) -> AnalysisResult:
         """Execute analyze.
 
-            Args:
-                message: The message.
-            """
+        Args:
+            message: The message.
+        """
 
         text = message.strip()
         lower = text.lower()

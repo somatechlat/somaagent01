@@ -1,7 +1,4 @@
-"""LLM models - 100% Django ORM.
-
-
-"""
+"""LLM models - 100% Django ORM."""
 
 from enum import Enum
 

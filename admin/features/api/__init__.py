@@ -1,7 +1,4 @@
-"""Features API routers - Django Ninja.
-
-
-"""
+"""Features API routers - Django Ninja."""
 
 from ninja import Router
 

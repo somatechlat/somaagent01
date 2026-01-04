@@ -1,7 +1,4 @@
-"""Django Channels WebSocket consumers.
-
-
-"""
+"""Django Channels WebSocket consumers."""
 
 from services.gateway.consumers.chat import ChatConsumer
 

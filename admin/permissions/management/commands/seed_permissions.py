@@ -225,8 +225,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         self.stdout.write("Seeding permissions...")
 

@@ -1,7 +1,4 @@
-"""Auth module for Django Ninja authentication.
-
-
-"""
+"""Auth module for Django Ninja authentication."""
 
 from admin.auth.api import router
 

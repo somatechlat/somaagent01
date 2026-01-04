@@ -20,9 +20,9 @@ import os
 def _iso(ts: float) -> str:
     """Execute iso.
 
-        Args:
-            ts: The ts.
-        """
+    Args:
+        ts: The ts.
+    """
 
     return _dt.datetime.utcfromtimestamp(ts).replace(microsecond=0).isoformat() + "Z"
 
@@ -30,9 +30,9 @@ def _iso(ts: float) -> str:
 def _hash16(text: str) -> str:
     """Execute hash16.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     return _hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
@@ -46,8 +46,7 @@ def generate_key(
     timestamp_seconds: float,
     base: str,
 ) -> str:
-    """Execute generate key.
-        """
+    """Execute generate key."""
 
     ts_iso = _iso(timestamp_seconds)
     return f"{tenant}/{namespace}/{session_id}/{role}/{ts_iso}/{_hash16(base)}"
@@ -61,9 +60,9 @@ def generate_for_memory_payload(
 ) -> str:
     """Execute generate for memory payload.
 
-        Args:
-            payload: The payload.
-        """
+    Args:
+        payload: The payload.
+    """
 
     meta = payload.get("metadata") or {}
     tenant = (

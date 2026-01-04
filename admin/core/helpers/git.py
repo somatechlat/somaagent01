@@ -9,8 +9,7 @@ from admin.core.helpers import files
 
 def get_git_info():
     # Get the current working directory (assuming the repo is in the same folder as the script)
-    """Retrieve git info.
-        """
+    """Retrieve git info."""
 
     repo_path = files.get_base_dir()
 

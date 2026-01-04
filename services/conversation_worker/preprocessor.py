@@ -19,8 +19,7 @@ class AnalysisResult:
     tags: List[str]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return {
             "intent": self.intent,

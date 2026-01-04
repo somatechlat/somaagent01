@@ -26,7 +26,7 @@ router = Router()
 
 
 # =============================================================================
-# API KEYS - 
+# API KEYS -
 # =============================================================================
 
 import hashlib
@@ -41,10 +41,7 @@ from admin.saas.models.profiles import ApiKey
 
 @router.get("/api-keys", response=list[ApiKeyOut])
 def list_api_keys(request, tenant_id: Optional[str] = None):
-    """Get all API keys, optionally filtered by tenant.
-
-    
-    """
+    """Get all API keys, optionally filtered by tenant."""
     queryset = ApiKey.objects.filter(is_active=True)
     if tenant_id:
         queryset = queryset.filter(tenant_id=tenant_id)
@@ -68,7 +65,7 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key.
 
-    
+
     Returns plaintext key ONCE only - must be saved by client.
     """
     # Generate cryptographically secure key
@@ -103,10 +100,7 @@ def create_api_key(request, payload: ApiKeyCreate):
 @router.delete("/api-keys/{key_id}", response=MessageResponse)
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
-    """Revoke an API key.
-
-    
-    """
+    """Revoke an API key."""
     try:
         api_key = ApiKey.objects.get(id=key_id)
         api_key.is_active = False

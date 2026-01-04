@@ -63,11 +63,11 @@ async def run_message_loop(agent: "Agent", loop_data: LoopData) -> str:
             async def reasoning_callback(chunk: str, full: str, p=printer):
                 """Execute reasoning callback.
 
-                    Args:
-                        chunk: The chunk.
-                        full: The full.
-                        p: The p.
-                    """
+                Args:
+                    chunk: The chunk.
+                    full: The full.
+                    p: The p.
+                """
 
                 await agent.handle_intervention()
                 if chunk == full:
@@ -78,11 +78,11 @@ async def run_message_loop(agent: "Agent", loop_data: LoopData) -> str:
             async def stream_callback(chunk: str, full: str, p=printer):
                 """Execute stream callback.
 
-                    Args:
-                        chunk: The chunk.
-                        full: The full.
-                        p: The p.
-                    """
+                Args:
+                    chunk: The chunk.
+                    full: The full.
+                    p: The p.
+                """
 
                 await agent.handle_intervention()
                 if chunk == full:

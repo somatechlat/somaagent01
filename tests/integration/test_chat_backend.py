@@ -61,8 +61,7 @@ async def test_chat_full_flow():
     @database_sync_to_async
     def setup_data_manual():
         # Clean up any previous collision (unlikely with UUIDs)
-        """Execute setup data manual.
-            """
+        """Execute setup data manual."""
 
         Conversation.objects.filter(id=conversation_id).delete()
 
@@ -133,8 +132,7 @@ async def test_chat_full_flow():
 
             @database_sync_to_async
             def check_db():
-                """Execute check db.
-                    """
+                """Execute check db."""
 
                 return Message.objects.filter(content=test_content).exists()
 
@@ -151,8 +149,7 @@ async def test_chat_full_flow():
 
         @database_sync_to_async
         def cleanup():
-            """Execute cleanup.
-                """
+            """Execute cleanup."""
 
             Conversation.objects.filter(id=conversation_id).delete()
 

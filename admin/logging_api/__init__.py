@@ -1,4 +1,1 @@
-"""Logging API module - Structured logging.
-
-
-"""
+"""Logging API module - Structured logging."""

@@ -60,7 +60,7 @@ class LlmInvokeResponse(BaseModel):
 def get_default_model() -> str:
     """Get the default chat model from settings or environment.
 
-    Per 
+    Per
     """
     model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
     if not model:
@@ -71,22 +71,19 @@ def get_default_model() -> str:
 
 
 def get_multimodal_enabled() -> bool:
-    """Retrieve multimodal enabled.
-        """
+    """Retrieve multimodal enabled."""
 
     return getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
 
 
 def get_confidence_enabled() -> bool:
-    """Retrieve confidence enabled.
-        """
+    """Retrieve confidence enabled."""
 
     return getattr(settings, "CONFIDENCE_ENABLED", False)
 
 
 def get_confidence_aggregation() -> str:
-    """Retrieve confidence aggregation.
-        """
+    """Retrieve confidence aggregation."""
 
     return getattr(settings, "CONFIDENCE_AGGREGATION", "average")
 

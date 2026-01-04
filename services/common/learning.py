@@ -31,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 def _get_somabrain_url() -> str:
     """Get SomaBrain URL from Django settings or environment.
 
-    Implements 
+    Implements
     """
     if hasattr(settings, "SOMABRAIN_URL"):
         return str(settings.SOMABRAIN_URL)
@@ -59,9 +59,9 @@ LEARNING_REWARD_TOTAL = Counter(
 async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
     """Retrieve weights.
 
-        Args:
-            persona_id: The persona_id.
-        """
+    Args:
+        persona_id: The persona_id.
+    """
 
     if not os.environ.get("learning_context"):
         return {}
@@ -130,12 +130,12 @@ async def publish_reward(
 ) -> bool:
     """Execute publish reward.
 
-        Args:
-            session_id: The session_id.
-            signal: The signal.
-            value: The value.
-            meta: The meta.
-        """
+    Args:
+        session_id: The session_id.
+        signal: The signal.
+        value: The value.
+        meta: The meta.
+    """
 
     if not os.environ.get("learning_context"):
         return False

@@ -85,8 +85,7 @@ async def list_integrations(
 
     @sync_to_async
     def _get_integrations():
-        """Execute get integrations.
-            """
+        """Execute get integrations."""
 
         qs = IntegrationModel.objects.all()
         if status:
@@ -139,8 +138,7 @@ async def create_integration(
 
     @sync_to_async
     def _create():
-        """Execute create.
-            """
+        """Execute create."""
 
         integration_id = uuid4()
         obj = IntegrationModel.objects.create(
@@ -225,8 +223,7 @@ async def delete_integration(
 
     @sync_to_async
     def _delete():
-        """Execute delete.
-            """
+        """Execute delete."""
 
         count, _ = IntegrationModel.objects.filter(id=integration_id).delete()
         return count

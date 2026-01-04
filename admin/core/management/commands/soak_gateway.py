@@ -21,6 +21,7 @@ Example:
   TARGET_URL=http://127.0.0.1:8010 RPS=20 DURATION=60 CONCURRENCY=50 \
   python scripts/load/soak_gateway.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,10 +46,10 @@ class Stats:
     def record(self, latency: float, ok: bool) -> None:
         """Execute record.
 
-            Args:
-                latency: The latency.
-                ok: The ok.
-            """
+        Args:
+            latency: The latency.
+            ok: The ok.
+        """
 
         self.latencies.append(latency)
         if ok:
@@ -57,17 +58,16 @@ class Stats:
             self.err += 1
 
     def snapshot(self) -> dict[str, Any]:
-        """Execute snapshot.
-            """
+        """Execute snapshot."""
 
         lats = sorted(self.latencies)
 
         def pct(p: float) -> float:
             """Execute pct.
 
-                Args:
-                    p: The p.
-                """
+            Args:
+                p: The p.
+            """
 
             if not lats:
                 return 0.0
@@ -90,10 +90,10 @@ class Stats:
 def _env_float(name: str, default: float) -> float:
     """Execute env float.
 
-        Args:
-            name: The name.
-            default: The default.
-        """
+    Args:
+        name: The name.
+        default: The default.
+    """
 
     raw = os.environ.get(name, str(default))
     try:
@@ -105,10 +105,10 @@ def _env_float(name: str, default: float) -> float:
 def _env_int(name: str, default: int) -> int:
     """Execute env int.
 
-        Args:
-            name: The name.
-            default: The default.
-        """
+    Args:
+        name: The name.
+        default: The default.
+    """
 
     raw = os.environ.get(name, str(default))
     try:
@@ -131,18 +131,18 @@ async def _worker(
 ) -> None:
     """Execute worker.
 
-        Args:
-            name: The name.
-            client: The client.
-            q: The q.
-            stats: The stats.
-            headers: The headers.
-            base_url: The base_url.
-            path: The path.
-            tenant: The tenant.
-            persona_id: The persona_id.
-            message: The message.
-        """
+    Args:
+        name: The name.
+        client: The client.
+        q: The q.
+        stats: The stats.
+        headers: The headers.
+        base_url: The base_url.
+        path: The path.
+        tenant: The tenant.
+        persona_id: The persona_id.
+        message: The message.
+    """
 
     while True:
         try:
@@ -169,8 +169,7 @@ async def _worker(
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     base_url = os.environ.get("TARGET_URL", "http://127.0.0.1:8010") or "http://127.0.0.1:8010"
     path = os.environ.get("PATH", "/v1/sessions/message") or "/v1/sessions/message"

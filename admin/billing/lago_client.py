@@ -38,7 +38,7 @@ class LagoConfig:
 class LagoClient:
     """Async client for Lago billing API.
 
-    
+
     - Full async support
     - Proper error handling
     - Typed responses

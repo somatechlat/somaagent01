@@ -1,4 +1,1 @@
-"""Notifications module - Real-time events.
-
-
-"""
+"""Notifications module - Real-time events."""

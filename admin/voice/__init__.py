@@ -6,7 +6,7 @@ normalisation, text‑to‑speech synthesis and speaker playback.  All heavy‑w
 logic lives in the sub‑modules of this package; the ``__init__`` file merely
 exposes the public entry point.
 
-This module follows the 
+This module follows the
 single place for all audio‑related code.
 """
 

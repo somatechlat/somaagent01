@@ -11,6 +11,7 @@ Usage:
 Exit codes:
   0 on success, non-zero on error.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,9 +26,9 @@ from admin.agents.services.somabrain_integration import SomaBrainClient, SomaCli
 def _read_doc(path: str) -> Mapping[str, Any]:
     """Execute read doc.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     p = path.strip()
     if not p:
@@ -48,9 +49,9 @@ def _read_doc(path: str) -> Mapping[str, Any]:
 def cmd_get(args: argparse.Namespace) -> int:
     """Execute cmd get.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     client = SomaBrainClient.get()
     try:
@@ -68,9 +69,9 @@ def cmd_get(args: argparse.Namespace) -> int:
 def cmd_put(args: argparse.Namespace) -> int:
     """Execute cmd put.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     try:
         doc = _read_doc(args.path)
@@ -98,9 +99,9 @@ def cmd_put(args: argparse.Namespace) -> int:
 def cmd_delete(args: argparse.Namespace) -> int:
     """Execute cmd delete.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     client = SomaBrainClient.get()
     try:
@@ -127,8 +128,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = argparse.ArgumentParser(description="SomaBrain Persona Admin (CAS)")
     sub = parser.add_subparsers(dest="cmd", required=True)

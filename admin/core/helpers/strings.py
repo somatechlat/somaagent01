@@ -9,10 +9,10 @@ def sanitize_string(s: str, encoding: str = "utf-8") -> str:
     # Replace surrogates and invalid unicode with replacement character
     """Execute sanitize string.
 
-        Args:
-            s: The s.
-            encoding: The encoding.
-        """
+    Args:
+        s: The s.
+        encoding: The encoding.
+    """
 
     if not isinstance(s, str):
         s = str(s)
@@ -27,17 +27,16 @@ def calculate_valid_match_lengths(
     ignore_patterns: list[bytes | str] = [],
     debug: bool = False,
 ) -> tuple[int, int]:
-
     """Execute calculate valid match lengths.
 
-        Args:
-            first: The first.
-            second: The second.
-            deviation_threshold: The deviation_threshold.
-            deviation_reset: The deviation_reset.
-            ignore_patterns: The ignore_patterns.
-            debug: The debug.
-        """
+    Args:
+        first: The first.
+        second: The second.
+        deviation_threshold: The deviation_threshold.
+        deviation_reset: The deviation_reset.
+        ignore_patterns: The ignore_patterns.
+        debug: The debug.
+    """
 
     first_length = len(first)
     second_length = len(second)
@@ -144,9 +143,9 @@ def format_key(key: str) -> str:
 def dict_to_text(d: dict) -> str:
     """Execute dict to text.
 
-        Args:
-            d: The d.
-        """
+    Args:
+        d: The d.
+    """
 
     parts = []
     for key, value in d.items():
@@ -160,12 +159,12 @@ def dict_to_text(d: dict) -> str:
 def truncate_text(text: str, length: int, at_end: bool = True, replacement: str = "...") -> str:
     """Execute truncate text.
 
-        Args:
-            text: The text.
-            length: The length.
-            at_end: The at_end.
-            replacement: The replacement.
-        """
+    Args:
+        text: The text.
+        length: The length.
+        at_end: The at_end.
+        replacement: The replacement.
+    """
 
     orig_length = len(text)
     if orig_length <= length:
@@ -210,10 +209,10 @@ def replace_file_includes(text: str, placeholder_pattern: str = r"§§include\((
     # Replace include aliases with file content
     """Execute replace file includes.
 
-        Args:
-            text: The text.
-            placeholder_pattern: The placeholder_pattern.
-        """
+    Args:
+        text: The text.
+        placeholder_pattern: The placeholder_pattern.
+    """
 
     if not text:
         return text
@@ -223,9 +222,9 @@ def replace_file_includes(text: str, placeholder_pattern: str = r"§§include\((
     def _repl(match):
         """Execute repl.
 
-            Args:
-                match: The match.
-            """
+        Args:
+            match: The match.
+        """
 
         path = match.group(1)
         try:

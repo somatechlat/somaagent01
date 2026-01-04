@@ -30,8 +30,7 @@ class DockerContainerManager:
         self.init_docker()
 
     def init_docker(self):
-        """Execute init docker.
-            """
+        """Execute init docker."""
 
         self.client = None
         while not self.client:
@@ -61,8 +60,7 @@ class DockerContainerManager:
         return self.client
 
     def cleanup_container(self) -> None:
-        """Execute cleanup container.
-            """
+        """Execute cleanup container."""
 
         if self.container:
             try:
@@ -83,8 +81,7 @@ class DockerContainerManager:
                     )
 
     def get_image_containers(self):
-        """Retrieve image containers.
-            """
+        """Retrieve image containers."""
 
         if not self.client:
             self.client = self.init_docker()
@@ -107,8 +104,7 @@ class DockerContainerManager:
         return infos
 
     def start_container(self) -> None:
-        """Execute start container.
-            """
+        """Execute start container."""
 
         if not self.client:
             self.client = self.init_docker()

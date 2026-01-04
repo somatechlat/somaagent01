@@ -12,23 +12,21 @@ def capture_prints_async(
     # Create a StringIO object to capture the output
     """Execute capture prints async.
 
-        Args:
-            func: The func.
-        """
+    Args:
+        func: The func.
+    """
 
     captured_output = io.StringIO()
     original_stdout = sys.stdout
 
     # Define a function to get the current captured output
     def get_current_output() -> str:
-        """Retrieve current output.
-            """
+        """Retrieve current output."""
 
         return captured_output.getvalue()
 
     async def wrapped_func() -> Any:
-        """Execute wrapped func.
-            """
+        """Execute wrapped func."""
 
         nonlocal captured_output, original_stdout
         try:

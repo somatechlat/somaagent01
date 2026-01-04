@@ -25,9 +25,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--consumer-group",
@@ -43,8 +43,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         consumer_group = options["consumer_group"]
         topic = options["topic"]

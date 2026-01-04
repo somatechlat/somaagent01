@@ -1,4 +1,1 @@
-"""Audit module - Security audit trail.
-
-
-"""
+"""Audit module - Security audit trail."""

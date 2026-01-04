@@ -238,13 +238,12 @@ def require_permission(*permissions: str):
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        """Execute decorator.
+        async def async_wrapper(request, *args, **kwargs):
+            """Execute decorator.
 
             Args:
-                func: The func.
+            func: The func.
             """
-
-        async def async_wrapper(request, *args, **kwargs):
             """Execute async wrapper.
 
                 Args:
@@ -259,9 +258,7 @@ def require_permission(*permissions: str):
 
             # Check if user has any of the required permissions
             if not any(p in user_perms for p in permissions):
-                logger.warning(
-                    f"Permission denied: {permissions} required, " f"user has {user_perms}"
-                )
+                logger.warning(f"Permission denied: {permissions} required, user has {user_perms}")
                 raise HttpError(403, "Permission denied")
 
             return await func(request, *args, **kwargs)
@@ -270,9 +267,9 @@ def require_permission(*permissions: str):
         def sync_wrapper(request, *args, **kwargs):
             """Execute sync wrapper.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             user_perms = get_user_permissions(getattr(request, "auth", None))
 
@@ -280,9 +277,7 @@ def require_permission(*permissions: str):
                 return func(request, *args, **kwargs)
 
             if not any(p in user_perms for p in permissions):
-                logger.warning(
-                    f"Permission denied: {permissions} required, " f"user has {user_perms}"
-                )
+                logger.warning(f"Permission denied: {permissions} required, user has {user_perms}")
                 raise HttpError(403, "Permission denied")
 
             return func(request, *args, **kwargs)

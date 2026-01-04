@@ -1,7 +1,7 @@
 """Infrastructure ORM Models for SAAS Administration.
 
 
-Per 
+Per
 
 10-Persona Implementation:
 - PhD Developer: Clean ORM design with proper relationships

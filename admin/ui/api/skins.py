@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_store():
-    """Execute get store.
-        """
+    """Execute get store."""
 
     from services.common.skins_store import SkinsStore
 
@@ -60,9 +59,9 @@ class SkinCreateRequest(BaseModel):
     def validate_variables(cls, v):
         """Execute validate variables.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         return _validate_no_xss(v)
 
@@ -82,9 +81,9 @@ class SkinUpdateRequest(BaseModel):
     def validate_variables(cls, v):
         """Execute validate variables.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         if v is not None:
             return _validate_no_xss(v)
@@ -117,9 +116,9 @@ class SkinListResponse(BaseModel):
 def _record_to_response(rec) -> dict:
     """Execute record to response.
 
-        Args:
-            rec: The rec.
-        """
+    Args:
+        rec: The rec.
+    """
 
     return {
         "id": rec.skin_id,
@@ -139,9 +138,9 @@ def _record_to_response(rec) -> dict:
 def _get_tenant_id(request: HttpRequest) -> str:
     """Execute get tenant id.
 
-        Args:
-            request: The request.
-        """
+    Args:
+        request: The request.
+    """
 
     return request.headers.get("X-Tenant-Id", "00000000-0000-0000-0000-000000000000")
 
@@ -149,9 +148,9 @@ def _get_tenant_id(request: HttpRequest) -> str:
 async def _is_admin(request: HttpRequest) -> bool:
     """Execute is admin.
 
-        Args:
-            request: The request.
-        """
+    Args:
+        request: The request.
+    """
 
     try:
         from services.common.authorization import authorize

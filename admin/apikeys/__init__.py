@@ -1,4 +1,1 @@
-"""API Keys module - Programmatic access.
-
-
-"""
+"""API Keys module - Programmatic access."""

@@ -1,4 +1,1 @@
-"""Completions module - LLM inference.
-
-
-"""
+"""Completions module - LLM inference."""

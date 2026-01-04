@@ -37,11 +37,11 @@ class KafkaEventBusAdapter(EventBusPort):
     ) -> None:
         """Execute publish.
 
-            Args:
-                topic: The topic.
-                payload: The payload.
-                headers: The headers.
-            """
+        Args:
+            topic: The topic.
+            payload: The payload.
+            headers: The headers.
+        """
 
         await self._bus.publish(topic, payload, headers)
 
@@ -54,23 +54,21 @@ class KafkaEventBusAdapter(EventBusPort):
     ) -> None:
         """Execute consume.
 
-            Args:
-                topic: The topic.
-                group_id: The group_id.
-                handler: The handler.
-                stop_event: The stop_event.
-            """
+        Args:
+            topic: The topic.
+            group_id: The group_id.
+            handler: The handler.
+            stop_event: The stop_event.
+        """
 
         await self._bus.consume(topic, group_id, handler, stop_event)
 
     async def healthcheck(self) -> None:
-        """Execute healthcheck.
-            """
+        """Execute healthcheck."""
 
         await self._bus.healthcheck()
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         await self._bus.close()

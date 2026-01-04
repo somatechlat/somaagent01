@@ -20,8 +20,7 @@ class Command(BaseCommand):
     help = "Seeds the SAAS Admin database with default Tiers, Features, and Providers."
 
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         self.stdout.write(self.style.SUCCESS("Starting SAAS Admin seeding..."))
 

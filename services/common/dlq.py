@@ -1,7 +1,4 @@
-"""Dead Letter Queue helper for Kafka topics.
-
-
-"""
+"""Dead Letter Queue helper for Kafka topics."""
 
 from __future__ import annotations
 
@@ -56,10 +53,10 @@ class DeadLetterQueue:
     ) -> None:
         """Execute send to dlq.
 
-            Args:
-                event: The event.
-                error: The error.
-            """
+        Args:
+            event: The event.
+            error: The error.
+        """
 
         payload = {
             "original_event": event,

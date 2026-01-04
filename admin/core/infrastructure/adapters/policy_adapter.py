@@ -36,9 +36,9 @@ class OPAPolicyAdapter(PolicyAdapterPort):
     async def evaluate(self, request: PolicyRequestDTO) -> bool:
         """Execute evaluate.
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         policy_request = PolicyRequest(
             tenant=request.tenant,
@@ -50,7 +50,6 @@ class OPAPolicyAdapter(PolicyAdapterPort):
         return await self._client.evaluate(policy_request)
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         await self._client.close()

@@ -9,9 +9,9 @@ def handle_error(e: Exception):
     # if asyncio.CancelledError, re-raise
     """Execute handle error.
 
-        Args:
-            e: The e.
-        """
+    Args:
+        e: The e.
+    """
 
     if isinstance(e, asyncio.CancelledError):
         raise e
@@ -20,9 +20,9 @@ def handle_error(e: Exception):
 def error_text(e: Exception):
     """Execute error text.
 
-        Args:
-            e: The e.
-        """
+    Args:
+        e: The e.
+    """
 
     return str(e)
 
@@ -31,11 +31,11 @@ def format_error(e: Exception, start_entries=6, end_entries=4):
     # format traceback from the provided exception instead of the most recent one
     """Execute format error.
 
-        Args:
-            e: The e.
-            start_entries: The start_entries.
-            end_entries: The end_entries.
-        """
+    Args:
+        e: The e.
+        start_entries: The start_entries.
+        end_entries: The end_entries.
+    """
 
     traceback_text = "".join(traceback.format_exception(type(e), e, e.__traceback__))
     # Split the traceback into lines
@@ -44,7 +44,6 @@ def format_error(e: Exception, start_entries=6, end_entries=4):
     if not start_entries and not end_entries:
         trimmed_lines = []
     else:
-
         # Find all "File" lines
         file_indices = [i for i, line in enumerate(lines) if line.strip().startswith("File ")]
 

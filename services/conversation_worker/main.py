@@ -14,6 +14,7 @@ from typing import Any, Dict
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 from prometheus_client import start_http_server
@@ -83,9 +84,11 @@ class ConversationWorkerImpl:
         self.dlq = DeadLetterQueue(self.topics["in"], bus=self.bus)
         # Use Django cache for session cache
         from django.core.cache import cache as django_cache
+
         self.cache = django_cache
         # Use Django ORM Session model
         from admin.core.models import Session
+
         self.store = Session.objects
         self.profiles = ModelProfileStore.from_settings(APP)
         self.tenants = TenantConfig(
@@ -100,14 +103,17 @@ class ConversationWorkerImpl:
             publisher=self.publisher, store=TelemetryStore.from_settings(APP)
         )
         self.soma = SomaBrainClient.get()
-        self.router = RouterClient(base_url=os.environ.get("ROUTER_URL") or APP.extra.get("router_url"))
+        self.router = RouterClient(
+            base_url=os.environ.get("ROUTER_URL") or APP.extra.get("router_url")
+        )
         # Context builder
         self.ctx_builder = ContextBuilder(
             somabrain=self.soma,
             metrics=ContextBuilderMetrics(),
             token_counter=count_tokens,
             health_provider=self._get_somabrain_health,
-            use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
+            use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower()
+            == "true",
         )
         # Initialize use cases
         self._init_use_cases()
@@ -116,22 +122,22 @@ class ConversationWorkerImpl:
         """Get current SomaBrain health from degradation monitor."""
         if not degradation_monitor.is_monitoring():
             return SomabrainHealthState.NORMAL
-            
+
         comp = degradation_monitor.components.get("somabrain")
         if not comp:
             return SomabrainHealthState.NORMAL
-            
+
         if not comp.healthy:
             return SomabrainHealthState.DOWN
-            
+
         if comp.degradation_level != DegradationLevel.NONE:
             return SomabrainHealthState.DEGRADED
-            
+
         return SomabrainHealthState.NORMAL
 
     def _init_use_cases(self) -> None:
         """Initialize use cases.
-        
+
         All config from env, no hardcoded defaults per VIBE rules.
         """
         gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
@@ -144,7 +150,9 @@ class ConversationWorkerImpl:
             internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=os.environ.get("SA01_LLM_MODEL"),  # REQUIRED - no hardcoded default per VIBE
+            default_model=os.environ.get(
+                "SA01_LLM_MODEL"
+            ),  # REQUIRED - no hardcoded default per VIBE
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,
@@ -157,8 +165,7 @@ class ConversationWorkerImpl:
         )
 
     async def start(self) -> None:
-        """Execute start.
-            """
+        """Execute start."""
 
         await degradation_monitor.initialize()
         await degradation_monitor.start_monitoring()
@@ -173,16 +180,18 @@ class ConversationWorkerImpl:
     async def _handle(self, event: Dict[str, Any]) -> None:
         """Execute handle.
 
-            Args:
-                event: The event.
-            """
+        Args:
+            event: The event.
+        """
 
         event_type = event.get("type", "")
-        
+
         # Handle system config updates (Feature Flag Reload)
         if event_type == "system.config_update":
             tenant = event.get("tenant", "default")
-            LOGGER.info(f"Received config update for tenant {tenant}. Reloading worker configuration...")
+            LOGGER.info(
+                f"Received config update for tenant {tenant}. Reloading worker configuration..."
+            )
             await self._reload_config(tenant)
             return
 
@@ -252,8 +261,7 @@ class ConversationWorkerImpl:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     w = ConversationWorkerImpl()
     try:

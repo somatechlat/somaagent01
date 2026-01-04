@@ -72,8 +72,7 @@ class AdminProfile(models.Model):
 
     def save(self, *args, **kwargs):
         # Initialize default notification prefs if empty
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
@@ -192,8 +191,7 @@ class UserPreferences(models.Model):
         }
 
     def save(self, *args, **kwargs):
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()

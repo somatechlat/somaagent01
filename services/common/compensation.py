@@ -23,9 +23,9 @@ COMP_ACTIONS = Counter(
 async def _delete_attachments(ids: Iterable[Any]) -> None:
     """Execute delete attachments.
 
-        Args:
-            ids: The ids.
-        """
+    Args:
+        ids: The ids.
+    """
 
     store = AttachmentsStore()
     await store.ensure_schema()
@@ -42,9 +42,9 @@ async def _delete_attachments(ids: Iterable[Any]) -> None:
 async def _tombstone_assets(ids: Iterable[Any]) -> None:
     """Execute tombstone assets.
 
-        Args:
-            ids: The ids.
-        """
+    Args:
+        ids: The ids.
+    """
 
     store = AssetStore()
     for raw in ids:
@@ -60,9 +60,9 @@ async def _tombstone_assets(ids: Iterable[Any]) -> None:
 async def compensate_event(event: dict[str, Any]) -> None:
     """Execute compensate event.
 
-        Args:
-            event: The event.
-        """
+    Args:
+        event: The event.
+    """
 
     attachments = event.get("attachments") or []
     assets = event.get("asset_ids") or []

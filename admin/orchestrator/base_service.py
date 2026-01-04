@@ -56,8 +56,7 @@ class BaseSomaService(ABC):
     # Public API used by the orchestrator.
     # ------------------------------------------------------------------
     async def start(self) -> None:
-        """Execute start.
-            """
+        """Execute start."""
 
         tracer = get_tracer()
         with tracer.start_as_current_span(f"{self.name}.start") as span:
@@ -68,8 +67,7 @@ class BaseSomaService(ABC):
             LOGGER.info("%s started", getattr(self, "name", self.__class__.__name__))
 
     async def stop(self) -> None:
-        """Execute stop.
-            """
+        """Execute stop."""
 
         tracer = get_tracer()
         with tracer.start_as_current_span(f"{self.name}.stop") as span:
