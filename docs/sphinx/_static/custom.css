@@ -1,361 +1,102 @@
-/* YACHAQ Brand Styling for Sphinx Documentation
- * Clean, readable design with proper contrast
- * Colors: White background, Black text, Orange (#E9552E) accents
- */
-
-/* ========================================
-   COLOR PALETTE
-   ======================================== */
+/* Yachaq Theme - Warm Cream & Charcoal */
 :root {
-    --yachaq-orange: #E9552E;
-    --yachaq-orange-hover: #D44A26;
-    --yachaq-black: #1a1a1a;
-    --yachaq-dark-gray: #2d2d2d;
-    --yachaq-text: #333333;
-    --yachaq-gray: #666666;
-    --yachaq-light-gray: #f8f8f8;
-    --yachaq-white: #ffffff;
-    --yachaq-border: #e0e0e0;
+    --yachaq-cream: #FDFBF7;
+    --yachaq-cream-dark: #F5F2EB;
+    --yachaq-charcoal: #1A1A1A;
+    --yachaq-gold: #D4AF37;
+    /* Assumed accent */
+    --yachaq-text: #1A1A1A;
+    --yachaq-text-muted: #666666;
 }
 
-/* ========================================
-   BASE STYLES
-   ======================================== */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    color: var(--yachaq-text);
-    background: var(--yachaq-white);
-    line-height: 1.6;
-}
-
-/* ========================================
-   NAVIGATION / SIDEBAR
-   ======================================== */
-.wy-side-nav-search {
-    background: var(--yachaq-white) !important;
-    border-bottom: 1px solid var(--yachaq-border);
-}
-
-.wy-side-nav-search input[type="text"] {
-    border: 1px solid var(--yachaq-border);
-    border-radius: 4px;
+    background-color: var(--yachaq-cream);
     color: var(--yachaq-text);
 }
 
-.wy-side-nav-search a.icon-home {
-    color: var(--yachaq-black) !important;
-    font-weight: 700;
+.wy-nav-content {
+    background-color: var(--yachaq-cream) !important;
+    max-width: 900px;
 }
 
 .wy-nav-side {
-    background: var(--yachaq-white) !important;
-    border-right: 1px solid var(--yachaq-border);
+    background-color: var(--yachaq-cream-dark) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .wy-menu-vertical a {
-    color: var(--yachaq-text) !important;
+    color: var(--yachaq-text-muted) !important;
 }
 
 .wy-menu-vertical a:hover {
-    background: var(--yachaq-light-gray) !important;
-    color: var(--yachaq-orange) !important;
-}
-
-.wy-menu-vertical li.current>a {
-    color: var(--yachaq-orange) !important;
-    border-left: 3px solid var(--yachaq-orange) !important;
-    background: var(--yachaq-light-gray) !important;
-}
-
-.wy-menu-vertical li.current li a {
+    background-color: rgba(0, 0, 0, 0.05) !important;
     color: var(--yachaq-text) !important;
 }
 
-.wy-menu-vertical header,
-.wy-menu-vertical p.caption {
-    color: var(--yachaq-black) !important;
-    font-weight: 600;
+.wy-menu-vertical a.current {
+    background-color: white !important;
+    color: var(--yachaq-charcoal) !important;
+    border-right: 3px solid var(--yachaq-charcoal);
+    font-weight: bold;
 }
 
-/* ========================================
-   MAIN CONTENT
-   ======================================== */
-.wy-nav-content {
-    background: var(--yachaq-white);
-    max-width: 960px;
-}
-
-.wy-nav-content-wrap {
-    background: var(--yachaq-white) !important;
-}
-
-/* Headings - ensure black text, good contrast */
+/* Headings */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-    color: var(--yachaq-black) !important;
-    font-weight: 700;
+    color: var(--yachaq-charcoal) !important;
+    font-family: 'Inter', sans-serif;
 }
 
-h1 {
-    font-size: 2.2rem;
-    border-bottom: none !important;
-    margin-bottom: 1rem;
-}
-
-h2 {
-    font-size: 1.6rem;
-    border-bottom: 2px solid var(--yachaq-orange) !important;
-    padding-bottom: 0.5rem;
-    margin-top: 2rem;
-}
-
-h3 {
-    font-size: 1.3rem;
-    color: var(--yachaq-dark-gray) !important;
-}
-
-/* Paragraphs and text */
-p,
-li,
-dd,
-dt {
-    color: var(--yachaq-text);
-}
-
-/* Links - orange with underline on hover */
+/* Links */
 a {
-    color: var(--yachaq-orange) !important;
-    text-decoration: none;
+    color: var(--yachaq-charcoal);
+    text-decoration: underline;
+    text-decoration-color: rgba(26, 26, 26, 0.3);
 }
 
 a:hover {
-    color: var(--yachaq-orange-hover) !important;
-    text-decoration: underline;
+    color: var(--yachaq-charcoal);
+    text-decoration-color: var(--yachaq-charcoal);
 }
 
-/* ========================================
-   CODE BLOCKS - High contrast
-   ======================================== */
-code,
-.highlight pre,
-pre {
-    background: var(--yachaq-light-gray) !important;
-    color: var(--yachaq-dark-gray) !important;
-    border: 1px solid var(--yachaq-border);
+/* Tables */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
 }
 
-code {
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.9em;
+.rst-content table.docutils {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-pre {
-    border-left: 4px solid var(--yachaq-orange) !important;
-    border-radius: 4px;
-    padding: 12px;
-}
-
-.highlight {
-    background: var(--yachaq-light-gray) !important;
-}
-
-/* Syntax highlighting - ensure readable colors */
-.highlight .k,
-.highlight .kn,
-.highlight .kd {
-    color: #007020;
-    font-weight: bold;
-}
-
-/* Keywords */
-.highlight .s,
-.highlight .s1,
-.highlight .s2 {
-    color: #d14;
-}
-
-/* Strings */
-.highlight .c,
-.highlight .c1,
-.highlight .cm {
-    color: #999988;
-    font-style: italic;
-}
-
-/* Comments */
-.highlight .n,
-.highlight .na,
-.highlight .nb {
+/* Code Blocks */
+.rst-content pre.literal-block,
+.rst-content div[class^="highlight"] {
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: white;
     color: #333;
 }
 
-/* Names */
-.highlight .nf {
-    color: #900;
-    font-weight: bold;
+/* Search */
+.wy-side-nav-search {
+    background-color: var(--yachaq-cream-dark) !important;
 }
 
-/* Functions */
-.highlight .o {
-    color: #555;
-}
-
-/* Operators */
-.highlight .mi,
-.highlight .mf {
-    color: #009999;
-}
-
-/* Numbers */
-
-/* ========================================
-   TABLES - Black headers, WHITE text, readable
-   ======================================== */
-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1rem 0;
-}
-
-table th {
-    background: var(--yachaq-black) !important;
-    color: #ffffff !important;
-    font-weight: 600;
-    padding: 12px;
-    text-align: left;
-    border: 1px solid var(--yachaq-black);
-}
-
-table td {
-    border: 1px solid var(--yachaq-border);
-    padding: 10px;
+.wy-side-nav-search input[type=text] {
+    border-color: transparent;
+    background-color: white;
     color: var(--yachaq-text);
-    background: var(--yachaq-white);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-table tr:nth-child(even) td {
-    background: var(--yachaq-light-gray);
-}
-
-/* ========================================
-   ADMONITIONS (Notes, Warnings)
-   ======================================== */
-.admonition {
-    border-left: 4px solid var(--yachaq-orange);
-    background: var(--yachaq-light-gray);
-    border-radius: 4px;
-    padding: 12px;
-    margin: 1rem 0;
-}
-
-.admonition-title {
-    background: var(--yachaq-orange) !important;
-    color: var(--yachaq-white) !important;
-    font-weight: 600;
-    padding: 8px 12px;
-    margin: -12px -12px 12px -12px;
-}
-
-.admonition p {
+/* Mobile Nav */
+.wy-nav-top {
+    background-color: var(--yachaq-cream-dark) !important;
     color: var(--yachaq-text) !important;
-    margin: 0;
-}
-
-.admonition.note .admonition-title {
-    background: var(--yachaq-orange) !important;
-}
-
-.admonition.warning .admonition-title {
-    background: #f0ad4e !important;
-}
-
-.admonition.danger .admonition-title,
-.admonition.error .admonition-title {
-    background: #d9534f !important;
-}
-
-/* ========================================
-   AUTODOC SIGNATURES
-   ======================================== */
-.sig,
-.sig-name,
-.sig-param {
-    color: var(--yachaq-dark-gray) !important;
-}
-
-.sig-name {
-    font-weight: bold;
-    color: var(--yachaq-black) !important;
-}
-
-dl.py dt {
-    background: var(--yachaq-light-gray);
-    padding: 8px;
-    border-left: 3px solid var(--yachaq-orange);
-}
-
-dl.py dd {
-    padding-left: 20px;
-    color: var(--yachaq-text);
-}
-
-/* ========================================
-   BLOCKQUOTES
-   ======================================== */
-blockquote {
-    border-left: 4px solid var(--yachaq-orange) !important;
-    background: var(--yachaq-light-gray);
-    padding: 15px 20px;
-    margin: 20px 0;
-    font-style: italic;
-    color: var(--yachaq-gray);
-}
-
-/* ========================================
-   FOOTER
-   ======================================== */
-footer {
-    border-top: 1px solid var(--yachaq-border);
-    color: var(--yachaq-gray);
-}
-
-footer a {
-    color: var(--yachaq-orange) !important;
-}
-
-/* ========================================
-   SEARCH
-   ======================================== */
-.wy-side-nav-search input[type="text"] {
-    color: var(--yachaq-text) !important;
-    background: var(--yachaq-white) !important;
-}
-
-/* ========================================
-   BREADCRUMBS
-   ======================================== */
-.wy-breadcrumbs {
-    color: var(--yachaq-gray);
-}
-
-.wy-breadcrumbs a {
-    color: var(--yachaq-orange) !important;
-}
-
-/* ========================================
-   RESPONSIVE
-   ======================================== */
-@media screen and (max-width: 768px) {
-    h1 {
-        font-size: 1.8rem;
-    }
-
-    h2 {
-        font-size: 1.4rem;
-    }
 }
