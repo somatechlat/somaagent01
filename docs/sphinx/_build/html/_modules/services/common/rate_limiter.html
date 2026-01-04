@@ -1,0 +1,478 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>services.common.rate_limiter &mdash; SomaAgent01 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            SomaAgent01
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../agent-quickstart.html">Agent Context Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../deployment/index.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../deployment/index.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../deployment/index.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../deployment/index.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/index.html#module-index">Module Index</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../admin/index.html">Admin Applications</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../services/index.html">Services Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../services/index.html#gateway-services">Gateway Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../services/index.html#module-services.common.audit">Common Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent"><code class="docutils literal notranslate"><span class="pre">AuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">AuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">AuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">AuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">AuditEvent.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.to_dict"><code class="docutils literal notranslate"><span class="pre">AuditEvent.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.email"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.email</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.method"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.result"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.result</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.failure_reason"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.failure_reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.mfa_used"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.mfa_used</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.reason"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.action"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.action</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.permissions"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.permissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.permission"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.permission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.endpoint"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.endpoint</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher"><code class="docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.__init__"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.publish"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.publish()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_login"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_login()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_logout"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_logout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_session"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_session()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_permission_denied"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_permission_denied()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.get_audit_publisher"><code class="docutils literal notranslate"><span class="pre">get_audit_publisher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.__init__"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.connect"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.connect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.close"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.close()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.reset"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.reset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult"><code class="docutils literal notranslate"><span class="pre">RateLimitResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.allowed"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.allowed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.remaining"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.remaining</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.reset_at"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.reset_at</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.retry_after"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.retry_after</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.__init__"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.get_rate_limiter"><code class="docutils literal notranslate"><span class="pre">get_rate_limiter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.get_limit_for_endpoint"><code class="docutils literal notranslate"><span class="pre">get_limit_for_endpoint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">SomaAgent01</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">services.common.rate_limiter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for services.common.rate_limiter</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Redis Rate Limiter for API Endpoints</span>
+<span class="sd">Per CANONICAL_REQUIREMENTS.md REQ-SEC-006</span>
+
+<span class="sd">VIBE COMPLIANT:</span>
+<span class="sd">- Real Redis backend</span>
+<span class="sd">- Sliding window algorithm</span>
+<span class="sd">- Per-tenant rate limiting</span>
+<span class="sd">- Prometheus metrics</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">redis.asyncio</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">redis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prometheus_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">Gauge</span>
+
+<span class="n">LOGGER</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Prometheus metrics</span>
+<span class="n">RATE_LIMIT_REQUESTS</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span>
+    <span class="s2">&quot;rate_limit_requests_total&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Total rate limit check requests&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;tenant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;result&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">RATE_LIMIT_REMAINING</span> <span class="o">=</span> <span class="n">Gauge</span><span class="p">(</span>
+    <span class="s2">&quot;rate_limit_remaining&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Remaining request quota&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;tenant_id&quot;</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="RateLimitResult">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RateLimitResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a rate limit check.&quot;&quot;&quot;</span>
+
+    <span class="n">allowed</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">remaining</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">reset_at</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">retry_after</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="RedisRateLimiter">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RedisRateLimiter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Redis-backed sliding window rate limiter.</span>
+
+<span class="sd">    Uses a sorted set to implement sliding window rate limiting.</span>
+<span class="sd">    Supports per-tenant and per-endpoint limits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RedisRateLimiter.__init__">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">redis_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">default_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">default_window_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span>
+        <span class="n">key_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rate_limit:&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">redis_url</span> <span class="o">=</span> <span class="n">redis_url</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;REDIS_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_limit</span> <span class="o">=</span> <span class="n">default_limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_window_seconds</span> <span class="o">=</span> <span class="n">default_window_seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key_prefix</span> <span class="o">=</span> <span class="n">key_prefix</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">redis</span><span class="o">.</span><span class="n">Redis</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connected</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="RedisRateLimiter.connect">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.connect">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connect to Redis.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connected</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">redis_url</span><span class="p">,</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+                <span class="n">decode_responses</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Test connection</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span><span class="o">.</span><span class="n">ping</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connected</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Redis rate limiter connected: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">redis_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RedisRateLimiter.close">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.close">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close Redis connection.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connected</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="RedisRateLimiter.check">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.check">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">limit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">window_seconds</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RateLimitResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if request should be allowed.</span>
+
+<span class="sd">        Uses sliding window algorithm:</span>
+<span class="sd">        1. Remove expired entries from sorted set</span>
+<span class="sd">        2. Count entries in current window</span>
+<span class="sd">        3. If under limit, add new entry and allow</span>
+<span class="sd">        4. If over limit, deny with retry-after</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tenant_id: Tenant identifier</span>
+<span class="sd">            endpoint: Optional endpoint for per-endpoint limits</span>
+<span class="sd">            limit: Max requests in window (default: 100)</span>
+<span class="sd">            window_seconds: Window size in seconds (default: 60)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RateLimitResult with allowed status and remaining quota</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connected</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="c1"># Build key</span>
+        <span class="n">key_parts</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key_prefix</span><span class="p">,</span> <span class="n">tenant_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">endpoint</span><span class="p">:</span>
+            <span class="n">key_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">endpoint</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">))</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s2">&quot;:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">key_parts</span><span class="p">)</span>
+
+        <span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_limit</span>
+        <span class="n">window</span> <span class="o">=</span> <span class="n">window_seconds</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_window_seconds</span>
+
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">window_start</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">window</span>
+
+        <span class="c1"># Lua script for atomic sliding window rate limit</span>
+        <span class="n">lua_script</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        local key = KEYS[1]</span>
+<span class="s2">        local now = tonumber(ARGV[1])</span>
+<span class="s2">        local window_start = tonumber(ARGV[2])</span>
+<span class="s2">        local limit = tonumber(ARGV[3])</span>
+<span class="s2">        local window = tonumber(ARGV[4])</span>
+<span class="s2">        </span>
+<span class="s2">        -- Remove expired entries</span>
+<span class="s2">        redis.call(&#39;ZREMRANGEBYSCORE&#39;, key, &#39;-inf&#39;, window_start)</span>
+<span class="s2">        </span>
+<span class="s2">        -- Count current entries</span>
+<span class="s2">        local count = redis.call(&#39;ZCARD&#39;, key)</span>
+<span class="s2">        </span>
+<span class="s2">        if count &lt; limit then</span>
+<span class="s2">            -- Add new entry</span>
+<span class="s2">            redis.call(&#39;ZADD&#39;, key, now, now .. &#39;:&#39; .. math.random())</span>
+<span class="s2">            redis.call(&#39;EXPIRE&#39;, key, window + 1)</span>
+<span class="s2">            return {1, limit - count - 1, now + window}</span>
+<span class="s2">        else</span>
+<span class="s2">            -- Get oldest entry for retry-after</span>
+<span class="s2">            local oldest = redis.call(&#39;ZRANGE&#39;, key, 0, 0, &#39;WITHSCORES&#39;)</span>
+<span class="s2">            local reset_at = oldest[2] and (tonumber(oldest[2]) + window) or (now + window)</span>
+<span class="s2">            return {0, 0, reset_at}</span>
+<span class="s2">        end</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span>
+                <span class="n">lua_script</span><span class="p">,</span>
+                <span class="mi">1</span><span class="p">,</span>  <span class="c1"># Number of keys</span>
+                <span class="n">key</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">now</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">window_start</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">limit</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">window</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="n">allowed</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">remaining</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">reset_at</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">retry_after</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">allowed</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">reset_at</span> <span class="o">-</span> <span class="n">now</span><span class="p">))</span>
+
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;allowed&quot;</span> <span class="k">if</span> <span class="n">allowed</span> <span class="k">else</span> <span class="s2">&quot;denied&quot;</span>
+            <span class="n">RATE_LIMIT_REQUESTS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">tenant_id</span><span class="p">,</span> <span class="n">status</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+            <span class="n">RATE_LIMIT_REMAINING</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">tenant_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">window</span><span class="p">))</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">RateLimitResult</span><span class="p">(</span>
+                <span class="n">allowed</span><span class="o">=</span><span class="n">allowed</span><span class="p">,</span>
+                <span class="n">remaining</span><span class="o">=</span><span class="n">remaining</span><span class="p">,</span>
+                <span class="n">reset_at</span><span class="o">=</span><span class="n">reset_at</span><span class="p">,</span>
+                <span class="n">retry_after</span><span class="o">=</span><span class="n">retry_after</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">LOGGER</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rate limit check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Fail open for rate limiting to avoid blocking on Redis issues</span>
+            <span class="n">RATE_LIMIT_REQUESTS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">tenant_id</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">RateLimitResult</span><span class="p">(</span>
+                <span class="n">allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">remaining</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span>
+                <span class="n">reset_at</span><span class="o">=</span><span class="n">now</span> <span class="o">+</span> <span class="n">window</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RedisRateLimiter.reset">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.reset">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tenant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset rate limit for a tenant/endpoint.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connected</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="n">key_parts</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key_prefix</span><span class="p">,</span> <span class="n">tenant_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">endpoint</span><span class="p">:</span>
+            <span class="n">key_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">endpoint</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">))</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s2">&quot;:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">key_parts</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_redis</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rate limit reset for </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># Preconfigured limits per CANONICAL_REQUIREMENTS.md</span>
+<span class="n">RATE_LIMITS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># Upload endpoints - more restrictive</span>
+    <span class="s2">&quot;/v1/uploads&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+    <span class="s2">&quot;/v1/files/upload&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+    <span class="s2">&quot;/api/v2/uploads&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+    <span class="c1"># Memory endpoints - moderate</span>
+    <span class="s2">&quot;/v1/memory&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+    <span class="s2">&quot;/api/v2/memory&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+    <span class="c1"># General API - permissive</span>
+    <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_limit_for_endpoint">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.get_limit_for_endpoint">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_limit_for_endpoint</span><span class="p">(</span><span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get rate limit configuration for an endpoint.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">RATE_LIMITS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">endpoint</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;limit&quot;</span><span class="p">],</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;window&quot;</span><span class="p">]</span>
+    <span class="n">default</span> <span class="o">=</span> <span class="n">RATE_LIMITS</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">default</span><span class="p">[</span><span class="s2">&quot;limit&quot;</span><span class="p">],</span> <span class="n">default</span><span class="p">[</span><span class="s2">&quot;window&quot;</span><span class="p">]</span></div>
+
+
+
+<span class="c1"># Singleton instance</span>
+<span class="n">_limiter_instance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">RedisRateLimiter</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="get_rate_limiter">
+<a class="viewcode-back" href="../../../services/index.html#services.common.rate_limiter.get_rate_limiter">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_rate_limiter</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">RedisRateLimiter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get or create the singleton rate limiter.&quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_limiter_instance</span>
+    <span class="k">if</span> <span class="n">_limiter_instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_limiter_instance</span> <span class="o">=</span> <span class="n">RedisRateLimiter</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">_limiter_instance</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_limiter_instance</span></div>
+
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;RedisRateLimiter&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RateLimitResult&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_rate_limiter&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_limit_for_endpoint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RATE_LIMITS&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SomaTech.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

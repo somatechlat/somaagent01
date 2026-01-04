@@ -1,0 +1,664 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Services Layer &mdash; SomaAgent01 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=a6167fe4" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Admin Applications" href="../admin/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            SomaAgent01
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-1-clone-configure">Step 1: Clone &amp; Configure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart.html#required-environment-variables">Required Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-2-start-infrastructure">Step 2: Start Infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-3-verify-health">Step 3: Verify Health</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#step-4-access-services">Step 4: Access Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../agent-quickstart.html">Agent Context Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#before-you-code">Before You Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#vibe-coding-rules-summary">VIBE Coding Rules Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#technology-stack-strict">Technology Stack (STRICT)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#key-files-reference">Key Files Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../agent-quickstart.html#backend-python-django">Backend (Python/Django)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#user-roles">User Roles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agent-quickstart.html#testing-requirements">Testing Requirements</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../deployment/index.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../deployment/index.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../deployment/index.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../deployment/index.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/index.html#module-index">Module Index</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../admin/index.html">Admin Applications</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Services Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#gateway-services">Gateway Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-services.common.audit">Common Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.AuditEvent"><code class="docutils literal notranslate"><span class="pre">AuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">AuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">AuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">AuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">AuditEvent.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.to_dict"><code class="docutils literal notranslate"><span class="pre">AuditEvent.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.LoginAuditEvent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LoginAuditEvent.email"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.email</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LoginAuditEvent.method"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LoginAuditEvent.result"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.result</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LoginAuditEvent.failure_reason"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.failure_reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LoginAuditEvent.mfa_used"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.mfa_used</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LoginAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.LogoutAuditEvent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LogoutAuditEvent.reason"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LogoutAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.LogoutAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.SessionAuditEvent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.SessionAuditEvent.action"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.action</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.SessionAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.SessionAuditEvent.permissions"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.permissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.SessionAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.PermissionDeniedAuditEvent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.PermissionDeniedAuditEvent.resource_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.PermissionDeniedAuditEvent.resource_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.PermissionDeniedAuditEvent.permission"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.permission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.PermissionDeniedAuditEvent.endpoint"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.endpoint</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.PermissionDeniedAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.AuditPublisher"><code class="docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditPublisher.__init__"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditPublisher.publish"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.publish()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditPublisher.log_login"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_login()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditPublisher.log_logout"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_logout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditPublisher.log_session"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_session()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.audit.AuditPublisher.log_permission_denied"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_permission_denied()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.audit.get_audit_publisher"><code class="docutils literal notranslate"><span class="pre">get_audit_publisher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter.__init__"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter.connect"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.connect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter.close"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.close()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter.reset"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.reset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult"><code class="docutils literal notranslate"><span class="pre">RateLimitResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult.allowed"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.allowed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult.remaining"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.remaining</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult.reset_at"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.reset_at</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult.retry_after"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.retry_after</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult.__init__"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.rate_limiter.get_rate_limiter"><code class="docutils literal notranslate"><span class="pre">get_rate_limiter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#services.common.rate_limiter.get_limit_for_endpoint"><code class="docutils literal notranslate"><span class="pre">get_limit_for_endpoint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SomaAgent01</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Services Layer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/services/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="services-layer">
+<h1>Services Layer<a class="headerlink" href="#services-layer" title="Link to this heading"></a></h1>
+<p>Service layer components in the <code class="docutils literal notranslate"><span class="pre">services/</span></code> package.</p>
+<div class="toctree-wrapper compound">
+</div>
+<div class="toctree-wrapper compound">
+</div>
+<section id="gateway-services">
+<h2>Gateway Services<a class="headerlink" href="#gateway-services" title="Link to this heading"></a></h2>
+</section>
+<section id="module-services.common.audit">
+<span id="common-services"></span><h2>Common Services<a class="headerlink" href="#module-services.common.audit" title="Link to this heading"></a></h2>
+<p>Audit wire-tap publisher for policy/tool/task decisions.</p>
+<p>VIBE COMPLIANT - Real Kafka integration, no mocks.
+Per login-to-chat-journey design.md Section 9.1</p>
+<p>Extended with:
+- Structured login/logout events
+- Permission denied events
+- Session events</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">AuditEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Base audit event structure.</p>
+<p>Per design.md Section 9.1:
+- event_type: Type of event
+- timestamp: ISO8601 timestamp
+- user_id: User ID (if authenticated)
+- tenant_id: Tenant ID (if available)
+- ip_address: Client IP
+- user_agent: Client user agent
+- metadata: Additional event-specific data</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.event_type">
+<span class="sig-name descname"><span class="pre">event_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#services.common.audit.AuditEvent.event_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#services.common.audit.AuditEvent.timestamp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.user_id">
+<span class="sig-name descname"><span class="pre">user_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#services.common.audit.AuditEvent.user_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.tenant_id">
+<span class="sig-name descname"><span class="pre">tenant_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#services.common.audit.AuditEvent.tenant_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.ip_address">
+<span class="sig-name descname"><span class="pre">ip_address</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#services.common.audit.AuditEvent.ip_address" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.user_agent">
+<span class="sig-name descname"><span class="pre">user_agent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#services.common.audit.AuditEvent.user_agent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a></em><a class="headerlink" href="#services.common.audit.AuditEvent.metadata" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditEvent.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditEvent.to_dict" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditEvent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#services.common.audit.AuditEvent.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">LoginAuditEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">email</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'password'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'success'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reason</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfa_used</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#LoginAuditEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.LoginAuditEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#services.common.audit.AuditEvent" title="services.common.audit.AuditEvent"><code class="xref py py-class docutils literal notranslate"><span class="pre">AuditEvent</span></code></a></p>
+<p>Login attempt audit event.</p>
+<p>Per design.md Property 11:
+- email: User email
+- method: Auth method (password, oauth, sso)
+- result: success, failure, locked, mfa_required
+- failure_reason: Reason for failure (if applicable)
+- mfa_used: Whether MFA was used</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent.email">
+<span class="sig-name descname"><span class="pre">email</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#services.common.audit.LoginAuditEvent.email" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent.method">
+<span class="sig-name descname"><span class="pre">method</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'password'</span></em><a class="headerlink" href="#services.common.audit.LoginAuditEvent.method" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent.result">
+<span class="sig-name descname"><span class="pre">result</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'success'</span></em><a class="headerlink" href="#services.common.audit.LoginAuditEvent.result" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent.failure_reason">
+<span class="sig-name descname"><span class="pre">failure_reason</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#services.common.audit.LoginAuditEvent.failure_reason" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent.mfa_used">
+<span class="sig-name descname"><span class="pre">mfa_used</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#services.common.audit.LoginAuditEvent.mfa_used" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.LoginAuditEvent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">email</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'password'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'success'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reason</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfa_used</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#services.common.audit.LoginAuditEvent.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.audit.LogoutAuditEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">LogoutAuditEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'user_initiated'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#LogoutAuditEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.LogoutAuditEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#services.common.audit.AuditEvent" title="services.common.audit.AuditEvent"><code class="xref py py-class docutils literal notranslate"><span class="pre">AuditEvent</span></code></a></p>
+<p>Logout audit event.</p>
+<p>Per design.md Section 9.1:
+- reason: Reason for logout (user_initiated, session_expired, forced)
+- session_id: Session that was terminated</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LogoutAuditEvent.reason">
+<span class="sig-name descname"><span class="pre">reason</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'user_initiated'</span></em><a class="headerlink" href="#services.common.audit.LogoutAuditEvent.reason" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.LogoutAuditEvent.session_id">
+<span class="sig-name descname"><span class="pre">session_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#services.common.audit.LogoutAuditEvent.session_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.LogoutAuditEvent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'user_initiated'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#services.common.audit.LogoutAuditEvent.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.audit.SessionAuditEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">SessionAuditEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'created'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permissions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#SessionAuditEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.SessionAuditEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#services.common.audit.AuditEvent" title="services.common.audit.AuditEvent"><code class="xref py py-class docutils literal notranslate"><span class="pre">AuditEvent</span></code></a></p>
+<p>Session lifecycle audit event.</p>
+<p>Per design.md Section 9.1:
+- action: created, extended, expired, deleted
+- session_id: Session ID
+- permissions: Permissions granted (for created)</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.SessionAuditEvent.action">
+<span class="sig-name descname"><span class="pre">action</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'created'</span></em><a class="headerlink" href="#services.common.audit.SessionAuditEvent.action" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.SessionAuditEvent.session_id">
+<span class="sig-name descname"><span class="pre">session_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#services.common.audit.SessionAuditEvent.session_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.SessionAuditEvent.permissions">
+<span class="sig-name descname"><span class="pre">permissions</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#services.common.audit.SessionAuditEvent.permissions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.SessionAuditEvent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'created'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permissions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#services.common.audit.SessionAuditEvent.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.audit.PermissionDeniedAuditEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">PermissionDeniedAuditEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permission</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#PermissionDeniedAuditEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.PermissionDeniedAuditEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#services.common.audit.AuditEvent" title="services.common.audit.AuditEvent"><code class="xref py py-class docutils literal notranslate"><span class="pre">AuditEvent</span></code></a></p>
+<p>Permission denied audit event.</p>
+<p>Per design.md Section 9.1:
+- resource_type: Type of resource (agent, conversation, etc.)
+- resource_id: Resource ID
+- permission: Permission that was denied
+- endpoint: API endpoint</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.PermissionDeniedAuditEvent.resource_type">
+<span class="sig-name descname"><span class="pre">resource_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#services.common.audit.PermissionDeniedAuditEvent.resource_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.PermissionDeniedAuditEvent.resource_id">
+<span class="sig-name descname"><span class="pre">resource_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#services.common.audit.PermissionDeniedAuditEvent.resource_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.PermissionDeniedAuditEvent.permission">
+<span class="sig-name descname"><span class="pre">permission</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#services.common.audit.PermissionDeniedAuditEvent.permission" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.audit.PermissionDeniedAuditEvent.endpoint">
+<span class="sig-name descname"><span class="pre">endpoint</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#services.common.audit.PermissionDeniedAuditEvent.endpoint" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.PermissionDeniedAuditEvent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permission</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#services.common.audit.PermissionDeniedAuditEvent.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">AuditPublisher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">publisher</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">publisher</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher.publish">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">publish</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">persona_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">correlation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher.publish"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher.publish" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher.log_login">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">log_login</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">email</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reason</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfa_used</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher.log_login"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher.log_login" title="Link to this definition"></a></dt>
+<dd><p>Log login attempt.</p>
+<p>Per design.md Property 11:
+All required fields must be present.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher.log_logout">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">log_logout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher.log_logout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher.log_logout" title="Link to this definition"></a></dt>
+<dd><p>Log logout event.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher.log_session">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">log_session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher.log_session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher.log_session" title="Link to this definition"></a></dt>
+<dd><p>Log session lifecycle event.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.audit.AuditPublisher.log_permission_denied">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">log_permission_denied</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permission</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip_address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_agent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#AuditPublisher.log_permission_denied"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.AuditPublisher.log_permission_denied" title="Link to this definition"></a></dt>
+<dd><p>Log permission denied event.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="services.common.audit.get_audit_publisher">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.audit.</span></span><span class="sig-name descname"><span class="pre">get_audit_publisher</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/audit.html#get_audit_publisher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.audit.get_audit_publisher" title="Link to this definition"></a></dt>
+<dd><p>Get or create the singleton AuditPublisher.</p>
+<p>Returns None if publisher not configured (no Kafka).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference internal" href="#services.common.audit.AuditPublisher" title="services.common.audit.AuditPublisher"><code class="xref py py-class docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p id="module-services.common.rate_limiter">Redis Rate Limiter for API Endpoints
+Per CANONICAL_REQUIREMENTS.md REQ-SEC-006</p>
+<p>VIBE COMPLIANT:
+- Real Redis backend
+- Sliding window algorithm
+- Per-tenant rate limiting
+- Prometheus metrics</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.rate_limiter.</span></span><span class="sig-name descname"><span class="pre">RedisRateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">redis_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_window_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rate_limit:'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Redis-backed sliding window rate limiter.</p>
+<p>Uses a sorted set to implement sliding window rate limiting.
+Supports per-tenant and per-endpoint limits.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">redis_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_window_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rate_limit:'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter.connect">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter.connect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter.connect" title="Link to this definition"></a></dt>
+<dd><p>Connect to Redis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter.close">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter.close" title="Link to this definition"></a></dt>
+<dd><p>Close Redis connection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter.check">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter.check"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter.check" title="Link to this definition"></a></dt>
+<dd><p>Check if request should be allowed.</p>
+<p>Uses sliding window algorithm:
+1. Remove expired entries from sorted set
+2. Count entries in current window
+3. If under limit, add new entry and allow
+4. If over limit, deny with retry-after</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tenant_id</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Tenant identifier</p></li>
+<li><p><strong>endpoint</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</span>) – Optional endpoint for per-endpoint limits</p></li>
+<li><p><strong>limit</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>]</span>) – Max requests in window (default: 100)</p></li>
+<li><p><strong>window_seconds</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>]</span>) – Window size in seconds (default: 60)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#services.common.rate_limiter.RateLimitResult" title="services.common.rate_limiter.RateLimitResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">RateLimitResult</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>RateLimitResult with allowed status and remaining quota</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter.reset">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tenant_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter.reset" title="Link to this definition"></a></dt>
+<dd><p>Reset rate limit for a tenant/endpoint.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RateLimitResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.rate_limiter.</span></span><span class="sig-name descname"><span class="pre">RateLimitResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">allowed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remaining</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_at</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retry_after</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RateLimitResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RateLimitResult" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Result of a rate limit check.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RateLimitResult.allowed">
+<span class="sig-name descname"><span class="pre">allowed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></em><a class="headerlink" href="#services.common.rate_limiter.RateLimitResult.allowed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RateLimitResult.remaining">
+<span class="sig-name descname"><span class="pre">remaining</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em><a class="headerlink" href="#services.common.rate_limiter.RateLimitResult.remaining" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RateLimitResult.reset_at">
+<span class="sig-name descname"><span class="pre">reset_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></em><a class="headerlink" href="#services.common.rate_limiter.RateLimitResult.reset_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RateLimitResult.retry_after">
+<span class="sig-name descname"><span class="pre">retry_after</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#services.common.rate_limiter.RateLimitResult.retry_after" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="services.common.rate_limiter.RateLimitResult.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">allowed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remaining</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_at</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retry_after</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#services.common.rate_limiter.RateLimitResult.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="services.common.rate_limiter.get_rate_limiter">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.rate_limiter.</span></span><span class="sig-name descname"><span class="pre">get_rate_limiter</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#get_rate_limiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.get_rate_limiter" title="Link to this definition"></a></dt>
+<dd><p>Get or create the singleton rate limiter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#services.common.rate_limiter.RedisRateLimiter" title="services.common.rate_limiter.RedisRateLimiter"><code class="xref py py-class docutils literal notranslate"><span class="pre">RedisRateLimiter</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="services.common.rate_limiter.get_limit_for_endpoint">
+<span class="sig-prename descclassname"><span class="pre">services.common.rate_limiter.</span></span><span class="sig-name descname"><span class="pre">get_limit_for_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">endpoint</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#get_limit_for_endpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.get_limit_for_endpoint" title="Link to this definition"></a></dt>
+<dd><p>Get rate limit configuration for an endpoint.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../admin/index.html" class="btn btn-neutral float-left" title="Admin Applications" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SomaTech.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,6 +1,56 @@
-"""Master API configuration for Django Ninja.
+"""Master API Configuration for SomaAgent01.
 
-100% Pure Django Ninja - No FastAPI
+This module creates and configures the master NinjaAPI instance that serves
+as the central router for all SomaAgent01 API endpoints.
+
+**Technology Stack**:
+    - 100% Pure Django Ninja (NO FastAPI)
+    - Django 5.0 ORM (NO SQLAlchemy)
+    - Keycloak OIDC Authentication
+    - SpiceDB Authorization
+
+**Port**: 20020 (API), 20080 (Frontend)
+
+**Router Registry**:
+    The following routers are mounted at ``/api/v2/``:
+
+    Authentication & Authorization:
+        - ``/auth`` - Login, token refresh, OAuth, SSO, MFA
+        - ``/permissions`` - RBAC permission management
+        - ``/apikeys`` - API key management
+        - ``/sessions`` - User session management
+
+    Core Platform:
+        - ``/saas`` - SaaS administration
+        - ``/core`` - Core infrastructure
+        - ``/agents`` - Agent management
+        - ``/chat`` - Chat sessions
+        - ``/capsules`` - Agent capsule management
+
+    Memory & Cognitive:
+        - ``/memory`` - Memory integration
+        - ``/somabrain`` - SomaBrain cognitive API
+        - ``/knowledge`` - RAG document retrieval
+        - ``/embeddings`` - Vector generation
+
+    Infrastructure:
+        - ``/audit`` - Security logging
+        - ``/observability`` - Prometheus, tracing
+        - ``/metrics`` - Operational telemetry
+        - ``/flink`` - Stream processing
+
+Example:
+    >>> from admin.api import api
+    >>> api.title
+    'SomaAgent Platform API'
+
+VIBE Compliance:
+    - Rule 1: NO BULLSHIT - Real Django Ninja, no abstractions
+    - Rule 4: REAL IMPLEMENTATIONS ONLY - Production-grade router
+
+See Also:
+    - :doc:`AGENT.md <../AGENT>` for complete architecture overview
+    - :doc:`docs/development/VIBE_CODING_RULES.md <../docs/development/VIBE_CODING_RULES>`
 """
 
 from __future__ import annotations
