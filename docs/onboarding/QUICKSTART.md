@@ -131,8 +131,8 @@ tilt up
 | Frontend | 20080 |
 
 **Related Services:**
-- SomaBrain: Port 30xxx
-- SomaFractalMemory: Port 9xxx
+- SomaBrain: Port 30xxx (API: 30101)
+- SomaFractalMemory: Port 40xxx (API: 40000, PostgreSQL: 40001, Redis: 40002)
 
 ---
 

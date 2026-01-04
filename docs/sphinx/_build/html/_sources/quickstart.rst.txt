@@ -128,7 +128,7 @@ Port Namespace
 **Related Services:**
 
 - SomaBrain: Port 30101
-- SomaFractalMemory: Port 9595
+- SomaFractalMemory: Port 40000 (40xxx range)
 
 Next Steps
 ==========
