@@ -1,7 +1,7 @@
 common.responses module
 =======================
 
-.. automodule:: common.responses
+.. automodule:: admin.common.responses
    :members:
    :show-inheritance:
    :undoc-members:

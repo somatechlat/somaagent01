@@ -1,7 +1,7 @@
 permissions.management.commands package
 =======================================
 
-.. automodule:: permissions.management.commands
+.. automodule:: admin.permissions.management.commands
    :members:
    :show-inheritance:
    :undoc-members:

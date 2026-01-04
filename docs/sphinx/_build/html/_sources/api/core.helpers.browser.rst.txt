@@ -1,7 +1,7 @@
 core.helpers.browser module
 ===========================
 
-.. automodule:: core.helpers.browser
+.. automodule:: admin.core.helpers.browser
    :members:
    :show-inheritance:
    :undoc-members:

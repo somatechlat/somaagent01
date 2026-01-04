@@ -1,7 +1,7 @@
 common.session\_manager module
 ==============================
 
-.. automodule:: common.session_manager
+.. automodule:: admin.common.session_manager
    :members:
    :show-inheritance:
    :undoc-members:

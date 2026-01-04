@@ -1,7 +1,7 @@
 core.helpers.playwright module
 ==============================
 
-.. automodule:: core.helpers.playwright
+.. automodule:: admin.core.helpers.playwright
    :members:
    :show-inheritance:
    :undoc-members:

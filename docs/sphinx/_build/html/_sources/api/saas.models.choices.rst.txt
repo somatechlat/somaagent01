@@ -1,7 +1,7 @@
 saas.models.choices module
 ==========================
 
-.. automodule:: saas.models.choices
+.. automodule:: admin.saas.models.choices
    :members:
    :show-inheritance:
    :undoc-members:

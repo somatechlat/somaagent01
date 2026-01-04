@@ -1,7 +1,7 @@
 voice.tracing module
 ====================
 
-.. automodule:: voice.tracing
+.. automodule:: admin.voice.tracing
    :members:
    :show-inheritance:
    :undoc-members:

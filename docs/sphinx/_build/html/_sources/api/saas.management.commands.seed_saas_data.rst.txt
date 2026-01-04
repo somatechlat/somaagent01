@@ -1,7 +1,7 @@
 saas.management.commands.seed\_saas\_data module
 ================================================
 
-.. automodule:: saas.management.commands.seed_saas_data
+.. automodule:: admin.saas.management.commands.seed_saas_data
    :members:
    :show-inheritance:
    :undoc-members:

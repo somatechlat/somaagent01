@@ -1,7 +1,7 @@
 core.helpers.strings module
 ===========================
 
-.. automodule:: core.helpers.strings
+.. automodule:: admin.core.helpers.strings
    :members:
    :show-inheritance:
    :undoc-members:

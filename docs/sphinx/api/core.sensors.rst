@@ -1,7 +1,7 @@
 core.sensors package
 ====================
 
-.. automodule:: core.sensors
+.. automodule:: admin.core.sensors
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 saas.models.usage module
 ========================
 
-.. automodule:: saas.models.usage
+.. automodule:: admin.saas.models.usage
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.helpers.messages module
 ============================
 
-.. automodule:: core.helpers.messages
+.. automodule:: admin.core.helpers.messages
    :members:
    :show-inheritance:
    :undoc-members:

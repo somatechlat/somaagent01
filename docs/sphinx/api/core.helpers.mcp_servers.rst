@@ -1,7 +1,7 @@
 core.helpers.mcp\_servers module
 ================================
 
-.. automodule:: core.helpers.mcp_servers
+.. automodule:: admin.core.helpers.mcp_servers
    :members:
    :show-inheritance:
    :undoc-members:

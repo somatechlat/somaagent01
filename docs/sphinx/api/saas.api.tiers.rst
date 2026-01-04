@@ -1,7 +1,7 @@
 saas.api.tiers module
 =====================
 
-.. automodule:: saas.api.tiers
+.. automodule:: admin.saas.api.tiers
    :members:
    :show-inheritance:
    :undoc-members:

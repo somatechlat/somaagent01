@@ -1,7 +1,7 @@
 core.api.kafka module
 =====================
 
-.. automodule:: core.api.kafka
+.. automodule:: admin.core.api.kafka
    :members:
    :show-inheritance:
    :undoc-members:

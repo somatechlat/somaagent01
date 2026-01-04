@@ -1,7 +1,7 @@
 chat.migrations package
 =======================
 
-.. automodule:: chat.migrations
+.. automodule:: admin.chat.migrations
    :members:
    :show-inheritance:
    :undoc-members:

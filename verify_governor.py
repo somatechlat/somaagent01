@@ -14,6 +14,7 @@ from admin.chat.models import Conversation
 
 
 async def verify_governor_wiring():
+    """Verify that the AgentIQ Governor is correctly wired to the ChatService."""
     print("--- Verifying AgentIQ Governor Wiring ---")
 
     # 1. Initialize ChatService
@@ -52,11 +53,7 @@ async def verify_governor_wiring():
         print(f"[OK] Conversation ready: {conv_id}")
 
         # 4. Trigger send_message (Dry run / check logic)
-        # We don't want to actually call the LLM if we can avoid it, or we do if we want "REAL INFRA"
-        # The user said "TEST ALWAYS ON REAL INFRA". So let's try to send a message.
-        # However, SomaBrain might not be running.
-        # If SomaBrain is down, we expect it to fail gracefully or error out.
-        # But we want to verify the GOVERNOR called.
+        # Verify that the GOVERNOR called.
 
         print("--- Attempting to send message to trigger Governor ---")
         try:

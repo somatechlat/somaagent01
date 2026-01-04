@@ -1,7 +1,7 @@
 agents.services.agentiq\_metrics module
 =======================================
 
-.. automodule:: agents.services.agentiq_metrics
+.. automodule:: admin.agents.services.agentiq_metrics
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.helpers.whisper module
 ===========================
 
-.. automodule:: core.helpers.whisper
+.. automodule:: admin.core.helpers.whisper
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.migrations.0003\_infrastructure\_models module
 ===================================================
 
-.. automodule:: core.migrations.0003_infrastructure_models
+.. automodule:: admin.core.migrations.0003_infrastructure_models
    :members:
    :show-inheritance:
    :undoc-members:

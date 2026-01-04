@@ -1,7 +1,7 @@
 core.repositories module
 ========================
 
-.. automodule:: core.repositories
+.. automodule:: admin.core.repositories
    :members:
    :show-inheritance:
    :undoc-members:

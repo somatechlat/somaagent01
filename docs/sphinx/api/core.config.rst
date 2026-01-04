@@ -1,7 +1,7 @@
 core.config package
 ===================
 
-.. automodule:: core.config
+.. automodule:: admin.core.config
    :members:
    :show-inheritance:
    :undoc-members:

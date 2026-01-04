@@ -1,7 +1,7 @@
 saas.models.agents module
 =========================
 
-.. automodule:: saas.models.agents
+.. automodule:: admin.saas.models.agents
    :members:
    :show-inheritance:
    :undoc-members:

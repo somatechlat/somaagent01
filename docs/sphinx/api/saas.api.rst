@@ -1,7 +1,7 @@
 saas.api package
 ================
 
-.. automodule:: saas.api
+.. automodule:: admin.saas.api
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.infrastructure package
 ===========================
 
-.. automodule:: core.infrastructure
+.. automodule:: admin.core.infrastructure
    :members:
    :show-inheritance:
    :undoc-members:

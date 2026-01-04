@@ -1,7 +1,7 @@
 core.permissions module
 =======================
 
-.. automodule:: core.permissions
+.. automodule:: admin.core.permissions
    :members:
    :show-inheritance:
    :undoc-members:

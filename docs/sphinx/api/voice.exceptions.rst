@@ -1,7 +1,7 @@
 voice.exceptions module
 =======================
 
-.. automodule:: voice.exceptions
+.. automodule:: admin.voice.exceptions
    :members:
    :show-inheritance:
    :undoc-members:

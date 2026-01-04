@@ -1,7 +1,7 @@
 common package
 ==============
 
-.. automodule:: common
+.. automodule:: admin.common
    :members:
    :show-inheritance:
    :undoc-members:

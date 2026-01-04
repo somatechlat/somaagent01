@@ -1,7 +1,7 @@
 core.api.sessions module
 ========================
 
-.. automodule:: core.api.sessions
+.. automodule:: admin.core.api.sessions
    :members:
    :show-inheritance:
    :undoc-members:

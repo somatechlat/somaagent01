@@ -1,7 +1,7 @@
 common.handlers module
 ======================
 
-.. automodule:: common.handlers
+.. automodule:: admin.common.handlers
    :members:
    :show-inheritance:
    :undoc-members:

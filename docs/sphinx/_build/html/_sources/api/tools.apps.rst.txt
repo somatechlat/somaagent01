@@ -1,7 +1,7 @@
 tools.apps module
 =================
 
-.. automodule:: tools.apps
+.. automodule:: admin.tools.apps
    :members:
    :show-inheritance:
    :undoc-members:

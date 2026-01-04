@@ -1,7 +1,7 @@
 core.sensors.memory module
 ==========================
 
-.. automodule:: core.sensors.memory
+.. automodule:: admin.core.sensors.memory
    :members:
    :show-inheritance:
    :undoc-members:

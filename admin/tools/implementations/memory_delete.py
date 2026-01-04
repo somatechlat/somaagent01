@@ -3,6 +3,7 @@ from admin.core.helpers.tool import Response, Tool
 
 
 class MemoryDelete(Tool):
+    """Tool for deleting specific memories by ID."""
 
     async def execute(self, ids="", **kwargs):
         db = await Memory.get(self.agent)

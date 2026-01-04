@@ -1,7 +1,7 @@
 core.management.commands.runstack module
 ========================================
 
-.. automodule:: core.management.commands.runstack
+.. automodule:: admin.core.management.commands.runstack
    :members:
    :show-inheritance:
    :undoc-members:

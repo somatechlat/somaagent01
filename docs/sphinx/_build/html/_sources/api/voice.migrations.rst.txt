@@ -1,7 +1,7 @@
 voice.migrations package
 ========================
 
-.. automodule:: voice.migrations
+.. automodule:: admin.voice.migrations
    :members:
    :show-inheritance:
    :undoc-members:

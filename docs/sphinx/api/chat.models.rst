@@ -1,7 +1,7 @@
 chat.models module
 ==================
 
-.. automodule:: chat.models
+.. automodule:: admin.chat.models
    :members:
    :show-inheritance:
    :undoc-members:

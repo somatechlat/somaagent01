@@ -1,7 +1,7 @@
 core.helpers.settings module
 ============================
 
-.. automodule:: core.helpers.settings
+.. automodule:: admin.core.helpers.settings
    :members:
    :show-inheritance:
    :undoc-members:

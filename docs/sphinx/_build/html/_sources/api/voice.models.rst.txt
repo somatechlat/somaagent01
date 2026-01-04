@@ -1,7 +1,7 @@
 voice.models module
 ===================
 
-.. automodule:: voice.models
+.. automodule:: admin.voice.models
    :members:
    :show-inheritance:
    :undoc-members:

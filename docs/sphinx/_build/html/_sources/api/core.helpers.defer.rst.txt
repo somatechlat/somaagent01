@@ -1,7 +1,7 @@
 core.helpers.defer module
 =========================
 
-.. automodule:: core.helpers.defer
+.. automodule:: admin.core.helpers.defer
    :members:
    :show-inheritance:
    :undoc-members:

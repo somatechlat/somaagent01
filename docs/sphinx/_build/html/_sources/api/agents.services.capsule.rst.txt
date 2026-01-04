@@ -1,7 +1,7 @@
 agents.services.capsule module
 ==============================
 
-.. automodule:: agents.services.capsule
+.. automodule:: admin.agents.services.capsule
    :members:
    :show-inheritance:
    :undoc-members:

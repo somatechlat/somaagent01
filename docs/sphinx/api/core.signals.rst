@@ -1,7 +1,7 @@
 core.signals module
 ===================
 
-.. automodule:: core.signals
+.. automodule:: admin.core.signals
    :members:
    :show-inheritance:
    :undoc-members:

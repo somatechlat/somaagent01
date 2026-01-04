@@ -1,7 +1,7 @@
 core.infrastructure.adapters package
 ====================================
 
-.. automodule:: core.infrastructure.adapters
+.. automodule:: admin.core.infrastructure.adapters
    :members:
    :show-inheritance:
    :undoc-members:

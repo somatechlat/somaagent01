@@ -5,6 +5,7 @@ from admin.core.helpers.tool import Response, Tool
 
 
 class NotifyUserTool(Tool):
+    """Tool for sending notifications to the user interface."""
 
     async def execute(self, **kwargs):
 

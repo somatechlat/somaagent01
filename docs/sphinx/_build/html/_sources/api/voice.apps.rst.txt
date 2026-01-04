@@ -1,7 +1,7 @@
 voice.apps module
 =================
 
-.. automodule:: voice.apps
+.. automodule:: admin.voice.apps
    :members:
    :show-inheritance:
    :undoc-members:

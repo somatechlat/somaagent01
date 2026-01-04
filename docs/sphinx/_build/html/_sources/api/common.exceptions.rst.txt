@@ -1,7 +1,7 @@
 common.exceptions module
 ========================
 
-.. automodule:: common.exceptions
+.. automodule:: admin.common.exceptions
    :members:
    :show-inheritance:
    :undoc-members:

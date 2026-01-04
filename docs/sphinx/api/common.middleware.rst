@@ -1,7 +1,7 @@
 common.middleware module
 ========================
 
-.. automodule:: common.middleware
+.. automodule:: admin.common.middleware
    :members:
    :show-inheritance:
    :undoc-members:

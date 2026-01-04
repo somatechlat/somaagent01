@@ -1,7 +1,7 @@
 llm.models module
 =================
 
-.. automodule:: llm.models
+.. automodule:: admin.llm.models
    :members:
    :show-inheritance:
    :undoc-members:

@@ -6,6 +6,7 @@ SEARCH_ENGINE_RESULTS = 10
 
 
 class SearchEngine(Tool):
+    """Tool for performing web searches via SearXNG."""
     async def execute(self, query="", **kwargs):
 
         searxng_result = await self.searxng_search(query)

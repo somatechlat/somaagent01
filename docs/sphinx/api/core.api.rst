@@ -1,7 +1,7 @@
 core.api package
 ================
 
-.. automodule:: core.api
+.. automodule:: admin.core.api
    :members:
    :show-inheritance:
    :undoc-members:

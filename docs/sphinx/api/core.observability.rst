@@ -1,7 +1,7 @@
 core.observability package
 ==========================
 
-.. automodule:: core.observability
+.. automodule:: admin.core.observability
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.infrastructure.api module
 ==============================
 
-.. automodule:: core.infrastructure.api
+.. automodule:: admin.core.infrastructure.api
    :members:
    :show-inheritance:
    :undoc-members:

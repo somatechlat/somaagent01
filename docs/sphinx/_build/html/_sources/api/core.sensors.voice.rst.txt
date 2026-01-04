@@ -1,7 +1,7 @@
 core.sensors.voice module
 =========================
 
-.. automodule:: core.sensors.voice
+.. automodule:: admin.core.sensors.voice
    :members:
    :show-inheritance:
    :undoc-members:

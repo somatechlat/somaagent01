@@ -1,7 +1,7 @@
 saas.api.dashboard module
 =========================
 
-.. automodule:: saas.api.dashboard
+.. automodule:: admin.saas.api.dashboard
    :members:
    :show-inheritance:
    :undoc-members:

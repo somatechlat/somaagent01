@@ -1,7 +1,7 @@
 voice.service module
 ====================
 
-.. automodule:: voice.service
+.. automodule:: admin.voice.service
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,7 +1,7 @@
 core.migrations package
 =======================
 
-.. automodule:: core.migrations
+.. automodule:: admin.core.migrations
    :members:
    :show-inheritance:
    :undoc-members:

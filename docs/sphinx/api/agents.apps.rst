@@ -1,7 +1,7 @@
 agents.apps module
 ==================
 
-.. automodule:: agents.apps
+.. automodule:: admin.agents.apps
    :members:
    :show-inheritance:
    :undoc-members:

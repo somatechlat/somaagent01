@@ -1,7 +1,7 @@
 agents.services package
 =======================
 
-.. automodule:: agents.services
+.. automodule:: admin.agents.services
    :members:
    :show-inheritance:
    :undoc-members:

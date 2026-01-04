@@ -1,7 +1,7 @@
 core.management.commands package
 ================================
 
-.. automodule:: core.management.commands
+.. automodule:: admin.core.management.commands
    :members:
    :show-inheritance:
    :undoc-members:
