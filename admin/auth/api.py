@@ -1,11 +1,57 @@
-"""Auth API Router for Django Ninja.
+"""Authentication API Router for SomaAgent01.
 
-VIBE COMPLIANT - 100% Django Ninja, Keycloak integration.
-Provides token-based authentication endpoints:
-- POST /token - Get access token
-- POST /refresh - Refresh token
-- GET /me - Get current user info
-- POST /logout - Revoke tokens
+This module provides token-based authentication endpoints using Django Ninja
+with Keycloak as the OIDC identity provider.
+
+**VIBE COMPLIANT**: 100% Django Ninja, real Keycloak integration, no mocks.
+
+Endpoints:
+    POST /auth/token
+        Get access token via password grant or OAuth code exchange.
+        Supports: password grant, authorization_code grant.
+        
+    POST /auth/refresh
+        Refresh access token using refresh token from cookie or body.
+        
+    GET /auth/me
+        Get current authenticated user info including roles and permissions.
+        
+    POST /auth/logout
+        Logout and revoke tokens in Keycloak.
+        
+    POST /auth/login
+        Email/password login with account lockout protection.
+        Security: Rate limited (10/min), lockout after 5 failures.
+        
+    POST /auth/impersonate
+        Generate impersonation token for SaaS admin to act as tenant admin.
+        Requires: saas_admin role. Audit logged.
+        
+    POST /auth/sso/test
+        Test SSO provider connection (OIDC, LDAP, AD, Okta, Azure, etc.)
+        
+    POST /auth/sso/configure
+        Save SSO provider configuration for tenant.
+
+Authentication Flow:
+    User → Login Page → Django API → Keycloak → SpiceDB → Redis → PostgreSQL
+
+User Roles (Priority Order):
+    1. saas_admin → /select-mode
+    2. tenant_sysadmin → /select-mode
+    3. tenant_admin → /dashboard
+    4. agent_owner → /dashboard
+    5. developer, trainer → /chat
+    6. user → /chat
+    7. viewer → /chat (read-only)
+
+Example:
+    >>> from admin.auth.api import router
+    >>> # Router is mounted at /api/v2/auth/
+
+See Also:
+    - :mod:`admin.common.auth` for JWT utilities
+    - :doc:`AGENT.md` for complete auth architecture
 """
 
 from __future__ import annotations
