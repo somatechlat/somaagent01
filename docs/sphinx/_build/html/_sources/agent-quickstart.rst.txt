@@ -79,7 +79,7 @@ Port Namespace
    └── Frontend:    20080
 
    SomaBrain:           30xxx (port 30101)
-   SomaFractalMemory:   9xxx  (port 9595)
+   SomaFractalMemory:   40xxx (port 40000)
 
 User Roles
 ==========

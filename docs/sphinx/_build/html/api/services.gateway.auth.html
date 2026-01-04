@@ -471,11 +471,25 @@
              
   <section id="module-services.gateway.auth">
 <span id="services-gateway-auth-module"></span><h1>services.gateway.auth module<a class="headerlink" href="#module-services.gateway.auth" title="Link to this heading"></a></h1>
-<p>Gateway authentication and authorization - 100% Django.</p>
-<p>All HTTPException replaced with Django/admin.common.exceptions.</p>
-<p>🎓 PhD Dev - Clean architecture
-🔒 Security - JWT + OPA policy
-📚 ISO Doc - Full docstrings</p>
+<p>Gateway authentication and authorization module.</p>
+<p>This module provides JWT-based authentication and OPA policy-based authorization
+for the gateway service. All authentication is handled via Django patterns with
+custom exceptions from admin.common.exceptions.</p>
+<dl class="simple">
+<dt>Functions:</dt><dd><p>authorize_request: Main entry point for request authentication/authorization.
+_resolve_signing_key: Resolves JWT signing key from JWKS or environment.
+_evaluate_opa: Evaluates Open Policy Agent authorization policies.
+_get_policy_client: Returns cached PolicyClient instance.
+_get_openfga_client: Returns OpenFGA client if available.</p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">payload</span> <span class="o">=</span> <span class="k">await</span> <span class="n">authorize_request</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;read&quot;</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
 <dl class="py function">
 <dt class="sig sig-object py" id="services.gateway.auth.authorize_request">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.gateway.auth.</span></span><span class="sig-name descname"><span class="pre">authorize_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/gateway/auth.html#authorize_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.gateway.auth.authorize_request" title="Link to this definition"></a></dt>
