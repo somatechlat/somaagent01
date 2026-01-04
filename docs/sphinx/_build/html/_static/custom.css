@@ -214,7 +214,7 @@ pre {
 /* Numbers */
 
 /* ========================================
-   TABLES - Black headers, readable
+   TABLES - Black headers, WHITE text, readable
    ======================================== */
 table {
     border-collapse: collapse;
@@ -224,7 +224,7 @@ table {
 
 table th {
     background: var(--yachaq-black) !important;
-    color: var(--yachaq-white) !important;
+    color: #ffffff !important;
     font-weight: 600;
     padding: 12px;
     text-align: left;

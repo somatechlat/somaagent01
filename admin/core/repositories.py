@@ -105,37 +105,45 @@ def get_repository_manager() -> RepositoryManager:
 
 
 def get_api_key_store() -> ApiKeyStore:
+    """Get global ApiKeyStore instance."""
     return get_repository_manager().get_api_key_store()
 
 
 def get_secret_manager() -> SecretManager:
+    """Get global SecretManager instance."""
     return get_repository_manager().get_secret_manager()
 
 
 def get_audit_store():
+    """Get global AuditLog manager."""
     return get_repository_manager().get_audit_store()
 
 
 def get_dlq_store():
+    """Get global DeadLetterMessage manager."""
     return get_repository_manager().get_dlq_store()
 
 
 def get_notifications_store():
+    """Get global Notification manager."""
     return get_repository_manager().get_notifications_store()
 
 
 def get_ui_settings_store():
+    """Get global UISetting manager."""
     return get_repository_manager().get_ui_settings_store()
 
 
 def get_session_store():
+    """Get global Session manager."""
     return get_repository_manager().get_session_store()
 
 
 def get_replica_store():
+    """Get global MemoryReplica manager."""
     return get_repository_manager().get_replica_store()
 
 
 async def get_settings_repo():
-    """Compatibility wrapper for async context."""
+    """Get UI settings store (Async compatibility wrapper)."""
     return get_ui_settings_store()

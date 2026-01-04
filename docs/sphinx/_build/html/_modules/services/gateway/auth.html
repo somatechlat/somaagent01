@@ -469,14 +469,22 @@
            <div itemprop="articleBody">
              
   <h1>Source code for services.gateway.auth</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Gateway authentication and authorization - 100% Django.</span>
+<span></span><span class="sd">&quot;&quot;&quot;Gateway authentication and authorization module.</span>
 
-<span class="sd">All HTTPException replaced with Django/admin.common.exceptions.</span>
+<span class="sd">This module provides JWT-based authentication and OPA policy-based authorization</span>
+<span class="sd">for the gateway service. All authentication is handled via Django patterns with</span>
+<span class="sd">custom exceptions from admin.common.exceptions.</span>
 
+<span class="sd">Functions:</span>
+<span class="sd">    authorize_request: Main entry point for request authentication/authorization.</span>
+<span class="sd">    _resolve_signing_key: Resolves JWT signing key from JWKS or environment.</span>
+<span class="sd">    _evaluate_opa: Evaluates Open Policy Agent authorization policies.</span>
+<span class="sd">    _get_policy_client: Returns cached PolicyClient instance.</span>
+<span class="sd">    _get_openfga_client: Returns OpenFGA client if available.</span>
 
-<span class="sd">🎓 PhD Dev - Clean architecture</span>
-<span class="sd">🔒 Security - JWT + OPA policy</span>
-<span class="sd">📚 ISO Doc - Full docstrings</span>
+<span class="sd">Example:</span>
+<span class="sd">    &gt;&gt;&gt; payload = await authorize_request(request, {&quot;action&quot;: &quot;read&quot;})</span>
+<span class="sd">    &gt;&gt;&gt; user_id = payload[&quot;user_id&quot;]</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
