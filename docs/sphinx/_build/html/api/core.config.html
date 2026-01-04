@@ -489,189 +489,6 @@
 <p>Centralised configuration package.</p>
 <p>Single source of truth for all runtime configuration.</p>
 <dl class="py class">
-<dt class="sig sig-object py" id="admin.core.config.Config">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.config.</span></span><span class="sig-name descname"><span class="pre">Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
-<p>Main configuration model - single source of truth.</p>
-<p>Real configuration with validation. Production-ready settings
-using modern Pydantic patterns.</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.auth_required">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">auth_required</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#admin.core.config.Config.auth_required" title="Link to this definition"></a></dt>
-<dd><p>Execute auth required.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.deployment_mode">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">deployment_mode</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.deployment_mode" title="Link to this definition"></a></dt>
-<dd><p>Execute deployment mode.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.environment">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">environment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.environment" title="Link to this definition"></a></dt>
-<dd><p>Execute environment.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_deployment_mode">
-<span class="sig-name descname"><span class="pre">get_deployment_mode</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_deployment_mode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_deployment_mode" title="Link to this definition"></a></dt>
-<dd><p>Get deployment mode.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_deployment_target">
-<span class="sig-name descname"><span class="pre">get_deployment_target</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_deployment_target"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_deployment_target" title="Link to this definition"></a></dt>
-<dd><p>Get deployment target.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_environment">
-<span class="sig-name descname"><span class="pre">get_environment</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_environment" title="Link to this definition"></a></dt>
-<dd><p>Get environment.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_kafka_bootstrap_servers">
-<span class="sig-name descname"><span class="pre">get_kafka_bootstrap_servers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_kafka_bootstrap_servers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_kafka_bootstrap_servers" title="Link to this definition"></a></dt>
-<dd><p>Get Kafka bootstrap servers.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_opa_url">
-<span class="sig-name descname"><span class="pre">get_opa_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_opa_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_opa_url" title="Link to this definition"></a></dt>
-<dd><p>Return the OPA service URL.</p>
-<p>Returns the configured value from external.opa_url.
-The loader already handles SA01_OPA_URL env var precedence.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_postgres_dsn">
-<span class="sig-name descname"><span class="pre">get_postgres_dsn</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_postgres_dsn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_postgres_dsn" title="Link to this definition"></a></dt>
-<dd><p>Get PostgreSQL DSN.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_redis_url">
-<span class="sig-name descname"><span class="pre">get_redis_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_redis_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_redis_url" title="Link to this definition"></a></dt>
-<dd><p>Get Redis URL.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.get_somabrain_url">
-<span class="sig-name descname"><span class="pre">get_somabrain_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.get_somabrain_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.get_somabrain_url" title="Link to this definition"></a></dt>
-<dd><p>Return the SomaBrain base URL.</p>
-<p>Returns the configured value from external.somabrain_base_url.
-The loader already handles SA01_SOMA_BASE_URL env var precedence.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.is_auth_required">
-<span class="sig-name descname"><span class="pre">is_auth_required</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#Config.is_auth_required"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.Config.is_auth_required" title="Link to this definition"></a></dt>
-<dd><p>Check if authentication is required.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.kafka_bootstrap_servers">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kafka_bootstrap_servers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.kafka_bootstrap_servers" title="Link to this definition"></a></dt>
-<dd><p>Execute kafka bootstrap servers.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.metrics_host">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metrics_host</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.metrics_host" title="Link to this definition"></a></dt>
-<dd><p>Execute metrics host.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.metrics_port">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metrics_port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#admin.core.config.Config.metrics_port" title="Link to this definition"></a></dt>
-<dd><p>Execute metrics port.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.opa_url">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">opa_url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.opa_url" title="Link to this definition"></a></dt>
-<dd><p>Execute opa url.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.postgres_dsn">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">postgres_dsn</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.postgres_dsn" title="Link to this definition"></a></dt>
-<dd><p>Execute postgres dsn.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.redis_url">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">redis_url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.redis_url" title="Link to this definition"></a></dt>
-<dd><p>Execute redis url.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="admin.core.config.Config.soma_base_url">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">soma_base_url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#admin.core.config.Config.soma_base_url" title="Link to this definition"></a></dt>
-<dd><p>Execute soma base url.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="admin.core.config.Config.validate_config">
-<span class="sig-name descname"><span class="pre">validate_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#admin.core.config.Config.validate_config" title="Link to this definition"></a></dt>
-<dd><p>Cross-field validation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></span></p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
 <dt class="sig sig-object py" id="admin.core.config.ServiceConfig">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.config.</span></span><span class="sig-name descname"><span class="pre">ServiceConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/config/models.html#ServiceConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.config.ServiceConfig" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
@@ -794,7 +611,7 @@ implementation defined above.</p>
 <dd class="field-odd"><p><strong>force_reload</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span>) – The force_reload.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></span></p>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -855,7 +672,7 @@ been created, also clears its internal cache. Returns the newly loaded
 configuration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -873,7 +690,7 @@ configuration.</p>
 intentional because silent handling would violate the</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -902,13 +719,13 @@ Production-ready implementation with modern patterns.</p>
 <dd><p>Context manager for configuration access.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>override_config</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>]</span>) – Optional configuration to override current config</p>
+<dd class="field-odd"><p><strong>override_config</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code>]</span>) – Optional configuration to override current config</p>
 </dd>
 <dt class="field-even">Yields<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Config</em> – Configuration object</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -936,7 +753,7 @@ Production-ready implementation with modern patterns.</p>
 <dd class="field-odd"><p>Current configuration</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="#admin.core.config.Config" title="admin.core.config.Config">Config</a></p>
+<dd class="field-even"><p>Config</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If registry not initialized</p>
@@ -1099,7 +916,7 @@ Production-ready implementation with modern patterns.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>callback</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>[[<a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – Callback function to call on configuration changes</p></li>
+<li><p><strong>callback</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code>], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – Callback function to call on configuration changes</p></li>
 <li><p><strong>name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Subscription name</p></li>
 <li><p><strong>owner</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Subscription owner (service/module name)</p></li>
 </ul>
@@ -1155,7 +972,7 @@ Production-ready implementation with modern patterns.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="admin.core.config.ConfigSubscription.callback">
-<span class="sig-name descname"><span class="pre">callback</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a><span class="pre">[[</span><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a><span class="pre">],</span> <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#admin.core.config.ConfigSubscription.callback" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">callback</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a><span class="pre">[[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code><span class="pre">],</span> <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#admin.core.config.ConfigSubscription.callback" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -1210,7 +1027,7 @@ Production-ready implementation with modern patterns.</p>
 <dd class="field-odd"><p>Global configuration</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="#admin.core.config.Config" title="admin.core.config.Config">Config</a></p>
+<dd class="field-even"><p>Config</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1233,7 +1050,7 @@ Production-ready implementation with modern patterns.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>callback</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>[[<a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – Callback function to call on configuration changes</p></li>
+<li><p><strong>callback</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code>], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – Callback function to call on configuration changes</p></li>
 <li><p><strong>name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Subscription name</p></li>
 <li><p><strong>owner</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Subscription owner (service/module name)</p></li>
 </ul>
@@ -1391,13 +1208,13 @@ Production-ready implementation with modern patterns.</p>
 <dd><p>Context manager for global configuration access.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>override_config</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>]</span>) – Optional configuration to override current config</p>
+<dd class="field-odd"><p><strong>override_config</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code>]</span>) – Optional configuration to override current config</p>
 </dd>
 <dt class="field-even">Yields<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Config</em> – Configuration object</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config" title="admin.core.config.models.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1486,29 +1303,6 @@ Production-ready implementation with modern patterns.</p>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="core.config.models.html#admin.core.config.models.AudioConfig"><code class="docutils literal notranslate"><span class="pre">AudioConfig</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="core.config.models.html#admin.core.config.models.VoiceConfig"><code class="docutils literal notranslate"><span class="pre">VoiceConfig</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.validate_config"><code class="docutils literal notranslate"><span class="pre">Config.validate_config()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_somabrain_url"><code class="docutils literal notranslate"><span class="pre">Config.get_somabrain_url()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_opa_url"><code class="docutils literal notranslate"><span class="pre">Config.get_opa_url()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_postgres_dsn"><code class="docutils literal notranslate"><span class="pre">Config.get_postgres_dsn()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_kafka_bootstrap_servers"><code class="docutils literal notranslate"><span class="pre">Config.get_kafka_bootstrap_servers()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_redis_url"><code class="docutils literal notranslate"><span class="pre">Config.get_redis_url()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.is_auth_required"><code class="docutils literal notranslate"><span class="pre">Config.is_auth_required()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_deployment_mode"><code class="docutils literal notranslate"><span class="pre">Config.get_deployment_mode()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_deployment_target"><code class="docutils literal notranslate"><span class="pre">Config.get_deployment_target()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.get_environment"><code class="docutils literal notranslate"><span class="pre">Config.get_environment()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.auth_required"><code class="docutils literal notranslate"><span class="pre">Config.auth_required</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.metrics_host"><code class="docutils literal notranslate"><span class="pre">Config.metrics_host</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.metrics_port"><code class="docutils literal notranslate"><span class="pre">Config.metrics_port</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.kafka_bootstrap_servers"><code class="docutils literal notranslate"><span class="pre">Config.kafka_bootstrap_servers</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.postgres_dsn"><code class="docutils literal notranslate"><span class="pre">Config.postgres_dsn</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.redis_url"><code class="docutils literal notranslate"><span class="pre">Config.redis_url</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.opa_url"><code class="docutils literal notranslate"><span class="pre">Config.opa_url</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.soma_base_url"><code class="docutils literal notranslate"><span class="pre">Config.soma_base_url</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.deployment_mode"><code class="docutils literal notranslate"><span class="pre">Config.deployment_mode</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="core.config.models.html#admin.core.config.models.Config.environment"><code class="docutils literal notranslate"><span class="pre">Config.environment</span></code></a></li>
-</ul>
-</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="core.config.registry.html">core.config.registry module</a><ul>

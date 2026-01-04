@@ -35,7 +35,9 @@ Complete API documentation auto-generated from source code docstrings.
 
    saas
    tenants
+   tenants
    billing
+   webhooks
 
 .. toctree::
    :maxdepth: 2
@@ -53,6 +55,7 @@ Complete API documentation auto-generated from source code docstrings.
    audit
    observability
    metrics
+   notifications
    flink
 
 .. toctree::
