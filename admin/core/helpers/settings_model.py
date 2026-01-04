@@ -15,6 +15,8 @@ from pydantic import BaseModel
 
 class SettingsModel(BaseModel):
     # Core identity/versioning
+    """Settingsmodel class implementation."""
+
     version: str = "unknown"
 
     # Chat / util / embed model settings
@@ -123,9 +125,17 @@ class SettingsModel(BaseModel):
     USE_LLM: bool = True
 
     class Config:
+        """Config class implementation."""
+
         extra = "allow"
 
     def __getitem__(self, item: str) -> Any:
+        """Execute getitem  .
+
+            Args:
+                item: The item.
+            """
+
         return self.model_dump()[item]
 
 

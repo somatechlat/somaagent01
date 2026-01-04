@@ -31,6 +31,8 @@ class UnifiedMemoryService(BaseSomaService):
     name = "memory"
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         super().__init__()
         # ``MemoryReplicaStore`` defaults to using the admin‑wide Postgres DSN
         # when no explicit DSN is supplied.

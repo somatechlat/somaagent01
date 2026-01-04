@@ -66,6 +66,9 @@ def validate_optional():
 
 
 def main():
+    """Execute main.
+        """
+
     print("=" * 80)
     print("SOMA Stack Environment Validation")
     print("Security Audit 2026-01-02: Zero Hardcoded Defaults Policy")

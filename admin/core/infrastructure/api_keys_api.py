@@ -23,16 +23,22 @@ router = Router(tags=["API Keys"])
 
 
 class ApiKeyBase(BaseModel):
+    """Apikeybase class implementation."""
+
     provider: str
     type: str = "llm"  # llm, service
     name: str = ""
 
 
 class ApiKeyCreate(ApiKeyBase):
+    """Apikeycreate class implementation."""
+
     key_value: str  # The actual API key
 
 
 class ApiKeyResponse(ApiKeyBase):
+    """Data model for ApiKeyResponse."""
+
     id: str
     key_masked: str  # Last 4 chars only
     status: str = "valid"  # valid, expired, missing
@@ -41,6 +47,8 @@ class ApiKeyResponse(ApiKeyBase):
 
 
 class ApiKeyListResponse(BaseModel):
+    """Data model for ApiKeyListResponse."""
+
     items: List[ApiKeyResponse]
     total: int
 

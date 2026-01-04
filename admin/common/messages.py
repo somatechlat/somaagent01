@@ -8,6 +8,8 @@ from enum import Enum
 
 class ErrorCode(str, Enum):
     # Generic
+    """Exception raised for ErrorCode."""
+
     INTERNAL_ERROR = "internal_error"
     INVALID_REQUEST = "invalid_request"
     UNAUTHORIZED = "unauthorized"
@@ -25,6 +27,8 @@ class ErrorCode(str, Enum):
 
 
 class SuccessCode(str, Enum):
+    """Successcode class implementation."""
+
     TIER_DEACTIVATED = "tier_deactivated"
     FEATURE_REMOVED = "feature_removed"
 

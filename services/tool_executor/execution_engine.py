@@ -24,6 +24,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class ExecutionResult:
+    """Executionresult class implementation."""
+
     status: str
     payload: Dict[str, Any]
     execution_time: float
@@ -34,6 +36,8 @@ class ExecutionEngine:
     """Coordinates tool execution across sandbox and resource controls."""
 
     def __init__(self, sandbox: SandboxManager, resources: ResourceManager) -> None:
+        """Initialize the instance."""
+
         self._sandbox = sandbox
         self._resources = resources
         ensure_metrics_exporter()
@@ -57,6 +61,14 @@ class ExecutionEngine:
         args: Dict[str, Any],
         limits: ExecutionLimits,
     ) -> ExecutionResult:
+        """Execute execute.
+
+            Args:
+                tool: The tool.
+                args: The args.
+                limits: The limits.
+            """
+
         breaker = self._tool_breakers.get(tool.name)
         if breaker is None:
             breaker = circuit_breaker(

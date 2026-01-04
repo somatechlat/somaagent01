@@ -1,3 +1,5 @@
+"""Module test_chat_backend."""
+
 import pytest
 import asyncio
 import json
@@ -59,6 +61,9 @@ async def test_chat_full_flow():
     @database_sync_to_async
     def setup_data_manual():
         # Clean up any previous collision (unlikely with UUIDs)
+        """Execute setup data manual.
+            """
+
         Conversation.objects.filter(id=conversation_id).delete()
 
         # Create and SAVE (Commit)
@@ -128,6 +133,9 @@ async def test_chat_full_flow():
 
             @database_sync_to_async
             def check_db():
+                """Execute check db.
+                    """
+
                 return Message.objects.filter(content=test_content).exists()
 
             exists = await check_db()
@@ -143,6 +151,9 @@ async def test_chat_full_flow():
 
         @database_sync_to_async
         def cleanup():
+            """Execute cleanup.
+                """
+
             Conversation.objects.filter(id=conversation_id).delete()
 
         await cleanup()

@@ -35,6 +35,8 @@ class RepositoryManager:
 
     def __init__(self) -> None:
         # Service Singletons
+        """Initialize the instance."""
+
         self._api_key_store: Optional[ApiKeyStore] = None
         self._secret_manager: Optional[SecretManager] = None
 

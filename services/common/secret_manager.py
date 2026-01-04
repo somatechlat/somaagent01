@@ -71,6 +71,8 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         redis_url = os.environ.get("SA01_REDIS_URL") or os.environ.get("SA01_REDIS_URL")
         if not redis_url:
             raise RuntimeError(
@@ -110,10 +112,23 @@ class SecretManager:
         return name  # the namespace is the hash itself; field is the name
 
     async def _set_encrypted(self, field: str, value: str) -> None:
+        """Execute set encrypted.
+
+            Args:
+                field: The field.
+                value: The value.
+            """
+
         token = self._ensure_fernet().encrypt(value.encode()).decode("ascii")
         await self._redis.hset(self._namespace, field, token)
 
     async def _get_decrypted(self, field: str) -> Optional[str]:
+        """Execute get decrypted.
+
+            Args:
+                field: The field.
+            """
+
         token = await self._redis.hget(self._namespace, field)
         if token is None:
             return None
@@ -132,10 +147,22 @@ class SecretManager:
         await self._set_encrypted(field, api_key)
 
     async def get_provider_key(self, provider: str) -> Optional[str]:
+        """Retrieve provider key.
+
+            Args:
+                provider: The provider.
+            """
+
         field = self._hash_key(f"provider:{provider.lower()}")
         return await self._get_decrypted(field)
 
     async def delete_provider_key(self, provider: str) -> None:
+        """Execute delete provider key.
+
+            Args:
+                provider: The provider.
+            """
+
         field = self._hash_key(f"provider:{provider.lower()}")
         await self._redis.hdel(self._namespace, field)
 
@@ -152,16 +179,34 @@ class SecretManager:
     # Public API – internal service‑to‑service token
     # ---------------------------------------------------------------------
     async def set_internal_token(self, token: str) -> None:
+        """Set internal token.
+
+            Args:
+                token: The token.
+            """
+
         await self._set_encrypted("internal_token", token)
 
     async def get_internal_token(self) -> Optional[str]:
+        """Retrieve internal token.
+            """
+
         return await self._get_decrypted("internal_token")
 
     # ---------------------------------------------------------------------
     # Convenience – existence checks
     # ---------------------------------------------------------------------
     async def has_provider_key(self, provider: str) -> bool:
+        """Check if provider key.
+
+            Args:
+                provider: The provider.
+            """
+
         return (await self.get_provider_key(provider)) is not None
 
     async def has_internal_token(self) -> bool:
+        """Check if internal token.
+            """
+
         return (await self.get_internal_token()) is not None

@@ -1,3 +1,5 @@
+"""Module knowledge_import."""
+
 import glob
 import hashlib
 import os
@@ -30,6 +32,8 @@ text_loader_kwargs = {"autodetect_encoding": True}
 
 
 class KnowledgeImport(TypedDict):
+    """Knowledgeimport class implementation."""
+
     file: str
     checksum: str
     ids: list[str]
@@ -38,6 +42,12 @@ class KnowledgeImport(TypedDict):
 
 
 def calculate_checksum(file_path: str) -> str:
+    """Execute calculate checksum.
+
+        Args:
+            file_path: The file_path.
+        """
+
     hasher = hashlib.md5()
     with open(file_path, "rb") as f:
         buf = f.read()

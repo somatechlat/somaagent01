@@ -1,3 +1,5 @@
+"""Module tunnel_manager."""
+
 import threading
 
 try:
@@ -19,18 +21,30 @@ class TunnelManager:
 
     @classmethod
     def get_instance(cls):
+        """Retrieve instance.
+            """
+
         with cls._lock:
             if cls._instance is None:
                 cls._instance = cls()
             return cls._instance
 
     def __init__(self):
+        """Initialize the instance."""
+
         self.tunnel = None
         self.tunnel_url = None
         self.is_running = False
         self.provider = None
 
     def start_tunnel(self, port=80, provider="serveo"):
+        """Execute start tunnel.
+
+            Args:
+                port: The port.
+                provider: The provider.
+            """
+
         if not _FLAREDANTIC_AVAILABLE:
             raise RuntimeError(
                 "Tunnel provider not installed (flaredantic). Install 'flaredantic' to enable tunneling."
@@ -42,6 +56,9 @@ class TunnelManager:
         try:
 
             def run_tunnel():
+                """Execute run tunnel.
+                    """
+
                 try:
                     if self.provider == "cloudflared":
                         config = FlareConfig(port=port, verbose=True)
@@ -74,6 +91,9 @@ class TunnelManager:
             return None
 
     def stop_tunnel(self):
+        """Execute stop tunnel.
+            """
+
         if not _FLAREDANTIC_AVAILABLE:
             raise RuntimeError(
                 "Tunnel provider not installed (flaredantic). Install 'flaredantic' to enable tunneling."
@@ -90,6 +110,9 @@ class TunnelManager:
         return False
 
     def get_tunnel_url(self):
+        """Retrieve tunnel url.
+            """
+
         if not _FLAREDANTIC_AVAILABLE:
             raise RuntimeError(
                 "Tunnel provider not installed (flaredantic). Install 'flaredantic' to enable tunneling."

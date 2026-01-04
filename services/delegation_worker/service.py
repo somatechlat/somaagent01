@@ -33,6 +33,8 @@ class DelegationWorkerService(BaseService):
     service_name: str = "delegation-worker"
 
     def __init__(self, config: CentralizedConfig | None = None) -> None:
+        """Initialize the instance."""
+
         super().__init__(config)
         self.worker = None
         self.worker_task: asyncio.Task[None] | None = None
@@ -78,6 +80,9 @@ class DelegationWorkerService(BaseService):
 
         @app.api_route(f"{prefix}/health")
         async def health_check() -> Dict[str, Any]:
+            """Execute health check.
+                """
+
             status = "healthy"
             details: Dict[str, Any] = {"service": self.service_name}
             if self.worker_task:
@@ -95,6 +100,9 @@ class DelegationWorkerService(BaseService):
 
         @app.api_route(f"{prefix}/metrics")
         async def metrics() -> Dict[str, Any]:
+            """Execute metrics.
+                """
+
             return {
                 "service": self.service_name,
                 "worker_running": self.worker_task is not None and not self.worker_task.done(),

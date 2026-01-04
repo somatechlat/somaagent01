@@ -1,3 +1,5 @@
+"""Module call_subordinate."""
+
 from agent import Agent, UserMessage
 from initialize import initialize_agent
 
@@ -12,6 +14,13 @@ class Delegation(Tool):
 
     async def execute(self, message="", reset="", **kwargs):
         # create subordinate agent using the data object on this agent and set superior agent to his data object
+        """Execute execute.
+
+            Args:
+                message: The message.
+                reset: The reset.
+            """
+
         if (
             self.agent.get_data(Agent.DATA_NAME_SUBORDINATE) is None
             or str(reset).lower().strip() == "true"
@@ -48,6 +57,9 @@ class Delegation(Tool):
         return Response(message=result, break_loop=False, additional=additional)
 
     def get_log_object(self):
+        """Retrieve log object.
+            """
+
         return self.agent.context.log.log(
             type="tool",
             heading=f"icon://communication {self.agent.agent_name}: Calling Subordinate Agent",

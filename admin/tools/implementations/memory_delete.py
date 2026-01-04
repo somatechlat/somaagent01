@@ -1,3 +1,5 @@
+"""Module memory_delete."""
+
 from admin.core.helpers.memory import Memory
 from admin.core.helpers.tool import Response, Tool
 
@@ -6,6 +8,12 @@ class MemoryDelete(Tool):
     """Tool for deleting specific memories by ID."""
 
     async def execute(self, ids="", **kwargs):
+        """Execute execute.
+
+            Args:
+                ids: The ids.
+            """
+
         db = await Memory.get(self.agent)
         ids = [id.strip() for id in ids.split(",") if id.strip()]
         dels = await db.delete_documents_by_ids(ids=ids)

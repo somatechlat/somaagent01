@@ -36,6 +36,8 @@ class ExecuteToolUseCase:
         execution_engine: ExecutionEnginePort,
         event_bus: EventBusPort,
     ):
+        """Initialize the instance."""
+
         self._policy = policy_adapter
         self._engine = execution_engine
         self._bus = event_bus

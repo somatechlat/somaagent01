@@ -1,3 +1,5 @@
+"""Module call_llm."""
+
 from typing import Callable, TypedDict
 
 from langchain.prompts import (
@@ -11,6 +13,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 
 class Example(TypedDict):
+    """Example class implementation."""
+
     input: str
     output: str
 
@@ -22,6 +26,16 @@ async def call_llm(
     examples: list[Example] = [],
     callback: Callable[[str], None] | None = None,
 ):
+
+    """Execute call llm.
+
+        Args:
+            system: The system.
+            model: The model.
+            message: The message.
+            examples: The examples.
+            callback: The callback.
+        """
 
     example_prompt = ChatPromptTemplate.from_messages(
         [

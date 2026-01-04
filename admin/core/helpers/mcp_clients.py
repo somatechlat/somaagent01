@@ -55,6 +55,8 @@ class MCPClientBase(ABC):
     __lock: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self, server: Any):
+        """Initialize the instance."""
+
         self.server = server
         self.tools: List[dict[str, Any]] = []
         self.error: str = ""
@@ -107,6 +109,12 @@ class MCPClientBase(ABC):
         """Fetch and cache tools from the server."""
 
         async def list_tools_op(current_session: ClientSession):
+            """Execute list tools op.
+
+                Args:
+                    current_session: The current_session.
+                """
+
             response: ListToolsResult = await current_session.list_tools()
             with self.__lock:
                 self.tools = [
@@ -138,20 +146,42 @@ class MCPClientBase(ABC):
         return self
 
     def has_tool(self, tool_name: str) -> bool:
+        """Check if tool.
+
+            Args:
+                tool_name: The tool_name.
+            """
+
         with self.__lock:
             return any(tool["name"] == tool_name for tool in self.tools)
 
     def get_tools(self) -> List[dict[str, Any]]:
+        """Retrieve tools.
+            """
+
         with self.__lock:
             return self.tools
 
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
+        """Execute call tool.
+
+            Args:
+                tool_name: The tool_name.
+                input_data: The input_data.
+            """
+
         if not self.has_tool(tool_name):
             await self.update_tools()
             if not self.has_tool(tool_name):
                 raise ValueError(f"Tool {tool_name} not found on server {self.server.name}")
 
         async def call_tool_op(current_session: ClientSession):
+            """Execute call tool op.
+
+                Args:
+                    current_session: The current_session.
+                """
+
             set = settings.get_settings()
             return await current_session.call_tool(
                 tool_name,
@@ -165,6 +195,9 @@ class MCPClientBase(ABC):
             raise ConnectionError(f"Failed to call tool '{tool_name}' on '{self.server.name}': {e}")
 
     def get_log(self):
+        """Retrieve log.
+            """
+
         if not hasattr(self, "log_file") or self.log_file is None:
             return ""
         self.log_file.seek(0)
@@ -178,6 +211,9 @@ class MCPClientLocal(MCPClientBase):
     """Local MCP client using stdio transport."""
 
     def __del__(self):
+        """Execute del  .
+            """
+
         if hasattr(self, "log_file") and self.log_file is not None:
             try:
                 self.log_file.close()
@@ -189,6 +225,12 @@ class MCPClientLocal(MCPClientBase):
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
+        """Execute create stdio transport.
+
+            Args:
+                current_exit_stack: The current_exit_stack.
+            """
+
         from admin.core.helpers.mcp_servers import MCPServerLocal
 
         server: MCPServerLocal = cast(MCPServerLocal, self.server)
@@ -218,6 +260,8 @@ class CustomHTTPClientFactory:
     """Factory for creating httpx clients with custom settings."""
 
     def __init__(self, verify: bool = True):
+        """Initialize the instance."""
+
         self.verify = verify
 
     def __call__(
@@ -226,6 +270,14 @@ class CustomHTTPClientFactory:
         timeout: httpx.Timeout | None = None,
         auth: httpx.Auth | None = None,
     ) -> httpx.AsyncClient:
+        """Execute call  .
+
+            Args:
+                headers: The headers.
+                timeout: The timeout.
+                auth: The auth.
+            """
+
         kwargs: dict[str, Any] = {"follow_redirects": True}
         kwargs["timeout"] = timeout if timeout else httpx.Timeout(30.0)
         if headers:
@@ -239,6 +291,8 @@ class MCPClientRemote(MCPClientBase):
     """Remote MCP client using SSE or streaming HTTP transport."""
 
     def __init__(self, server: Any):
+        """Initialize the instance."""
+
         super().__init__(server)
         self.session_id: Optional[str] = None
         self.session_id_callback: Optional[Callable[[], Optional[str]]] = None
@@ -247,6 +301,12 @@ class MCPClientRemote(MCPClientBase):
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
+        """Execute create stdio transport.
+
+            Args:
+                current_exit_stack: The current_exit_stack.
+            """
+
         from admin.core.helpers.mcp_servers import MCPServerRemote
 
         server: MCPServerRemote = cast(MCPServerRemote, self.server)
@@ -282,6 +342,9 @@ class MCPClientRemote(MCPClientBase):
             )
 
     def get_session_id(self) -> Optional[str]:
+        """Retrieve session id.
+            """
+
         if self.session_id_callback is not None:
             return self.session_id_callback()
         return None

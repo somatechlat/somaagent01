@@ -46,6 +46,8 @@ class SomaBrainClient:
         api_key: str = None,
         timeout: float = 30.0,
     ):
+        """Initialize the instance."""
+
         self.base_url = base_url or getattr(settings, "SOMABRAIN_BASE_URL", "http://localhost:9696")
         self.api_key = api_key or getattr(settings, "SOMABRAIN_API_KEY", "")
         self.timeout = timeout

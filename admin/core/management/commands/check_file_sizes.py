@@ -88,6 +88,9 @@ def check_file(path: Path) -> tuple[bool, int, int]:
 
 
 def main() -> int:
+    """Execute main.
+        """
+
     parser = argparse.ArgumentParser(description="Check file sizes")
     parser.add_argument("files", nargs="*", help="Files to check")
     parser.add_argument("--all", action="store_true", help="Check all Python files")

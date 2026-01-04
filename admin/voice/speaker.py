@@ -43,6 +43,8 @@ class Speaker:
     """
 
     def __init__(self, config: AudioConfig) -> None:
+        """Initialize the instance."""
+
         self._config = config
         self._wrapper: _OutputWrapper | None = None
         try:
@@ -78,6 +80,9 @@ class Speaker:
         outdata[:] = np.frombuffer(raw, dtype=np.int16).reshape(outdata.shape)
 
     async def _start_stream(self) -> None:
+        """Execute start stream.
+            """
+
         if self._wrapper is not None:
             return
         queue: asyncio.Queue[bytes] = asyncio.Queue()

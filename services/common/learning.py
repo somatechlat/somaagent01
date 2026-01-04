@@ -57,6 +57,12 @@ LEARNING_REWARD_TOTAL = Counter(
 
 
 async def get_weights(persona_id: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve weights.
+
+        Args:
+            persona_id: The persona_id.
+        """
+
     if not os.environ.get("learning_context"):
         return {}
     endpoint = "weights"
@@ -122,6 +128,15 @@ async def build_context(session_id: str, messages: List[Dict[str, Any]]) -> List
 async def publish_reward(
     session_id: str, signal: str, value: float, meta: Optional[Dict[str, Any]] = None
 ) -> bool:
+    """Execute publish reward.
+
+        Args:
+            session_id: The session_id.
+            signal: The signal.
+            value: The value.
+            meta: The meta.
+        """
+
     if not os.environ.get("learning_context"):
         return False
     try:

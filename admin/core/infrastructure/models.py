@@ -92,6 +92,8 @@ class RateLimitPolicy(models.Model):
     updated_by = models.CharField(max_length=255, blank=True, help_text="User who last updated")
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "rate_limit_policies"
         ordering = ["key"]
         indexes = [
@@ -102,6 +104,8 @@ class RateLimitPolicy(models.Model):
         verbose_name_plural = "Rate Limit Policies"
 
     def __str__(self):
+        """Return string representation."""
+
         window_str = (
             f"{self.window_seconds // 3600}h"
             if self.window_seconds >= 3600
@@ -215,6 +219,8 @@ class ServiceHealth(models.Model):
     )
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "service_health"
         ordering = ["category", "service_name"]
         indexes = [
@@ -226,6 +232,8 @@ class ServiceHealth(models.Model):
         verbose_name_plural = "Service Health Records"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.display_name or self.service_name}: {self.status}"
 
     def update_status(
@@ -309,6 +317,8 @@ class InfrastructureConfig(models.Model):
     updated_by = models.CharField(max_length=255, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "infrastructure_configs"
         unique_together = ["service", "key"]
         ordering = ["service", "key"]
@@ -316,6 +326,8 @@ class InfrastructureConfig(models.Model):
         verbose_name_plural = "Infrastructure Configs"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.service.service_name}.{self.key}"
 
     def get_display_value(self) -> str:

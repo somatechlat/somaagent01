@@ -50,6 +50,8 @@ class AudioCapture:
     """
 
     def __init__(self, config: AudioConfig) -> None:
+        """Initialize the instance."""
+
         self._config = config
         self._wrapper: _StreamWrapper | None = None
 

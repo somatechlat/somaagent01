@@ -1,3 +1,5 @@
+"""Module seed_lago."""
+
 import os
 import sys
 import time
@@ -13,6 +15,9 @@ LAGO_API_URL = "http://localhost:20600/api/v1"
 
 
 def seed_lago():
+    """Execute seed lago.
+        """
+
     print(f"🌱 Seeding Lago at {LAGO_API_URL}...")
 
     client = Client(api_key=LAGO_API_KEY, api_url=LAGO_API_URL)

@@ -30,11 +30,19 @@ class Command(BaseCommand):
     help = "Publish pending outbox messages to Kafka with exactly-once semantics"
 
     def __init__(self, *args, **kwargs):
+        """Initialize the instance."""
+
         super().__init__(*args, **kwargs)
         self._running = True
         self._producer = None
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--batch-size",
             type=int,

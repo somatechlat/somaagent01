@@ -69,6 +69,8 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize the instance."""
+
         super().__init__(*args, **kwargs)
         self.state: Optional[VoiceSessionState] = None
         self.audio_buffer: list[bytes] = []

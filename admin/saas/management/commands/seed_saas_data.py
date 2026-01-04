@@ -21,9 +21,17 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    """Command class implementation."""
+
     help = "Seed initial SAAS data: tiers, features, roles, rate limits"
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--force",
             action="store_true",
@@ -42,6 +50,9 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         self.stdout.write(self.style.HTTP_INFO("\n🌱 Seeding SAAS Data...\n"))
 
         if options["tier_only"]:

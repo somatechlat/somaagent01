@@ -29,7 +29,11 @@ setup_tracing("delegation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
 
 
 class DelegationWorker:
+    """Delegationworker class implementation."""
+
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self.topic = os.environ.get("DELEGATION_TOPIC", "somastack.delegation")
         self.group = os.environ.get("DELEGATION_GROUP", "delegation-worker")
         self.bus = KafkaEventBus(
@@ -44,10 +48,19 @@ class DelegationWorker:
         self.store = DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
     async def start(self) -> None:
+        """Execute start.
+            """
+
         await self.store.ensure_schema()
         await self.bus.consume(self.topic, self.group, self._handle_event)
 
     async def _handle_event(self, event: dict[str, Any]) -> None:
+        """Execute handle event.
+
+            Args:
+                event: The event.
+            """
+
         try:
             validate_event(event, "delegation_task")
         except ValidationError as exc:
@@ -68,6 +81,9 @@ class DelegationWorker:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     worker = DelegationWorker()
     await worker.start()
 

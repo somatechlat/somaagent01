@@ -107,8 +107,20 @@ def rate_limit(
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         async def wrapper(request, *args, **kwargs):
             # Get IP address
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             if key_func:
                 key = key_func(request)
             else:

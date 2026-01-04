@@ -148,6 +148,8 @@ class RunReceiptBuilder:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._turn_id: Optional[str] = None
         self._session_id: Optional[str] = None
         self._tenant_id: Optional[str] = None

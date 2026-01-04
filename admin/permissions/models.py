@@ -30,6 +30,8 @@ class TimestampedModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         abstract = True
 
 
@@ -43,6 +45,8 @@ class TenantScopedModel(TimestampedModel):
     )
 
     class Meta:
+        """Meta class implementation."""
+
         abstract = True
 
 
@@ -75,10 +79,14 @@ class PermissionResource(TimestampedModel):
     )
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_resource"
         ordering = ["category", "name"]
 
     def __str__(self):
+        """Return string representation."""
+
         return self.name
 
 
@@ -102,10 +110,14 @@ class PermissionAction(TimestampedModel):
     is_destructive = models.BooleanField(default=False)  # For audit highlighting
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_action"
         ordering = ["name"]
 
     def __str__(self):
+        """Return string representation."""
+
         return self.name
 
 
@@ -137,14 +149,21 @@ class GranularPermission(TimestampedModel):
     description = models.TextField(blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_granular"
         unique_together = [["resource", "action"]]
         ordering = ["resource__name", "action__name"]
 
     def __str__(self):
+        """Return string representation."""
+
         return self.codename
 
     def save(self, *args, **kwargs):
+        """Execute save.
+            """
+
         if not self.codename:
             self.codename = f"{self.resource.name}:{self.action.name}"
         super().save(*args, **kwargs)
@@ -189,11 +208,15 @@ class Role(TenantScopedModel):
     )
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_role"
         unique_together = [["tenant_id", "slug"]]
         ordering = ["name"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.tenant_id})"
 
     def has_permission(self, codename: str) -> bool:
@@ -231,6 +254,8 @@ class UserRoleAssignment(TenantScopedModel):
     expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_user_role"
         indexes = [
             models.Index(fields=["user_id", "tenant_id"]),
@@ -238,10 +263,15 @@ class UserRoleAssignment(TenantScopedModel):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.user_id} -> {self.role.name}"
 
     @property
     def is_expired(self) -> bool:
+        """Check if expired.
+            """
+
         if self.expires_at is None:
             return False
         return timezone.now() > self.expires_at
@@ -272,6 +302,8 @@ class PermissionGrant(TenantScopedModel):
     expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_grant"
         indexes = [
             models.Index(fields=["user_id", "tenant_id"]),
@@ -279,6 +311,8 @@ class PermissionGrant(TenantScopedModel):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.user_id} -> {self.permission.codename}"
 
 
@@ -304,6 +338,8 @@ class PermissionCheckLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "permissions_check_log"
         indexes = [
             models.Index(fields=["user_id", "timestamp"]),
@@ -312,6 +348,8 @@ class PermissionCheckLog(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         status = "✓" if self.allowed else "✗"
         return f"{status} {self.user_id} -> {self.permission_codename}"
 

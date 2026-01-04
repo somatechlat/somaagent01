@@ -17,12 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 def _get_store():
+    """Execute get store.
+        """
+
     from services.common.notifications_store import NotificationsStore
 
     return NotificationsStore()
 
 
 class CreateNotificationRequest(BaseModel):
+    """Data model for CreateNotificationRequest."""
+
     type: str
     title: str
     body: str
@@ -65,6 +70,12 @@ async def create_notification(req: CreateNotificationRequest) -> dict:
 
 @router.post("/{notif_id}/read", summary="Mark read")
 async def mark_read(notif_id: str) -> dict:
+    """Execute mark read.
+
+        Args:
+            notif_id: The notif_id.
+        """
+
     store = _get_store()
     await store.ensure_schema()
     await store.mark_read(tenant_id="default", notif_id=notif_id, user_id=None)
@@ -73,6 +84,9 @@ async def mark_read(notif_id: str) -> dict:
 
 @router.delete("/clear", summary="Clear notifications")
 async def clear_notifications() -> dict:
+    """Execute clear notifications.
+        """
+
     store = _get_store()
     await store.ensure_schema()
     await store.clear(tenant_id="default", user_id=None)

@@ -72,6 +72,9 @@ def get_llm_adapter():
 
 
 def get_llm_client():
+    """Retrieve llm client.
+        """
+
     return get_llm_adapter()
 
 

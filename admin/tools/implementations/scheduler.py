@@ -1,3 +1,5 @@
+"""Module scheduler."""
+
 import asyncio
 import json
 import random
@@ -26,7 +28,12 @@ DEFAULT_WAIT_TIMEOUT = 300
 
 class SchedulerTool(Tool):
 
+    """Schedulertool class implementation."""
+
     async def execute(self, **kwargs):
+        """Execute execute.
+            """
+
         if self.method == "list_tasks":
             return await self.list_tasks(**kwargs)
         elif self.method == "find_task_by_name":
@@ -49,6 +56,9 @@ class SchedulerTool(Tool):
             return Response(message=f"Unknown method '{self.name}:{self.method}'", break_loop=False)
 
     async def list_tasks(self, **kwargs) -> Response:
+        """Execute list tasks.
+            """
+
         state_filter: list[str] | None = kwargs.get("state", None)
         type_filter: list[str] | None = kwargs.get("type", None)
         next_run_within_filter: int | None = kwargs.get("next_run_within", None)
@@ -70,6 +80,9 @@ class SchedulerTool(Tool):
         return Response(message=json.dumps(filtered_tasks, indent=4), break_loop=False)
 
     async def find_task_by_name(self, **kwargs) -> Response:
+        """Execute find task by name.
+            """
+
         name: str = kwargs.get("name", "")
         if not name:
             return Response(message="Task name is required", break_loop=False)
@@ -84,6 +97,9 @@ class SchedulerTool(Tool):
         )
 
     async def show_task(self, **kwargs) -> Response:
+        """Execute show task.
+            """
+
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
             return Response(message="Task UUID is required", break_loop=False)
@@ -95,6 +111,9 @@ class SchedulerTool(Tool):
         return Response(message=json.dumps(serialize_task(task), indent=4), break_loop=False)
 
     async def run_task(self, **kwargs) -> Response:
+        """Execute run task.
+            """
+
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
             return Response(message="Task UUID is required", break_loop=False)
@@ -112,6 +131,9 @@ class SchedulerTool(Tool):
         return Response(message=f"Task started: {task_uuid}", break_loop=break_loop)
 
     async def delete_task(self, **kwargs) -> Response:
+        """Execute delete task.
+            """
+
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
             return Response(message="Task UUID is required", break_loop=False)
@@ -155,6 +177,9 @@ class SchedulerTool(Tool):
         #       "month": "*",
         #       "weekday": "*",
         #   }
+        """Execute create scheduled task.
+            """
+
         name: str = kwargs.get("name", "")
         system_prompt: str = kwargs.get("system_prompt", "")
         prompt: str = kwargs.get("prompt", "")
@@ -190,6 +215,9 @@ class SchedulerTool(Tool):
         return Response(message=f"Scheduled task '{name}' created: {task.uuid}", break_loop=False)
 
     async def create_adhoc_task(self, **kwargs) -> Response:
+        """Execute create adhoc task.
+            """
+
         name: str = kwargs.get("name", "")
         system_prompt: str = kwargs.get("system_prompt", "")
         prompt: str = kwargs.get("prompt", "")
@@ -209,6 +237,9 @@ class SchedulerTool(Tool):
         return Response(message=f"Adhoc task '{name}' created: {task.uuid}", break_loop=False)
 
     async def create_planned_task(self, **kwargs) -> Response:
+        """Execute create planned task.
+            """
+
         name: str = kwargs.get("name", "")
         system_prompt: str = kwargs.get("system_prompt", "")
         prompt: str = kwargs.get("prompt", "")
@@ -240,6 +271,9 @@ class SchedulerTool(Tool):
         return Response(message=f"Planned task '{name}' created: {task.uuid}", break_loop=False)
 
     async def wait_for_task(self, **kwargs) -> Response:
+        """Execute wait for task.
+            """
+
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
             return Response(message="Task UUID is required", break_loop=False)

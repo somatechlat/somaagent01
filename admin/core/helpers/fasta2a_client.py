@@ -1,3 +1,5 @@
+"""Module fasta2a_client."""
+
 import os
 import time
 import uuid

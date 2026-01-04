@@ -1,3 +1,5 @@
+"""Module verify_governor."""
+
 import asyncio
 import os
 import django
@@ -41,6 +43,9 @@ async def verify_governor_wiring():
         # Check if conversation exists or create one
         @sync_to_async
         def get_or_create_conv():
+            """Retrieve or create conv.
+                """
+
             conv, created = Conversation.objects.get_or_create(
                 agent_id=agent_id,
                 user_id=user_id,

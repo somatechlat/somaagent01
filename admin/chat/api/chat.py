@@ -136,6 +136,9 @@ async def list_conversations(
     @sync_to_async
     def _get_conversations():
         # Query Conversation model
+        """Execute get conversations.
+            """
+
         qs = Conversation.objects.filter(status="active")
 
         if user_id:
@@ -250,6 +253,9 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
             @sync_to_async
             def update_title():
+                """Execute update title.
+                    """
+
                 Conversation.objects.filter(id=conversation.id).update(title=payload.title)
 
             await update_title()
@@ -288,6 +294,9 @@ async def get_conversation(request, conversation_id: str) -> dict:
 
     @sync_to_async
     def _get():
+        """Execute get.
+            """
+
         try:
             conv = Conversation.objects.get(id=conversation_id)
             # Verify ownership if user_id available
@@ -342,6 +351,9 @@ async def get_messages(
     @sync_to_async
     def _get_messages():
         # Verify conversation exists
+        """Execute get messages.
+            """
+
         if not Conversation.objects.filter(id=conversation_id).exists():
             return None, 0
 
@@ -412,6 +424,9 @@ async def send_message(
     # Verify conversation exists and get agent_id
     @sync_to_async
     def _get_conversation():
+        """Execute get conversation.
+            """
+
         try:
             conv = Conversation.objects.get(id=conversation_id)
             return conv
@@ -447,6 +462,9 @@ async def send_message(
             # Get the created message
             @sync_to_async
             def get_last_message():
+                """Retrieve last message.
+                    """
+
                 return (
                     Message.objects.filter(
                         conversation_id=conversation_id,
@@ -478,6 +496,9 @@ async def send_message(
     # Store user message
     @sync_to_async
     def store_user_message():
+        """Execute store user message.
+            """
+
         msg = Message.objects.create(
             conversation_id=conversation_id,
             role="user",
@@ -521,6 +542,9 @@ async def get_chat_session(request, session_id: str) -> dict:
 
         @sync_to_async
         def _get():
+            """Execute get.
+                """
+
             return Session.objects.filter(session_id=session_id).first()
 
         session = await _get()

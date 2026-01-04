@@ -47,6 +47,8 @@ _DEFAULT_RULES = [
 
 @dataclass(frozen=True)
 class MaskRule:
+    """Maskrule class implementation."""
+
     id: str
     pattern: re.Pattern
     replacement: str
@@ -60,6 +62,9 @@ _MASK_EVENTS_TOTAL: Any = None  # type: ignore
 
 
 def _init_metrics() -> None:
+    """Execute init metrics.
+        """
+
     global _MASK_RULE_HITS, _MASK_EVENTS_TOTAL
     if Counter is None:
         return
@@ -84,6 +89,9 @@ def _init_metrics() -> None:
 
 
 def _load_rules_from_env() -> List[MaskRule]:
+    """Execute load rules from env.
+        """
+
     raw = os.environ.get("SA01_MASK_RULES")
     path = os.environ.get("SA01_MASK_RULES_FILE")
     rules: list[dict[str, str]] = []
@@ -115,6 +123,9 @@ def _load_rules_from_env() -> List[MaskRule]:
 
 
 def _rules() -> List[MaskRule]:
+    """Execute rules.
+        """
+
     global _RULES
     if _RULES is None:
         _RULES = _load_rules_from_env()

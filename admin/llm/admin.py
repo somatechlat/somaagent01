@@ -79,6 +79,12 @@ class LLMModelConfigAdmin(admin.ModelAdmin):
 
     @admin.display(description="Context")
     def ctx_length_display(self, obj):
+        """Execute ctx length display.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.ctx_length >= 100000:
             return f"{obj.ctx_length // 1000}K"
         elif obj.ctx_length >= 1000:
@@ -87,6 +93,12 @@ class LLMModelConfigAdmin(admin.ModelAdmin):
 
     @admin.display(description="Vision")
     def vision_badge(self, obj):
+        """Execute vision badge.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.vision:
             return format_html(
                 '<span style="background: #22c55e; color: white; padding: 2px 8px; '
@@ -99,18 +111,46 @@ class LLMModelConfigAdmin(admin.ModelAdmin):
 
     @admin.action(description="Activate selected models")
     def activate_models(self, request, queryset):
+        """Execute activate models.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True)
         self.message_user(request, f"{queryset.count()} models activated.")
 
     @admin.action(description="Deactivate selected models")
     def deactivate_models(self, request, queryset):
+        """Execute deactivate models.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False)
         self.message_user(request, f"{queryset.count()} models deactivated.")
 
     @admin.action(description="Enable vision capability")
     def enable_vision(self, request, queryset):
+        """Execute enable vision.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(vision=True)
 
     @admin.action(description="Disable vision capability")
     def disable_vision(self, request, queryset):
+        """Execute disable vision.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(vision=False)

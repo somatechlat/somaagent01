@@ -23,9 +23,14 @@ class UnifiedHealthMonitor:
     """
 
     def __init__(self, services: List[object]) -> None:
+        """Initialize the instance."""
+
         self._services = services
 
     async def _gather(self) -> Dict[str, Dict]:
+        """Execute gather.
+            """
+
         results: Dict[str, Dict] = {}
         for svc in self._services:
             try:
@@ -35,6 +40,9 @@ class UnifiedHealthMonitor:
         return results
 
     async def health_endpoint(self) -> Dict:
+        """Execute health endpoint.
+            """
+
         per = await self._gather()
         overall = all(v.get("healthy", False) for v in per.values())
         return {"healthy": overall, "services": per}
@@ -49,6 +57,9 @@ def attach_to_app(app, monitor: UnifiedHealthMonitor) -> None:
 
     @router.get("/v1/health")
     async def health() -> Dict:
+        """Execute health.
+            """
+
         return await monitor.health_endpoint()
 
     app.add_router("", router)

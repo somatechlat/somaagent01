@@ -78,6 +78,9 @@ class EnforcementResult:
 
     @property
     def allowed(self) -> bool:
+        """Execute allowed.
+            """
+
         return self.action in {EnforcementAction.ALLOW, EnforcementAction.WARN}
 
 
@@ -85,6 +88,8 @@ class EgressEnforcer:
     """Enforces egress/domain policies for network requests."""
 
     def __init__(self, capsule: CapsuleRecord):
+        """Initialize the instance."""
+
         self.capsule = capsule
         self.egress_mode = capsule.egress_mode
         self.allowed_domains = set(capsule.allowed_domains)
@@ -160,6 +165,8 @@ class ResourceEnforcer:
     """Enforces resource limits: wall clock time, concurrency."""
 
     def __init__(self, capsule: CapsuleRecord):
+        """Initialize the instance."""
+
         self.capsule = capsule
         self.max_wall_clock_seconds = capsule.max_wall_clock_seconds
         self.max_concurrent_nodes = capsule.max_concurrent_nodes
@@ -231,6 +238,8 @@ class HITLEnforcer:
     """Enforces Human-in-the-Loop requirements."""
 
     def __init__(self, capsule: CapsuleRecord):
+        """Initialize the instance."""
+
         self.capsule = capsule
         self.default_mode = capsule.default_hitl_mode
         self.max_pending = capsule.max_pending_hitl
@@ -330,6 +339,8 @@ class ExportEnforcer:
     """Enforces RL export restrictions."""
 
     def __init__(self, capsule: CapsuleRecord):
+        """Initialize the instance."""
+
         self.capsule = capsule
         self.export_allowed = capsule.rl_export_allowed
         self.export_scope = capsule.rl_export_scope
@@ -390,6 +401,8 @@ class CapsuleEnforcer:
     """Main enforcer combining all policy checks."""
 
     def __init__(self, capsule: CapsuleRecord):
+        """Initialize the instance."""
+
         self.capsule = capsule
         self.egress = EgressEnforcer(capsule)
         self.resources = ResourceEnforcer(capsule)

@@ -28,6 +28,8 @@ TRACER = trace.get_tracer(__name__)
 
 @dataclass
 class KafkaSettings:
+    """Kafkasettings class implementation."""
+
     bootstrap_servers: str
     security_protocol: str = "PLAINTEXT"
     sasl_mechanism: Optional[str] = None
@@ -36,6 +38,9 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls) -> "KafkaSettings":
+        """Execute from env.
+            """
+
         return cls(
             bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
             security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -49,10 +54,15 @@ class KafkaEventBus:
     """Thin wrapper around aiokafka producer/consumer."""
 
     def __init__(self, settings: Optional[KafkaSettings] = None) -> None:
+        """Initialize the instance."""
+
         self.settings = settings or KafkaSettings.from_env()
         self._producer: Optional[AIOKafkaProducer] = None
 
     async def _ensure_producer(self) -> AIOKafkaProducer:
+        """Execute ensure producer.
+            """
+
         if self._producer is None:
             kwargs: dict[str, Any] = {
                 "bootstrap_servers": self.settings.bootstrap_servers,
@@ -71,6 +81,9 @@ class KafkaEventBus:
         return self._producer
 
     async def healthcheck(self) -> None:
+        """Execute healthcheck.
+            """
+
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
 
@@ -164,6 +177,9 @@ class KafkaEventBus:
             LOGGER.info("Stopped consumer", extra={"topic": topic, "group_id": group_id})
 
     async def close(self) -> None:
+        """Execute close.
+            """
+
         if self._producer is not None:
             await self._producer.stop()
             self._producer = None
@@ -204,6 +220,12 @@ async def iterate_topic(
     stop_event = asyncio.Event()
 
     async def _handler(payload: dict[str, Any]) -> None:
+        """Execute handler.
+
+            Args:
+                payload: The payload.
+            """
+
         await queue.put(payload)
 
     consumer_task = asyncio.create_task(bus.consume(topic, group_id, _handler, stop_event))

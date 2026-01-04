@@ -19,6 +19,13 @@ try:
 except Exception:
 
     def simple_eval(expr: str, names: Mapping[str, Any] | None = None) -> bool:
+        """Execute simple eval.
+
+            Args:
+                expr: The expr.
+                names: The names.
+            """
+
         try:
             if names and "==" in expr:
                 left, right = expr.split("==", 1)
@@ -41,6 +48,13 @@ logging.getLogger("langchain_core.vectorstores.base").setLevel(logging.ERROR)
 
 
 def _env_flag(name: str, default: bool) -> bool:
+    """Execute env flag.
+
+        Args:
+            name: The name.
+            default: The default.
+        """
+
     v = os.environ.get(name)
     return v.strip().lower() in {"1", "true", "yes", "on"} if v else default
 
@@ -50,6 +64,8 @@ CACHE_WM_LIMIT = int(os.environ.get("SA01_CACHE_WM_LIMIT", "128") or "128")
 
 
 class MemoryArea(Enum):
+    """Memoryarea class implementation."""
+
     MAIN = "main"
     FRAGMENTS = "fragments"
     SOLUTIONS = "solutions"
@@ -65,6 +81,13 @@ class Memory:
 
     @staticmethod
     def _get_soma(agent, memory_subdir: str) -> SomaMemory:
+        """Execute get soma.
+
+            Args:
+                agent: The agent.
+                memory_subdir: The memory_subdir.
+            """
+
         if memory_subdir not in Memory._remote_instances:
             soma = SomaMemory(agent=agent, memory_subdir=memory_subdir, memory_area_enum=MemoryArea)
             soma._docstore.configure(CACHE_INCLUDE_WM, CACHE_WM_LIMIT)
@@ -73,6 +96,12 @@ class Memory:
 
     @staticmethod
     async def get(agent: Agent):
+        """Execute get.
+
+            Args:
+                agent: The agent.
+            """
+
         memory_subdir = agent.config.memory_subdir or "default"
         return Memory._get_soma(agent, memory_subdir)
 
@@ -80,10 +109,24 @@ class Memory:
     async def get_by_subdir(
         memory_subdir: str, log_item: LogItem | None = None, preload_knowledge: bool = True
     ):
+        """Retrieve by subdir.
+
+            Args:
+                memory_subdir: The memory_subdir.
+                log_item: The log_item.
+                preload_knowledge: The preload_knowledge.
+            """
+
         return Memory._get_soma(None, memory_subdir)
 
     @staticmethod
     async def reload(agent: Agent):
+        """Execute reload.
+
+            Args:
+                agent: The agent.
+            """
+
         memory_subdir = agent.config.memory_subdir or "default"
         if memory_subdir in Memory._remote_instances:
             await Memory._remote_instances[memory_subdir].refresh()
@@ -91,12 +134,22 @@ class Memory:
         return await Memory.get(agent)
 
     def __init__(self, db: Any, memory_subdir: str):
+        """Initialize the instance."""
+
         self.db = db
         self.memory_subdir = memory_subdir
 
     async def preload_knowledge(
         self, log_item: LogItem | None, kn_dirs: list[str], memory_subdir: str
     ):
+        """Execute preload knowledge.
+
+            Args:
+                log_item: The log_item.
+                kn_dirs: The kn_dirs.
+                memory_subdir: The memory_subdir.
+            """
+
         if log_item:
             log_item.update(heading="Preloading knowledge...")
         db_dir = Memory._abs_db_dir(memory_subdir)
@@ -138,11 +191,26 @@ class Memory:
             json.dump(index, f)
 
     def get_document_by_id(self, id: str) -> Document | None:
+        """Retrieve document by id.
+
+            Args:
+                id: The id.
+            """
+
         return self.db.get_by_ids(id)[0]
 
     async def search_similarity_threshold(
         self, query: str, limit: int, threshold: float, filter: str = ""
     ):
+        """Execute search similarity threshold.
+
+            Args:
+                query: The query.
+                limit: The limit.
+                threshold: The threshold.
+                filter: The filter.
+            """
+
         comparator = Memory._get_comparator(filter) if filter else None
         return await self.db.asearch(
             query,
@@ -153,6 +221,14 @@ class Memory:
         )
 
     async def delete_documents_by_query(self, query: str, threshold: float, filter: str = ""):
+        """Execute delete documents by query.
+
+            Args:
+                query: The query.
+                threshold: The threshold.
+                filter: The filter.
+            """
+
         k, tot, removed = 100, 0, []
         while True:
             docs = await self.search_similarity_threshold(
@@ -170,6 +246,12 @@ class Memory:
         return removed
 
     async def delete_documents_by_ids(self, ids: list[str]):
+        """Execute delete documents by ids.
+
+            Args:
+                ids: The ids.
+            """
+
         rem_docs = await self.db.aget_by_ids(ids)
         if rem_docs:
             rem_ids = [doc.metadata["id"] for doc in rem_docs]
@@ -178,20 +260,48 @@ class Memory:
         return rem_docs
 
     async def get_all_docs(self) -> dict[str, Document]:
+        """Retrieve all docs.
+            """
+
         return self.db.get_all_docs()
 
     async def get_documents_by_ids(self, ids: Sequence[str]) -> List[Document]:
+        """Retrieve documents by ids.
+
+            Args:
+                ids: The ids.
+            """
+
         return await self.db.aget_by_ids(ids)
 
     async def delete_by_ids(self, ids: Sequence[str]) -> List[Document]:
+        """Execute delete by ids.
+
+            Args:
+                ids: The ids.
+            """
+
         return await self.delete_documents_by_ids(list(ids))
 
     async def insert_text(self, text, metadata: dict = {}):
+        """Execute insert text.
+
+            Args:
+                text: The text.
+                metadata: The metadata.
+            """
+
         doc = Document(text, metadata=metadata)
         ids = await self.insert_documents([doc])
         return ids[0]
 
     async def insert_documents(self, docs: list[Document]):
+        """Execute insert documents.
+
+            Args:
+                docs: The docs.
+            """
+
         ids = [self._generate_doc_id() for _ in range(len(docs))]
         timestamp = self.get_timestamp()
         for doc, id in zip(docs, ids, strict=False):
@@ -204,6 +314,12 @@ class Memory:
         return ids
 
     async def update_documents(self, docs: list[Document]):
+        """Execute update documents.
+
+            Args:
+                docs: The docs.
+            """
+
         ids = [doc.metadata["id"] for doc in docs]
         await self.db.adelete(ids=ids)
         ins = await self.db.aadd_documents(documents=docs, ids=ids)
@@ -211,9 +327,15 @@ class Memory:
         return ins
 
     def _save_db(self):
+        """Execute save db.
+            """
+
         Memory._save_db_file(self.db, self.memory_subdir)
 
     def _generate_doc_id(self):
+        """Execute generate doc id.
+            """
+
         while True:
             doc_id = guids.generate_id(10)
             if not self.db.get_by_ids(doc_id):
@@ -221,11 +343,30 @@ class Memory:
 
     @staticmethod
     def _save_db_file(db: Any, memory_subdir: str):
+        """Execute save db file.
+
+            Args:
+                db: The db.
+                memory_subdir: The memory_subdir.
+            """
+
         db.save_local(folder_path=Memory._abs_db_dir(memory_subdir))
 
     @staticmethod
     def _get_comparator(condition: str):
+        """Execute get comparator.
+
+            Args:
+                condition: The condition.
+            """
+
         def comparator(data: dict[str, Any]):
+            """Execute comparator.
+
+                Args:
+                    data: The data.
+                """
+
             try:
                 return simple_eval(condition, names=data)
             except Exception as e:
@@ -236,14 +377,32 @@ class Memory:
 
     @staticmethod
     def _cosine_normalizer(val: float) -> float:
+        """Execute cosine normalizer.
+
+            Args:
+                val: The val.
+            """
+
         return max(0, min(1, (1 + val) / 2))
 
     @staticmethod
     def _abs_db_dir(memory_subdir: str) -> str:
+        """Execute abs db dir.
+
+            Args:
+                memory_subdir: The memory_subdir.
+            """
+
         return files.get_abs_path("memory", memory_subdir)
 
     @staticmethod
     def format_docs_plain(docs: list[Document]) -> list[str]:
+        """Execute format docs plain.
+
+            Args:
+                docs: The docs.
+            """
+
         result = []
         for doc in docs:
             text = "".join(f"{k}: {v}\n" for k, v in doc.metadata.items())
@@ -253,14 +412,29 @@ class Memory:
 
     @staticmethod
     def get_timestamp():
+        """Retrieve timestamp.
+            """
+
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_memory_subdir_abs(agent: Agent) -> str:
+    """Retrieve memory subdir abs.
+
+        Args:
+            agent: The agent.
+        """
+
     return files.get_abs_path("memory", agent.config.memory_subdir or "default")
 
 
 def get_custom_knowledge_subdir_abs(agent: Agent) -> str:
+    """Retrieve custom knowledge subdir abs.
+
+        Args:
+            agent: The agent.
+        """
+
     for dir in agent.config.knowledge_subdirs:
         if dir != "default":
             return files.get_abs_path("knowledge", dir)
@@ -268,4 +442,7 @@ def get_custom_knowledge_subdir_abs(agent: Agent) -> str:
 
 
 def reload():
+    """Execute reload.
+        """
+
     Memory.index = {}

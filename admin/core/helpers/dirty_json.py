@@ -1,7 +1,15 @@
+"""Module dirty_json."""
+
 import json
 
 
 def try_parse(json_string: str):
+    """Execute try parse.
+
+        Args:
+            json_string: The json_string.
+        """
+
     try:
         return json.loads(json_string)
     except json.JSONDecodeError:
@@ -9,18 +17,37 @@ def try_parse(json_string: str):
 
 
 def parse(json_string: str):
+    """Execute parse.
+
+        Args:
+            json_string: The json_string.
+        """
+
     return DirtyJson.parse_string(json_string)
 
 
 def stringify(obj, **kwargs):
+    """Execute stringify.
+
+        Args:
+            obj: The obj.
+        """
+
     return json.dumps(obj, ensure_ascii=False, **kwargs)
 
 
 class DirtyJson:
+    """Dirtyjson class implementation."""
+
     def __init__(self):
+        """Initialize the instance."""
+
         self._reset()
 
     def _reset(self):
+        """Execute reset.
+            """
+
         self.json_string = ""
         self.index = 0
         self.current_char = None
@@ -29,10 +56,22 @@ class DirtyJson:
 
     @staticmethod
     def parse_string(json_string):
+        """Execute parse string.
+
+            Args:
+                json_string: The json_string.
+            """
+
         parser = DirtyJson()
         return parser.parse(json_string)
 
     def parse(self, json_string):
+        """Execute parse.
+
+            Args:
+                json_string: The json_string.
+            """
+
         self._reset()
         self.json_string = json_string
 
@@ -53,6 +92,12 @@ class DirtyJson:
         return self.result
 
     def feed(self, chunk):
+        """Execute feed.
+
+            Args:
+                chunk: The chunk.
+            """
+
         self.json_string += chunk
         if not self.current_char and self.json_string:
             self.current_char = self.json_string[0]
@@ -60,6 +105,12 @@ class DirtyJson:
         return self.result
 
     def _advance(self, count=1):
+        """Execute advance.
+
+            Args:
+                count: The count.
+            """
+
         self.index += count
         if self.index < len(self.json_string):
             self.current_char = self.json_string[self.index]
@@ -67,6 +118,9 @@ class DirtyJson:
             self.current_char = None
 
     def _skip_whitespace(self):
+        """Execute skip whitespace.
+            """
+
         while self.current_char is not None:
             if self.current_char.isspace():
                 self._advance()
@@ -78,12 +132,18 @@ class DirtyJson:
                 break
 
     def _skip_single_line_comment(self):
+        """Execute skip single line comment.
+            """
+
         while self.current_char is not None and self.current_char != "\n":
             self._advance()
         if self.current_char == "\n":
             self._advance()
 
     def _skip_multi_line_comment(self):
+        """Execute skip multi line comment.
+            """
+
         self._advance(2)  # Skip /*
         while self.current_char is not None:
             if self.current_char == "*" and self._peek(1) == "/":
@@ -92,12 +152,18 @@ class DirtyJson:
             self._advance()
 
     def _parse(self):
+        """Execute parse.
+            """
+
         if self.result is None:
             self.result = self._parse_value()
         else:
             self._continue_parsing()
 
     def _continue_parsing(self):
+        """Execute continue parsing.
+            """
+
         while self.current_char is not None:
             if isinstance(self.result, dict):
                 self._parse_object_content()
@@ -109,6 +175,9 @@ class DirtyJson:
                 break
 
     def _parse_value(self):
+        """Execute parse value.
+            """
+
         self._skip_whitespace()
         if self.current_char == "{":
             if self._peek(1) == "{":  # Handle {{
@@ -134,6 +203,12 @@ class DirtyJson:
 
     def _match(self, text: str) -> bool:
         # first char should match current char
+        """Execute match.
+
+            Args:
+                text: The text.
+            """
+
         if not self.current_char or self.current_char.lower() != text[0].lower():
             return False
 
@@ -145,6 +220,9 @@ class DirtyJson:
         return False
 
     def _parse_object(self):
+        """Execute parse object.
+            """
+
         obj = {}
         self._advance()  # Skip opening brace
         self.stack.append(obj)
@@ -152,6 +230,9 @@ class DirtyJson:
         return obj
 
     def _parse_object_content(self):
+        """Execute parse object content.
+            """
+
         while self.current_char is not None:
             self._skip_whitespace()
             if self.current_char == "}":
@@ -190,6 +271,9 @@ class DirtyJson:
                 continue
 
     def _parse_key(self):
+        """Execute parse key.
+            """
+
         self._skip_whitespace()
         if self.current_char in ['"', "'"]:
             return self._parse_string()
@@ -197,6 +281,9 @@ class DirtyJson:
             return self._parse_unquoted_key()
 
     def _parse_unquoted_key(self):
+        """Execute parse unquoted key.
+            """
+
         result = ""
         while (
             self.current_char is not None
@@ -208,6 +295,9 @@ class DirtyJson:
         return result
 
     def _parse_array(self):
+        """Execute parse array.
+            """
+
         arr = []
         self._advance()  # Skip opening bracket
         self.stack.append(arr)
@@ -215,6 +305,9 @@ class DirtyJson:
         return arr
 
     def _parse_array_content(self):
+        """Execute parse array content.
+            """
+
         while self.current_char is not None:
             self._skip_whitespace()
             if self.current_char == "]":
@@ -238,6 +331,9 @@ class DirtyJson:
                 return
 
     def _parse_string(self):
+        """Execute parse string.
+            """
+
         result = ""
         quote_char = self.current_char
         self._advance()  # Skip opening quote
@@ -276,6 +372,9 @@ class DirtyJson:
         return result
 
     def _parse_multiline_string(self):
+        """Execute parse multiline string.
+            """
+
         result = ""
         quote_char = self.current_char
         self._advance(3)  # Skip first quote
@@ -288,6 +387,9 @@ class DirtyJson:
         return result.strip()
 
     def _parse_number(self):
+        """Execute parse number.
+            """
+
         number_str = ""
         while self.current_char is not None and (
             self.current_char.isdigit() or self.current_char in ["-", "+", ".", "e", "E"]
@@ -300,6 +402,9 @@ class DirtyJson:
             return float(number_str)
 
     def _parse_unquoted_string(self):
+        """Execute parse unquoted string.
+            """
+
         result = ""
         while self.current_char is not None and self.current_char not in [
             ":",
@@ -313,6 +418,12 @@ class DirtyJson:
         return result.strip()
 
     def _peek(self, n):
+        """Execute peek.
+
+            Args:
+                n: The n.
+            """
+
         peek_index = self.index + 1
         result = ""
         for _ in range(n):
@@ -324,6 +435,12 @@ class DirtyJson:
         return result
 
     def get_start_pos(self, input_str: str) -> int:
+        """Retrieve start pos.
+
+            Args:
+                input_str: The input_str.
+            """
+
         chars = ["{", "[", '"']
         indices = [input_str.find(char) for char in chars if input_str.find(char) != -1]
         return min(indices) if indices else 0

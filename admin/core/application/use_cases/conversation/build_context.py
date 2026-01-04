@@ -18,11 +18,25 @@ class ContextBuilderProtocol(Protocol):
 
     async def build_for_turn(
         self, turn_envelope: Dict[str, Any], max_prompt_tokens: int
+        """Execute build for turn.
+
+            Args:
+                turn_envelope: The turn_envelope.
+                max_prompt_tokens: The max_prompt_tokens.
+            """
+
     ) -> Any: ...
 
 
 class SessionRepositoryProtocol(Protocol):
     """Protocol for session operations."""
+
+        """Execute list events.
+
+            Args:
+                session_id: The session_id.
+                limit: The limit.
+            """
 
     async def list_events(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]: ...
 
@@ -57,6 +71,8 @@ class BuildContextUseCase:
         context_builder: ContextBuilderProtocol,
         session_repo: SessionRepositoryProtocol,
     ):
+        """Initialize the instance."""
+
         self._context_builder = context_builder
         self._session_repo = session_repo
 

@@ -1,3 +1,5 @@
+"""Module features."""
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional
 
@@ -9,6 +11,8 @@ State = Literal["on", "degraded", "disabled"]
 
 @dataclass(frozen=True)
 class FeatureDescriptor:
+    """Featuredescriptor class implementation."""
+
     key: str
     description: str
     default_enabled: bool
@@ -23,22 +27,44 @@ class FeatureDescriptor:
 
 
 class FeatureRegistry:
+    """Featureregistry class implementation."""
+
     def __init__(self, descriptors: List[FeatureDescriptor], profile: Profile = "enhanced"):
+        """Initialize the instance."""
+
         self._descriptors: Dict[str, FeatureDescriptor] = {d.key: d for d in descriptors}
         self._profile: Profile = profile
         self._state_cache: Dict[str, State] = {}
 
     @property
     def profile(self) -> Profile:
+        """Execute profile.
+            """
+
         return self._profile
 
     def describe(self) -> List[FeatureDescriptor]:
+        """Execute describe.
+            """
+
         return list(self._descriptors.values())
 
     def is_enabled(self, key: str) -> bool:
+        """Check if enabled.
+
+            Args:
+                key: The key.
+            """
+
         return self.state(key) == "on" or self.state(key) == "degraded"
 
     def state(self, key: str) -> State:
+        """Execute state.
+
+            Args:
+                key: The key.
+            """
+
         if key in self._state_cache:
             return self._state_cache[key]
         desc = self._descriptors[key]
@@ -65,6 +91,9 @@ class FeatureRegistry:
 
 def build_default_registry() -> FeatureRegistry:
     # Use the central runtime_config.env helper for consistency.
+    """Execute build default registry.
+        """
+
     profile = os.environ.get("SA01_FEATURE_PROFILE", "enhanced").lower()
     if profile not in {"minimal", "standard", "enhanced", "max"}:
         profile = "enhanced"

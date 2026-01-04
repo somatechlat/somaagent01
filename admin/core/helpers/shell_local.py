@@ -1,3 +1,5 @@
+"""Module shell_local."""
+
 from typing import Optional, Tuple
 
 from admin.core.helpers import tty_session
@@ -5,21 +7,37 @@ from admin.core.helpers.shell_ssh import clean_string
 
 
 class LocalInteractiveSession:
+    """Localinteractivesession class implementation."""
+
     def __init__(self):
+        """Initialize the instance."""
+
         self.session: tty_session.TTYSession | None = None
         self.full_output = ""
 
     async def connect(self):
+        """Execute connect.
+            """
+
         self.session = tty_session.TTYSession("/bin/bash")
         await self.session.start()
         await self.session.read_full_until_idle(idle_timeout=1, total_timeout=1)
 
     async def close(self):
+        """Execute close.
+            """
+
         if self.session:
             self.session.kill()
             # self.session.wait()
 
     async def send_command(self, command: str):
+        """Execute send command.
+
+            Args:
+                command: The command.
+            """
+
         if not self.session:
             raise Exception("Shell not connected")
         self.full_output = ""
@@ -28,6 +46,13 @@ class LocalInteractiveSession:
     async def read_output(
         self, timeout: float = 0, reset_full_output: bool = False
     ) -> Tuple[str, Optional[str]]:
+        """Execute read output.
+
+            Args:
+                timeout: The timeout.
+                reset_full_output: The reset_full_output.
+            """
+
         if not self.session:
             raise Exception("Shell not connected")
 

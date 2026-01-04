@@ -32,6 +32,12 @@ class _BaseClient(Protocol):
 
     async def process(
         self, audio_stream: "AsyncGenerator[bytes, None]"
+        """Execute process.
+
+            Args:
+                audio_stream: The audio_stream.
+            """
+
     ) -> "AsyncGenerator[object, None]": ...
 
 

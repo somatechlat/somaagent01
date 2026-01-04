@@ -23,6 +23,8 @@ class StoreMemoryUseCase:
         memory_adapter: MemoryAdapterPort,
         event_bus: EventBusPort,
     ):
+        """Initialize the instance."""
+
         self._memory = memory_adapter
         self._bus = event_bus
 

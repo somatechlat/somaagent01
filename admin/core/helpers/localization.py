@@ -1,3 +1,5 @@
+"""Module localization."""
+
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 import pytz  # type: ignore
@@ -18,11 +20,16 @@ class Localization:
 
     @classmethod
     def get(cls, *args, **kwargs):
+        """Execute get.
+            """
+
         if cls._instance is None:
             cls._instance = cls(*args, **kwargs)
         return cls._instance
 
     def __init__(self, timezone: str | None = None):
+        """Initialize the instance."""
+
         self.timezone: str = "UTC"
         self._offset_minutes: int = 0
         self._last_timezone_change: datetime | None = None
@@ -47,15 +54,27 @@ class Localization:
                 save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
 
     def get_timezone(self) -> str:
+        """Retrieve timezone.
+            """
+
         return self.timezone
 
     def _compute_offset_minutes(self, timezone_name: str) -> int:
+        """Execute compute offset minutes.
+
+            Args:
+                timezone_name: The timezone_name.
+            """
+
         tzinfo = pytz.timezone(timezone_name)
         now_in_tz = datetime.now(tzinfo)
         offset = now_in_tz.utcoffset()
         return int(offset.total_seconds() // 60) if offset else 0
 
     def get_offset_minutes(self) -> int:
+        """Retrieve offset minutes.
+            """
+
         return self._offset_minutes
 
     def _can_change_timezone(self) -> bool:

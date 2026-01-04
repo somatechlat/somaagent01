@@ -55,6 +55,8 @@ class Conversation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "conversations"
         ordering = ["-updated_at"]
         indexes = [
@@ -64,6 +66,8 @@ class Conversation(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Conversation({self.id}:{self.title or 'Untitled'})"
 
 
@@ -101,6 +105,8 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "messages"
         ordering = ["created_at"]
         indexes = [
@@ -108,6 +114,8 @@ class Message(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Message({self.id}:{self.role})"
 
 
@@ -132,6 +140,8 @@ class ConversationParticipant(models.Model):
     left_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "conversation_participants"
         unique_together = [["conversation_id", "user_id"]]
         indexes = [
@@ -139,4 +149,6 @@ class ConversationParticipant(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Participant({self.user_id}:{self.conversation_id})"

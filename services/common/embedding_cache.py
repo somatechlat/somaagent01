@@ -1,3 +1,5 @@
+"""Module embedding_cache."""
+
 from __future__ import annotations
 
 import hashlib
@@ -22,10 +24,18 @@ if Counter:
 else:  # pragma: no cover
 
     class _Dummy:
+        """Dummy class implementation."""
+
         def labels(self, *_args, **_kwargs):
+            """Execute labels.
+                """
+
             return self
 
         def inc(self, *_args, **_kwargs):
+            """Execute inc.
+                """
+
             pass
 
     EMBED_CACHE_EVENTS = _Dummy()  # type: ignore
@@ -40,15 +50,29 @@ class EmbeddingCache:
     """
 
     def __init__(self, capacity: int = 2048) -> None:
+        """Initialize the instance."""
+
         self.capacity = max(1, capacity)
         self._data: "OrderedDict[str, List[float]]" = OrderedDict()
 
     @staticmethod
     def make_key(text: str) -> str:
+        """Execute make key.
+
+            Args:
+                text: The text.
+            """
+
         h = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return h
 
     def get(self, text: str) -> List[float] | None:
+        """Execute get.
+
+            Args:
+                text: The text.
+            """
+
         k = self.make_key(text)
         with _CACHE_LOCK:
             vec = self._data.get(k)
@@ -61,6 +85,13 @@ class EmbeddingCache:
             return None
 
     def store(self, text: str, vector: List[float]) -> None:
+        """Execute store.
+
+            Args:
+                text: The text.
+                vector: The vector.
+            """
+
         k = self.make_key(text)
         with _CACHE_LOCK:
             if k in self._data:
@@ -76,6 +107,9 @@ class EmbeddingCache:
             EMBED_CACHE_EVENTS.labels("store").inc()
 
     def stats(self) -> Dict[str, int]:
+        """Execute stats.
+            """
+
         with _CACHE_LOCK:
             return {"size": len(self._data), "capacity": self.capacity}
 
@@ -85,6 +119,9 @@ _GLOBAL_CACHE: EmbeddingCache | None = None
 
 
 def get_cache() -> EmbeddingCache:
+    """Retrieve cache.
+        """
+
     global _GLOBAL_CACHE
     if _GLOBAL_CACHE is None:
         _GLOBAL_CACHE = EmbeddingCache()

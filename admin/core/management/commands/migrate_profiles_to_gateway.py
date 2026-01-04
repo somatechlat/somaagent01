@@ -25,6 +25,12 @@ MODEL_PROFILES = f"{GATEWAY_BASE}/v1/model-profiles"
 
 
 def _push_via_ui_settings(profile: Dict[str, Any]) -> bool:
+    """Execute push via ui settings.
+
+        Args:
+            profile: The profile.
+        """
+
     payload = {"model_profile": profile}
     try:
         resp = requests.put(UI_SETTINGS, json=payload, timeout=5.0)
@@ -35,6 +41,12 @@ def _push_via_ui_settings(profile: Dict[str, Any]) -> bool:
 
 def _push_via_api(profile: Dict[str, Any]) -> bool:
     # direct upsert requires two path params (role/deployment). We'll call the PUT endpoint
+    """Execute push via api.
+
+        Args:
+            profile: The profile.
+        """
+
     role = profile.get("role") or "dialogue"
     dep = profile.get("deployment_mode") or os.environ.get("DEPLOYMENT_MODE", "DEV") or "DEV"
     url = f"{MODEL_PROFILES}/{role}/{dep}"
@@ -46,6 +58,12 @@ def _push_via_api(profile: Dict[str, Any]) -> bool:
 
 
 def migrate(profiles: List[Dict[str, Any]]) -> int:
+    """Execute migrate.
+
+        Args:
+            profiles: The profiles.
+        """
+
     failed = 0
     for p in profiles:
         ok = _push_via_ui_settings(p)
@@ -66,6 +84,9 @@ def migrate(profiles: List[Dict[str, Any]]) -> int:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", help="Path to JSON file with a list of profiles")
     ap.add_argument("--single", help="JSON string for a single profile")

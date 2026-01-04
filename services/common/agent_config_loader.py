@@ -31,11 +31,26 @@ async def validate_knowledge_subdirs(subdirs: List[str]) -> bool:
 
 
 def _find_section(settings: dict, section_id: str) -> dict:
+    """Execute find section.
+
+        Args:
+            settings: The settings.
+            section_id: The section_id.
+        """
+
     sections = settings.get("sections", [])
     return next((s for s in sections if s["id"] == section_id), {})
 
 
 def _get_field(section: dict, field_id: str, default: Any = None) -> Any:
+    """Execute get field.
+
+        Args:
+            section: The section.
+            field_id: The field_id.
+            default: The default.
+        """
+
     fields = section.get("fields", [])
     field = next((f for f in fields if f["id"] == field_id), None)
     if field and "value" in field:
@@ -85,6 +100,14 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
 
     # Helper to build ModelConfig
     def build_model_config(idx: str, section: dict, model_type: ModelType) -> ModelConfig:
+        """Execute build model config.
+
+            Args:
+                idx: The idx.
+                section: The section.
+                model_type: The model_type.
+            """
+
         provider = _get_field(section, f"{idx}_provider")  # REQUIRED - no hardcoded default
         # Model name must be explicitly configured in AgentSetting database
         model_name = _get_field(section, f"{idx}_model_name")

@@ -24,6 +24,8 @@ UPLOAD_QUARANTINED = Counter(
 
 
 class ScanStatus(Enum):
+    """Scanstatus class implementation."""
+
     CLEAN = "clean"
     QUARANTINED = "quarantined"
     SCAN_PENDING = "scan_pending"
@@ -32,18 +34,24 @@ class ScanStatus(Enum):
 
 @dataclass
 class ScanResult:
+    """Scanresult class implementation."""
+
     status: ScanStatus
     threat_name: Optional[str] = None
     error_message: Optional[str] = None
 
 
 class ClamAVScanner:
+    """Clamavscanner class implementation."""
+
     def __init__(
         self,
         socket_path: Optional[str] = None,
         host: Optional[str] = None,
         port: Optional[int] = None,
     ):
+        """Initialize the instance."""
+
         self._socket_path = socket_path or os.environ.get(
             "SA01_CLAMAV_SOCKET", "/var/run/clamav/clamd.sock"
         )
@@ -51,6 +59,9 @@ class ClamAVScanner:
         self._port = port or int(os.environ.get("SA01_CLAMAV_PORT", "3310"))
 
     def _get_clamd(self):
+        """Execute get clamd.
+            """
+
         import pyclamd
 
         # Try UNIX socket
@@ -79,6 +90,12 @@ class ClamAVScanner:
         raise ConnectionError("ClamAV unavailable")
 
     def scan_bytes(self, content: bytes) -> ScanResult:
+        """Execute scan bytes.
+
+            Args:
+                content: The content.
+            """
+
         start = time.time()
         try:
             try:
@@ -112,6 +129,9 @@ class ClamAVScanner:
             return ScanResult(status=ScanStatus.ERROR, error_message=str(exc))
 
     def ping(self) -> bool:
+        """Execute ping.
+            """
+
         try:
             self._get_clamd()
             return True

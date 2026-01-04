@@ -30,6 +30,8 @@ class HealthMonitor:
     """Monitor health of conversation worker dependencies."""
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._somabrain_healthy = True
         self._last_check = 0.0
         self._check_interval = 30.0  # seconds

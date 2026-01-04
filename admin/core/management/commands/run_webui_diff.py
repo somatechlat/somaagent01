@@ -1,3 +1,5 @@
+"""Module run_webui_diff."""
+
 #!/usr/bin/env python3
 import difflib
 import hashlib
@@ -21,6 +23,12 @@ os.makedirs(ASSET, exist_ok=True)
 
 
 def sha256(path: Path):
+    """Execute sha256.
+
+        Args:
+            path: The path.
+        """
+
     h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -29,6 +37,12 @@ def sha256(path: Path):
 
 
 def is_text(path: Path):
+    """Check if text.
+
+        Args:
+            path: The path.
+        """
+
     try:
         suf = path.suffix.lower()
         if suf in TEXT_EXTS:
@@ -43,6 +57,12 @@ def is_text(path: Path):
 
 
 def relpaths(base: Path):
+    """Execute relpaths.
+
+        Args:
+            base: The base.
+        """
+
     files = []
     if not base.exists():
         return files

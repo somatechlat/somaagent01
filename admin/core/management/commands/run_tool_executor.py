@@ -23,6 +23,12 @@ class Command(BaseCommand):
     help = "Run the tool executor worker (Kafka consumer for tool execution)"
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--consumer-group",
             type=str,
@@ -37,6 +43,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         consumer_group = options["consumer_group"]
         topic = options["topic"]
 

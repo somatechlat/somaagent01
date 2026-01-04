@@ -16,12 +16,16 @@ import os
 
 @dataclass
 class ConstitutionPayload:
+    """Constitutionpayload class implementation."""
+
     version: str
     text: str
 
 
 @dataclass
 class PersonaPayload:
+    """Personapayload class implementation."""
+
     version: Optional[str]
     text: str
 
@@ -30,6 +34,8 @@ class ConstitutionPromptProvider:
     """Fetches and caches the signed Constitution. Fail-closed on errors."""
 
     def __init__(self, client: SomaClient, ttl_seconds: int = 300) -> None:
+        """Initialize the instance."""
+
         self.client = client
         self.ttl = ttl_seconds
         self._cached: Optional[ConstitutionPayload] = None
@@ -37,6 +43,9 @@ class ConstitutionPromptProvider:
         self._lock = asyncio.Lock()
 
     async def get(self) -> ConstitutionPayload:
+        """Execute get.
+            """
+
         now = time.time()
         if self._cached and now < self._expires_at:
             return self._cached
@@ -49,6 +58,9 @@ class ConstitutionPromptProvider:
             return payload
 
     async def reload(self) -> ConstitutionPayload:
+        """Execute reload.
+            """
+
         async with self._lock:
             payload = await self._fetch()
             self._cached = payload
@@ -56,6 +68,9 @@ class ConstitutionPromptProvider:
             return payload
 
     async def _fetch(self) -> ConstitutionPayload:
+        """Execute fetch.
+            """
+
         try:
             resp = await self.client.constitution_version()
         except Exception as exc:
@@ -71,12 +86,21 @@ class PersonaProvider:
     """Returns persona prompt fragment for tenant/persona; cached with TTL."""
 
     def __init__(self, client: SomaClient, ttl_seconds: int = 300) -> None:
+        """Initialize the instance."""
+
         self.client = client
         self.ttl = ttl_seconds
         self._cache: dict[Tuple[str, str], Tuple[PersonaPayload, float]] = {}
         self._lock = asyncio.Lock()
 
     async def get(self, tenant_id: str, persona_id: Optional[str]) -> PersonaPayload:
+        """Execute get.
+
+            Args:
+                tenant_id: The tenant_id.
+                persona_id: The persona_id.
+            """
+
         key = (tenant_id, persona_id or "")
         now = time.time()
         cached = self._cache.get(key)
@@ -91,6 +115,13 @@ class PersonaProvider:
             return payload
 
     async def _fetch(self, tenant_id: str, persona_id: Optional[str]) -> PersonaPayload:
+        """Execute fetch.
+
+            Args:
+                tenant_id: The tenant_id.
+                persona_id: The persona_id.
+            """
+
         if not persona_id:
             return PersonaPayload(version=None, text="")
         try:
@@ -103,6 +134,13 @@ class PersonaProvider:
 
 
 def ttl_from_env(key: str, default: int) -> int:
+    """Execute ttl from env.
+
+        Args:
+            key: The key.
+            default: The default.
+        """
+
     try:
         return int(os.environ.get(key, str(default)) or default)
     except Exception:

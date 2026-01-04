@@ -12,6 +12,8 @@ import os
 
 
 class RequeueStore:
+    """Requeuestore class implementation."""
+
     def __init__(
         self,
         url: Optional[str] = None,
@@ -30,6 +32,12 @@ class RequeueStore:
         self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
 
     def _key(self, identifier: str) -> str:
+        """Execute key.
+
+            Args:
+                identifier: The identifier.
+            """
+
         return f"{self.prefix}:{identifier}"
 
     @classmethod
@@ -58,11 +66,23 @@ class RequeueStore:
         await self.client.sadd(self.keyset, identifier)
 
     async def remove(self, identifier: str) -> None:
+        """Execute remove.
+
+            Args:
+                identifier: The identifier.
+            """
+
         key = self._key(identifier)
         await self.client.delete(key)
         await self.client.srem(self.keyset, identifier)
 
     async def get(self, identifier: str) -> Optional[dict[str, Any]]:
+        """Execute get.
+
+            Args:
+                identifier: The identifier.
+            """
+
         key = self._key(identifier)
         raw = await self.client.get(key)
         if raw is None:
@@ -70,6 +90,9 @@ class RequeueStore:
         return json.loads(raw)
 
     async def list(self) -> list[dict[str, Any]]:
+        """Execute list.
+            """
+
         identifiers = await self.client.smembers(self.keyset)
         results: list[dict[str, Any]] = []
         for identifier in identifiers:

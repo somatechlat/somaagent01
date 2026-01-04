@@ -29,6 +29,8 @@ class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open."""
 
     def __init__(self, circuit_name: str, message: str = "Circuit breaker is open"):
+        """Initialize the instance."""
+
         self.circuit_name = circuit_name
         super().__init__(f"{circuit_name}: {message}")
 
@@ -61,6 +63,8 @@ class CircuitBreaker:
         expected_exception: Type[Exception] = Exception,
         name: str = "default",
     ):
+        """Initialize the instance."""
+
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.expected_exception = expected_exception
@@ -186,6 +190,8 @@ class CircuitBreaker:
         logger.warning(f"Circuit {self.name} forced open")
 
     def __repr__(self) -> str:
+        """Return object representation."""
+
         return (
             f"<CircuitBreaker name={self.name} state={self._state.value} "
             f"failures={self._failure_count}>"

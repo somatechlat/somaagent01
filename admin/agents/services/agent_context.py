@@ -18,6 +18,8 @@ from admin.core.helpers.localization import Localization
 
 
 class AgentContextType(Enum):
+    """Agentcontexttype class implementation."""
+
     USER = "user"
     TASK = "task"
     BACKGROUND = "background"
@@ -73,6 +75,8 @@ class AgentContext:
         type: AgentContextType = AgentContextType.USER,
         last_message: datetime | None = None,
     ):
+        """Initialize the instance."""
+
         self.id = id or AgentContext.generate_id()
         self.name = name
         self.config = config
@@ -96,6 +100,9 @@ class AgentContext:
 
     @property
     def agent0(self) -> "Agent":
+        """Execute agent0.
+            """
+
         if self._agent0 is None:
             from agent import Agent
 
@@ -104,25 +111,49 @@ class AgentContext:
 
     @agent0.setter
     def agent0(self, value: "Agent | None"):
+        """Execute agent0.
+
+            Args:
+                value: The value.
+            """
+
         self._agent0 = value
 
     @staticmethod
     def get(id: str) -> "AgentContext | None":
+        """Execute get.
+
+            Args:
+                id: The id.
+            """
+
         return AgentContext._contexts.get(id, None)
 
     @staticmethod
     def first() -> "AgentContext | None":
+        """Execute first.
+            """
+
         if not AgentContext._contexts:
             return None
         return list(AgentContext._contexts.values())[0]
 
     @staticmethod
     def all() -> list["AgentContext"]:
+        """Execute all.
+            """
+
         return list(AgentContext._contexts.values())
 
     @staticmethod
     def generate_id() -> str:
+        """Execute generate id.
+            """
+
         def generate_short_id():
+            """Execute generate short id.
+                """
+
             return "".join(random.choices(string.ascii_letters + string.digits, k=8))
 
         while True:
@@ -132,6 +163,9 @@ class AgentContext:
 
     @classmethod
     def get_notification_manager(cls):
+        """Retrieve notification manager.
+            """
+
         if cls._notification_manager is None:
             from admin.core.helpers.notification import NotificationManager
 
@@ -140,12 +174,21 @@ class AgentContext:
 
     @staticmethod
     def remove(id: str) -> "AgentContext | None":
+        """Execute remove.
+
+            Args:
+                id: The id.
+            """
+
         context = AgentContext._contexts.pop(id, None)
         if context and context.task:
             context.task.kill()
         return context
 
     def serialize(self) -> dict:
+        """Execute serialize.
+            """
+
         return {
             "id": self.id,
             "name": self.name,
@@ -178,6 +221,18 @@ class AgentContext:
         id: str | None = None,
         **kwargs,
     ) -> list[Log.LogItem]:
+        """Execute log to all.
+
+            Args:
+                type: The type.
+                heading: The heading.
+                content: The content.
+                kvps: The kvps.
+                temp: The temp.
+                update_progress: The update_progress.
+                id: The id.
+            """
+
         items: list[Log.LogItem] = []
         for context in AgentContext.all():
             items.append(
@@ -186,10 +241,16 @@ class AgentContext:
         return items
 
     def kill_process(self):
+        """Execute kill process.
+            """
+
         if self.task:
             self.task.kill()
 
     def reset(self):
+        """Execute reset.
+            """
+
         self.kill_process()
         self.log.reset()
         from agent import Agent
@@ -199,15 +260,28 @@ class AgentContext:
         self.paused = False
 
     def nudge(self):
+        """Execute nudge.
+            """
+
         self.kill_process()
         self.paused = False
         self.task = self.run_task(self.get_agent().monologue)
         return self.task
 
     def get_agent(self) -> "Agent":
+        """Retrieve agent.
+            """
+
         return self.streaming_agent or self.agent0
 
     def communicate(self, msg: UserMessage, broadcast_level: int = 1):
+        """Execute communicate.
+
+            Args:
+                msg: The msg.
+                broadcast_level: The broadcast_level.
+            """
+
         from agent import Agent
 
         self.paused = False
@@ -223,12 +297,26 @@ class AgentContext:
         return self.task
 
     def run_task(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any):
+        """Execute run task.
+
+            Args:
+                func: The func.
+            """
+
         if not self.task:
             self.task = DeferredTask(thread_name=self.__class__.__name__)
         self.task.start_task(func, *args, **kwargs)
         return self.task
 
     async def _process_chain(self, agent: "Agent", msg: "UserMessage | str", user: bool = True):
+        """Execute process chain.
+
+            Args:
+                agent: The agent.
+                msg: The msg.
+                user: The user.
+            """
+
         from agent import Agent
 
         try:

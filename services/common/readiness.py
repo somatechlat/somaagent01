@@ -17,6 +17,9 @@ COMPONENTS = ["postgres", "redis"]
 
 
 def _timeout_seconds() -> float:
+    """Execute timeout seconds.
+        """
+
     import os
 
     try:

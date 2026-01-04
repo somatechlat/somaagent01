@@ -10,6 +10,12 @@ from playwright.async_api import async_playwright
 
 
 async def main(base_url: str):
+    """Execute main.
+
+        Args:
+            base_url: The base_url.
+        """
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
@@ -20,6 +26,12 @@ async def main(base_url: str):
         # Capture console messages (type and text)
         def _on_console(msg):
             # msg.type() is a method; msg.text is an attribute in newer Playwright versions.
+            """Execute on console.
+
+                Args:
+                    msg: The msg.
+                """
+
             msg_type = msg.type() if callable(msg.type) else getattr(msg, "type", "")
             msg_text = msg.text() if callable(msg.text) else getattr(msg, "text", "")
             console_messages.append(f"[{msg_type}] {msg_text}")

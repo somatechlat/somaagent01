@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 def _get_store():
+    """Execute get store.
+        """
+
     from services.common.attachments_store import AttachmentsStore
 
     return AttachmentsStore(dsn=settings.DATABASE_DSN)

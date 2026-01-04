@@ -61,6 +61,8 @@ class RedisRateLimiter:
         default_window_seconds: int = 60,
         key_prefix: str = "rate_limit:",
     ):
+        """Initialize the instance."""
+
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.default_limit = default_limit
         self.default_window_seconds = default_window_seconds

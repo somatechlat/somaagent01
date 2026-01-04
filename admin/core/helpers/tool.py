@@ -1,3 +1,5 @@
+"""Module tool."""
+
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any
@@ -10,12 +12,16 @@ from admin.core.helpers.strings import sanitize_string
 
 @dataclass
 class Response:
+    """Data model for Response."""
+
     message: str
     break_loop: bool
     additional: dict[str, Any] | None = None
 
 
 class Tool:
+
+    """Tool class implementation."""
 
     def __init__(
         self,
@@ -27,6 +33,8 @@ class Tool:
         loop_data: LoopData | None,
         **kwargs,
     ) -> None:
+        """Initialize the instance."""
+
         self.agent = agent
         self.name = name
         self.method = method
@@ -36,9 +44,15 @@ class Tool:
 
     @abstractmethod
     async def execute(self, **kwargs) -> Response:
+        """Execute execute.
+            """
+
         pass
 
     async def before_execution(self, **kwargs):
+        """Execute before execution.
+            """
+
         PrintStyle(font_color="#1B4F72", padding=True, background_color="white", bold=True).print(
             f"{self.agent.agent_name}: Using tool '{self.name}'"
         )
@@ -53,6 +67,12 @@ class Tool:
                 PrintStyle().print()
 
     async def after_execution(self, response: Response, **kwargs):
+        """Execute after execution.
+
+            Args:
+                response: The response.
+            """
+
         text = sanitize_string(response.message.strip())
         self.agent.hist_add_tool_result(self.name, text, **(response.additional or {}))
         PrintStyle(font_color="#1B4F72", background_color="white", padding=True, bold=True).print(
@@ -62,6 +82,9 @@ class Tool:
         self.log.update(content=text)
 
     def get_log_object(self):
+        """Retrieve log object.
+            """
+
         if self.method:
             heading = f"icon://construction {self.agent.agent_name}: Using tool '{self.name}:{self.method}'"
         else:
@@ -69,6 +92,12 @@ class Tool:
         return self.agent.context.log.log(type="tool", heading=heading, content="", kvps=self.args)
 
     def nice_key(self, key: str):
+        """Execute nice key.
+
+            Args:
+                key: The key.
+            """
+
         words = key.split("_")
         words = [words[0].capitalize()] + [word.lower() for word in words[1:]]
         result = " ".join(words)

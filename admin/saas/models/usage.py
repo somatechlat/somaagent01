@@ -61,6 +61,8 @@ class UsageRecord(models.Model):
     period_end = models.DateTimeField(null=True, blank=True, help_text="End of usage period")
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "usage_records"
         ordering = ["-recorded_at"]
         indexes = [
@@ -73,6 +75,8 @@ class UsageRecord(models.Model):
         verbose_name_plural = "Usage Records"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.metric_code}: {self.quantity} {self.unit}"
 
     def to_dict(self):

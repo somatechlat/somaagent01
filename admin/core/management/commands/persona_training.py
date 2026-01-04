@@ -27,6 +27,14 @@ close.add_argument("--repository", default="http://localhost:8011")
 
 
 async def call_gateway(persona: str, gateway: str, message: str) -> None:
+    """Execute call gateway.
+
+        Args:
+            persona: The persona.
+            gateway: The gateway.
+            message: The message.
+        """
+
     async with httpx.AsyncClient() as client:
         payload = {
             "session_id": str(uuid.uuid4()),
@@ -38,6 +46,14 @@ async def call_gateway(persona: str, gateway: str, message: str) -> None:
 
 
 async def post_persona_notes(persona: str, notes: str, repository: str) -> None:
+    """Execute post persona notes.
+
+        Args:
+            persona: The persona.
+            notes: The notes.
+            repository: The repository.
+        """
+
     async with httpx.AsyncClient() as client:
         payload = {
             "role": f"training_notes_{persona}",
@@ -51,6 +67,9 @@ async def post_persona_notes(persona: str, notes: str, repository: str) -> None:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     args = parser.parse_args()
     if args.command == "start":
         await call_gateway(

@@ -157,6 +157,9 @@ class ConversationWorkerImpl:
         )
 
     async def start(self) -> None:
+        """Execute start.
+            """
+
         await degradation_monitor.initialize()
         await degradation_monitor.start_monitoring()
         # ensure_schema not needed - Django migrations handle this
@@ -168,6 +171,12 @@ class ConversationWorkerImpl:
         await self.bus.consume(self.topics["in"], self.topics["group"], self._handle)
 
     async def _handle(self, event: Dict[str, Any]) -> None:
+        """Execute handle.
+
+            Args:
+                event: The event.
+            """
+
         event_type = event.get("type", "")
         
         # Handle system config updates (Feature Flag Reload)
@@ -243,6 +252,9 @@ class ConversationWorkerImpl:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     w = ConversationWorkerImpl()
     try:
         await w.start()

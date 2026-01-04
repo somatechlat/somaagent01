@@ -1,3 +1,5 @@
+"""Module test_chat_flow."""
+
 import pytest
 from playwright.sync_api import Page, expect
 from tests.e2e.helpers.auth import get_auth_token, inject_auth_cookies

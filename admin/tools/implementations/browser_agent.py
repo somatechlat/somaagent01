@@ -1,3 +1,5 @@
+"""Module browser_agent."""
+
 import asyncio
 import time
 from pathlib import Path
@@ -19,11 +21,21 @@ from python.extensions.message_loop_start._10_iteration_no import get_iter_no
 
 class State:
     @staticmethod
+    """State class implementation."""
+
     async def create(agent: Agent):
+        """Execute create.
+
+            Args:
+                agent: The agent.
+            """
+
         state = State(agent)
         return state
 
     def __init__(self, agent: Agent):
+        """Initialize the instance."""
+
         self.agent = agent
         self.browser_session: Optional[browser_use.BrowserSession] = None
         self.task: Optional[defer.DeferredTask] = None
@@ -32,15 +44,24 @@ class State:
         self.iter_no = 0
 
     def __del__(self):
+        """Execute del  .
+            """
+
         self.kill_task()
         files.delete_dir(self.get_user_data_dir())  # cleanup user data dir
 
     def get_user_data_dir(self):
+        """Retrieve user data dir.
+            """
+
         return str(
             Path.home() / ".config" / "browseruse" / "profiles" / f"agent_{self.agent.context.id}"
         )
 
     async def _initialize(self):
+        """Execute initialize.
+            """
+
         if self.browser_session:
             return
 
@@ -101,6 +122,12 @@ class State:
             )
 
     def start_task(self, task: str):
+        """Execute start task.
+
+            Args:
+                task: The task.
+            """
+
         if self.task and self.task.is_alive():
             self.kill_task()
 
@@ -111,6 +138,9 @@ class State:
         return self.task
 
     def kill_task(self):
+        """Execute kill task.
+            """
+
         if self.task:
             self.task.kill(terminate_thread=True)
             self.task = None
@@ -134,9 +164,17 @@ class State:
         self.iter_no = 0
 
     async def _run_task(self, task: str):
+        """Execute run task.
+
+            Args:
+                task: The task.
+            """
+
         await self._initialize()
 
         class DoneResult(BaseModel):
+            """Doneresult class implementation."""
+
             title: str
             response: str
             page_summary: str
@@ -147,6 +185,12 @@ class State:
         # Register custom completion action with proper ActionResult fields
         @controller.registry.action("Complete task", param_model=DoneResult)
         async def complete_task(params: DoneResult):
+            """Execute complete task.
+
+                Args:
+                    params: The params.
+                """
+
             result = browser_use.ActionResult(
                 is_done=True, success=True, extracted_content=params.model_dump_json()
             )
@@ -180,6 +224,12 @@ class State:
         self.iter_no = get_iter_no(self.agent)
 
         async def hook(agent: browser_use.Agent):
+            """Execute hook.
+
+                Args:
+                    agent: The agent.
+                """
+
             await self.agent.wait_if_paused()
             if self.iter_no != get_iter_no(self.agent):
                 raise InterventionException("Task cancelled")
@@ -191,6 +241,9 @@ class State:
         return result
 
     async def get_page(self):
+        """Retrieve page.
+            """
+
         if self.use_agent and self.browser_session:
             try:
                 return (
@@ -227,7 +280,16 @@ class State:
 
 class BrowserAgent(Tool):
 
+    """Browseragent class implementation."""
+
     async def execute(self, message="", reset="", **kwargs):
+        """Execute execute.
+
+            Args:
+                message: The message.
+                reset: The reset.
+            """
+
         self.guid = self.agent.context.generate_id()  # short random id
         reset = str(reset).lower().strip() == "true"
         await self.prepare_state(reset=reset)
@@ -344,6 +406,9 @@ class BrowserAgent(Tool):
         return Response(message=answer_text, break_loop=False)
 
     def get_log_object(self):
+        """Retrieve log object.
+            """
+
         return self.agent.context.log.log(
             type="browser",
             heading=f"icon://captive_portal {self.agent.agent_name}: Calling Browser Agent",
@@ -352,6 +417,9 @@ class BrowserAgent(Tool):
         )
 
     async def get_update(self):
+        """Retrieve update.
+            """
+
         await self.prepare_state()
 
         result = {}
@@ -367,6 +435,9 @@ class BrowserAgent(Tool):
                     # await agent.wait_if_paused() # no need here
 
                     # Build short activity log
+                    """Execute get update.
+                        """
+
                     result["log"] = get_use_agent_log(ua)
 
                     content = await page.screenshot(full_page=False, timeout=3000)
@@ -388,6 +459,12 @@ class BrowserAgent(Tool):
         return result
 
     async def prepare_state(self, reset=False):
+        """Execute prepare state.
+
+            Args:
+                reset: The reset.
+            """
+
         self.state = self.agent.get_data("_browser_agent_state")
         if reset and self.state:
             self.state.kill_task()
@@ -396,6 +473,12 @@ class BrowserAgent(Tool):
         self.agent.set_data("_browser_agent_state", self.state)
 
     def update_progress(self, text):
+        """Execute update progress.
+
+            Args:
+                text: The text.
+            """
+
         text = self._mask(text)
         short = text.split("\n")[-1]
         if len(short) > 50:
@@ -406,6 +489,12 @@ class BrowserAgent(Tool):
         self.agent.context.log.set_progress(progress)
 
     def _mask(self, text: str) -> str:
+        """Execute mask.
+
+            Args:
+                text: The text.
+            """
+
         try:
             return SecretsManager.get_instance().mask_values(text or "")
         except Exception:
@@ -417,6 +506,12 @@ class BrowserAgent(Tool):
 
 
 def get_use_agent_log(use_agent: browser_use.Agent | None):
+    """Retrieve use agent log.
+
+        Args:
+            use_agent: The use_agent.
+        """
+
     result = ["🚦 Starting task"]
     if use_agent:
         action_results = use_agent.history.action_results() or []

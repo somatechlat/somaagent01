@@ -57,6 +57,9 @@ def format_message(msg: ConsoleMessage) -> str:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     parser = argparse.ArgumentParser(description="Capture UI console logs via Playwright")
     parser.add_argument(
         "--url",

@@ -15,6 +15,8 @@ class LoopData:
     """Data container for message loop iterations."""
 
     def __init__(self, **kwargs):
+        """Initialize the instance."""
+
         self.iteration = -1
         self.system: list[str] = []
         self.user_message: Optional[history.Message] = None
@@ -59,6 +61,14 @@ async def run_message_loop(agent: "Agent", loop_data: LoopData) -> str:
 
             # Define callbacks
             async def reasoning_callback(chunk: str, full: str, p=printer):
+                """Execute reasoning callback.
+
+                    Args:
+                        chunk: The chunk.
+                        full: The full.
+                        p: The p.
+                    """
+
                 await agent.handle_intervention()
                 if chunk == full:
                     p.print("Reasoning: ")
@@ -66,6 +76,14 @@ async def run_message_loop(agent: "Agent", loop_data: LoopData) -> str:
                 await agent.handle_reasoning_stream(full)
 
             async def stream_callback(chunk: str, full: str, p=printer):
+                """Execute stream callback.
+
+                    Args:
+                        chunk: The chunk.
+                        full: The full.
+                        p: The p.
+                    """
+
                 await agent.handle_intervention()
                 if chunk == full:
                     p.print("Response: ")

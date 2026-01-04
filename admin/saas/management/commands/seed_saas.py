@@ -1,3 +1,5 @@
+"""Module seed_saas."""
+
 import logging
 
 from django.core.management.base import BaseCommand
@@ -13,9 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    """Command class implementation."""
+
     help = "Seeds the SAAS Admin database with default Tiers, Features, and Providers."
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         self.stdout.write(self.style.SUCCESS("Starting SAAS Admin seeding..."))
 
         try:

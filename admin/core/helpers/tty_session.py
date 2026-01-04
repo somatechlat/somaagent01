@@ -1,3 +1,5 @@
+"""Module tty_session."""
+
 import asyncio
 import errno
 import os
@@ -20,7 +22,11 @@ sys.stdout.reconfigure(errors="replace")  # type: ignore
 
 
 class TTYSession:
+    """Ttysession class implementation."""
+
     def __init__(self, cmd, *, cwd=None, env=None, encoding="utf-8", echo=False):
+        """Initialize the instance."""
+
         self.cmd = cmd if isinstance(cmd, str) else " ".join(cmd)
         self.cwd = cwd
         self.env = env or os.environ.copy()
@@ -32,6 +38,9 @@ class TTYSession:
 
     def __del__(self):
         # Simple cleanup on object destruction
+        """Execute del  .
+            """
+
         import nest_asyncio
 
         nest_asyncio.apply()
@@ -43,6 +52,9 @@ class TTYSession:
 
     # ── user-facing coroutines ────────────────────────────────────────
     async def start(self):
+        """Execute start.
+            """
+
         if _IS_WIN:
             self._proc = await _spawn_winpty(self.cmd, self.cwd, self.env, self.echo)  # ← pass echo
         else:
@@ -54,6 +66,9 @@ class TTYSession:
 
     async def close(self):
         # Cancel the pump task if it exists
+        """Execute close.
+            """
+
         if hasattr(self, "_pump_task") and self._pump_task:
             self._pump_task.cancel()
             try:
@@ -69,6 +84,12 @@ class TTYSession:
         self._buf = None
 
     async def send(self, data: str | bytes):
+        """Execute send.
+
+            Args:
+                data: The data.
+            """
+
         if self._proc is None:
             raise RuntimeError("TTYSpawn is not started")
         if isinstance(data, str):
@@ -77,9 +98,18 @@ class TTYSession:
         await self._proc.stdin.drain()  # type: ignore
 
     async def sendline(self, line: str):
+        """Execute sendline.
+
+            Args:
+                line: The line.
+            """
+
         await self.send(line + "\n")
 
     async def wait(self):
+        """Execute wait.
+            """
+
         if self._proc is None:
             raise RuntimeError("TTYSpawn is not started")
         return await self._proc.wait()
@@ -107,6 +137,12 @@ class TTYSession:
 
     async def read(self, timeout=None):
         # Return any decoded text the child produced, or None on timeout
+        """Execute read.
+
+            Args:
+                timeout: The timeout.
+            """
+
         if self._buf is None:
             raise RuntimeError("TTYSpawn buffer is not initialized; did you call start()?")
         try:
@@ -119,12 +155,26 @@ class TTYSession:
 
     async def read_full_until_idle(self, idle_timeout, total_timeout):
         # Collect child output using iter_until_idle to avoid duplicate logic
+        """Execute read full until idle.
+
+            Args:
+                idle_timeout: The idle_timeout.
+                total_timeout: The total_timeout.
+            """
+
         return "".join(
             [chunk async for chunk in self.read_chunks_until_idle(idle_timeout, total_timeout)]
         )
 
     async def read_chunks_until_idle(self, idle_timeout, total_timeout):
         # Yield each chunk as soon as it arrives until idle or total timeout
+        """Execute read chunks until idle.
+
+            Args:
+                idle_timeout: The idle_timeout.
+                total_timeout: The total_timeout.
+            """
+
         import time
 
         start = time.monotonic()
@@ -138,6 +188,9 @@ class TTYSession:
 
     # ── internal: stream raw output into the queue ────────────────────
     async def _pump_stdout(self):
+        """Execute pump stdout.
+            """
+
         if self._proc is None:
             raise RuntimeError("TTYSpawn is not started")
         if self._buf is None:
@@ -154,6 +207,15 @@ class TTYSession:
 
 
 async def _spawn_posix_pty(cmd, cwd, env, echo):
+    """Execute spawn posix pty.
+
+        Args:
+            cmd: The cmd.
+            cwd: The cwd.
+            env: The env.
+            echo: The echo.
+        """
+
     import asyncio
     import os
     import pty
@@ -182,6 +244,9 @@ async def _spawn_posix_pty(cmd, cwd, env, echo):
     reader = asyncio.StreamReader()
 
     def _on_data():
+        """Execute on data.
+            """
+
         try:
             data = os.read(master, 1 << 16)
         except OSError as e:
@@ -197,10 +262,21 @@ async def _spawn_posix_pty(cmd, cwd, env, echo):
     loop.add_reader(master, _on_data)
 
     class _Stdin:
+        """Stdin class implementation."""
+
         def write(self, d):
+            """Execute write.
+
+                Args:
+                    d: The d.
+                """
+
             os.write(master, d)
 
         async def drain(self):
+            """Execute drain.
+                """
+
             await asyncio.sleep(0)
 
     proc.stdin = _Stdin()  # type: ignore
@@ -213,6 +289,15 @@ async def _spawn_posix_pty(cmd, cwd, env, echo):
 
 async def _spawn_winpty(cmd, cwd, env, echo):
     # A quick way to silence command echo in cmd.exe is /Q (quiet)
+    """Execute spawn winpty.
+
+        Args:
+            cmd: The cmd.
+            cwd: The cwd.
+            env: The env.
+            echo: The echo.
+        """
+
     if not echo and cmd.strip().lower().startswith("cmd") and "/q" not in cmd.lower():
         cmd = cmd.replace("cmd.exe", "cmd.exe /Q")
 
@@ -227,6 +312,9 @@ async def _spawn_winpty(cmd, cwd, env, echo):
     reader = asyncio.StreamReader()
 
     def _on_data():
+        """Execute on data.
+            """
+
         try:
             data = os.read(master_r_fd, 1 << 16)
         except OSError:
@@ -240,24 +328,45 @@ async def _spawn_winpty(cmd, cwd, env, echo):
     loop.add_reader(master_r_fd, _on_data)
 
     class _Stdin:
+        """Stdin class implementation."""
+
         def write(self, d):
+            """Execute write.
+
+                Args:
+                    d: The d.
+                """
+
             os.write(master_w_fd, d)
 
         async def drain(self):
+            """Execute drain.
+                """
+
             await asyncio.sleep(0)
 
     class _Proc(asyncio.subprocess.Process):
+        """Proc class implementation."""
+
         def __init__(self):
+            """Initialize the instance."""
+
             self.stdin = _Stdin()  # type: ignore
             self.stdout = reader
             self.pid = child.pid
 
         async def wait(self):
+            """Execute wait.
+                """
+
             while child.isalive():
                 await asyncio.sleep(0.2)
             return 0
 
         def kill(self):
+            """Execute kill.
+                """
+
             child.kill()
 
     return _Proc()
@@ -267,6 +376,9 @@ async def _spawn_winpty(cmd, cwd, env, echo):
 if __name__ == "__main__":
 
     async def interactive_shell():
+        """Execute interactive shell.
+            """
+
         shell_cmd, prompt_hint = ("cmd.exe", "$") if _IS_WIN else ("/bin/bash", "$")
 
         # echo=False → suppress the shell’s own echo of commands

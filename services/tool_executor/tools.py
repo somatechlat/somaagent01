@@ -33,9 +33,17 @@ class ToolExecutionError(Exception):
 
 
 class BaseTool:
+    """Basetool class implementation."""
+
     name: str
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         raise NotImplementedError
 
     def input_schema(self) -> Dict[str, Any] | None:
@@ -47,15 +55,26 @@ class BaseTool:
 
 
 class EchoTool(BaseTool):
+    """Echotool class implementation."""
+
     name = "echo"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         text = args.get("text")
         if not isinstance(text, str):
             raise ToolExecutionError("echo requires a 'text' field")
         return {"message": text}
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {"text": {"type": "string", "description": "Text to echo back"}},
@@ -65,9 +84,17 @@ class EchoTool(BaseTool):
 
 
 class TimestampTool(BaseTool):
+    """Timestamptool class implementation."""
+
     name = "timestamp"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         fmt = args.get("format", "%Y-%m-%dT%H:%M:%SZ")
         try:
             now = datetime.datetime.now(datetime.timezone.utc).strftime(fmt)
@@ -84,6 +111,9 @@ class TimestampTool(BaseTool):
         return {"message": now}
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {
@@ -97,9 +127,17 @@ class TimestampTool(BaseTool):
 
 
 class CodeExecutionTool(BaseTool):
+    """Codeexecutiontool class implementation."""
+
     name = "code_execute"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         language = args.get("language", "python").lower()
         if language != "python":
             raise ToolExecutionError("Only Python code execution is supported")
@@ -108,6 +146,9 @@ class CodeExecutionTool(BaseTool):
             raise ToolExecutionError("Provide Python source via 'code'")
 
         def _execute() -> dict[str, Any]:
+            """Execute execute.
+                """
+
             buffer = io.StringIO()
             local_vars: dict[str, Any] = {}
             try:
@@ -142,6 +183,9 @@ class CodeExecutionTool(BaseTool):
         return await asyncio.to_thread(_execute)
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {
@@ -158,9 +202,17 @@ class CodeExecutionTool(BaseTool):
 
 
 class FileReadTool(BaseTool):
+    """Filereadtool class implementation."""
+
     name = "file_read"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
             raise ToolExecutionError("'path' argument is required")
@@ -174,6 +226,9 @@ class FileReadTool(BaseTool):
         return {"path": str(target), "content": content}
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {
@@ -185,9 +240,17 @@ class FileReadTool(BaseTool):
 
 
 class HttpFetchTool(BaseTool):
+    """Httpfetchtool class implementation."""
+
     name = "http_fetch"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         url = args.get("url")
         if not isinstance(url, str) or not url.startswith("http"):
             raise ToolExecutionError("Valid 'url' argument required")
@@ -203,6 +266,9 @@ class HttpFetchTool(BaseTool):
             }
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {
@@ -215,9 +281,17 @@ class HttpFetchTool(BaseTool):
 
 
 class CanvasAppendTool(BaseTool):
+    """Canvasappendtool class implementation."""
+
     name = "canvas_append"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         session_id = args.get("session_id")
         if not isinstance(session_id, str) or not session_id:
             raise ToolExecutionError("'session_id' is required")
@@ -247,6 +321,9 @@ class CanvasAppendTool(BaseTool):
         return {"status": "queued", "pane": pane}
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {
@@ -275,9 +352,17 @@ AVAILABLE_TOOLS = {
 
 
 class IngestDocumentTool(BaseTool):
+    """Ingestdocumenttool class implementation."""
+
     name = "document_ingest"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute run.
+
+            Args:
+                args: The args.
+            """
+
         attachment_id = args.get("attachment_id")
         metadata = args.get("metadata") or {}
         tenant_header = None
@@ -377,6 +462,9 @@ class IngestDocumentTool(BaseTool):
         }
 
     def input_schema(self) -> Dict[str, Any] | None:
+        """Execute input schema.
+            """
+
         return {
             "type": "object",
             "properties": {

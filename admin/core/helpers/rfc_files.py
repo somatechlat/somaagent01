@@ -1,3 +1,5 @@
+"""Module rfc_files."""
+
 import base64
 import fnmatch
 import os

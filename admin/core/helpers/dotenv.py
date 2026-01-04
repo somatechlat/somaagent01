@@ -1,3 +1,5 @@
+"""Module dotenv."""
+
 import os
 import re
 from typing import Any
@@ -11,10 +13,16 @@ KEY_AUTH_PASSWORD = ***REMOVED***
 KEY_RFC_PASSWORD = ***REMOVED***
 KEY_ROOT_PASSWORD = ***REMOVED***
 def load_dotenv():
+    """Execute load dotenv.
+        """
+
     _load_dotenv(get_dotenv_file_path(), override=True)
 
 
 def get_dotenv_file_path():
+    """Retrieve dotenv file path.
+        """
+
     return get_abs_path(".env")
 
 
@@ -27,6 +35,13 @@ def get_dotenv_value(key: str, default: Any = None):
 
 
 def save_dotenv_value(key: str, value: str):
+    """Execute save dotenv value.
+
+        Args:
+            key: The key.
+            value: The value.
+        """
+
     if value is None:
         value = ""
     dotenv_path = get_dotenv_file_path()

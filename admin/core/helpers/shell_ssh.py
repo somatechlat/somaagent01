@@ -1,3 +1,5 @@
+"""Module shell_ssh."""
+
 import asyncio
 import re
 import time
@@ -16,7 +18,11 @@ class SSHInteractiveSession:
     # end_comment = "# @@==>> SSHInteractiveSession End-of-Command  <<==@@"
     # ps1_label = "SSHInteractiveSession CLI>"
 
+    """Sshinteractivesession class implementation."""
+
     def __init__(self, logger: Log, hostname: str, port: int, username: str, password: str):
+        """Initialize the instance."""
+
         self.logger = logger
         self.hostname = hostname
         self.port = port
@@ -84,12 +90,21 @@ class SSHInteractiveSession:
                     raise e
 
     async def close(self):
+        """Execute close.
+            """
+
         if self.shell:
             self.shell.close()
         if self.client:
             self.client.close()
 
     async def send_command(self, command: str):
+        """Execute send command.
+
+            Args:
+                command: The command.
+            """
+
         if not self.shell:
             raise Exception("Shell not connected")
         self.full_output = b""
@@ -104,6 +119,13 @@ class SSHInteractiveSession:
     async def read_output(
         self, timeout: float = 0, reset_full_output: bool = False
     ) -> Tuple[str, str]:
+        """Execute read output.
+
+            Args:
+                timeout: The timeout.
+                reset_full_output: The reset_full_output.
+            """
+
         if not self.shell:
             raise Exception("Shell not connected")
 
@@ -158,6 +180,12 @@ class SSHInteractiveSession:
         return decoded_full_output, decoded_partial_output
 
     def receive_bytes(self, num_bytes=1024):
+        """Execute receive bytes.
+
+            Args:
+                num_bytes: The num_bytes.
+            """
+
         if not self.shell:
             raise Exception("Shell not connected")
         # Receive initial chunk of data
@@ -166,6 +194,12 @@ class SSHInteractiveSession:
 
         # Helper function to ensure that we receive exactly `num_bytes`
         def recv_all(num_bytes):
+            """Execute recv all.
+
+                Args:
+                    num_bytes: The num_bytes.
+                """
+
             data = b""
             while len(data) < num_bytes:
                 chunk = shell.recv(num_bytes - len(data))
@@ -202,6 +236,12 @@ class SSHInteractiveSession:
 
 def clean_string(input_string):
     # Remove ANSI escape codes
+    """Execute clean string.
+
+        Args:
+            input_string: The input_string.
+        """
+
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
     cleaned = ansi_escape.sub("", input_string)
 

@@ -25,6 +25,8 @@ class ManifestValidationError(Exception):
     """Raised when manifest validation fails."""
 
     def __init__(self, message: str, field: str | None = None, errors: List[str] | None = None):
+        """Initialize the instance."""
+
         self.message = message
         self.field = field
         self.errors = errors or []
@@ -76,6 +78,8 @@ class ManifestParser:
     }
 
     def __init__(self, environment: str | None = None):
+        """Initialize the instance."""
+
         self.environment = environment or os.environ.service.environment
 
     def parse_file(self, path: Path) -> Dict[str, Any]:

@@ -22,6 +22,12 @@ class Command(BaseCommand):
     help = "Submit Flink SQL jobs to cluster for stream processing"
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--job",
             type=str,
@@ -41,6 +47,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         if options["list"]:
             self._list_jobs()
             return

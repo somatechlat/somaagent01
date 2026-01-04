@@ -46,6 +46,8 @@ class File(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "files_v2"
         ordering = ["-created_at"]
         indexes = [
@@ -54,4 +56,6 @@ class File(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"File({self.id}:{self.name})"

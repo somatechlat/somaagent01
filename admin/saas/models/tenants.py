@@ -69,6 +69,8 @@ class Tenant(models.Model):
     trial_ends_at = models.DateTimeField(null=True, blank=True, help_text="When trial period ends")
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "tenants"
         ordering = ["-created_at"]
         indexes = [
@@ -81,6 +83,8 @@ class Tenant(models.Model):
         verbose_name_plural = "Tenants"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.status})"
 
     def to_dict(self):
@@ -130,6 +134,8 @@ class TenantUser(models.Model):
     last_login_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "tenant_users"
         ordering = ["-created_at"]
         unique_together = [["tenant", "user_id"]]
@@ -143,6 +149,8 @@ class TenantUser(models.Model):
         verbose_name_plural = "Tenant Users"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.email} ({self.role} in {self.tenant.name})"
 
     def to_dict(self):

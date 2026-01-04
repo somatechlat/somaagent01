@@ -33,6 +33,8 @@ class VoiceProcessingError(VoiceError):
     """
 
     def __init__(self, command: str, exit_code: int, stderr: str | None = None) -> None:
+        """Initialize the instance."""
+
         self.command = command
         self.exit_code = exit_code
         self.stderr = stderr
@@ -47,4 +49,6 @@ class ProviderNotSupportedError(VoiceError):
     """
 
     def __init__(self, provider: str) -> None:
+        """Initialize the instance."""
+
         super().__init__(f"Provider '{provider}' is not supported or not configured")

@@ -34,11 +34,16 @@ class UnifiedHealthRouter:
         registry=None,
         services_provider: Optional[Callable[[], List[object]]] = None,
     ) -> None:
+        """Initialize the instance."""
+
         self._services = services or []
         self._registry = registry
         self._services_provider = services_provider
 
     async def _gather(self) -> Dict[str, Dict]:
+        """Execute gather.
+            """
+
         results: Dict[str, Dict] = {}
         if self._services_provider is not None:
             services = self._services_provider()
@@ -54,6 +59,9 @@ class UnifiedHealthRouter:
         return results
 
     async def health_endpoint(self) -> Dict:
+        """Execute health endpoint.
+            """
+
         per = await self._gather()
         overall = all(v.get("healthy", False) for v in per.values())
         return {"healthy": overall, "services": per}
@@ -70,6 +78,9 @@ def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
 
     @router.get("/v1/health")
     async def health() -> Dict:  # pragma: no cover – exercised via API tests
+        """Execute health.
+            """
+
         return await router_obj.health_endpoint()
 
     app.add_router("", router)

@@ -144,6 +144,8 @@ class ConfidenceScorer:
     """
 
     def __init__(self, config: Optional[ConfidenceConfig] = None) -> None:
+        """Initialize the instance."""
+
         self.config = config or ConfidenceConfig()
 
     def calculate(

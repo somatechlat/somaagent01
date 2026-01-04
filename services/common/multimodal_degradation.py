@@ -52,11 +52,17 @@ class AudioFallbackChain:
     current_index: int = 0
 
     def get_current(self) -> str:
+        """Retrieve current.
+            """
+
         if self.current_index == 0:
             return self.primary
         return self.fallbacks[self.current_index - 1]
 
     def get_next_fallback(self) -> Optional[str]:
+        """Retrieve next fallback.
+            """
+
         if self.current_index >= len(self.fallbacks):
             return None
         self.current_index += 1
@@ -109,6 +115,8 @@ class MultimodalDegradationService:
     )
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._tts_chain: Optional[AudioFallbackChain] = None
         self._stt_chain: Optional[AudioFallbackChain] = None
         self._storage_chain: Optional[AudioFallbackChain] = None
@@ -377,6 +385,8 @@ class BackupDegradationService:
     """
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._initialized = False
         self._backup_queue: List[Dict[str, Any]] = []
 

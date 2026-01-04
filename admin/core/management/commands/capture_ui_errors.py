@@ -37,6 +37,9 @@ def _timestamp() -> str:
 
 async def _run() -> int:
     # Ensure the log file is fresh each run.
+    """Execute run.
+        """
+
     with open(LOG_PATH, "w", encoding="utf-8") as f:
         f.write(f"# UI error capture – {_timestamp()}\n")
 
@@ -50,6 +53,12 @@ async def _run() -> int:
 
         # ---- Event listeners -------------------------------------------------
         async def on_console(msg: ConsoleMessage):
+            """Execute on console.
+
+                Args:
+                    msg: The msg.
+                """
+
             nonlocal had_errors
             # ``msg.type()`` can be 'log', 'error', 'warning', etc.
             level = msg.type()
@@ -64,6 +73,12 @@ async def _run() -> int:
                 had_errors = True
 
         async def on_page_error(exception: Exception):
+            """Execute on page error.
+
+                Args:
+                    exception: The exception.
+                """
+
             nonlocal had_errors
             entry = f"{_timestamp()} PAGEERROR {str(exception)}\n"
             with open(LOG_PATH, "a", encoding="utf-8") as f:
@@ -71,6 +86,12 @@ async def _run() -> int:
             had_errors = True
 
         async def on_request_failed(request: Request):
+            """Execute on request failed.
+
+                Args:
+                    request: The request.
+                """
+
             nonlocal had_errors
             # ``request.failure()`` returns a dict with ``errorText``.
             failure_info = await request.failure()
@@ -102,6 +123,9 @@ async def _run() -> int:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     exit_code = asyncio.run(_run())
     if exit_code:
         print("\nErrors were captured – see ui_errors.log for details.")

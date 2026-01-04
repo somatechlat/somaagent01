@@ -26,6 +26,8 @@ class ToolExecutorService(BaseService):
 
     def __init__(self, config: CentralizedConfig | None = None) -> None:
         # Initialize BaseService
+        """Initialize the instance."""
+
         super().__init__(config)
 
         # Store the worker instance
@@ -84,6 +86,9 @@ class ToolExecutorService(BaseService):
         # Add a health check endpoint for the orchestrator
         @app.api_route("/health")
         async def health_check():
+            """Execute health check.
+                """
+
             status = "healthy"
             details = {"service": self.service_name}
 

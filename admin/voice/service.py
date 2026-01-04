@@ -42,6 +42,8 @@ class VoiceService:
     """
 
     def __init__(self, config: Config) -> None:
+        """Initialize the instance."""
+
         self._config = config
         self._capture: AudioCapture | None = None
         self._speaker: Speaker | None = None

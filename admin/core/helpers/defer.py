@@ -1,3 +1,5 @@
+"""Module defer."""
+
 import asyncio
 import threading
 from concurrent.futures import Future
@@ -8,6 +10,8 @@ T = TypeVar("T")
 
 
 class EventLoopThread:
+    """Eventloopthread class implementation."""
+
     _instances = {}
     _lock = threading.Lock()
 
@@ -17,6 +21,12 @@ class EventLoopThread:
         self._start()
 
     def __new__(cls, thread_name: str = "Background"):
+        """Execute new  .
+
+            Args:
+                thread_name: The thread_name.
+            """
+
         with cls._lock:
             if thread_name not in cls._instances:
                 instance = super(EventLoopThread, cls).__new__(cls)
@@ -24,6 +34,9 @@ class EventLoopThread:
             return cls._instances[thread_name]
 
     def _start(self):
+        """Execute start.
+            """
+
         if not hasattr(self, "loop") or not self.loop:
             self.loop = asyncio.new_event_loop()
         if not hasattr(self, "thread") or not self.thread:
@@ -33,18 +46,30 @@ class EventLoopThread:
             self.thread.start()
 
     def _run_event_loop(self):
+        """Execute run event loop.
+            """
+
         if not self.loop:
             raise RuntimeError("Event loop is not initialized")
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
 
     def terminate(self):
+        """Execute terminate.
+            """
+
         if self.loop and self.loop.is_running():
             self.loop.stop()
         self.loop = None
         self.thread = None
 
     def run_coroutine(self, coro):
+        """Execute run coroutine.
+
+            Args:
+                coro: The coro.
+            """
+
         self._start()
         if not self.loop:
             raise RuntimeError("Event loop is not initialized")
@@ -53,20 +78,32 @@ class EventLoopThread:
 
 @dataclass
 class ChildTask:
+    """Childtask class implementation."""
+
     task: "DeferredTask"
     terminate_thread: bool
 
 
 class DeferredTask:
+    """Deferredtask class implementation."""
+
     def __init__(
         self,
         thread_name: str = "Background",
     ):
+        """Initialize the instance."""
+
         self.event_loop_thread = EventLoopThread(thread_name)
         self._future: Optional[Future] = None
         self.children: list[ChildTask] = []
 
     def start_task(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any):
+        """Execute start task.
+
+            Args:
+                func: The func.
+            """
+
         self.func = func
         self.args = args
         self.kwargs = kwargs
@@ -74,18 +111,36 @@ class DeferredTask:
         return self
 
     def __del__(self):
+        """Execute del  .
+            """
+
         self.kill()
 
     def _start_task(self):
+        """Execute start task.
+            """
+
         self._future = self.event_loop_thread.run_coroutine(self._run())
 
     async def _run(self):
+        """Execute run.
+            """
+
         return await self.func(*self.args, **self.kwargs)
 
     def is_ready(self) -> bool:
+        """Check if ready.
+            """
+
         return self._future.done() if self._future else False
 
     def result_sync(self, timeout: Optional[float] = None) -> Any:
+        """Execute result sync.
+
+            Args:
+                timeout: The timeout.
+            """
+
         if not self._future:
             raise RuntimeError("Task hasn't been started")
         try:
@@ -94,12 +149,21 @@ class DeferredTask:
             raise TimeoutError("The task did not complete within the specified timeout.")
 
     async def result(self, timeout: Optional[float] = None) -> Any:
+        """Execute result.
+
+            Args:
+                timeout: The timeout.
+            """
+
         if not self._future:
             raise RuntimeError("Task hasn't been started")
 
         loop = asyncio.get_running_loop()
 
         def _get_result():
+            """Execute get result.
+                """
+
             try:
                 result = self._future.result(timeout)  # type: ignore
                 # self.kill()
@@ -122,6 +186,9 @@ class DeferredTask:
         ):
 
             def cleanup():
+                """Execute cleanup.
+                    """
+
                 tasks = [
                     t
                     for t in asyncio.all_tasks(self.event_loop_thread.loop)
@@ -142,18 +209,37 @@ class DeferredTask:
             self.event_loop_thread.terminate()
 
     def kill_children(self) -> None:
+        """Execute kill children.
+            """
+
         for child in self.children:
             child.task.kill(terminate_thread=child.terminate_thread)
         self.children = []
 
     def is_alive(self) -> bool:
+        """Check if alive.
+            """
+
         return self._future and not self._future.done()  # type: ignore
 
     def restart(self, terminate_thread: bool = False) -> None:
+        """Execute restart.
+
+            Args:
+                terminate_thread: The terminate_thread.
+            """
+
         self.kill(terminate_thread=terminate_thread)
         self._start_task()
 
     def add_child_task(self, task: "DeferredTask", terminate_thread: bool = False) -> None:
+        """Execute add child task.
+
+            Args:
+                task: The task.
+                terminate_thread: The terminate_thread.
+            """
+
         self.children.append(ChildTask(task, terminate_thread))
 
     async def _execute_in_task_context(self, func: Callable[..., T], *args, **kwargs) -> T:
@@ -164,12 +250,21 @@ class DeferredTask:
         return result
 
     def execute_inside(self, func: Callable[..., T], *args, **kwargs) -> Awaitable[T]:
+        """Execute execute inside.
+
+            Args:
+                func: The func.
+            """
+
         if not self.event_loop_thread.loop:
             raise RuntimeError("Event loop is not initialized")
 
         future: Future = Future()
 
         async def wrapped():
+            """Execute wrapped.
+                """
+
             if not self.event_loop_thread.loop:
                 raise RuntimeError("Event loop is not initialized")
             try:

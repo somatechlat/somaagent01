@@ -65,6 +65,13 @@ class LLMAdapter:
         await self._client.aclose()
 
     def _build_url(self, base_url: str | None, api_path: str | None) -> str:
+        """Execute build url.
+
+            Args:
+                base_url: The base_url.
+                api_path: The api_path.
+            """
+
         if not base_url and not self.service_url:
             raise RuntimeError("base_url is required for LLM requests.")
         base = (base_url or self.service_url or "").rstrip("/")
@@ -85,6 +92,14 @@ class LLMAdapter:
     async def _post_json(
         self, url: str, payload: dict[str, Any], headers: dict[str, str]
     ) -> dict[str, Any]:
+        """Execute post json.
+
+            Args:
+                url: The url.
+                payload: The payload.
+                headers: The headers.
+            """
+
         resp = await self._client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         return resp.json()
@@ -152,6 +167,12 @@ class LLMAdapter:
 
         # Normalise messages to dicts accepted by OpenAI-compatible APIs.
         def _to_dict(msg: ChatMessage | dict[str, Any]) -> dict[str, Any]:
+            """Execute to dict.
+
+                Args:
+                    msg: The msg.
+                """
+
             if isinstance(msg, ChatMessage):
                 return {"role": msg.role, "content": msg.content, "metadata": msg.metadata}
             return msg

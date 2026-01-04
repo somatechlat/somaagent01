@@ -24,6 +24,8 @@ class CacheSyncService(BaseSomaService):
     name = "cache_sync"
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         super().__init__()
         # Import lazily to avoid circular imports.
         from services.cache_sync.main import app as cache_app
@@ -31,9 +33,15 @@ class CacheSyncService(BaseSomaService):
         self.app: Any = cache_app
 
     async def _start(self) -> None:
+        """Execute start.
+            """
+
         LOGGER.debug("CacheSyncService start – nothing to initialise")
 
     async def _stop(self) -> None:
+        """Execute stop.
+            """
+
         LOGGER.debug("CacheSyncService stop – nothing to clean up")
 
     async def health(self) -> dict[str, Any]:

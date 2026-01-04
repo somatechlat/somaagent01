@@ -1,3 +1,5 @@
+"""Module browser_use_monkeypatch."""
+
 import logging
 from typing import Any
 
@@ -16,6 +18,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 def gemini_clean_and_conform(text: str):
+    """Execute gemini clean and conform.
+
+        Args:
+            text: The text.
+        """
+
     obj = None
     try:
         # dirty_json parser is robust enough to handle markdown fences
@@ -103,6 +111,12 @@ def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
         defs = schema.pop("$defs")
 
         def resolve_refs(obj: Any) -> Any:
+            """Execute resolve refs.
+
+                Args:
+                    obj: The obj.
+                """
+
             if isinstance(obj, dict):
                 if "$ref" in obj:
                     ref = obj.pop("$ref")
@@ -127,6 +141,12 @@ def _patched_fix_gemini_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
 
     # Remove unsupported properties
     def clean_schema(obj: Any) -> Any:
+        """Execute clean schema.
+
+            Args:
+                obj: The obj.
+            """
+
         if isinstance(obj, dict):
             # Remove unsupported properties
             cleaned = {}

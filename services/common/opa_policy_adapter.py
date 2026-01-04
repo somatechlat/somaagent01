@@ -79,6 +79,8 @@ class OPAPolicyAdapter:
         timeout: float = 2.5,
         fail_open: bool = False,  # Default fail-closed per VIBE
     ):
+        """Initialize the instance."""
+
         self.base_url = (
             base_url or os.getenv("SA01_OPA_URL") or os.getenv("SA01_SOMA_BASE_URL", "").rstrip("/")
         )
@@ -255,6 +257,8 @@ class PolicyDeniedError(Exception):
     """Raised when policy denies an action."""
 
     def __init__(self, action: str, resource: str, reason: Optional[str] = None):
+        """Initialize the instance."""
+
         self.action = action
         self.resource = resource
         self.reason = reason
@@ -265,6 +269,8 @@ class PolicyUnavailableError(Exception):
     """Raised when OPA is unavailable in fail-closed mode."""
 
     def __init__(self, message: str = "OPA policy service unavailable"):
+        """Initialize the instance."""
+
         super().__init__(message)
 
 

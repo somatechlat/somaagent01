@@ -17,6 +17,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class SandboxExecutionResult:
+    """Sandboxexecutionresult class implementation."""
+
     status: str
     payload: dict[str, Any]
     execution_time: float
@@ -32,6 +34,9 @@ class SandboxManager:
 
     async def initialize(self) -> None:
         # Implementation for future container pool warmup.
+        """Execute initialize.
+            """
+
         return None
 
     async def run(
@@ -40,6 +45,14 @@ class SandboxManager:
         args: dict[str, Any],
         limits: ExecutionLimits,
     ) -> SandboxExecutionResult:
+        """Execute run.
+
+            Args:
+                func: The func.
+                args: The args.
+                limits: The limits.
+            """
+
         start = time.time()
         logs: list[str] = []
         sandbox_id = args.get("sandbox_id") or args.get("task_id") or args.get("tool_name")

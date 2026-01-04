@@ -116,6 +116,8 @@ class LLMDegradationService:
     }
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._provider_health: Dict[str, LLMProviderHealth] = {}
         self._fallback_chains: Dict[str, LLMFallbackChain] = {}
         self._monitoring_active = False

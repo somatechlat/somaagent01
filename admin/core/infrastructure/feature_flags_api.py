@@ -23,6 +23,8 @@ router = Router(tags=["Feature Flags"])
 
 
 class FeatureFlagBase(BaseModel):
+    """Featureflagbase class implementation."""
+
     key: str
     name: str
     description: str = ""
@@ -31,10 +33,14 @@ class FeatureFlagBase(BaseModel):
 
 
 class FeatureFlagCreate(FeatureFlagBase):
+    """Featureflagcreate class implementation."""
+
     pass
 
 
 class FeatureFlagUpdate(BaseModel):
+    """Featureflagupdate class implementation."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
@@ -42,12 +48,16 @@ class FeatureFlagUpdate(BaseModel):
 
 
 class FeatureFlagResponse(FeatureFlagBase):
+    """Data model for FeatureFlagResponse."""
+
     id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 
 class FeatureFlagListResponse(BaseModel):
+    """Data model for FeatureFlagListResponse."""
+
     items: List[FeatureFlagResponse]
     total: int
 

@@ -1,3 +1,5 @@
+"""Module memory_consolidation."""
+
 import asyncio
 import json
 from dataclasses import dataclass, field
@@ -71,6 +73,8 @@ class MemoryConsolidator:
     """
 
     def __init__(self, agent: Agent, config: Optional[ConsolidationConfig] = None):
+        """Initialize the instance."""
+
         self.agent = agent
         self.config = config or ConsolidationConfig()
 

@@ -29,11 +29,19 @@ class Command(BaseCommand):
     help = "Sync pending memories to SomaBrain (degradation mode recovery)"
 
     def __init__(self, *args, **kwargs):
+        """Initialize the instance."""
+
         super().__init__(*args, **kwargs)
         self._running = True
         self._client = None
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--batch-size",
             type=int,
@@ -200,6 +208,8 @@ class MemorySyncService:
     """
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._client = None
         self._degraded = False
 

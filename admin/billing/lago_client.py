@@ -45,6 +45,8 @@ class LagoClient:
     """
 
     def __init__(self, config: Optional[LagoConfig] = None):
+        """Initialize the instance."""
+
         self.config = config or LagoConfig.from_settings()
         self._client: Optional[httpx.AsyncClient] = None
 

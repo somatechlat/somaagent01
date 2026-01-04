@@ -29,15 +29,31 @@ class ToolRegistryAdapter(ToolRegistryPort):
         self._registry = registry or ToolRegistry()
 
     async def load_all_tools(self) -> None:
+        """Execute load all tools.
+            """
+
         await self._registry.load_all_tools()
 
     def register(self, name: str, description: Optional[str] = None) -> None:
         # Note: The original register takes a BaseTool, but for the port
         # we simplify to just name/description. Full registration should
         # go through the underlying registry directly.
+        """Execute register.
+
+            Args:
+                name: The name.
+                description: The description.
+            """
+
         pass  # Registration handled by load_all_tools
 
     def get(self, name: str) -> Optional[ToolDefinitionDTO]:
+        """Execute get.
+
+            Args:
+                name: The name.
+            """
+
         tool_def = self._registry.get(name)
         if tool_def is None:
             return None
@@ -47,11 +63,21 @@ class ToolRegistryAdapter(ToolRegistryPort):
         )
 
     def list(self) -> Iterable[ToolDefinitionDTO]:
+        """Execute list.
+            """
+
         return [
             ToolDefinitionDTO(name=t.name, description=t.description) for t in self._registry.list()
         ]
 
     async def execute(self, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute execute.
+
+            Args:
+                name: The name.
+                args: The args.
+            """
+
         tool_def = self._registry.get(name)
         if tool_def is None:
             raise KeyError(f"Tool not found: {name}")

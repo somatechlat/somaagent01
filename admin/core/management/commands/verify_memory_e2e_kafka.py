@@ -1,3 +1,5 @@
+"""Module verify_memory_e2e_kafka."""
+
 import json
 import time
 import uuid

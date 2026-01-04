@@ -100,6 +100,8 @@ class SensorOutbox(models.Model):
     dead_letter = models.BooleanField(default=False, db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "sensor_outbox"
         ordering = ["created_at"]
         indexes = [
@@ -109,6 +111,8 @@ class SensorOutbox(models.Model):
         ]
 
     def __str__(self) -> str:
+        """Return string representation."""
+
         return f"{self.event_type} ({self.event_id[:8]}...)"
 
     def mark_synced(self, brain_ref: str = None) -> None:

@@ -1,3 +1,5 @@
+"""Module duckduckgo_search."""
+
 # from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 
 # def search(query: str, results = 5, region = "wt-wt", time="y") -> str:
@@ -16,6 +18,15 @@ from duckduckgo_search import DDGS
 
 
 def search(query: str, results=5, region="wt-wt", time="y") -> list[str]:
+
+    """Execute search.
+
+        Args:
+            query: The query.
+            results: The results.
+            region: The region.
+            time: The time.
+        """
 
     ddgs = DDGS()
     src = ddgs.text(

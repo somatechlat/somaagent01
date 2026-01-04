@@ -69,6 +69,9 @@ class AnalysisResult:
     tags: List[str]
 
     def to_dict(self) -> Dict[str, Any]:
+        """Execute to dict.
+            """
+
         return {"intent": self.intent, "sentiment": self.sentiment, "tags": self.tags}
 
 
@@ -76,6 +79,12 @@ class MessageAnalyzer:
     """Analyze message intent, sentiment, and tags."""
 
     def analyze(self, message: str) -> AnalysisResult:
+        """Execute analyze.
+
+            Args:
+                message: The message.
+            """
+
         text = message.strip()
         lower = text.lower()
 
@@ -130,6 +139,8 @@ class ProcessMessageUseCase:
         outbound_topic: str,
         analyzer: Optional[MessageAnalyzer] = None,
     ):
+        """Initialize the instance."""
+
         self._session_repo = session_repo
         self._policy_enforcer = policy_enforcer
         self._memory_client = memory_client

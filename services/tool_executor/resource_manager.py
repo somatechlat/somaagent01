@@ -11,6 +11,8 @@ import os
 
 @dataclass
 class ExecutionLimits:
+    """Executionlimits class implementation."""
+
     cpu_seconds: float | None = None
     memory_mb: int | None = None
     timeout_seconds: float | None = 60.0
@@ -20,6 +22,8 @@ class ResourceManager:
     """Tracks concurrent executions to avoid exhausting the host."""
 
     def __init__(self, max_concurrent: int | None = None) -> None:
+        """Initialize the instance."""
+
         raw_limit = os.environ.get("TOOL_EXECUTOR_MAX_CONCURRENT", "4")
         try:
             limit = int(raw_limit)
@@ -30,9 +34,15 @@ class ResourceManager:
 
     async def initialize(self) -> None:
         # Implementation for future resource discovery hooks (GPU, CPU quotas, etc.).
+        """Execute initialize.
+            """
+
         return None
 
     async def can_execute(self) -> bool:
+        """Execute can execute.
+            """
+
         try:
             self._semaphore.acquire_nowait()
         except ValueError:
@@ -43,6 +53,9 @@ class ResourceManager:
 
     @asynccontextmanager
     async def reserve(self) -> asyncio.Semaphore:
+        """Execute reserve.
+            """
+
         await self._semaphore.acquire()
         try:
             yield
@@ -51,7 +64,17 @@ class ResourceManager:
 
 
 def default_limits() -> ExecutionLimits:
+    """Execute default limits.
+        """
+
     def _float(name: str, default: float) -> float:
+        """Execute float.
+
+            Args:
+                name: The name.
+                default: The default.
+            """
+
         raw = os.environ.get(name, str(default))
         try:
             return float(raw)
@@ -59,6 +82,13 @@ def default_limits() -> ExecutionLimits:
             return default
 
     def _int(name: str, default: int) -> int:
+        """Execute int.
+
+            Args:
+                name: The name.
+                default: The default.
+            """
+
         raw = os.environ.get(name, str(default))
         try:
             return int(raw)

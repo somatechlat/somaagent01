@@ -20,6 +20,9 @@ _ERROR_CLASSIFIER_RESULTS: any = None  # type: ignore
 
 
 def _metrics_init() -> None:
+    """Execute metrics init.
+        """
+
     global _ERROR_CLASSIFIER_RESULTS
     if Counter is None or _ERROR_CLASSIFIER_RESULTS is not None:
         return
@@ -35,12 +38,21 @@ def _metrics_init() -> None:
 
 @dataclass(frozen=True)
 class ErrorMeta:
+    """Exception raised for ErrorMeta."""
+
     error_code: str
     retriable: bool = False
     retry_after: Optional[int] = None
 
 
 def classify(exc: Optional[BaseException] = None, message: str | None = None) -> ErrorMeta:
+    """Execute classify.
+
+        Args:
+            exc: The exc.
+            message: The message.
+        """
+
     _metrics_init()
     text = (message or "").strip()
     low = text.lower()

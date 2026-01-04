@@ -1,3 +1,5 @@
+"""Module browser."""
+
 # import asyncio
 # import re
 # from bs4 import BeautifulSoup

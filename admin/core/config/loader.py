@@ -299,11 +299,19 @@ class ConfigLoader:
     """
 
     def __init__(self, config_file_path: Optional[Union[str, Path]] = None):
+        """Initialize the instance."""
+
         self.config_file_path = Path(config_file_path) if config_file_path else None
         self.env_mapping = EnvironmentMapping()
         self._config_cache: Optional[Config] = None
 
     def load_config(self, force_reload: bool = False) -> Config:
+        """Execute load config.
+
+            Args:
+                force_reload: The force_reload.
+            """
+
         if self._config_cache is not None and not force_reload:
             return self._config_cache
         self._config_cache = load_config()
