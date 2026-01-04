@@ -52,6 +52,12 @@ async def audit_export(
     records = await store.list(action=action, limit=1000)
 
     def _serialize(evt) -> dict:
+        """Execute serialize.
+
+            Args:
+                evt: The evt.
+            """
+
         return {
             "id": getattr(evt, "id", None),
             "timestamp": getattr(evt, "ts", None).isoformat() if getattr(evt, "ts", None) else None,

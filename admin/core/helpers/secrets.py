@@ -1,3 +1,5 @@
+"""Module secrets."""
+
 import re
 import threading
 from dataclasses import dataclass
@@ -15,12 +17,21 @@ ALIAS_PATTERN = r"§§secret\(([A-Za-z_][A-Za-z0-9_]*)\)"
 
 def alias_for_key(key: str, placeholder: str = "§§secret({key})") -> str:
     # Return alias string for given key in upper-case
+    """Execute alias for key.
+
+        Args:
+            key: The key.
+            placeholder: The placeholder.
+        """
+
     key = key.upper()
     return placeholder.format(key=key)
 
 
 @dataclass
 class EnvLine:
+    """Envline class implementation."""
+
     raw: str
     type: Literal["pair", "comment", "blank", "other"]
     key: Optional[str] = None
@@ -41,6 +52,8 @@ class StreamingSecretsFilter:
     """
 
     def __init__(self, key_to_value: Dict[str, str], min_trigger: int = 3):
+        """Initialize the instance."""
+
         self.min_trigger = max(1, int(min_trigger))
         # Map value -> key for placeholder construction
         self.value_to_key: Dict[str, str] = {
@@ -80,6 +93,12 @@ class StreamingSecretsFilter:
         return 0
 
     def process_chunk(self, chunk: str) -> str:
+        """Execute process chunk.
+
+            Args:
+                chunk: The chunk.
+            """
+
         if not chunk:
             return ""
 
@@ -119,6 +138,8 @@ class StreamingSecretsFilter:
 
 
 class SecretsManager:
+    """Secretsmanager class implementation."""
+
     SECRETS_FILE = "tmp/secrets.env"
     PLACEHOLDER_PATTERN = ALIAS_PATTERN
     MASK_VALUE = "***"
@@ -129,11 +150,16 @@ class SecretsManager:
 
     @classmethod
     def get_instance(cls) -> "SecretsManager":
+        """Retrieve instance.
+            """
+
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._lock = threading.RLock()
         # instance-level override for secrets file
         self._secrets_file_rel = self.SECRETS_FILE
@@ -246,6 +272,12 @@ class SecretsManager:
         secrets = self.load_secrets()
 
         def replacer(match):
+            """Execute replacer.
+
+                Args:
+                    match: The match.
+                """
+
             key = match.group(1)
             key = key.upper()
             if key in secrets:
@@ -318,6 +350,12 @@ class SecretsManager:
 
     # Backward-compatible alias for callers using the old private method name
     def _parse_env_content(self, content: str) -> Dict[str, str]:
+        """Execute parse env content.
+
+            Args:
+                content: The content.
+            """
+
         return self.parse_env_content(content)
 
     def clear_cache(self):
@@ -400,6 +438,18 @@ class SecretsManager:
         key_delimiter="",
         key_formatter: Optional[Callable[[str], str]] = None,
     ) -> str:
+        """Execute serialize env lines.
+
+            Args:
+                lines: The lines.
+                with_values: The with_values.
+                with_comments: The with_comments.
+                with_blank: The with_blank.
+                with_other: The with_other.
+                key_delimiter: The key_delimiter.
+                key_formatter: The key_formatter.
+            """
+
         out: List[str] = []
         for ln in lines:
             if ln.type == "pair" and ln.key is not None:

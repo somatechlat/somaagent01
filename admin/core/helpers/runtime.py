@@ -1,3 +1,5 @@
+"""Module runtime."""
+
 import argparse
 import asyncio
 import inspect
@@ -19,6 +21,9 @@ runtime_id = None
 
 
 def initialize():
+    """Execute initialize.
+        """
+
     global args
     if args:
         return
@@ -42,24 +47,45 @@ def initialize():
 
 
 def get_arg(name: str):
+    """Retrieve arg.
+
+        Args:
+            name: The name.
+        """
+
     global args
     return args.get(name, None)
 
 
 def has_arg(name: str):
+    """Check if arg.
+
+        Args:
+            name: The name.
+        """
+
     global args
     return name in args
 
 
 def is_dockerized() -> bool:
+    """Check if dockerized.
+        """
+
     return bool(get_arg("dockerized"))
 
 
 def is_development() -> bool:
+    """Check if development.
+        """
+
     return not is_dockerized()
 
 
 def get_local_url():
+    """Retrieve local url.
+        """
+
     if is_dockerized():
         host_alias = dotenv.get_dotenv_value("SA01_CONTAINER_HOST_ALIAS")
         if not host_alias:
@@ -78,6 +104,9 @@ def get_local_url():
 
 
 def get_runtime_id() -> str:
+    """Retrieve runtime id.
+        """
+
     global runtime_id
     if not runtime_id:
         runtime_id = secrets.token_hex(8)
@@ -85,6 +114,9 @@ def get_runtime_id() -> str:
 
 
 def get_persistent_id() -> str:
+    """Retrieve persistent id.
+        """
+
     id = dotenv.get_dotenv_value("A0_PERSISTENT_RUNTIME_ID")
     if not id:
         id = secrets.token_hex(16)
@@ -93,16 +125,34 @@ def get_persistent_id() -> str:
 
 
 @overload
+    """Execute call development function.
+
+        Args:
+            func: The func.
+        """
+
 async def call_development_function(func: Callable[..., Awaitable[T]], *args, **kwargs) -> T: ...
 
 
 @overload
+    """Execute call development function.
+
+        Args:
+            func: The func.
+        """
+
 async def call_development_function(func: Callable[..., T], *args, **kwargs) -> T: ...
 
 
 async def call_development_function(
     func: Union[Callable[..., T], Callable[..., Awaitable[T]]], *args, **kwargs
 ) -> T:
+    """Execute call development function.
+
+        Args:
+            func: The func.
+        """
+
     if is_development():
         url = _get_rfc_url()
         password = _get_rfc_password()
@@ -126,10 +176,19 @@ async def call_development_function(
 
 
 async def handle_rfc(rfc_call: rfc.RFCCall):
+    """Execute handle rfc.
+
+        Args:
+            rfc_call: The rfc_call.
+        """
+
     return await rfc.handle_rfc(rfc_call=rfc_call, password=_get_rfc_password())
 
 
 def _get_rfc_password() -> str:
+    """Execute get rfc password.
+        """
+
     password = dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD)
     if not password:
         raise Exception("No RFC password, cannot handle RFC calls.")
@@ -137,6 +196,9 @@ def _get_rfc_password() -> str:
 
 
 def _get_rfc_url() -> str:
+    """Execute get rfc url.
+        """
+
     set = settings.get_settings()
     url = set["rfc_url"]
     if "://" not in url:
@@ -152,9 +214,18 @@ def call_development_function_sync(
     func: Union[Callable[..., T], Callable[..., Awaitable[T]]], *args, **kwargs
 ) -> T:
     # run async function in sync manner
+    """Execute call development function sync.
+
+        Args:
+            func: The func.
+        """
+
     result_queue = queue.Queue()
 
     def run_in_thread():
+        """Execute run in thread.
+            """
+
         result = asyncio.run(call_development_function(func, *args, **kwargs))
         result_queue.put(result)
 
@@ -170,6 +241,12 @@ def call_development_function_sync(
 
 
 def _find_available_port(preferred: int) -> int:
+    """Execute find available port.
+
+        Args:
+            preferred: The preferred.
+        """
+
     port = preferred
     while port < 65535:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -184,6 +261,9 @@ def _find_available_port(preferred: int) -> int:
 
 
 def get_web_ui_port():
+    """Retrieve web ui port.
+        """
+
     requested_port = get_arg("port") or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0)) or 5000
     if is_dockerized():
         return requested_port
@@ -191,6 +271,9 @@ def get_web_ui_port():
 
 
 def get_tunnel_api_port():
+    """Retrieve tunnel api port.
+        """
+
     requested_port = (
         get_arg("tunnel_api_port") or int(dotenv.get_dotenv_value("TUNNEL_API_PORT", 0)) or 55520
     )

@@ -66,6 +66,8 @@ class AuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "audit_logs"
         ordering = ["-created_at"]
         indexes = [
@@ -79,6 +81,8 @@ class AuditLog(models.Model):
         verbose_name_plural = "Audit Logs"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.action} by {self.actor_email or self.actor_id} at {self.created_at}"
 
     def to_dict(self):

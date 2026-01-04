@@ -1,3 +1,5 @@
+"""Module docker."""
+
 import time
 from typing import Optional
 
@@ -8,6 +10,8 @@ from admin.core.helpers.print_style import PrintStyle
 
 
 class DockerContainerManager:
+    """Dockercontainermanager class implementation."""
+
     def __init__(
         self,
         image: str,
@@ -16,6 +20,8 @@ class DockerContainerManager:
         volumes: Optional[dict[str, dict[str, str]]] = None,
         logger: Log | None = None,
     ):
+        """Initialize the instance."""
+
         self.logger = logger
         self.image = image
         self.name = name
@@ -24,6 +30,9 @@ class DockerContainerManager:
         self.init_docker()
 
     def init_docker(self):
+        """Execute init docker.
+            """
+
         self.client = None
         while not self.client:
             try:
@@ -52,6 +61,9 @@ class DockerContainerManager:
         return self.client
 
     def cleanup_container(self) -> None:
+        """Execute cleanup container.
+            """
+
         if self.container:
             try:
                 self.container.stop()
@@ -71,6 +83,9 @@ class DockerContainerManager:
                     )
 
     def get_image_containers(self):
+        """Retrieve image containers.
+            """
+
         if not self.client:
             self.client = self.init_docker()
         containers = self.client.containers.list(all=True, filters={"ancestor": self.image})
@@ -92,6 +107,9 @@ class DockerContainerManager:
         return infos
 
     def start_container(self) -> None:
+        """Execute start container.
+            """
+
         if not self.client:
             self.client = self.init_docker()
         existing_container = None

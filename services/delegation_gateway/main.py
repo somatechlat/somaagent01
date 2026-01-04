@@ -69,6 +69,9 @@ _METRICS_SERVER_STARTED = False
 
 
 def ensure_metrics_server() -> None:
+    """Execute ensure metrics server.
+        """
+
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
         return
@@ -89,6 +92,9 @@ def ensure_metrics_server() -> None:
 
 
 def get_bus() -> KafkaEventBus:
+    """Retrieve bus.
+        """
+
     kafka_settings = KafkaSettings(
         bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
@@ -100,15 +106,23 @@ def get_bus() -> KafkaEventBus:
 
 
 def get_publisher() -> DurablePublisher:
+    """Retrieve publisher.
+        """
+
     bus = get_bus()
     return DurablePublisher(bus=bus)
 
 
 def get_store() -> DelegationStore:
+    """Retrieve store.
+        """
+
     return DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
 
 class DelegationRequest(BaseModel):
+    """Data model for DelegationRequest."""
+
     task_id: str | None = None
     payload: dict[str, Any]
     callback_url: str | None = None
@@ -116,6 +130,8 @@ class DelegationRequest(BaseModel):
 
 
 class DelegationCallback(BaseModel):
+    """Delegationcallback class implementation."""
+
     status: str
     result: dict[str, Any] | None = None
 
@@ -124,12 +140,21 @@ class DelegationGateway:
     """Minimal delegation handler used by Temporal A2A worker."""
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._publisher = get_publisher()
         self._topic = os.environ.get("A2A_OUT_TOPIC", "a2a.out")
 
     async def handle_event(
         self, event: dict[str, Any], publisher: DurablePublisher | None = None
     ) -> None:
+        """Execute handle event.
+
+            Args:
+                event: The event.
+                publisher: The publisher.
+            """
+
         pub = publisher or self._publisher
         dedupe = event.get("task_id") or event.get("event_id")
         tenant = (event.get("metadata") or {}).get("tenant")
@@ -150,16 +175,35 @@ router = Router(tags=["delegation"])
 
 @router.get("/metrics")
 def metrics(request) -> HttpResponse:
+    """Execute metrics.
+
+        Args:
+            request: The request.
+        """
+
     return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)
 
 
 @router.get("/health")
 async def health(request) -> dict:
+    """Execute health.
+
+        Args:
+            request: The request.
+        """
+
     return {"status": "ok"}
 
 
 @router.post("/v1/delegation/task")
 async def create_delegation_task(request, body: DelegationRequest) -> dict:
+    """Execute create delegation task.
+
+        Args:
+            request: The request.
+            body: The body.
+        """
+
     task_id = body.task_id or str(uuid.uuid4())
     store = get_store()
     publisher = get_publisher()
@@ -191,6 +235,13 @@ async def create_delegation_task(request, body: DelegationRequest) -> dict:
 
 @router.get("/v1/delegation/task/{task_id}")
 async def get_delegation_task(request, task_id: str) -> dict:
+    """Retrieve delegation task.
+
+        Args:
+            request: The request.
+            task_id: The task_id.
+        """
+
     store = get_store()
     record = await store.get_task(task_id)
     if not record:
@@ -200,6 +251,14 @@ async def get_delegation_task(request, task_id: str) -> dict:
 
 @router.post("/v1/delegation/task/{task_id}/callback")
 async def delegation_callback(request, task_id: str, body: DelegationCallback) -> dict:
+    """Execute delegation callback.
+
+        Args:
+            request: The request.
+            task_id: The task_id.
+            body: The body.
+        """
+
     store = get_store()
     record = await store.get_task(task_id)
     if not record:

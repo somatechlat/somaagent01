@@ -24,6 +24,12 @@ from jsonschema import Draft202012Validator
 
 
 def _stable_hash(obj: Any) -> str:
+    """Execute stable hash.
+
+        Args:
+            obj: The obj.
+        """
+
     data = json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
         "utf-8"
     )
@@ -32,6 +38,8 @@ def _stable_hash(obj: Any) -> str:
 
 @dataclass
 class ConfigSnapshot:
+    """Configsnapshot class implementation."""
+
     version: str
     payload: Dict[str, Any]
     checksum: str
@@ -41,6 +49,8 @@ class ConfigRegistry:
     """Holds the current configuration snapshot with validation and subscribers."""
 
     def __init__(self, schema: Dict[str, Any]) -> None:
+        """Initialize the instance."""
+
         self._validator = Draft202012Validator(schema)
         self._snapshot: Optional[ConfigSnapshot] = None
         self._subscribers: List[Callable[[ConfigSnapshot], None]] = []
@@ -54,9 +64,18 @@ class ConfigRegistry:
         return snap
 
     def get(self) -> Optional[ConfigSnapshot]:
+        """Execute get.
+            """
+
         return self._snapshot
 
     def subscribe(self, callback: Callable[[ConfigSnapshot], None]) -> None:
+        """Execute subscribe.
+
+            Args:
+                callback: The callback.
+            """
+
         self._subscribers.append(callback)
 
     def apply_update(self, payload: Dict[str, Any]) -> ConfigSnapshot:

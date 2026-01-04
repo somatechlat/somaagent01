@@ -65,6 +65,12 @@ class InjectedCapsule:
     
     @classmethod
     def from_capsule(cls, capsule: Capsule) -> 'InjectedCapsule':
+        """Execute from capsule.
+
+            Args:
+                capsule: The capsule.
+            """
+
         return cls(
             id=capsule.id,
             name=capsule.name,

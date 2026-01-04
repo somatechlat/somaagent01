@@ -220,6 +220,9 @@ class EventPublisher:
         """Start background task for periodic flushing."""
 
         def flush_loop():
+            """Execute flush loop.
+                """
+
             while not self._stop_event.is_set():
                 time.sleep(self.flush_interval)
 

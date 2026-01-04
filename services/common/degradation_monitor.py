@@ -140,6 +140,8 @@ class DegradationMonitor:
     MAX_HISTORY_SIZE = 10000
 
     def __init__(self):
+        """Initialize the instance."""
+
         self.components: Dict[str, ComponentHealth] = {}
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
         self._degradation_thresholds = {

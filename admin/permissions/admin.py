@@ -60,6 +60,12 @@ class PermissionResourceAdmin(admin.ModelAdmin):
 
     @admin.display(description="Permissions")
     def permission_count(self, obj):
+        """Execute permission count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.permissions.count() if hasattr(obj, "permissions") else 0
 
 
@@ -79,6 +85,12 @@ class PermissionActionAdmin(admin.ModelAdmin):
 
     @admin.display(description="Destructive")
     def is_destructive_badge(self, obj):
+        """Check if destructive badge.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.is_destructive:
             return format_html(
                 '<span style="background: #ef4444; color: white; padding: 2px 8px; '
@@ -171,6 +183,12 @@ class RoleAdmin(admin.ModelAdmin):
 
     @admin.display(description="Scope")
     def scope_badge(self, obj):
+        """Execute scope badge.
+
+            Args:
+                obj: The obj.
+            """
+
         colors = {
             "platform": "#ef4444",
             "tenant": "#3b82f6",
@@ -186,10 +204,22 @@ class RoleAdmin(admin.ModelAdmin):
 
     @admin.display(description="Permissions")
     def permission_count(self, obj):
+        """Execute permission count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.permissions.count()
 
     @admin.display(description="System")
     def is_system_badge(self, obj):
+        """Check if system badge.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.is_system:
             return format_html(
                 '<span style="background: #f59e0b; color: white; padding: 2px 6px; '
@@ -199,14 +229,35 @@ class RoleAdmin(admin.ModelAdmin):
 
     @admin.action(description="Set as default role")
     def set_as_default(self, request, queryset):
+        """Set as default.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_default=True)
 
     @admin.action(description="Unset default")
     def unset_default(self, request, queryset):
+        """Execute unset default.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_default=False)
 
     @admin.action(description="Clone role (creates copy)")
     def clone_role(self, request, queryset):
+        """Execute clone role.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         for role in queryset:
             permissions = list(role.permissions.all())
             role.pk = None
@@ -246,18 +297,42 @@ class UserRoleAssignmentAdmin(admin.ModelAdmin):
 
     @admin.display(description="User")
     def user_id_short(self, obj):
+        """Execute user id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.user_id)[:12] if obj.user_id else "-"
 
     @admin.display(description="Tenant")
     def tenant_id_short(self, obj):
+        """Execute tenant id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
 
     @admin.display(description="Scope ID")
     def scope_id_short(self, obj):
+        """Execute scope id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.scope_id)[:8] if obj.scope_id else "-"
 
     @admin.display(description="Granted By")
     def granted_by_short(self, obj):
+        """Execute granted by short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.granted_by)[:8] if obj.granted_by else "-"
 
 
@@ -286,14 +361,32 @@ class PermissionGrantAdmin(admin.ModelAdmin):
 
     @admin.display(description="User")
     def user_id_short(self, obj):
+        """Execute user id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.user_id)[:12] if obj.user_id else "-"
 
     @admin.display(description="Tenant")
     def tenant_id_short(self, obj):
+        """Execute tenant id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
 
     @admin.display(description="Scope ID")
     def scope_id_short(self, obj):
+        """Execute scope id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.scope_id)[:8] if obj.scope_id else "-"
 
 
@@ -333,10 +426,22 @@ class PermissionCheckLogAdmin(admin.ModelAdmin):
 
     @admin.display(description="User")
     def user_id_short(self, obj):
+        """Execute user id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.user_id)[:12] if obj.user_id else "-"
 
     @admin.display(description="Allowed")
     def allowed_badge(self, obj):
+        """Execute allowed badge.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.allowed:
             return format_html(
                 '<span style="background: #22c55e; color: white; padding: 2px 8px; '
@@ -348,10 +453,30 @@ class PermissionCheckLogAdmin(admin.ModelAdmin):
         )
 
     def has_add_permission(self, request):
+        """Check if add permission.
+
+            Args:
+                request: The request.
+            """
+
         return False  # Logs are system-generated
 
     def has_change_permission(self, request, obj=None):
+        """Check if change permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
 
     def has_delete_permission(self, request, obj=None):
+        """Check if delete permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False  # Compliance - cannot delete audit logs

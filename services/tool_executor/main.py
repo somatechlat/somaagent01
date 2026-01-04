@@ -54,6 +54,8 @@ class ToolExecutor:
     """Tool executor service - thin orchestrator."""
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
@@ -84,6 +86,9 @@ class ToolExecutor:
         self._result_publisher = ResultPublisher(self)
 
     def get_audit_store(self) -> _AuditStore:
+        """Retrieve audit store.
+            """
+
         if self._audit_store is not None:
             return self._audit_store
         self._audit_store = audit_store_from_env()
@@ -144,6 +149,9 @@ class ToolExecutor:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     executor = ToolExecutor()
     try:
         await executor.start()

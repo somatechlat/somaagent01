@@ -49,14 +49,23 @@ class TestSuite:
 
     @property
     def passed(self) -> int:
+        """Execute passed.
+            """
+
         return sum(1 for r in self.results if r.passed)
 
     @property
     def failed(self) -> int:
+        """Execute failed.
+            """
+
         return sum(1 for r in self.results if not r.passed)
 
     @property
     def total(self) -> int:
+        """Execute total.
+            """
+
         return len(self.results)
 
 

@@ -1,3 +1,5 @@
+"""Module models."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,6 +8,8 @@ from typing import Any, List, Optional
 
 @dataclass(slots=True)
 class ToolParameter:
+    """Toolparameter class implementation."""
+
     name: str
     type: str
     description: Optional[str] = None
@@ -27,12 +31,17 @@ class ToolParameter:
 
 @dataclass(slots=True)
 class ToolDefinition:
+    """Tooldefinition class implementation."""
+
     name: str
     description: str
     parameters: List[ToolParameter] = field(default_factory=list)
     category: Optional[str] = None
 
     def to_openapi_function(self) -> dict[str, Any]:
+        """Execute to openapi function.
+            """
+
         props: dict[str, Any] = {}
         required: list[str] = []
         for p in self.parameters:

@@ -36,11 +36,20 @@ import httpx
 
 @dataclass
 class Stats:
+    """Stats class implementation."""
+
     latencies: list[float]
     ok: int = 0
     err: int = 0
 
     def record(self, latency: float, ok: bool) -> None:
+        """Execute record.
+
+            Args:
+                latency: The latency.
+                ok: The ok.
+            """
+
         self.latencies.append(latency)
         if ok:
             self.ok += 1
@@ -48,9 +57,18 @@ class Stats:
             self.err += 1
 
     def snapshot(self) -> dict[str, Any]:
+        """Execute snapshot.
+            """
+
         lats = sorted(self.latencies)
 
         def pct(p: float) -> float:
+            """Execute pct.
+
+                Args:
+                    p: The p.
+                """
+
             if not lats:
                 return 0.0
             k = int(max(0, min(len(lats) - 1, round((p / 100.0) * (len(lats) - 1)))))
@@ -70,6 +88,13 @@ class Stats:
 
 
 def _env_float(name: str, default: float) -> float:
+    """Execute env float.
+
+        Args:
+            name: The name.
+            default: The default.
+        """
+
     raw = os.environ.get(name, str(default))
     try:
         return float(raw) if raw is not None else default
@@ -78,6 +103,13 @@ def _env_float(name: str, default: float) -> float:
 
 
 def _env_int(name: str, default: int) -> int:
+    """Execute env int.
+
+        Args:
+            name: The name.
+            default: The default.
+        """
+
     raw = os.environ.get(name, str(default))
     try:
         return int(raw) if raw is not None else default
@@ -97,6 +129,21 @@ async def _worker(
     persona_id: Optional[str],
     message: str,
 ) -> None:
+    """Execute worker.
+
+        Args:
+            name: The name.
+            client: The client.
+            q: The q.
+            stats: The stats.
+            headers: The headers.
+            base_url: The base_url.
+            path: The path.
+            tenant: The tenant.
+            persona_id: The persona_id.
+            message: The message.
+        """
+
     while True:
         try:
             _ = await q.get()
@@ -122,6 +169,9 @@ async def _worker(
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     base_url = os.environ.get("TARGET_URL", "http://127.0.0.1:8010") or "http://127.0.0.1:8010"
     path = os.environ.get("PATH", "/v1/sessions/message") or "/v1/sessions/message"
     rps = _env_float("RPS", 5.0)

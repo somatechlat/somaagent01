@@ -1,3 +1,5 @@
+"""Module log."""
+
 import json
 from dataclasses import dataclass
 from typing import Literal, Optional, TypeVar
@@ -39,23 +41,47 @@ PROGRESS_MAX_LEN: int = 120
 
 
 def _truncate_heading(text: str | None) -> str:
+    """Execute truncate heading.
+
+        Args:
+            text: The text.
+        """
+
     if text is None:
         return ""
     return truncate_text_by_ratio(str(text), HEADING_MAX_LEN, "...", ratio=1.0)
 
 
 def _truncate_progress(text: str | None) -> str:
+    """Execute truncate progress.
+
+        Args:
+            text: The text.
+        """
+
     if text is None:
         return ""
     return truncate_text_by_ratio(str(text), PROGRESS_MAX_LEN, "...", ratio=1.0)
 
 
 def _truncate_key(text: str) -> str:
+    """Execute truncate key.
+
+        Args:
+            text: The text.
+        """
+
     return truncate_text_by_ratio(str(text), KEY_MAX_LEN, "...", ratio=1.0)
 
 
 def _truncate_value(val: T) -> T:
     # If dict, recursively truncate each value
+    """Execute truncate value.
+
+        Args:
+            val: The val.
+        """
+
     if isinstance(val, dict):
         for k in list(val.keys()):
             v = val[k]
@@ -90,6 +116,12 @@ def _truncate_value(val: T) -> T:
 
 
 def _truncate_content(text: str | None) -> str:
+    """Execute truncate content.
+
+        Args:
+            text: The text.
+        """
+
     if text is None:
         return ""
     raw = str(text)
@@ -130,6 +162,8 @@ def _mask_recursive(obj: T) -> T:
 
 @dataclass
 class LogItem:
+    """Logitem class implementation."""
+
     log: "Log"
     no: int
     type: str
@@ -142,6 +176,9 @@ class LogItem:
     guid: str = ""
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         self.guid = self.log.guid
 
     def update(
@@ -154,6 +191,17 @@ class LogItem:
         update_progress: ProgressUpdate | None = None,
         **kwargs,
     ):
+        """Execute update.
+
+            Args:
+                type: The type.
+                heading: The heading.
+                content: The content.
+                kvps: The kvps.
+                temp: The temp.
+                update_progress: The update_progress.
+            """
+
         if self.guid == self.log.guid:
             self.log._update_item(
                 self.no,
@@ -172,6 +220,13 @@ class LogItem:
         content: str | None = None,
         **kwargs,
     ):
+        """Execute stream.
+
+            Args:
+                heading: The heading.
+                content: The content.
+            """
+
         if heading is not None:
             self.update(heading=self.heading + heading)
         if content is not None:
@@ -182,6 +237,9 @@ class LogItem:
             self.update(**{k: prev + v})
 
     def output(self):
+        """Execute output.
+            """
+
         return {
             "no": self.no,
             "id": self.id,  # Include id in output
@@ -195,7 +253,11 @@ class LogItem:
 
 class Log:
 
+    """Log class implementation."""
+
     def __init__(self):
+        """Initialize the instance."""
+
         self.guid: str = str(uuid.uuid4())
         self.updates: list[int] = []
         self.logs: list[LogItem] = []
@@ -214,6 +276,18 @@ class Log:
     ) -> LogItem:
 
         # add a minimal item to the log
+        """Execute log.
+
+            Args:
+                type: The type.
+                heading: The heading.
+                content: The content.
+                kvps: The kvps.
+                temp: The temp.
+                update_progress: The update_progress.
+                id: The id.
+            """
+
         item = LogItem(
             log=self,
             no=len(self.logs),
@@ -247,6 +321,19 @@ class Log:
         id: Optional[str] = None,  # Add id parameter
         **kwargs,
     ):
+        """Execute update item.
+
+            Args:
+                no: The no.
+                type: The type.
+                heading: The heading.
+                content: The content.
+                kvps: The kvps.
+                temp: The temp.
+                update_progress: The update_progress.
+                id: The id.
+            """
+
         item = self.logs[no]
 
         # adjust all content before processing
@@ -286,6 +373,14 @@ class Log:
         self._update_progress_from_item(item)
 
     def set_progress(self, progress: str, no: int = 0, active: bool = True):
+        """Set progress.
+
+            Args:
+                progress: The progress.
+                no: The no.
+                active: The active.
+            """
+
         progress = _mask_recursive(progress)
         progress = _truncate_progress(progress)
         self.progress = progress
@@ -295,9 +390,19 @@ class Log:
         self.progress_active = active
 
     def set_initial_progress(self):
+        """Set initial progress.
+            """
+
         self.set_progress("Waiting for input", 0, False)
 
     def output(self, start=None, end=None):
+        """Execute output.
+
+            Args:
+                start: The start.
+                end: The end.
+            """
+
         if start is None:
             start = 0
         if end is None:
@@ -313,12 +418,21 @@ class Log:
         return out
 
     def reset(self):
+        """Execute reset.
+            """
+
         self.guid = str(uuid.uuid4())
         self.updates = []
         self.logs = []
         self.set_initial_progress()
 
     def _update_progress_from_item(self, item: LogItem):
+        """Execute update progress from item.
+
+            Args:
+                item: The item.
+            """
+
         if item.heading and item.update_progress != "none":
             if item.no >= self.progress_no:
                 self.set_progress(

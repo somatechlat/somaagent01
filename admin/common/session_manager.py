@@ -84,6 +84,9 @@ class Session:
     user_agent: str = ""
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         if not self.created_at:
             self.created_at = datetime.now(timezone.utc).isoformat()
         if not self.last_activity:

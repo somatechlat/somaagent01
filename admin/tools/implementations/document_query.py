@@ -1,3 +1,5 @@
+"""Module document_query."""
+
 from admin.core.helpers.document_query import DocumentQueryHelper
 
 from admin.core.helpers.tool import Response, Tool
@@ -5,7 +7,12 @@ from admin.core.helpers.tool import Response, Tool
 
 class DocumentQueryTool(Tool):
 
+    """Documentquerytool class implementation."""
+
     async def execute(self, **kwargs):
+        """Execute execute.
+            """
+
         document_uri = kwargs["document"] or None
         queries = (
             kwargs["queries"]
@@ -20,6 +27,12 @@ class DocumentQueryTool(Tool):
 
             # logging callback
             def progress_callback(msg):
+                """Execute progress callback.
+
+                    Args:
+                        msg: The msg.
+                    """
+
                 progress.append(msg)
                 self.log.update(progress="\n".join(progress))
 

@@ -94,6 +94,13 @@ async def call_utility_model(
     call_data = {"callback": callback}
 
     async def stream_callback(chunk: str, total: str):
+        """Execute stream callback.
+
+            Args:
+                chunk: The chunk.
+                total: The total.
+            """
+
         if call_data["callback"]:
             await call_data["callback"](chunk)
 

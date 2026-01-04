@@ -38,10 +38,19 @@ class ServiceRegistry:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._services: List[BaseSomaService] = []
 
     def register(self, service: BaseSomaService, critical: bool = False) -> None:
         # Attach orchestrator metadata.
+        """Execute register.
+
+            Args:
+                service: The service.
+                critical: The critical.
+            """
+
         service._critical = critical
         # Preserve explicit startup ordering if provided on the service; default to 0.
         order = getattr(service, "_startup_order", 0)
@@ -50,6 +59,9 @@ class ServiceRegistry:
 
     @property
     def services(self) -> List[BaseSomaService]:
+        """Execute services.
+            """
+
         return self._services
 
 
@@ -64,6 +76,8 @@ class SomaOrchestrator:
     """
 
     def __init__(self, app: Any) -> None:
+        """Initialize the instance."""
+
         self.app = app
         self.registry = ServiceRegistry()
         # The router receives the live list of services via a provider so it is always current.
@@ -79,12 +93,22 @@ class SomaOrchestrator:
     # ``orchestrator.register(MyService(), critical=True)``.
     # ------------------------------------------------------------------
     def register(self, service: BaseSomaService, critical: bool = False) -> None:
+        """Execute register.
+
+            Args:
+                service: The service.
+                critical: The critical.
+            """
+
         self.registry.register(service, critical)
 
     # ------------------------------------------------------------------
     # Lifecycle management.
     # ------------------------------------------------------------------
     async def _start_all(self) -> None:
+        """Execute start all.
+            """
+
         services = sorted(self.registry.services, key=lambda s: getattr(s, "_startup_order", 0))
         LOGGER.info("Starting %d services", len(services))
         for svc in services:
@@ -99,6 +123,9 @@ class SomaOrchestrator:
         LOGGER.info("All services started")
 
     async def _stop_all(self) -> None:
+        """Execute stop all.
+            """
+
         LOGGER.info("Shutting down services")
         for svc in reversed(self.registry.services):
             try:
@@ -129,6 +156,12 @@ class SomaOrchestrator:
         # -----------------------------------------------------------------
         @asynccontextmanager
         async def lifespan(app: Any):
+            """Execute lifespan.
+
+                Args:
+                    app: The app.
+                """
+
             await self._start_all()
             try:
                 yield

@@ -71,14 +71,23 @@ def get_default_model() -> str:
 
 
 def get_multimodal_enabled() -> bool:
+    """Retrieve multimodal enabled.
+        """
+
     return getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
 
 
 def get_confidence_enabled() -> bool:
+    """Retrieve confidence enabled.
+        """
+
     return getattr(settings, "CONFIDENCE_ENABLED", False)
 
 
 def get_confidence_aggregation() -> str:
+    """Retrieve confidence aggregation.
+        """
+
     return getattr(settings, "CONFIDENCE_AGGREGATION", "average")
 
 

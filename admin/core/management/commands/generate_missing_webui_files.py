@@ -1,3 +1,5 @@
+"""Module generate_missing_webui_files."""
+
 #!/usr/bin/env python3
 import json
 import os

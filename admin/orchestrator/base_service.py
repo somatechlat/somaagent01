@@ -35,6 +35,8 @@ class BaseSomaService(ABC):
     name: str
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._running = asyncio.Event()
 
     # ------------------------------------------------------------------
@@ -54,6 +56,9 @@ class BaseSomaService(ABC):
     # Public API used by the orchestrator.
     # ------------------------------------------------------------------
     async def start(self) -> None:
+        """Execute start.
+            """
+
         tracer = get_tracer()
         with tracer.start_as_current_span(f"{self.name}.start") as span:
             current_span.set(span)
@@ -63,6 +68,9 @@ class BaseSomaService(ABC):
             LOGGER.info("%s started", getattr(self, "name", self.__class__.__name__))
 
     async def stop(self) -> None:
+        """Execute stop.
+            """
+
         tracer = get_tracer()
         with tracer.start_as_current_span(f"{self.name}.stop") as span:
             current_span.set(span)

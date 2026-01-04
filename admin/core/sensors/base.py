@@ -83,6 +83,8 @@ class BaseSensor(ABC):
         user_id: str = "",
         session_id: str = "",
     ):
+        """Initialize the instance."""
+
         self.tenant_id = tenant_id
         self.agent_id = agent_id
         self.user_id = user_id

@@ -38,6 +38,8 @@ class MCPServerRemote(BaseModel):
     __client: Optional[Any] = PrivateAttr(default=None)
 
     def __init__(self, config: dict[str, Any]):
+        """Initialize the instance."""
+
         super().__init__()
         from admin.core.helpers.mcp_clients import MCPClientRemote
 
@@ -45,26 +47,54 @@ class MCPServerRemote(BaseModel):
         self.update(config)
 
     def get_error(self) -> str:
+        """Retrieve error.
+            """
+
         with self.__lock:
             return self.__client.error
 
     def get_log(self) -> str:
+        """Retrieve log.
+            """
+
         with self.__lock:
             return self.__client.get_log()
 
     def get_tools(self) -> List[dict[str, Any]]:
+        """Retrieve tools.
+            """
+
         with self.__lock:
             return self.__client.tools
 
     def has_tool(self, tool_name: str) -> bool:
+        """Check if tool.
+
+            Args:
+                tool_name: The tool_name.
+            """
+
         with self.__lock:
             return self.__client.has_tool(tool_name)
 
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
+        """Execute call tool.
+
+            Args:
+                tool_name: The tool_name.
+                input_data: The input_data.
+            """
+
         with self.__lock:
             return await self.__client.call_tool(tool_name, input_data)
 
     def update(self, config: dict[str, Any]) -> "MCPServerRemote":
+        """Execute update.
+
+            Args:
+                config: The config.
+            """
+
         with self.__lock:
             for key, value in config.items():
                 if key in [
@@ -87,6 +117,9 @@ class MCPServerRemote(BaseModel):
             return asyncio.run(self.__on_update())
 
     async def __on_update(self) -> "MCPServerRemote":
+        """Execute on update.
+            """
+
         await self.__client.update_tools()
         return self
 
@@ -111,6 +144,8 @@ class MCPServerLocal(BaseModel):
     __client: Optional[Any] = PrivateAttr(default=None)
 
     def __init__(self, config: dict[str, Any]):
+        """Initialize the instance."""
+
         super().__init__()
         from admin.core.helpers.mcp_clients import MCPClientLocal
 
@@ -118,26 +153,54 @@ class MCPServerLocal(BaseModel):
         self.update(config)
 
     def get_error(self) -> str:
+        """Retrieve error.
+            """
+
         with self.__lock:
             return self.__client.error
 
     def get_log(self) -> str:
+        """Retrieve log.
+            """
+
         with self.__lock:
             return self.__client.get_log()
 
     def get_tools(self) -> List[dict[str, Any]]:
+        """Retrieve tools.
+            """
+
         with self.__lock:
             return self.__client.tools
 
     def has_tool(self, tool_name: str) -> bool:
+        """Check if tool.
+
+            Args:
+                tool_name: The tool_name.
+            """
+
         with self.__lock:
             return self.__client.has_tool(tool_name)
 
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
+        """Execute call tool.
+
+            Args:
+                tool_name: The tool_name.
+                input_data: The input_data.
+            """
+
         with self.__lock:
             return await self.__client.call_tool(tool_name, input_data)
 
     def update(self, config: dict[str, Any]) -> "MCPServerLocal":
+        """Execute update.
+
+            Args:
+                config: The config.
+            """
+
         with self.__lock:
             for key, value in config.items():
                 if key in [
@@ -159,5 +222,8 @@ class MCPServerLocal(BaseModel):
             return asyncio.run(self.__on_update())
 
     async def __on_update(self) -> "MCPServerLocal":
+        """Execute on update.
+            """
+
         await self.__client.update_tools()
         return self

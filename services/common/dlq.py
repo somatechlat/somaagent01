@@ -41,6 +41,8 @@ class DeadLetterQueue:
         bus: Optional[KafkaEventBus] = None,
         publisher: Optional[DurablePublisher] = None,
     ) -> None:
+        """Initialize the instance."""
+
         self.source_topic = source_topic
         self.dlq_topic = f"{source_topic}.dlq"
         self.publisher = publisher or DurablePublisher(bus=bus or KafkaEventBus())
@@ -52,6 +54,13 @@ class DeadLetterQueue:
         *,
         retry_count: int = 0,
     ) -> None:
+        """Execute send to dlq.
+
+            Args:
+                event: The event.
+                error: The error.
+            """
+
         payload = {
             "original_event": event,
             "source_topic": self.source_topic,

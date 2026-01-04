@@ -36,6 +36,8 @@ class VoiceAdapter:
     """
 
     def __init__(self, capture: AudioCapture, client: _BaseClient, speaker: Speaker) -> None:
+        """Initialize the instance."""
+
         self._capture = capture
         self._client = client
         self._speaker = speaker

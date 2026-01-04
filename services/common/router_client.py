@@ -12,12 +12,18 @@ import os
 
 @dataclass
 class RouteDecision:
+    """Routedecision class implementation."""
+
     model: str
     score: float
 
 
 class RouterClient:
+    """Routerclient class implementation."""
+
     def __init__(self, base_url: Optional[str] = None) -> None:
+        """Initialize the instance."""
+
         self.base_url = base_url or os.environ.get("ROUTER_URL")
         self._client = httpx.AsyncClient(timeout=5.0) if self.base_url else None
 
@@ -28,6 +34,9 @@ class RouterClient:
         deployment_mode: str,
         candidates: list[str],
     ) -> Optional[RouteDecision]:
+        """Execute route.
+            """
+
         if not self._client or not self.base_url:
             return None
         response = await self._client.post(
@@ -43,6 +52,9 @@ class RouterClient:
         return RouteDecision(model=data["model"], score=float(data.get("score", 0.0)))
 
     async def close(self) -> None:
+        """Execute close.
+            """
+
         if self._client:
             await self._client.aclose()
 

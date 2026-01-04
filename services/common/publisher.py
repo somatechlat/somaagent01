@@ -36,7 +36,11 @@ PUBLISH_EVENTS = Counter(
 
 
 class DurablePublisher:
+    """Durablepublisher class implementation."""
+
     def __init__(self, *, bus: KafkaEventBus) -> None:
+        """Initialize the instance."""
+
         self.bus = bus
 
     async def publish(

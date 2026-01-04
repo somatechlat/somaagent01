@@ -42,6 +42,8 @@ class FlinkConversationMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_conversation_metrics"
         unique_together = [["tenant_id", "window_start"]]
         indexes = [
@@ -51,6 +53,8 @@ class FlinkConversationMetrics(models.Model):
         ordering = ["-window_start"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant_id} @ {self.window_start}"
 
 
@@ -83,6 +87,8 @@ class FlinkUsageAggregate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_usage_aggregates"
         unique_together = [["tenant_id", "resource_type", "window_start"]]
         indexes = [
@@ -92,6 +98,8 @@ class FlinkUsageAggregate(models.Model):
         ordering = ["-window_start"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant_id}: {self.resource_type} @ {self.window_start}"
 
 
@@ -138,6 +146,8 @@ class FlinkAnomalyAlert(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_anomaly_alerts"
         indexes = [
             models.Index(fields=["tenant_id", "detected_at"]),
@@ -147,6 +157,8 @@ class FlinkAnomalyAlert(models.Model):
         ordering = ["-detected_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.severity} {self.alert_type} for {self.user_id}"
 
 
@@ -179,6 +191,8 @@ class FlinkAgentMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_agent_metrics"
         unique_together = [["agent_id", "window_start"]]
         indexes = [
@@ -188,6 +202,8 @@ class FlinkAgentMetrics(models.Model):
         ordering = ["-window_start"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.agent_id} @ {self.window_start}"
 
 
@@ -222,6 +238,8 @@ class FlinkSystemMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_system_metrics"
         indexes = [
             models.Index(fields=["window_start"]),
@@ -229,6 +247,8 @@ class FlinkSystemMetrics(models.Model):
         ordering = ["-window_start"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"System @ {self.window_start}"
 
 
@@ -274,6 +294,8 @@ class FlinkLLMTokenMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_llm_token_metrics"
         unique_together = [["tenant_id", "model_name", "window_start"]]
         indexes = [
@@ -284,6 +306,8 @@ class FlinkLLMTokenMetrics(models.Model):
         ordering = ["-window_start"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant_id}: {self.model_name} @ {self.window_start}"
 
 
@@ -323,6 +347,8 @@ class FlinkLLMModelUsage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "flink_llm_model_usage"
         unique_together = [["tenant_id", "agent_id", "model_name", "date"]]
         indexes = [
@@ -332,4 +358,6 @@ class FlinkLLMModelUsage(models.Model):
         ordering = ["-date"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.agent_id}: {self.model_name} on {self.date}"

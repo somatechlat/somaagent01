@@ -60,6 +60,13 @@ def settings():
 # -----------------------------------------------------------------------------
 def flag(key: str, tenant: Any = None) -> bool:
     # First check the feature_flags dictionary in the config
+    """Execute flag.
+
+        Args:
+            key: The key.
+            tenant: The tenant.
+        """
+
     from .registry import get_config
 
     config = get_config()
@@ -70,10 +77,16 @@ def flag(key: str, tenant: Any = None) -> bool:
 
 
 def deployment_mode() -> str:
+    """Execute deployment mode.
+        """
+
     return str(env("DEPLOYMENT_MODE", "DEV"))
 
 
 def gateway_port() -> int:
+    """Execute gateway port.
+        """
+
     return int(env("GATEWAY_PORT", 8000))
 
 
@@ -93,27 +106,51 @@ def soma_base_url() -> str:
 
 
 def postgres_dsn() -> str:
+    """Execute postgres dsn.
+        """
+
     return str(env("POSTGRES_DSN", "postgresql://postgres:postgres@localhost:5432/soma"))
 
 
 def redis_url() -> str:
+    """Execute redis url.
+        """
+
     return str(env("REDIS_URL", "redis://localhost:6379/0"))
 
 
 def kafka_bootstrap_servers() -> str:
+    """Execute kafka bootstrap servers.
+        """
+
     return str(env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"))
 
 
 def opa_url() -> str:
+    """Execute opa url.
+        """
+
     return str(env("OPA_URL", "http://openfga:8080"))
 
 
 # Export a convenient singleton that mimics the historic ``runtime_config``
 class _CfgFacade:
+    """Cfgfacade class implementation."""
+
     def env(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper
+        """Execute env.
+
+            Args:
+                name: The name.
+                default: The default.
+            """
+
         return env(name, default)
 
     def settings(self):
+        """Execute settings.
+            """
+
         return settings()
 
     @property
@@ -122,10 +159,20 @@ class _CfgFacade:
         from .registry import get_config
 
         class StateWrapper:
+            """Statewrapper class implementation."""
+
             def __init__(self, config):
+                """Initialize the instance."""
+
                 self.settings = config
 
             def __getattr__(self, name):
+                """Execute getattr  .
+
+                    Args:
+                        name: The name.
+                    """
+
                 return getattr(self.settings, name)
 
         return StateWrapper(get_config())

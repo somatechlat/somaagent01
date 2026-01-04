@@ -30,6 +30,8 @@ class UnifiedSecretManager:
     """Vault-based secret storage."""
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._vault_addr = os.environ.get("VAULT_ADDR")
         if not self._vault_addr:
             LOGGER.warning("VAULT_ADDR not configured - secrets will not be available")

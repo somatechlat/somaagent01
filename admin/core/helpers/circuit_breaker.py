@@ -105,6 +105,12 @@ def circuit_breaker(
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         state = {
             "failures": 0,
             "circuit_open": False,
@@ -115,6 +121,9 @@ def circuit_breaker(
 
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> T:
+                """Execute async wrapper.
+                    """
+
                 if state["circuit_open"]:
                     if time.time() - state["opened_at"] >= reset_timeout:
                         CB_TRIAL.inc()
@@ -144,6 +153,9 @@ def circuit_breaker(
 
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
+            """Execute wrapper.
+                """
+
             if state["circuit_open"]:
                 if time.time() - state["opened_at"] >= reset_timeout:
                     CB_TRIAL.inc()

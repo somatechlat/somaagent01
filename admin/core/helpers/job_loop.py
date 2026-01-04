@@ -1,3 +1,5 @@
+"""Module job_loop."""
+
 import asyncio
 import time
 
@@ -12,6 +14,9 @@ pause_time = 0
 
 
 async def run_loop():
+    """Execute run loop.
+        """
+
     global pause_time, keep_running
 
     while True:
@@ -38,18 +43,27 @@ async def run_loop():
 
 async def scheduler_tick():
     # Get the task scheduler instance and print detailed debug info
+    """Execute scheduler tick.
+        """
+
     scheduler = TaskScheduler.get()
     # Run the scheduler tick
     await scheduler.tick()
 
 
 def pause_loop():
+    """Execute pause loop.
+        """
+
     global keep_running, pause_time
     keep_running = False
     pause_time = time.time()
 
 
 def resume_loop():
+    """Execute resume loop.
+        """
+
     global keep_running, pause_time
     keep_running = True
     pause_time = 0

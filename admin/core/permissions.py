@@ -238,7 +238,19 @@ def require_permission(*permissions: str):
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         async def async_wrapper(request, *args, **kwargs):
+            """Execute async wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             user_perms = get_user_permissions(getattr(request, "auth", None))
 
             # Super admin has all permissions
@@ -256,6 +268,12 @@ def require_permission(*permissions: str):
 
         @wraps(func)
         def sync_wrapper(request, *args, **kwargs):
+            """Execute sync wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             user_perms = get_user_permissions(getattr(request, "auth", None))
 
             if "*" in user_perms:

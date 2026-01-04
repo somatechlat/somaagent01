@@ -48,6 +48,8 @@ class Agent(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "agents"
         ordering = ["-created_at"]
         unique_together = [["tenant", "slug"]]
@@ -60,6 +62,8 @@ class Agent(models.Model):
         verbose_name_plural = "Agents"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.tenant.name})"
 
     def to_dict(self):
@@ -95,6 +99,8 @@ class AgentUser(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "agent_users"
         ordering = ["-created_at"]
         unique_together = [["agent", "user_id"]]
@@ -106,6 +112,8 @@ class AgentUser(models.Model):
         verbose_name_plural = "Agent Users"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"User {self.user_id} as {self.role} on {self.agent.name}"
 
     def to_dict(self):

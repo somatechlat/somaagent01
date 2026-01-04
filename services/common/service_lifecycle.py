@@ -45,6 +45,12 @@ def run_service(
     stop_flag = {"stopping": False}
 
     def _request_shutdown(signame: str) -> None:  # pragma: no cover (signal path)
+        """Execute request shutdown.
+
+            Args:
+                signame: The signame.
+            """
+
         if stop_flag["stopping"]:
             return
         stop_flag["stopping"] = True
@@ -63,6 +69,9 @@ def run_service(
             pass
 
     async def _runner() -> None:
+        """Execute runner.
+            """
+
         try:
             await main_coro_factory()
         except asyncio.CancelledError:  # cooperative shutdown

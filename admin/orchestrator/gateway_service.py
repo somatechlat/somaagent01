@@ -33,6 +33,8 @@ class GatewayService(BaseSomaService):
     name = "gateway"
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         super().__init__()
         # Import lazily to avoid circular imports at module load time.
         from services.gateway.main import app as gateway_app
@@ -42,11 +44,17 @@ class GatewayService(BaseSomaService):
 
     async def _start(self) -> None:
         # No separate process is launched – the orchestrator mounts the app.
+        """Execute start.
+            """
+
         LOGGER.debug("GatewayService start – nothing to initialise")
 
     async def _stop(self) -> None:
         # No resources to clean up; the Django ASGI shutdown event will be handled
         # by the orchestrator when the whole process exits.
+        """Execute stop.
+            """
+
         LOGGER.debug("GatewayService stop – nothing to clean up")
 
     async def health(self) -> dict[str, Any]:

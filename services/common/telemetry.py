@@ -17,6 +17,8 @@ from services.common.telemetry_store import TelemetryStore
 
 
 class TelemetryPublisher:
+    """Telemetrypublisher class implementation."""
+
     def __init__(
         self,
         publisher: Optional[DurablePublisher] = None,
@@ -24,6 +26,8 @@ class TelemetryPublisher:
         bus: Optional[KafkaEventBus] = None,
     ) -> None:
         # prefer provided durable publisher; else wrap provided bus; else create both
+        """Initialize the instance."""
+
         if publisher is not None:
             self.publisher = publisher
         else:
@@ -39,6 +43,13 @@ class TelemetryPublisher:
         }
 
     async def _publish(self, topic: str, event: dict[str, Any]) -> None:
+        """Execute publish.
+
+            Args:
+                topic: The topic.
+                event: The event.
+            """
+
         await self.publisher.publish(
             topic,
             event,
@@ -59,6 +70,9 @@ class TelemetryPublisher:
         output_tokens: int,
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
+        """Execute emit llm.
+            """
+
         event = {
             "event_id": str(uuid.uuid4()),
             "session_id": session_id,
@@ -86,6 +100,9 @@ class TelemetryPublisher:
         latency_seconds: float,
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
+        """Execute emit tool.
+            """
+
         event = {
             "event_id": str(uuid.uuid4()),
             "session_id": session_id,
@@ -111,6 +128,9 @@ class TelemetryPublisher:
         status: str,
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
+        """Execute emit budget.
+            """
+
         event = {
             "event_id": str(uuid.uuid4()),
             "tenant": tenant,
@@ -139,6 +159,9 @@ class TelemetryPublisher:
         status: str = "success",
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
+        """Execute emit escalation llm.
+            """
+
         event = {
             "event_id": str(uuid.uuid4()),
             "session_id": session_id,

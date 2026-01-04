@@ -26,17 +26,23 @@ MULTIMODAL_ENABLED = getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", Fa
 
 
 class JobCreateRequest(BaseModel):
+    """Data model for JobCreateRequest."""
+
     plan: dict = Field(..., description="Task DSL plan JSON")
     session_id: str = Field(..., description="Session ID")
     request_id: Optional[str] = Field(None, description="Correlation ID")
 
 
 class JobCreateResponse(BaseModel):
+    """Data model for JobCreateResponse."""
+
     job_id: str
     status: str
 
 
 class JobStatusResponse(BaseModel):
+    """Data model for JobStatusResponse."""
+
     id: str
     status: str
     total_steps: int
@@ -45,6 +51,8 @@ class JobStatusResponse(BaseModel):
 
 
 class CapabilityResponse(BaseModel):
+    """Data model for CapabilityResponse."""
+
     tool_id: str
     provider: str
     modalities: list[str]
@@ -57,6 +65,8 @@ class CapabilityResponse(BaseModel):
 
 
 class ProvenanceResponse(BaseModel):
+    """Data model for ProvenanceResponse."""
+
     asset_id: str
     tenant_id: str
     generation_params: dict
@@ -64,6 +74,9 @@ class ProvenanceResponse(BaseModel):
 
 
 def _require_multimodal_enabled():
+    """Execute require multimodal enabled.
+        """
+
     if not MULTIMODAL_ENABLED:
         raise ForbiddenError("Multimodal capabilities disabled")
 

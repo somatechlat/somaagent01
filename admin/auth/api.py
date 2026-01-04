@@ -553,6 +553,9 @@ async def _update_last_login(payload: TokenPayload) -> None:
 
         @sync_to_async
         def update_login():
+            """Execute update login.
+                """
+
             TenantUser.objects.filter(user_id=payload.sub).update(last_login_at=timezone.now())
 
         await update_login()
@@ -620,6 +623,9 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
     # Verify target tenant exists
     @sync_to_async
     def get_tenant():
+        """Retrieve tenant.
+            """
+
         try:
             return Tenant.objects.get(id=payload.tenant_id, status="active")
         except Tenant.DoesNotExist:
@@ -653,6 +659,9 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
     # Create audit log entry
     @sync_to_async
     def create_audit():
+        """Execute create audit.
+            """
+
         from admin.saas.models import AuditLog
 
         return AuditLog.objects.create(

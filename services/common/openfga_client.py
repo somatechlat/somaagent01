@@ -21,6 +21,8 @@ class OpenFGAError(RuntimeError):
 
 @dataclass(frozen=True)
 class AuthorizationKey:
+    """Authorizationkey class implementation."""
+
     tenant: str
     subject: str
     relation: str
@@ -43,6 +45,8 @@ class OpenFGAClient:
         cache_ttl: float = 2.0,
         fail_open: bool = True,
     ) -> None:
+        """Initialize the instance."""
+
         self.base_url = base_url or os.environ.get("SA01_OPENFGA_API_URL")
         if not self.base_url:
             raise ValueError(
@@ -124,7 +128,13 @@ class OpenFGAClient:
         return allowed
 
     async def close(self) -> None:
+        """Execute close.
+            """
+
         await self._client.aclose()
 
     def clear_cache(self) -> None:
+        """Execute clear cache.
+            """
+
         self._cache.clear()

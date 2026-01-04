@@ -80,6 +80,8 @@ class DegradationNotificationService:
     KAFKA_TOPIC = "degradation.events"
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._producer = None
         self._initialized = False
         self._channels: List[NotificationChannel] = [

@@ -1,3 +1,5 @@
+"""Module providers."""
+
 from typing import Dict, List, Optional, TypedDict
 
 import yaml
@@ -7,22 +9,31 @@ from admin.core.helpers import files
 
 # Type alias for UI option items
 class FieldOption(TypedDict):
+    """Fieldoption class implementation."""
+
     value: str
     label: str
 
 
 class ProviderManager:
+    """Providermanager class implementation."""
+
     _instance = None
     _raw: Optional[Dict[str, List[Dict[str, str]]]] = None  # full provider data
     _options: Optional[Dict[str, List[FieldOption]]] = None  # UI-friendly list
 
     @classmethod
     def get_instance(cls):
+        """Retrieve instance.
+            """
+
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def __init__(self):
+        """Initialize the instance."""
+
         if self._raw is None or self._options is None:
             self._load_providers()
 

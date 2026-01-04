@@ -23,6 +23,12 @@ from admin.agents.services.somabrain_integration import SomaBrainClient, SomaCli
 
 
 def _read_doc(path: str) -> Mapping[str, Any]:
+    """Execute read doc.
+
+        Args:
+            path: The path.
+        """
+
     p = path.strip()
     if not p:
         raise FileNotFoundError("missing file path")
@@ -40,6 +46,12 @@ def _read_doc(path: str) -> Mapping[str, Any]:
 
 
 def cmd_get(args: argparse.Namespace) -> int:
+    """Execute cmd get.
+
+        Args:
+            args: The args.
+        """
+
     client = SomaBrainClient.get()
     try:
         data = client._get_loop().run_until_complete(client.get_persona(args.persona_id))
@@ -54,6 +66,12 @@ def cmd_get(args: argparse.Namespace) -> int:
 
 
 def cmd_put(args: argparse.Namespace) -> int:
+    """Execute cmd put.
+
+        Args:
+            args: The args.
+        """
+
     try:
         doc = _read_doc(args.path)
     except Exception as e:
@@ -78,6 +96,12 @@ def cmd_put(args: argparse.Namespace) -> int:
 
 
 def cmd_delete(args: argparse.Namespace) -> int:
+    """Execute cmd delete.
+
+        Args:
+            args: The args.
+        """
+
     client = SomaBrainClient.get()
     try:
         # currently doesn't take etag; we can handle optimistic delete via put with a tombstone if API required.
@@ -103,6 +127,9 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    """Execute main.
+        """
+
     parser = argparse.ArgumentParser(description="SomaBrain Persona Admin (CAS)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 

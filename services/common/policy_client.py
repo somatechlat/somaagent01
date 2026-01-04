@@ -17,6 +17,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class PolicyRequest:
+    """Data model for PolicyRequest."""
+
     tenant: str
     persona_id: Optional[str]
     action: str
@@ -25,11 +27,15 @@ class PolicyRequest:
 
 
 class PolicyClient:
+    """Policyclient class implementation."""
+
     def __init__(
         self,
         base_url: Optional[str] = None,
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
+        """Initialize the instance."""
+
         config = os.environ
         default_base_url = getattr(
             getattr(config, "external", None), "opa_url", None
@@ -48,6 +54,12 @@ class PolicyClient:
         self.tenant_config = tenant_config or TenantConfig()
 
     async def evaluate(self, request: PolicyRequest) -> bool:
+        """Execute evaluate.
+
+            Args:
+                request: The request.
+            """
+
         payload = {
             "input": {
                 "tenant": request.tenant,
@@ -83,9 +95,18 @@ class PolicyClient:
             return False
 
     async def close(self) -> None:
+        """Execute close.
+            """
+
         await self._client.aclose()
 
     def _cache_key(self, request: PolicyRequest) -> tuple[Any, ...]:
+        """Execute cache key.
+
+            Args:
+                request: The request.
+            """
+
         context_items = tuple(sorted((k, self._freeze(v)) for k, v in request.context.items()))
         return (
             request.tenant,
@@ -96,6 +117,12 @@ class PolicyClient:
         )
 
     def _freeze(self, value: Any) -> Any:
+        """Execute freeze.
+
+            Args:
+                value: The value.
+            """
+
         if isinstance(value, dict):
             return tuple(sorted((k, self._freeze(v)) for k, v in value.items()))
         if isinstance(value, list):

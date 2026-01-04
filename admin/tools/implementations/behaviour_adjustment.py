@@ -1,3 +1,5 @@
+"""Module behaviour_adjustment."""
+
 from agent import Agent
 
 from admin.core.helpers import files, memory
@@ -7,9 +9,17 @@ from admin.core.helpers.tool import Response, Tool
 
 class UpdateBehaviour(Tool):
 
+    """Updatebehaviour class implementation."""
+
     async def execute(self, adjustments="", **kwargs):
 
         # stringify adjustments if needed
+        """Execute execute.
+
+            Args:
+                adjustments: The adjustments.
+            """
+
         if not isinstance(adjustments, str):
             adjustments = str(adjustments)
 
@@ -26,11 +36,25 @@ class UpdateBehaviour(Tool):
 async def update_behaviour(agent: Agent, log_item: LogItem, adjustments: str):
 
     # get system message and current ruleset
+    """Execute update behaviour.
+
+        Args:
+            agent: The agent.
+            log_item: The log_item.
+            adjustments: The adjustments.
+        """
+
     system = agent.read_prompt("behaviour.merge.sys.md")
     current_rules = read_rules(agent)
 
     # log query streamed by LLM
     async def log_callback(content):
+        """Execute log callback.
+
+            Args:
+                content: The content.
+            """
+
         log_item.stream(ruleset=content)
 
     msg = agent.read_prompt(
@@ -51,10 +75,22 @@ async def update_behaviour(agent: Agent, log_item: LogItem, adjustments: str):
 
 
 def get_custom_rules_file(agent: Agent):
+    """Retrieve custom rules file.
+
+        Args:
+            agent: The agent.
+        """
+
     return memory.get_memory_subdir_abs(agent) + "/behaviour.md"
 
 
 def read_rules(agent: Agent):
+    """Execute read rules.
+
+        Args:
+            agent: The agent.
+        """
+
     rules_file = get_custom_rules_file(agent)
     if files.exists(rules_file):
         rules = files.read_prompt_file(rules_file)

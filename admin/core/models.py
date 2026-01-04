@@ -29,10 +29,14 @@ class Session(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "sessions"
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Session({self.session_id})"
 
 
@@ -47,6 +51,8 @@ class SessionEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "session_events"
         ordering = ["created_at"]
 
@@ -82,6 +88,8 @@ class Constitution(models.Model):
     revoked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "constitutions"
         ordering = ["-created_at"]
         indexes = [
@@ -90,6 +98,8 @@ class Constitution(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Constitution(v{self.version}:{self.content_hash[:8]})"
 
 
@@ -184,6 +194,8 @@ class Capsule(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "capsules"
         unique_together = [["name", "version", "tenant"]]
         indexes = [
@@ -192,6 +204,8 @@ class Capsule(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Capsule({self.name}:{self.version}:{self.status})"
     
     @property
@@ -230,6 +244,8 @@ class CapsuleInstance(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "capsule_instances"
 
 
@@ -252,10 +268,14 @@ class Capability(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "capabilities"
         verbose_name_plural = "capabilities"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Capability({self.name})"
 
 
@@ -276,10 +296,14 @@ class UISetting(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "ui_settings"
         unique_together = [["tenant", "user_id", "key"]]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"UISetting({self.tenant}:{self.key})"
 
 
@@ -319,10 +343,14 @@ class Job(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "jobs"
         ordering = ["-priority", "scheduled_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Job({self.name}:{self.status})"
 
 
@@ -353,10 +381,14 @@ class Notification(models.Model):
     read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "notifications"
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Notification({self.title})"
 
 
@@ -380,10 +412,14 @@ class Prompt(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "prompts"
         unique_together = [["name", "version", "tenant"]]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Prompt({self.name}:{self.version})"
 
 
@@ -407,9 +443,13 @@ class FeatureFlag(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "feature_flags"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"FeatureFlag({self.name}:{self.is_enabled})"
 
 
@@ -434,10 +474,14 @@ class AuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "agent_audit_logs"
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"AuditLog({self.action}:{self.resource_type})"
 
 
@@ -469,6 +513,8 @@ class MemoryReplica(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "memory_replica"
         ordering = ["-created_at"]
         indexes = [
@@ -479,6 +525,8 @@ class MemoryReplica(models.Model):
         verbose_name_plural = "Memory Replicas"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"MemoryReplica({self.event_id})"
 
 
@@ -503,10 +551,14 @@ class DeadLetterMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "dead_letter_queue"
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"DLQ({self.queue_name}:{self.error_type})"
 
 
@@ -527,10 +579,14 @@ class AgentSetting(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "agent_settings"
         unique_together = [["agent_id", "key"]]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"AgentSetting({self.agent_id}:{self.key})"
 
 
@@ -573,6 +629,8 @@ class OutboxMessage(models.Model):
     last_error = models.TextField(null=True, blank=True)
 
     class Status(models.TextChoices):
+        """Status class implementation."""
+
         PENDING = "pending", "Pending"
         PUBLISHED = "published", "Published"
         FAILED = "failed", "Failed"
@@ -586,6 +644,8 @@ class OutboxMessage(models.Model):
     )
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "outbox_messages"
         indexes = [
             models.Index(fields=["status", "created_at"]),
@@ -594,6 +654,8 @@ class OutboxMessage(models.Model):
         ordering = ["created_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"OutboxMessage({self.topic}:{self.status})"
 
     def mark_published(self):
@@ -657,6 +719,8 @@ class DeadLetterMessage(models.Model):
     resolution_notes = models.TextField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "dead_letter_messages"
         ordering = ["-created_at"]
         indexes = [
@@ -664,6 +728,8 @@ class DeadLetterMessage(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"DLQ({self.original_topic}:{self.id})"
 
     def resolve(self, resolved_by: str, notes: str = ""):
@@ -695,6 +761,8 @@ class IdempotencyRecord(models.Model):
     expires_at = models.DateTimeField(db_index=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "idempotency_records"
         indexes = [
             models.Index(fields=["expires_at"]),
@@ -702,6 +770,8 @@ class IdempotencyRecord(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Idempotency({self.idempotency_key})"
 
     @classmethod
@@ -771,6 +841,8 @@ class PendingMemory(models.Model):
     last_error = models.TextField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "pending_memories"
         ordering = ["created_at"]
         indexes = [
@@ -779,6 +851,8 @@ class PendingMemory(models.Model):
         ]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"PendingMemory({self.tenant_id}:{self.synced})"
 
     def mark_synced(self):

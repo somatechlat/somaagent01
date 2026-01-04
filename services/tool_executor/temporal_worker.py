@@ -20,6 +20,12 @@ import os
 
 @activity.defn
 async def handle_tool_request(event: dict) -> dict:
+    """Execute handle tool request.
+
+        Args:
+            event: The event.
+        """
+
     kcfg = kafka_settings()
     bus = KafkaEventBus(kcfg)
     publisher = DurablePublisher(bus=bus)
@@ -41,7 +47,15 @@ async def handle_tool_request(event: dict) -> dict:
 @workflow.defn
 class ToolExecutorWorkflow:
     @workflow.run
+    """Toolexecutorworkflow class implementation."""
+
     async def run(self, event: dict) -> dict:
+        """Execute run.
+
+            Args:
+                event: The event.
+            """
+
         return await workflow.execute_activity(
             handle_tool_request,
             event,
@@ -50,6 +64,9 @@ class ToolExecutorWorkflow:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_TOOL_QUEUE", "tool-executor")
     # outbox_flush removed - feature never implemented

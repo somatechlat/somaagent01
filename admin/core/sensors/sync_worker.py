@@ -35,6 +35,8 @@ class SyncResult:
         brain_ref: str = None,
         error: str = None,
     ):
+        """Initialize the instance."""
+
         self.event_id = event_id
         self.success = success
         self.brain_ref = brain_ref

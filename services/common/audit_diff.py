@@ -10,6 +10,12 @@ MASK_PATTERNS = [r"(?i)(password|secret|token|key)\b.*", r"(?i)api_key.*", r"(?i
 
 
 def mask_value(value: str) -> str:
+    """Execute mask value.
+
+        Args:
+            value: The value.
+        """
+
     return "***MASKED***"
 
 
@@ -18,6 +24,12 @@ def generate_diff(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
     diff = {"old": {}, "new": {}, "changes": []}
 
     def _secret(k: str) -> bool:
+        """Execute secret.
+
+            Args:
+                k: The k.
+            """
+
         return any(re.search(pat, k) for pat in MASK_PATTERNS)
 
     all_keys = set(old.keys()) | set(new.keys())

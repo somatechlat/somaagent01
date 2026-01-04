@@ -1,3 +1,5 @@
+"""Module vision_load."""
+
 import base64
 from mimetypes import guess_type
 
@@ -12,7 +14,15 @@ TOKENS_ESTIMATE = 1500
 
 
 class VisionLoad(Tool):
+    """Visionload class implementation."""
+
     async def execute(self, paths: list[str] = [], **kwargs) -> Response:
+
+        """Execute execute.
+
+            Args:
+                paths: The paths.
+            """
 
         self.images_dict = {}
 
@@ -59,6 +69,12 @@ class VisionLoad(Tool):
     async def after_execution(self, response: Response, **kwargs):
 
         # build image data messages for LLMs, or error message
+        """Execute after execution.
+
+            Args:
+                response: The response.
+            """
+
         content = []
         if self.images_dict:
             for path, image in self.images_dict.items():

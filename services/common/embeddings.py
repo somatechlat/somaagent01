@@ -1,3 +1,5 @@
+"""Module embeddings."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -23,14 +25,20 @@ EMBED_LATENCY = Histogram(
 
 class EmbeddingsProvider(ABC):
     @abstractmethod
+    """Embeddingsprovider class implementation."""
+
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
         """Return embeddings for a list of texts."""
 
 
 class OpenAIEmbeddings(EmbeddingsProvider):
+    """Openaiembeddings class implementation."""
+
     def __init__(
         self, *, api_key: str | None = None, base_url: str | None = None, model: str | None = None
     ) -> None:
+        """Initialize the instance."""
+
         import os
 
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY") or ""
@@ -42,6 +50,12 @@ class OpenAIEmbeddings(EmbeddingsProvider):
         ).strip()
 
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
+        """Execute embed.
+
+            Args:
+                texts: The texts.
+            """
+
         provider = "openai"
         with EMBED_LATENCY.labels(provider).time():
             try:

@@ -39,6 +39,8 @@ class TimestampedModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         abstract = True
 
 
@@ -51,6 +53,8 @@ class TenantScopedModel(TimestampedModel):
     )
 
     class Meta:
+        """Meta class implementation."""
+
         abstract = True
 
 
@@ -115,6 +119,8 @@ class VoicePersona(TenantScopedModel):
     is_default = models.BooleanField(default=False)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "voice_personas"
         unique_together = [["tenant_id", "name"]]
         ordering = ["-created_at"]
@@ -126,6 +132,8 @@ class VoicePersona(TenantScopedModel):
         verbose_name_plural = "Voice Personas"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.voice_id})"
 
     def to_dict(self):
@@ -219,6 +227,8 @@ class VoiceSession(TenantScopedModel):
     terminated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "voice_sessions"
         ordering = ["-created_at"]
         indexes = [
@@ -231,6 +241,8 @@ class VoiceSession(TenantScopedModel):
         verbose_name_plural = "Voice Sessions"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Session {self.id} ({self.status})"
 
     def start(self):
@@ -319,6 +331,8 @@ class VoiceModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "voice_models"
         ordering = ["provider", "name"]
         indexes = [
@@ -329,6 +343,8 @@ class VoiceModel(models.Model):
         verbose_name_plural = "Voice Models"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.provider})"
 
     def to_dict(self):

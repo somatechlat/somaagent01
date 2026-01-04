@@ -42,12 +42,16 @@ class LLMModelConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "llm_model_configs"
         verbose_name = "LLM Model Configuration"
         verbose_name_plural = "LLM Model Configurations"
         ordering = ["provider", "name"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.provider}/{self.name}"
 
     def build_kwargs(self) -> dict:

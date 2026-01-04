@@ -109,6 +109,8 @@ class JWKSCache:
     """Cache for JWKS public keys."""
 
     def __init__(self, ttl_seconds: int = 3600):
+        """Initialize the instance."""
+
         self._cache: dict[str, Any] = {}
         self._expires_at: float = 0
         self._ttl = ttl_seconds
@@ -215,6 +217,8 @@ class RoleRequired(HttpBearer):
     """
 
     def __init__(self, *required_roles: str):
+        """Initialize the instance."""
+
         super().__init__()
         self.required_roles = set(required_roles)
 
@@ -305,7 +309,19 @@ def require_roles(*roles: str):
     """
 
     def decorator(func):
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         async def wrapper(request, *args, **kwargs):
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             user = get_current_user(request)
             user_roles = set(user.roles)
             required_roles = set(roles)
@@ -336,8 +352,20 @@ def require_permission(permission: str):
     """
 
     def decorator(func):
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         async def wrapper(request, *args, **kwargs):
             # For now, just verify authentication
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             user = get_current_user(request)
             return await func(request, *args, **kwargs)
 

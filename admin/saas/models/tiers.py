@@ -93,6 +93,8 @@ class SubscriptionTier(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "subscription_tiers"
         ordering = ["sort_order", "base_price_cents"]
         indexes = [
@@ -104,6 +106,8 @@ class SubscriptionTier(models.Model):
         verbose_name_plural = "Subscription Tiers"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} (${self.base_price_cents / 100:.2f}/mo)"
 
     def to_dict(self):

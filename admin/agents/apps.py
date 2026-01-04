@@ -4,6 +4,8 @@ from django.apps import AppConfig
 
 
 class AgentsConfig(AppConfig):
+    """Agentsconfig class implementation."""
+
     default_auto_field = "django.db.models.BigAutoField"
     name = "admin.agents"
     verbose_name = "Agent Management"

@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CandidateScore:
+    """Candidatescore class implementation."""
+
     provider_name: str
     score: float
     metrics: Dict[str, float]
@@ -26,6 +28,8 @@ class PortfolioRanker:
     """Ranks provider candidates based on historical performance."""
 
     def __init__(self, soma_client: SomaBrainOutcomesStore) -> None:
+        """Initialize the instance."""
+
         self.client = soma_client
 
     async def rank(

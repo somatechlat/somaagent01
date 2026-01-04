@@ -1,10 +1,16 @@
+"""Module rate_limiter."""
+
 import asyncio
 import time
 from typing import Awaitable, Callable
 
 
 class RateLimiter:
+    """Ratelimiter class implementation."""
+
     def __init__(self, seconds: int = 60, **limits: int):
+        """Initialize the instance."""
+
         self.timeframe = seconds
         self.limits = {
             key: value if isinstance(value, (int, float)) else 0
@@ -14,6 +20,9 @@ class RateLimiter:
         self._lock = asyncio.Lock()
 
     def add(self, **kwargs: int):
+        """Execute add.
+            """
+
         now = time.time()
         for key, value in kwargs.items():
             if key not in self.values:
@@ -21,6 +30,9 @@ class RateLimiter:
             self.values[key].append((now, value))
 
     async def cleanup(self):
+        """Execute cleanup.
+            """
+
         async with self._lock:
             now = time.time()
             cutoff = now - self.timeframe
@@ -28,6 +40,12 @@ class RateLimiter:
                 self.values[key] = [(t, v) for t, v in self.values[key] if t > cutoff]
 
     async def get_total(self, key: str) -> int:
+        """Retrieve total.
+
+            Args:
+                key: The key.
+            """
+
         async with self._lock:
             if key not in self.values:
                 return 0
@@ -37,6 +55,12 @@ class RateLimiter:
         self,
         callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
     ):
+        """Execute wait.
+
+            Args:
+                callback: The callback.
+            """
+
         while True:
             await self.cleanup()
             should_wait = False

@@ -117,6 +117,9 @@ async def handle_invoice_created(data: dict) -> None:
 
     @sync_to_async
     def log_event():
+        """Execute log event.
+            """
+
         try:
             tenant = Tenant.objects.get(id=customer_id)
             AuditLog.objects.create(
@@ -150,6 +153,9 @@ async def handle_invoice_paid(data: dict) -> None:
 
     @sync_to_async
     def log_event():
+        """Execute log event.
+            """
+
         try:
             tenant = Tenant.objects.get(id=customer_id)
             AuditLog.objects.create(
@@ -181,6 +187,9 @@ async def handle_subscription_started(data: dict) -> None:
 
     @sync_to_async
     def update_tenant():
+        """Execute update tenant.
+            """
+
         from admin.saas.models import SubscriptionTier
 
         try:
@@ -205,6 +214,9 @@ async def handle_subscription_terminated(data: dict) -> None:
 
     @sync_to_async
     def downgrade_tenant():
+        """Execute downgrade tenant.
+            """
+
         from admin.saas.models import SubscriptionTier
 
         try:

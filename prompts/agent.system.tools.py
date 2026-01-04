@@ -1,3 +1,5 @@
+"""Module agent.system.tools."""
+
 import os
 from typing import Any
 
@@ -7,9 +9,18 @@ from admin.core.helpers.print_style import PrintStyle
 
 
 class CallSubordinate(VariablesPlugin):
+    """Callsubordinate class implementation."""
+
     def get_variables(self, file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
 
         # collect all prompt folders in order of their priority
+        """Retrieve variables.
+
+            Args:
+                file: The file.
+                backup_dirs: The backup_dirs.
+            """
+
         folder = files.get_abs_path(os.path.dirname(file))
         folders = [folder]
         if backup_dirs:

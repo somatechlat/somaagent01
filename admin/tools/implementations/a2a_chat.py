@@ -1,3 +1,5 @@
+"""Module a2a_chat."""
+
 from admin.core.helpers.fasta2a_client import connect_to_agent, is_client_available
 from admin.core.helpers.print_style import PrintStyle
 from admin.core.helpers.tool import Response, Tool
@@ -7,6 +9,9 @@ class A2AChatTool(Tool):
     """Communicate with another FastA2A-compatible agent."""
 
     async def execute(self, **kwargs):
+        """Execute execute.
+            """
+
         if not is_client_available():
             return Response(
                 message="FastA2A client not available on this instance.",

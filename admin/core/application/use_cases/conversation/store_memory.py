@@ -18,11 +18,23 @@ LOGGER = logging.getLogger(__name__)
 class MemoryClientProtocol(Protocol):
     """Protocol for memory operations."""
 
+        """Execute remember.
+
+            Args:
+                payload: The payload.
+            """
+
     async def remember(self, payload: Dict[str, Any]) -> Dict[str, Any]: ...
 
 
 class PolicyClientProtocol(Protocol):
     """Protocol for policy evaluation."""
+
+        """Execute evaluate.
+
+            Args:
+                request: The request.
+            """
 
     async def evaluate(self, request: Any) -> bool: ...
 
@@ -37,6 +49,16 @@ class PublisherProtocol(Protocol):
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
+        """Execute publish.
+
+            Args:
+                topic: The topic.
+                payload: The payload.
+                dedupe_key: The dedupe_key.
+                session_id: The session_id.
+                tenant: The tenant.
+            """
+
     ) -> Any: ...
 
 
@@ -75,6 +97,8 @@ class StoreMemoryUseCase:
         wal_topic: str = "memory.wal",
         namespace: str = "default",
     ):
+        """Initialize the instance."""
+
         self._memory_client = memory_client
         self._policy_client = policy_client
         self._publisher = publisher

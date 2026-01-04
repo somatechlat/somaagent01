@@ -22,7 +22,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class DLQConsumer:
+    """Dlqconsumer class implementation."""
+
     def __init__(self, topic: str, group: str = "dlq-consumer") -> None:
+        """Initialize the instance."""
+
         self.topic = topic
         self.group = group
         kafka_cfg = os.environ.kafka
@@ -37,9 +41,18 @@ class DLQConsumer:
         )
 
     async def start(self) -> None:
+        """Execute start.
+            """
+
         await self.bus.consume(self.topic, self.group, self._handle_event)
 
     async def _handle_event(self, event: Dict[str, Any]) -> None:
+        """Execute handle event.
+
+            Args:
+                event: The event.
+            """
+
         try:
             LOGGER.error("DLQ event", extra={"topic": self.topic, "event": event})
             DLQ_CONSUMED_TOTAL.labels(self.topic, "seen").inc()

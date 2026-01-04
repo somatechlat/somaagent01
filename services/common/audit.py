@@ -52,10 +52,16 @@ class AuditEvent:
     metadata: dict
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         if not self.timestamp:
             self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
+        """Execute to dict.
+            """
+
         return asdict(self)
 
 
@@ -78,6 +84,9 @@ class LoginAuditEvent(AuditEvent):
     mfa_used: bool = False
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         super().__post_init__()
         self.event_type = "auth.login"
 
@@ -95,6 +104,9 @@ class LogoutAuditEvent(AuditEvent):
     session_id: Optional[str] = None
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         super().__post_init__()
         self.event_type = "auth.logout"
 
@@ -114,6 +126,9 @@ class SessionAuditEvent(AuditEvent):
     permissions: list = None
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         super().__post_init__()
         self.event_type = "auth.session"
         if self.permissions is None:
@@ -137,6 +152,9 @@ class PermissionDeniedAuditEvent(AuditEvent):
     endpoint: str = ""
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         super().__post_init__()
         self.event_type = "auth.permission_denied"
 
@@ -147,7 +165,11 @@ class PermissionDeniedAuditEvent(AuditEvent):
 
 
 class AuditPublisher:
+    """Auditpublisher class implementation."""
+
     def __init__(self, publisher: DurablePublisher, topic: Optional[str] = None) -> None:
+        """Initialize the instance."""
+
         self.publisher = publisher
         self.topic = topic or os.environ.get("AUDIT_TOPIC", "audit.events")
 
@@ -160,6 +182,12 @@ class AuditPublisher:
         persona_id: Optional[str] = None,
         correlation: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Execute publish.
+
+            Args:
+                event: The event.
+            """
+
         headers = build_headers(
             tenant=tenant,
             session_id=session_id,
@@ -362,6 +390,9 @@ class AuditPublisher:
 
             @sync_to_async
             def store():
+                """Execute store.
+                    """
+
                 AuditLog.objects.create(
                     tenant=event.tenant_id or "",
                     user_id=event.user_id,

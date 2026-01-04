@@ -62,6 +62,8 @@ FLINK_JOBS = {
 
 
 class FlinkJobStatus(str, Enum):
+    """Flinkjobstatus class implementation."""
+
     CREATED = "CREATED"
     RUNNING = "RUNNING"
     FAILING = "FAILING"

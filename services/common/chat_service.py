@@ -176,6 +176,12 @@ class ChatService:
         self.metrics = ContextBuilderMetrics()
 
     def _build_memory_headers(self, tenant_id: Optional[str]) -> dict:
+        """Execute build memory headers.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         headers = {"Content-Type": "application/json"}
         if self.memory_api_token:
             headers["Authorization"] = f"Bearer {self.memory_api_token}"
@@ -228,6 +234,9 @@ class ChatService:
 
             @sync_to_async
             def create_in_db():
+                """Execute create in db.
+                    """
+
                 conv = ConversationModel.objects.create(
                     agent_id=agent_id,
                     user_id=user_id,
@@ -287,6 +296,9 @@ class ChatService:
 
         @sync_to_async
         def get_from_db():
+            """Retrieve from db.
+                """
+
             try:
                 conv = ConversationModel.objects.get(
                     id=conversation_id,
@@ -335,6 +347,9 @@ class ChatService:
 
         @sync_to_async
         def list_from_db():
+            """Execute list from db.
+                """
+
             return list(
                 ConversationModel.objects.filter(
                     user_id=user_id,
@@ -394,6 +409,9 @@ class ChatService:
 
             @sync_to_async
             def create_session():
+                """Execute create session.
+                    """
+
                 session_id = str(uuid4())
                 return SessionModel.objects.create(
                     session_id=session_id,
@@ -466,6 +484,9 @@ class ChatService:
         # Store user message
         @sync_to_async
         def store_user_message():
+            """Execute store user message.
+                """
+
             msg = MessageModel.objects.create(
                 conversation_id=conversation_id,
                 role="user",
@@ -512,6 +533,9 @@ class ChatService:
             # Load basic history first for the governor (without snippets)
             @sync_to_async
             def load_raw_history():
+                """Execute load raw history.
+                    """
+
                 conv = (
                     ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
                 )
@@ -552,6 +576,12 @@ class ChatService:
 
             # Simple token counter for Builder
             def simple_token_counter(text: str) -> int:
+                """Execute simple token counter.
+
+                    Args:
+                        text: The text.
+                    """
+
                 return len(text.split())
 
             builder = ContextBuilder(
@@ -607,6 +637,9 @@ class ChatService:
 
             @sync_to_async
             def store_assistant_message():
+                """Execute store assistant message.
+                    """
+
                 msg = MessageModel.objects.create(
                     conversation_id=conversation_id,
                     role="assistant",
@@ -899,6 +932,9 @@ class ChatService:
 
             @sync_to_async
             def get_agent_id():
+                """Retrieve agent id.
+                    """
+
                 conv = ConversationModel.objects.filter(id=conversation_id).only("agent_id").first()
                 return str(conv.agent_id) if conv else "default"
 
@@ -952,6 +988,9 @@ class ChatService:
             # Update database
             @sync_to_async
             def update_title():
+                """Execute update title.
+                    """
+
                 ConversationModel.objects.filter(id=conversation_id).update(title=title)
 
             await update_title()

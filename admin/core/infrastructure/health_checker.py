@@ -37,6 +37,8 @@ class HealthCheckResult:
         details: dict = None,
         error: str = None,
     ):
+        """Initialize the instance."""
+
         self.name = name
         self.status = status  # healthy, degraded, down
         self.latency_ms = latency_ms
@@ -44,6 +46,9 @@ class HealthCheckResult:
         self.error = error
 
     def to_dict(self) -> dict:
+        """Execute to dict.
+            """
+
         return {
             "name": self.name,
             "status": self.status,
@@ -61,6 +66,8 @@ class InfrastructureHealthChecker:
     """
 
     def __init__(self):
+        """Initialize the instance."""
+
         self.check_timeout = 5.0  # seconds
 
     async def check_all(self) -> dict:
@@ -130,6 +137,9 @@ class InfrastructureHealthChecker:
             # Use sync_to_async wrapper for Django ORM in async context
             @sync_to_async
             def _check_db():
+                """Execute check db.
+                    """
+
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT 1")
                     cursor.fetchone()

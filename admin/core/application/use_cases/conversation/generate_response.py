@@ -26,10 +26,26 @@ class GatewayClientProtocol(Protocol):
 
     async def invoke_stream(
         self, url: str, payload: Dict[str, Any], headers: Dict[str, str]
+        """Execute invoke stream.
+
+            Args:
+                url: The url.
+                payload: The payload.
+                headers: The headers.
+            """
+
     ) -> tuple[str, Dict[str, int]]: ...
 
     async def invoke(
         self, url: str, payload: Dict[str, Any], headers: Dict[str, str]
+        """Execute invoke.
+
+            Args:
+                url: The url.
+                payload: The payload.
+                headers: The headers.
+            """
+
     ) -> Dict[str, Any]: ...
 
 
@@ -43,6 +59,16 @@ class PublisherProtocol(Protocol):
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
+        """Execute publish.
+
+            Args:
+                topic: The topic.
+                payload: The payload.
+                dedupe_key: The dedupe_key.
+                session_id: The session_id.
+                tenant: The tenant.
+            """
+
     ) -> Any: ...
 
 
@@ -103,6 +129,8 @@ class GenerateResponseUseCase:
         outbound_topic: str,
         default_model: str = "unknown",
     ):
+        """Initialize the instance."""
+
         self._gateway_base = gateway_base.rstrip("/")
         self._internal_token = internal_token
         self._publisher = publisher

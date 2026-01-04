@@ -12,6 +12,8 @@ T = TypeVar("T")
 
 
 class CircuitState(str, Enum):
+    """Circuitstate class implementation."""
+
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -36,6 +38,8 @@ class AsyncCircuitBreaker:
         reset_timeout: int = 30,
         exclude_exceptions: Optional[list[type[Exception]]] = None,
     ):
+        """Initialize the instance."""
+
         self._name = name
         self._fail_max = fail_max
         self._reset_timeout = reset_timeout
@@ -48,6 +52,9 @@ class AsyncCircuitBreaker:
 
     @property
     def current_state(self) -> str:
+        """Execute current state.
+            """
+
         return self._state.value
 
     async def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:

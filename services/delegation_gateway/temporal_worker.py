@@ -19,6 +19,12 @@ import os
 
 @activity.defn
 async def handle_a2a(event: dict) -> dict:
+    """Execute handle a2a.
+
+        Args:
+            event: The event.
+        """
+
     kcfg = KafkaSettings(
         bootstrap_servers=os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS",
@@ -44,7 +50,15 @@ async def handle_a2a(event: dict) -> dict:
 @workflow.defn
 class A2AWorkflow:
     @workflow.run
+    """A2aworkflow class implementation."""
+
     async def run(self, event: dict) -> dict:
+        """Execute run.
+
+            Args:
+                event: The event.
+            """
+
         return await workflow.execute_activity(
             handle_a2a,
             event,
@@ -53,6 +67,9 @@ class A2AWorkflow:
 
 
 async def main() -> None:
+    """Execute main.
+        """
+
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
     # outbox_flush removed - feature never implemented

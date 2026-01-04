@@ -42,14 +42,32 @@ def _ensure_metric(metric_cls, name: str, *args, **kwargs):
 
 
 def Counter(name: str, *args, **kwargs):  # type: ignore
+    """Execute Counter.
+
+        Args:
+            name: The name.
+        """
+
     return _ensure_metric(_BaseCounter, name, *args, **kwargs)
 
 
 def Gauge(name: str, *args, **kwargs):  # type: ignore
+    """Execute Gauge.
+
+        Args:
+            name: The name.
+        """
+
     return _ensure_metric(_BaseGauge, name, *args, **kwargs)
 
 
 def Histogram(name: str, *args, **kwargs):  # type: ignore
+    """Execute Histogram.
+
+        Args:
+            name: The name.
+        """
+
     return _ensure_metric(_BaseHistogram, name, *args, **kwargs)
 
 
@@ -516,27 +534,54 @@ def record_memory_persistence(duration: float, operation: str, status: str, tena
     return None
 
     def time_total(self):
+        """Execute time total.
+            """
+
         return thinking_total_seconds.time()
 
     def time_tokenisation(self):
+        """Execute time tokenisation.
+            """
+
         return thinking_tokenisation_seconds.time()
 
     def time_retrieval(self, *, state: str):
+        """Execute time retrieval.
+            """
+
         return thinking_retrieval_seconds.labels(state=state).time()
 
     def time_salience(self):
+        """Execute time salience.
+            """
+
         return thinking_salience_seconds.time()
 
     def time_ranking(self):
+        """Execute time ranking.
+            """
+
         return thinking_ranking_seconds.time()
 
     def time_redaction(self):
+        """Execute time redaction.
+            """
+
         return thinking_redaction_seconds.time()
 
     def time_prompt(self):
+        """Execute time prompt.
+            """
+
         return thinking_prompt_seconds.time()
 
     def record_event_publish(self, event_type: str, *, duration: float | None = None) -> None:
+        """Execute record event publish.
+
+            Args:
+                event_type: The event_type.
+            """
+
         if duration is None:
             event_published_total.labels(event_type=event_type).inc()
             return
@@ -544,6 +589,9 @@ def record_memory_persistence(duration: float, operation: str, status: str, tena
         event_publish_latency_seconds.labels(event_type=event_type).observe(duration)
 
     def record_event_failure(self) -> None:
+        """Execute record event failure.
+            """
+
         event_publish_failure_total.inc()
 
 
@@ -552,7 +600,16 @@ def measure_duration(metric_name: str):
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         async def async_wrapper(*args, **kwargs) -> Any:
+            """Execute async wrapper.
+                """
+
             start_time = time.time()
             try:
                 result = await func(*args, **kwargs)
@@ -574,6 +631,9 @@ def measure_duration(metric_name: str):
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs) -> Any:
+            """Execute sync wrapper.
+                """
+
             start_time = time.time()
             try:
                 result = func(*args, **kwargs)
@@ -598,12 +658,24 @@ def get_metrics_snapshot() -> Dict[str, Any]:
 
     # Best-effort extraction; internal attributes vary across versions.
     def _safe_total(counter: Counter) -> float:
+        """Execute safe total.
+
+            Args:
+                counter: The counter.
+            """
+
         try:
             return float(sum(s.samples[0].value for s in counter.collect()))
         except Exception:
             return 0.0
 
     def _safe_gauge(g: Gauge) -> float:
+        """Execute safe gauge.
+
+            Args:
+                g: The g.
+            """
+
         try:
             return float(next(iter(g.collect())).samples[0].value)
         except Exception:
@@ -633,12 +705,21 @@ class MetricsCollector:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._initialized = True
 
     # Generic error tracking used by circuit breakers, degradation monitor, etc.
     def track_error(self, error_type: str, component: str) -> None:
         # Use a generic counter; if a dedicated counter does not exist we fall
         # back to ``errors_total`` which already captures error_type and location.
+        """Execute track error.
+
+            Args:
+                error_type: The error_type.
+                component: The component.
+            """
+
         try:
             errors_total.labels(error_type=error_type, location=component).inc()
         except Exception:
@@ -647,12 +728,22 @@ class MetricsCollector:
 
     # Singleton health tracking for gateway components.
     def track_singleton_health(self, name: str, healthy: bool) -> None:
+        """Execute track singleton health.
+
+            Args:
+                name: The name.
+                healthy: The healthy.
+            """
+
         try:
             singleton_health.labels(integration_name=name).set(1 if healthy else 0)
         except Exception:
             pass
 
     def update_feature_metrics(self) -> None:
+        """Execute update feature metrics.
+            """
+
         from services.common.features import build_default_registry
 
         reg = build_default_registry()
@@ -666,6 +757,13 @@ class MetricsCollector:
 
     # Additional helper used by some services (e.g., auth results).
     def track_auth_result(self, result: str, source: str) -> None:
+        """Execute track auth result.
+
+            Args:
+                result: The result.
+                source: The source.
+            """
+
         try:
             auth_requests.labels(result=result, source=source).inc()
         except Exception:
@@ -673,6 +771,13 @@ class MetricsCollector:
 
     # Circuit breaker state tracking
     def track_circuit_state(self, name: str, state_value: int) -> None:
+        """Execute track circuit state.
+
+            Args:
+                name: The name.
+                state_value: The state_value.
+            """
+
         try:
             circuit_breaker_state.labels(circuit_name=name).set(state_value)
         except Exception:
@@ -680,6 +785,8 @@ class MetricsCollector:
 
     # Placeholder for any future metric updates.
     def __repr__(self) -> str:  # pragma: no cover
+        """Return object representation."""
+
         return f"<MetricsCollector initialized={self._initialized}>"
 
 
@@ -700,6 +807,9 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_prompt() -> None:
+        """Execute record prompt.
+            """
+
         try:
             context_builder_prompt_total.inc()
         except Exception:
@@ -707,6 +817,9 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_tokens_before() -> None:
+        """Execute record tokens before.
+            """
+
         try:
             context_tokens_before_budget.inc()
         except Exception:
@@ -714,6 +827,9 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_tokens_after() -> None:
+        """Execute record tokens after.
+            """
+
         try:
             context_tokens_after_budget.inc()
         except Exception:
@@ -721,6 +837,9 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_tokens_redacted() -> None:
+        """Execute record tokens redacted.
+            """
+
         try:
             context_tokens_after_redaction.inc()
         except Exception:

@@ -151,30 +151,70 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
 
     @admin.display(description="Price")
     def price_display(self, obj):
+        """Execute price display.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.base_price_cents == 0:
             return format_html('<span style="color: #22c55e;">Free</span>')
         return f"${obj.base_price_cents / 100:.2f}/mo"
 
     @admin.display(description="Tenants")
     def tenant_count(self, obj):
+        """Execute tenant count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.tenants.count()
 
     @admin.action(description="Activate selected tiers")
     def activate_tiers(self, request, queryset):
+        """Execute activate tiers.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True)
         self.message_user(request, f"{queryset.count()} tiers activated.")
 
     @admin.action(description="Deactivate selected tiers")
     def deactivate_tiers(self, request, queryset):
+        """Execute deactivate tiers.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False)
         self.message_user(request, f"{queryset.count()} tiers deactivated.")
 
     @admin.action(description="Make public")
     def make_public(self, request, queryset):
+        """Execute make public.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_public=True)
 
     @admin.action(description="Make private")
     def make_private(self, request, queryset):
+        """Execute make private.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_public=False)
 
 
@@ -266,6 +306,12 @@ class TenantAdmin(admin.ModelAdmin):
 
     @admin.display(description="Status")
     def status_badge(self, obj):
+        """Execute status badge.
+
+            Args:
+                obj: The obj.
+            """
+
         colors = {
             "active": "#22c55e",
             "pending": "#f59e0b",
@@ -282,19 +328,45 @@ class TenantAdmin(admin.ModelAdmin):
 
     @admin.display(description="Users")
     def user_count(self, obj):
+        """Execute user count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.users.count()
 
     @admin.display(description="Agents")
     def agent_count(self, obj):
+        """Execute agent count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.agents.count() if hasattr(obj, "agents") else 0
 
     @admin.action(description="Activate selected tenants")
     def activate_tenants(self, request, queryset):
+        """Execute activate tenants.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(status="active")
         self.message_user(request, f"{queryset.count()} tenants activated.")
 
     @admin.action(description="Suspend selected tenants")
     def suspend_tenants(self, request, queryset):
+        """Execute suspend tenants.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(status="suspended")
         self.message_user(request, f"{queryset.count()} tenants suspended.")
 
@@ -350,6 +422,12 @@ class TenantUserAdmin(admin.ModelAdmin):
 
     @admin.display(description="Role")
     def role_badge(self, obj):
+        """Execute role badge.
+
+            Args:
+                obj: The obj.
+            """
+
         colors = {
             "owner": "#ef4444",
             "admin": "#f59e0b",
@@ -366,14 +444,35 @@ class TenantUserAdmin(admin.ModelAdmin):
 
     @admin.action(description="Activate selected users")
     def activate_users(self, request, queryset):
+        """Execute activate users.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True)
 
     @admin.action(description="Deactivate selected users")
     def deactivate_users(self, request, queryset):
+        """Execute deactivate users.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False)
 
     @admin.action(description="Promote to admin")
     def promote_to_admin(self, request, queryset):
+        """Execute promote to admin.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(role="admin")
 
 
@@ -443,6 +542,12 @@ class AgentAdmin(admin.ModelAdmin):
 
     @admin.display(description="Status")
     def status_badge(self, obj):
+        """Execute status badge.
+
+            Args:
+                obj: The obj.
+            """
+
         colors = {
             "active": "#22c55e",
             "inactive": "#94a3b8",
@@ -459,14 +564,34 @@ class AgentAdmin(admin.ModelAdmin):
 
     @admin.display(description="Users")
     def user_count(self, obj):
+        """Execute user count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.agent_users.count() if hasattr(obj, "agent_users") else 0
 
     @admin.action(description="Activate agents")
     def activate_agents(self, request, queryset):
+        """Execute activate agents.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(status="active")
 
     @admin.action(description="Deactivate agents")
     def deactivate_agents(self, request, queryset):
+        """Execute deactivate agents.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(status="inactive")
 
 
@@ -488,6 +613,12 @@ class AgentUserAdmin(admin.ModelAdmin):
 
     @admin.display(description="User ID")
     def user_id_short(self, obj):
+        """Execute user id short.
+
+            Args:
+                obj: The obj.
+            """
+
         return str(obj.user_id)[:8] if obj.user_id else "-"
 
 
@@ -612,6 +743,12 @@ class UsageRecordAdmin(admin.ModelAdmin):
 
     @admin.display(description="Lago")
     def lago_synced_badge(self, obj):
+        """Execute lago synced badge.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.lago_synced:
             return format_html(
                 '<span style="background: #22c55e; color: white; padding: 2px 6px; '
@@ -623,9 +760,22 @@ class UsageRecordAdmin(admin.ModelAdmin):
         )
 
     def has_add_permission(self, request):
+        """Check if add permission.
+
+            Args:
+                request: The request.
+            """
+
         return False
 
     def has_delete_permission(self, request, obj=None):
+        """Check if delete permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
 
 
@@ -705,15 +855,41 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     @admin.display(description="Resource ID")
     def resource_id_short(self, obj):
+        """Execute resource id short.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.resource_id:
             return str(obj.resource_id)[:8]
         return "-"
 
     def has_add_permission(self, request):
+        """Check if add permission.
+
+            Args:
+                request: The request.
+            """
+
         return False
 
     def has_change_permission(self, request, obj=None):
+        """Check if change permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
 
     def has_delete_permission(self, request, obj=None):
+        """Check if delete permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False

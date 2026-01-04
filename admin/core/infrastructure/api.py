@@ -93,6 +93,9 @@ async def list_rate_limits(
 
     @sync_to_async
     def _get_limits():
+        """Execute get limits.
+            """
+
         qs = RateLimitPolicy.objects.all()
         if active_only:
             qs = qs.filter(is_active=True)
@@ -120,6 +123,9 @@ async def get_rate_limit(request, key: str) -> dict:
 
     @sync_to_async
     def _get_limit():
+        """Execute get limit.
+            """
+
         try:
             policy = RateLimitPolicy.objects.get(key=key)
             return policy.to_dict()
@@ -158,6 +164,9 @@ async def create_rate_limit(
     @sync_to_async
     def _create():
         # Check if key already exists
+        """Execute create.
+            """
+
         if RateLimitPolicy.objects.filter(key=payload.key).exists():
             return None, "Key already exists"
 
@@ -201,6 +210,9 @@ async def update_rate_limit(
 
     @sync_to_async
     def _update():
+        """Execute update.
+            """
+
         try:
             policy = RateLimitPolicy.objects.get(key=key)
         except RateLimitPolicy.DoesNotExist:
@@ -260,6 +272,9 @@ async def delete_rate_limit(request, key: str) -> dict:
 
     @sync_to_async
     def _delete():
+        """Execute delete.
+            """
+
         try:
             policy = RateLimitPolicy.objects.get(key=key)
             policy.delete()
@@ -347,6 +362,9 @@ async def seed_rate_limits(request) -> dict:
 
     @sync_to_async
     def _seed():
+        """Execute seed.
+            """
+
         created = []
         skipped = []
         for d in defaults:

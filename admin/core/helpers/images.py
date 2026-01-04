@@ -1,3 +1,5 @@
+"""Module images."""
+
 import io
 import math
 

@@ -1,3 +1,5 @@
+"""Module setup_lago."""
+
 import secrets
 
 from cryptography.hazmat.primitives import serialization
@@ -5,6 +7,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 def generate_rsa_key():
+    """Execute generate rsa key.
+        """
+
     key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
@@ -18,6 +23,9 @@ def generate_rsa_key():
 
 
 def main():
+    """Execute main.
+        """
+
     print("Generating RSA Key...")
     rsa_key = generate_rsa_key()
 

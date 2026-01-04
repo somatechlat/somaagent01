@@ -1,3 +1,5 @@
+"""Module semantic_recall."""
+
 from __future__ import annotations
 
 import math
@@ -44,10 +46,19 @@ class SemanticRecallIndex:
     """
 
     def __init__(self, max_items: int = 10000) -> None:
+        """Initialize the instance."""
+
         self.max_items = max_items
         self._items: List[Tuple[List[float], Dict[str, Any]]] = []
 
     def _cosine(self, a: List[float], b: List[float]) -> float:
+        """Execute cosine.
+
+            Args:
+                a: The a.
+                b: The b.
+            """
+
         if not a or not b or len(a) != len(b):
             return 0.0
         num = sum(x * y for x, y in zip(a, b, strict=False))
@@ -58,6 +69,13 @@ class SemanticRecallIndex:
         return num / (da * db)
 
     def add(self, vector: List[float], metadata: Dict[str, Any]) -> None:
+        """Execute add.
+
+            Args:
+                vector: The vector.
+                metadata: The metadata.
+            """
+
         if not isinstance(vector, list) or not vector:
             return
         with _LOCK:
@@ -70,6 +88,14 @@ class SemanticRecallIndex:
     def recall(
         self, query_vec: List[float], k: int = 5, min_score: float = 0.0
     ) -> List[Dict[str, Any]]:
+        """Execute recall.
+
+            Args:
+                query_vec: The query_vec.
+                k: The k.
+                min_score: The min_score.
+            """
+
         if not query_vec:
             return []
         with _LOCK:

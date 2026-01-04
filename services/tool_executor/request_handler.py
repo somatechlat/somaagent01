@@ -35,6 +35,8 @@ class RequestHandler:
     """Handles tool execution requests."""
 
     def __init__(self, executor: "ToolExecutor") -> None:
+        """Initialize the instance."""
+
         self._executor = executor
 
     async def handle(self, event: dict[str, Any]) -> None:

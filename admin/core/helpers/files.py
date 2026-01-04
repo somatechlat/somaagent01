@@ -1,3 +1,5 @@
+"""Module files."""
+
 import base64
 import glob
 import json
@@ -13,11 +15,27 @@ from typing import Any
 
 class VariablesPlugin(ABC):
     @abstractmethod
+    """Variablesplugin class implementation."""
+
     def get_variables(self, file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:  # type: ignore
+        """Retrieve variables.
+
+            Args:
+                file: The file.
+                backup_dirs: The backup_dirs.
+            """
+
         pass
 
 
 def load_plugin_variables(file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
+    """Execute load plugin variables.
+
+        Args:
+            file: The file.
+            backup_dirs: The backup_dirs.
+        """
+
     if not file.endswith(".md"):
         return {}
 
@@ -73,6 +91,14 @@ from admin.core.helpers.strings import sanitize_string
 
 
 def parse_file(_filename: str, _directories: list[str] | None = None, _encoding="utf-8", **kwargs):
+    """Execute parse file.
+
+        Args:
+            _filename: The _filename.
+            _directories: The _directories.
+            _encoding: The _encoding.
+        """
+
     if _directories is None:
         _directories = []
 
@@ -108,6 +134,14 @@ def parse_file(_filename: str, _directories: list[str] | None = None, _encoding=
 def read_prompt_file(
     _file: str, _directories: list[str] | None = None, _encoding="utf-8", **kwargs
 ):
+    """Execute read prompt file.
+
+        Args:
+            _file: The _file.
+            _directories: The _directories.
+            _encoding: The _encoding.
+        """
+
     if _directories is None:
         _directories = []
 
@@ -144,6 +178,13 @@ def read_prompt_file(
 
 def read_file(relative_path: str, encoding="utf-8"):
     # Try to get the absolute path for the file from the original directory or backup directories
+    """Execute read file.
+
+        Args:
+            relative_path: The relative_path.
+            encoding: The encoding.
+        """
+
     absolute_path = get_abs_path(relative_path)
 
     # Read the file content
@@ -153,6 +194,12 @@ def read_file(relative_path: str, encoding="utf-8"):
 
 def read_file_bin(relative_path: str):
     # Try to get the absolute path for the file from the original directory or backup directories
+    """Execute read file bin.
+
+        Args:
+            relative_path: The relative_path.
+        """
+
     absolute_path = get_abs_path(relative_path)
 
     # read binary content
@@ -162,6 +209,12 @@ def read_file_bin(relative_path: str):
 
 def read_file_base64(relative_path):
     # get absolute path
+    """Execute read file base64.
+
+        Args:
+            relative_path: The relative_path.
+        """
+
     absolute_path = get_abs_path(relative_path)
 
     # read binary content and encode to base64
@@ -171,6 +224,12 @@ def read_file_base64(relative_path):
 
 def replace_placeholders_text(_content: str, **kwargs):
     # Replace placeholders with values from kwargs
+    """Execute replace placeholders text.
+
+        Args:
+            _content: The _content.
+        """
+
     for key, value in kwargs.items():
         placeholder = "{{" + key + "}}"
         strval = str(value)
@@ -180,6 +239,12 @@ def replace_placeholders_text(_content: str, **kwargs):
 
 def replace_placeholders_json(_content: str, **kwargs):
     # Replace placeholders with values from kwargs
+    """Execute replace placeholders json.
+
+        Args:
+            _content: The _content.
+        """
+
     for key, value in kwargs.items():
         placeholder = "{{" + key + "}}"
         strval = json.dumps(value)
@@ -188,7 +253,19 @@ def replace_placeholders_json(_content: str, **kwargs):
 
 
 def replace_placeholders_dict(_content: dict, **kwargs):
+    """Execute replace placeholders dict.
+
+        Args:
+            _content: The _content.
+        """
+
     def replace_value(value):
+        """Execute replace value.
+
+            Args:
+                value: The value.
+            """
+
         if isinstance(value, str):
             placeholders = re.findall(r"{{(\w+)}}", value)
             if placeholders:
@@ -214,9 +291,22 @@ def replace_placeholders_dict(_content: dict, **kwargs):
 
 def process_includes(_content: str, _directories: list[str], **kwargs):
     # Regex to find {{ include 'path' }} or {{include'path'}}
+    """Execute process includes.
+
+        Args:
+            _content: The _content.
+            _directories: The _directories.
+        """
+
     include_pattern = re.compile(r"{{\s*include\s*['\"](.*?)['\"]\s*}}")
 
     def replace_include(match):
+        """Execute replace include.
+
+            Args:
+                match: The match.
+            """
+
         include_path = match.group(1)
         # if the path is absolute, do not process it
         if os.path.isabs(include_path):
@@ -250,6 +340,13 @@ def find_file_in_dirs(_filename: str, _directories: list[str]):
 
 def get_unique_filenames_in_dirs(dir_paths: list[str], pattern: str = "*"):
     # returns absolute paths for unique filenames, priority by order in dir_paths
+    """Retrieve unique filenames in dirs.
+
+        Args:
+            dir_paths: The dir_paths.
+            pattern: The pattern.
+        """
+
     seen = set()
     result = []
     for dir_path in dir_paths:
@@ -266,10 +363,22 @@ def get_unique_filenames_in_dirs(dir_paths: list[str], pattern: str = "*"):
 
 def remove_code_fences(text):
     # Pattern to match code fences with optional language specifier
+    """Execute remove code fences.
+
+        Args:
+            text: The text.
+        """
+
     pattern = r"(```|~~~)(.*?\n)(.*?)(\1)"
 
     # Function to replace the code fences
     def replacer(match):
+        """Execute replacer.
+
+            Args:
+                match: The match.
+            """
+
         return match.group(3)  # Return the code without fences
 
     # Use re.DOTALL to make '.' match newlines
@@ -280,6 +389,12 @@ def remove_code_fences(text):
 
 def is_full_json_template(text):
     # Pattern to match the entire text enclosed in ```json or ~~~json fences
+    """Check if full json template.
+
+        Args:
+            text: The text.
+        """
+
     pattern = r"^\s*(```|~~~)\s*json\s*\n(.*?)\n\1\s*$"
     # Use re.DOTALL to make '.' match newlines
     match = re.fullmatch(pattern, text.strip(), flags=re.DOTALL)
@@ -287,6 +402,14 @@ def is_full_json_template(text):
 
 
 def write_file(relative_path: str, content: str, encoding: str = "utf-8"):
+    """Execute write file.
+
+        Args:
+            relative_path: The relative_path.
+            content: The content.
+            encoding: The encoding.
+        """
+
     abs_path = get_abs_path(relative_path)
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
     content = sanitize_string(content, encoding)
@@ -295,6 +418,13 @@ def write_file(relative_path: str, content: str, encoding: str = "utf-8"):
 
 
 def write_file_bin(relative_path: str, content: bytes):
+    """Execute write file bin.
+
+        Args:
+            relative_path: The relative_path.
+            content: The content.
+        """
+
     abs_path = get_abs_path(relative_path)
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
     with open(abs_path, "wb") as f:
@@ -303,6 +433,13 @@ def write_file_bin(relative_path: str, content: bytes):
 
 def write_file_base64(relative_path: str, content: str):
     # decode base64 string to bytes
+    """Execute write file base64.
+
+        Args:
+            relative_path: The relative_path.
+            content: The content.
+        """
+
     data = base64.b64decode(content)
     abs_path = get_abs_path(relative_path)
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
@@ -312,6 +449,12 @@ def write_file_base64(relative_path: str, content: str):
 
 def delete_dir(relative_path: str):
     # ensure deletion of directory without propagating errors
+    """Execute delete dir.
+
+        Args:
+            relative_path: The relative_path.
+        """
+
     abs_path = get_abs_path(relative_path)
     if os.path.exists(abs_path):
         # first try with ignore_errors=True which is the safest option
@@ -338,6 +481,13 @@ def delete_dir(relative_path: str):
 
 
 def list_files(relative_path: str, filter: str = "*"):
+    """Execute list files.
+
+        Args:
+            relative_path: The relative_path.
+            filter: The filter.
+        """
+
     abs_path = get_abs_path(relative_path)
     if not os.path.exists(abs_path):
         return []
@@ -345,6 +495,12 @@ def list_files(relative_path: str, filter: str = "*"):
 
 
 def make_dirs(relative_path: str):
+    """Execute make dirs.
+
+        Args:
+            relative_path: The relative_path.
+        """
+
     abs_path = get_abs_path(relative_path)
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
 
@@ -372,28 +528,53 @@ def fix_dev_path(path: str):
 
 
 def exists(*relative_paths):
+    """Execute exists.
+        """
+
     path = get_abs_path(*relative_paths)
     return os.path.exists(path)
 
 
 def get_base_dir():
     # Get the base directory from the current file path
+    """Retrieve base dir.
+        """
+
     base_dir = os.path.dirname(os.path.abspath(os.path.join(__file__, "../../")))
     return base_dir
 
 
 def basename(path: str, suffix: str | None = None):
+    """Execute basename.
+
+        Args:
+            path: The path.
+            suffix: The suffix.
+        """
+
     if suffix:
         return os.path.basename(path).removesuffix(suffix)
     return os.path.basename(path)
 
 
 def dirname(path: str):
+    """Execute dirname.
+
+        Args:
+            path: The path.
+        """
+
     return os.path.dirname(path)
 
 
 def is_in_base_dir(path: str):
     # check if the given path is within the base directory
+    """Check if in base dir.
+
+        Args:
+            path: The path.
+        """
+
     base_dir = get_base_dir()
     # normalize paths to handle relative paths and symlinks
     abs_path = os.path.abspath(path)
@@ -406,6 +587,14 @@ def get_subdirectories(
     include: str | list[str] = "*",
     exclude: str | list[str] | None = None,
 ):
+    """Retrieve subdirectories.
+
+        Args:
+            relative_path: The relative_path.
+            include: The include.
+            exclude: The exclude.
+        """
+
     abs_path = get_abs_path(relative_path)
     if not os.path.exists(abs_path):
         return []
@@ -423,6 +612,12 @@ def get_subdirectories(
 
 
 def zip_dir(dir_path: str):
+    """Execute zip dir.
+
+        Args:
+            dir_path: The dir_path.
+        """
+
     full_path = get_abs_path(dir_path)
     zip_file_path = tempfile.NamedTemporaryFile(suffix=".zip", delete=False).name
     base_name = os.path.basename(full_path)
@@ -436,6 +631,13 @@ def zip_dir(dir_path: str):
 
 
 def move_file(relative_path: str, new_path: str):
+    """Execute move file.
+
+        Args:
+            relative_path: The relative_path.
+            new_path: The new_path.
+        """
+
     abs_path = get_abs_path(relative_path)
     new_abs_path = get_abs_path(new_path)
     os.makedirs(os.path.dirname(new_abs_path), exist_ok=True)
@@ -444,4 +646,10 @@ def move_file(relative_path: str, new_path: str):
 
 def safe_file_name(filename: str) -> str:
     # Replace any character that's not alphanumeric, dash, underscore, or dot with underscore
+    """Execute safe file name.
+
+        Args:
+            filename: The filename.
+        """
+
     return re.sub(r"[^a-zA-Z0-9-._]", "_", filename)

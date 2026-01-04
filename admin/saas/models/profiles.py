@@ -50,11 +50,15 @@ class AdminProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_admin_profile"
         verbose_name = "Admin Profile"
         verbose_name_plural = "Admin Profiles"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.display_name} ({self.email})"
 
     def get_default_notification_prefs(self):
@@ -68,6 +72,9 @@ class AdminProfile(models.Model):
 
     def save(self, *args, **kwargs):
         # Initialize default notification prefs if empty
+        """Execute save.
+            """
+
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
         super().save(*args, **kwargs)
@@ -116,11 +123,15 @@ class TenantSettings(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_tenant_settings"
         verbose_name = "Tenant Settings"
         verbose_name_plural = "Tenant Settings"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Settings for {self.tenant.name}"
 
 
@@ -161,11 +172,15 @@ class UserPreferences(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_user_preferences"
         verbose_name = "User Preferences"
         verbose_name_plural = "User Preferences"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"Preferences for {self.user_id}"
 
     def get_default_notification_prefs(self):
@@ -177,6 +192,9 @@ class UserPreferences(models.Model):
         }
 
     def save(self, *args, **kwargs):
+        """Execute save.
+            """
+
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
         super().save(*args, **kwargs)
@@ -208,12 +226,16 @@ class UserSession(models.Model):
     expires_at = models.DateTimeField()
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_user_session"
         verbose_name = "User Session"
         verbose_name_plural = "User Sessions"
         ordering = ["-last_active"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.device} - {self.ip_address}"
 
 
@@ -249,10 +271,14 @@ class ApiKey(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_api_key"
         verbose_name = "API Key"
         verbose_name_plural = "API Keys"
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.key_prefix}...)"

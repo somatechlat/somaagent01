@@ -83,6 +83,8 @@ class SaasFeature(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_features"
         ordering = ["category", "sort_order", "name"]
         indexes = [
@@ -95,6 +97,8 @@ class SaasFeature(models.Model):
         verbose_name_plural = "SAAS Features"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.code})"
 
     def to_dict(self):
@@ -164,6 +168,8 @@ class TierFeature(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_tier_features"
         ordering = ["tier", "feature"]
         unique_together = [["tier", "feature"]]
@@ -175,6 +181,8 @@ class TierFeature(models.Model):
         verbose_name_plural = "Tier Features"
 
     def __str__(self):
+        """Return string representation."""
+
         status = "enabled" if self.is_enabled else "disabled"
         return f"{self.feature.name} ({status}) on {self.tier.name}"
 
@@ -235,6 +243,8 @@ class FeatureProvider(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_feature_providers"
         ordering = ["feature", "-is_default", "name"]
         unique_together = [["feature", "code"]]
@@ -246,6 +256,8 @@ class FeatureProvider(models.Model):
         verbose_name_plural = "Feature Providers"
 
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.feature.code})"
 
     def to_dict(self):

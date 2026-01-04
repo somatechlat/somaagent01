@@ -1,3 +1,5 @@
+"""Module kokoro_tts."""
+
 # kokoro_tts.py
 
 import asyncio
@@ -34,10 +36,16 @@ is_updating_model = False
 
 async def preload():
     # return await runtime.call_development_function(_preload)
+    """Execute preload.
+        """
+
     return await _preload()
 
 
 async def _preload():
+    """Execute preload.
+        """
+
     global _pipeline, is_updating_model
 
     while is_updating_model:
@@ -77,19 +85,31 @@ async def _preload():
 
 async def is_downloading():
     # return await runtime.call_development_function(_is_downloading)
+    """Check if downloading.
+        """
+
     return _is_downloading()
 
 
 def _is_downloading():
+    """Execute is downloading.
+        """
+
     return is_updating_model
 
 
 async def is_downloaded():
     # return await runtime.call_development_function(_is_downloaded)
+    """Check if downloaded.
+        """
+
     return _is_downloaded()
 
 
 def _is_downloaded():
+    """Execute is downloaded.
+        """
+
     return _pipeline is not None
 
 
@@ -100,6 +120,12 @@ async def synthesize_sentences(sentences: list[str]):
 
 
 async def _synthesize_sentences(sentences: list[str]):
+    """Execute synthesize sentences.
+
+        Args:
+            sentences: The sentences.
+        """
+
     PrintStyle.standard(f"Kokoro TTS: synthesize start (n_sentences={len(sentences)})")
     await _preload()
     PrintStyle.standard(f"Kokoro TTS: pipeline ready={_pipeline is not None}")

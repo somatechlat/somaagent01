@@ -22,6 +22,12 @@ __all__ = sorted(_SUBMODULES)
 
 
 def __getattr__(name: str) -> Any:
+    """Execute getattr  .
+
+        Args:
+            name: The name.
+        """
+
     if name in _SUBMODULES:
         module = import_module(f"{__name__}.{name}")
         globals()[name] = module
@@ -30,4 +36,7 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> list[str]:
+    """Execute dir  .
+        """
+
     return sorted(list(globals().keys()) + list(_SUBMODULES))

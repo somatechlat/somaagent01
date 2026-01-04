@@ -130,6 +130,9 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
         # )
 
         # Audit log
+        """Execute create invitation.
+            """
+
         logger.info(f"Invitation sent to {payload.email} by admin")
         return True
 
@@ -176,6 +179,9 @@ async def get_invitation(request, token: str) -> InvitationStatusResponse:
         #     status='pending'
         # ).first()
         # return invitation
+        """Execute get invitation.
+            """
+
         return None
 
     invitation = await _get_invitation()
@@ -229,6 +235,9 @@ async def accept_invitation(
         # 3. Create Keycloak user
         # 4. Create TenantUser record
         # 5. Mark invitation accepted
+
+        """Execute accept invitation.
+            """
 
         user_id = str(uuid4())
 
@@ -314,6 +323,9 @@ async def revoke_invitation(request, invitation_id: str) -> dict:
         #     id=invitation_id,
         #     status='pending'
         # ).update(status='revoked')
+        """Execute revoke.
+            """
+
         return True
 
     await _revoke()

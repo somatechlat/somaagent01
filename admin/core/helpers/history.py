@@ -1,3 +1,5 @@
+"""Module history."""
+
 import asyncio
 import json
 import math
@@ -20,6 +22,8 @@ RAW_MESSAGE_OUTPUT_TEXT_TRIM = 100
 
 
 class RawMessage(TypedDict):
+    """Rawmessage class implementation."""
+
     raw_content: "MessageContent"
     preview: str | None
 
@@ -35,79 +39,152 @@ MessageContent = Union[
 
 
 class OutputMessage(TypedDict):
+    """Outputmessage class implementation."""
+
     ai: bool
     content: MessageContent
 
 
 class Record:
+    """Record class implementation."""
+
     def __init__(self):
+        """Initialize the instance."""
+
         pass
 
     @abstractmethod
     def get_tokens(self) -> int:
+        """Retrieve tokens.
+            """
+
         pass
 
     @abstractmethod
     async def compress(self) -> bool:
+        """Execute compress.
+            """
+
         pass
 
     @abstractmethod
     def output(self) -> list[OutputMessage]:
+        """Execute output.
+            """
+
         pass
 
     @abstractmethod
     async def summarize(self) -> str:
+        """Execute summarize.
+            """
+
         pass
 
     @abstractmethod
     def to_dict(self) -> dict:
+        """Execute to dict.
+            """
+
         pass
 
     @staticmethod
     def from_dict(data: dict, history: "History"):
+        """Execute from dict.
+
+            Args:
+                data: The data.
+                history: The history.
+            """
+
         cls = data["_cls"]
         return globals()[cls].from_dict(data, history=history)
 
     def output_langchain(self):
+        """Execute output langchain.
+            """
+
         return output_langchain(self.output())
 
     def output_text(self, human_label="user", ai_label="ai"):
+        """Execute output text.
+
+            Args:
+                human_label: The human_label.
+                ai_label: The ai_label.
+            """
+
         return output_text(self.output(), ai_label, human_label)
 
 
 class Message(Record):
+    """Message class implementation."""
+
     def __init__(self, ai: bool, content: MessageContent, tokens: int = 0):
+        """Initialize the instance."""
+
         self.ai = ai
         self.content = content
         self.summary: str = ""
         self.tokens: int = tokens or self.calculate_tokens()
 
     def get_tokens(self) -> int:
+        """Retrieve tokens.
+            """
+
         if not self.tokens:
             self.tokens = self.calculate_tokens()
         return self.tokens
 
     def calculate_tokens(self):
+        """Execute calculate tokens.
+            """
+
         text = self.output_text()
         return tokens.approximate_tokens(text)
 
     def set_summary(self, summary: str):
+        """Set summary.
+
+            Args:
+                summary: The summary.
+            """
+
         self.summary = summary
         self.tokens = self.calculate_tokens()
 
     async def compress(self):
+        """Execute compress.
+            """
+
         return False
 
     def output(self):
+        """Execute output.
+            """
+
         return [OutputMessage(ai=self.ai, content=self.summary or self.content)]
 
     def output_langchain(self):
+        """Execute output langchain.
+            """
+
         return output_langchain(self.output())
 
     def output_text(self, human_label="user", ai_label="ai"):
+        """Execute output text.
+
+            Args:
+                human_label: The human_label.
+                ai_label: The ai_label.
+            """
+
         return output_text(self.output(), ai_label, human_label)
 
     def to_dict(self):
+        """Execute to dict.
+            """
+
         return {
             "_cls": "Message",
             "ai": self.ai,
@@ -118,6 +195,13 @@ class Message(Record):
 
     @staticmethod
     def from_dict(data: dict, history: "History"):
+        """Execute from dict.
+
+            Args:
+                data: The data.
+                history: The history.
+            """
+
         content = data.get("content", "Content lost")
         msg = Message(ai=data["ai"], content=content)
         msg.summary = data.get("summary", "")
@@ -126,23 +210,41 @@ class Message(Record):
 
 
 class Topic(Record):
+    """Topic class implementation."""
+
     def __init__(self, history: "History"):
+        """Initialize the instance."""
+
         self.history = history
         self.summary: str = ""
         self.messages: list[Message] = []
 
     def get_tokens(self):
+        """Retrieve tokens.
+            """
+
         if self.summary:
             return tokens.approximate_tokens(self.summary)
         else:
             return sum(msg.get_tokens() for msg in self.messages)
 
     def add_message(self, ai: bool, content: MessageContent, tokens: int = 0) -> Message:
+        """Execute add message.
+
+            Args:
+                ai: The ai.
+                content: The content.
+                tokens: The tokens.
+            """
+
         msg = Message(ai=ai, content=content, tokens=tokens)
         self.messages.append(msg)
         return msg
 
     def output(self) -> list[OutputMessage]:
+        """Execute output.
+            """
+
         if self.summary:
             return [OutputMessage(ai=False, content=self.summary)]
         else:
@@ -150,10 +252,16 @@ class Topic(Record):
             return msgs
 
     async def summarize(self):
+        """Execute summarize.
+            """
+
         self.summary = await self.summarize_messages(self.messages)
         return self.summary
 
     async def compress_large_messages(self) -> bool:
+        """Execute compress large messages.
+            """
+
         set = settings.get_settings()
         msg_max_size = (
             set["chat_model_ctx_length"]
@@ -190,12 +298,18 @@ class Topic(Record):
         return False
 
     async def compress(self) -> bool:
+        """Execute compress.
+            """
+
         compress = await self.compress_large_messages()
         if not compress:
             compress = await self.compress_attention()
         return compress
 
     async def compress_attention(self) -> bool:
+
+        """Execute compress attention.
+            """
 
         if len(self.messages) > 2:
             cnt_to_sum = math.ceil((len(self.messages) - 2) * TOPIC_COMPRESS_RATIO)
@@ -209,6 +323,12 @@ class Topic(Record):
 
     async def summarize_messages(self, messages: list[Message]):
         # Vision bytes are currently sent to the utility LLM; summarizing them first would reduce payload size.
+        """Execute summarize messages.
+
+            Args:
+                messages: The messages.
+            """
+
         msg_txt = [m.output_text() for m in messages]
         summary = await self.history.agent.call_utility_model(
             system=self.history.agent.read_prompt("fw.topic_summary.sys.md"),
@@ -217,6 +337,9 @@ class Topic(Record):
         return summary
 
     def to_dict(self):
+        """Execute to dict.
+            """
+
         return {
             "_cls": "Topic",
             "summary": self.summary,
@@ -225,6 +348,13 @@ class Topic(Record):
 
     @staticmethod
     def from_dict(data: dict, history: "History"):
+        """Execute from dict.
+
+            Args:
+                data: The data.
+                history: The history.
+            """
+
         topic = Topic(history=history)
         topic.summary = data.get("summary", "")
         topic.messages = [Message.from_dict(m, history=history) for m in data.get("messages", [])]
@@ -232,18 +362,32 @@ class Topic(Record):
 
 
 class Bulk(Record):
+    """Bulk class implementation."""
+
     def __init__(self, history: "History"):
+        """Initialize the instance."""
+
         self.history = history
         self.summary: str = ""
         self.records: list[Record] = []
 
     def get_tokens(self):
+        """Retrieve tokens.
+            """
+
         if self.summary:
             return tokens.approximate_tokens(self.summary)
         else:
             return sum([r.get_tokens() for r in self.records])
 
     def output(self, human_label: str = "user", ai_label: str = "ai") -> list[OutputMessage]:
+        """Execute output.
+
+            Args:
+                human_label: The human_label.
+                ai_label: The ai_label.
+            """
+
         if self.summary:
             return [OutputMessage(ai=False, content=self.summary)]
         else:
@@ -251,9 +395,15 @@ class Bulk(Record):
             return msgs
 
     async def compress(self):
+        """Execute compress.
+            """
+
         return False
 
     async def summarize(self):
+        """Execute summarize.
+            """
+
         self.summary = await self.history.agent.call_utility_model(
             system=self.history.agent.read_prompt("fw.topic_summary.sys.md"),
             message=self.history.agent.read_prompt(
@@ -263,6 +413,9 @@ class Bulk(Record):
         return self.summary
 
     def to_dict(self):
+        """Execute to dict.
+            """
+
         return {
             "_cls": "Bulk",
             "summary": self.summary,
@@ -271,6 +424,13 @@ class Bulk(Record):
 
     @staticmethod
     def from_dict(data: dict, history: "History"):
+        """Execute from dict.
+
+            Args:
+                data: The data.
+                history: The history.
+            """
+
         bulk = Bulk(history=history)
         bulk.summary = data["summary"]
         # _cls field is present for type identification but not used in reconstruction
@@ -280,7 +440,11 @@ class Bulk(Record):
 
 
 class History(Record):
+    """History class implementation."""
+
     def __init__(self, agent):
+        """Initialize the instance."""
+
         from agent import Agent
 
         self.counter = 0
@@ -290,32 +454,61 @@ class History(Record):
         self.agent: Agent = agent
 
     def get_tokens(self) -> int:
+        """Retrieve tokens.
+            """
+
         return self.get_bulks_tokens() + self.get_topics_tokens() + self.get_current_topic_tokens()
 
     def is_over_limit(self):
+        """Check if over limit.
+            """
+
         limit = _get_ctx_size_for_history()
         total = self.get_tokens()
         return total > limit
 
     def get_bulks_tokens(self) -> int:
+        """Retrieve bulks tokens.
+            """
+
         return sum(record.get_tokens() for record in self.bulks)
 
     def get_topics_tokens(self) -> int:
+        """Retrieve topics tokens.
+            """
+
         return sum(record.get_tokens() for record in self.topics)
 
     def get_current_topic_tokens(self) -> int:
+        """Retrieve current topic tokens.
+            """
+
         return self.current.get_tokens()
 
     def add_message(self, ai: bool, content: MessageContent, tokens: int = 0) -> Message:
+        """Execute add message.
+
+            Args:
+                ai: The ai.
+                content: The content.
+                tokens: The tokens.
+            """
+
         self.counter += 1
         return self.current.add_message(ai, content=content, tokens=tokens)
 
     def new_topic(self):
+        """Execute new topic.
+            """
+
         if self.current.messages:
             self.topics.append(self.current)
             self.current = Topic(history=self)
 
     def output(self) -> list[OutputMessage]:
+        """Execute output.
+            """
+
         result: list[OutputMessage] = []
         result += [m for b in self.bulks for m in b.output()]
         result += [m for t in self.topics for m in t.output()]
@@ -324,6 +517,13 @@ class History(Record):
 
     @staticmethod
     def from_dict(data: dict, history: "History"):
+        """Execute from dict.
+
+            Args:
+                data: The data.
+                history: The history.
+            """
+
         history.counter = data.get("counter", 0)
         history.bulks = [Bulk.from_dict(b, history=history) for b in data["bulks"]]
         history.topics = [Topic.from_dict(t, history=history) for t in data["topics"]]
@@ -331,6 +531,9 @@ class History(Record):
         return history
 
     def to_dict(self):
+        """Execute to dict.
+            """
+
         return {
             "_cls": "History",
             "counter": self.counter,
@@ -340,10 +543,16 @@ class History(Record):
         }
 
     def serialize(self):
+        """Execute serialize.
+            """
+
         data = self.to_dict()
         return _json_dumps(data)
 
     async def compress(self):
+        """Execute compress.
+            """
+
         compressed = False
         while True:
             curr, hist, bulk = (
@@ -379,6 +588,9 @@ class History(Record):
 
     async def compress_topics(self) -> bool:
         # summarize topics one by one
+        """Execute compress topics.
+            """
+
         for topic in self.topics:
             if not topic.summary:
                 await topic.summarize()
@@ -399,6 +611,9 @@ class History(Record):
 
     async def compress_bulks(self):
         # merge bulks if possible
+        """Execute compress bulks.
+            """
+
         compressed = await self.merge_bulks_by(BULK_MERGE_COUNT)
         # remove oldest bulk if necessary
         if not compressed:
@@ -408,6 +623,12 @@ class History(Record):
 
     async def merge_bulks_by(self, count: int):
         # if bulks is empty, return False
+        """Execute merge bulks by.
+
+            Args:
+                count: The count.
+            """
+
         if len(self.bulks) == 0:
             return False
         # merge bulks in groups of count, even if there are fewer than count
@@ -418,6 +639,12 @@ class History(Record):
         return True
 
     async def merge_bulks(self, bulks: list[Bulk]) -> Bulk:
+        """Execute merge bulks.
+
+            Args:
+                bulks: The bulks.
+            """
+
         bulk = Bulk(history=self)
         bulk.records = cast(list[Record], bulks)
         await bulk.summarize()
@@ -425,6 +652,13 @@ class History(Record):
 
 
 def deserialize_history(json_data: str, agent) -> History:
+    """Execute deserialize history.
+
+        Args:
+            json_data: The json_data.
+            agent: The agent.
+        """
+
     history = History(agent=agent)
     if json_data:
         data = _json_loads(json_data)
@@ -433,16 +667,33 @@ def deserialize_history(json_data: str, agent) -> History:
 
 
 def _get_ctx_size_for_history() -> int:
+    """Execute get ctx size for history.
+        """
+
     set = settings.get_settings()
     return int(set["chat_model_ctx_length"] * set["chat_model_ctx_history"])
 
 
 def _stringify_output(output: OutputMessage, ai_label="ai", human_label="human"):
+    """Execute stringify output.
+
+        Args:
+            output: The output.
+            ai_label: The ai_label.
+            human_label: The human_label.
+        """
+
     return f'{ai_label if output["ai"] else human_label}: {_stringify_content(output["content"])}'
 
 
 def _stringify_content(content: MessageContent) -> str:
     # already a string
+    """Execute stringify content.
+
+        Args:
+            content: The content.
+        """
+
     if isinstance(content, str):
         return content
 
@@ -461,6 +712,12 @@ def _stringify_content(content: MessageContent) -> str:
 
 
 def _output_content_langchain(content: MessageContent):
+    """Execute output content langchain.
+
+        Args:
+            content: The content.
+        """
+
     if isinstance(content, str):
         return content
     if _is_raw_message(content):
@@ -472,6 +729,12 @@ def _output_content_langchain(content: MessageContent):
 
 
 def group_outputs_abab(outputs: list[OutputMessage]) -> list[OutputMessage]:
+    """Execute group outputs abab.
+
+        Args:
+            outputs: The outputs.
+        """
+
     result = []
     for out in outputs:
         if result and result[-1]["ai"] == out["ai"]:
@@ -485,6 +748,12 @@ def group_outputs_abab(outputs: list[OutputMessage]) -> list[OutputMessage]:
 
 
 def group_messages_abab(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """Execute group messages abab.
+
+        Args:
+            messages: The messages.
+        """
+
     result = []
     for msg in messages:
         if result and isinstance(result[-1], type(msg)):
@@ -496,6 +765,12 @@ def group_messages_abab(messages: list[BaseMessage]) -> list[BaseMessage]:
 
 
 def output_langchain(messages: list[OutputMessage]):
+    """Execute output langchain.
+
+        Args:
+            messages: The messages.
+        """
+
     result = []
     for m in messages:
         if m["ai"]:
@@ -510,14 +785,35 @@ def output_langchain(messages: list[OutputMessage]):
 
 
 def output_text(messages: list[OutputMessage], ai_label="ai", human_label="human"):
+    """Execute output text.
+
+        Args:
+            messages: The messages.
+            ai_label: The ai_label.
+            human_label: The human_label.
+        """
+
     return "\n".join(_stringify_output(o, ai_label, human_label) for o in messages)
 
 
 def _merge_outputs(a: MessageContent, b: MessageContent) -> MessageContent:
+    """Execute merge outputs.
+
+        Args:
+            a: The a.
+            b: The b.
+        """
+
     if isinstance(a, str) and isinstance(b, str):
         return a + "\n" + b
 
     def make_list(obj: MessageContent) -> list[MessageContent]:
+        """Execute make list.
+
+            Args:
+                obj: The obj.
+            """
+
         if isinstance(obj, list):
             return obj  # type: ignore
         if isinstance(obj, dict):
@@ -535,6 +831,13 @@ def _merge_outputs(a: MessageContent, b: MessageContent) -> MessageContent:
 def _merge_properties(
     a: Dict[str, MessageContent], b: Dict[str, MessageContent]
 ) -> Dict[str, MessageContent]:
+    """Execute merge properties.
+
+        Args:
+            a: The a.
+            b: The b.
+        """
+
     result = a.copy()
     for k, v in b.items():
         if k in result:
@@ -545,12 +848,30 @@ def _merge_properties(
 
 
 def _is_raw_message(obj: object) -> bool:
+    """Execute is raw message.
+
+        Args:
+            obj: The obj.
+        """
+
     return isinstance(obj, Mapping) and "raw_content" in obj
 
 
 def _json_dumps(obj):
+    """Execute json dumps.
+
+        Args:
+            obj: The obj.
+        """
+
     return json.dumps(obj, ensure_ascii=False)
 
 
 def _json_loads(obj):
+    """Execute json loads.
+
+        Args:
+            obj: The obj.
+        """
+
     return json.loads(obj)

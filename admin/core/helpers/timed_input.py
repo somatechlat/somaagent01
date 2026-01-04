@@ -1,9 +1,18 @@
+"""Module timed_input."""
+
 import sys
 
 from inputimeout import inputimeout, TimeoutOccurred
 
 
 def timeout_input(prompt, timeout=10):
+    """Execute timeout input.
+
+        Args:
+            prompt: The prompt.
+            timeout: The timeout.
+        """
+
     try:
         if sys.platform != "win32":
             pass

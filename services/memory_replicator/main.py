@@ -24,7 +24,7 @@ from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_sche
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.tracing import setup_tracing
 
-# Legacy settings import removed. Use centralized configuration.
+from services.memory_replicator.service import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )

@@ -24,6 +24,12 @@ class Command(BaseCommand):
     help = "Run the sensor outbox sync worker (SomaBrain integration)"
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--interval",
             type=int,
@@ -38,6 +44,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         interval = options["interval"]
         batch_size = options["batch_size"]
 

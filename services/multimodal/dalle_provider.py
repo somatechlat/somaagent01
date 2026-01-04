@@ -90,22 +90,37 @@ class DalleProvider(MultimodalProvider):
 
     @property
     def name(self) -> str:
+        """Execute name.
+            """
+
         return "dalle3_image_gen"
 
     @property
     def provider_id(self) -> str:
+        """Execute provider id.
+            """
+
         return "openai"
 
     @property
     def capabilities(self) -> List[ProviderCapability]:
+        """Execute capabilities.
+            """
+
         return [ProviderCapability.IMAGE]
 
     @property
     def supported_formats(self) -> List[str]:
+        """Execute supported formats.
+            """
+
         return ["png"]
 
     @property
     def max_dimensions(self) -> Optional[Dict[str, int]]:
+        """Execute max dimensions.
+            """
+
         return {"width": 1792, "height": 1792}
 
     async def _get_client(self) -> httpx.AsyncClient:

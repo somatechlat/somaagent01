@@ -29,6 +29,9 @@ BASE = None  # Initialized in main()
 
 
 async def main() -> int:
+    """Execute main.
+        """
+
     base = _get_base_url()
     async with httpx.AsyncClient(timeout=10.0) as client:
         r = await client.post(

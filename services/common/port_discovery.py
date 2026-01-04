@@ -18,6 +18,8 @@ class PortDiscovery:
     PORT_RANGE_END = 69000
 
     def __init__(self):
+        """Initialize the instance."""
+
         self.assignments: Dict[str, int] = {}
 
     def is_port_available(self, port: int) -> bool:

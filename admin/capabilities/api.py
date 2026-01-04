@@ -37,6 +37,8 @@ class CircuitBreakerState:
     """Circuit breaker for capability health."""
 
     def __init__(self):
+        """Initialize the instance."""
+
         self.state = "closed"  # closed, open, half_open
         self.failure_count = 0
         self.last_failure = None

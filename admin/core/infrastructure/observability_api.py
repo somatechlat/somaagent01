@@ -22,6 +22,8 @@ router = Router(tags=["Observability"])
 
 
 class GatewayMetrics(BaseModel):
+    """Gatewaymetrics class implementation."""
+
     requests_total: int
     requests_per_minute: float
     latency_p50_ms: float
@@ -31,6 +33,8 @@ class GatewayMetrics(BaseModel):
 
 
 class LLMMetrics(BaseModel):
+    """Llmmetrics class implementation."""
+
     calls_total: int
     input_tokens_total: int
     output_tokens_total: int
@@ -40,6 +44,8 @@ class LLMMetrics(BaseModel):
 
 
 class ToolMetrics(BaseModel):
+    """Toolmetrics class implementation."""
+
     executions_total: int
     success_rate: float
     avg_duration_ms: float
@@ -47,6 +53,8 @@ class ToolMetrics(BaseModel):
 
 
 class MemoryMetrics(BaseModel):
+    """Memorymetrics class implementation."""
+
     operations_total: int
     wal_lag_seconds: float
     persistence_avg_ms: float
@@ -54,12 +62,16 @@ class MemoryMetrics(BaseModel):
 
 
 class SystemMetrics(BaseModel):
+    """Systemmetrics class implementation."""
+
     uptime_seconds: float
     cpu_percent: float
     memory_bytes: int
 
 
 class MetricSnapshot(BaseModel):
+    """Metricsnapshot class implementation."""
+
     gateway: GatewayMetrics
     llm: LLMMetrics
     tools: ToolMetrics
@@ -69,6 +81,8 @@ class MetricSnapshot(BaseModel):
 
 
 class SLAStatus(BaseModel):
+    """Slastatus class implementation."""
+
     name: str
     target: float
     actual: float

@@ -39,6 +39,8 @@ task_schedule_latency_seconds = Histogram(
 
 
 class TaskState(str, Enum):
+    """Taskstate class implementation."""
+
     IDLE = "idle"
     RUNNING = "running"
     DISABLED = "disabled"
@@ -46,12 +48,16 @@ class TaskState(str, Enum):
 
 
 class TaskType(str, Enum):
+    """Tasktype class implementation."""
+
     AD_HOC = "adhoc"
     SCHEDULED = "scheduled"
     PLANNED = "planned"
 
 
 class TaskSchedule(BaseModel):
+    """Taskschedule class implementation."""
+
     minute: str
     hour: str
     day: str
@@ -60,10 +66,15 @@ class TaskSchedule(BaseModel):
     timezone: str = Field(default_factory=lambda: Localization.get().get_timezone())
 
     def to_crontab(self) -> str:
+        """Execute to crontab.
+            """
+
         return f"{self.minute} {self.hour} {self.day} {self.month} {self.weekday}"
 
 
 class TaskPlan(BaseModel):
+    """Taskplan class implementation."""
+
     todo: list[datetime] = Field(default_factory=list)
     in_progress: datetime | None = None
     done: list[datetime] = Field(default_factory=list)
@@ -75,6 +86,14 @@ class TaskPlan(BaseModel):
         in_progress: datetime | None = None,
         done: list[datetime] = list(),
     ):
+        """Execute create.
+
+            Args:
+                todo: The todo.
+                in_progress: The in_progress.
+                done: The done.
+            """
+
         if todo:
             for idx, dt in enumerate(todo):
                 if dt.tzinfo is None:
@@ -89,12 +108,24 @@ class TaskPlan(BaseModel):
         return cls(todo=todo, in_progress=in_progress, done=done)
 
     def add_todo(self, launch_time: datetime):
+        """Execute add todo.
+
+            Args:
+                launch_time: The launch_time.
+            """
+
         if launch_time.tzinfo is None:
             launch_time = pytz.timezone("UTC").localize(launch_time)
         self.todo.append(launch_time)
         self.todo = sorted(self.todo)
 
     def set_in_progress(self, launch_time: datetime):
+        """Set in progress.
+
+            Args:
+                launch_time: The launch_time.
+            """
+
         if launch_time.tzinfo is None:
             launch_time = pytz.timezone("UTC").localize(launch_time)
         if launch_time not in self.todo:
@@ -104,6 +135,12 @@ class TaskPlan(BaseModel):
         self.in_progress = launch_time
 
     def set_done(self, launch_time: datetime):
+        """Set done.
+
+            Args:
+                launch_time: The launch_time.
+            """
+
         if launch_time.tzinfo is None:
             launch_time = pytz.timezone("UTC").localize(launch_time)
         if launch_time != self.in_progress:
@@ -117,9 +154,15 @@ class TaskPlan(BaseModel):
         self.done = sorted(self.done)
 
     def get_next_launch_time(self) -> datetime | None:
+        """Retrieve next launch time.
+            """
+
         return self.todo[0] if self.todo else None
 
     def should_launch(self) -> datetime | None:
+        """Execute should launch.
+            """
+
         next_launch_time = self.get_next_launch_time()
         if next_launch_time is None:
             return None
@@ -129,6 +172,8 @@ class TaskPlan(BaseModel):
 
 
 class BaseTask(BaseModel):
+    """Basetask class implementation."""
+
     uuid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     context_id: Optional[str] = Field(default=None)
     state: TaskState = Field(default=TaskState.IDLE)
@@ -142,6 +187,8 @@ class BaseTask(BaseModel):
     last_result: str | None = None
 
     def __init__(self, *args, **kwargs):
+        """Initialize the instance."""
+
         super().__init__(*args, **kwargs)
         if not self.context_id:
             self.context_id = self.uuid
@@ -159,6 +206,19 @@ class BaseTask(BaseModel):
         context_id: str | None = None,
         **kwargs,
     ):
+        """Execute update.
+
+            Args:
+                name: The name.
+                state: The state.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                attachments: The attachments.
+                last_run: The last_run.
+                last_result: The last_result.
+                context_id: The context_id.
+            """
+
         with self._lock:
             if name is not None:
                 self.name = name
@@ -190,6 +250,12 @@ class BaseTask(BaseModel):
                     self.updated_at = datetime.now(timezone.utc)
 
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
+        """Execute check schedule.
+
+            Args:
+                frequency_seconds: The frequency_seconds.
+            """
+
         start = time.time()
         try:
             if self.last_run is None:
@@ -204,11 +270,17 @@ class BaseTask(BaseModel):
             pass
 
     def get_next_run(self) -> datetime | None:
+        """Retrieve next run.
+            """
+
         if self.last_run is None:
             return datetime.now(timezone.utc)
         return self.last_run + timedelta(seconds=60)
 
     def get_next_run_minutes(self) -> int | None:
+        """Retrieve next run minutes.
+            """
+
         next_run = self.get_next_run()
         if next_run is None:
             return None
@@ -216,14 +288,26 @@ class BaseTask(BaseModel):
         return max(0, minutes)
 
     async def on_run(self):
+        """Execute on run.
+            """
+
         pass
 
     async def on_finish(self):
+        """Execute on finish.
+            """
+
         from admin.core.helpers.task_scheduler import TaskScheduler
 
         await TaskScheduler.get().update_task(self.uuid, updated_at=datetime.now(timezone.utc))
 
     async def on_error(self, error: str):
+        """Execute on error.
+
+            Args:
+                error: The error.
+            """
+
         from admin.core.helpers.print_style import PrintStyle
         from admin.core.helpers.task_scheduler import TaskScheduler
 
@@ -242,6 +326,12 @@ class BaseTask(BaseModel):
         await scheduler.save()
 
     async def on_success(self, result: str):
+        """Execute on success.
+
+            Args:
+                result: The result.
+            """
+
         from admin.core.helpers.print_style import PrintStyle
         from admin.core.helpers.task_scheduler import TaskScheduler
 
@@ -261,6 +351,8 @@ class BaseTask(BaseModel):
 
 
 class AdHocTask(BaseTask):
+    """Adhoctask class implementation."""
+
     type: Literal[TaskType.AD_HOC] = TaskType.AD_HOC
     token: str = Field(
         default_factory=lambda: str(random.randint(1000000000000000000, 9999999999999999999))
@@ -276,6 +368,17 @@ class AdHocTask(BaseTask):
         attachments: list[str] = list(),
         context_id: str | None = None,
     ):
+        """Execute create.
+
+            Args:
+                name: The name.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                token: The token.
+                attachments: The attachments.
+                context_id: The context_id.
+            """
+
         return cls(
             name=name,
             system_prompt=system_prompt,
@@ -298,6 +401,20 @@ class AdHocTask(BaseTask):
         token: str | None = None,
         **kwargs,
     ):
+        """Execute update.
+
+            Args:
+                name: The name.
+                state: The state.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                attachments: The attachments.
+                last_run: The last_run.
+                last_result: The last_result.
+                context_id: The context_id.
+                token: The token.
+            """
+
         super().update(
             name=name,
             state=state,
@@ -313,6 +430,8 @@ class AdHocTask(BaseTask):
 
 
 class ScheduledTask(BaseTask):
+    """Scheduledtask class implementation."""
+
     type: Literal[TaskType.SCHEDULED] = TaskType.SCHEDULED
     schedule: TaskSchedule
 
@@ -327,6 +446,18 @@ class ScheduledTask(BaseTask):
         context_id: str | None = None,
         timezone: str | None = None,
     ):
+        """Execute create.
+
+            Args:
+                name: The name.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                schedule: The schedule.
+                attachments: The attachments.
+                context_id: The context_id.
+                timezone: The timezone.
+            """
+
         if timezone is not None:
             schedule.timezone = timezone
         else:
@@ -353,6 +484,20 @@ class ScheduledTask(BaseTask):
         schedule: TaskSchedule | None = None,
         **kwargs,
     ):
+        """Execute update.
+
+            Args:
+                name: The name.
+                state: The state.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                attachments: The attachments.
+                last_run: The last_run.
+                last_result: The last_result.
+                context_id: The context_id.
+                schedule: The schedule.
+            """
+
         super().update(
             name=name,
             state=state,
@@ -367,6 +512,12 @@ class ScheduledTask(BaseTask):
         )
 
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
+        """Execute check schedule.
+
+            Args:
+                frequency_seconds: The frequency_seconds.
+            """
+
         with self._lock:
             crontab = CronTab(crontab=self.schedule.to_crontab())
             task_timezone = pytz.timezone(
@@ -382,12 +533,17 @@ class ScheduledTask(BaseTask):
             return next_run_seconds < frequency_seconds
 
     def get_next_run(self) -> datetime | None:
+        """Retrieve next run.
+            """
+
         with self._lock:
             crontab = CronTab(crontab=self.schedule.to_crontab())
             return crontab.next(now=datetime.now(timezone.utc), return_datetime=True)
 
 
 class PlannedTask(BaseTask):
+    """Plannedtask class implementation."""
+
     type: Literal[TaskType.PLANNED] = TaskType.PLANNED
     plan: TaskPlan
 
@@ -401,6 +557,17 @@ class PlannedTask(BaseTask):
         attachments: list[str] = list(),
         context_id: str | None = None,
     ):
+        """Execute create.
+
+            Args:
+                name: The name.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                plan: The plan.
+                attachments: The attachments.
+                context_id: The context_id.
+            """
+
         return cls(
             name=name,
             system_prompt=system_prompt,
@@ -423,6 +590,20 @@ class PlannedTask(BaseTask):
         plan: TaskPlan | None = None,
         **kwargs,
     ):
+        """Execute update.
+
+            Args:
+                name: The name.
+                state: The state.
+                system_prompt: The system_prompt.
+                prompt: The prompt.
+                attachments: The attachments.
+                last_run: The last_run.
+                last_result: The last_result.
+                context_id: The context_id.
+                plan: The plan.
+            """
+
         super().update(
             name=name,
             state=state,
@@ -437,14 +618,26 @@ class PlannedTask(BaseTask):
         )
 
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
+        """Execute check schedule.
+
+            Args:
+                frequency_seconds: The frequency_seconds.
+            """
+
         with self._lock:
             return self.plan.should_launch() is not None
 
     def get_next_run(self) -> datetime | None:
+        """Retrieve next run.
+            """
+
         with self._lock:
             return self.plan.get_next_launch_time()
 
     async def on_run(self):
+        """Execute on run.
+            """
+
         with self._lock:
             next_launch_time = self.plan.should_launch()
             if next_launch_time is not None:
@@ -452,6 +645,9 @@ class PlannedTask(BaseTask):
         await super().on_run()
 
     async def on_finish(self):
+        """Execute on finish.
+            """
+
         from admin.core.helpers.task_scheduler import TaskScheduler
 
         plan_updated = False
@@ -467,9 +663,21 @@ class PlannedTask(BaseTask):
         await super().on_finish()
 
     async def on_success(self, result: str):
+        """Execute on success.
+
+            Args:
+                result: The result.
+            """
+
         await super().on_success(result)
 
     async def on_error(self, error: str):
+        """Execute on error.
+
+            Args:
+                error: The error.
+            """
+
         await super().on_error(error)
 
 

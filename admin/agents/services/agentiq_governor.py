@@ -355,6 +355,8 @@ class LaneAllocator:
     MINIMUM_BUFFER = 200
 
     def __init__(self, config: LanesConfig) -> None:
+        """Initialize the instance."""
+
         self.config = config
 
     def allocate(
@@ -483,6 +485,8 @@ class AIQCalculator:
     """
 
     def __init__(self, weights: AIQWeights) -> None:
+        """Initialize the instance."""
+
         self.weights = weights
 
     def compute_predicted(
@@ -638,6 +642,8 @@ class AgentIQGovernor:
         budget_manager: BudgetManager,
         config: Optional[AgentIQConfig] = None,
     ) -> None:
+        """Initialize the instance."""
+
         self.capsule_store = capsule_store
         self.degradation_monitor = degradation_monitor
         self.budget_manager = budget_manager

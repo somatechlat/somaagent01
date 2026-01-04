@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class CapsuleStore:
+    """Capsulestore class implementation."""
+
     def __init__(self, redis_url: Optional[str] = None):
+        """Initialize the instance."""
+
         default_url = os.environ.get("SA01_REDIS_URL", "")
         self.url = (
             redis_url or os.environ.get("REDIS_URL", default_url) or "redis://localhost:6379/0"
@@ -82,6 +86,14 @@ class CapsuleStore:
         return await self._update_field(capsule_id, "status", CapsuleStatus.DEPRECATED.value)
 
     async def _update_field(self, capsule_id: str, field: str, value: Any) -> bool:
+        """Execute update field.
+
+            Args:
+                capsule_id: The capsule_id.
+                field: The field.
+                value: The value.
+            """
+
         rec = await self.get(capsule_id)
         if not rec:
             return False
@@ -94,6 +106,12 @@ class CapsuleStore:
         return True
 
     def _serialize(self, record: CapsuleRecord) -> dict:
+        """Execute serialize.
+
+            Args:
+                record: The record.
+            """
+
         d = record.__dict__.copy()
         # Handle enums
         if "status" in d and hasattr(d["status"], "value"):
@@ -102,6 +120,12 @@ class CapsuleStore:
 
     def _deserialize(self, data: dict) -> CapsuleRecord:
         # Convert status string back to Enum if needed, or just keep as consistent type
+        """Execute deserialize.
+
+            Args:
+                data: The data.
+            """
+
         if "status" in data:
             try:
                 data["status"] = CapsuleStatus(data["status"])

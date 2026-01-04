@@ -184,10 +184,22 @@ class SessionMemoryStore:
 
     @classmethod
     def get_session_key(cls, session_id: str) -> str:
+        """Retrieve session key.
+
+            Args:
+                session_id: The session_id.
+            """
+
         return f"{cls.CACHE_PREFIX}{session_id}"
 
     @classmethod
     def get_queue_key(cls, tenant_id: str) -> str:
+        """Retrieve queue key.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         return f"{cls.QUEUE_PREFIX}{tenant_id}"
 
     @classmethod
@@ -399,6 +411,8 @@ class AgentEventCapture:
         session_id: str,
         conversation_id: str = None,
     ):
+        """Initialize the instance."""
+
         self.tenant_id = tenant_id
         self.agent_id = agent_id
         self.user_id = user_id

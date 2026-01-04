@@ -29,11 +29,25 @@ def _get_gateway_base() -> str:
 
 
 def _hash(text: str) -> str:
+    """Execute hash.
+
+        Args:
+            text: The text.
+        """
+
     h = hashlib.sha1(text.encode("utf-8", errors="ignore")).hexdigest()
     return f"sha1:{h}"[:18]
 
 
 async def _stream_prompt(prompt: str, internal_token: str, model: str) -> List[Dict[str, Any]]:
+    """Execute stream prompt.
+
+        Args:
+            prompt: The prompt.
+            internal_token: The internal_token.
+            model: The model.
+        """
+
     url = f"{_get_gateway_base()}/v1/llm/invoke/stream"
     session_id = str(uuid.uuid4())
     body = {
@@ -81,6 +95,13 @@ async def _stream_prompt(prompt: str, internal_token: str, model: str) -> List[D
 
 
 def _diff(expected: List[Dict[str, Any]], actual: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Execute diff.
+
+        Args:
+            expected: The expected.
+            actual: The actual.
+        """
+
     diffs: Dict[str, Any] = {"missing": [], "extra": [], "order_mismatch": []}
     # Compare by index for ordering, then membership ignoring sequence differences
     for i, exp in enumerate(expected):
@@ -99,6 +120,12 @@ def _diff(expected: List[Dict[str, Any]], actual: List[Dict[str, Any]]) -> Dict[
 
 
 async def main(argv: list[str]) -> int:
+    """Execute main.
+
+        Args:
+            argv: The argv.
+        """
+
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     cap = sub.add_parser("capture")

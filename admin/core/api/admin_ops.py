@@ -34,6 +34,9 @@ class DLQItemResponse(BaseModel):
 
 
 def _get_dlq_store():
+    """Execute get dlq store.
+        """
+
     from services.common.dlq_store import DLQStore
 
     return DLQStore(dsn=settings.DATABASE_DSN)
@@ -76,6 +79,9 @@ class RequeueItemResponse(BaseModel):
 
 
 def _get_requeue_store():
+    """Execute get requeue store.
+        """
+
     from services.common.requeue_store import RequeueStore
 
     return RequeueStore(
@@ -123,6 +129,9 @@ class ModelProfileCreate(BaseModel):
 
 
 def _get_profile_store():
+    """Execute get profile store.
+        """
+
     from services.common.model_profiles import ModelProfileStore
 
     return ModelProfileStore()

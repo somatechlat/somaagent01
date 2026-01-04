@@ -1,3 +1,5 @@
+"""Module extract_tools."""
+
 import importlib
 import importlib.util
 import inspect
@@ -17,6 +19,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 def json_parse_dirty(json: str) -> dict[str, Any] | None:
+    """Execute json parse dirty.
+
+        Args:
+            json: The json.
+        """
+
     if not json or not isinstance(json, str):
         return None
 
@@ -33,6 +41,12 @@ def json_parse_dirty(json: str) -> dict[str, Any] | None:
 
 
 def extract_json_object_string(content):
+    """Execute extract json object string.
+
+        Args:
+            content: The content.
+        """
+
     start = content.find("{")
     if start == -1:
         return ""
@@ -49,6 +63,12 @@ def extract_json_object_string(content):
 
 def extract_json_string(content):
     # Regular expression pattern to match a JSON object
+    """Execute extract json string.
+
+        Args:
+            content: The content.
+        """
+
     pattern = r'\{(?:[^{}]|(?R))*\}|\[(?:[^\[\]]|(?R))*\]|"(?:\\.|[^"\\])*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?'
 
     # Search for the pattern in the content
@@ -63,7 +83,19 @@ def extract_json_string(content):
 
 def fix_json_string(json_string):
     # Function to replace unescaped line breaks within JSON string values
+    """Execute fix json string.
+
+        Args:
+            json_string: The json_string.
+        """
+
     def replace_unescaped_newlines(match):
+        """Execute replace unescaped newlines.
+
+            Args:
+                match: The match.
+            """
+
         return match.group(0).replace("\n", "\\n")
 
     # Use regex to find string values and apply the replacement function
@@ -78,6 +110,12 @@ T = TypeVar("T")  # Define a generic type variable
 
 def import_module(file_path: str) -> ModuleType:
     # Handle file paths with periods in the name using importlib.util
+    """Execute import module.
+
+        Args:
+            file_path: The file_path.
+        """
+
     abs_path = get_abs_path(file_path)
     module_name = os.path.basename(abs_path).replace(".py", "")
 
@@ -106,6 +144,15 @@ def import_module(file_path: str) -> ModuleType:
 def load_classes_from_folder(
     folder: str, name_pattern: str, base_class: Type[T], one_per_file: bool = True
 ) -> list[Type[T]]:
+    """Execute load classes from folder.
+
+        Args:
+            folder: The folder.
+            name_pattern: The name_pattern.
+            base_class: The base_class.
+            one_per_file: The one_per_file.
+        """
+
     classes = []
     abs_folder = get_abs_path(folder)
 
@@ -144,6 +191,14 @@ def load_classes_from_folder(
 def load_classes_from_file(
     file: str, base_class: type[T], one_per_file: bool = True
 ) -> list[type[T]]:
+    """Execute load classes from file.
+
+        Args:
+            file: The file.
+            base_class: The base_class.
+            one_per_file: The one_per_file.
+        """
+
     classes = []
     # Use the new import_module function
     module = import_module(file)

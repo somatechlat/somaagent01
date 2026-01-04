@@ -27,6 +27,8 @@ class MessageProcessor:
     """Process incoming conversation messages."""
 
     def __init__(self, worker: Any):
+        """Initialize the instance."""
+
         self.worker = worker
 
     async def process_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:

@@ -22,10 +22,18 @@ class SyntheticSomabrain:
     """Synthetic Somabrain that returns deterministic snippet payloads."""
 
     def __init__(self, snippet_pool: List[Dict[str, Any]]) -> None:
+        """Initialize the instance."""
+
         self.snippet_pool = snippet_pool
         self.calls: List[Dict[str, Any]] = []
 
     async def context_evaluate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute context evaluate.
+
+            Args:
+                payload: The payload.
+            """
+
         self.calls.append(payload)
         top_k = int(payload.get("top_k", len(self.snippet_pool)))
         ranked = sorted(self.snippet_pool, key=lambda item: item.get("score", 0), reverse=True)
@@ -34,6 +42,12 @@ class SyntheticSomabrain:
 
 
 def build_snippet_pool(count: int) -> List[Dict[str, Any]]:
+    """Execute build snippet pool.
+
+        Args:
+            count: The count.
+        """
+
     pool: List[Dict[str, Any]] = []
     for idx in range(count):
         pool.append(
@@ -50,18 +64,35 @@ def build_snippet_pool(count: int) -> List[Dict[str, Any]]:
 async def run_iteration(
     builder: ContextBuilder, envelope: Dict[str, Any], max_tokens: int
 ) -> float:
+    """Execute run iteration.
+
+        Args:
+            builder: The builder.
+            envelope: The envelope.
+            max_tokens: The max_tokens.
+        """
+
     start = time.perf_counter()
     await builder.build_for_turn(dict(envelope), max_prompt_tokens=max_tokens)
     return time.perf_counter() - start
 
 
 async def benchmark(args: argparse.Namespace) -> None:
+    """Execute benchmark.
+
+        Args:
+            args: The args.
+        """
+
     random.seed(args.seed)
     snippet_pool = build_snippet_pool(args.snippets)
     somabrain = SyntheticSomabrain(snippet_pool)
     metrics = ContextBuilderMetrics()
 
     def _health() -> SomabrainHealthState:
+        """Execute health.
+            """
+
         return SomabrainHealthState.DEGRADED if args.degraded else SomabrainHealthState.NORMAL
 
     builder = ContextBuilder(
@@ -97,6 +128,9 @@ async def benchmark(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Execute parse args.
+        """
+
     parser = argparse.ArgumentParser(description="Benchmark the ContextBuilder pipeline")
     parser.add_argument("--iterations", type=int, default=25, help="Number of prompts to build")
     parser.add_argument(
@@ -111,6 +145,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     args = parse_args()
     asyncio.run(benchmark(args))
 

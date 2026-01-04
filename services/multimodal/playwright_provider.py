@@ -78,22 +78,37 @@ class PlaywrightProvider(MultimodalProvider):
 
     @property
     def name(self) -> str:
+        """Execute name.
+            """
+
         return "playwright_screenshot"
 
     @property
     def provider_id(self) -> str:
+        """Execute provider id.
+            """
+
         return "local"
 
     @property
     def capabilities(self) -> List[ProviderCapability]:
+        """Execute capabilities.
+            """
+
         return [ProviderCapability.SCREENSHOT]
 
     @property
     def supported_formats(self) -> List[str]:
+        """Execute supported formats.
+            """
+
         return ["png", "jpeg"]
 
     @property
     def max_dimensions(self) -> Optional[Dict[str, int]]:
+        """Execute max dimensions.
+            """
+
         return self.MAX_VIEWPORT
 
     async def _ensure_browser(self):

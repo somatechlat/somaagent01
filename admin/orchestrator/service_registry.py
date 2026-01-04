@@ -40,6 +40,8 @@ class ServiceRegistry:
     """Registry of all services managed by the orchestrator."""
 
     def __init__(self, config: CentralizedConfig) -> None:
+        """Initialize the instance."""
+
         self.config = config
         self.services: Dict[str, ServiceDefinition] = {}
         self._load_services()

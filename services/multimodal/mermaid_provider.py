@@ -89,22 +89,37 @@ class MermaidProvider(MultimodalProvider):
 
     @property
     def name(self) -> str:
+        """Execute name.
+            """
+
         return "mermaid_diagram"
 
     @property
     def provider_id(self) -> str:
+        """Execute provider id.
+            """
+
         return "local"
 
     @property
     def capabilities(self) -> List[ProviderCapability]:
+        """Execute capabilities.
+            """
+
         return [ProviderCapability.DIAGRAM]
 
     @property
     def supported_formats(self) -> List[str]:
+        """Execute supported formats.
+            """
+
         return ["svg", "png", "pdf"]
 
     @property
     def max_dimensions(self) -> Optional[Dict[str, int]]:
+        """Execute max dimensions.
+            """
+
         return {"width": 4096, "height": 4096}
 
     def _find_cli(self) -> Optional[str]:

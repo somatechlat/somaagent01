@@ -123,6 +123,14 @@ async def health_check() -> dict:
     overall_status = "ok"
 
     def record_status(name: str, status: str, detail: Optional[str] = None) -> None:
+        """Execute record status.
+
+            Args:
+                name: The name.
+                status: The status.
+                detail: The detail.
+            """
+
         nonlocal overall_status
         components[name] = {"status": status}
         if detail:
