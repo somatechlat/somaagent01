@@ -475,7 +475,7 @@
 <span class="sd">The central authority for Agent Capsule Certification.</span>
 <span class="sd">Implements the &quot;Birth Protocol&quot; and &quot;Unhackable Covenant&quot;.</span>
 
-<span class="sd">VIBE COMPLIANCE:</span>
+
 <span class="sd">- 100% Type Hinted</span>
 <span class="sd">- No Mocks (Real Ed25519)</span>
 <span class="sd">- JCS (RFC 8785) Normalization</span>
@@ -529,7 +529,6 @@
         <span class="n">secret_seed</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SOMA_REGISTRY_PRIVATE_KEY&quot;</span><span class="p">)</span>
         
         <span class="k">if</span> <span class="ow">not</span> <span class="n">secret_seed</span><span class="p">:</span>
-            <span class="c1"># VIBE Rule 1: No lies. If we can&#39;t sign, we say so.</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;REGISTRY_KEY not found. Signing capabilities DISABLED.&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 

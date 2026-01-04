@@ -473,11 +473,12 @@
 <span id="services-common-rate-limiter-module"></span><h1>services.common.rate_limiter module<a class="headerlink" href="#module-services.common.rate_limiter" title="Link to this heading"></a></h1>
 <p>Redis Rate Limiter for API Endpoints
 Per CANONICAL_REQUIREMENTS.md REQ-SEC-006</p>
-<p>VIBE COMPLIANT:
-- Real Redis backend
-- Sliding window algorithm
-- Per-tenant rate limiting
-- Prometheus metrics</p>
+<ul class="simple">
+<li><p>Real Redis backend</p></li>
+<li><p>Sliding window algorithm</p></li>
+<li><p>Per-tenant rate limiting</p></li>
+<li><p>Prometheus metrics</p></li>
+</ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.rate_limiter.</span></span><span class="sig-name descname"><span class="pre">RedisRateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">redis_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_window_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rate_limit:'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter" title="Link to this definition"></a></dt>

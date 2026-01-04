@@ -101,7 +101,6 @@ class VoicePersona(TenantScopedModel):
         help_text="Reference to existing LLM model configuration",
     )
 
-    # System prompt (persona-specific)
     system_prompt = models.TextField(blank=True)
     temperature = models.FloatField(default=0.7)
     max_tokens = models.IntegerField(default=1024)

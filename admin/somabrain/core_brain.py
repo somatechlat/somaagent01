@@ -323,7 +323,6 @@ async def util_sleep(request, agent_id: str, seconds: int = 60) -> dict:
 
 
 # =============================================================================
-# ENDPOINTS - Personality and Memory Config
 # =============================================================================
 
 
@@ -345,7 +344,6 @@ async def personality_set(
     client = get_somabrain_client()
 
     try:
-        # Call SomaBrain to set personality
         result = await client.update_cognitive_params(
             agent_id, {"personality": payload.personality}
         )

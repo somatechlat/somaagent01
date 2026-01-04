@@ -473,7 +473,7 @@
 <span class="sd">OPA Policy Adapter for Tool Execution</span>
 <span class="sd">Per CANONICAL_REQUIREMENTS.md REQ-SEC-001, REQ-SEC-002, REQ-SEC-003</span>
 
-<span class="sd">VIBE COMPLIANT:</span>
+
 <span class="sd">- Real HTTP client to OPA</span>
 <span class="sd">- Fail-closed security (REQ-SEC-002)</span>
 <span class="sd">- Tenant/persona scoped policies (REQ-SEC-003)</span>
@@ -566,7 +566,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;OPA base URL required. Set SA01_OPA_URL or SA01_SOMA_BASE_URL. &quot;</span>
-                <span class="s2">&quot;No hardcoded defaults per VIBE rules.&quot;</span>
+                <span class="s2">&quot;No hardcoded defaults per &quot;</span>
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/v1/policy/evaluate&quot;</span>

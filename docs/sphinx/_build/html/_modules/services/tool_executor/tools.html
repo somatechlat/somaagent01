@@ -835,13 +835,13 @@
         <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_GATEWAY_BASE&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">base</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">ToolExecutionError</span><span class="p">(</span>
-                <span class="s2">&quot;SA01_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules.&quot;</span>
+                <span class="s2">&quot;SA01_GATEWAY_BASE is required. No hardcoded defaults per &quot;</span>
             <span class="p">)</span>
         <span class="n">base</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
         <span class="n">token</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_GATEWAY_INTERNAL_TOKEN&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">token</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">ToolExecutionError</span><span class="p">(</span>
-                <span class="s2">&quot;SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded defaults per VIBE rules.&quot;</span>
+                <span class="s2">&quot;SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded defaults per &quot;</span>
             <span class="p">)</span>
         <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/internal/attachments/</span><span class="si">{</span><span class="n">attachment_id</span><span class="si">}</span><span class="s2">/binary&quot;</span>
         <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;X-Internal-Token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">}</span>

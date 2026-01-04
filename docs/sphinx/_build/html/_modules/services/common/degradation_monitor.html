@@ -592,7 +592,7 @@
 <span class="sd">    - Dependency graph for cascading failure detection</span>
 <span class="sd">    - Circuit breaker integration</span>
 <span class="sd">    - Prometheus metrics</span>
-<span class="sd">    - REAL history tracking (VIBE COMPLIANT)</span>
+<span class="sd">    - REAL history tracking (</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># Service dependency graph: key depends on values</span>
@@ -637,7 +637,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_task</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SERVICE_DEPENDENCIES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="c1"># VIBE COMPLIANT: Real history storage, not a test double</span>
+        <span class="c1"># </span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DegradationHistoryRecord</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_temporal_client</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TemporalClient</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
@@ -858,7 +858,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_database_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check database health with REAL PostgreSQL connection.</span>
 
-<span class="sd">        VIBE COMPLIANT: Uses Django database connection - no asyncpg.</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">connection</span>
@@ -879,7 +879,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_kafka_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check Kafka health with REAL Kafka connection.</span>
 
-<span class="sd">        VIBE COMPLIANT: No test doubles, no mocks. Real Kafka connectivity check.</span>
+<span class="sd">        </span>
 <span class="sd">        Uses aiokafka to verify broker connectivity.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -921,7 +921,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_redis_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check Redis health with REAL Redis connection.</span>
 
-<span class="sd">        VIBE COMPLIANT: No test doubles, no mocks. Real Redis connectivity check.</span>
+<span class="sd">        </span>
 <span class="sd">        Uses redis-py to execute PING command.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -976,7 +976,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_llm_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check LLM providers health via LLMDegradationService.</span>
 
-<span class="sd">        VIBE COMPLIANT: Integrates with centralized LLM degradation service.</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.llm_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">llm_degradation_service</span>
@@ -1022,7 +1022,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_audio_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check audio service health (TTS/STT).</span>
 
-<span class="sd">        VIBE COMPLIANT: Integrates with MultimodalDegradationService.</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.multimodal_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">multimodal_degradation_service</span>
@@ -1053,7 +1053,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_storage_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check storage service health.</span>
 
-<span class="sd">        VIBE COMPLIANT: Checks storage provider availability.</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.multimodal_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">multimodal_degradation_service</span>
@@ -1391,7 +1391,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_record_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;check&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a degradation event to history.</span>
 
-<span class="sd">        VIBE COMPLIANT: Real history storage, not a test double.</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">record</span> <span class="o">=</span> <span class="n">DegradationHistoryRecord</span><span class="p">(</span>
             <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
@@ -1415,7 +1415,7 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get degradation history records.</span>
 
-<span class="sd">        VIBE COMPLIANT: Returns REAL history data, not empty test doubles.</span>
+<span class="sd">        </span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            limit: Maximum number of records to return</span>
