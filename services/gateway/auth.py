@@ -1,11 +1,19 @@
-"""Gateway authentication and authorization - 100% Django.
+"""Gateway authentication and authorization module.
 
-All HTTPException replaced with Django/admin.common.exceptions.
+This module provides JWT-based authentication and OPA policy-based authorization
+for the gateway service. All authentication is handled via Django patterns with
+custom exceptions from admin.common.exceptions.
 
+Functions:
+    authorize_request: Main entry point for request authentication/authorization.
+    _resolve_signing_key: Resolves JWT signing key from JWKS or environment.
+    _evaluate_opa: Evaluates Open Policy Agent authorization policies.
+    _get_policy_client: Returns cached PolicyClient instance.
+    _get_openfga_client: Returns OpenFGA client if available.
 
-🎓 PhD Dev - Clean architecture
-🔒 Security - JWT + OPA policy
-📚 ISO Doc - Full docstrings
+Example:
+    >>> payload = await authorize_request(request, {"action": "read"})
+    >>> user_id = payload["user_id"]
 """
 
 from __future__ import annotations
