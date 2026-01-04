@@ -35,9 +35,10 @@ from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
-    GenerateResponseUseCase,
-    ProcessMessageInput,
+from admin.core.application.use_cases.conversation.generate_response import GenerateResponseUseCase
+from admin.core.application.use_cases.conversation.process_message import (
     ProcessMessageUseCase,
+    ProcessMessageInput,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ _metrics_started = False
 
 
 def _start_metrics() -> None:
+    """Start Prometheus metrics server if configured."""
     global _metrics_started
     if _metrics_started:
         return
@@ -60,6 +62,7 @@ class ConversationWorkerImpl:
     """Thin orchestrator - delegates to Use Cases."""
 
     def __init__(self) -> None:
+        """Initialize worker components."""
         _start_metrics()
         # Kafka
         self.kafka = KafkaSettings(
@@ -127,11 +130,14 @@ class ConversationWorkerImpl:
         return SomabrainHealthState.NORMAL
 
     def _init_use_cases(self) -> None:
-        """Initialize use cases - all config from env, no hardcoded defaults per """
+        """Initialize use cases.
+        
+        All config from env, no hardcoded defaults per VIBE rules.
+        """
         gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
             raise ValueError(
-                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per "
+                "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
             )
         self._gen = GenerateResponseUseCase(
             gateway_base=gateway_base,
