@@ -2,7 +2,7 @@
 Permission Decorator for Django Ninja APIs
 Implements require_permission decorator for route-level permission checks.
 
-VIBE COMPLIANT:
+
 - Pure Django implementation
 - Uses JWT claims for permissions
 - Supports wildcard (*) for super admin

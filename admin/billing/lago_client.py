@@ -1,6 +1,6 @@
 """Lago Billing API Client.
 
-VIBE COMPLIANT - Async HTTP client for Lago API.
+
 Per SAAS_ADMIN_SRS.md Section 5.1 - Billing Dashboard.
 
 Lago API Docs: https://doc.getlago.com/api-reference/intro
@@ -38,7 +38,7 @@ class LagoConfig:
 class LagoClient:
     """Async client for Lago billing API.
 
-    VIBE COMPLIANT:
+    
     - Full async support
     - Proper error handling
     - Typed responses

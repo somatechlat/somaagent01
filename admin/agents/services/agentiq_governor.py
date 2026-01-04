@@ -3,7 +3,7 @@
 Production-grade governor for budgeted LLM transactions with adaptive degradation.
 Executes after OPA gate, before LLM call. Target latency: ≤10ms p95.
 
-VIBE COMPLIANT:
+
 - Real implementations only (no mocks, no placeholders)
 - Integrates with existing CapsuleStore, DegradationMonitor, BudgetManager
 - In-process execution (no network calls for Governor logic)
@@ -625,7 +625,7 @@ class AgentIQGovernor:
     Computes AIQ_pred, decides Fast Path vs Rescue Path.
     Target latency: ≤10ms p95.
 
-    VIBE COMPLIANT:
+    
     - Real implementations only
     - Integrates with existing infrastructure
     - In-process execution (no network calls)

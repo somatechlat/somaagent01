@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/health.py
 Pure Django Ninja implementation with async infrastructure checks.
 
-VIBE COMPLIANT - No hardcoded values, centralized messages, Django patterns.
+
 """
 
 from __future__ import annotations

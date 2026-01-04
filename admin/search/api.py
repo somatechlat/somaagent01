@@ -1,6 +1,6 @@
 """Search API - Full-text search across content.
 
-VIBE COMPLIANT - Django Ninja + Elasticsearch patterns.
+
 Per AGENT_TASKS.md - Search functionality.
 
 7-Persona Implementation:

@@ -4,7 +4,7 @@ SomaAgent01 Registry Service
 The central authority for Agent Capsule Certification.
 Implements the "Birth Protocol" and "Unhackable Covenant".
 
-VIBE COMPLIANCE:
+
 - 100% Type Hinted
 - No Mocks (Real Ed25519)
 - JCS (RFC 8785) Normalization
@@ -53,7 +53,6 @@ class RegistryService:
         secret_seed = os.environ.get("SOMA_REGISTRY_PRIVATE_KEY")
         
         if not secret_seed:
-            # VIBE Rule 1: No lies. If we can't sign, we say so.
             logger.warning("REGISTRY_KEY not found. Signing capabilities DISABLED.")
             return
 

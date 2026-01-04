@@ -1,6 +1,6 @@
 """Plugins API - Extensibility system.
 
-VIBE COMPLIANT - Django Ninja.
+
 Plugin management for extending agent capabilities.
 
 7-Persona Implementation:

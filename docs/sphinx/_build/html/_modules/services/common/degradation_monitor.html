@@ -1,0 +1,1492 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>services.common.degradation_monitor &mdash; SomaAgent01 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=fb57f298" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            SomaAgent01
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-1-clone-configure">Step 1: Clone &amp; Configure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../quickstart.html#required-environment-variables">Required Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-2-start-infrastructure">Step 2: Start Infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-3-verify-health">Step 3: Verify Health</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-4-access-services">Step 4: Access Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../agent-quickstart.html">Agent Context Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#before-you-code">Before You Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#vibe-coding-rules-summary">VIBE Coding Rules Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#technology-stack-strict">Technology Stack (STRICT)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#key-files-reference">Key Files Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../agent-quickstart.html#backend-python-django">Backend (Python/Django)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#user-roles">User Roles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#testing-requirements">Testing Requirements</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../deployment/index.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../deployment/index.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../deployment/index.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../deployment/index.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/common.html">common package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/common.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.account_lockout.html">common.account_lockout module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.auth.html">common.auth module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.exceptions.html">common.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.handlers.html">common.handlers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.messages.html">common.messages module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.middleware.html">common.middleware module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.pkce.html">common.pkce module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.rate_limit.html">common.rate_limit module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.responses.html">common.responses module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.schemas.html">common.schemas module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.session_manager.html">common.session_manager module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/core.html">core package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/core.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.api.html">core.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.application.html">core.application package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.config.html">core.config package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.helpers.html">core.helpers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.infrastructure.html">core.infrastructure package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.management.html">core.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.migrations.html">core.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.observability.html">core.observability package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.sensors.html">core.sensors package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/core.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.apps.html">core.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.models.html">core.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.permissions.html">core.permissions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.repositories.html">core.repositories module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.signals.html">core.signals module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.soma_client.html">core.soma_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.somabrain_client.html">core.somabrain_client module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/auth.html">auth package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/auth.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.api.html">auth.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.invitations.html">auth.invitations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.mfa.html">auth.mfa module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.password_reset.html">auth.password_reset module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/auth_config.html">auth_config package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/auth_config.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth_config.api.html">auth_config.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/permissions.html">permissions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/permissions.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.management.html">permissions.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.migrations.html">permissions.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/permissions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.admin.html">permissions.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.api.html">permissions.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.granular.html">permissions.granular module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.models.html">permissions.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/agents.html">agents package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/agents.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.services.html">agents.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/agents.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.apps.html">agents.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/chat.html">chat package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/chat.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.api.html">chat.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.migrations.html">chat.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/chat.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.apps.html">chat.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.models.html">chat.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/sessions.html">sessions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/sessions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/sessions.api.html">sessions.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/saas.html">saas package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/saas.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.api.html">saas.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.management.html">saas.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.migrations.html">saas.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.models.html">saas.models package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/saas.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.admin.html">saas.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.apps.html">saas.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/tenants.html">tenants package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/tenants.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/tenants.api.html">tenants.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/billing.html">billing package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/billing.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/billing.lago_client.html">billing.lago_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/billing.webhooks.html">billing.webhooks module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/somabrain.html">somabrain package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/somabrain.html#somabrain-brain-inspired-cognitive-ai-system">SomaBrain: Brain-Inspired Cognitive AI System</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/somabrain.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.tests.html">somabrain.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/somabrain.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.admin_api.html">somabrain.admin_api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.api.html">somabrain.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.client.html">somabrain.client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.cognitive.html">somabrain.cognitive module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.core_brain.html">somabrain.core_brain module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.event_bridge.html">somabrain.event_bridge module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/knowledge.html">knowledge package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/knowledge.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/knowledge.api.html">knowledge.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/embeddings.html">embeddings package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/embeddings.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/embeddings.api.html">embeddings.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/audit.html">audit package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/audit.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/audit.api.html">audit.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/observability.html">observability package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/observability.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/observability.api.html">observability.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/metrics.html">metrics package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/metrics.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/metrics.api.html">metrics.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/flink.html">flink package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/flink.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.migrations.html">flink.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/flink.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.api.html">flink.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.models.html">flink.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.somabrain_jobs.html">flink.somabrain_jobs module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utils.html">utils package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/utils.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/utils.api.html">utils.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/utils.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/utils.apps.html">utils.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/voice.html">voice package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/voice.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.migrations.html">voice.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/voice.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.admin.html">voice.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.api.html">voice.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.apps.html">voice.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.audio_capture.html">voice.audio_capture module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.consumers.html">voice.consumers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.exceptions.html">voice.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.metrics.html">voice.metrics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.models.html">voice.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.provider_selector.html">voice.provider_selector module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.response_normalizer.html">voice.response_normalizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.routing.html">voice.routing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.schemas.html">voice.schemas module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.service.html">voice.service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.speaker.html">voice.speaker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.tracing.html">voice.tracing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.voice_adapter.html">voice.voice_adapter module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflows.html">workflows package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/workflows.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/workflows.api.html">workflows.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../admin/index.html">Admin Applications</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../services/index.html">Services Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../services/index.html#module-services.gateway.auth">Gateway Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.gateway.auth.authorize_request"><code class="docutils literal notranslate"><span class="pre">authorize_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../services/index.html#module-services.common.audit">Common Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent"><code class="docutils literal notranslate"><span class="pre">AuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">AuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">AuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">AuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">AuditEvent.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.to_dict"><code class="docutils literal notranslate"><span class="pre">AuditEvent.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.email"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.email</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.method"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.result"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.result</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.failure_reason"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.failure_reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.mfa_used"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.mfa_used</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.reason"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.action"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.action</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.permissions"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.permissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.permission"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.permission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.endpoint"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.endpoint</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher"><code class="docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.__init__"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.publish"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.publish()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_login"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_login()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_logout"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_logout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_session"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_session()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_permission_denied"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_permission_denied()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.get_audit_publisher"><code class="docutils literal notranslate"><span class="pre">get_audit_publisher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.__init__"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.connect"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.connect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.close"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.close()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.reset"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.reset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult"><code class="docutils literal notranslate"><span class="pre">RateLimitResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.allowed"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.allowed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.remaining"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.remaining</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.reset_at"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.reset_at</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.retry_after"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.retry_after</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.__init__"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.get_rate_limiter"><code class="docutils literal notranslate"><span class="pre">get_rate_limiter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.get_limit_for_endpoint"><code class="docutils literal notranslate"><span class="pre">get_limit_for_endpoint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">SomaAgent01</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">services.common.degradation_monitor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for services.common.degradation_monitor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Degradation Mode Monitor for SomaAgent01 - Real resilience monitoring.</span>
+<span class="sd">Production-ready degradation detection and management system.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">temporalio.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span> <span class="k">as</span> <span class="n">TemporalClient</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">admin.core.observability.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">Gauge</span><span class="p">,</span> <span class="n">Histogram</span><span class="p">,</span> <span class="n">metrics_collector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">services.common.circuit_breakers</span><span class="w"> </span><span class="kn">import</span> <span class="n">CircuitBreaker</span><span class="p">,</span> <span class="n">CircuitState</span>
+
+<span class="c1"># Prometheus metrics for degradation monitoring</span>
+<span class="n">SERVICE_HEALTH_STATE</span> <span class="o">=</span> <span class="n">Gauge</span><span class="p">(</span>
+    <span class="s2">&quot;service_health_state&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Current health state of service (0=unhealthy, 1=healthy)&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;service&quot;</span><span class="p">,),</span>
+<span class="p">)</span>
+<span class="n">SERVICE_DEGRADATION_LEVEL</span> <span class="o">=</span> <span class="n">Gauge</span><span class="p">(</span>
+    <span class="s2">&quot;service_degradation_level&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Current degradation level (0=none, 1=minor, 2=moderate, 3=severe, 4=critical)&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;service&quot;</span><span class="p">,),</span>
+<span class="p">)</span>
+<span class="n">SERVICE_LATENCY_SECONDS</span> <span class="o">=</span> <span class="n">Histogram</span><span class="p">(</span>
+    <span class="s2">&quot;service_latency_seconds&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Service response latency in seconds&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;service&quot;</span><span class="p">,),</span>
+    <span class="n">buckets</span><span class="o">=</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">SERVICE_ERROR_RATE</span> <span class="o">=</span> <span class="n">Gauge</span><span class="p">(</span>
+    <span class="s2">&quot;service_error_rate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Current error rate for service (0.0-1.0)&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;service&quot;</span><span class="p">,),</span>
+<span class="p">)</span>
+<span class="n">CASCADING_FAILURES_TOTAL</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span>
+    <span class="s2">&quot;cascading_failures_total&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Total cascading failures detected&quot;</span><span class="p">,</span>
+    <span class="n">labelnames</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;source_service&quot;</span><span class="p">,</span> <span class="s2">&quot;affected_service&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DegradationLevel">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DegradationLevel</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Degradation severity levels.&quot;&quot;&quot;</span>
+
+    <span class="n">NONE</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span>
+    <span class="n">MINOR</span> <span class="o">=</span> <span class="s2">&quot;minor&quot;</span>
+    <span class="n">MODERATE</span> <span class="o">=</span> <span class="s2">&quot;moderate&quot;</span>
+    <span class="n">SEVERE</span> <span class="o">=</span> <span class="s2">&quot;severe&quot;</span>
+    <span class="n">CRITICAL</span> <span class="o">=</span> <span class="s2">&quot;critical&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="ComponentHealth">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentHealth</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Health status of a system component.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">healthy</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">response_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">error_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">last_check</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">circuit_state</span><span class="p">:</span> <span class="n">CircuitState</span> <span class="o">=</span> <span class="n">CircuitState</span><span class="o">.</span><span class="n">CLOSED</span>
+    <span class="n">degradation_level</span><span class="p">:</span> <span class="n">DegradationLevel</span> <span class="o">=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span></div>
+
+
+
+<div class="viewcode-block" id="DegradationStatus">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DegradationStatus</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Overall degradation status of the system.&quot;&quot;&quot;</span>
+
+    <span class="n">overall_level</span><span class="p">:</span> <span class="n">DegradationLevel</span>
+    <span class="n">affected_components</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">healthy_components</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">total_components</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">mitigation_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DegradationHistoryRecord">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DegradationHistoryRecord</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single degradation event record for history tracking.&quot;&quot;&quot;</span>
+
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">degradation_level</span><span class="p">:</span> <span class="n">DegradationLevel</span>
+    <span class="n">healthy</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">response_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">error_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;check&quot;, &quot;failure&quot;, &quot;recovery&quot;, &quot;cascading&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DegradationMonitor">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DegradationMonitor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Production-ready degradation monitoring system.</span>
+
+<span class="sd">    Monitors system health, detects degradation patterns, and provides</span>
+<span class="sd">    actionable insights for system resilience.</span>
+
+<span class="sd">    Features:</span>
+<span class="sd">    - Component health tracking</span>
+<span class="sd">    - Dependency graph for cascading failure detection</span>
+<span class="sd">    - Circuit breaker integration</span>
+<span class="sd">    - Prometheus metrics</span>
+<span class="sd">    - REAL history tracking (VIBE COMPLIANT)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Service dependency graph: key depends on values</span>
+    <span class="c1"># When a dependency fails, dependents are marked as degraded</span>
+    <span class="n">SERVICE_DEPENDENCIES</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;gateway&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;redis&quot;</span><span class="p">,</span> <span class="s2">&quot;kafka&quot;</span><span class="p">,</span> <span class="s2">&quot;temporal&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;tool_executor&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;kafka&quot;</span><span class="p">,</span> <span class="s2">&quot;somabrain&quot;</span><span class="p">,</span> <span class="s2">&quot;temporal&quot;</span><span class="p">,</span> <span class="s2">&quot;llm&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;conversation_worker&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;kafka&quot;</span><span class="p">,</span> <span class="s2">&quot;somabrain&quot;</span><span class="p">,</span> <span class="s2">&quot;redis&quot;</span><span class="p">,</span> <span class="s2">&quot;temporal&quot;</span><span class="p">,</span> <span class="s2">&quot;llm&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;auth_service&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;redis&quot;</span><span class="p">],</span>
+        <span class="c1"># Multimodal services</span>
+        <span class="s2">&quot;voice_service&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;llm&quot;</span><span class="p">,</span> <span class="s2">&quot;audio_tts&quot;</span><span class="p">,</span> <span class="s2">&quot;audio_stt&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;upload_service&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;storage&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;multimodal&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;llm&quot;</span><span class="p">,</span> <span class="s2">&quot;voice_service&quot;</span><span class="p">,</span> <span class="s2">&quot;upload_service&quot;</span><span class="p">],</span>
+        <span class="c1"># Background services</span>
+        <span class="s2">&quot;backup_service&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;storage&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;task_scheduler&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;redis&quot;</span><span class="p">,</span> <span class="s2">&quot;temporal&quot;</span><span class="p">],</span>
+        <span class="c1"># Core services have no dependencies (they ARE the dependencies)</span>
+        <span class="s2">&quot;somabrain&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">&quot;database&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">&quot;kafka&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">&quot;redis&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">&quot;temporal&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">&quot;llm&quot;</span><span class="p">:</span> <span class="p">[],</span>  <span class="c1"># LLM providers (can operate independently)</span>
+        <span class="s2">&quot;audio_tts&quot;</span><span class="p">:</span> <span class="p">[],</span>  <span class="c1"># Text-to-speech providers</span>
+        <span class="s2">&quot;audio_stt&quot;</span><span class="p">:</span> <span class="p">[],</span>  <span class="c1"># Speech-to-text providers</span>
+        <span class="s2">&quot;storage&quot;</span><span class="p">:</span> <span class="p">[],</span>  <span class="c1"># File storage (S3, local, etc.)</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Maximum history records to keep in memory</span>
+    <span class="n">MAX_HISTORY_SIZE</span> <span class="o">=</span> <span class="mi">10000</span>
+
+<div class="viewcode-block" id="DegradationMonitor.__init__">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ComponentHealth</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CircuitBreaker</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_thresholds</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;response_time&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>  <span class="c1"># seconds</span>
+            <span class="s2">&quot;error_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>  <span class="c1"># 10%</span>
+            <span class="s2">&quot;circuit_failure_rate&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>  <span class="c1"># 30%</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_task</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SERVICE_DEPENDENCIES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># VIBE COMPLIANT: Real history storage, not a test double</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DegradationHistoryRecord</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temporal_client</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TemporalClient</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.initialize">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.initialize">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize degradation monitor with default components.&quot;&quot;&quot;</span>
+        <span class="c1"># Initialize core system components</span>
+        <span class="n">core_components</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;somabrain&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;database&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;kafka&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;redis&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;temporal&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gateway&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;auth_service&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tool_executor&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;llm&quot;</span><span class="p">,</span>  <span class="c1"># LLM providers</span>
+            <span class="c1"># Multimodal services</span>
+            <span class="s2">&quot;voice_service&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;audio_tts&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;audio_stt&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;upload_service&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;multimodal&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;storage&quot;</span><span class="p">,</span>
+            <span class="c1"># Background services</span>
+            <span class="s2">&quot;backup_service&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_scheduler&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">core_components</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">component</span><span class="p">]</span> <span class="o">=</span> <span class="n">ComponentHealth</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">component</span><span class="p">,</span>
+                <span class="n">healthy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">response_time</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">error_rate</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">last_check</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Initialize circuit breakers for critical components</span>
+        <span class="n">critical_components</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;somabrain&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;database&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;kafka&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;llm&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;audio_tts&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;audio_stt&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;storage&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">critical_components</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="p">[</span><span class="n">component</span><span class="p">]</span> <span class="o">=</span> <span class="n">CircuitBreaker</span><span class="p">(</span>
+                <span class="n">failure_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">recovery_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">expected_exception</span><span class="o">=</span><span class="ne">Exception</span>  <span class="c1"># 1 minute</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.start_monitoring">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.start_monitoring">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">start_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start continuous degradation monitoring.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_loop</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Degradation monitoring started&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.stop_monitoring">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.stop_monitoring">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop degradation monitoring.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_task</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_task</span>
+            <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Degradation monitoring stopped&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.is_monitoring">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.is_monitoring">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether monitoring is active.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_monitor_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Main monitoring loop.&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_all_components</span><span class="p">()</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_degradation_patterns</span><span class="p">()</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>  <span class="c1"># Check every 30 seconds</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in degradation monitoring loop: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># Wait longer on errors</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check health of all monitored components.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">component_name</span><span class="p">,</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_component_health</span><span class="p">(</span><span class="n">component_name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking component </span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_component_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check health of a specific component.&quot;&quot;&quot;</span>
+        <span class="n">component</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">component_name</span><span class="p">]</span>
+
+        <span class="c1"># Get circuit breaker state if available</span>
+        <span class="n">circuit_breaker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">circuit_breaker</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">circuit_state</span> <span class="o">=</span> <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">state</span>
+
+        <span class="c1"># Perform health check based on component type</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;somabrain&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_somabrain_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;database&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_database_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;kafka&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_kafka_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;redis&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_redis_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;temporal&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_temporal_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;llm&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_llm_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;audio_tts&quot;</span><span class="p">,</span> <span class="s2">&quot;audio_stt&quot;</span><span class="p">,</span> <span class="s2">&quot;voice_service&quot;</span><span class="p">):</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_audio_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;storage&quot;</span><span class="p">,</span> <span class="s2">&quot;upload_service&quot;</span><span class="p">):</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_storage_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="o">==</span> <span class="s2">&quot;multimodal&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_multimodal_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">component_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;backup_service&quot;</span><span class="p">,</span> <span class="s2">&quot;task_scheduler&quot;</span><span class="p">):</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_background_service_health</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Generic health check for other components</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_generic_component</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+
+            <span class="n">component</span><span class="o">.</span><span class="n">response_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">last_check</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+            <span class="c1"># Update degradation level based on metrics</span>
+            <span class="n">old_level</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_degradation_level</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+
+            <span class="c1"># Record Prometheus metrics</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_record_component_metrics</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+
+            <span class="c1"># Record history if degradation level changed or component is degraded</span>
+            <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">!=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+                <span class="n">event_type</span> <span class="o">=</span> <span class="s2">&quot;check&quot;</span>
+                <span class="k">if</span> <span class="n">old_level</span> <span class="o">==</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+                    <span class="n">event_type</span> <span class="o">=</span> <span class="s2">&quot;failure&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="n">event_type</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">old_level</span> <span class="o">!=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+                <span class="c1"># Component recovered</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="s2">&quot;recovery&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">response_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_record_component_metrics</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_record_history</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="s2">&quot;failure&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Health check failed for </span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_record_component_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record Prometheus metrics for a component.&quot;&quot;&quot;</span>
+        <span class="n">SERVICE_HEALTH_STATE</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">service</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mf">1.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">SERVICE_DEGRADATION_LEVEL</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">service</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_level_to_int</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">SERVICE_LATENCY_SECONDS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">service</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">response_time</span><span class="p">)</span>
+        <span class="n">SERVICE_ERROR_RATE</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">service</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">error_rate</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_degradation_level_to_int</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">DegradationLevel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert degradation level to integer for metrics.&quot;&quot;&quot;</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MINOR</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MODERATE</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_somabrain_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check SomaBrain health specifically.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">admin.core.soma_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">SomaClient</span>
+
+            <span class="n">client</span> <span class="o">=</span> <span class="n">SomaClient</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="n">health_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">health</span><span class="p">()</span>
+
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">health_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ready&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SomaBrain health check: ready=</span><span class="si">{</span><span class="n">component</span><span class="o">.</span><span class="n">healthy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SomaBrain health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_database_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check database health with REAL PostgreSQL connection.</span>
+
+<span class="sd">        VIBE COMPLIANT: Uses Django database connection - no asyncpg.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">connection</span>
+
+            <span class="c1"># Real connection test using Django</span>
+            <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">result</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database health check passed: SELECT 1 = </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_kafka_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check Kafka health with REAL Kafka connection.</span>
+
+<span class="sd">        VIBE COMPLIANT: No test doubles, no mocks. Real Kafka connectivity check.</span>
+<span class="sd">        Uses aiokafka to verify broker connectivity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">aiokafka</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIOKafkaProducer</span>
+
+            <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+            <span class="n">bootstrap_servers</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">kafka_bootstrap_servers</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">bootstrap_servers</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Kafka health check failed: No bootstrap servers configured&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="c1"># Real connection test - create producer and check bootstrap connection</span>
+            <span class="n">producer</span> <span class="o">=</span> <span class="n">AIOKafkaProducer</span><span class="p">(</span>
+                <span class="n">bootstrap_servers</span><span class="o">=</span><span class="n">bootstrap_servers</span><span class="p">,</span>
+                <span class="n">request_timeout_ms</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
+                <span class="n">metadata_max_age_ms</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Start producer - this connects to Kafka brokers</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">producer</span><span class="o">.</span><span class="n">start</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Kafka health check passed: Connected to </span><span class="si">{</span><span class="n">bootstrap_servers</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">producer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Kafka health check failed: Connection timeout&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Kafka health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_redis_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check Redis health with REAL Redis connection.</span>
+
+<span class="sd">        VIBE COMPLIANT: No test doubles, no mocks. Real Redis connectivity check.</span>
+<span class="sd">        Uses redis-py to execute PING command.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">redis.asyncio</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">aioredis</span>
+
+            <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+            <span class="n">redis_url</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_REDIS_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">redis_url</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Redis health check failed: No Redis URL configured&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="c1"># Real connection test with PING</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">aioredis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">redis_url</span><span class="p">,</span> <span class="n">socket_timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Execute PING to verify connection</span>
+                <span class="n">pong</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">ping</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">pong</span> <span class="ow">is</span> <span class="kc">True</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Redis health check passed: PING = </span><span class="si">{</span><span class="n">pong</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Redis health check failed: Connection timeout&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Redis health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_generic_component</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generic health check for components.&quot;&quot;&quot;</span>
+        <span class="c1"># For generic components, assume healthy if no specific issues</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generic health check passed for </span><span class="si">{</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_temporal_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check Temporal server health via system info.&quot;&quot;&quot;</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_TEMPORAL_HOST&quot;</span><span class="p">,</span> <span class="s2">&quot;temporal:7233&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temporal_client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_temporal_client</span> <span class="o">=</span> <span class="k">await</span> <span class="n">TemporalClient</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">host</span><span class="p">)</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temporal_client</span><span class="o">.</span><span class="n">workflow_service</span><span class="o">.</span><span class="n">get_system_info</span><span class="p">()</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">info</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_llm_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check LLM providers health via LLMDegradationService.</span>
+
+<span class="sd">        VIBE COMPLIANT: Integrates with centralized LLM degradation service.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.llm_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">llm_degradation_service</span>
+
+            <span class="c1"># Initialize if needed</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">llm_degradation_service</span><span class="o">.</span><span class="n">_provider_health</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">llm_degradation_service</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+            <span class="c1"># Get summary of LLM status</span>
+            <span class="n">summary</span> <span class="o">=</span> <span class="n">llm_degradation_service</span><span class="o">.</span><span class="n">get_degradation_summary</span><span class="p">()</span>
+
+            <span class="c1"># LLM is healthy if at least one provider is available</span>
+            <span class="n">healthy_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;healthy_providers&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+            <span class="n">degraded_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;degraded_providers&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+            <span class="n">unavailable_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;unavailable_providers&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="n">healthy_count</span> <span class="o">+</span> <span class="n">degraded_count</span> <span class="o">+</span> <span class="n">unavailable_count</span>
+
+            <span class="k">if</span> <span class="n">total</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># No providers configured - assume healthy (will fail on actual call)</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">elif</span> <span class="n">healthy_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="n">unavailable_count</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="k">elif</span> <span class="n">degraded_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Still operational via fallback</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.5</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># All providers unavailable</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;LLM health check: healthy=</span><span class="si">{</span><span class="n">healthy_count</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;degraded=</span><span class="si">{</span><span class="n">degraded_count</span><span class="si">}</span><span class="s2">, unavailable=</span><span class="si">{</span><span class="n">unavailable_count</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_audio_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check audio service health (TTS/STT).</span>
+
+<span class="sd">        VIBE COMPLIANT: Integrates with MultimodalDegradationService.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.multimodal_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">multimodal_degradation_service</span>
+
+            <span class="c1"># Initialize if needed</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+            <span class="c1"># Check provider availability based on component</span>
+            <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;audio_tts&quot;</span><span class="p">:</span>
+                <span class="n">provider</span> <span class="o">=</span> <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">get_available_tts</span><span class="p">()</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">provider</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">component</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;audio_stt&quot;</span><span class="p">:</span>
+                <span class="n">provider</span> <span class="o">=</span> <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">get_available_stt</span><span class="p">()</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">provider</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">component</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;voice_service&quot;</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">is_voice_available</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Audio health check failed for </span><span class="si">{</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_storage_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check storage service health.</span>
+
+<span class="sd">        VIBE COMPLIANT: Checks storage provider availability.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.multimodal_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">multimodal_degradation_service</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+            <span class="n">provider</span> <span class="o">=</span> <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">get_available_storage</span><span class="p">()</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">provider</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Storage health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_multimodal_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check overall multimodal service health.</span>
+
+<span class="sd">        Multimodal is healthy if at least voice OR storage is available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">services.common.multimodal_degradation</span><span class="w"> </span><span class="kn">import</span> <span class="n">multimodal_degradation_service</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+            <span class="n">voice_ok</span> <span class="o">=</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">is_voice_available</span><span class="p">()</span>
+            <span class="n">storage_ok</span> <span class="o">=</span> <span class="k">await</span> <span class="n">multimodal_degradation_service</span><span class="o">.</span><span class="n">get_available_storage</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">voice_ok</span> <span class="ow">or</span> <span class="n">storage_ok</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="mf">0.0</span> <span class="k">if</span> <span class="p">(</span><span class="n">voice_ok</span> <span class="ow">and</span> <span class="n">storage_ok</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="mf">0.5</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Multimodal health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_background_service_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check background service health (backup, task scheduler).</span>
+
+<span class="sd">        Background services depend on database and temporal.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Check database dependency</span>
+            <span class="n">db_health</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;database&quot;</span><span class="p">)</span>
+            <span class="n">temporal_health</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temporal&quot;</span><span class="p">)</span>
+
+            <span class="n">db_ok</span> <span class="o">=</span> <span class="n">db_health</span> <span class="ow">and</span> <span class="n">db_health</span><span class="o">.</span><span class="n">healthy</span> <span class="k">if</span> <span class="n">db_health</span> <span class="k">else</span> <span class="kc">True</span>
+            <span class="n">temporal_ok</span> <span class="o">=</span> <span class="n">temporal_health</span> <span class="ow">and</span> <span class="n">temporal_health</span><span class="o">.</span><span class="n">healthy</span> <span class="k">if</span> <span class="n">temporal_health</span> <span class="k">else</span> <span class="kc">True</span>
+
+            <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;backup_service&quot;</span><span class="p">:</span>
+                <span class="n">storage_health</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;storage&quot;</span><span class="p">)</span>
+                <span class="n">storage_ok</span> <span class="o">=</span> <span class="n">storage_health</span> <span class="ow">and</span> <span class="n">storage_health</span><span class="o">.</span><span class="n">healthy</span> <span class="k">if</span> <span class="n">storage_health</span> <span class="k">else</span> <span class="kc">True</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">db_ok</span> <span class="ow">and</span> <span class="n">storage_ok</span>
+            <span class="k">elif</span> <span class="n">component</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;task_scheduler&quot;</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">db_ok</span> <span class="ow">and</span> <span class="n">temporal_ok</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="n">db_ok</span>
+
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="k">else</span> <span class="mf">0.5</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Background service health check failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_degradation_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DegradationLevel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate degradation level for a component.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">component</span><span class="o">.</span><span class="n">healthy</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">circuit_state</span> <span class="o">==</span> <span class="n">CircuitState</span><span class="o">.</span><span class="n">OPEN</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">CRITICAL</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span>
+
+        <span class="c1"># Check response time degradation</span>
+        <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">response_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_thresholds</span><span class="p">[</span><span class="s2">&quot;response_time&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span>
+        <span class="k">elif</span> <span class="n">component</span><span class="o">.</span><span class="n">response_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_thresholds</span><span class="p">[</span><span class="s2">&quot;response_time&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MODERATE</span>
+        <span class="k">elif</span> <span class="n">component</span><span class="o">.</span><span class="n">response_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_thresholds</span><span class="p">[</span><span class="s2">&quot;response_time&quot;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MINOR</span>
+
+        <span class="c1"># Check error rate degradation</span>
+        <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_thresholds</span><span class="p">[</span><span class="s2">&quot;error_rate&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MODERATE</span>
+        <span class="k">elif</span> <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_degradation_thresholds</span><span class="p">[</span><span class="s2">&quot;error_rate&quot;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MINOR</span>
+
+        <span class="k">return</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_degradation_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Analyze degradation patterns across all components.&quot;&quot;&quot;</span>
+        <span class="c1"># Propagate cascading failures through dependency graph</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_propagate_cascading_failures</span><span class="p">()</span>
+
+        <span class="n">degraded_components</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">comp</span>
+            <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">comp</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">!=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">degraded_components</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">degraded_components</span><span class="p">)</span><span class="si">}</span><span class="s2"> degraded components&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="n">degraded_components</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">comp</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">comp</span><span class="o">.</span><span class="n">degradation_level</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(response_time: </span><span class="si">{</span><span class="n">comp</span><span class="o">.</span><span class="n">response_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;error_rate: </span><span class="si">{</span><span class="n">comp</span><span class="o">.</span><span class="n">error_rate</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_propagate_cascading_failures</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Propagate failures through the dependency graph.</span>
+
+<span class="sd">        When a core service (database, kafka, redis, somabrain) fails,</span>
+<span class="sd">        all services that depend on it are marked as degraded.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Find all failed core services</span>
+        <span class="n">failed_services</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">comp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">comp</span><span class="o">.</span><span class="n">healthy</span>
+            <span class="ow">or</span> <span class="n">comp</span><span class="o">.</span><span class="n">degradation_level</span> <span class="ow">in</span> <span class="p">[</span><span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span><span class="p">,</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">]</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">failed_services</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Propagate failures to dependent services</span>
+        <span class="k">for</span> <span class="n">service_name</span><span class="p">,</span> <span class="n">dependencies</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">service_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">component</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">service_name</span><span class="p">]</span>
+
+            <span class="c1"># Check if any dependency has failed</span>
+            <span class="n">failed_deps</span> <span class="o">=</span> <span class="n">failed_services</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">dependencies</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">failed_deps</span><span class="p">:</span>
+                <span class="c1"># Mark this service as degraded due to dependency failure</span>
+                <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">==</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MODERATE</span>
+                    <span class="c1"># Record cascading failure metrics</span>
+                    <span class="k">for</span> <span class="n">failed_dep</span> <span class="ow">in</span> <span class="n">failed_deps</span><span class="p">:</span>
+                        <span class="n">CASCADING_FAILURES_TOTAL</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span>
+                            <span class="n">source_service</span><span class="o">=</span><span class="n">failed_dep</span><span class="p">,</span> <span class="n">affected_service</span><span class="o">=</span><span class="n">service_name</span>
+                        <span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+                    <span class="c1"># Record cascading failure in history</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_record_history</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="s2">&quot;cascading&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Cascading degradation: </span><span class="si">{</span><span class="n">service_name</span><span class="si">}</span><span class="s2"> degraded due to &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;failed dependencies: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">failed_deps</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+<div class="viewcode-block" id="DegradationMonitor.get_service_dependencies">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_service_dependencies">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_service_dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the dependencies for a service.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">service_name</span><span class="p">,</span> <span class="p">[])</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.get_dependent_services">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_dependent_services">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_dependent_services</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get services that depend on the given service.&quot;&quot;&quot;</span>
+        <span class="n">dependents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">svc</span><span class="p">,</span> <span class="n">deps</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">service_name</span> <span class="ow">in</span> <span class="n">deps</span><span class="p">:</span>
+                <span class="n">dependents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">svc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dependents</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.add_dependency">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.add_dependency">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">depends_on</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a dependency relationship.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">service</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">[</span><span class="n">service</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">depends_on</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">[</span><span class="n">service</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">[</span><span class="n">service</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">depends_on</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.remove_dependency">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.remove_dependency">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">depends_on</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove a dependency relationship.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">service</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">depends_on</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">[</span><span class="n">service</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_dependency_graph</span><span class="p">[</span><span class="n">service</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">depends_on</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.get_degradation_status">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_degradation_status">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_degradation_status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DegradationStatus</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current degradation status.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+        <span class="n">affected_components</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">healthy_components</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">overall_level</span> <span class="o">=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span>
+
+        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span> <span class="o">!=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+                <span class="n">affected_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="c1"># Update overall level to the most severe degradation</span>
+                <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="n">overall_level</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                    <span class="n">overall_level</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">healthy_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="c1"># Generate recommendations based on degradation level</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">mitigation_actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">overall_level</span> <span class="o">!=</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">NONE</span><span class="p">:</span>
+            <span class="n">recommendations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">overall_level</span><span class="p">,</span> <span class="n">affected_components</span><span class="p">)</span>
+            <span class="n">mitigation_actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_mitigation_actions</span><span class="p">(</span>
+                <span class="n">overall_level</span><span class="p">,</span> <span class="n">affected_components</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">DegradationStatus</span><span class="p">(</span>
+            <span class="n">overall_level</span><span class="o">=</span><span class="n">overall_level</span><span class="p">,</span>
+            <span class="n">affected_components</span><span class="o">=</span><span class="n">affected_components</span><span class="p">,</span>
+            <span class="n">healthy_components</span><span class="o">=</span><span class="n">healthy_components</span><span class="p">,</span>
+            <span class="n">total_components</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">),</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="n">recommendations</span><span class="o">=</span><span class="n">recommendations</span><span class="p">,</span>
+            <span class="n">mitigation_actions</span><span class="o">=</span><span class="n">mitigation_actions</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_recommendations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">DegradationLevel</span><span class="p">,</span> <span class="n">affected_components</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate recommendations based on degradation level.&quot;&quot;&quot;</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="ow">in</span> <span class="p">[</span><span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span><span class="p">,</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Immediate attention required for affected components&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider activating emergency procedures&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Notify operations team immediately&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MODERATE</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Monitor affected components closely&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider scaling resources if available&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MINOR</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Continue monitoring for escalation&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Review component performance metrics&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Component-specific recommendations</span>
+        <span class="k">if</span> <span class="s2">&quot;somabrain&quot;</span> <span class="ow">in</span> <span class="n">affected_components</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Check SomaBrain service health and connectivity&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;database&quot;</span> <span class="ow">in</span> <span class="n">affected_components</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Review database performance and connection pools&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;kafka&quot;</span> <span class="ow">in</span> <span class="n">affected_components</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Check Kafka broker health and topic configurations&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">recommendations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_mitigation_actions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">DegradationLevel</span><span class="p">,</span> <span class="n">affected_components</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate mitigation actions based on degradation level.&quot;&quot;&quot;</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="ow">in</span> <span class="p">[</span><span class="n">DegradationLevel</span><span class="o">.</span><span class="n">SEVERE</span><span class="p">,</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">]:</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Activate circuit breakers for affected components&quot;</span><span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Enable failover mechanisms if available&quot;</span><span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider graceful degradation of non-critical features&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MODERATE</span><span class="p">:</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Increase monitoring frequency for affected components&quot;</span><span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Prepare scaling procedures if needed&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="n">DegradationLevel</span><span class="o">.</span><span class="n">MINOR</span><span class="p">:</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Log degradation patterns for analysis&quot;</span><span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Schedule maintenance review for affected components&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">actions</span>
+
+<div class="viewcode-block" id="DegradationMonitor.record_component_failure">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.record_component_failure">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">record_component_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a component failure for degradation analysis.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">component_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">component</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">component_name</span><span class="p">]</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">+</span> <span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">last_check</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Update circuit breaker if available</span>
+        <span class="n">circuit_breaker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">circuit_breaker</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span>  <span class="c1"># This will record the failure</span>
+
+        <span class="c1"># Record metrics</span>
+        <span class="n">metrics_collector</span><span class="o">.</span><span class="n">track_error</span><span class="p">(</span>
+            <span class="n">error_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">error</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;degradation_monitor.</span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recorded failure for </span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DegradationMonitor.record_component_success">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.record_component_success">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">record_component_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">response_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a successful component operation.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">component_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">component</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">[</span><span class="n">component_name</span><span class="p">]</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">response_time</span> <span class="o">=</span> <span class="n">response_time</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">component</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">-</span> <span class="mf">0.05</span><span class="p">)</span>
+        <span class="n">component</span><span class="o">.</span><span class="n">last_check</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Update circuit breaker if available</span>
+        <span class="n">circuit_breaker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">component_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">circuit_breaker</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span>  <span class="c1"># This will record success</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>  <span class="c1"># Ignore circuit breaker errors in success recording</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recorded success for </span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">response_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_record_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="n">ComponentHealth</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;check&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a degradation event to history.</span>
+
+<span class="sd">        VIBE COMPLIANT: Real history storage, not a test double.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="n">DegradationHistoryRecord</span><span class="p">(</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="n">component_name</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">degradation_level</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">degradation_level</span><span class="p">,</span>
+            <span class="n">healthy</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">healthy</span><span class="p">,</span>
+            <span class="n">response_time</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">response_time</span><span class="p">,</span>
+            <span class="n">error_rate</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">error_rate</span><span class="p">,</span>
+            <span class="n">event_type</span><span class="o">=</span><span class="n">event_type</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+
+        <span class="c1"># Trim history if it exceeds max size (FIFO)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">MAX_HISTORY_SIZE</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">MAX_HISTORY_SIZE</span> <span class="p">:]</span>
+
+<div class="viewcode-block" id="DegradationMonitor.get_history">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_history</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get degradation history records.</span>
+
+<span class="sd">        VIBE COMPLIANT: Returns REAL history data, not empty test doubles.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            limit: Maximum number of records to return</span>
+<span class="sd">            component_name: Filter by specific component (optional)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of history records as dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Filter by component if specified</span>
+        <span class="k">if</span> <span class="n">component_name</span><span class="p">:</span>
+            <span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">component_name</span> <span class="o">==</span> <span class="n">component_name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">filtered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_history</span>
+
+        <span class="c1"># Return most recent records up to limit</span>
+        <span class="n">recent</span> <span class="o">=</span> <span class="n">filtered</span><span class="p">[</span><span class="o">-</span><span class="n">limit</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">limit</span> <span class="k">else</span> <span class="n">filtered</span>
+
+        <span class="c1"># Convert to dictionaries for JSON serialization</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+                <span class="s2">&quot;component_name&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">component_name</span><span class="p">,</span>
+                <span class="s2">&quot;degradation_level&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">degradation_level</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                <span class="s2">&quot;healthy&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">healthy</span><span class="p">,</span>
+                <span class="s2">&quot;response_time&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">response_time</span><span class="p">,</span>
+                <span class="s2">&quot;error_rate&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">error_rate</span><span class="p">,</span>
+                <span class="s2">&quot;event_type&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">event_type</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">recent</span><span class="p">)</span>  <span class="c1"># Most recent first</span>
+        <span class="p">]</span></div>
+</div>
+
+
+
+<span class="c1"># Global degradation monitor instance</span>
+<span class="n">degradation_monitor</span> <span class="o">=</span> <span class="n">DegradationMonitor</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="is_monitoring">
+<a class="viewcode-back" href="../../../api/services.common.degradation_monitor.html#services.common.degradation_monitor.is_monitoring">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_monitoring</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether the global degradation monitor is active.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">degradation_monitor</span><span class="o">.</span><span class="n">is_monitoring</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SomaTech.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

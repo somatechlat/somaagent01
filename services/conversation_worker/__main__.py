@@ -1,7 +1,7 @@
 """Entry point for the conversation worker service when run as a standalone process.
 
 This allows the orchestrator to start the conversation worker service as a subprocess.
-VIBE COMPLIANT: Uses Django LOGGING configuration.
+
 """
 
 import asyncio

@@ -1,0 +1,910 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>services.multimodal.mermaid_provider &mdash; SomaAgent01 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=fb57f298" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            SomaAgent01
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-1-clone-configure">Step 1: Clone &amp; Configure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../quickstart.html#required-environment-variables">Required Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-2-start-infrastructure">Step 2: Start Infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-3-verify-health">Step 3: Verify Health</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#step-4-access-services">Step 4: Access Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../quickstart.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../agent-quickstart.html">Agent Context Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#before-you-code">Before You Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#vibe-coding-rules-summary">VIBE Coding Rules Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#technology-stack-strict">Technology Stack (STRICT)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#key-files-reference">Key Files Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../agent-quickstart.html#backend-python-django">Backend (Python/Django)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#user-roles">User Roles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../agent-quickstart.html#testing-requirements">Testing Requirements</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../deployment/index.html">Deployment Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../deployment/index.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../deployment/index.html#port-namespace">Port Namespace</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../deployment/index.html#quick-start">Quick Start</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/common.html">common package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/common.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.account_lockout.html">common.account_lockout module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.auth.html">common.auth module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.exceptions.html">common.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.handlers.html">common.handlers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.messages.html">common.messages module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.middleware.html">common.middleware module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.pkce.html">common.pkce module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.rate_limit.html">common.rate_limit module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.responses.html">common.responses module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.schemas.html">common.schemas module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/common.session_manager.html">common.session_manager module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/core.html">core package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/core.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.api.html">core.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.application.html">core.application package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.config.html">core.config package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.helpers.html">core.helpers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.infrastructure.html">core.infrastructure package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.management.html">core.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.migrations.html">core.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.observability.html">core.observability package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.sensors.html">core.sensors package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/core.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.apps.html">core.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.models.html">core.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.permissions.html">core.permissions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.repositories.html">core.repositories module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.signals.html">core.signals module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.soma_client.html">core.soma_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/core.somabrain_client.html">core.somabrain_client module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/auth.html">auth package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/auth.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.api.html">auth.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.invitations.html">auth.invitations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.mfa.html">auth.mfa module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth.password_reset.html">auth.password_reset module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/auth_config.html">auth_config package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/auth_config.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/auth_config.api.html">auth_config.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/permissions.html">permissions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/permissions.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.management.html">permissions.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.migrations.html">permissions.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/permissions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.admin.html">permissions.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.api.html">permissions.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.granular.html">permissions.granular module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/permissions.models.html">permissions.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/agents.html">agents package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/agents.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.services.html">agents.services package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/agents.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.api.html">agents.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/agents.apps.html">agents.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/chat.html">chat package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/chat.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.api.html">chat.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.migrations.html">chat.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/chat.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.apps.html">chat.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/chat.models.html">chat.models module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/sessions.html">sessions package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/sessions.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/sessions.api.html">sessions.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/saas.html">saas package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/saas.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.api.html">saas.api package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.management.html">saas.management package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.migrations.html">saas.migrations package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.models.html">saas.models package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/saas.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.admin.html">saas.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/saas.apps.html">saas.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/tenants.html">tenants package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/tenants.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/tenants.api.html">tenants.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/billing.html">billing package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/billing.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/billing.lago_client.html">billing.lago_client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/billing.webhooks.html">billing.webhooks module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/somabrain.html">somabrain package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/somabrain.html#somabrain-brain-inspired-cognitive-ai-system">SomaBrain: Brain-Inspired Cognitive AI System</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/somabrain.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.tests.html">somabrain.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/somabrain.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.admin_api.html">somabrain.admin_api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.api.html">somabrain.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.client.html">somabrain.client module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.cognitive.html">somabrain.cognitive module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.core_brain.html">somabrain.core_brain module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/somabrain.event_bridge.html">somabrain.event_bridge module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/knowledge.html">knowledge package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/knowledge.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/knowledge.api.html">knowledge.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/embeddings.html">embeddings package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/embeddings.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/embeddings.api.html">embeddings.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/audit.html">audit package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/audit.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/audit.api.html">audit.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/observability.html">observability package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/observability.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/observability.api.html">observability.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/metrics.html">metrics package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/metrics.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/metrics.api.html">metrics.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/flink.html">flink package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/flink.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.migrations.html">flink.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/flink.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.api.html">flink.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.models.html">flink.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/flink.somabrain_jobs.html">flink.somabrain_jobs module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/utils.html">utils package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/utils.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/utils.api.html">utils.api package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/utils.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/utils.apps.html">utils.apps module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/voice.html">voice package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/voice.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.migrations.html">voice.migrations package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/voice.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.admin.html">voice.admin module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.api.html">voice.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.apps.html">voice.apps module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.audio_capture.html">voice.audio_capture module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.consumers.html">voice.consumers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.exceptions.html">voice.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.metrics.html">voice.metrics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.models.html">voice.models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.provider_selector.html">voice.provider_selector module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.response_normalizer.html">voice.response_normalizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.routing.html">voice.routing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.schemas.html">voice.schemas module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.service.html">voice.service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.speaker.html">voice.speaker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.tracing.html">voice.tracing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/voice.voice_adapter.html">voice.voice_adapter module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/workflows.html">workflows package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/workflows.html#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../api/workflows.api.html">workflows.api module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../admin/index.html">Admin Applications</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../services/index.html">Services Layer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../services/index.html#module-services.gateway.auth">Gateway Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.gateway.auth.authorize_request"><code class="docutils literal notranslate"><span class="pre">authorize_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../services/index.html#module-services.common.audit">Common Services</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent"><code class="docutils literal notranslate"><span class="pre">AuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">AuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">AuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">AuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">AuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">AuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">AuditEvent.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.to_dict"><code class="docutils literal notranslate"><span class="pre">AuditEvent.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">AuditEvent.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.email"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.email</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.method"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.result"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.result</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.failure_reason"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.failure_reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.mfa_used"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.mfa_used</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LoginAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LoginAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.reason"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.reason</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.LogoutAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">LogoutAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.action"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.action</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.session_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.session_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.permissions"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.permissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.SessionAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">SessionAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.resource_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.resource_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.permission"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.permission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.endpoint"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.endpoint</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.__init__"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.event_type"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.event_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.timestamp"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.tenant_id"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.tenant_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.ip_address"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.ip_address</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.user_agent"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.user_agent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.PermissionDeniedAuditEvent.metadata"><code class="docutils literal notranslate"><span class="pre">PermissionDeniedAuditEvent.metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher"><code class="docutils literal notranslate"><span class="pre">AuditPublisher</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.__init__"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.publish"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.publish()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_login"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_login()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_logout"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_logout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_session"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_session()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.audit.AuditPublisher.log_permission_denied"><code class="docutils literal notranslate"><span class="pre">AuditPublisher.log_permission_denied()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.audit.get_audit_publisher"><code class="docutils literal notranslate"><span class="pre">get_audit_publisher()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.__init__"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.connect"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.connect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.close"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.close()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RedisRateLimiter.reset"><code class="docutils literal notranslate"><span class="pre">RedisRateLimiter.reset()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult"><code class="docutils literal notranslate"><span class="pre">RateLimitResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.allowed"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.allowed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.remaining"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.remaining</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.reset_at"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.reset_at</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.retry_after"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.retry_after</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.RateLimitResult.__init__"><code class="docutils literal notranslate"><span class="pre">RateLimitResult.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.get_rate_limiter"><code class="docutils literal notranslate"><span class="pre">get_rate_limiter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../services/index.html#services.common.rate_limiter.get_limit_for_endpoint"><code class="docutils literal notranslate"><span class="pre">get_limit_for_endpoint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">SomaAgent01</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">services.multimodal.mermaid_provider</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for services.multimodal.mermaid_provider</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Mermaid diagram provider.</span>
+
+<span class="sd">Generates diagrams using Mermaid CLI (mmdc) for SVG/PNG output.</span>
+<span class="sd">Runs locally without external API calls.</span>
+
+<span class="sd">SRS Reference: Section 16.6.1 (Diagram Providers)</span>
+<span class="sd">Feature Flag: SA01_ENABLE_multimodal_capabilities</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">services.multimodal.base_provider</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MultimodalProvider</span><span class="p">,</span>
+    <span class="n">GenerationRequest</span><span class="p">,</span>
+    <span class="n">GenerationResult</span><span class="p">,</span>
+    <span class="n">ProviderCapability</span><span class="p">,</span>
+    <span class="n">ProviderError</span><span class="p">,</span>
+    <span class="n">ValidationError</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MermaidProvider&quot;</span><span class="p">]</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MermaidProvider">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MermaidProvider</span><span class="p">(</span><span class="n">MultimodalProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provider for Mermaid diagram generation.</span>
+
+<span class="sd">    Uses the Mermaid CLI (mmdc) to render diagrams from Mermaid</span>
+<span class="sd">    syntax to SVG or PNG format. Runs locally with no API costs.</span>
+
+<span class="sd">    Requirements:</span>
+<span class="sd">        - Node.js installed</span>
+<span class="sd">        - @mermaid-js/mermaid-cli installed globally or locally</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        provider = MermaidProvider()</span>
+<span class="sd">        result = await provider.generate(GenerationRequest(</span>
+<span class="sd">            tenant_id=&quot;acme&quot;,</span>
+<span class="sd">            session_id=&quot;s1&quot;,</span>
+<span class="sd">            modality=&quot;diagram&quot;,</span>
+<span class="sd">            prompt=&quot;graph TD\\n  A--&gt;B&quot;,</span>
+<span class="sd">            format=&quot;svg&quot;,</span>
+<span class="sd">        ))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Mermaid CLI executable name</span>
+    <span class="n">CLI_NAME</span> <span class="o">=</span> <span class="s2">&quot;mmdc&quot;</span>
+
+    <span class="c1"># Supported diagram types</span>
+    <span class="n">DIAGRAM_TYPES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;flowchart&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sequenceDiagram&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;classDiagram&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;stateDiagram&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;erDiagram&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;journey&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;gantt&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;pie&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;requirementDiagram&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;gitGraph&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;c4Context&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mindmap&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;timeline&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="MermaidProvider.__init__">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cli_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize Mermaid provider.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cli_path: Path to mmdc executable. Auto-detected if None.</span>
+<span class="sd">            timeout_seconds: Timeout for CLI execution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cli_path</span> <span class="o">=</span> <span class="n">cli_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="n">timeout_seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;mermaid_diagram&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">provider_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;local&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">capabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ProviderCapability</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">ProviderCapability</span><span class="o">.</span><span class="n">DIAGRAM</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">supported_formats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;svg&quot;</span><span class="p">,</span> <span class="s2">&quot;png&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">max_dimensions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_cli</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find the mmdc CLI executable.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cli_path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cli_path</span>
+
+        <span class="c1"># Check common locations</span>
+        <span class="n">cli</span> <span class="o">=</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CLI_NAME</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cli</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cli</span>
+
+        <span class="c1"># Check npx</span>
+        <span class="n">npx</span> <span class="o">=</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="s2">&quot;npx&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">npx</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;npx -y @mermaid-js/mermaid-cli&quot;</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MermaidProvider.generate">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider.generate">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">GenerationRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenerationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a Mermaid diagram.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Generation request with Mermaid code in prompt</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            GenerationResult with SVG/PNG content</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Validate first</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;VALIDATION_ERROR&quot;</span><span class="p">,</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">errors</span><span class="p">),</span>
+                <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">cli</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_cli</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cli</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;CLI_NOT_FOUND&quot;</span><span class="p">,</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="s2">&quot;Mermaid CLI (mmdc) not found. Install with: npm install -g @mermaid-js/mermaid-cli&quot;</span><span class="p">,</span>
+                <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">output_format</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">format</span> <span class="ow">or</span> <span class="s2">&quot;svg&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">tmpdir</span><span class="p">:</span>
+                <span class="n">input_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;diagram.mmd&quot;</span>
+                <span class="n">output_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;diagram.</span><span class="si">{</span><span class="n">output_format</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                <span class="c1"># Write Mermaid code to input file</span>
+                <span class="n">input_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">prompt</span><span class="p">)</span>
+
+                <span class="c1"># Build command</span>
+                <span class="k">if</span> <span class="n">cli</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;npx&quot;</span><span class="p">):</span>
+                    <span class="n">cmd_parts</span> <span class="o">=</span> <span class="n">cli</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;-i&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">input_file</span><span class="p">),</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_file</span><span class="p">)]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cmd_parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">cli</span><span class="p">,</span> <span class="s2">&quot;-i&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">input_file</span><span class="p">),</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_file</span><span class="p">)]</span>
+
+                <span class="c1"># Add dimension options if specified</span>
+                <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">&quot;width&quot;</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="p">:</span>
+                        <span class="n">cmd_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;-w&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="p">[</span><span class="s2">&quot;width&quot;</span><span class="p">])])</span>
+                    <span class="k">if</span> <span class="s2">&quot;height&quot;</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="p">:</span>
+                        <span class="n">cmd_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;-H&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="p">[</span><span class="s2">&quot;height&quot;</span><span class="p">])])</span>
+
+                <span class="c1"># Execute CLI</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Executing Mermaid CLI: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd_parts</span><span class="p">))</span>
+                <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+                    <span class="o">*</span><span class="n">cmd_parts</span><span class="p">,</span>
+                    <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                    <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
+                        <span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">(),</span>
+                        <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+                    <span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                        <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;TIMEOUT&quot;</span><span class="p">,</span>
+                        <span class="n">error_message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Mermaid CLI timed out after </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">,</span>
+                        <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">error_msg</span> <span class="o">=</span> <span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="n">stderr</span> <span class="k">else</span> <span class="s2">&quot;Unknown error&quot;</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Mermaid CLI failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_msg</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                        <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;CLI_ERROR&quot;</span><span class="p">,</span>
+                        <span class="n">error_message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Mermaid CLI failed: </span><span class="si">{</span><span class="n">error_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Read output</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">output_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                        <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;OUTPUT_MISSING&quot;</span><span class="p">,</span>
+                        <span class="n">error_message</span><span class="o">=</span><span class="s2">&quot;Mermaid CLI did not produce output file&quot;</span><span class="p">,</span>
+                        <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="n">content</span> <span class="o">=</span> <span class="n">output_file</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+                <span class="n">latency_ms</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+
+                <span class="c1"># Determine content type</span>
+                <span class="n">content_type</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;svg&quot;</span><span class="p">:</span> <span class="s2">&quot;image/svg+xml&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;png&quot;</span><span class="p">:</span> <span class="s2">&quot;image/png&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pdf&quot;</span><span class="p">:</span> <span class="s2">&quot;application/pdf&quot;</span><span class="p">,</span>
+                <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">output_format</span><span class="p">,</span> <span class="s2">&quot;application/octet-stream&quot;</span><span class="p">)</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Generated Mermaid diagram: </span><span class="si">%d</span><span class="s2"> bytes in </span><span class="si">%d</span><span class="s2">ms&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">),</span> <span class="n">latency_ms</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                    <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+                    <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span>
+                    <span class="nb">format</span><span class="o">=</span><span class="n">output_format</span><span class="p">,</span>
+                    <span class="n">latency_ms</span><span class="o">=</span><span class="n">latency_ms</span><span class="p">,</span>
+                    <span class="n">cost_cents</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># Local execution is free</span>
+                    <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+                    <span class="n">model_version</span><span class="o">=</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_version</span><span class="p">(),</span>
+                    <span class="n">quality_hints</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;diagram_type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_diagram_type</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">prompt</span><span class="p">)},</span>
+                <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Mermaid generation failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">GenerationResult</span><span class="p">(</span>
+                <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">error_code</span><span class="o">=</span><span class="s2">&quot;INTERNAL_ERROR&quot;</span><span class="p">,</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span>
+                <span class="n">provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provider_id</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MermaidProvider.validate">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider.validate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">GenerationRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate Mermaid generation request.&quot;&quot;&quot;</span>
+        <span class="n">errors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">request</span><span class="o">.</span><span class="n">prompt</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Mermaid code is required in prompt&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">errors</span>
+
+        <span class="c1"># Check for diagram type keyword</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="n">dt</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">prompt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="s2">&quot;graph&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;flowchart&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;sequence&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;class&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;state&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;er&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;journey&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;gantt&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;pie&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;requirement&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;git&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;c4&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;mindmap&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;timeline&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">):</span>
+            <span class="c1"># Not a hard error, but worth noting</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;No recognized diagram type keyword in Mermaid code&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Validate format</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">format</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">supported_formats</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Unsupported format: </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">format</span><span class="si">}</span><span class="s2">. Supported: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">supported_formats</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Validate dimensions</span>
+        <span class="n">max_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_dimensions</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">dimensions</span> <span class="ow">and</span> <span class="n">max_dims</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_dims</span><span class="p">[</span><span class="s2">&quot;width&quot;</span><span class="p">]:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Width exceeds maximum: </span><span class="si">{</span><span class="n">max_dims</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">dimensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_dims</span><span class="p">[</span><span class="s2">&quot;height&quot;</span><span class="p">]:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Height exceeds maximum: </span><span class="si">{</span><span class="n">max_dims</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">errors</span></div>
+
+
+<div class="viewcode-block" id="MermaidProvider.estimate_cost">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider.estimate_cost">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">estimate_cost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">GenerationRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate cost for Mermaid diagram (always free).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="MermaidProvider.health_check">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider.health_check">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health_check</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if Mermaid CLI is available.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span>
+
+        <span class="n">cli</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_cli</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cli</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cli</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;npx&quot;</span><span class="p">):</span>
+                <span class="n">cmd_parts</span> <span class="o">=</span> <span class="n">cli</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;--version&quot;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cmd_parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">cli</span><span class="p">,</span> <span class="s2">&quot;--version&quot;</span><span class="p">]</span>
+
+            <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+                <span class="o">*</span><span class="n">cmd_parts</span><span class="p">,</span>
+                <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cli_available</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_get_version</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get Mermaid CLI version.&quot;&quot;&quot;</span>
+        <span class="n">cli</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_cli</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cli</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cli</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;npx&quot;</span><span class="p">):</span>
+                <span class="n">cmd_parts</span> <span class="o">=</span> <span class="n">cli</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;--version&quot;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cmd_parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">cli</span><span class="p">,</span> <span class="s2">&quot;--version&quot;</span><span class="p">]</span>
+
+            <span class="n">process</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_subprocess_exec</span><span class="p">(</span>
+                <span class="o">*</span><span class="n">cmd_parts</span><span class="p">,</span>
+                <span class="n">stdout</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="n">stderr</span><span class="o">=</span><span class="n">asyncio</span><span class="o">.</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">stdout</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">communicate</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">stdout</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># Ignore version check failures</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_diagram_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detect the type of Mermaid diagram from code.&quot;&quot;&quot;</span>
+        <span class="n">code_lower</span> <span class="o">=</span> <span class="n">code</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="n">type_keywords</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">&quot;flowchart&quot;</span><span class="p">,</span> <span class="s2">&quot;flowchart&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;graph&quot;</span><span class="p">,</span> <span class="s2">&quot;flowchart&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;sequencediagram&quot;</span><span class="p">,</span> <span class="s2">&quot;sequence&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;classdiagram&quot;</span><span class="p">,</span> <span class="s2">&quot;class&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;statediagram&quot;</span><span class="p">,</span> <span class="s2">&quot;state&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;erdiagram&quot;</span><span class="p">,</span> <span class="s2">&quot;er&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;journey&quot;</span><span class="p">,</span> <span class="s2">&quot;journey&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;gantt&quot;</span><span class="p">,</span> <span class="s2">&quot;gantt&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;pie&quot;</span><span class="p">,</span> <span class="s2">&quot;pie&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;requirementdiagram&quot;</span><span class="p">,</span> <span class="s2">&quot;requirement&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;gitgraph&quot;</span><span class="p">,</span> <span class="s2">&quot;git&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;c4context&quot;</span><span class="p">,</span> <span class="s2">&quot;c4&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;mindmap&quot;</span><span class="p">,</span> <span class="s2">&quot;mindmap&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;timeline&quot;</span><span class="p">,</span> <span class="s2">&quot;timeline&quot;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">type_keywords</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">code_lower</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">keyword</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">dtype</span>
+
+        <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+
+<div class="viewcode-block" id="MermaidProvider.get_model_version">
+<a class="viewcode-back" href="../../../api/services.multimodal.mermaid_provider.html#services.multimodal.MermaidProvider.get_model_version">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_model_version</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get cached model version.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Version retrieved dynamically</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SomaTech.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

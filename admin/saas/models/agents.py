@@ -1,6 +1,6 @@
 """Agent and AgentUser Models.
 
-VIBE COMPLIANT - Multi-tenant isolation, flexible config via JSONB.
+
 Per SAAS_ADMIN_SRS.md Section 4.5, 4.6
 """
 

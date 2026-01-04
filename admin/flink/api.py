@@ -1,6 +1,6 @@
 """Flink Stream Processing Integration.
 
-VIBE COMPLIANT - Django + Kafka + Flink.
+
 Real-time stream processing for analytics, metering, and monitoring.
 
 7-Persona Implementation:

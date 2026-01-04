@@ -1,6 +1,6 @@
 """Django ORM Permission Models.
 
-VIBE COMPLIANT - 100% Django ORM.
+
 Granular RBAC stored in PostgreSQL.
 Keycloak integration for authentication.
 

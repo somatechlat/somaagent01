@@ -1,6 +1,6 @@
 """Temporal Workflow API.
 
-VIBE COMPLIANT - Django Ninja + Temporal client.
+
 Per AGENT_TASKS.md Phase 7.3 - Temporal Orchestration.
 
 7-Persona Implementation:

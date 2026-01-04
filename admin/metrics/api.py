@@ -1,6 +1,6 @@
 """Metrics API - Operational telemetry.
 
-VIBE COMPLIANT - Django Ninja.
+
 Prometheus-compatible metrics export.
 
 7-Persona Implementation:

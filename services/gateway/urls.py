@@ -1,7 +1,7 @@
 """
 Django URL Configuration for SomaAgent01.
 
-VIBE COMPLIANT - Full Django Stack:
+
 - Admin interface at /admin/
 - API at /api/v2/
 - SPA frontend catch-all (serves index.html for client-side routing)
@@ -34,7 +34,7 @@ def serve_spa(request, path=""):
     - /api/v2/ → Django Ninja API
     - Everything else → SPA (React/Lit frontend)
 
-    VIBE COMPLIANT: Uses Django FileResponse for proper streaming.
+    
     """
     index_path = settings.BASE_DIR / "webui" / "dist" / "index.html"
     if index_path.exists():

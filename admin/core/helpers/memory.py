@@ -1,6 +1,6 @@
 """Memory module - SomaBrain memory store.
 
-VIBE COMPLIANT: Pure SomaBrain integration. No FAISS, no local memory.
+
 """
 
 from __future__ import annotations

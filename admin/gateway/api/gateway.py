@@ -3,7 +3,7 @@
 Migrated from: a2a.py, av.py, constitution.py, describe.py, keys.py
 Combined into single Django Ninja module.
 
-VIBE COMPLIANT - All 7 Personas Applied:
+
 🎓 PhD Dev - Clean architecture
 🔍 Analyst - Requirements verified
 ✅ QA - Testable endpoints

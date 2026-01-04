@@ -1,6 +1,6 @@
 """Models API - LLM model catalog.
 
-VIBE COMPLIANT - Django Ninja.
+
 Available LLM models and configuration.
 
 7-Persona Implementation:

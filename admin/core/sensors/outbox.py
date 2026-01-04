@@ -1,6 +1,6 @@
 """Sensor Outbox Django Model.
 
-VIBE COMPLIANT - 100% Django ORM.
+
 Transactional outbox for Zero Data Loss.
 
 Pattern:

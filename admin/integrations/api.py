@@ -1,6 +1,6 @@
 """Integrations API - Third-party service connections.
 
-VIBE COMPLIANT - Django Ninja.
+
 Manage external service integrations.
 
 7-Persona Implementation:

@@ -1,6 +1,6 @@
 """Sessions API - User session management.
 
-VIBE COMPLIANT - Django Ninja + Django Sessions.
+
 Session lifecycle and security management.
 
 7-Persona Implementation:

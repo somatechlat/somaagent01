@@ -1,6 +1,6 @@
 """Webhooks API - Outbound event delivery.
 
-VIBE COMPLIANT - Django Ninja.
+
 Webhook management with retry and signature.
 
 7-Persona Implementation:

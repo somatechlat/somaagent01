@@ -1,6 +1,6 @@
 """Feature Catalog Models.
 
-VIBE COMPLIANT - Tier Builder integration, provider management.
+
 Per SAAS_ADMIN_SRS.md Section 4.3.1
 """
 

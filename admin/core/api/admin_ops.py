@@ -3,7 +3,7 @@
 Migrated from: dlq.py, requeue.py, profiles.py
 Pure Django Ninja for admin operations.
 
-VIBE COMPLIANT - Django patterns.
+
 """
 
 from __future__ import annotations

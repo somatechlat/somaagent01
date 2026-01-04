@@ -1,7 +1,7 @@
 """CacheSyncService – a lightweight service that synchronises Redis‑based cache entries.
 
 The orchestrator will mount this service in the deterministic order after the
-memory service.  The implementation follows the VIBE coding rules – it is fully
+memory service.  The implementation follows the 
 functional, documented, and uses the existing ``BaseSomaService`` contract.
 """
 

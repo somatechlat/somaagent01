@@ -1,6 +1,6 @@
 """Lago Webhook Receiver.
 
-VIBE COMPLIANT - Django Ninja webhook endpoint.
+
 Per SAAS_ADMIN_SRS.md - Billing Integration.
 
 Handles events from Lago:
@@ -56,7 +56,7 @@ def verify_lago_signature(request: HttpRequest) -> bool:
 async def lago_webhook(request: HttpRequest) -> dict:
     """Handle Lago webhook events.
 
-    VIBE COMPLIANT:
+    
     - Signature verification
     - Idempotent processing
     - Audit logging

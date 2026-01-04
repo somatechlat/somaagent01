@@ -1,7 +1,7 @@
 """
 Degradation Mode API for SomaAgent01.
 
-VIBE COMPLIANT - Django Ninja endpoints exposing the DegradationMonitor.
+
 Per SAAS_ADMIN_SRS.md - Infrastructure Administration.
 
 Endpoints:

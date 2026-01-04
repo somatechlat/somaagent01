@@ -10,7 +10,6 @@ import os
 # Compatibility attributes for test suite
 JWKS_CACHE: dict = {}
 APP_SETTINGS: dict = {}
-# JWT_SECRET must come from config - no hardcoded secrets per VIBE rules
 JWT_SECRET = os.environ.get("SA01_JWT_SECRET", "")
 _TEMPORAL_CLIENT = None
 _TEMPORAL_LOCK = None

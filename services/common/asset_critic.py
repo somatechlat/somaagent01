@@ -377,7 +377,6 @@ class AssetCritic:
                 ChatMessage(role="user", content=user_content),
             ]
 
-            # Get vision model from Django settings (REQUIRED per VIBE Rule 4)
             import os
 
             os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
@@ -427,6 +426,5 @@ class AssetCritic:
             # If the vision check errors out (e.g. rate limit), we currently fail open
             # to avoid blocking strict pipelines, but warn.
             # However, for 'Quality Gating' phase, maybe we should be strict?
-            # VIBE Rule: "Say EXACTLY what is true." -> It failed to check.
             # Returning 0.5 + Warning status is a safe middle ground.
             return 0.5, f"Vision check error: {str(e)}", True

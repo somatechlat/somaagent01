@@ -1,6 +1,6 @@
 """Usage API - Usage metering and billing.
 
-VIBE COMPLIANT - Django Ninja + Lago patterns.
+
 Usage tracking and billing integration.
 
 7-Persona Implementation:

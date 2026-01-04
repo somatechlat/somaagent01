@@ -1,7 +1,7 @@
 """Default settings values sourced from Django ORM.
 
 All model/provider settings are loaded from Django ORM models (the single source
-of truth) instead of hardcoded values. This complies with VIBE Rule 4:
+of truth) instead of hardcoded values. This complies with 
 "REAL IMPLEMENTATIONS ONLY - NO hardcoded values".
 
 Settings priority:
@@ -21,7 +21,7 @@ from typing import Any, Callable, Optional
 def _ensure_django() -> None:
     """Check if Django is ready.
 
-    VIBE Rule: Do not trigger side effects like django.setup() in helper modules.
+    
     The entry point must handle initialization.
     """
     import django
@@ -139,7 +139,7 @@ def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_i
     """Return default settings configuration from Django ORM.
 
     All model/provider settings are sourced from the AgentSetting Django ORM model.
-    No hardcoded model names or providers per VIBE coding rules.
+    No hardcoded model names or providers per 
 
     Args:
         auth_token_fn: Optional function to generate auth token. If None, uses empty string.

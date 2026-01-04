@@ -1,6 +1,6 @@
 """Platform Health API Router.
 
-VIBE COMPLIANT - Real health checks for all services.
+
 Per SAAS_ADMIN_SRS.md Section 4.7 - Platform Health
 """
 
@@ -200,7 +200,7 @@ async def get_platform_health(request) -> PlatformHealth:
     """Check health of all platform services.
 
     Returns individual service status and overall platform status.
-    Per VIBE rules - real health checks, no mocks.
+    Per 
     """
     # Run all health checks concurrently
     checks = await asyncio.gather(

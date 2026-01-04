@@ -1,6 +1,6 @@
 """Port discovery service for automatic port assignment.
 
-VIBE COMPLIANT: No file-based storage. All assignments are in-memory only.
+
 For persistent port assignments, use environment variables or config.
 """
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class PortDiscovery:
-    """In-memory port discovery - no file storage per VIBE rules."""
+    """In-memory port discovery - no file storage per """
 
     PORT_RANGE_START = 68000
     PORT_RANGE_END = 69000

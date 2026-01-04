@@ -1,6 +1,6 @@
 """Files V2 Django Models.
 
-VIBE COMPLIANT - Django ORM, no SQLAlchemy.
+
 Enhanced file management with versioning and metadata.
 """
 

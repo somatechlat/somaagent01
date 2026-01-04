@@ -3,7 +3,7 @@
 Production-grade confidence scoring with multiple calculation modes.
 Target latency: ≤5ms. Failure does NOT abort response.
 
-VIBE COMPLIANT:
+
 - Real implementations only (no mocks, no placeholders)
 - Graceful degradation on missing logprobs
 - Safe calculation that never raises
@@ -137,7 +137,7 @@ class ConfidenceScorer:
     - min: min(exp(logprobs)) - most conservative
     - percentile_90: 10th percentile of exp(logprobs) - robust to outliers
 
-    VIBE COMPLIANT:
+    
     - Real implementation (no mocks)
     - Safe calculation that never raises
     - Graceful handling of missing/empty logprobs

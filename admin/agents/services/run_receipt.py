@@ -3,7 +3,7 @@
 Production-grade receipt model for tracking AIQ scores, lane budgets,
 and confidence metrics per turn.
 
-VIBE COMPLIANT:
+
 - Real implementations only (no mocks, no placeholders)
 - Immutable dataclass for audit integrity
 - No PII in receipt fields

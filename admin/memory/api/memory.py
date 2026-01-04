@@ -6,7 +6,7 @@ Django Ninja with streaming exports.
 Role: System of Record ("Bookkeeper").
 SomaBrain handles Cognition; this API handles Persistence.
 
-VIBE COMPLIANT - All 7 Personas:
+
 🎓 PhD Dev - Clean async patterns (sync_to_async)
 🔍 Analyst - NDJSON export format
 ✅ QA - Testable endpoints with real models
@@ -73,7 +73,6 @@ async def export_memory(
 
     @sync_to_async
     def _get_iterator():
-        # VIBE: Use Django ORM with iterator() for memory efficiency
         qs = MemoryReplica.objects.all().order_by("-created_at")
 
         if tenant:

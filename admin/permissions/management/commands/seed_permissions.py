@@ -1,6 +1,6 @@
 """Permission Seed Data - Default permissions and roles.
 
-VIBE COMPLIANT - Django management command.
+
 Seeds 65+ granular permissions and 8 predefined roles.
 
 7-Persona Implementation:

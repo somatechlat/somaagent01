@@ -2,7 +2,7 @@
 
 Per Confidence Score Spec T2 (REQ-CONF-005, REQ-CONF-011)
 
-VIBE COMPLIANT:
+
 - Real implementation (no stubs)
 - Environment variable loading
 - Singleton pattern via get_confidence_config()

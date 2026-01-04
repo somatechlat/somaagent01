@@ -1,6 +1,6 @@
 """Audit Log API Router.
 
-VIBE COMPLIANT - Django ORM, Django Ninja.
+
 Per SAAS_ADMIN_SRS.md Section 4.8 - Audit Trail
 """
 

@@ -1,6 +1,6 @@
 """LLM models - 100% Django ORM.
 
-VIBE Compliant - Real Django models, no placeholders, no TODOs.
+
 """
 
 from enum import Enum

@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/tool_catalog.py + tools_full.py
 Pure Django Ninja implementation.
 
-VIBE COMPLIANT - Django patterns, observable.
+
 """
 
 from __future__ import annotations

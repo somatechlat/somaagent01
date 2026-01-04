@@ -1,7 +1,7 @@
 """Entry point for the memory replicator service when run as a standalone process.
 
 This allows the orchestrator to start the memory replicator service as a subprocess.
-VIBE COMPLIANT: Uses Django LOGGING configuration.
+
 """
 
 import asyncio

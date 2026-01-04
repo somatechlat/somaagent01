@@ -1,6 +1,6 @@
 """Usage Record Model.
 
-VIBE COMPLIANT - Lago billing integration, append-only for audit.
+
 Per SAAS_ADMIN_SRS.md Section 4.7
 """
 

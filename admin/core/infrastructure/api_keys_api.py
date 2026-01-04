@@ -1,7 +1,7 @@
 """
 API Keys API - Django Ninja CRUD endpoints for platform API keys
 
-VIBE COMPLIANT:
+
 - Pure Django Ninja implementation
 - Secure key masking
 - 10 personas in mind (especially Security Specialist, DevOps Engineer)

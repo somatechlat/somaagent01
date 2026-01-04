@@ -1,6 +1,6 @@
 """Dead Letter Queue helper for Kafka topics.
 
-VIBE COMPLIANT: Removed broken outbox - uses direct Kafka publishing only.
+
 """
 
 from __future__ import annotations

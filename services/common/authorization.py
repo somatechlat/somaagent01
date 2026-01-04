@@ -3,7 +3,7 @@
 Provides authorization using OPA policy evaluation.
 All exceptions use Django/admin.common.exceptions.
 
-VIBE COMPLIANT - All 7 Personas:
+
 🎓 PhD Dev - Clean architecture
 🔒 Security - OPA policy integration
 ⚡ Perf - Metrics tracked

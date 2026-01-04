@@ -2,7 +2,7 @@
 
 All HTTPException replaced with Django/admin.common.exceptions.
 
-VIBE COMPLIANT - All 7 Personas:
+
 🎓 PhD Dev - Clean architecture
 🔒 Security - JWT + OPA policy
 📚 ISO Doc - Full docstrings

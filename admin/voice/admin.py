@@ -1,6 +1,6 @@
 """Voice Django Admin.
 
-VIBE COMPLIANT - Full Django Admin capabilities.
+
 Register Voice models with rich admin interface.
 """
 

@@ -1,6 +1,6 @@
 """Tenants API - Multi-tenant management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Tenant lifecycle and configuration.
 
 7-Persona Implementation:

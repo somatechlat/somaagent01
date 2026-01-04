@@ -3,7 +3,7 @@
 Migrated from: services/gateway/routers/llm.py
 Pure Django Ninja with Django caching, settings, and signals for audit.
 
-VIBE COMPLIANT - Full Django capabilities, centralized config, no hardcoded values.
+
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class LlmInvokeResponse(BaseModel):
 def get_default_model() -> str:
     """Get the default chat model from settings or environment.
 
-    Per VIBE Rules: Source from database first, then environment.
+    Per 
     """
     model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
     if not model:

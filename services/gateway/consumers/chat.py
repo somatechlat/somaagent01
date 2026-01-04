@@ -1,6 +1,6 @@
 """WebSocket Chat Consumer for real-time messaging.
 
-VIBE COMPLIANT - Real Django Channels implementation, no mocks.
+
 Per login-to-chat-journey design.md Section 7.1
 
 Implements:

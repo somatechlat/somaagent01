@@ -3,7 +3,7 @@
 Production-grade metrics for AIQ scores, lane utilization, degradation levels,
 and LLM confidence tracking.
 
-VIBE COMPLIANT:
+
 - Real Prometheus metrics (no mocks)
 - Uses existing observability/metrics.py wrappers
 - Consistent labeling with rest of system

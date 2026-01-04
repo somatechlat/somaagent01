@@ -2,7 +2,7 @@
 
 Per Confidence Score Spec T5 (REQ-CONF-008)
 
-VIBE COMPLIANT:
+
 - Real Prometheus metrics (no stubs)
 - All metrics have tenant, model, endpoint labels
 - Integrates with existing observability infrastructure

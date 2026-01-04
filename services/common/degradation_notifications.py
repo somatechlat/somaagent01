@@ -3,7 +3,7 @@
 Django + Kafka based notification system for degradation alerts.
 All services report health → centralized monitor → Kafka events → notifications.
 
-VIBE COMPLIANT: Django ORM + Kafka infrastructure.
+
 """
 
 from __future__ import annotations

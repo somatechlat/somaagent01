@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("signature", models.TextField(help_text="Ed25519 Signature of the content_hash")),
-                ("content", models.JSONField(help_text="The VIBE Rules and Regulations")),
+                ("content", models.JSONField(help_text="The ")),
                 (
                     "is_active",
                     models.BooleanField(

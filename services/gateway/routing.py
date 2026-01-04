@@ -1,6 +1,6 @@
 """Django Channels WebSocket routing.
 
-VIBE COMPLIANT - Real WebSocket routing for Django Channels.
+
 Per login-to-chat-journey design.md Section 7.1
 """
 

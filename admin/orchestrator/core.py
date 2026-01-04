@@ -19,7 +19,7 @@ The project now stores all configuration in ``src.core.config`` (a Pydantic
 
 To keep backward compatibility **without duplicating logic**, we simply import
 the ``CentralizedConfig`` alias from ``orchestrator.config`` and expose the
-singleton ``cfg`` exactly as before.  This satisfies the VIBE rule *NO UNNECESSARY
+singleton ``cfg`` exactly as before.  This satisfies the 
 FILES* and guarantees a **single source of truth**.
 """
 

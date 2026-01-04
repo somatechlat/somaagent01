@@ -1,6 +1,6 @@
 """Agents API - Agent lifecycle management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Agent CRUD, configuration, and lifecycle.
 
 7-Persona Implementation:

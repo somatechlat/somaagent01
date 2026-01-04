@@ -1,6 +1,6 @@
 """User Invitation Flow API.
 
-VIBE COMPLIANT - Django Ninja + Django ORM.
+
 Per AGENT_TASKS.md Phase 2.4 - Invitation Flow.
 
 7-Persona Implementation:
@@ -101,7 +101,7 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
 
     Per Phase 2.4: POST /saas/users/invite
 
-    VIBE COMPLIANT:
+    
     - Cryptographic token (secrets.token_urlsafe)
     - SHA-256 hash stored (never plaintext)
     - Configurable expiration
@@ -209,7 +209,7 @@ async def accept_invitation(
 
     Per Phase 2.4: POST /auth/invite/{token}/accept
 
-    VIBE COMPLIANT:
+    
     - Validates token
     - Creates user in Keycloak
     - Creates TenantUser record

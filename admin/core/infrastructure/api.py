@@ -1,7 +1,7 @@
 """Rate Limit Administration API.
 
-VIBE COMPLIANT - Django Ninja + Django ORM.
-Per VIBE Coding Rules - Real implementations, no mocks.
+
+Per 
 
 10-Persona Implementation:
 - PhD Developer: Clean API design with proper schemas

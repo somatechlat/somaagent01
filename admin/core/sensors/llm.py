@@ -1,6 +1,6 @@
 """LLM Sensor.
 
-VIBE COMPLIANT - Django ORM + ZDL pattern.
+
 Captures every LLM completion for cognitive learning.
 
 PhD Dev: This IS thinking. Prompt + response = reasoning trace.

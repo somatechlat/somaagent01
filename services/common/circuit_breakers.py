@@ -1,7 +1,7 @@
 """
 Circuit Breaker Pattern Implementation - Django Native.
 
-VIBE COMPLIANT: No external dependencies, pure Python implementation
+
 following the standard circuit breaker pattern for resilience.
 
 🎓 PhD Developer | 🔍 PhD Analyst | ✅ PhD QA | 📚 ISO Documenter
@@ -37,7 +37,7 @@ class CircuitBreaker:
     """
     Circuit Breaker implementation for resilient service calls.
 
-    VIBE COMPLIANT: Real implementation, no test doubles.
+    
 
     Usage:
         breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)

@@ -11,7 +11,7 @@ Why we need it
 ---------------
 * No component may read ``os.getenv`` directly – the only allowed env reads are
   in ``services.common.runtime_config`` (bootstrap).  By funnelling all secret
-  access through this module we satisfy the VIBE *no direct env* rule.
+  access through this module we satisfy the 
 * Encryption at rest is mandatory for compliance.  The Fernet key is supplied
   via the ``SA01_CRYPTO_FERNET_KEY`` environment variable (a url‑safe base64
   32‑byte string).  If the key is missing the application fails fast.
@@ -71,13 +71,12 @@ class SecretManager:
     _namespace: str = "gateway:secrets"
 
     def __init__(self) -> None:
-        # VIBE Rule #1: NO ALTERNATES - Fail fast if Redis unavailable
         redis_url = os.environ.get("SA01_REDIS_URL") or os.environ.get("SA01_REDIS_URL")
         if not redis_url:
             raise RuntimeError(
                 "SA01_REDIS_URL environment variable required for SecretManager. "
                 "Redis is REQUIRED for encrypted secret storage in production. "
-                "No alternate sources per VIBE Coding Rules. "
+                "No alternate sources per "
                 "Set SA01_REDIS_URL=redis://host:6379/0 in your environment."
             )
 

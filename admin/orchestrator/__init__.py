@@ -11,7 +11,7 @@ service‑specific entry points.
 Provides a single entry point that coordinates the lifecycle of all
 services, centralises configuration, health monitoring and observability.
 
-The package follows the VIBE CODING RULES – no placeholders, real
+The package follows the 
 implementations only, and full type‑checked configuration.
 """
 

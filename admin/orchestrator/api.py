@@ -1,6 +1,6 @@
 """Orchestrator API - Workflow coordination.
 
-VIBE COMPLIANT - Django Ninja + Temporal.
+
 Multi-agent workflow orchestration.
 
 7-Persona Implementation:

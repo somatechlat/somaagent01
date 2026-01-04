@@ -1,6 +1,6 @@
 """Chat Session API Router - 100% Django ORM.
 
-VIBE COMPLIANT - Django ORM, no legacy session_repository.
+
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-01: Chat with AI Agent
 Per login-to-chat-journey design.md Section 6.1
 """
@@ -398,7 +398,7 @@ async def send_message(
     - Stores messages in database
     - Returns response (sync mode) or initiates stream
 
-    VIBE COMPLIANT:
+    
     - Real ChatService integration
     - Degradation handling ready
     - ZDL via OutboxMessage

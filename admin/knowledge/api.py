@@ -1,6 +1,6 @@
 """Knowledge API - RAG document management.
 
-VIBE COMPLIANT - Django Ninja.
+
 Knowledge base for RAG document retrieval.
 
 7-Persona Implementation:

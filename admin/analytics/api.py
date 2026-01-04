@@ -1,6 +1,6 @@
 """Analytics API - Dashboard metrics and reports.
 
-VIBE COMPLIANT - Django Ninja.
+
 Platform analytics for Eye of God dashboard.
 
 7-Persona Implementation:

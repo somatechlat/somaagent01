@@ -26,7 +26,7 @@ router = Router()
 
 
 # =============================================================================
-# API KEYS - VIBE COMPLIANT using real Django model
+# API KEYS - 
 # =============================================================================
 
 import hashlib
@@ -43,7 +43,7 @@ from admin.saas.models.profiles import ApiKey
 def list_api_keys(request, tenant_id: Optional[str] = None):
     """Get all API keys, optionally filtered by tenant.
 
-    VIBE COMPLIANT - Real Django ORM queries.
+    
     """
     queryset = ApiKey.objects.filter(is_active=True)
     if tenant_id:
@@ -68,7 +68,7 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key.
 
-    VIBE COMPLIANT - Real cryptographic key generation with Django ORM.
+    
     Returns plaintext key ONCE only - must be saved by client.
     """
     # Generate cryptographically secure key
@@ -105,7 +105,7 @@ def create_api_key(request, payload: ApiKeyCreate):
 def revoke_api_key(request, key_id: str):
     """Revoke an API key.
 
-    VIBE COMPLIANT - Real Django ORM soft delete.
+    
     """
     try:
         api_key = ApiKey.objects.get(id=key_id)

@@ -1,6 +1,6 @@
 """Voice Sensor - ZDL Pattern.
 
-VIBE COMPLIANT - Captures all voice interactions for Zero Data Loss.
+
 Tracks: voice input, TTS output, transcription, speaker changes.
 
 Usage:

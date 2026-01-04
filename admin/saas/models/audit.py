@@ -1,6 +1,6 @@
 """Audit Log Model.
 
-VIBE COMPLIANT - Immutable audit trail for compliance.
+
 Per SAAS_ADMIN_SRS.md Section 4.8
 """
 

@@ -2,7 +2,7 @@
 OPA Policy Adapter for Tool Execution
 Per CANONICAL_REQUIREMENTS.md REQ-SEC-001, REQ-SEC-002, REQ-SEC-003
 
-VIBE COMPLIANT:
+
 - Real HTTP client to OPA
 - Fail-closed security (REQ-SEC-002)
 - Tenant/persona scoped policies (REQ-SEC-003)
@@ -85,7 +85,7 @@ class OPAPolicyAdapter:
         if not self.base_url:
             raise ValueError(
                 "OPA base URL required. Set SA01_OPA_URL or SA01_SOMA_BASE_URL. "
-                "No hardcoded defaults per VIBE rules."
+                "No hardcoded defaults per "
             )
 
         self.evaluate_url = f"{self.base_url}/v1/policy/evaluate"

@@ -1,7 +1,7 @@
 """
 Observability API - Django Ninja endpoints for platform metrics
 
-VIBE COMPLIANT:
+
 - Pure Django Ninja implementation
 - Real Prometheus metrics where available
 - Runtime statistics from Django/Python

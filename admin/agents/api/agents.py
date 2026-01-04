@@ -1,7 +1,7 @@
 """Agent Admin API - Django Ninja Router.
 
 Pure Django ORM implementation for agent user management.
-VIBE COMPLIANT - No SQLAlchemy.
+
 """
 
 from __future__ import annotations

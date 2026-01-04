@@ -1,6 +1,6 @@
 """Password Reset API.
 
-VIBE COMPLIANT - Django Ninja + Keycloak.
+
 Per AGENT_TASKS.md Phase 2.3 - Password Reset.
 
 7-Persona Implementation:

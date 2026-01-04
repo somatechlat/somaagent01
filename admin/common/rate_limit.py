@@ -1,6 +1,6 @@
 """Rate Limiting for Django Ninja endpoints.
 
-VIBE COMPLIANT - Real Redis backend, no mocks.
+
 Per login-to-chat-journey design.md Section 2.1: Rate Limiting
 
 Implements:

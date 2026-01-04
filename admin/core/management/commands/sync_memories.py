@@ -5,7 +5,7 @@ Syncs pending memories to SomaBrain when connection is restored.
 Usage:
     python manage.py sync_memories --batch-size=50 --interval=5
 
-VIBE COMPLIANT: Pure Django management command pattern.
+
 """
 
 from __future__ import annotations

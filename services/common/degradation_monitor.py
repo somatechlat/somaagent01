@@ -107,7 +107,7 @@ class DegradationMonitor:
     - Dependency graph for cascading failure detection
     - Circuit breaker integration
     - Prometheus metrics
-    - REAL history tracking (VIBE COMPLIANT)
+    - REAL history tracking (
     """
 
     # Service dependency graph: key depends on values
@@ -150,7 +150,7 @@ class DegradationMonitor:
         self._monitoring_active = False
         self._monitor_task: Optional[asyncio.Task] = None
         self._dependency_graph: Dict[str, List[str]] = self.SERVICE_DEPENDENCIES.copy()
-        # VIBE COMPLIANT: Real history storage, not a test double
+        # 
         self._history: List[DegradationHistoryRecord] = []
         self._temporal_client: Optional[TemporalClient] = None
 
@@ -358,7 +358,7 @@ class DegradationMonitor:
     async def _check_database_health(self, component: ComponentHealth) -> None:
         """Check database health with REAL PostgreSQL connection.
 
-        VIBE COMPLIANT: Uses Django database connection - no asyncpg.
+        
         """
         try:
             from django.db import connection
@@ -379,7 +379,7 @@ class DegradationMonitor:
     async def _check_kafka_health(self, component: ComponentHealth) -> None:
         """Check Kafka health with REAL Kafka connection.
 
-        VIBE COMPLIANT: No test doubles, no mocks. Real Kafka connectivity check.
+        
         Uses aiokafka to verify broker connectivity.
         """
         try:
@@ -421,7 +421,7 @@ class DegradationMonitor:
     async def _check_redis_health(self, component: ComponentHealth) -> None:
         """Check Redis health with REAL Redis connection.
 
-        VIBE COMPLIANT: No test doubles, no mocks. Real Redis connectivity check.
+        
         Uses redis-py to execute PING command.
         """
         try:
@@ -476,7 +476,7 @@ class DegradationMonitor:
     async def _check_llm_health(self, component: ComponentHealth) -> None:
         """Check LLM providers health via LLMDegradationService.
 
-        VIBE COMPLIANT: Integrates with centralized LLM degradation service.
+        
         """
         try:
             from services.common.llm_degradation import llm_degradation_service
@@ -522,7 +522,7 @@ class DegradationMonitor:
     async def _check_audio_health(self, component: ComponentHealth) -> None:
         """Check audio service health (TTS/STT).
 
-        VIBE COMPLIANT: Integrates with MultimodalDegradationService.
+        
         """
         try:
             from services.common.multimodal_degradation import multimodal_degradation_service
@@ -553,7 +553,7 @@ class DegradationMonitor:
     async def _check_storage_health(self, component: ComponentHealth) -> None:
         """Check storage service health.
 
-        VIBE COMPLIANT: Checks storage provider availability.
+        
         """
         try:
             from services.common.multimodal_degradation import multimodal_degradation_service
@@ -870,7 +870,7 @@ class DegradationMonitor:
     def _record_history(self, component: ComponentHealth, event_type: str = "check") -> None:
         """Record a degradation event to history.
 
-        VIBE COMPLIANT: Real history storage, not a test double.
+        
         """
         record = DegradationHistoryRecord(
             timestamp=time.time(),
@@ -892,7 +892,7 @@ class DegradationMonitor:
     ) -> List[Dict[str, any]]:
         """Get degradation history records.
 
-        VIBE COMPLIANT: Returns REAL history data, not empty test doubles.
+        
 
         Args:
             limit: Maximum number of records to return

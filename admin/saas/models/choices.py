@@ -1,6 +1,6 @@
 """SAAS Admin Model Choices (Enums).
 
-VIBE COMPLIANT - Django TextChoices for all status/role fields.
+
 """
 
 from django.db import models

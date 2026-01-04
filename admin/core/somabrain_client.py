@@ -1,9 +1,9 @@
-"""SomaBrain Client - Django VIBE Compliant.
+"""SomaBrain Client - Django 
 
 Production-grade HTTP client for SomaBrain memory service.
 100% Django patterns - No FastAPI, No SQLAlchemy.
 
-VIBE Rules Enforced:
+
 - Rule 1: NO BULLSHIT - Real implementation, no mocks
 - Rule 4: REAL IMPLEMENTATIONS ONLY
 - Rule 8: Django/Ninja ONLY
@@ -36,7 +36,7 @@ class SomaBrainClient:
     """Production SomaBrain HTTP client.
 
     Thread-safe singleton pattern for connection pooling.
-    Uses Django settings for configuration (VIBE Rule 13/32).
+    Uses Django settings for configuration (
     """
 
     _instance: Optional["SomaBrainClient"] = None
@@ -61,7 +61,7 @@ class SomaBrainClient:
     def _get_base_url() -> str:
         """Get SomaBrain URL from Django settings or environment.
 
-        Implements VIBE Rule 32: HYBRID CONFIGURATION STANDARD.
+        Implements 
         Prioritizes Django settings, falls back to environment.
         """
         import os

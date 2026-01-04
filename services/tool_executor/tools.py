@@ -294,13 +294,13 @@ class IngestDocumentTool(BaseTool):
         base = os.environ.get("SA01_GATEWAY_BASE")
         if not base:
             raise ToolExecutionError(
-                "SA01_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
+                "SA01_GATEWAY_BASE is required. No hardcoded defaults per "
             )
         base = base.rstrip("/")
         token = os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN")
         if not token:
             raise ToolExecutionError(
-                "SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded defaults per VIBE rules."
+                "SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded defaults per "
             )
         url = f"{base}/internal/attachments/{attachment_id}/binary"
         headers = {"X-Internal-Token": token}

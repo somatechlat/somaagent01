@@ -1,7 +1,7 @@
 """Rate Limiting API - Request throttling and quota enforcement.
 
-VIBE COMPLIANT - Django Ninja + Redis patterns.
-Per VIBE Coding Rules - Security and performance.
+
+Per 
 
 7-Persona Implementation:
 - Security Auditor: Rate limiting, abuse prevention

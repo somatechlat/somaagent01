@@ -5,7 +5,7 @@ scattered as ad-hoc fixes in the main models.py. Each compatibility function has
 clear contracts, feature flags, and tests.
 
 SRS Reference: Multi-provider LLM support
-VIBE Compliance: Replaces inline ad-hoc comments with documented compatibility layer
+
 """
 
 from __future__ import annotations

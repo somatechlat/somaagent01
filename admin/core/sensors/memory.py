@@ -1,6 +1,6 @@
 """Memory Sensor.
 
-VIBE COMPLIANT - Django ORM + ZDL pattern.
+
 Captures every memory operation for cognitive learning.
 
 PhD Dev: This IS learning. Every remember/recall shapes future behavior.

@@ -1,7 +1,7 @@
 """Infrastructure ORM Models for SAAS Administration.
 
-VIBE COMPLIANT - Django ORM, proper migrations, real data.
-Per VIBE Coding Rules Section 4.5 - Django Purity.
+
+Per 
 
 10-Persona Implementation:
 - PhD Developer: Clean ORM design with proper relationships

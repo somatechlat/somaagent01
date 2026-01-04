@@ -1,6 +1,6 @@
 """Base Sensor Class.
 
-VIBE COMPLIANT - Django patterns.
+
 All sensors inherit from BaseSensor for ZDL guarantees.
 
 7-Persona Implementation:

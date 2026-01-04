@@ -1,6 +1,6 @@
 """Conversation Sensor.
 
-VIBE COMPLIANT - Django ORM + ZDL pattern.
+
 Captures every message in/out for cognitive learning.
 
 PhD Dev: This is the agent's working memory sensor.

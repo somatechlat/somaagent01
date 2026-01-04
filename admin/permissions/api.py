@@ -1,6 +1,6 @@
 """Permissions API - RBAC and access control.
 
-VIBE COMPLIANT - Django Ninja + SpiceDB patterns.
+
 Role-based access control management.
 
 7-Persona Implementation:

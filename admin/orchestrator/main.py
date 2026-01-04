@@ -2,7 +2,7 @@
 
 All FastAPI replaced with Django/Django Ninja.
 
-VIBE COMPLIANT - All 7 Personas:
+
 🎓 PhD Dev - Clean ASGI architecture
 🔒 Security - Django middleware stack
 ⚡ Perf - Uvicorn ASGI server
@@ -17,7 +17,6 @@ import logging
 import os
 from typing import Any, Dict
 
-# VIBE Rule: No global side effects in imported modules.
 # django.setup() should only be called if this is the entry point.
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")

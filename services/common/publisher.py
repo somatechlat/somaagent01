@@ -10,7 +10,7 @@ Notes:
   configurable timeout on the Kafka publish attempt. Control via env
   PUBLISH_KAFKA_TIMEOUT_SECONDS (default: 2.0 seconds).
 
-VIBE COMPLIANT: Removed broken outbox import - feature not implemented.
+
 """
 
 from __future__ import annotations

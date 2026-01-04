@@ -1,6 +1,6 @@
 """Upload Sensor - ZDL Pattern.
 
-VIBE COMPLIANT - Captures all file upload events for Zero Data Loss.
+
 Tracks: file uploads, processing status, storage location, deletions.
 
 Usage:

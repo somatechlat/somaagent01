@@ -3,7 +3,7 @@
 Provides automatic LLM model switching when a provider is unavailable.
 Tracks provider health and routes to fallback models.
 
-VIBE COMPLIANT: Django patterns, no external frameworks.
+
 """
 
 from __future__ import annotations

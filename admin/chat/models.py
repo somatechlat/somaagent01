@@ -1,6 +1,6 @@
 """Chat Django ORM Models.
 
-VIBE COMPLIANT - Django ORM, no SQLAlchemy.
+
 Per login-to-chat-journey design.md Section 6.1
 
 Models:

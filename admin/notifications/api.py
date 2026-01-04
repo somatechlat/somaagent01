@@ -1,6 +1,6 @@
 """Notification Service API.
 
-VIBE COMPLIANT - Django Ninja + WebSocket events.
+
 Real-time notifications for SomaBrain events.
 
 7-Persona Implementation:

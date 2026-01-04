@@ -1,6 +1,6 @@
 /* YACHAQ Brand Styling for Sphinx Documentation
+ * Clean, readable design with proper contrast
  * Colors: White background, Black text, Orange (#E9552E) accents
- * Font: Clean, modern typography
  */
 
 /* ========================================
@@ -10,9 +10,10 @@
     --yachaq-orange: #E9552E;
     --yachaq-orange-hover: #D44A26;
     --yachaq-black: #1a1a1a;
-    --yachaq-dark-gray: #333333;
+    --yachaq-dark-gray: #2d2d2d;
+    --yachaq-text: #333333;
     --yachaq-gray: #666666;
-    --yachaq-light-gray: #f5f5f5;
+    --yachaq-light-gray: #f8f8f8;
     --yachaq-white: #ffffff;
     --yachaq-border: #e0e0e0;
 }
@@ -22,8 +23,9 @@
    ======================================== */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    color: var(--yachaq-dark-gray);
+    color: var(--yachaq-text);
     background: var(--yachaq-white);
+    line-height: 1.6;
 }
 
 /* ========================================
@@ -37,6 +39,7 @@ body {
 .wy-side-nav-search input[type="text"] {
     border: 1px solid var(--yachaq-border);
     border-radius: 4px;
+    color: var(--yachaq-text);
 }
 
 .wy-side-nav-search a.icon-home {
@@ -50,7 +53,7 @@ body {
 }
 
 .wy-menu-vertical a {
-    color: var(--yachaq-dark-gray) !important;
+    color: var(--yachaq-text) !important;
 }
 
 .wy-menu-vertical a:hover {
@@ -58,14 +61,14 @@ body {
     color: var(--yachaq-orange) !important;
 }
 
-.wy-menu-vertical li.current a {
+.wy-menu-vertical li.current>a {
     color: var(--yachaq-orange) !important;
     border-left: 3px solid var(--yachaq-orange) !important;
     background: var(--yachaq-light-gray) !important;
 }
 
-.wy-menu-vertical li.current > a:hover {
-    background: var(--yachaq-light-gray) !important;
+.wy-menu-vertical li.current li a {
+    color: var(--yachaq-text) !important;
 }
 
 .wy-menu-vertical header,
@@ -79,29 +82,54 @@ body {
    ======================================== */
 .wy-nav-content {
     background: var(--yachaq-white);
-    max-width: 900px;
+    max-width: 960px;
 }
 
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
+.wy-nav-content-wrap {
+    background: var(--yachaq-white) !important;
+}
+
+/* Headings - ensure black text, good contrast */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     color: var(--yachaq-black) !important;
     font-weight: 700;
 }
 
 h1 {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     border-bottom: none !important;
+    margin-bottom: 1rem;
 }
 
 h2 {
-    font-size: 1.75rem;
+    font-size: 1.6rem;
     border-bottom: 2px solid var(--yachaq-orange) !important;
     padding-bottom: 0.5rem;
+    margin-top: 2rem;
 }
 
-/* Links */
+h3 {
+    font-size: 1.3rem;
+    color: var(--yachaq-dark-gray) !important;
+}
+
+/* Paragraphs and text */
+p,
+li,
+dd,
+dt {
+    color: var(--yachaq-text);
+}
+
+/* Links - orange with underline on hover */
 a {
     color: var(--yachaq-orange) !important;
+    text-decoration: none;
 }
 
 a:hover {
@@ -110,53 +138,88 @@ a:hover {
 }
 
 /* ========================================
-   CODE BLOCKS
+   CODE BLOCKS - High contrast
    ======================================== */
+code,
+.highlight pre,
+pre {
+    background: var(--yachaq-light-gray) !important;
+    color: var(--yachaq-dark-gray) !important;
+    border: 1px solid var(--yachaq-border);
+}
+
 code {
-    background: var(--yachaq-light-gray);
-    color: var(--yachaq-dark-gray);
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 0.9em;
 }
 
 pre {
-    background: var(--yachaq-light-gray) !important;
-    border: 1px solid var(--yachaq-border);
-    border-left: 4px solid var(--yachaq-orange);
+    border-left: 4px solid var(--yachaq-orange) !important;
     border-radius: 4px;
+    padding: 12px;
 }
 
 .highlight {
     background: var(--yachaq-light-gray) !important;
 }
 
+/* Syntax highlighting - ensure readable colors */
+.highlight .k,
+.highlight .kn,
+.highlight .kd {
+    color: #007020;
+    font-weight: bold;
+}
+
+/* Keywords */
+.highlight .s,
+.highlight .s1,
+.highlight .s2 {
+    color: #d14;
+}
+
+/* Strings */
+.highlight .c,
+.highlight .c1,
+.highlight .cm {
+    color: #999988;
+    font-style: italic;
+}
+
+/* Comments */
+.highlight .n,
+.highlight .na,
+.highlight .nb {
+    color: #333;
+}
+
+/* Names */
+.highlight .nf {
+    color: #900;
+    font-weight: bold;
+}
+
+/* Functions */
+.highlight .o {
+    color: #555;
+}
+
+/* Operators */
+.highlight .mi,
+.highlight .mf {
+    color: #009999;
+}
+
+/* Numbers */
+
 /* ========================================
-   BUTTONS
-   ======================================== */
-.btn, .button, button {
-    background: var(--yachaq-black) !important;
-    color: var(--yachaq-white) !important;
-    border: none;
-    border-radius: 4px;
-    padding: 10px 20px;
-    font-weight: 500;
-}
-
-.btn:hover, .button:hover {
-    background: var(--yachaq-orange) !important;
-}
-
-.btn-primary {
-    background: var(--yachaq-orange) !important;
-}
-
-/* ========================================
-   TABLES
+   TABLES - Black headers, readable
    ======================================== */
 table {
     border-collapse: collapse;
     width: 100%;
+    margin: 1rem 0;
 }
 
 table th {
@@ -165,42 +228,80 @@ table th {
     font-weight: 600;
     padding: 12px;
     text-align: left;
+    border: 1px solid var(--yachaq-black);
 }
 
 table td {
     border: 1px solid var(--yachaq-border);
     padding: 10px;
+    color: var(--yachaq-text);
+    background: var(--yachaq-white);
 }
 
-table tr:nth-child(even) {
+table tr:nth-child(even) td {
     background: var(--yachaq-light-gray);
 }
 
 /* ========================================
-   ADMONITIONS (Notes, Warnings, etc.)
+   ADMONITIONS (Notes, Warnings)
    ======================================== */
 .admonition {
     border-left: 4px solid var(--yachaq-orange);
     background: var(--yachaq-light-gray);
     border-radius: 4px;
+    padding: 12px;
+    margin: 1rem 0;
 }
 
 .admonition-title {
     background: var(--yachaq-orange) !important;
     color: var(--yachaq-white) !important;
     font-weight: 600;
+    padding: 8px 12px;
+    margin: -12px -12px 12px -12px;
 }
 
-.admonition.note {
-    border-left-color: var(--yachaq-orange);
+.admonition p {
+    color: var(--yachaq-text) !important;
+    margin: 0;
 }
 
-.admonition.warning {
-    border-left-color: #f0ad4e;
+.admonition.note .admonition-title {
+    background: var(--yachaq-orange) !important;
 }
 
-.admonition.danger {
-    border-left-color: #d9534f;
+.admonition.warning .admonition-title {
+    background: #f0ad4e !important;
+}
+
+.admonition.danger .admonition-title,
+.admonition.error .admonition-title {
+    background: #d9534f !important;
+}
+
+/* ========================================
+   AUTODOC SIGNATURES
+   ======================================== */
+.sig,
+.sig-name,
+.sig-param {
+    color: var(--yachaq-dark-gray) !important;
+}
+
+.sig-name {
+    font-weight: bold;
+    color: var(--yachaq-black) !important;
+}
+
+dl.py dt {
+    background: var(--yachaq-light-gray);
+    padding: 8px;
+    border-left: 3px solid var(--yachaq-orange);
+}
+
+dl.py dd {
+    padding-left: 20px;
+    color: var(--yachaq-text);
 }
 
 /* ========================================
@@ -223,10 +324,38 @@ footer {
     color: var(--yachaq-gray);
 }
 
+footer a {
+    color: var(--yachaq-orange) !important;
+}
+
+/* ========================================
+   SEARCH
+   ======================================== */
+.wy-side-nav-search input[type="text"] {
+    color: var(--yachaq-text) !important;
+    background: var(--yachaq-white) !important;
+}
+
+/* ========================================
+   BREADCRUMBS
+   ======================================== */
+.wy-breadcrumbs {
+    color: var(--yachaq-gray);
+}
+
+.wy-breadcrumbs a {
+    color: var(--yachaq-orange) !important;
+}
+
 /* ========================================
    RESPONSIVE
    ======================================== */
 @media screen and (max-width: 768px) {
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; }
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+    }
 }

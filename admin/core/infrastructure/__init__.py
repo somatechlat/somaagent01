@@ -1,6 +1,6 @@
 """Infrastructure module for SAAS administration.
 
-VIBE COMPLIANT - Django ORM models and real health checks.
+
 """
 
 from admin.core.infrastructure.health_checker import (

@@ -1,6 +1,6 @@
 """Django Management Command: run_tool_executor.
 
-VIBE COMPLIANT - Django pattern for tool execution worker.
+
 Replaces: services/tool_executor/main.py (FastAPI container)
 
 Usage:

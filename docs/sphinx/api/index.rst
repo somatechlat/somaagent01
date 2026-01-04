@@ -2,45 +2,63 @@
 API Reference
 ===============
 
-This section contains auto-generated API documentation from the codebase.
+Complete API documentation auto-generated from source code docstrings.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Core APIs
+   :caption: Core Modules
 
-   admin.api
-   admin.auth.api
-   admin.common.auth
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Feature APIs
-
-   admin.agents.api
-   admin.chat.api
-   admin.conversations.api
-   admin.sessions.api
+   admin
+   common
+   core
 
 .. toctree::
    :maxdepth: 2
-   :caption: SaaS APIs
+   :caption: Authentication & Authorization
 
-   admin.saas.api
-   admin.tenants.api
-   admin.billing.api
+   auth
+   auth_config
+   permissions
 
-Module Index
-============
+.. toctree::
+   :maxdepth: 2
+   :caption: Agents & Chat
 
-.. autosummary::
-   :toctree: _autosummary
-   :recursive:
+   agents
+   chat
+   capsules
+   sessions
 
-   admin.api
-   admin.auth
-   admin.common
-   admin.core
-   admin.agents
-   admin.chat
-   admin.saas
-   services
+.. toctree::
+   :maxdepth: 2
+   :caption: SaaS & Multi-Tenancy
+
+   saas
+   tenants
+   billing
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Memory & Cognitive
+
+   memory
+   somabrain
+   knowledge
+   embeddings
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Infrastructure
+
+   audit
+   observability
+   metrics
+   flink
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Utilities
+
+   utils
+   voice
+   workflows

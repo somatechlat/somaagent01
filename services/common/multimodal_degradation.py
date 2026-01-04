@@ -3,7 +3,7 @@
 Handles degradation for audio (TTS/STT), voice, uploads, and storage.
 Provides automatic failover for audio providers.
 
-VIBE COMPLIANT: Django patterns, no external frameworks.
+
 """
 
 from __future__ import annotations

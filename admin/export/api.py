@@ -1,6 +1,6 @@
 """Data Export API - GDPR Compliance.
 
-VIBE COMPLIANT - Django Ninja + async export.
+
 Per AGENT_TASKS.md Phase 8 - Data Export.
 
 7-Persona Implementation:

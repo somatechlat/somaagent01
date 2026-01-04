@@ -7,7 +7,7 @@ All agent orchestration logic including:
 - ResponseGenerator - response generation
 - And more...
 
-Migrated to admin.agents.services for Django compliance per VIBE Rule 8.
+Migrated to admin.agents.services for Django compliance per 
 """
 
 # Re-export all services for backward compatibility

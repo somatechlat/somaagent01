@@ -1,6 +1,6 @@
 """Completions API - OpenAI-compatible chat completions.
 
-VIBE COMPLIANT - Django Ninja.
+
 Chat completions with streaming support.
 
 7-Persona Implementation:

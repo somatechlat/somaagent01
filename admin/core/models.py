@@ -1,6 +1,6 @@
 """Core Django ORM Models for Agent Domain.
 
-100% Django ORM - VIBE Compliant.
+100% Django ORM - 
 Replaces raw SQL stores with Django models.
 """
 
@@ -73,7 +73,7 @@ class Constitution(models.Model):
     signature = models.TextField(help_text="Ed25519 Signature of the content_hash")
 
     # The Law
-    content = models.JSONField(help_text="The VIBE Rules and Regulations")
+    content = models.JSONField(help_text="The ")
 
     # Metadata
     is_active = models.BooleanField(default=False, help_text="Only one can be active at a time")
@@ -547,7 +547,7 @@ class OutboxMessage(models.Model):
     - Publisher polls and sends to Kafka
     - Guarantees exactly-once delivery
 
-    VIBE COMPLIANT: Django ORM, no raw SQL.
+    
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -627,7 +627,7 @@ class DeadLetterMessage(models.Model):
     - Alerting
     - Potential replay
 
-    VIBE COMPLIANT: Django ORM for DLQ visibility.
+    
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -680,7 +680,7 @@ class IdempotencyRecord(models.Model):
 
     Stores idempotency keys with TTL to prevent duplicate processing.
 
-    VIBE COMPLIANT: Django ORM with automatic cleanup.
+    
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -750,7 +750,7 @@ class PendingMemory(models.Model):
     When SomaBrain is unavailable (degradation mode), memories are
     stored here and synced when connection is restored.
 
-    VIBE COMPLIANT: Django ORM for memory queue persistence.
+    
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
