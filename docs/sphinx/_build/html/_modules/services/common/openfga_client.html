@@ -527,12 +527,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_OPENFGA_API_URL&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;SA01_OPENFGA_API_URL is required. No hardcoded defaults per VIBE rules.&quot;</span>
+                <span class="s2">&quot;SA01_OPENFGA_API_URL is required. No hardcoded defaults per &quot;</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">store_id</span> <span class="o">=</span> <span class="n">store_id</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_OPENFGA_STORE_ID&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">store_id</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;SA01_OPENFGA_STORE_ID is required. No hardcoded defaults per VIBE rules.&quot;</span>
+                <span class="s2">&quot;SA01_OPENFGA_STORE_ID is required. No hardcoded defaults per &quot;</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">user_namespace</span> <span class="o">=</span> <span class="n">user_namespace</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tenant_namespace</span> <span class="o">=</span> <span class="n">tenant_namespace</span>

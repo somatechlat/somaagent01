@@ -481,8 +481,7 @@
 <span id="gateway-services"></span><h2>Gateway Services<a class="headerlink" href="#module-services.gateway.auth" title="Link to this heading"></a></h2>
 <p>Gateway authentication and authorization - 100% Django.</p>
 <p>All HTTPException replaced with Django/admin.common.exceptions.</p>
-<p>VIBE COMPLIANT - All 7 Personas:
-🎓 PhD Dev - Clean architecture
+<p>🎓 PhD Dev - Clean architecture
 🔒 Security - JWT + OPA policy
 📚 ISO Doc - Full docstrings</p>
 <dl class="py function">
@@ -504,8 +503,7 @@
 <section id="module-services.common.audit">
 <span id="common-services"></span><h2>Common Services<a class="headerlink" href="#module-services.common.audit" title="Link to this heading"></a></h2>
 <p>Audit wire-tap publisher for policy/tool/task decisions.</p>
-<p>VIBE COMPLIANT - Real Kafka integration, no mocks.
-Per login-to-chat-journey design.md Section 9.1</p>
+<p>Per login-to-chat-journey design.md Section 9.1</p>
 <p>Extended with:
 - Structured login/logout events
 - Permission denied events
@@ -932,11 +930,12 @@ All required fields must be present.</p>
 
 <p id="module-services.common.rate_limiter">Redis Rate Limiter for API Endpoints
 Per CANONICAL_REQUIREMENTS.md REQ-SEC-006</p>
-<p>VIBE COMPLIANT:
-- Real Redis backend
-- Sliding window algorithm
-- Per-tenant rate limiting
-- Prometheus metrics</p>
+<ul class="simple">
+<li><p>Real Redis backend</p></li>
+<li><p>Sliding window algorithm</p></li>
+<li><p>Per-tenant rate limiting</p></li>
+<li><p>Prometheus metrics</p></li>
+</ul>
 <dl class="py class">
 <dt class="sig sig-object py" id="services.common.rate_limiter.RedisRateLimiter">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.rate_limiter.</span></span><span class="sig-name descname"><span class="pre">RedisRateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">redis_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_window_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rate_limit:'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/rate_limiter.html#RedisRateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.rate_limiter.RedisRateLimiter" title="Link to this definition"></a></dt>

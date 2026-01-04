@@ -80,12 +80,8 @@ def cmd_put(args: argparse.Namespace) -> int:
 def cmd_delete(args: argparse.Namespace) -> int:
     client = SomaBrainClient.get()
     try:
-        # If ETag provided, use put_persona with empty payload and delete semantics not supported by If-Match;
-        # but server supports DELETE {persona_id} with If-Match in headers. Our client method delete_persona
         # currently doesn't take etag; we can handle optimistic delete via put with a tombstone if API required.
-        # For now, call delete_persona and rely on server rejecting if preconditions fail.
         if args.etag:
-            # The client.delete_persona doesn't accept headers; add a lightweight method here via client._request
             # without altering the shared client. We'll use a private call for now.
             data = client._get_loop().run_until_complete(
                 client._request(

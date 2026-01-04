@@ -563,7 +563,6 @@ async def _update_last_login(payload: TokenPayload) -> None:
 
 # =============================================================================
 # IMPERSONATION - SAAS Super Admin Only
-# Per SAAS_ADMIN_SRS.md Section 2.5 - Admin Impersonation
 # =============================================================================
 
 
@@ -630,7 +629,6 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
     if not tenant:
         raise BadRequestError(f"Tenant {payload.tenant_id} not found or inactive")
 
-    # Generate impersonation token (signed JWT)
     config = get_keycloak_config()
 
     impersonation_claims = {

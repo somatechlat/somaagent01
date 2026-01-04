@@ -472,8 +472,7 @@
   <section id="module-services.common.files_client">
 <span id="services-common-files-client-module"></span><h1>services.common.files_client module<a class="headerlink" href="#module-services.common.files_client" title="Link to this heading"></a></h1>
 <p>Files Service Client.</p>
-<p>VIBE COMPLIANT - Real HTTP integration with external files-service.
-No mocks, no placeholders, no hardcoded URLs.</p>
+<p>No mocks, no placeholders, no hardcoded URLs.</p>
 <p>7-Persona Implementation:
 - PhD Dev: Async HTTP client with retry logic
 - Security Auditor: Checksum verification, quarantine handling
@@ -483,11 +482,12 @@ No mocks, no placeholders, no hardcoded URLs.</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.files_client.</span></span><span class="sig-name descname"><span class="pre">FilesClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_token</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/files_client.html#FilesClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.files_client.FilesClient" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>HTTP client for external files-service.</p>
-<p>VIBE COMPLIANT:
-- Uses FILES_SERVICE_URL from environment
-- Real HTTP calls via httpx
-- Prometheus metrics
-- Proper error handling</p>
+<ul class="simple">
+<li><p>Uses FILES_SERVICE_URL from environment</p></li>
+<li><p>Real HTTP calls via httpx</p></li>
+<li><p>Prometheus metrics</p></li>
+<li><p>Proper error handling</p></li>
+</ul>
 <dl class="py method">
 <dt class="sig sig-object py" id="services.common.files_client.FilesClient.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_token</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/files_client.html#FilesClient.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.files_client.FilesClient.__init__" title="Link to this definition"></a></dt>

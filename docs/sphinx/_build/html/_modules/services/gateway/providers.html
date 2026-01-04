@@ -481,7 +481,6 @@
 <span class="c1"># Compatibility attributes for test suite</span>
 <span class="n">JWKS_CACHE</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="n">APP_SETTINGS</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="c1"># JWT_SECRET must come from config - no hardcoded secrets per VIBE rules</span>
 <span class="n">JWT_SECRET</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SA01_JWT_SECRET&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 <span class="n">_TEMPORAL_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="n">_TEMPORAL_LOCK</span> <span class="o">=</span> <span class="kc">None</span>

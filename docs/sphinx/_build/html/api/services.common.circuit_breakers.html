@@ -472,8 +472,7 @@
   <section id="module-services.common.circuit_breakers">
 <span id="services-common-circuit-breakers-module"></span><h1>services.common.circuit_breakers module<a class="headerlink" href="#module-services.common.circuit_breakers" title="Link to this heading"></a></h1>
 <p>Circuit Breaker Pattern Implementation - Django Native.</p>
-<p>VIBE COMPLIANT: No external dependencies, pure Python implementation
-following the standard circuit breaker pattern for resilience.</p>
+<p>following the standard circuit breaker pattern for resilience.</p>
 <p>🎓 PhD Developer | 🔍 PhD Analyst | ✅ PhD QA | 📚 ISO Documenter
 🔒 Security Auditor | ⚡ Performance Engineer | 🎨 UX Consultant</p>
 <dl class="py class">
@@ -515,7 +514,6 @@ following the standard circuit breaker pattern for resilience.</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">services.common.circuit_breakers.</span></span><span class="sig-name descname"><span class="pre">CircuitBreaker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">failure_threshold=5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recovery_timeout=60.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected_exception=&lt;class</span> <span class="pre">'Exception'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name='default'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/services/common/circuit_breakers.html#CircuitBreaker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#services.common.circuit_breakers.CircuitBreaker" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Circuit Breaker implementation for resilient service calls.</p>
-<p>VIBE COMPLIANT: Real implementation, no test doubles.</p>
 <dl>
 <dt>Usage:</dt><dd><p>breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)</p>
 <dl class="simple">

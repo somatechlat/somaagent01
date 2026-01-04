@@ -186,7 +186,6 @@ async def initialize_persona(agent: "Agent") -> bool:
     Checks if persona exists via get_persona, creates via put_persona if not.
     """
     try:
-        # Try to get existing persona first
         try:
             existing = await agent.soma_client.get_persona(agent.persona_id)
             if existing:
@@ -194,7 +193,6 @@ async def initialize_persona(agent: "Agent") -> bool:
         except SomaClientError:
             pass  # Persona doesn't exist, create it
 
-        # Create new persona
         persona_data = {
             "id": agent.persona_id,
             "tenant_id": agent.tenant_id,
