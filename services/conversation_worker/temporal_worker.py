@@ -12,16 +12,17 @@ import django
 
 django.setup()
 
-from temporalio import activity, workflow
 from datetime import timedelta
+
+from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from admin.core.helpers.tokens import count_tokens
 from admin.agents.services.somabrain_integration import SomaBrainClient
+from admin.core.helpers.tokens import count_tokens
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-from services.common.compensation import compensate_event
 from services.common.budget_manager import BudgetManager
+from services.common.compensation import compensate_event
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.model_profiles import ModelProfileStore
@@ -41,8 +42,10 @@ from services.conversation_worker.service import (
 
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead
-setup_tracing("conversation-temporal-worker", endpoint=APP.external.otlp_endpoint)
+setup_tracing("conversation-temporal-worker", endpoint=settings.OTLP_ENDPOINT)
 
+
+from django.conf import settings
 
 def _somabrain_health() -> SomabrainHealthState:
     # Minimal health probe until degradation monitor is wired into Temporal context
@@ -51,7 +54,7 @@ def _somabrain_health() -> SomabrainHealthState:
 
 def _build_use_case():
     kafka = KafkaSettings(
-        bootstrap_servers=APP.kafka.bootstrap_servers,
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
@@ -64,18 +67,18 @@ def _build_use_case():
     from admin.core.models import Session
 
     store = Session.objects
-    profiles = ModelProfileStore.from_settings(APP)
+    profiles = ModelProfileStore.from_settings(settings)
     tenants = TenantConfig(
         path=os.environ.get(
-            "TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml")
+            "TENANT_CONFIG_PATH", "conf/tenants.yaml"
         )
     )
-    budgets = BudgetManager(url=APP.redis.url, tenant_config=tenants)
-    policy_client = PolicyClient(base_url=APP.external.opa_url, tenant_config=tenants)
+    budgets = BudgetManager(url=settings.REDIS_URL, tenant_config=tenants)
+    policy_client = PolicyClient(base_url=settings.OPA_URL, tenant_config=tenants)
     enforcer = ConversationPolicyEnforcer(policy_client)
-    telemetry = TelemetryPublisher(publisher=publisher, store=TelemetryStore.from_settings(APP))
+    telemetry = TelemetryPublisher(publisher=publisher, store=TelemetryStore.from_settings(settings))
     soma = SomaBrainClient.get()
-    router = RouterClient(base_url=os.environ.get("ROUTER_URL") or APP.extra.get("router_url"))
+    router = RouterClient(base_url=os.environ.get("ROUTER_URL"))
     ctx_builder = ContextBuilder(
         somabrain=soma,
         metrics=None,

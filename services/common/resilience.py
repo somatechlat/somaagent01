@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 from enum import Enum
-from typing import Any, Callable, TypeVar, Optional
+from typing import Any, Callable, Optional, TypeVar
 
 LOGGER = logging.getLogger(__name__)
 

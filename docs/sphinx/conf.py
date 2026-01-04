@@ -4,6 +4,7 @@
 
 import os
 import sys
+
 import django
 
 # Add project root to path for autodoc

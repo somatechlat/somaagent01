@@ -11,8 +11,6 @@ All routers now use Django Ninja.
 from __future__ import annotations
 
 import os
-import pathlib
-import time
 
 # Django setup MUST come first
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
@@ -20,11 +18,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
 
 django.setup()
-from django.http import FileResponse, JsonResponse
-from django.views.static import serve
 
 # Import Channels-enabled ASGI app
-from services.gateway.asgi import application as django_asgi
 
 
 def main() -> None:

@@ -22,7 +22,6 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 import httpx
 from prometheus_client import Counter, Histogram
 
-
 LOGGER = logging.getLogger(__name__)
 
 # Prometheus metrics

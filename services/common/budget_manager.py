@@ -9,7 +9,6 @@ from typing import Optional
 import redis.asyncio as redis
 
 from services.common.tenant_config import TenantConfig
-import os
 
 
 def _int_from_env(name: str, default: int) -> int:

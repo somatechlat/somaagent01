@@ -3,9 +3,9 @@
 Centralized service discovery with environment-aware URL resolution.
 """
 
+import os
 from dataclasses import dataclass
 from typing import Optional
-import os
 
 
 @dataclass(frozen=True)

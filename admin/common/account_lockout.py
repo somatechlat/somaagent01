@@ -138,7 +138,7 @@ class AccountLockoutService:
             )
             await self._redis.ping()
             self._connected = True
-            logger.info(f"AccountLockoutService connected to Redis")
+            logger.info("AccountLockoutService connected to Redis")
 
     async def close(self) -> None:
         """Close Redis connection."""

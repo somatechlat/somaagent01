@@ -84,7 +84,7 @@ def main():
         for var_name, description in missing:
             print(f"  {var_name}")
             print(f"    Purpose: {description}")
-            print(f"    Set in: .env file or docker-compose environment")
+            print("    Set in: .env file or docker-compose environment")
             print()
 
         print("=" * 80)

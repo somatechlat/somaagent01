@@ -799,8 +799,133 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-helpers-print-style-module">
-<h1>core.helpers.print_style module<a class="headerlink" href="#core-helpers-print-style-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.helpers.print_style">
+<span id="core-helpers-print-style-module"></span><h1>core.helpers.print_style module<a class="headerlink" href="#module-admin.core.helpers.print_style" title="Link to this heading"></a></h1>
+<p>Module print_style.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.print_style.</span></span><span class="sig-name descname"><span class="pre">PrintStyle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">italic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">underline</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">font_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">background_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Printstyle class implementation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.last_endline">
+<span class="sig-name descname"><span class="pre">last_endline</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.last_endline" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.log_file_path">
+<span class="sig-name descname"><span class="pre">log_file_path</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.log_file_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">italic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">underline</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">font_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">background_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.get" title="Link to this definition"></a></dt>
+<dd><p>Execute get.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.print">
+<span class="sig-name descname"><span class="pre">print</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.print"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.print" title="Link to this definition"></a></dt>
+<dd><p>Execute print.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.stream">
+<span class="sig-name descname"><span class="pre">stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.stream" title="Link to this definition"></a></dt>
+<dd><p>Execute stream.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.is_last_line_empty">
+<span class="sig-name descname"><span class="pre">is_last_line_empty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.is_last_line_empty"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.is_last_line_empty" title="Link to this definition"></a></dt>
+<dd><p>Check if last line empty.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.standard">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">standard</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.standard"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.standard" title="Link to this definition"></a></dt>
+<dd><p>Execute standard.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.hint">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.hint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.hint" title="Link to this definition"></a></dt>
+<dd><p>Execute hint.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.info">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.info" title="Link to this definition"></a></dt>
+<dd><p>Execute info.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.success">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.success"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.success" title="Link to this definition"></a></dt>
+<dd><p>Execute success.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.warning">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.warning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.warning" title="Link to this definition"></a></dt>
+<dd><p>Execute warning.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.debug">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.debug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.debug" title="Link to this definition"></a></dt>
+<dd><p>Execute debug.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.print_style.PrintStyle.error">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/print_style.html#PrintStyle.error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.print_style.PrintStyle.error" title="Link to this definition"></a></dt>
+<dd><p>Execute error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The text.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

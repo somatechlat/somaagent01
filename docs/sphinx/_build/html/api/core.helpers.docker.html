@@ -799,8 +799,56 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-helpers-docker-module">
-<h1>core.helpers.docker module<a class="headerlink" href="#core-helpers-docker-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.helpers.docker">
+<span id="core-helpers-docker-module"></span><h1>core.helpers.docker module<a class="headerlink" href="#module-admin.core.helpers.docker" title="Link to this heading"></a></h1>
+<p>Module docker.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.helpers.docker.DockerContainerManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.docker.</span></span><span class="sig-name descname"><span class="pre">DockerContainerManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ports</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/docker.html#DockerContainerManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.docker.DockerContainerManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Dockercontainermanager class implementation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.docker.DockerContainerManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ports</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/docker.html#DockerContainerManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.docker.DockerContainerManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.docker.DockerContainerManager.init_docker">
+<span class="sig-name descname"><span class="pre">init_docker</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/docker.html#DockerContainerManager.init_docker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.docker.DockerContainerManager.init_docker" title="Link to this definition"></a></dt>
+<dd><p>Execute init docker.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.docker.DockerContainerManager.cleanup_container">
+<span class="sig-name descname"><span class="pre">cleanup_container</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/docker.html#DockerContainerManager.cleanup_container"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.docker.DockerContainerManager.cleanup_container" title="Link to this definition"></a></dt>
+<dd><p>Execute cleanup container.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.docker.DockerContainerManager.get_image_containers">
+<span class="sig-name descname"><span class="pre">get_image_containers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/docker.html#DockerContainerManager.get_image_containers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.docker.DockerContainerManager.get_image_containers" title="Link to this definition"></a></dt>
+<dd><p>Retrieve image containers.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.docker.DockerContainerManager.start_container">
+<span class="sig-name descname"><span class="pre">start_container</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/docker.html#DockerContainerManager.start_container"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.docker.DockerContainerManager.start_container" title="Link to this definition"></a></dt>
+<dd><p>Execute start container.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

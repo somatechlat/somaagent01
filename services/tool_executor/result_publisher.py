@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import uuid
 from typing import Any, TYPE_CHECKING
@@ -17,7 +18,6 @@ from services.common.idempotency import generate_for_memory_payload
 from services.common.policy_client import PolicyRequest
 from services.tool_executor.metrics import TOOL_FEEDBACK_TOTAL
 from services.tool_executor.validation import validate_tool_result
-import os
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor

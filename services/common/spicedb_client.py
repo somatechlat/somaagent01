@@ -179,7 +179,6 @@ class SpiceDBClient:
             True if user has permission, False otherwise
         """
         import time
-        from datetime import datetime, timezone
 
         start_time = time.perf_counter()
 

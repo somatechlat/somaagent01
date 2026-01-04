@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -10,7 +11,6 @@ from typing import Any, Optional
 import httpx
 
 from services.common.tenant_config import TenantConfig
-import os
 
 LOGGER = logging.getLogger(__name__)
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Optional
 
@@ -20,7 +21,6 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanContext, SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
-import os
 
 LOGGER = logging.getLogger(__name__)
 TRACER = trace.get_tracer(__name__)

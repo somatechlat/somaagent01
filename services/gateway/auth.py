@@ -18,11 +18,12 @@ Example:
 
 from __future__ import annotations
 
+import os
+
 import jwt
 
-from admin.common.exceptions import UnauthorizedError, ForbiddenError
+from admin.common.exceptions import ForbiddenError, UnauthorizedError
 from services.common.policy_client import PolicyClient, PolicyRequest
-import os
 
 jwt_module = jwt
 

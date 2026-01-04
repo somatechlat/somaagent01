@@ -8,8 +8,6 @@ from typing import Dict, Optional
 
 import yaml
 
-import os
-
 
 @dataclass
 class TenantSettings:

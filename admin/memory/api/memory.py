@@ -24,15 +24,13 @@ import uuid
 from typing import Optional
 
 from asgiref.sync import sync_to_async
-from django.conf import settings
-from django.db import models
 from django.http import StreamingHttpResponse
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import NotFoundError, ServiceError
-from admin.core.models import MemoryReplica, Job
+from admin.common.exceptions import NotFoundError
+from admin.core.models import Job, MemoryReplica
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)

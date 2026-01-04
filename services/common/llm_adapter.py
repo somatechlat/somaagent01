@@ -11,12 +11,11 @@ Functionality:
 * Supports Text and Multimodal (Vision) payloads.
 """
 
+import os
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional, Sequence, List, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 import httpx
-
-import os
 
 
 @dataclass

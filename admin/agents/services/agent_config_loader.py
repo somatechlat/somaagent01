@@ -19,9 +19,10 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from admin.agents.services.agent_context import AgentConfig
+
 # This import is used on line 60 - DO NOT COMMENT OUT
 from services.common.ui_settings_store import UiSettingsStore
-from admin.agents.services.agent_context import AgentConfig
 
 LOGGER = logging.getLogger(__name__)
 

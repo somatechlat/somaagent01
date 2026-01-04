@@ -2,8 +2,8 @@
 
 import asyncio
 import os
+
 import django
-from django.conf import settings
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
@@ -11,8 +11,9 @@ os.environ.setdefault("SA01_REDIS_URL", "redis://localhost:6379/0")
 django.setup()
 
 from asgiref.sync import sync_to_async
-from services.common.chat_service import get_chat_service, ChatService
+
 from admin.chat.models import Conversation
+from services.common.chat_service import get_chat_service
 
 
 async def verify_governor_wiring():

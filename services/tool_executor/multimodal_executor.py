@@ -11,29 +11,27 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
-from datetime import datetime
 
-
-from services.common.asset_store import AssetStore, AssetType
 from services.common.asset_critic import AssetCritic, AssetRubric
-from services.common.provenance_recorder import ProvenanceRecorder
-from services.common.soma_brain_outcomes import SomaBrainOutcomesStore, MultimodalOutcome
-from services.common.portfolio_ranker import PortfolioRanker
-from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
-from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
+from services.common.asset_store import AssetStore, AssetType
+from services.common.execution_tracker import ExecutionStatus, ExecutionTracker
+from services.common.job_planner import JobPlan, JobPlanner, JobStatus, StepType, TaskStep
 from services.common.policy_graph_router import PolicyGraphRouter
+from services.common.portfolio_ranker import PortfolioRanker
+from services.common.provenance_recorder import ProvenanceRecorder
+from services.common.soma_brain_outcomes import SomaBrainOutcomesStore
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
-    GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
 )
 from services.multimodal.dalle_provider import DalleProvider
 from services.multimodal.mermaid_provider import MermaidProvider
 from services.multimodal.playwright_provider import PlaywrightProvider
-import os
 
 __all__ = ["MultimodalExecutor", "ExecutorError"]
 

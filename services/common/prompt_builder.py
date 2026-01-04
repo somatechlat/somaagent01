@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -11,7 +12,6 @@ from admin.core.soma_client import (
     SomaClient,  # type: ignore
     SomaClientError,
 )
-import os
 
 
 @dataclass

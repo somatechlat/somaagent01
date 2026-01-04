@@ -8,9 +8,9 @@ Usage:
 """
 
 import os
-import time
+from typing import Any
+
 import httpx
-from typing import Dict, Any
 
 # Keycloak Configuration (Local Dev)
 KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://localhost:49010")

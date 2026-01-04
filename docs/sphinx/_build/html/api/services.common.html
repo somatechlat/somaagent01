@@ -948,7 +948,13 @@
 <li class="toctree-l2"><a class="reference internal" href="services.common.audit_diff.html#services.common.audit_diff.generate_diff"><code class="docutils literal notranslate"><span class="pre">generate_diff()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="services.common.authorization.html">services.common.authorization module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="services.common.authorization.html">services.common.authorization module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="services.common.authorization.html#services.common.authorization.authorize"><code class="docutils literal notranslate"><span class="pre">authorize()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.authorization.html#services.common.authorization.require_policy"><code class="docutils literal notranslate"><span class="pre">require_policy()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.authorization.html#services.common.authorization.get_policy_client"><code class="docutils literal notranslate"><span class="pre">get_policy_client()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.authorization.html#services.common.authorization.authorize_request"><code class="docutils literal notranslate"><span class="pre">authorize_request()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="services.common.budget_manager.html">services.common.budget_manager module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="services.common.budget_manager.html#services.common.budget_manager.BudgetResult"><code class="docutils literal notranslate"><span class="pre">BudgetResult</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="services.common.budget_manager.html#services.common.budget_manager.BudgetResult.allowed"><code class="docutils literal notranslate"><span class="pre">BudgetResult.allowed</span></code></a></li>
@@ -1116,7 +1122,69 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="services.common.degradation_monitor.html">services.common.degradation_monitor module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="services.common.degradation_monitor.html">services.common.degradation_monitor module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel"><code class="docutils literal notranslate"><span class="pre">DegradationLevel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel.NONE"><code class="docutils literal notranslate"><span class="pre">DegradationLevel.NONE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel.MINOR"><code class="docutils literal notranslate"><span class="pre">DegradationLevel.MINOR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel.MODERATE"><code class="docutils literal notranslate"><span class="pre">DegradationLevel.MODERATE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel.SEVERE"><code class="docutils literal notranslate"><span class="pre">DegradationLevel.SEVERE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationLevel.CRITICAL"><code class="docutils literal notranslate"><span class="pre">DegradationLevel.CRITICAL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth"><code class="docutils literal notranslate"><span class="pre">ComponentHealth</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.name"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.healthy"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.healthy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.response_time"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.response_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.error_rate"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.error_rate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.last_check"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.last_check</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.circuit_state"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.circuit_state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.degradation_level"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.degradation_level</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.ComponentHealth.__init__"><code class="docutils literal notranslate"><span class="pre">ComponentHealth.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus"><code class="docutils literal notranslate"><span class="pre">DegradationStatus</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.overall_level"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.overall_level</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.affected_components"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.affected_components</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.healthy_components"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.healthy_components</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.total_components"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.total_components</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.timestamp"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.recommendations"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.recommendations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.mitigation_actions"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.mitigation_actions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationStatus.__init__"><code class="docutils literal notranslate"><span class="pre">DegradationStatus.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.timestamp"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.component_name"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.component_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.degradation_level"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.degradation_level</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.healthy"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.healthy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.response_time"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.response_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.error_rate"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.error_rate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.event_type"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.event_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationHistoryRecord.__init__"><code class="docutils literal notranslate"><span class="pre">DegradationHistoryRecord.__init__()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.SERVICE_DEPENDENCIES"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.SERVICE_DEPENDENCIES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.MAX_HISTORY_SIZE"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.MAX_HISTORY_SIZE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.__init__"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.initialize"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.initialize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.start_monitoring"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.start_monitoring()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.stop_monitoring"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.stop_monitoring()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.is_monitoring"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.is_monitoring()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_service_dependencies"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.get_service_dependencies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_dependent_services"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.get_dependent_services()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.add_dependency"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.add_dependency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.remove_dependency"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.remove_dependency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_degradation_status"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.get_degradation_status()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.record_component_failure"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.record_component_failure()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.record_component_success"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.record_component_success()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.DegradationMonitor.get_history"><code class="docutils literal notranslate"><span class="pre">DegradationMonitor.get_history()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.degradation_monitor.html#services.common.degradation_monitor.is_monitoring"><code class="docutils literal notranslate"><span class="pre">is_monitoring()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="services.common.degradation_notifications.html">services.common.degradation_notifications module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="services.common.degradation_notifications.html#services.common.degradation_notifications.NotificationChannel"><code class="docutils literal notranslate"><span class="pre">NotificationChannel</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="services.common.degradation_notifications.html#services.common.degradation_notifications.NotificationChannel.KAFKA"><code class="docutils literal notranslate"><span class="pre">NotificationChannel.KAFKA</span></code></a></li>
@@ -1185,7 +1253,19 @@
 <li class="toctree-l2"><a class="reference internal" href="services.common.embedding_cache.html#services.common.embedding_cache.get_cache"><code class="docutils literal notranslate"><span class="pre">get_cache()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="services.common.embeddings.html">services.common.embeddings module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="services.common.embeddings.html">services.common.embeddings module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="services.common.embeddings.html#services.common.embeddings.EmbeddingsProvider"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProvider</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.embeddings.html#services.common.embeddings.EmbeddingsProvider.embed"><code class="docutils literal notranslate"><span class="pre">EmbeddingsProvider.embed()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.embeddings.html#services.common.embeddings.OpenAIEmbeddings"><code class="docutils literal notranslate"><span class="pre">OpenAIEmbeddings</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="services.common.embeddings.html#services.common.embeddings.OpenAIEmbeddings.__init__"><code class="docutils literal notranslate"><span class="pre">OpenAIEmbeddings.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="services.common.embeddings.html#services.common.embeddings.OpenAIEmbeddings.embed"><code class="docutils literal notranslate"><span class="pre">OpenAIEmbeddings.embed()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="services.common.embeddings.html#services.common.embeddings.maybe_embed"><code class="docutils literal notranslate"><span class="pre">maybe_embed()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="services.common.env_config.html">services.common.env_config module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="services.common.env_config.html#services.common.env_config.get_required_env"><code class="docutils literal notranslate"><span class="pre">get_required_env()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="services.common.env_config.html#services.common.env_config.get_optional_env"><code class="docutils literal notranslate"><span class="pre">get_optional_env()</span></code></a></li>

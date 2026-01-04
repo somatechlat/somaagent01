@@ -6,7 +6,6 @@ Tests for core admin, agents, and tenant management endpoints.
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 
 class TestCoreAdminEndpoints:
@@ -113,8 +112,9 @@ class TestTenantAgentEndpoints:
 
     def test_agent_schema(self):
         """Test AgentSchema."""
-        from admin.saas.api.tenant_agents import AgentSchema
         from datetime import datetime
+
+        from admin.saas.api.tenant_agents import AgentSchema
 
         agent = AgentSchema(
             id="test-id",
@@ -162,8 +162,9 @@ class TestSchemaValidation:
 
     def test_agent_user_schema(self):
         """Test AgentUserSchema validation."""
-        from admin.agents.api.agents import AgentUserSchema
         from datetime import datetime
+
+        from admin.agents.api.agents import AgentUserSchema
 
         user = AgentUserSchema(
             id="user-1",

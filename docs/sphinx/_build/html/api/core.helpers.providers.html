@@ -799,8 +799,111 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-helpers-providers-module">
-<h1>core.helpers.providers module<a class="headerlink" href="#core-helpers-providers-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.helpers.providers">
+<span id="core-helpers-providers-module"></span><h1>core.helpers.providers module<a class="headerlink" href="#module-admin.core.helpers.providers" title="Link to this heading"></a></h1>
+<p>Module providers.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.FieldOption">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.providers.</span></span><span class="sig-name descname"><span class="pre">FieldOption</span></span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#FieldOption"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.FieldOption" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<p>Fieldoption class implementation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.FieldOption.value">
+<span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#admin.core.helpers.providers.FieldOption.value" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.FieldOption.label">
+<span class="sig-name descname"><span class="pre">label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#admin.core.helpers.providers.FieldOption.label" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.ProviderManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.providers.</span></span><span class="sig-name descname"><span class="pre">ProviderManager</span></span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#ProviderManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.ProviderManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Providermanager class implementation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.ProviderManager.get_instance">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_instance</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#ProviderManager.get_instance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.ProviderManager.get_instance" title="Link to this definition"></a></dt>
+<dd><p>Retrieve instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.ProviderManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#ProviderManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.ProviderManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.ProviderManager.get_providers">
+<span class="sig-name descname"><span class="pre">get_providers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#ProviderManager.get_providers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.ProviderManager.get_providers" title="Link to this definition"></a></dt>
+<dd><p>Returns a list of providers for a given type (e.g., ‘chat’, ‘embedding’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference internal" href="#admin.core.helpers.providers.FieldOption" title="admin.core.helpers.providers.FieldOption"><code class="xref py py-class docutils literal notranslate"><span class="pre">FieldOption</span></code></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.ProviderManager.get_raw_providers">
+<span class="sig-name descname"><span class="pre">get_raw_providers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#ProviderManager.get_raw_providers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.ProviderManager.get_raw_providers" title="Link to this definition"></a></dt>
+<dd><p>Return raw provider dictionaries for advanced use-cases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.ProviderManager.get_provider_config">
+<span class="sig-name descname"><span class="pre">get_provider_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#ProviderManager.get_provider_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.ProviderManager.get_provider_config" title="Link to this definition"></a></dt>
+<dd><p>Return the metadata dict for a single provider id (case-insensitive).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.get_providers">
+<span class="sig-prename descclassname"><span class="pre">admin.core.helpers.providers.</span></span><span class="sig-name descname"><span class="pre">get_providers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#get_providers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.get_providers" title="Link to this definition"></a></dt>
+<dd><p>Convenience function to get providers of a specific type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference internal" href="#admin.core.helpers.providers.FieldOption" title="admin.core.helpers.providers.FieldOption"><code class="xref py py-class docutils literal notranslate"><span class="pre">FieldOption</span></code></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.get_raw_providers">
+<span class="sig-prename descclassname"><span class="pre">admin.core.helpers.providers.</span></span><span class="sig-name descname"><span class="pre">get_raw_providers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#get_raw_providers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.get_raw_providers" title="Link to this definition"></a></dt>
+<dd><p>Return full metadata for providers of a given type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.helpers.providers.get_provider_config">
+<span class="sig-prename descclassname"><span class="pre">admin.core.helpers.providers.</span></span><span class="sig-name descname"><span class="pre">get_provider_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/providers.html#get_provider_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.providers.get_provider_config" title="Link to this definition"></a></dt>
+<dd><p>Return metadata for a single provider (None if not found).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 

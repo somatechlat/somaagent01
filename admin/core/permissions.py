@@ -13,9 +13,9 @@ Implements require_permission decorator for route-level permission checks.
 - 🏗️ Django Architect: Decorator pattern, async support
 """
 
+import logging
 from functools import wraps
 from typing import Callable, List
-import logging
 
 from ninja.errors import HttpError
 

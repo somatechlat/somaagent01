@@ -799,8 +799,50 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-helpers-extension-module">
-<h1>core.helpers.extension module<a class="headerlink" href="#core-helpers-extension-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.helpers.extension">
+<span id="core-helpers-extension-module"></span><h1>core.helpers.extension module<a class="headerlink" href="#module-admin.core.helpers.extension" title="Link to this heading"></a></h1>
+<p>Module extension.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.helpers.extension.Extension">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.extension.</span></span><span class="sig-name descname"><span class="pre">Extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/extension.html#Extension"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.extension.Extension" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Extension class implementation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.extension.Extension.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/extension.html#Extension.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.extension.Extension.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.helpers.extension.Extension.execute">
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/extension.html#Extension.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.extension.Extension.execute" title="Link to this definition"></a></dt>
+<dd><p>Execute execute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.helpers.extension.call_extensions">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.extension.</span></span><span class="sig-name descname"><span class="pre">call_extensions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">extension_point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/extension.html#call_extensions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.extension.call_extensions" title="Link to this definition"></a></dt>
+<dd><p>Execute call extensions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>extension_point</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The extension_point.</p></li>
+<li><p><strong>agent</strong> (<span class="sphinx_autodoc_typehints-type">Agent|None</span>) – The agent.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 

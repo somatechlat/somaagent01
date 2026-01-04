@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import math
+import os
 import threading
 from typing import Any, Dict, List, Tuple
-
-import os
 
 # Metrics are mandatory; fail fast if prometheus_client is unavailable.
 try:

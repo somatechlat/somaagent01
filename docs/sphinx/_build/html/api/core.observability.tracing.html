@@ -799,8 +799,30 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-observability-tracing-module">
-<h1>core.observability.tracing module<a class="headerlink" href="#core-observability-tracing-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.observability.tracing">
+<span id="core-observability-tracing-module"></span><h1>core.observability.tracing module<a class="headerlink" href="#module-admin.core.observability.tracing" title="Link to this heading"></a></h1>
+<p>OpenTelemetry tracing utilities for SomaAgent01.</p>
+<p>The project uses a <em>single</em> tracer that is shared by all services. If the
+environment variable <code class="docutils literal notranslate"><span class="pre">SA01_OTLP_ENDPOINT</span></code> is defined, the tracer is
+configured to export to that endpoint; otherwise a no‑op tracer is returned
+so that the rest of the code can call <code class="docutils literal notranslate"><span class="pre">get_tracer()</span></code> unconditionally.</p>
+<p>All services import <code class="docutils literal notranslate"><span class="pre">get_tracer</span></code> and use <code class="docutils literal notranslate"><span class="pre">tracer.start_as_current_span</span></code>
+to create spans for their lifecycle events. The implementation follows the
+official OpenTelemetry Python documentation (see
+<a class="reference external" href="https://opentelemetry.io/docs/instrumentation/python/">https://opentelemetry.io/docs/instrumentation/python/</a>).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.observability.tracing.get_tracer">
+<span class="sig-prename descclassname"><span class="pre">admin.core.observability.tracing.</span></span><span class="sig-name descname"><span class="pre">get_tracer</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/observability/tracing.html#get_tracer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.observability.tracing.get_tracer" title="Link to this definition"></a></dt>
+<dd><p>Return a singleton tracer instance.</p>
+<p>The function is cheap after the first call because the tracer is cached in
+the module‑level <code class="docutils literal notranslate"><span class="pre">_tracer</span></code> variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tracer</span></code></span></p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 

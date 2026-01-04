@@ -7,7 +7,7 @@ Provides a Redis-backed store for UI settings, used by AgentConfig loader.
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from django_redis import get_redis_connection
 

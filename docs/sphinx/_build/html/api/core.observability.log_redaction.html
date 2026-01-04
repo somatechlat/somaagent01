@@ -799,8 +799,70 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-observability-log-redaction-module">
-<h1>core.observability.log_redaction module<a class="headerlink" href="#core-observability-log-redaction-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.observability.log_redaction">
+<span id="core-observability-log-redaction-module"></span><h1>core.observability.log_redaction module<a class="headerlink" href="#module-admin.core.observability.log_redaction" title="Link to this heading"></a></h1>
+<p>Logging redaction filter for sensitive values.</p>
+<p>Replaces occurrences of configured sensitive keys and bearer tokens in
+log record messages and selected extra fields with the placeholder
+“[REDACTED]”.  This operates at the logging layer so callers do not need
+to proactively scrub every value.</p>
+<dl class="simple">
+<dt>Design goals:</dt><dd><ul class="simple">
+<li><p>Minimal overhead: simple string scans, no heavy regex on every record.</p></li>
+<li><p>Configurable via environment variables (LOG_REDACT_KEYS, LOG_REDACT_TOKEN_PREFIXES)</p></li>
+<li><p>Safe defaults covering common secret field names.</p></li>
+</ul>
+</dd>
+<dt>Limitations:</dt><dd><ul class="simple">
+<li><p>Only scrubs simple key=value or JSON-ish patterns already rendered in
+the message; deeply nested objects logged via %r may still leak if the
+formatter bypasses message construction. Structured logging in this
+repo ensures JSONFormatter builds from <cite>record.getMessage()</cite> so this
+approach is effective.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.observability.log_redaction.install_redaction_filter">
+<span class="sig-prename descclassname"><span class="pre">admin.core.observability.log_redaction.</span></span><span class="sig-name descname"><span class="pre">install_redaction_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/observability/log_redaction.html#install_redaction_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.observability.log_redaction.install_redaction_filter" title="Link to this definition"></a></dt>
+<dd><p>Execute install redaction filter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>root</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Logger</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span>) – The root.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.observability.log_redaction.RedactionFilter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.observability.log_redaction.</span></span><span class="sig-name descname"><span class="pre">RedactionFilter</span></span><a class="reference internal" href="../_modules/admin/core/observability/log_redaction.html#RedactionFilter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.observability.log_redaction.RedactionFilter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Filter" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Filter</span></code></a></p>
+<p>Redactionfilter class implementation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.observability.log_redaction.RedactionFilter.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/observability/log_redaction.html#RedactionFilter.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.observability.log_redaction.RedactionFilter.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="admin.core.observability.log_redaction.RedactionFilter.filter">
+<span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/observability/log_redaction.html#RedactionFilter.filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.observability.log_redaction.RedactionFilter.filter" title="Link to this definition"></a></dt>
+<dd><p>Execute filter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>record</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.LogRecord" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">LogRecord</span></code></a></span>) – The record.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

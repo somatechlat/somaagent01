@@ -15,7 +15,6 @@ import django
 django.setup()
 
 import uvicorn
-
 from orchestrator.config import CentralizedConfig
 
 from .service import ConversationWorkerService

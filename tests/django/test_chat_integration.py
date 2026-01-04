@@ -16,9 +16,7 @@ Requirements tested: 8.1-8.6, 9.1-9.8
 from __future__ import annotations
 
 import asyncio
-import json
 import os
-import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -46,9 +44,10 @@ class TestConversationCreation:
     @pytest.fixture
     def chat_client(self):
         """Create test client for chat API."""
-        from ninja.testing import TestClient
-        from admin.chat.api.chat import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.chat.api.chat import router
 
         test_api = NinjaAPI()
         test_api.add_router("/chat", router)
@@ -146,9 +145,10 @@ class TestMessageSending:
     @pytest.fixture
     def chat_client(self):
         """Create test client for chat API."""
-        from ninja.testing import TestClient
-        from admin.chat.api.chat import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.chat.api.chat import router
 
         test_api = NinjaAPI()
         test_api.add_router("/chat", router)
@@ -342,6 +342,7 @@ class TestWebSocketConsumer:
         Requirements: 7.6
         """
         from channels.testing import WebsocketCommunicator
+
         from services.gateway.consumers.chat import ChatConsumer
 
         communicator = WebsocketCommunicator(
@@ -376,6 +377,7 @@ class TestWebSocketConsumer:
         Requirements: 9.7
         """
         from channels.testing import WebsocketCommunicator
+
         from services.gateway.consumers.chat import ChatConsumer
 
         # This test requires a valid auth token
@@ -421,9 +423,10 @@ class TestAgentSelection:
     @pytest.fixture
     def agents_client(self):
         """Create test client for agents API."""
-        from ninja.testing import TestClient
-        from admin.agents.api import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.agents.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/agents", router)

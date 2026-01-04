@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib as _hashlib
-from typing import Any, Mapping, Optional
-
 import os
+from typing import Any, Mapping, Optional
 
 
 def _iso(ts: float) -> str:

@@ -32,7 +32,6 @@ router = Router()
 import hashlib
 import secrets
 from datetime import timedelta
-from uuid import uuid4
 
 from django.utils import timezone
 

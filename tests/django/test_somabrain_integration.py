@@ -49,7 +49,7 @@ class TestSomaBrainDjangoIntegration:
         db_dsn = getattr(settings, "DATABASE_DSN", os.environ.get("SA01_DB_DSN", ""))
         assert db_dsn is not None
         assert "postgresql" in db_dsn or db_dsn == ""
-        print(f"✅ DATABASE_DSN configured")
+        print("✅ DATABASE_DSN configured")
 
     @pytest.mark.asyncio
     async def test_somabrain_health_check(self):
@@ -123,8 +123,9 @@ class TestSomaBrainDjangoIntegration:
     @pytest.mark.asyncio
     async def test_full_memory_cycle(self):
         """Test complete memory cycle: store -> recall -> verify."""
-        from admin.core.soma_client import SomaClient
         import uuid
+
+        from admin.core.soma_client import SomaClient
 
         somabrain_url = os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:9696")
         client = SomaClient(base_url=somabrain_url)
@@ -153,7 +154,7 @@ class TestSomaBrainDjangoIntegration:
             total_hits = recall_result.get("ltm_hits", 0) + recall_result.get("wm_hits", 0)
             print(f"✅ Step 3 - Verified: {total_hits} total hits")
 
-            print(f"\n=== Full Memory Cycle: PASSED ===")
+            print("\n=== Full Memory Cycle: PASSED ===")
         finally:
             await client.close()
 

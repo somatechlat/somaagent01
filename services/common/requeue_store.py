@@ -8,8 +8,6 @@ from typing import Any, Optional
 
 import redis.asyncio as redis
 
-import os
-
 
 class RequeueStore:
     """Requeuestore class implementation."""

@@ -16,8 +16,8 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, TYPE_CHECKING
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from admin.core.observability.metrics import ContextBuilderMetrics
+from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from services.common import degradation_monitor
 from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 
@@ -39,15 +39,15 @@ class SomabrainHealthState(str, Enum):
 
 
 class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
-        """Execute redact.
-
-            Args:
-                text: The text.
-            """
-
     """Redactorprotocol class implementation."""
 
-    def redact(self, text: str) -> str: ...
+    def redact(self, text: str) -> str:
+        """Execute redact.
+
+        Args:
+            text: The text.
+        """
+        ...
 
 
 class RealPresidioRedactor:
@@ -87,9 +87,9 @@ class RealPresidioRedactor:
     def redact(self, text: str) -> str:
         """Execute redact.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         if not text:
             return ""

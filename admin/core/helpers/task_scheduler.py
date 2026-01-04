@@ -16,7 +16,6 @@ import nest_asyncio
 
 nest_asyncio.apply()
 
-from admin.core.helpers.session_store_adapter import save_context
 from agent import AgentContext, UserMessage
 from initialize import initialize_agent
 
@@ -39,6 +38,7 @@ from admin.core.helpers.scheduler_serialization import (
     serialize_task,
     serialize_tasks,
 )
+from admin.core.helpers.session_store_adapter import save_context
 
 
 class TaskScheduler:

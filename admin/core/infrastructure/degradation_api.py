@@ -24,7 +24,6 @@ from pydantic import BaseModel
 
 from services.common.degradation_monitor import (
     degradation_monitor,
-    DegradationLevel,
 )
 
 router = Router(tags=["degradation"])

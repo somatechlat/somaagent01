@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from datetime import timedelta
 
 from temporalio import activity, workflow
-from datetime import timedelta
 from temporalio.client import Client
 from temporalio.worker import Worker
 
+from services.common.compensation import compensate_event
+from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
-from services.common.dlq import DeadLetterQueue
-from services.common.compensation import compensate_event
 from services.delegation_gateway.main import DelegationGateway
-import os
 
 
 @activity.defn

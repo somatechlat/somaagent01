@@ -1,18 +1,18 @@
 """Module test_chat_backend."""
 
-import pytest
 import asyncio
 import json
 import os
 import uuid
+
+import pytest
 from channels.db import database_sync_to_async
-from tests.e2e.helpers.auth import get_auth_token
 
 # Modern websockets API (v14.0+)
 from websockets.asyncio.client import connect
 
 from admin.chat.models import Message
-from admin.core.models import Session
+from tests.e2e.helpers.auth import get_auth_token
 
 
 @pytest.mark.django_db(transaction=True)
@@ -56,7 +56,7 @@ async def test_chat_full_flow():
     print(f"👤 User ID: {user_id}")
 
     # Explicitly import models
-    from admin.chat.models import Conversation, Message
+    from admin.chat.models import Conversation
 
     @database_sync_to_async
     def setup_data_manual():

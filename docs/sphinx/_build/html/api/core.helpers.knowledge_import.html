@@ -799,8 +799,68 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="core-helpers-knowledge-import-module">
-<h1>core.helpers.knowledge_import module<a class="headerlink" href="#core-helpers-knowledge-import-module" title="Link to this heading"></a></h1>
+  <section id="module-admin.core.helpers.knowledge_import">
+<span id="core-helpers-knowledge-import-module"></span><h1>core.helpers.knowledge_import module<a class="headerlink" href="#module-admin.core.helpers.knowledge_import" title="Link to this heading"></a></h1>
+<p>Module knowledge_import.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.KnowledgeImport">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">admin.core.helpers.knowledge_import.</span></span><span class="sig-name descname"><span class="pre">KnowledgeImport</span></span><a class="reference internal" href="../_modules/admin/core/helpers/knowledge_import.html#KnowledgeImport"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.knowledge_import.KnowledgeImport" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<p>Knowledgeimport class implementation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.KnowledgeImport.file">
+<span class="sig-name descname"><span class="pre">file</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#admin.core.helpers.knowledge_import.KnowledgeImport.file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.KnowledgeImport.checksum">
+<span class="sig-name descname"><span class="pre">checksum</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em><a class="headerlink" href="#admin.core.helpers.knowledge_import.KnowledgeImport.checksum" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.KnowledgeImport.ids">
+<span class="sig-name descname"><span class="pre">ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#admin.core.helpers.knowledge_import.KnowledgeImport.ids" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.KnowledgeImport.state">
+<span class="sig-name descname"><span class="pre">state</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a><span class="pre">[</span><code class="docutils literal notranslate"><span class="pre">'changed'</span></code><span class="pre">,</span> <code class="docutils literal notranslate"><span class="pre">'original'</span></code><span class="pre">,</span> <code class="docutils literal notranslate"><span class="pre">'removed'</span></code><span class="pre">]</span></em><a class="headerlink" href="#admin.core.helpers.knowledge_import.KnowledgeImport.state" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.KnowledgeImport.documents">
+<span class="sig-name descname"><span class="pre">documents</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></a><span class="pre">]</span></em><a class="headerlink" href="#admin.core.helpers.knowledge_import.KnowledgeImport.documents" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.calculate_checksum">
+<span class="sig-prename descclassname"><span class="pre">admin.core.helpers.knowledge_import.</span></span><span class="sig-name descname"><span class="pre">calculate_checksum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/knowledge_import.html#calculate_checksum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.knowledge_import.calculate_checksum" title="Link to this definition"></a></dt>
+<dd><p>Execute calculate checksum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – The file_path.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="admin.core.helpers.knowledge_import.load_knowledge">
+<span class="sig-prename descclassname"><span class="pre">admin.core.helpers.knowledge_import.</span></span><span class="sig-name descname"><span class="pre">load_knowledge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_item</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">knowledge_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename_pattern</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'**/*'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/admin/core/helpers/knowledge_import.html#load_knowledge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#admin.core.helpers.knowledge_import.load_knowledge" title="Link to this definition"></a></dt>
+<dd><p>Load knowledge files from a directory with change detection and metadata enhancement.</p>
+<p>This function now includes enhanced error handling and compatibility with the
+intelligent memory consolidation system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="#admin.core.helpers.knowledge_import.KnowledgeImport" title="admin.core.helpers.knowledge_import.KnowledgeImport"><code class="xref py py-class docutils literal notranslate"><span class="pre">KnowledgeImport</span></code></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 

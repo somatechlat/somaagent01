@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from datetime import timedelta
 
 from temporalio import activity, workflow
-from datetime import timedelta
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.publisher import DurablePublisher
-from services.common.dlq import DeadLetterQueue
 from services.common.compensation import compensate_event
-from services.tool_executor.main import ToolExecutor
+from services.common.dlq import DeadLetterQueue
+from services.common.event_bus import KafkaEventBus
+from services.common.publisher import DurablePublisher
 from services.tool_executor.config import kafka_settings
-import os
+from services.tool_executor.main import ToolExecutor
 
 
 @activity.defn
