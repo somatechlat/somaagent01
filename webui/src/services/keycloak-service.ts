@@ -1,6 +1,6 @@
 /**
- * Eye of God Keycloak Service
- * Per Eye of God UIX Design - Authentication
+ * SaaS Admin Keycloak Service
+ * Per SaaS Admin UIX Design - Authentication
  *
  * VIBE COMPLIANT:
  * - Real Keycloak OIDC integration
@@ -60,13 +60,13 @@ class KeycloakService {
         this.config = { ...this.config, ...config };
 
         // Check for stored token
-        const storedToken = localStorage.getItem('eog_keycloak_token');
+        const storedToken = localStorage.getItem('saas_keycloak_token');
         if (storedToken) {
             try {
                 this.token = JSON.parse(storedToken);
                 this._scheduleRefresh();
             } catch {
-                localStorage.removeItem('eog_keycloak_token');
+                localStorage.removeItem('saas_keycloak_token');
             }
         }
     }
@@ -80,8 +80,8 @@ class KeycloakService {
         const state = this._generateState();
 
         // Store state for verification
-        sessionStorage.setItem('eog_auth_state', state);
-        sessionStorage.setItem('eog_auth_nonce', nonce);
+        sessionStorage.setItem('saas_auth_state', state);
+        sessionStorage.setItem('saas_auth_nonce', nonce);
 
         const params = new URLSearchParams({
             client_id: this.config.clientId,
@@ -213,11 +213,11 @@ class KeycloakService {
         }
 
         this.token = null;
-        localStorage.removeItem('eog_keycloak_token');
-        localStorage.removeItem('eog_auth_token');
-        localStorage.removeItem('eog_user');
-        sessionStorage.removeItem('eog_auth_state');
-        sessionStorage.removeItem('eog_auth_nonce');
+        localStorage.removeItem('saas_keycloak_token');
+        localStorage.removeItem('saas_auth_token');
+        localStorage.removeItem('saas_user');
+        sessionStorage.removeItem('saas_auth_state');
+        sessionStorage.removeItem('saas_auth_nonce');
     }
 
     /**
@@ -253,7 +253,7 @@ class KeycloakService {
      * Verify state parameter
      */
     verifyState(state: string): boolean {
-        const storedState = sessionStorage.getItem('eog_auth_state');
+        const storedState = sessionStorage.getItem('saas_auth_state');
         return storedState === state;
     }
 
@@ -261,8 +261,8 @@ class KeycloakService {
 
     private _storeToken(): void {
         if (this.token) {
-            localStorage.setItem('eog_keycloak_token', JSON.stringify(this.token));
-            localStorage.setItem('eog_auth_token', this.token.access_token);
+            localStorage.setItem('saas_keycloak_token', JSON.stringify(this.token));
+            localStorage.setItem('saas_auth_token', this.token.access_token);
         }
     }
 

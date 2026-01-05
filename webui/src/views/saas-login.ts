@@ -33,7 +33,7 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         icon: 'key',
         fields: [
             { key: 'issuer_url', label: 'Issuer URL', type: 'url', placeholder: 'https://auth.company.com/realms/main', required: true },
-            { key: 'client_id', label: 'Client ID', type: 'text', placeholder: 'soma-agent-client', required: true },
+            { key: 'client_id', label: 'Client ID', type: 'text', placeholder: 'saas-agent-client', required: true },
             { key: 'client_secret', label: 'Client Secret', type: 'password', placeholder: 'Enter client secret', required: true },
         ],
     },
@@ -103,7 +103,7 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         icon: 'hub',
         fields: [
             { key: 'base_url', label: 'PingFederate URL', type: 'url', placeholder: 'https://sso.company.com', required: true },
-            { key: 'client_id', label: 'Client ID', type: 'text', placeholder: 'soma-agent', required: true },
+            { key: 'client_id', label: 'Client ID', type: 'text', placeholder: 'saas-agent', required: true },
             { key: 'client_secret', label: 'Client Secret', type: 'password', placeholder: 'Enter client secret', required: true },
         ],
     },
@@ -615,7 +615,7 @@ export class SaasLogin extends LitElement {
     private _handleEmailInput(e: Event) {
         const input = e.target as HTMLInputElement;
         this._email = input.value;
-        
+
         // Clear error when user starts typing
         if (this._emailError && this._email) {
             this._emailError = '';
@@ -830,13 +830,13 @@ export class SaasLogin extends LitElement {
             this._error = 'Please enter both email and password';
             return;
         }
-        
+
         // Validate email format per RFC 5322
         if (!this._validateEmail(this._email)) {
             this._emailError = 'Please enter a valid email address';
             return;
         }
-        
+
         if (this._password.length < 8) {
             this._error = 'Password must be at least 8 characters';
             return;
@@ -858,8 +858,8 @@ export class SaasLogin extends LitElement {
             }
 
             const result = await response.json();
-            localStorage.setItem('eog_auth_token', result.token);
-            localStorage.setItem('eog_user', JSON.stringify(result.user));
+            localStorage.setItem('saas_auth_token', result.token);
+            localStorage.setItem('saas_user', JSON.stringify(result.user));
             window.location.href = result.redirect_path || '/mode-select';
         } catch (err) {
             this._error = err instanceof Error ? err.message : 'Login failed';
@@ -873,8 +873,8 @@ export class SaasLogin extends LitElement {
     }
 
     private _handleDevLogin() {
-        localStorage.setItem('eog_auth_token', 'dev_token_' + Date.now());
-        localStorage.setItem('eog_user', JSON.stringify({ email: 'admin@dev.local', name: 'Dev Admin', role: 'saas_admin' }));
+        localStorage.setItem('saas_auth_token', 'dev_token_' + Date.now());
+        localStorage.setItem('saas_user', JSON.stringify({ email: 'admin@dev.local', name: 'Dev Admin', role: 'saas_admin' }));
         window.location.href = '/mode-select';
     }
 

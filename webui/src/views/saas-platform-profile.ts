@@ -21,7 +21,7 @@ import { customElement, state } from 'lit/decorators.js';
 // Import reusable components
 import '../components/saas-user-profile-card.js';
 import '../components/saas-toggle.js';
-import '../components/soma-toast.js';
+import '../components/saas-toast.js';
 
 interface AdminProfile {
     id: string;
@@ -50,8 +50,8 @@ export class SaasPlatformProfile extends LitElement {
     :host {
       display: block;
       min-height: 100vh;
-      background: var(--eog-bg-void, #0f172a);
-      padding: var(--eog-spacing-xl, 32px);
+      background: var(--saas-bg-void, #0f172a);
+      padding: var(--saas-spacing-xl, 32px);
     }
 
     .profile-page {
@@ -63,22 +63,22 @@ export class SaasPlatformProfile extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: var(--eog-spacing-xl, 32px);
+      margin-bottom: var(--saas-spacing-xl, 32px);
     }
 
     .page-title {
-      font-size: var(--eog-text-2xl, 24px);
+      font-size: var(--saas-text-2xl, 24px);
       font-weight: 700;
-      color: var(--eog-text-bright, #f8fafc);
+      color: var(--saas-text-bright, #f8fafc);
     }
 
     .btn-save {
       padding: 10px 24px;
-      background: var(--eog-info, #3b82f6);
+      background: var(--saas-info, #3b82f6);
       color: white;
       border: none;
-      border-radius: var(--eog-radius-md, 8px);
-      font-size: var(--eog-text-base, 14px);
+      border-radius: var(--saas-radius-md, 8px);
+      font-size: var(--saas-text-base, 14px);
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s ease;
@@ -89,58 +89,58 @@ export class SaasPlatformProfile extends LitElement {
     }
 
     .btn-save:disabled {
-      background: var(--eog-text-dim, #64748b);
+      background: var(--saas-text-dim, #64748b);
       cursor: not-allowed;
     }
 
     .section {
-      background: var(--eog-surface, rgba(30, 41, 59, 0.85));
-      border: 1px solid var(--eog-border-color, rgba(255, 255, 255, 0.05));
-      border-radius: var(--eog-radius-lg, 12px);
-      padding: var(--eog-spacing-lg, 24px);
-      margin-bottom: var(--eog-spacing-lg, 24px);
+      background: var(--saas-surface, rgba(30, 41, 59, 0.85));
+      border: 1px solid var(--saas-border-color, rgba(255, 255, 255, 0.05));
+      border-radius: var(--saas-radius-lg, 12px);
+      padding: var(--saas-spacing-lg, 24px);
+      margin-bottom: var(--saas-spacing-lg, 24px);
     }
 
     .section-title {
-      font-size: var(--eog-text-lg, 16px);
+      font-size: var(--saas-text-lg, 16px);
       font-weight: 600;
-      color: var(--eog-text-bright, #f8fafc);
-      margin-bottom: var(--eog-spacing-md, 16px);
+      color: var(--saas-text-bright, #f8fafc);
+      margin-bottom: var(--saas-spacing-md, 16px);
       display: flex;
       align-items: center;
-      gap: var(--eog-spacing-sm, 8px);
+      gap: var(--saas-spacing-sm, 8px);
     }
 
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--eog-spacing-md, 16px);
-      margin-bottom: var(--eog-spacing-md, 16px);
+      gap: var(--saas-spacing-md, 16px);
+      margin-bottom: var(--saas-spacing-md, 16px);
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: var(--eog-spacing-xs, 4px);
+      gap: var(--saas-spacing-xs, 4px);
     }
 
     .form-label {
-      font-size: var(--eog-text-sm, 13px);
-      color: var(--eog-text-dim, #64748b);
+      font-size: var(--saas-text-sm, 13px);
+      color: var(--saas-text-dim, #64748b);
     }
 
     .form-input {
       padding: 10px 12px;
-      background: var(--eog-bg-base, #1e293b);
-      border: 1px solid var(--eog-border-color, rgba(255, 255, 255, 0.05));
-      border-radius: var(--eog-radius-md, 8px);
-      color: var(--eog-text-main, #e2e8f0);
-      font-size: var(--eog-text-base, 14px);
+      background: var(--saas-bg-base, #1e293b);
+      border: 1px solid var(--saas-border-color, rgba(255, 255, 255, 0.05));
+      border-radius: var(--saas-radius-md, 8px);
+      color: var(--saas-text-main, #e2e8f0);
+      font-size: var(--saas-text-base, 14px);
     }
 
     .form-input:focus {
       outline: none;
-      border-color: var(--eog-info, #3b82f6);
+      border-color: var(--saas-info, #3b82f6);
     }
 
     .form-input:disabled {
@@ -152,21 +152,21 @@ export class SaasPlatformProfile extends LitElement {
     .avatar-section {
       display: flex;
       align-items: center;
-      gap: var(--eog-spacing-lg, 24px);
-      margin-bottom: var(--eog-spacing-lg, 24px);
+      gap: var(--saas-spacing-lg, 24px);
+      margin-bottom: var(--saas-spacing-lg, 24px);
     }
 
     .avatar-preview {
       width: 80px;
       height: 80px;
-      border-radius: var(--eog-radius-full, 9999px);
-      background: var(--eog-bg-base, #1e293b);
+      border-radius: var(--saas-radius-full, 9999px);
+      background: var(--saas-bg-base, #1e293b);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 32px;
       font-weight: 600;
-      color: var(--eog-text-dim, #64748b);
+      color: var(--saas-text-dim, #64748b);
       overflow: hidden;
     }
 
@@ -179,22 +179,22 @@ export class SaasPlatformProfile extends LitElement {
     .avatar-actions {
       display: flex;
       flex-direction: column;
-      gap: var(--eog-spacing-sm, 8px);
+      gap: var(--saas-spacing-sm, 8px);
     }
 
     .btn-secondary {
       padding: 8px 16px;
       background: transparent;
-      border: 1px solid var(--eog-border-hover, rgba(255, 255, 255, 0.1));
-      border-radius: var(--eog-radius-md, 8px);
-      color: var(--eog-text-main, #e2e8f0);
-      font-size: var(--eog-text-sm, 13px);
+      border: 1px solid var(--saas-border-hover, rgba(255, 255, 255, 0.1));
+      border-radius: var(--saas-radius-md, 8px);
+      color: var(--saas-text-main, #e2e8f0);
+      font-size: var(--saas-text-sm, 13px);
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
     .btn-secondary:hover {
-      background: var(--eog-surface-hover, rgba(51, 65, 85, 0.9));
+      background: var(--saas-surface-hover, rgba(51, 65, 85, 0.9));
     }
 
     /* Security section */
@@ -202,8 +202,8 @@ export class SaasPlatformProfile extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: var(--eog-spacing-md, 16px) 0;
-      border-bottom: 1px solid var(--eog-border-color, rgba(255, 255, 255, 0.05));
+      padding: var(--saas-spacing-md, 16px) 0;
+      border-bottom: 1px solid var(--saas-border-color, rgba(255, 255, 255, 0.05));
     }
 
     .security-item:last-child {
@@ -217,39 +217,39 @@ export class SaasPlatformProfile extends LitElement {
     }
 
     .security-label {
-      font-size: var(--eog-text-base, 14px);
-      color: var(--eog-text-main, #e2e8f0);
+      font-size: var(--saas-text-base, 14px);
+      color: var(--saas-text-main, #e2e8f0);
     }
 
     .security-value {
-      font-size: var(--eog-text-sm, 13px);
-      color: var(--eog-text-dim, #64748b);
+      font-size: var(--saas-text-sm, 13px);
+      color: var(--saas-text-dim, #64748b);
     }
 
     /* Platform access */
     .access-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: var(--eog-spacing-md, 16px);
+      gap: var(--saas-spacing-md, 16px);
     }
 
     .access-item {
-      background: var(--eog-bg-base, #1e293b);
-      border-radius: var(--eog-radius-md, 8px);
-      padding: var(--eog-spacing-md, 16px);
+      background: var(--saas-bg-base, #1e293b);
+      border-radius: var(--saas-radius-md, 8px);
+      padding: var(--saas-spacing-md, 16px);
     }
 
     .access-label {
-      font-size: var(--eog-text-xs, 11px);
-      color: var(--eog-text-dim, #64748b);
+      font-size: var(--saas-text-xs, 11px);
+      color: var(--saas-text-dim, #64748b);
       text-transform: uppercase;
-      margin-bottom: var(--eog-spacing-xs, 4px);
+      margin-bottom: var(--saas-spacing-xs, 4px);
     }
 
     .access-value {
-      font-size: var(--eog-text-lg, 16px);
+      font-size: var(--saas-text-lg, 16px);
       font-weight: 600;
-      color: var(--eog-text-bright, #f8fafc);
+      color: var(--saas-text-bright, #f8fafc);
     }
 
     .role-badge {
@@ -257,8 +257,8 @@ export class SaasPlatformProfile extends LitElement {
       padding: 4px 10px;
       background: #dc2626;
       color: white;
-      border-radius: var(--eog-radius-sm, 4px);
-      font-size: var(--eog-text-xs, 11px);
+      border-radius: var(--saas-radius-sm, 4px);
+      font-size: var(--saas-text-xs, 11px);
       font-weight: 600;
     }
 
@@ -267,34 +267,34 @@ export class SaasPlatformProfile extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: var(--eog-spacing-sm, 8px) 0;
+      padding: var(--saas-spacing-sm, 8px) 0;
     }
 
     .notification-label {
-      font-size: var(--eog-text-base, 14px);
-      color: var(--eog-text-main, #e2e8f0);
+      font-size: var(--saas-text-base, 14px);
+      color: var(--saas-text-main, #e2e8f0);
     }
 
     /* Action buttons */
     .action-buttons {
       display: flex;
-      gap: var(--eog-spacing-sm, 8px);
+      gap: var(--saas-spacing-sm, 8px);
       flex-wrap: wrap;
     }
 
     .btn-danger {
       padding: 8px 16px;
       background: transparent;
-      border: 1px solid var(--eog-danger, #ef4444);
-      border-radius: var(--eog-radius-md, 8px);
-      color: var(--eog-danger, #ef4444);
-      font-size: var(--eog-text-sm, 13px);
+      border: 1px solid var(--saas-danger, #ef4444);
+      border-radius: var(--saas-radius-md, 8px);
+      color: var(--saas-danger, #ef4444);
+      font-size: var(--saas-text-sm, 13px);
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
     .btn-danger:hover {
-      background: var(--eog-danger, #ef4444);
+      background: var(--saas-danger, #ef4444);
       color: white;
     }
 
@@ -302,8 +302,8 @@ export class SaasPlatformProfile extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: var(--eog-spacing-2xl, 48px);
-      color: var(--eog-text-dim, #64748b);
+      padding: var(--saas-spacing-2xl, 48px);
+      color: var(--saas-text-dim, #64748b);
     }
   `;
 

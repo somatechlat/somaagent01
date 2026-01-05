@@ -1,6 +1,6 @@
-# SRS: Eye of God — Complete Screen Flow & Navigation Architecture
+# SRS: Universal SaaS SomaStack — Complete Screen Flow & Navigation Architecture
 
-**Document ID:** SA01-SRS-EOG-SCREEN-FLOWS-2025-12-25  
+**Document ID:** SA01-SRS-SOMA-STACK-FLOWS-2025-12-25  
 **Purpose:** Comprehensive screen flow, navigation hierarchy, all catalogs, user/profile management, reusable components  
 **Status:** CANONICAL MASTER REFERENCE FOR UI IMPLEMENTATION
 
@@ -760,74 +760,80 @@ sequenceDiagram
 
 ### 11.2 Design Tokens (CSS Custom Properties)
 
-```css
-/* Core Colors */
---saas-primary: #2563eb;
---saas-primary-hover: #1d4ed8;
---saas-secondary: #64748b;
---saas-success: #22c55e;
---saas-warning: #f59e0b;
---saas-error: #ef4444;
---saas-info: #0ea5e9;
+> **Canonical Source:** [tokens.css](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/webui/src/styles/tokens.css)
 
-/* Backgrounds */
+```css
+/* ==========================================================================
+   SAAS THEME TOKENS — Light Mode Default
+   Canonical values from webui/src/styles/tokens.css
+   ========================================================================== */
+
+/* Backgrounds - Light Theme */
 --saas-bg-page: #f5f5f5;
 --saas-bg-card: #ffffff;
---saas-bg-surface: #fafafa;
---saas-bg-input: #ffffff;
---saas-bg-hover: #f0f0f0;
+--saas-bg-sidebar: #ffffff;
+--saas-bg-hover: #fafafa;
+--saas-bg-active: #f0f0f0;
 
-/* Borders */
---saas-border: #e0e0e0;
---saas-border-focus: #2563eb;
---saas-border-error: #ef4444;
---saas-border-radius: 8px;
---saas-border-radius-lg: 12px;
-
-/* Typography */
---saas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
---saas-font-mono: 'SF Mono', 'Fira Code', monospace;
+/* Text - Light Theme */
 --saas-text-primary: #1a1a1a;
 --saas-text-secondary: #666666;
 --saas-text-muted: #999999;
+--saas-text-inverse: #ffffff;
 
-/* Shadows */
---saas-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
---saas-shadow-md: 0 4px 6px rgba(0,0,0,0.1);
---saas-shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+/* Borders - Light Theme */
+--saas-border-light: #e0e0e0;
+--saas-border-medium: #cccccc;
+--saas-border-dark: #1a1a1a;
+
+/* Status Colors (Universal) */
+--saas-status-success: #22c55e;
+--saas-status-warning: #f59e0b;
+--saas-status-danger: #ef4444;
+--saas-status-info: #3b82f6;
+
+/* Accent - Primary Action (Light Theme) */
+--saas-accent: #1a1a1a;
+--saas-accent-hover: #333333;
+
+/* Glassmorphism - Light */
+--saas-glass-bg: rgba(255, 255, 255, 0.85);
+--saas-glass-border: rgba(0, 0, 0, 0.08);
+
+/* Typography */
+--saas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+--saas-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
 
 /* Spacing */
---saas-spacing-xs: 4px;
---saas-spacing-sm: 8px;
---saas-spacing-md: 16px;
---saas-spacing-lg: 24px;
---saas-spacing-xl: 32px;
+--saas-space-xs: 4px;
+--saas-space-sm: 8px;
+--saas-space-md: 16px;
+--saas-space-lg: 24px;
+--saas-space-xl: 32px;
 
-/* Dark Theme Override */
+/* Border Radius */
+--saas-radius-sm: 4px;
+--saas-radius-md: 8px;
+--saas-radius-lg: 12px;
+
+/* Shadows - Light */
+--saas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+--saas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+--saas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+/* ==========================================================================
+   SAAS DARK THEME
+   ========================================================================== */
+
 [data-theme="dark"] {
   --saas-bg-page: #0f0f0f;
   --saas-bg-card: #1a1a1a;
-  --saas-bg-surface: #0d0d0d;
-  --saas-bg-hover: #262626;
-  --saas-border: #333333;
-  --saas-text-primary: #ffffff;
-  --saas-text-secondary: #aaaaaa;
-  --saas-text-muted: #666666;
-}
-
-/* Platform Admin Theme */
-[data-role="platform"] {
-  --saas-accent: #dc2626;  /* Red for Eye of God */
-}
-
-/* Tenant Admin Theme */
-[data-role="tenant"] {
-  --saas-accent: #f97316;  /* Orange for Tenant */
-}
-
-/* Agent Theme */
-[data-role="agent"] {
-  --saas-accent: #22c55e;  /* Green for Agent */
+  --saas-bg-sidebar: #141414;
+  --saas-bg-hover: #222222;
+  --saas-text-primary: #e2e8f0;
+  --saas-text-secondary: #94a3b8;
+  --saas-accent: #3b82f6;
+  --saas-accent-hover: #60a5fa;
 }
 ```
 

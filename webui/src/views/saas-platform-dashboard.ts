@@ -8,7 +8,7 @@
  * - NO EMOJIS - Google Material Symbols only
  * - Self-contained, no external dependencies
  * 
- * This is the Eye of God - where the SAAS Super Admin
+ * This is the SaaS Platform Admin - where the SAAS Super Admin
  * sees EVERYTHING across the entire platform.
  */
 
@@ -908,8 +908,8 @@ export class SaasPlatformDashboard extends LitElement {
     }
 
     private _logout() {
-        localStorage.removeItem('eog_auth_token');
-        localStorage.removeItem('eog_user');
+        localStorage.removeItem('saas_auth_token');
+        localStorage.removeItem('saas_user');
         sessionStorage.removeItem('saas_mode');
         window.location.href = '/login';
     }

@@ -1,7 +1,7 @@
 {
-    "name": "eye-of-god-ui",
+    "name": "saas-admin-ui",
     "version": "1.0.0",
-    "description": "Eye of God UIX - SomaAgent01 Cognitive Interface",
+    "description": "SaaS Admin UI - SomaAgent Platform Management Interface",
     "type": "module",
     "scripts": {
         "dev": "vite --host 0.0.0.0 --port 5173",

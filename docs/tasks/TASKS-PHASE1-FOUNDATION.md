@@ -219,40 +219,42 @@ definition agent {
 
 ### 4.2 Design Tokens
 
+> **Canonical Source:** [tokens.css](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/webui/src/styles/tokens.css)
+
 ```css
-/* somastack-tokens.css */
+/* somastack-tokens.css — aligned with canonical tokens.css */
 
 :root {
-  /* Colors */
-  --saas-bg-primary: #ffffff;
-  --saas-bg-secondary: #f8fafc;
-  --saas-bg-tertiary: #f1f5f9;
-  --saas-text-primary: #0f172a;
-  --saas-text-secondary: #475569;
-  --saas-text-muted: #94a3b8;
-  --saas-accent-primary: #3b82f6;
-  --saas-accent-hover: #2563eb;
-  --saas-success: #22c55e;
-  --saas-warning: #f59e0b;
-  --saas-error: #ef4444;
+  /* Backgrounds - Light Theme */
+  --saas-bg-page: #f5f5f5;
+  --saas-bg-card: #ffffff;
+  --saas-bg-hover: #fafafa;
+  
+  /* Text - Light Theme */  
+  --saas-text-primary: #1a1a1a;
+  --saas-text-secondary: #666666;
+  --saas-text-muted: #999999;
+  
+  /* Accent - Primary Action */
+  --saas-accent: #1a1a1a;
+  --saas-accent-hover: #333333;
+  
+  /* Status Colors */
+  --saas-status-success: #22c55e;
+  --saas-status-warning: #f59e0b;
+  --saas-status-danger: #ef4444;
+  --saas-status-info: #3b82f6;
   
   /* Spacing */
-  --saas-space-1: 4px;
-  --saas-space-2: 8px;
-  --saas-space-3: 12px;
-  --saas-space-4: 16px;
-  --saas-space-6: 24px;
-  --saas-space-8: 32px;
+  --saas-space-xs: 4px;
+  --saas-space-sm: 8px;
+  --saas-space-md: 16px;
+  --saas-space-lg: 24px;
+  --saas-space-xl: 32px;
   
   /* Typography */
-  --saas-font-sans: 'Geist', system-ui, sans-serif;
+  --saas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --saas-font-mono: 'JetBrains Mono', monospace;
-  --saas-text-xs: 12px;
-  --saas-text-sm: 14px;
-  --saas-text-base: 16px;
-  --saas-text-lg: 18px;
-  --saas-text-xl: 20px;
-  --saas-text-2xl: 24px;
   
   /* Borders */
   --saas-radius-sm: 4px;

@@ -1,6 +1,6 @@
 /**
- * Eye of God Theme Store
- * Per Eye of God UIX Design Section 2.2
+ * SaaS Admin Theme Store
+ * Per SaaS Admin UIX Design Section 2.2
  *
  * VIBE COMPLIANT:
  * - Real Lit Context implementation
@@ -32,42 +32,42 @@ export interface ThemeStateData {
 
 export const themeContext = createContext<ThemeStateData>('theme-context');
 
-const ACTIVE_THEME_KEY = 'eog_active_theme';
+const ACTIVE_THEME_KEY = 'saas_active_theme';
 
 // Default theme variables
 const DEFAULT_THEME: Theme = {
     id: 'default-dark',
     name: 'Default Dark',
-    description: 'Eye of God default dark theme',
+    description: 'SaaS Admin default dark theme',
     version: '1.0.0',
-    author: 'SomaStack',
+    author: 'SaasStack',
     is_approved: true,
     variables: {
-        '--soma-bg-void': '#0f172a',
-        '--soma-bg-base': '#1e293b',
-        '--soma-surface': 'rgba(30, 41, 59, 0.85)',
-        '--soma-text-main': '#e2e8f0',
-        '--soma-text-dim': '#64748b',
-        '--soma-accent': '#94a3b8',
-        '--soma-danger': '#ef4444',
-        '--soma-success': '#22c55e',
-        '--soma-warning': '#f59e0b',
-        '--soma-info': '#3b82f6',
-        '--soma-border-color': 'rgba(255, 255, 255, 0.05)',
-        '--soma-radius-sm': '4px',
-        '--soma-radius-md': '8px',
-        '--soma-radius-lg': '12px',
-        '--soma-radius-full': '9999px',
-        '--soma-spacing-xs': '4px',
-        '--soma-spacing-sm': '8px',
-        '--soma-spacing-md': '16px',
-        '--soma-spacing-lg': '24px',
-        '--soma-spacing-xl': '32px',
+        '--saas-bg-void': '#0f172a',
+        '--saas-bg-base': '#1e293b',
+        '--saas-surface': 'rgba(30, 41, 59, 0.85)',
+        '--saas-text-main': '#e2e8f0',
+        '--saas-text-dim': '#64748b',
+        '--saas-accent': '#94a3b8',
+        '--saas-danger': '#ef4444',
+        '--saas-success': '#22c55e',
+        '--saas-warning': '#f59e0b',
+        '--saas-info': '#3b82f6',
+        '--saas-border-color': 'rgba(255, 255, 255, 0.05)',
+        '--saas-radius-sm': '4px',
+        '--saas-radius-md': '8px',
+        '--saas-radius-lg': '12px',
+        '--saas-radius-full': '9999px',
+        '--saas-spacing-xs': '4px',
+        '--saas-spacing-sm': '8px',
+        '--saas-spacing-md': '16px',
+        '--saas-spacing-lg': '24px',
+        '--saas-spacing-xl': '32px',
     },
 };
 
-@customElement('soma-theme-provider')
-export class SomaThemeProvider extends LitElement {
+@customElement('saas-theme-provider')
+export class SaasThemeProvider extends LitElement {
     @provide({ context: themeContext })
     @state()
     themeState: ThemeStateData = {
@@ -120,7 +120,7 @@ export class SomaThemeProvider extends LitElement {
      */
     private async _loadThemes() {
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             const response = await fetch('/api/v2/themes/', {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             });
@@ -158,7 +158,7 @@ export class SomaThemeProvider extends LitElement {
         const style = root.style;
         for (let i = style.length - 1; i >= 0; i--) {
             const prop = style[i];
-            if (prop.startsWith('--soma-')) {
+            if (prop.startsWith('--saas-')) {
                 style.removeProperty(prop);
             }
         }
@@ -178,7 +178,7 @@ export class SomaThemeProvider extends LitElement {
         localStorage.setItem(ACTIVE_THEME_KEY, theme.id);
 
         // Dispatch event
-        this.dispatchEvent(new CustomEvent('soma-theme-changed', {
+        this.dispatchEvent(new CustomEvent('saas-theme-changed', {
             detail: { theme },
             bubbles: true,
             composed: true,
@@ -200,7 +200,7 @@ export class SomaThemeProvider extends LitElement {
 
         // Track theme application via API
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             await fetch(`/api/v2/themes/${themeId}/apply`, {
                 method: 'POST',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -237,7 +237,7 @@ export class SomaThemeProvider extends LitElement {
      */
     async addTheme(theme: Omit<Theme, 'id'>): Promise<Theme | null> {
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             const response = await fetch('/api/v2/themes/', {
                 method: 'POST',
                 headers: {
@@ -311,6 +311,6 @@ export class SomaThemeProvider extends LitElement {
 
 declare global {
     interface HTMLElementTagNameMap {
-        'soma-theme-provider': SomaThemeProvider;
+        'saas-theme-provider': SaasThemeProvider;
     }
 }

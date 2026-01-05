@@ -1,6 +1,6 @@
 /**
- * Eye of God Theme Service
- * Per Eye of God UIX Design Section 2.2
+ * SaaS Admin Theme Service
+ * Per SaaS Admin UIX Design Section 2.2
  *
  * VIBE COMPLIANT:
  * - Real API integration

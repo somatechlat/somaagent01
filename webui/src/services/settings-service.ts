@@ -1,6 +1,6 @@
 /**
- * Eye of God Settings Service
- * Per Eye of God UIX Design Section 2.2
+ * SaaS Admin Settings Service
+ * Per SaaS Admin UIX Design Section 2.2
  *
  * VIBE COMPLIANT:
  * - Real API integration

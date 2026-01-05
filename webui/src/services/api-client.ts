@@ -1,6 +1,6 @@
 /**
- * Eye of God API Client
- * Per Eye of God UIX Design Section 4.3
+ * SaaS Admin API Client
+ * Per SaaS Admin UIX Design Section 4.3
  *
  * VIBE COMPLIANT:
  * - Real implementation (no stubs)

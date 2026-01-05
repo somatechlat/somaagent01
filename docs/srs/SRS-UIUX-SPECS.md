@@ -8,32 +8,30 @@
 
 ## 1. Design System Reference
 
-### 1.1 AgentSkin Tokens
+### 1.1 Canonical Token Source
+
+> **⚠️ ALWAYS USE:** [tokens.css](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/webui/src/styles/tokens.css)
 
 ```css
-/* Colors */
---saas-primary: #2563eb;
---saas-secondary: #64748b;
---saas-success: #22c55e;
---saas-warning: #f59e0b;
---saas-error: #ef4444;
---saas-bg: #ffffff;
---saas-surface: #f8fafc;
---saas-border: #e2e8f0;
+/* Key Light Theme Tokens */
+--saas-bg-page: #f5f5f5;
+--saas-bg-card: #ffffff;
+--saas-text-primary: #1a1a1a;
+--saas-text-secondary: #666666;
+--saas-accent: #1a1a1a;
+--saas-border-light: #e0e0e0;
 
-/* Typography */
---saas-font: 'Inter', sans-serif;
---saas-h1: 2rem / 700;
---saas-h2: 1.5rem / 600;
---saas-body: 1rem / 400;
---saas-small: 0.875rem / 400;
+/* Status Colors (Universal) */
+--saas-status-success: #22c55e;
+--saas-status-warning: #f59e0b;
+--saas-status-danger: #ef4444;
+--saas-status-info: #3b82f6;
 
 /* Spacing */
---saas-spacing-xs: 0.25rem;
---saas-spacing-sm: 0.5rem;
---saas-spacing-md: 1rem;
---saas-spacing-lg: 1.5rem;
---saas-spacing-xl: 2rem;
+--saas-space-xs: 4px;
+--saas-space-sm: 8px;
+--saas-space-md: 16px;
+--saas-space-lg: 24px;
 ```
 
 ### 1.2 Common Patterns

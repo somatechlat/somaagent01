@@ -28,14 +28,14 @@ if (app) {
     // Route handler
     const renderRoute = async () => {
         const path = window.location.pathname;
-        const token = localStorage.getItem('eog_auth_token');
+        const token = localStorage.getItem('saas_auth_token');
 
         // DEV MODE: Skip auth check
         if (DEV_MODE) {
             // Set fake token for dev
             if (!token) {
-                localStorage.setItem('eog_auth_token', 'dev_token');
-                localStorage.setItem('eog_user', JSON.stringify({
+                localStorage.setItem('saas_auth_token', 'dev_token');
+                localStorage.setItem('saas_user', JSON.stringify({
                     email: 'admin@dev.local',
                     name: 'Dev Admin',
                     role: 'saas_admin'
@@ -67,22 +67,16 @@ if (app) {
                 return;
             }
 
-            app.appendChild(document.createElement('soma-login'));
+            await import('./views/saas-login.js');
+            app.appendChild(document.createElement('saas-login'));
             return;
         }
 
         // 2. Auth callback - handle OAuth response
         if (path === '/auth/callback') {
-            try {
-                await import('./views/saas-auth-callback.js');
-                app.innerHTML = '';
-                app.appendChild(document.createElement('saas-auth-callback'));
-            } catch (e) {
-                // Fallback to legacy callback
-                await import('./views/soma-auth-callback.js');
-                app.innerHTML = '';
-                app.appendChild(document.createElement('soma-auth-callback'));
-            }
+            await import('./views/saas-auth-callback.js');
+            app.innerHTML = '';
+            app.appendChild(document.createElement('saas-auth-callback'));
             return;
         }
 
@@ -202,7 +196,7 @@ if (app) {
             return;
         }
 
-        // Infrastructure Administration (Eye of God)
+        // Infrastructure Administration (SaaS Platform Admin)
         if (path === '/platform/infrastructure' || path === '/saas/infrastructure') {
             await import('./views/saas-infrastructure-dashboard.js');
             app.appendChild(document.createElement('saas-infrastructure-dashboard'));
@@ -333,13 +327,8 @@ if (app) {
                 renderRoute();
                 return;
             }
-            try {
-                await import('./views/saas-login.js');
-                app.appendChild(document.createElement('saas-login'));
-            } catch {
-                // Fallback to legacy login
-                app.appendChild(document.createElement('soma-login'));
-            }
+            await import('./views/saas-login.js');
+            app.appendChild(document.createElement('saas-login'));
             return;
         }
 
@@ -352,8 +341,8 @@ if (app) {
         }
 
         if (path === '/logout') {
-            localStorage.removeItem('eog_auth_token');
-            localStorage.removeItem('eog_user');
+            localStorage.removeItem('saas_auth_token');
+            localStorage.removeItem('saas_user');
             window.location.href = '/login';
             return;
         }
@@ -400,14 +389,8 @@ if (app) {
 
 
         if (path === '/chat') {
-            try {
-                await import('./views/saas-chat.js');
-                app.appendChild(document.createElement('saas-chat'));
-            } catch {
-                // Fallback to legacy chat
-                await import('./views/soma-chat.js');
-                app.appendChild(document.createElement('soma-chat'));
-            }
+            await import('./views/saas-chat.js');
+            app.appendChild(document.createElement('saas-chat'));
             return;
         }
 
@@ -417,33 +400,28 @@ if (app) {
                 app.appendChild(document.createElement('saas-memory-view'));
             } catch {
                 // Fallback to legacy memory
-                await import('./views/soma-memory.js');
-                app.appendChild(document.createElement('soma-memory'));
+                await import('./views/saas-memory-view.js');
+                app.appendChild(document.createElement('saas-memory-view'));
             }
             return;
         }
 
         if (path === '/settings') {
-            try {
-                await import('./views/saas-settings.js');
-                app.appendChild(document.createElement('saas-settings'));
-            } catch {
-                // Fallback to legacy settings
-                await import('./views/soma-settings.js');
-                app.appendChild(document.createElement('soma-settings'));
-            }
+            await import('./views/saas-settings.js');
+            app.appendChild(document.createElement('saas-settings'));
             return;
         }
 
         if (path === '/tools') {
-            await import('./views/soma-tools.js');
-            app.appendChild(document.createElement('soma-tools'));
+            await import('./views/saas-feature-catalog.js');
+            app.appendChild(document.createElement('saas-feature-catalog'));
             return;
         }
 
         if (path === '/themes') {
-            await import('./views/soma-themes.js');
-            app.appendChild(document.createElement('soma-themes'));
+            // Note: Themes view might not exist yet, redirecting to settings
+            window.history.replaceState(null, '', '/settings');
+            renderRoute();
             return;
         }
 

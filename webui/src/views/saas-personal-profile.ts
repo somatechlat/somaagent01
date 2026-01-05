@@ -261,7 +261,7 @@ export class SaasPersonalProfile extends LitElement {
     private async _loadProfile() {
         this.loading = true;
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             const res = await fetch('/api/v2/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });

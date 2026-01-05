@@ -37,10 +37,10 @@ export class VoiceConfigPanel extends LitElement {
         }
 
         .config-panel {
-            background: var(--soma-surface, rgba(30, 41, 59, 0.85));
-            border-radius: var(--soma-radius-lg, 12px);
+            background: var(--saas-surface, rgba(30, 41, 59, 0.85));
+            border-radius: var(--saas-radius-lg, 12px);
             padding: 24px;
-            border: 1px solid var(--soma-border, rgba(148, 163, 184, 0.1));
+            border: 1px solid var(--saas-border, rgba(148, 163, 184, 0.1));
         }
 
         .section {
@@ -52,9 +52,9 @@ export class VoiceConfigPanel extends LitElement {
         }
 
         .section-title {
-            font-size: var(--soma-text-sm, 13px);
+            font-size: var(--saas-text-sm, 13px);
             font-weight: 600;
-            color: var(--soma-text-dim, #94a3b8);
+            color: var(--saas-text-dim, #94a3b8);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 12px;
@@ -78,24 +78,24 @@ export class VoiceConfigPanel extends LitElement {
         }
 
         label {
-            font-size: var(--soma-text-xs, 11px);
-            color: var(--soma-text-muted, #64748b);
+            font-size: var(--saas-text-xs, 11px);
+            color: var(--saas-text-muted, #64748b);
             font-weight: 500;
         }
 
         input, select, textarea {
-            background: var(--soma-bg-base, rgba(15, 23, 42, 0.5));
-            border: 1px solid var(--soma-border, rgba(148, 163, 184, 0.2));
-            border-radius: var(--soma-radius-sm, 4px);
+            background: var(--saas-bg-base, rgba(15, 23, 42, 0.5));
+            border: 1px solid var(--saas-border, rgba(148, 163, 184, 0.2));
+            border-radius: var(--saas-radius-sm, 4px);
             padding: 8px 12px;
-            color: var(--soma-text-main, #e2e8f0);
-            font-size: var(--soma-text-sm, 13px);
+            color: var(--saas-text-main, #e2e8f0);
+            font-size: var(--saas-text-sm, 13px);
             font-family: inherit;
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: var(--soma-accent, #94a3b8);
+            border-color: var(--saas-accent, #94a3b8);
         }
 
         textarea {
@@ -125,8 +125,8 @@ export class VoiceConfigPanel extends LitElement {
         .range-value {
             min-width: 40px;
             text-align: right;
-            font-size: var(--soma-text-sm, 13px);
-            color: var(--soma-text-main, #e2e8f0);
+            font-size: var(--saas-text-sm, 13px);
+            color: var(--saas-text-main, #e2e8f0);
         }
 
         .toggle-row {
@@ -134,19 +134,19 @@ export class VoiceConfigPanel extends LitElement {
             align-items: center;
             justify-content: space-between;
             padding: 12px;
-            background: var(--soma-bg-base, rgba(15, 23, 42, 0.5));
-            border-radius: var(--soma-radius-sm, 4px);
+            background: var(--saas-bg-base, rgba(15, 23, 42, 0.5));
+            border-radius: var(--saas-radius-sm, 4px);
         }
 
         .toggle-label {
-            font-size: var(--soma-text-sm, 13px);
-            color: var(--soma-text-main, #e2e8f0);
+            font-size: var(--saas-text-sm, 13px);
+            color: var(--saas-text-main, #e2e8f0);
         }
 
         .toggle {
             width: 40px;
             height: 20px;
-            background: var(--soma-border, rgba(148, 163, 184, 0.3));
+            background: var(--saas-border, rgba(148, 163, 184, 0.3));
             border-radius: 10px;
             position: relative;
             cursor: pointer;
@@ -154,7 +154,7 @@ export class VoiceConfigPanel extends LitElement {
         }
 
         .toggle.active {
-            background: var(--soma-success, #22c55e);
+            background: var(--saas-success, #22c55e);
         }
 
         .toggle::after {
@@ -174,12 +174,12 @@ export class VoiceConfigPanel extends LitElement {
         }
 
         .preview-btn {
-            background: var(--soma-accent, #94a3b8);
+            background: var(--saas-accent, #94a3b8);
             border: none;
-            border-radius: var(--soma-radius-sm, 4px);
+            border-radius: var(--saas-radius-sm, 4px);
             padding: 8px 16px;
-            color: var(--soma-bg-base, #1e293b);
-            font-size: var(--soma-text-sm, 13px);
+            color: var(--saas-bg-base, #1e293b);
+            font-size: var(--saas-text-sm, 13px);
             font-weight: 500;
             cursor: pointer;
             display: flex;

@@ -548,7 +548,7 @@ export class SaasModeSelection extends LitElement {
 
         try {
             // Load user from localStorage
-            const userStr = localStorage.getItem('eog_user');
+            const userStr = localStorage.getItem('saas_user');
             if (userStr) {
                 const user = JSON.parse(userStr);
                 this._userName = user.name || 'Admin User';
@@ -607,8 +607,8 @@ export class SaasModeSelection extends LitElement {
     }
 
     private _logout() {
-        localStorage.removeItem('eog_auth_token');
-        localStorage.removeItem('eog_user');
+        localStorage.removeItem('saas_auth_token');
+        localStorage.removeItem('saas_user');
         sessionStorage.removeItem('saas_mode');
         sessionStorage.removeItem('saas_tenant_id');
         window.location.href = '/login';
