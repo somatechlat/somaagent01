@@ -313,7 +313,7 @@ class LagoService {
     async downloadInvoice(lagoId: string): Promise<Blob> {
         const response = await fetch(`/api/v2/billing/invoices/${lagoId}/download`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('eog_auth_token')}`
+                'Authorization': `Bearer ${localStorage.getItem('saas_auth_token')}`
             }
         });
         if (!response.ok) {

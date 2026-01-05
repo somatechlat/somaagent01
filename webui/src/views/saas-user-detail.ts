@@ -20,7 +20,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 
 import '../components/saas-user-profile-card.js';
 import '../components/saas-permission-guard.js';
-import '../components/soma-tabs.js';
+import '../components/saas-tabs.js';
 
 interface UserDetail {
     id: string;

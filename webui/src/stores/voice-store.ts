@@ -1,6 +1,6 @@
 /**
- * Eye of God Voice Store
- * Per Eye of God UIX Design Section 5.1
+ * SaaS Admin Voice Store
+ * Per SaaS Admin UIX Design Section 5.1
  *
  * VIBE COMPLIANT:
  * - Real Lit Context implementation
@@ -79,8 +79,8 @@ const INITIAL_STATE: VoiceStateData = {
 
 export const voiceContext = createContext<VoiceStateData>('voice-state');
 
-@customElement('soma-voice-provider')
-export class SomaVoiceProvider extends LitElement {
+@customElement('saas-voice-provider')
+export class SaasVoiceProvider extends LitElement {
     @provide({ context: voiceContext })
     @property({ attribute: false })
     state: VoiceStateData = { ...INITIAL_STATE };
@@ -320,6 +320,6 @@ export class SomaVoiceProvider extends LitElement {
 
 declare global {
     interface HTMLElementTagNameMap {
-        'soma-voice-provider': SomaVoiceProvider;
+        'saas-voice-provider': SaasVoiceProvider;
     }
 }

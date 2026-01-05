@@ -351,7 +351,7 @@ export class EntityManager extends LitElement {
     }
 
     private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('eog_auth_token');
+        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
         return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
     }
 

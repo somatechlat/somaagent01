@@ -1,6 +1,6 @@
 /**
- * Eye of God Mode Store (Lit Context)
- * Per Eye of God UIX Design Section 4.2
+ * SaaS Admin Mode Store (Lit Context)
+ * Per SaaS Admin UIX Design Section 4.2
  *
  * VIBE COMPLIANT:
  * - Real Lit context implementation
@@ -89,8 +89,8 @@ const MODE_INFO: Record<AgentMode, ModeInfo> = {
 
 export const modeContext = createContext<ModeState>('mode-state');
 
-@customElement('soma-mode-provider')
-export class SomaModeProvider extends LitElement {
+@customElement('saas-mode-provider')
+export class SaasModeProvider extends LitElement {
     @provide({ context: modeContext })
     @property({ attribute: false })
     state: ModeState = {
@@ -210,6 +210,6 @@ export class SomaModeProvider extends LitElement {
 
 declare global {
     interface HTMLElementTagNameMap {
-        'soma-mode-provider': SomaModeProvider;
+        'saas-mode-provider': SaasModeProvider;
     }
 }

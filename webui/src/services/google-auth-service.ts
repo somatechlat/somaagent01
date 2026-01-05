@@ -1,5 +1,5 @@
 /**
- * Eye of God Google OAuth Service
+ * SaaS Admin Google OAuth Service
  * Direct Google OAuth 2.0 Integration
  *
  * VIBE COMPLIANT:
@@ -44,8 +44,8 @@ class GoogleAuthService {
         const nonce = this._generateNonce();
 
         // Store state for verification
-        sessionStorage.setItem('eog_google_state', state);
-        sessionStorage.setItem('eog_google_nonce', nonce);
+        sessionStorage.setItem('saas_google_state', state);
+        sessionStorage.setItem('saas_google_nonce', nonce);
 
         const params = new URLSearchParams({
             client_id: this.config.clientId,
@@ -77,7 +77,7 @@ class GoogleAuthService {
      * Verify state matches stored state
      */
     verifyState(state: string): boolean {
-        const storedState = sessionStorage.getItem('eog_google_state');
+        const storedState = sessionStorage.getItem('saas_google_state');
         return storedState === state;
     }
 
@@ -111,8 +111,8 @@ class GoogleAuthService {
      * Clear stored state
      */
     clearState() {
-        sessionStorage.removeItem('eog_google_state');
-        sessionStorage.removeItem('eog_google_nonce');
+        sessionStorage.removeItem('saas_google_state');
+        sessionStorage.removeItem('saas_google_nonce');
     }
 
     private _generateState(): string {

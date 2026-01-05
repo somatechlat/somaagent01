@@ -1,6 +1,6 @@
 /**
- * Eye of God Settings Store
- * Per Eye of God UIX Design Section 2.2
+ * SaaS Admin Settings Store
+ * Per SaaS Admin UIX Design Section 2.2
  *
  * VIBE COMPLIANT:
  * - Real Lit Context implementation
@@ -85,8 +85,8 @@ const DEFAULT_SETTINGS: SettingsData = {
     },
 };
 
-@customElement('soma-settings-provider')
-export class SomaSettingsProvider extends LitElement {
+@customElement('saas-settings-provider')
+export class SaasSettingsProvider extends LitElement {
     @provide({ context: settingsContext })
     @state()
     settingsState: SettingsStateData = {
@@ -116,7 +116,7 @@ export class SomaSettingsProvider extends LitElement {
         this.settingsState = { ...this.settingsState, isLoading: true, error: null };
 
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             const response = await fetch('/api/v2/settings/', {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -197,7 +197,7 @@ export class SomaSettingsProvider extends LitElement {
         this.settingsState = { ...this.settingsState, isSaving: true, error: null };
 
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             const response = await fetch(`/api/v2/settings/${tab}`, {
                 method: 'PUT',
                 headers: {
@@ -258,7 +258,7 @@ export class SomaSettingsProvider extends LitElement {
         };
 
         try {
-            const token = localStorage.getItem('eog_auth_token');
+            const token = localStorage.getItem('saas_auth_token');
             const response = await fetch(`/api/v2/settings/${tab}/reset`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -282,6 +282,6 @@ export class SomaSettingsProvider extends LitElement {
 
 declare global {
     interface HTMLElementTagNameMap {
-        'soma-settings-provider': SomaSettingsProvider;
+        'saas-settings-provider': SaasSettingsProvider;
     }
 }

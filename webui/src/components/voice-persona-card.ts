@@ -3,7 +3,7 @@
  * 
  * VIBE COMPLIANT - Lit Component
  * Displays voice persona info with edit/delete actions.
- * Follows soma-voice-button patterns.
+ * Follows saas-voice-button patterns.
  */
 
 import { LitElement, html, css } from 'lit';
@@ -32,15 +32,15 @@ export class VoicePersonaCard extends LitElement {
         }
 
         .persona-card {
-            background: var(--soma-surface, rgba(30, 41, 59, 0.85));
-            border-radius: var(--soma-radius-lg, 12px);
+            background: var(--saas-surface, rgba(30, 41, 59, 0.85));
+            border-radius: var(--saas-radius-lg, 12px);
             padding: 20px;
-            border: 1px solid var(--soma-border, rgba(148, 163, 184, 0.1));
+            border: 1px solid var(--saas-border, rgba(148, 163, 184, 0.1));
             transition: all 0.2s ease;
         }
 
         .persona-card:hover {
-            border-color: var(--soma-accent, #94a3b8);
+            border-color: var(--saas-accent, #94a3b8);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
@@ -67,23 +67,23 @@ export class VoicePersonaCard extends LitElement {
         }
 
         .name {
-            font-size: var(--soma-text-lg, 18px);
+            font-size: var(--saas-text-lg, 18px);
             font-weight: 600;
-            color: var(--soma-text-main, #e2e8f0);
+            color: var(--saas-text-main, #e2e8f0);
         }
 
         .default-badge {
-            background: var(--soma-accent, #94a3b8);
-            color: var(--soma-bg-base, #1e293b);
-            font-size: var(--soma-text-xs, 11px);
+            background: var(--saas-accent, #94a3b8);
+            color: var(--saas-bg-base, #1e293b);
+            font-size: var(--saas-text-xs, 11px);
             padding: 2px 8px;
             border-radius: 12px;
             font-weight: 600;
         }
 
         .description {
-            color: var(--soma-text-dim, #94a3b8);
-            font-size: var(--soma-text-sm, 13px);
+            color: var(--saas-text-dim, #94a3b8);
+            font-size: var(--saas-text-sm, 13px);
             margin-bottom: 16px;
         }
 
@@ -98,19 +98,19 @@ export class VoicePersonaCard extends LitElement {
             display: flex;
             align-items: center;
             gap: 4px;
-            background: var(--soma-bg-base, rgba(15, 23, 42, 0.5));
+            background: var(--saas-bg-base, rgba(15, 23, 42, 0.5));
             padding: 4px 10px;
-            border-radius: var(--soma-radius-sm, 4px);
-            font-size: var(--soma-text-xs, 11px);
-            color: var(--soma-text-dim, #94a3b8);
+            border-radius: var(--saas-radius-sm, 4px);
+            font-size: var(--saas-text-xs, 11px);
+            color: var(--saas-text-dim, #94a3b8);
         }
 
         .config-item .label {
-            color: var(--soma-text-muted, #64748b);
+            color: var(--saas-text-muted, #64748b);
         }
 
         .config-item .value {
-            color: var(--soma-text-main, #e2e8f0);
+            color: var(--saas-text-main, #e2e8f0);
             font-weight: 500;
         }
 
@@ -121,46 +121,46 @@ export class VoicePersonaCard extends LitElement {
 
         .action-btn {
             background: transparent;
-            border: 1px solid var(--soma-border, rgba(148, 163, 184, 0.2));
-            color: var(--soma-text-dim, #94a3b8);
+            border: 1px solid var(--saas-border, rgba(148, 163, 184, 0.2));
+            color: var(--saas-text-dim, #94a3b8);
             padding: 6px 12px;
-            border-radius: var(--soma-radius-sm, 4px);
-            font-size: var(--soma-text-xs, 11px);
+            border-radius: var(--saas-radius-sm, 4px);
+            font-size: var(--saas-text-xs, 11px);
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .action-btn:hover {
-            border-color: var(--soma-accent, #94a3b8);
-            color: var(--soma-text-main, #e2e8f0);
+            border-color: var(--saas-accent, #94a3b8);
+            color: var(--saas-text-main, #e2e8f0);
         }
 
         .action-btn.primary {
-            background: var(--soma-accent, #94a3b8);
-            border-color: var(--soma-accent, #94a3b8);
-            color: var(--soma-bg-base, #1e293b);
+            background: var(--saas-accent, #94a3b8);
+            border-color: var(--saas-accent, #94a3b8);
+            color: var(--saas-bg-base, #1e293b);
         }
 
         .action-btn.danger:hover {
-            border-color: var(--soma-danger, #ef4444);
-            color: var(--soma-danger, #ef4444);
+            border-color: var(--saas-danger, #ef4444);
+            color: var(--saas-danger, #ef4444);
         }
 
         .status-badge {
             padding: 2px 8px;
             border-radius: 12px;
-            font-size: var(--soma-text-xs, 11px);
+            font-size: var(--saas-text-xs, 11px);
             font-weight: 500;
         }
 
         .status-badge.active {
             background: rgba(34, 197, 94, 0.2);
-            color: var(--soma-success, #22c55e);
+            color: var(--saas-success, #22c55e);
         }
 
         .status-badge.inactive {
             background: rgba(148, 163, 184, 0.2);
-            color: var(--soma-text-dim, #94a3b8);
+            color: var(--saas-text-dim, #94a3b8);
         }
     `;
 

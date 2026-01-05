@@ -806,10 +806,10 @@ export class SaasChat extends LitElement {
     private async _loadAgents(): Promise<void> {
         try {
             const response = await apiClient.get('/agents');
-            if (response.ok) {
-                const data = await response.json();
+            if ((response as Response).ok) {
+                const data = await (response as Response).json();
                 this._agents = data.agents || [];
-                
+
                 // Auto-select if single agent per design.md Section 7.3
                 if (this._agents.length === 1) {
                     this._selectedAgentId = this._agents[0].id;
@@ -856,9 +856,9 @@ export class SaasChat extends LitElement {
             const response = await apiClient.post('/chat/conversations', {
                 agent_id: agentId,
             });
-            
-            if (response.ok) {
-                const data = await response.json();
+
+            if ((response as Response).ok) {
+                const data = await (response as Response).json();
                 return data.id;
             }
             return null;
@@ -1110,7 +1110,8 @@ export class SaasChat extends LitElement {
 
         let conversationId = this._activeConversationId;
         if (!conversationId && this._selectedAgentId) {
-            conversationId = await this._createConversation(this._selectedAgentId);
+            const newId = await this._createConversation(this._selectedAgentId);
+            conversationId = newId || '';
             if (!conversationId) {
                 console.error('[SaasChat] Failed to create conversation');
                 return;
@@ -1245,11 +1246,11 @@ export class SaasChat extends LitElement {
 
     private _logout() {
         // Clear all auth tokens
-        localStorage.removeItem('eog_auth_token');
-        localStorage.removeItem('eog_user');
-        localStorage.removeItem('eog_keycloak_token');
-        sessionStorage.removeItem('eog_auth_state');
-        sessionStorage.removeItem('eog_auth_nonce');
+        localStorage.removeItem('saas_auth_token');
+        localStorage.removeItem('saas_user');
+        localStorage.removeItem('saas_keycloak_token');
+        sessionStorage.removeItem('saas_auth_state');
+        sessionStorage.removeItem('saas_auth_nonce');
 
         // Redirect to login
         window.location.href = '/login';

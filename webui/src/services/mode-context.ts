@@ -1,6 +1,6 @@
 /**
  * Mode Context Service
- * Manages the "Eye of God" operation modes (Section 3.1)
+ * Manages the "SaaS Admin" operation modes (Section 3.1)
  */
 import { createContext } from '@lit-labs/context';
 
@@ -14,4 +14,4 @@ export interface ModeState {
     timestamp: number;
 }
 
-export const modeContext = createContext<ModeState>('soma-mode');
+export const modeContext = createContext<ModeState>('saas-mode');

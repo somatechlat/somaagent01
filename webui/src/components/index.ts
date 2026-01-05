@@ -1,59 +1,28 @@
-/**
- * Eye of God UI Components Barrel Export
- * Per Eye of God UIX Design Section 2.2
- *
- * VIBE COMPLIANT: Real component exports
- */
+export { SaasButton } from './saas-button.js';
+export { SaasInput } from './saas-input.js';
+export { SaasSelect } from './saas-select.js';
+export { SaasToggle } from './saas-toggle.js';
+export { SaasCard } from './saas-card.js';
+export { SaasTabs } from './saas-tabs.js';
+export { SaasGlassModal as SaasModal } from './saas-glass-modal.js'; // Mapping SaasModal to GlassModal
+export { SaasToast } from './saas-toast.js';
+export { SaasVoiceButton } from './saas-voice-button.js';
+export { SaasVoiceOverlay } from './saas-voice-overlay.js';
 
-// Form components
-export { SomaButton } from './soma-button.js';
-export { SomaInput } from './soma-input.js';
-export { SomaSelect } from './soma-select.js';
-export { SomaToggle } from './soma-toggle.js';
-export { SomaSlider } from './soma-slider.js';
+export { SaasGlassModal } from './saas-glass-modal.js';
+export { SaasStatusBadge } from './saas-status-badge.js';
+export { SaasRoleBadge } from './saas-role-badge.js';
+export { SaasActionMenu } from './saas-action-menu.js';
+export { SaasDataTable } from './saas-data-table.js';
+export { SaasFormField } from './saas-form-field.js';
+export { SaasPermissionGuard } from './saas-permission-guard.js';
+export { SaasQuotaBar } from './saas-quota-bar.js';
+export { SaasSidebar } from './saas-sidebar.js';
+export { SaasStatCard } from './saas-stat-card.js';
+export { SaasUserInviteModal } from './saas-user-invite-modal.js';
+export { SaasUserProfileCard } from './saas-user-profile-card.js';
+export { SettingsForm } from './settings-form.js';
 
-// Layout components
-export { SomaCard } from './soma-card.js';
-export { SomaTabs } from './soma-tabs.js';
-export { SomaModal } from './soma-modal.js';
-export { SomaToast } from './soma-toast.js';
-
-// Voice components
-export { SomaVoiceButton } from './soma-voice-button.js';
-export { SomaVoiceOverlay } from './soma-voice-overlay.js';
-export { VoicePersonaCard } from './voice-persona-card.js';
-export { VoiceConfigPanel } from './voice-config-panel.js';
-export { VoiceWaveform } from './voice-waveform.js';
-export { VoiceTranscript } from './voice-transcript.js';
-
-// Re-export types
-export type { SelectOption } from './soma-select.js';
-export type { Tab } from './soma-tabs.js';
-
-// SAAS Components (Light/Dark Theme)
-export * from './saas-stat-card.js';
-export * from './saas-glass-modal.js';
-export * from './saas-status-badge.js';
-export * from './saas-data-table.js';
-export * from './saas-sidebar.js';
-export * from './saas-form-field.js';
-export * from './saas-select.js';
-export * from './saas-toggle.js';
-export * from './saas-action-menu.js';
-export * from './entity-manager.js';
-export * from './settings-form.js';
-
-// New Reusable Components
-export * from './saas-permission-guard.js';
-export * from './saas-impersonation-banner.js';
-export * from './saas-user-profile-card.js';
-export * from './saas-user-invite-modal.js';
-export * from './saas-role-badge.js';
-export * from './saas-quota-bar.js';
-
-// SAAS Types
-export type { StatStatus, TrendDirection } from './saas-stat-card.js';
-export type { ModalSize } from './saas-glass-modal.js';
-export type { BadgeVariant, BadgeSize } from './saas-status-badge.js';
-export type { UserProfileData } from './saas-user-profile-card.js';
-
+// Types
+export type { SelectOption } from './saas-select.js';
+export type { Tab } from './saas-tabs.js';

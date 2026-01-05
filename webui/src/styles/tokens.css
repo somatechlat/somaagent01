@@ -12,105 +12,105 @@
     /* ==========================================================================
        COLORS - Background
        ========================================================================== */
-    --eog-bg-void: #0f172a;
-    --eog-bg-base: #1e293b;
-    --eog-surface: rgba(30, 41, 59, 0.85);
-    --eog-surface-hover: rgba(51, 65, 85, 0.9);
+    --saas-bg-void: #0f172a;
+    --saas-bg-base: #1e293b;
+    --saas-surface: rgba(30, 41, 59, 0.85);
+    --saas-surface-hover: rgba(51, 65, 85, 0.9);
 
     /* ==========================================================================
        COLORS - Text
        ========================================================================== */
-    --eog-text-main: #e2e8f0;
-    --eog-text-dim: #64748b;
-    --eog-text-bright: #f8fafc;
+    --saas-text-main: #e2e8f0;
+    --saas-text-dim: #64748b;
+    --saas-text-bright: #f8fafc;
 
     /* ==========================================================================
        COLORS - Accent
        ========================================================================== */
-    --eog-accent: #94a3b8;
-    --eog-accent-hover: #cbd5e1;
+    --saas-accent: #94a3b8;
+    --saas-accent-hover: #cbd5e1;
 
     /* ==========================================================================
        COLORS - Semantic
        ========================================================================== */
-    --eog-success: #22c55e;
-    --eog-warning: #eab308;
-    --eog-danger: #ef4444;
-    --eog-info: #3b82f6;
+    --saas-success: #22c55e;
+    --saas-warning: #eab308;
+    --saas-danger: #ef4444;
+    --saas-info: #3b82f6;
 
     /* ==========================================================================
        COLORS - Borders
        ========================================================================== */
-    --eog-border-color: rgba(255, 255, 255, 0.05);
-    --eog-border-hover: rgba(255, 255, 255, 0.1);
-    --eog-glass-border: rgba(255, 255, 255, 0.08);
+    --saas-border-color: rgba(255, 255, 255, 0.05);
+    --saas-border-hover: rgba(255, 255, 255, 0.1);
+    --saas-glass-border: rgba(255, 255, 255, 0.08);
 
     /* ==========================================================================
        TYPOGRAPHY
        ========================================================================== */
-    --eog-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --eog-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --saas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --saas-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-    --eog-text-xs: 11px;
-    --eog-text-sm: 13px;
-    --eog-text-base: 14px;
-    --eog-text-lg: 16px;
-    --eog-text-xl: 18px;
-    --eog-text-2xl: 24px;
+    --saas-text-xs: 11px;
+    --saas-text-sm: 13px;
+    --saas-text-base: 14px;
+    --saas-text-lg: 16px;
+    --saas-text-xl: 18px;
+    --saas-text-2xl: 24px;
 
-    --eog-leading-tight: 1.25;
-    --eog-leading-normal: 1.5;
-    --eog-leading-relaxed: 1.75;
+    --saas-leading-tight: 1.25;
+    --saas-leading-normal: 1.5;
+    --saas-leading-relaxed: 1.75;
 
     /* ==========================================================================
        SPACING
        ========================================================================== */
-    --eog-spacing-xs: 4px;
-    --eog-spacing-sm: 8px;
-    --eog-spacing-md: 16px;
-    --eog-spacing-lg: 24px;
-    --eog-spacing-xl: 32px;
-    --eog-spacing-2xl: 48px;
+    --saas-spacing-xs: 4px;
+    --saas-spacing-sm: 8px;
+    --saas-spacing-md: 16px;
+    --saas-spacing-lg: 24px;
+    --saas-spacing-xl: 32px;
+    --saas-spacing-2xl: 48px;
 
     /* ==========================================================================
        BORDERS & RADIUS
        ========================================================================== */
-    --eog-radius-sm: 4px;
-    --eog-radius-md: 8px;
-    --eog-radius-lg: 12px;
-    --eog-radius-xl: 16px;
-    --eog-radius-full: 9999px;
+    --saas-radius-sm: 4px;
+    --saas-radius-md: 8px;
+    --saas-radius-lg: 12px;
+    --saas-radius-xl: 16px;
+    --saas-radius-full: 9999px;
 
     /* ==========================================================================
        SHADOWS
        ========================================================================== */
-    --eog-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-    --eog-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-    --eog-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-    --eog-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
+    --saas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --saas-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --saas-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --saas-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
 
     /* ==========================================================================
        TRANSITIONS
        ========================================================================== */
-    --eog-transition-fast: 0.1s ease;
-    --eog-transition-normal: 0.2s ease;
-    --eog-transition-slow: 0.3s ease;
+    --saas-transition-fast: 0.1s ease;
+    --saas-transition-normal: 0.2s ease;
+    --saas-transition-slow: 0.3s ease;
 
     /* ==========================================================================
        Z-INDEX
        ========================================================================== */
-    --eog-z-dropdown: 100;
-    --eog-z-modal: 200;
-    --eog-z-overlay: 300;
-    --eog-z-toast: 400;
-    --eog-z-tooltip: 500;
+    --saas-z-dropdown: 100;
+    --saas-z-modal: 200;
+    --saas-z-overlay: 300;
+    --saas-z-toast: 400;
+    --saas-z-tooltip: 500;
 
     /* ==========================================================================
        LAYOUT
        ========================================================================== */
-    --eog-sidebar-width: 280px;
-    --eog-header-height: 56px;
-    --eog-footer-height: 48px;
+    --saas-sidebar-width: 280px;
+    --saas-header-height: 56px;
+    --saas-footer-height: 48px;
 }
 
 /* ==========================================================================
@@ -133,11 +133,11 @@ html {
 }
 
 body {
-    font-family: var(--eog-font-sans);
-    font-size: var(--eog-text-base);
-    line-height: var(--eog-leading-normal);
-    color: var(--eog-text-main);
-    background: var(--eog-bg-void);
+    font-family: var(--saas-font-sans);
+    font-size: var(--saas-text-base);
+    line-height: var(--saas-leading-normal);
+    color: var(--saas-text-main);
+    background: var(--saas-bg-void);
 }
 
 img,
@@ -183,8 +183,8 @@ h6 {
 }
 
 .glass {
-    background: var(--eog-surface);
-    border: 1px solid var(--eog-glass-border);
+    background: var(--saas-surface);
+    border: 1px solid var(--saas-glass-border);
     backdrop-filter: blur(12px);
 }
 

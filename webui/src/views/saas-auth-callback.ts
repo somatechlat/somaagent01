@@ -146,8 +146,8 @@ export class SaasAuthCallback extends LitElement {
     private async _handleCallback() {
         try {
             // Detect which OAuth provider by checking stored state
-            const isGoogleAuth = sessionStorage.getItem('eog_google_state') !== null;
-            const isKeycloakAuth = sessionStorage.getItem('eog_auth_state') !== null;
+            const isGoogleAuth = sessionStorage.getItem('saas_google_state') !== null;
+            const isKeycloakAuth = sessionStorage.getItem('saas_auth_state') !== null;
 
             if (isGoogleAuth) {
                 await this._handleGoogleCallback();
@@ -187,8 +187,8 @@ export class SaasAuthCallback extends LitElement {
         const result = await googleAuthService.exchangeCode(callback.code);
 
         // Store token and user info
-        localStorage.setItem('eog_auth_token', result.access_token);
-        localStorage.setItem('eog_user', JSON.stringify(result.user));
+        localStorage.setItem('saas_auth_token', result.access_token);
+        localStorage.setItem('saas_user', JSON.stringify(result.user));
 
         // Clear state
         googleAuthService.clearState();
@@ -226,7 +226,7 @@ export class SaasAuthCallback extends LitElement {
         const userInfo = await keycloakService.getUserInfo();
 
         if (userInfo) {
-            localStorage.setItem('eog_user', JSON.stringify({
+            localStorage.setItem('saas_user', JSON.stringify({
                 id: userInfo.sub,
                 username: userInfo.preferred_username,
                 email: userInfo.email,

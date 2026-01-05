@@ -1,6 +1,6 @@
 /**
- * Eye of God WebSocket Client
- * Per Eye of God UIX Design Section 4.3
+ * SaaS Admin WebSocket Client
+ * Per SaaS Admin UIX Design Section 4.3
  *
  * VIBE COMPLIANT:
  * - Real WebSocket implementation

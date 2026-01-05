@@ -1,6 +1,6 @@
 /**
- * Eye of God Auth Store
- * Per Eye of God UIX Design Section 2.2
+ * SaaS Admin Auth Store
+ * Per SaaS Admin UIX Design Section 2.2
  * Per login-to-chat-journey design.md Section 10.1, 10.3
  *
  * VIBE COMPLIANT:
@@ -38,8 +38,8 @@ export interface AuthStateData {
 
 export const authContext = createContext<AuthStateData>('auth-context');
 
-const AUTH_STORAGE_KEY = 'eog_auth_token';
-const USER_STORAGE_KEY = 'eog_user';
+const AUTH_STORAGE_KEY = 'saas_auth_token';
+const USER_STORAGE_KEY = 'saas_user';
 
 /**
  * Role priority for redirect routing.
@@ -67,8 +67,8 @@ const ROLE_PRIORITY = [
     'viewer',
 ];
 
-@customElement('soma-auth-provider')
-export class SomaAuthProvider extends LitElement {
+@customElement('saas-auth-provider')
+export class SaasAuthProvider extends LitElement {
     @provide({ context: authContext })
     @state()
     authState: AuthStateData = {
@@ -390,6 +390,6 @@ export class SomaAuthProvider extends LitElement {
 
 declare global {
     interface HTMLElementTagNameMap {
-        'soma-auth-provider': SomaAuthProvider;
+        'saas-auth-provider': SaasAuthProvider;
     }
 }
