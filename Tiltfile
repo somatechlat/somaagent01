@@ -1,10 +1,23 @@
+# SomaAgent01 Tilt Development Configuration
+# VIBE Rule 113: Port Sovereignty - 20xxx Range (Execution Tier L4)
+# VIBE Rule 102: Shared-Nothing Architecture (Island Mandate)
+# VIBE Rule 106: Tiered Deployment Sequence (SFM -> Brain -> Agent)
+# RAM BUDGET: 10GB Maximum (VIBE Rule 108)
+
 print("""
 +==============================================================+
-|         SOMASTACK - LOCAL DEVELOPMENT                        |
+|         SOMAAGENT01 - MASTER LOCAL DEVELOPMENT               |
 +==============================================================+
-|  Dashboard:   http://localhost:10351                         |
-|  WebUI:       http://localhost:20173                         |
-|  Django API:  http://localhost:20020                         |
+|  Tilt Dashboard:   http://localhost:10351                    |
+|  WebUI:            http://localhost:20173                    |
+|  Django API:       http://localhost:20020                    |
+|  Postgres:         localhost:20432                           |
+|  Redis:            localhost:20379                           |
+|  Kafka:            localhost:20092                           |
+|  Milvus:           localhost:20530                           |
++==============================================================+
+|  RAM BUDGET: 10GB Maximum                                    |
+|  TIER: L4 (Execution) - Depends on SFM+Brain                 |
 +==============================================================+
 """)
 
