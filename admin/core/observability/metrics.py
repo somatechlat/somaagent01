@@ -600,12 +600,6 @@ def measure_duration(metric_name: str):
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        """Execute decorator.
-
-            Args:
-                func: The func.
-            """
-
         async def async_wrapper(*args, **kwargs) -> Any:
             """Execute async wrapper.
                 """
