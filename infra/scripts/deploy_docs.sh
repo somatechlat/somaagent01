@@ -8,7 +8,11 @@ echo "🚀 Starting SOMA Stack Documentation Deployment..."
 
 # 1. SomaAgent01
 echo "📦 Building SomaAgent01 Docs..."
-cd /Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01
+# Navigate to Workspace Root (assuming script is in infra/scripts)
+# infra/scripts -> ../.. -> somaAgent01
+cd "$(dirname "$0")/../.."
+ROOT_DIR=$(pwd)
+
 # Ensure clean state
 rm -rf docs/sphinx/_build
 cd docs/sphinx
@@ -17,7 +21,7 @@ echo "✅ SomaAgent01 Build Complete"
 
 # 2. SomaBrain
 echo "🧠 Building SomaBrain Docs..."
-cd /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain
+cd "$ROOT_DIR/../somabrain"
 rm -rf docs/sphinx/_build
 cd docs/sphinx
 make html SPHINXBUILD="python3 -m sphinx"
@@ -25,7 +29,7 @@ echo "✅ SomaBrain Build Complete"
 
 # 3. SomaFractalMemory
 echo "💾 Building SomaFractalMemory Docs..."
-cd /Users/macbookpro201916i964gb1tb/Documents/GitHub/somafractalmemory
+cd "$ROOT_DIR/../somafractalmemory"
 rm -rf docs/sphinx/_build
 cd docs/sphinx
 make html SPHINXBUILD="python3 -m sphinx"

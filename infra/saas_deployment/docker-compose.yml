@@ -28,9 +28,11 @@ services:
   # ===========================================================================
   somastack_saas:
     container_name: somastack_saas
-    build:
-      context: ../../../ # Assumes we are in somaAgent01/infra/saas_deployment
-      dockerfile: somaAgent01/infra/saas_deployment/Dockerfile
+    # USE OPTIMIZED BUILD: ./build_saas.sh (Avoids 3GB context transfer)
+    image: somatech/soma-saas:latest
+    # build:
+    #   context: ../../../ # Too large, use build_saas.sh
+    #   dockerfile: somaAgent01/infra/saas_deployment/Dockerfile
     env_file:
       - .env
     ports:
@@ -50,6 +52,13 @@ services:
       - ../../../somaAgent01:/app/somaAgent01
       - ../../../somabrain:/app/somabrain
       - ../../../somafractalmemory:/app/somafractalmemory
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 3500M
+        reservations:
+          memory: 1024M
 
   # ===========================================================================
   # 2. SHARED INFRASTRUCTURE
@@ -63,6 +72,16 @@ services:
       POSTGRES_USER: soma
       POSTGRES_PASSWORD: soma
       POSTGRES_DB: soma # Initial DB, others created by init-db.sh
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "work_mem=4MB"
     ports:
       - "63932:5432"
     volumes:
@@ -80,6 +99,7 @@ services:
   somastack_redis:
     container_name: somastack_redis
     image: redis:7.2-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     ports:
       - "63979:6379"
     volumes:
@@ -111,6 +131,14 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168 # 7 Days
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
     volumes:
       - somastack_kafka_data:/var/lib/kafka/data
     networks:
@@ -131,6 +159,11 @@ services:
     volumes:
       - somastack_etcd_data:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     networks:
       - soma_stack_net
 
@@ -153,6 +186,11 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   somastack_milvus:
     container_name: somastack_milvus
@@ -171,5 +209,10 @@ services:
     depends_on:
       - somastack_etcd
       - somastack_minio
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
     networks:
       - soma_stack_net

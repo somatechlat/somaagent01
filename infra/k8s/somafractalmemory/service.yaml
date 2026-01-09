@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: somafractalmemory
+  namespace: memory
+  labels:
+    app: somafractalmemory
+spec:
+  selector:
+    app: somafractalmemory
+  ports:
+    - protocol: TCP
+      port: 63901
+      targetPort: 10101
+      name: http-api
+  type: ClusterIP
