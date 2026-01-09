@@ -3,6 +3,7 @@
 > **Architecture**: True Monolith (Unified Process)
 > **Stack**: Agent01 (Orchestrator), SomaBrain (Cognitive), FractalMemory (Vector Store)
 > **Ports**: 63900 - 63999 (Strict Isolation)
+> **Direct Mode**: Supported (See [GUIDE_SAAS_DIRECT.md](./GUIDE_SAAS_DIRECT.md))
 
 ## Overview
 This directory contains the infrastructure-as-code (IaC) for the **SomaStack SaaS** deployment. This deployment packages the entire Cognitive Triad into a single Docker container (`somastack_saas`) managed by `supervisord`.

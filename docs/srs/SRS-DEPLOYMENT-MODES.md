@@ -28,8 +28,10 @@ The platform must support the following deployment targets via **`SA01_DEPLOYMEN
 - **ECS_EC2**: ECS on EC2 capacity.
 - **EC2**: Direct VM deployment.
 - **APP_RUNNER**: AWS App Runner (HTTP‑only services; no WebSocket for Channels).
+- **UNIFIED_SAAS**: Single-Process Integration (Agent+Brain+SFM). Used for high-performance SaaS.
 
-`SA01_DEPLOYMENT_MODE` continues to describe environment posture (DEV/STAGING/PROD/LOCAL/TEST) and is orthogonal to deployment target.
+`SA01_DEPLOYMENT_MODE` continues to describe environment posture (DEV/STAGING/PROD/LOCAL/TEST).
+`SOMA_SAAS_MODE` controls the internal integration strategy (HTTP vs DIRECT).
 
 ---
 
@@ -39,6 +41,11 @@ The platform must support the following deployment targets via **`SA01_DEPLOYMEN
 
 - Total host memory budget: **15 GB** (production‑aligned testing on constrained hardware).
 - All stateful services run locally (Postgres, Redis, Kafka, etc.).
+
+### 3.2 Unified SaaS (Direct) Baseline
+- **Architecture**: `SOMA_SAAS_MODE=direct`
+- **Memory**: Direct Python Interface (No HTTP overhead for memory ops).
+- **Latency**: < 0.1ms for memory store/recall.
 
 ### 3.2 AWS Baseline (Fargate / ECS / EKS / EC2)
 
