@@ -207,6 +207,13 @@ JWT_ALGORITHM = "RS256"
 JWT_AUDIENCE = KEYCLOAK_CLIENT_ID
 JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
 
+# Unified JWT Settings (for Gateway & Admin)
+# -----------------------------------------------------------------------------
+JWT_JWKS_URL = os.environ.get("SA01_JWT_JWKS_URL", f"{JWT_ISSUER}/protocol/openid-connect/certs")
+JWT_ALGORITHMS = os.environ.get("SA01_JWT_ALGORITHMS", "RS256").split(",")
+JWT_LEEWAY = int(os.environ.get("SA01_JWT_LEEWAY", "10"))
+
+
 # =============================================================================
 # GOOGLE OAUTH SETTINGS (Secrets from ENV or Django Secret model)
 # =============================================================================

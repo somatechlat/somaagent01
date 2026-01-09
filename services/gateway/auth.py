@@ -16,37 +16,37 @@ Example:
     >>> user_id = payload["user_id"]
 """
 
-from __future__ import annotations
-
 import jwt
-
+import httpx
+from django.conf import settings
 from admin.common.exceptions import UnauthorizedError, ForbiddenError
 from services.common.policy_client import PolicyClient, PolicyRequest
-import os
 
 jwt_module = jwt
 
-REQUIRE_AUTH = None
 _policy_client: PolicyClient | None = None
 
 
 async def _resolve_signing_key(header: dict) -> str:
-    """Resolve signing key from JWT header."""
-    jwks_url = os.environ.auth.jwt_jwks_url
+    """Resolve signing key from JWKS or settings."""
+    # 1. Try JWKS if configured
+    jwks_url = getattr(settings, "JWT_JWKS_URL", None)
     if jwks_url:
-        import httpx
-
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(jwks_url)
                 resp.raise_for_status()
-                return "test_secret_key"
+                jwks = resp.json()
+                
+                kid = header.get("kid")
+                for key in jwks.get("keys", []):
+                    if key.get("kid") == kid:
+                        return jwt.algorithms.RSAAlgorithm.from_jwk(key)
         except Exception:
             pass
-    jwt_secret = os.environ.auth.jwt_secret
-    if jwt_secret:
-        return jwt_secret
-    return "secret"
+            
+    # 2. Fallback to static public key/secret
+    return getattr(settings, "KEYCLOAK_PUBLIC_KEY", None) or getattr(settings, "SECRET_KEY")
 
 
 def _get_policy_client() -> PolicyClient | None:
@@ -54,9 +54,11 @@ def _get_policy_client() -> PolicyClient | None:
     global _policy_client
     if _policy_client is not None:
         return _policy_client
-    opa_url = cfg.get_opa_url() or os.environ.external.opa_url
+        
+    opa_url = getattr(settings, "OPA_URL", None)
     if not opa_url:
         return None
+        
     _policy_client = PolicyClient(base_url=opa_url)
     return _policy_client
 
@@ -85,6 +87,7 @@ async def _evaluate_opa(payload: dict, policy_context: dict | None) -> None:
 
 def _get_openfga_client():
     """Get OpenFGA client if available."""
+    # Placeholder for future implementation
     return None
 
 
@@ -97,17 +100,15 @@ async def authorize_request(request, policy_context: dict = None):
         UnauthorizedError: If authentication fails
         ForbiddenError: If authorization denied
     """
-    auth_required = getattr(globals(), "REQUIRE_AUTH", None)
-    if auth_required is None:
-        auth_required = os.environ.auth.auth_required
+    auth_required = getattr(settings, "AUTH_REQUIRED", True)
+    
+    # Dev/Test Bypass - ONLY if explicitly disabled
     if not auth_required:
-        return {"user_id": "test_user", "tenant": "test_tenant", "scope": "read", "sub": "user-123"}
+        return {"user_id": "test_user", "tenant": "test_tenant", "scope": "read", "sub": "test-user-123"}
 
     auth_header = request.headers.get("Authorization")
     if not auth_header:
-        if auth_required:
-            raise UnauthorizedError("Authorization header required")
-        return None
+        raise UnauthorizedError("Authorization header required")
 
     if not auth_header.startswith("Bearer "):
         raise UnauthorizedError("Invalid authorization header format")
@@ -119,13 +120,14 @@ async def authorize_request(request, policy_context: dict = None):
     try:
         header = jwt_module.get_unverified_header(token)
         key = await _resolve_signing_key(header)
+        
         payload = jwt_module.decode(
             token,
             key=key,
-            algorithms=os.environ.auth.jwt_algorithms,
-            audience=os.environ.auth.jwt_audience,
-            issuer=os.environ.auth.jwt_issuer,
-            leeway=os.environ.auth.jwt_leeway,
+            algorithms=getattr(settings, "JWT_ALGORITHMS", ["RS256"]),
+            audience=getattr(settings, "JWT_AUDIENCE", None),
+            issuer=getattr(settings, "JWT_ISSUER", None),
+            leeway=getattr(settings, "JWT_LEEWAY", 10),
         )
 
         opa_context = dict(policy_context or {})
@@ -134,19 +136,8 @@ async def authorize_request(request, policy_context: dict = None):
         if path:
             opa_context.setdefault("resource", path)
         opa_context.setdefault("tenant", payload.get("tenant"))
+        
         await _evaluate_opa(payload, opa_context)
-
-        openfga_client = None
-        try:
-            openfga_client = _get_openfga_client()
-        except Exception:
-            pass
-        if openfga_client is not None:
-            tenant = payload.get("tenant", payload.get("sub", "default_tenant"))
-            subject = payload.get("sub")
-            allowed = await openfga_client.check_tenant_access(tenant, subject)
-            if not allowed:
-                raise ForbiddenError(action="tenant_access", resource="openfga")
 
         return {
             "user_id": payload.get("sub", "unknown_user"),
