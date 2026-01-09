@@ -12,6 +12,7 @@ slowapi==0.1.9
 # Core config and serialization
 pydantic==2.11.6
 pydantic-settings==2.6.1
+django-environ==0.11.2
 python-dotenv==1.1.0
 PyYAML==6.0.2
 PyJWT==2.9.0
