@@ -55,6 +55,7 @@ if not settings.configured:
             "django.contrib.messages",
             # Django Ninja
             "ninja",
+            "somafractalmemory", # Monolith Integration
             # Project Apps - Existing
             "admin.saas",
             # Project Apps - New (M1 Migration)
