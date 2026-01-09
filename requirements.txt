@@ -16,6 +16,7 @@ django-environ==0.11.2
 python-dotenv==1.1.0
 PyYAML==6.0.2
 PyJWT==2.9.0
+python-jose==3.3.0
 
 # Databases and brokers
 jsonschema==4.22.0
