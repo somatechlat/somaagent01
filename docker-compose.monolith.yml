@@ -1,0 +1,191 @@
+# =============================================================================
+# SOMA MONOLITH AGENT - Docker Compose
+# =============================================================================
+# Single deployment with all 3 SOMA projects in one container.
+# External services (Milvus, Redis, Postgres) remain separate.
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # ===========================================================================
+  # SOMA MONOLITH AGENT (Agent01 + SomaBrain + FractalMemory)
+  # ===========================================================================
+  soma-agent:
+    build:
+      context: .. # Parent directory containing all 3 repos
+      dockerfile: somaAgent01/Dockerfile.monolith
+    image: somatech/soma-monolith:latest
+    container_name: soma-agent
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # Unified API
+      - "9001:9001" # WebUI (if applicable)
+    environment:
+      # Django
+      DJANGO_SETTINGS_MODULE: admin.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-soma-monolith-dev-key}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
+
+      # Monolith mode (in-process calls)
+      SOMA_MONOLITH_MODE: "true"
+
+      # External services
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-soma}
+      POSTGRES_USER: ${POSTGRES_USER:-soma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soma}
+
+      # SomaBrain settings (now in-process)
+      SOMABRAIN_HRR_DIM: ${SOMABRAIN_HRR_DIM:-8192}
+      SOMABRAIN_GLOBAL_SEED: ${SOMABRAIN_GLOBAL_SEED:-42}
+      SOMABRAIN_BHDC_SPARSITY: ${SOMABRAIN_BHDC_SPARSITY:-0.1}
+
+      # FractalMemory settings (now in-process)
+      SFM_MILVUS_HOST: milvus
+      SFM_MILVUS_PORT: 19530
+    volumes:
+      - soma-data:/app/data
+    depends_on:
+      milvus:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - soma-net
+
+  # ===========================================================================
+  # EXTERNAL SERVICES (Still separate containers)
+  # ===========================================================================
+
+  # Milvus Vector Database
+  milvus:
+    image: milvusdb/milvus:v2.3.4
+    container_name: soma-milvus
+    restart: unless-stopped
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      - etcd
+      - minio
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - soma-net
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: soma-etcd
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    volumes:
+      - etcd-data:/etcd
+    command: >
+      etcd --advertise-client-urls=http://0.0.0.0:2379 --listen-client-urls=http://0.0.0.0:2379 --data-dir=/etcd
+    healthcheck:
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - soma-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: soma-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - soma-net
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: soma-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - soma-net
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: soma-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-soma}
+      POSTGRES_USER: ${POSTGRES_USER:-soma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soma}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - soma-net
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  soma-data:
+  milvus-data:
+  etcd-data:
+  minio-data:
+  redis-data:
+  postgres-data:
+
+    # =============================================================================
+    # NETWORKS
+    # =============================================================================
+networks:
+  soma-net:
+    driver: bridge
