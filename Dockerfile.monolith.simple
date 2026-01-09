@@ -1,0 +1,59 @@
+# =============================================================================
+# SOMA MONOLITH AGENT - Simplified Build
+# =============================================================================
+# Uses pre-built somabrain image instead of compiling Rust from source.
+# This is faster for testing the monolith architecture.
+# =============================================================================
+
+FROM somabrain:latest AS somabrain-base
+
+# =============================================================================
+# Final Runtime Image
+# =============================================================================
+FROM python:3.12-slim-bookworm AS runtime
+
+# Runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy somabrain with Rust core already built
+COPY --from=somabrain-base /app/somabrain /app/somabrain
+COPY --from=somabrain-base /usr/local/lib/python3.12/site-packages/somabrain_rs* /usr/local/lib/python3.12/site-packages/
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY somaAgent01/requirements.txt /tmp/requirements-agent.txt
+COPY somafractalmemory/api-requirements.txt /tmp/requirements-memory.txt
+RUN pip install --no-cache-dir \
+    -r /tmp/requirements-agent.txt \
+    -r /tmp/requirements-memory.txt \
+    django-ninja httpx redis pymilvus numpy
+
+# Copy somaAgent01
+COPY somaAgent01/admin/ /app/admin/
+COPY somaAgent01/services/ /app/services/
+COPY somaAgent01/prompts/ /app/prompts/
+COPY somaAgent01/webui/ /app/webui/
+COPY somaAgent01/manage.py /app/manage.py
+COPY somaAgent01/soma_monolith/ /app/soma_monolith/
+
+# Copy somafractalmemory (actual package is somafractalmemory/somafractalmemory/)
+COPY somafractalmemory/somafractalmemory/ /app/fractal_memory/
+COPY somafractalmemory/common/ /app/fractal_memory_common/
+
+# Environment
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    DJANGO_SETTINGS_MODULE=admin.settings \
+    SOMA_MONOLITH_MODE=true
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:9000/health || exit 1
+
+EXPOSE 9000
+
+CMD ["python", "-m", "admin.run_gateway"]
