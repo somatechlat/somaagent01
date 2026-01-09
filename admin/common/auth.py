@@ -52,12 +52,13 @@ class KeycloakConfig(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_keycloak_config() -> KeycloakConfig:
-    """Get cached Keycloak configuration from environment."""
+    """Get cached Keycloak configuration from Django settings."""
+    from django.conf import settings
     return KeycloakConfig(
-        server_url=os.environ.get("KEYCLOAK_URL", "http://localhost:49010"),
-        realm=os.environ.get("KEYCLOAK_REALM", "somaagent"),
-        client_id=os.environ.get("KEYCLOAK_CLIENT_ID", "eye-of-god"),
-        client_secret=os.environ.get("KEYCLOAK_CLIENT_SECRET"),
+        server_url=settings.KEYCLOAK_URL,
+        realm=settings.KEYCLOAK_REALM,
+        client_id=settings.KEYCLOAK_CLIENT_ID,
+        client_secret=settings.KEYCLOAK_CLIENT_SECRET,
     )
 
 

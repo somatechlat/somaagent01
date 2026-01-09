@@ -14,15 +14,15 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Detect monolith mode
-MONOLITH_MODE = os.getenv("SOMA_MONOLITH_MODE", "false").lower() == "true"
+# Detect saas mode
+SAAS_MODE = os.getenv("SOMA_SAAS_MODE", "false").lower() == "true"
 
 
 class BrainBridge:
     """
     Direct in-process bridge to SomaBrain.
     
-    In MONOLITH mode: Uses direct Python imports
+    In SAAS mode: Uses direct Python imports
     In DISTRIBUTED mode: Falls back to HTTP client
     """
     
@@ -39,7 +39,7 @@ class BrainBridge:
             return
         self._initialized = True
         
-        if MONOLITH_MODE:
+        if SAAS_MODE:
             self._init_direct()
         else:
             self._init_http()
@@ -74,7 +74,7 @@ class BrainBridge:
             
         except ImportError as e:
             logger.error("❌ Failed to import SomaBrain: %s", e)
-            raise RuntimeError(f"SomaBrain not available in monolith: {e}")
+            raise RuntimeError(f"SomaBrain not available in saas: {e}")
     
     def _init_http(self) -> None:
         """Initialize HTTP client for distributed mode."""

@@ -1,8 +1,8 @@
 """
-SOMA Monolith Configuration
+SOMA SaaS Configuration
 ============================
 
-Unified configuration for the monolith deployment.
+Unified configuration for the saas deployment.
 All settings from SomaBrain, FractalMemory, and Agent01 in one place.
 """
 
@@ -14,14 +14,14 @@ from typing import Optional
 
 
 @dataclass
-class MonolithConfig:
-    """Unified configuration for SOMA Monolith."""
+class SaaSConfig:
+    """Unified configuration for SOMA SaaS."""
     
     # ==========================================================================
     # Mode Configuration
     # ==========================================================================
-    monolith_mode: bool = field(
-        default_factory=lambda: os.getenv("SOMA_MONOLITH_MODE", "true").lower() == "true"
+    saas_mode: bool = field(
+        default_factory=lambda: os.getenv("SOMA_SAAS_MODE", "true").lower() == "true"
     )
     
     # ==========================================================================
@@ -84,4 +84,4 @@ class MonolithConfig:
 
 
 # Global config instance
-config = MonolithConfig()
+config = SaaSConfig()

@@ -1,5 +1,5 @@
 """
-SOMA Monolith Bridge
+SOMA SaaS Bridge
 ====================
 
 This package provides DIRECT IN-PROCESS access to SomaBrain and FractalMemory,
@@ -7,7 +7,7 @@ eliminating HTTP network overhead for memory-intensive agent operations.
 
 Usage:
 ------
-    from soma_monolith import brain, memory
+    from soma_saas import brain, memory
 
     # Direct memory operations (no HTTP)
     await memory.store(coord, payload)
@@ -25,8 +25,8 @@ Performance:
 
 import os
 
-# Detect if running in monolith mode
-MONOLITH_MODE = os.getenv("SOMA_MONOLITH_MODE", "false").lower() == "true"
+# Detect if running in saas mode
+SAAS_MODE = os.getenv("SOMA_SAAS_MODE", "false").lower() == "true"
 
 __version__ = "1.0.0"
-__all__ = ["brain", "memory", "MONOLITH_MODE"]
+__all__ = ["brain", "memory", "SAAS_MODE"]
