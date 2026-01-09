@@ -11,7 +11,23 @@ set -e
 # 4. Hands over to Supervisor
 # ═══════════════════════════════════════════════════════════════════════════════
 
-echo "🐳 [SomaStack] Starting SaaS Initialization..."
+echo "══════════════════════════════════════════════════════════════════"
+echo "        🧠 SOMA STACK SAAS - INITIALIZATION SEQUENCE             "
+echo "══════════════════════════════════════════════════════════════════"
+
+# ---------------------------------------------------------------------------
+# HARDWARE DETECTION (CPU/GPU)
+# ---------------------------------------------------------------------------
+echo "🕵️ [System] Detecting Hardware Acceleration..."
+if python3 -c "import torch; exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
+    echo "   ✅ GPU DETECTED: CUDA Available (Running in Hybrid Mode)"
+    export SOMA_HARDWARE_MODE="GPU"
+else
+    echo "   ✅ GPU NOT DETECTED: Running in PURE CPU Mode (Optimized)"
+    export SOMA_HARDWARE_MODE="CPU"
+fi
+echo "   ℹ️  Mode: $SOMA_SAAS_MODE"
+echo "   ℹ️  Target: $SOMA_HARDWARE_MODE"
 
 # 1. WAIT FOR INFRASTRUCTURE
 # --------------------------

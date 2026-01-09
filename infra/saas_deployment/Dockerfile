@@ -36,15 +36,27 @@ COPY somaAgent01/requirements.txt /build/req_agent.txt
 COPY somabrain/pyproject.toml /build/somabrain_pyproject.toml
 COPY somafractalmemory/api-requirements.txt /build/req_memory.txt
 
-# Copy Rust Wheel
-COPY --from=rust-builder /rust/dist /build/wheels
+# Copy Rust Wheel (Moved to after requirements to preserve cache)
+# COPY --from=rust-builder /rust/dist /build/wheels
 
 # Install Build Tools
 RUN pip install --upgrade pip build setuptools wheel
 
 # Install Requirements (Order matters for constraints)
-RUN pip install -r req_agent.txt
-RUN pip install -r req_memory.txt
+# Install Requirements (Order matters for constraints)
+# ---------------------------------------------------------------------------
+# HARDWARE OPTIMIZATION: Force CPU-only PyTorch to prevent CUDA bloat (~3GB)
+# This satisfies the user requirement: "only deploying cpu libraries"
+# ---------------------------------------------------------------------------
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Install Requirements (Order matters for constraints)
+RUN pip install --no-cache-dir --default-timeout=100 --prefer-binary -r req_agent.txt
+RUN pip install --no-cache-dir --default-timeout=100 --prefer-binary -r req_memory.txt
+
+# Copy Rust Wheel (LATE BINDING: Copy after heavy deps to preserve cache)
+COPY --from=rust-builder /rust/dist /build/wheels
+
 # Install Rust Wheel
 RUN pip install /build/wheels/*.whl
 # Install additional dependencies for Brain (from pyproject implied)

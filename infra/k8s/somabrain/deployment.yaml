@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain
+  namespace: brain
+  labels:
+    app: somabrain
+    tier: cognitive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain
+  template:
+    metadata:
+      labels:
+        app: somabrain
+    spec:
+      containers:
+        - name: somabrain
+          image: somatech/soma-brain:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9696
+          env:
+            - name: SOMA_SAAS_MODE
+              value: "false"
+            - name: SOMABRAIN_PORT
+              value: "9696"
+            - name: MILVUS_HOST
+              value: "milvus.shared.svc.cluster.local"
+            - name: REDIS_HOST
+              value: "redis.shared.svc.cluster.local"
+            - name: POSTGRES_HOST
+              value: "postgres.shared.svc.cluster.local"

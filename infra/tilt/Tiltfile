@@ -26,7 +26,14 @@ print("""
 # PRIMARY DEPLOYMENT CONFIGURATION FOR ALL SOMA REPOS
 # =============================================================================
 
-docker_compose('docker-compose.yml')
+# =============================================================================
+# INFRASTRUCTURE - ALL CONTAINERS FROM docker-compose.yml
+# PRIMARY DEPLOYMENT CONFIGURATION FOR ALL SOMA REPOS
+# =============================================================================
+
+# Path is relative to this Tiltfile (infra/tilt/Tiltfile)
+# Docker Compose is in infra/saas_deployment/docker-compose.yml
+docker_compose('../saas_deployment/docker-compose.yml')
 
 # =============================================================================
 # WEBUI DEVELOPMENT
@@ -35,7 +42,7 @@ docker_compose('docker-compose.yml')
 local_resource(
     'webui-dev',
     serve_cmd='npm run dev -- --port 20173',
-    serve_dir='webui',
+    serve_dir='../../webui', # Up 2 levels to root/webui
     links=['http://localhost:20173'],
     labels=['frontend'],
 )
@@ -51,11 +58,11 @@ local_resource(
         export SA01_DEPLOYMENT_MODE=PROD
         echo "⏳ Waiting for Postgres..." && sleep 5
         echo "🔄 Migrating SomaFractalMemory (Production Mode)..."
-        SOMA_DB_NAME=somafractalmemory ../somafractalmemory/.venv/bin/python ../somafractalmemory/manage.py migrate --noinput
+        SOMA_DB_NAME=somafractalmemory ../../../somafractalmemory/.venv/bin/python ../../../somafractalmemory/manage.py migrate --noinput
         echo "🔄 Migrating SomaBrain..."
-        ../somabrain/.venv/bin/python ../somabrain/manage.py migrate --noinput
+        ../../../somabrain/.venv/bin/python ../../../somabrain/manage.py migrate --noinput
         echo "🔄 Migrating SomaAgent01 Gateway..."
-        .venv/bin/python manage.py migrate --noinput
+        ../../.venv/bin/python ../../manage.py migrate --noinput
         echo "✅ All Migrations Complete"
     ''',
     resource_deps=['postgres'],
@@ -70,7 +77,7 @@ local_resource(
 local_resource(
     'somafractalmemory',
     serve_cmd='SOMA_DB_NAME=somafractalmemory .venv/bin/uvicorn somafractalmemory.asgi:application --host 0.0.0.0 --port 10101 --reload',
-    serve_dir='../somafractalmemory',
+    serve_dir='../../../somafractalmemory',
     env={'SA01_DEPLOYMENT_MODE': 'PROD'},
     links=['http://localhost:10101/api/v1/docs'],
     labels=['soma-stack'],
@@ -80,7 +87,7 @@ local_resource(
 local_resource(
     'somabrain',
     serve_cmd='.venv/bin/uvicorn somabrain.asgi:application --host 0.0.0.0 --port 30101 --reload',
-    serve_dir='../somabrain',
+    serve_dir='../../../somabrain',
     # VIBE Rule 44: Port Sovereignty - Milvus mapped to 20530 on host
     env={'SOMABRAIN_MILVUS_PORT': '20530', 'SOMABRAIN_MILVUS_HOST': 'localhost', 'SA01_DEPLOYMENT_MODE': 'PROD'},
     links=['http://localhost:30101/api/v1/docs'],
@@ -95,7 +102,7 @@ local_resource(
 local_resource(
     'django-api',
     serve_cmd='.venv/bin/uvicorn services.gateway.asgi:application --host 0.0.0.0 --port 20020 --reload',
-    serve_dir='.',
+    serve_dir='../..', # Up 2 levels to somaAgent01 root
     env={'SA01_DEPLOYMENT_MODE': 'PROD'},
     links=['http://localhost:20020/api/v2/docs'],
     labels=['backend'],
