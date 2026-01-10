@@ -154,8 +154,8 @@ python manage.py runserver 0.0.0.0:20020
 
 ```bash
 cd webui
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ---
