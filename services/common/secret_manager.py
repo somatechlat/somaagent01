@@ -21,14 +21,11 @@ Why we need it
 
 from __future__ import annotations
 
+import os
 from typing import List, Optional
 
 import redis.asyncio as redis
 from cryptography.fernet import Fernet, InvalidToken
-
-import os
-
-import os
 
 
 # ---------------------------------------------------------------------------

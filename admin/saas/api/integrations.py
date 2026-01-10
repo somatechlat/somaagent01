@@ -18,9 +18,7 @@ Manage external service connections: Lago, Keycloak, SMTP, LLM, Storage.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Optional
-from uuid import uuid4
 
 from django.conf import settings
 from django.utils import timezone
@@ -233,6 +231,7 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
     
     """
     import time
+
     import httpx
 
     if provider not in INTEGRATIONS:

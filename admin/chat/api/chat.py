@@ -15,10 +15,10 @@ from django.utils import timezone
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.chat.models import Conversation, Message
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.responses import paginated_response
-from admin.chat.models import Conversation, Message
 from admin.core.models import Session
 
 router = Router(tags=["chat"])
@@ -126,7 +126,6 @@ async def list_conversations(
     Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
-
     from django.conf import settings
 
     user = get_current_user(request)
@@ -200,9 +199,9 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
     - Recalls memories from SomaFractalMemory
     """
     from asgiref.sync import sync_to_async
-    from services.common.chat_service import get_chat_service
-
     from django.conf import settings
+
+    from services.common.chat_service import get_chat_service
 
     user = get_current_user(request)
     user_id = user.sub
@@ -416,6 +415,7 @@ async def send_message(
     - ZDL via OutboxMessage
     """
     from asgiref.sync import sync_to_async
+
     from services.common.chat_service import get_chat_service
 
     user = get_current_user(request)

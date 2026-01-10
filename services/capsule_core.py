@@ -17,10 +17,8 @@ The 4 core operations as defined in SRS Section 19:
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 from uuid import UUID
 
-import jcs  # RFC 8785 JSON Canonicalization
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone

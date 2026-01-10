@@ -10,12 +10,12 @@ SRS Reference: Multi-provider LLM support
 
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, Optional
 
 try:
-    from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle
     import dirty_json
+    from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle
+
     from admin.core.helpers import browser_use_monkeypatch
 except ImportError:
     ChatGoogle = None  # type: ignore

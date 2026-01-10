@@ -18,7 +18,6 @@ Personas:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from dataclasses import dataclass
@@ -423,9 +422,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         - Update conversation title
         - Send title_update message
         """
-        from admin.chat.models import Conversation, Message
-
         from asgiref.sync import sync_to_async
+
+        from admin.chat.models import Conversation, Message
 
         @sync_to_async
         def get_conversation_data():

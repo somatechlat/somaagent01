@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
+
 from temporalio.client import Client as TemporalClient
 
 from admin.core.observability.metrics import Counter, Gauge, Histogram, metrics_collector
@@ -385,9 +386,9 @@ class DegradationMonitor:
         Uses aiokafka to verify broker connectivity.
         """
         try:
-            from aiokafka import AIOKafkaProducer
-
             import os
+
+            from aiokafka import AIOKafkaProducer
 
             bootstrap_servers = os.environ.kafka_bootstrap_servers
             if not bootstrap_servers:
@@ -427,9 +428,9 @@ class DegradationMonitor:
         Uses redis-py to execute PING command.
         """
         try:
-            import redis.asyncio as aioredis
-
             import os
+
+            import redis.asyncio as aioredis
 
             redis_url = os.environ.get("SA01_REDIS_URL", "")
             if not redis_url:

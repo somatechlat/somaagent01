@@ -17,7 +17,6 @@ import asyncio
 import logging
 import os
 import time
-from typing import Optional
 
 from django.conf import settings
 from django.db import connection

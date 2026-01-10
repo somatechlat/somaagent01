@@ -448,7 +448,7 @@ class ProfileOut(BaseModel):
 def get_profile(request) -> dict:
     """Get current authenticated user's profile."""
     from admin.auth.api import _get_permissions_for_roles
-    from admin.saas.models import AdminProfile, UserSession, ApiKey
+    from admin.saas.models import AdminProfile, ApiKey, UserSession
 
     user_id = getattr(request.auth, "sub", None)
     email = getattr(request.auth, "email", None)

@@ -320,17 +320,17 @@ from uuid import UUID
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
-from admin.voice.models import VoicePersona, VoiceSession, VoiceModel
+from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
 from admin.voice.schemas import (
-    VoicePersonaCreate,
-    VoicePersonaUpdate,
-    VoicePersonaOut,
-    VoicePersonaListOut,
-    VoiceSessionOut,
-    VoiceSessionListOut,
-    VoiceSessionStats,
-    VoiceModelOut,
     VoiceModelListOut,
+    VoiceModelOut,
+    VoicePersonaCreate,
+    VoicePersonaListOut,
+    VoicePersonaOut,
+    VoicePersonaUpdate,
+    VoiceSessionListOut,
+    VoiceSessionOut,
+    VoiceSessionStats,
 )
 
 

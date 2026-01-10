@@ -14,15 +14,13 @@ import logging
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
     GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
-    ProviderError,
-    ValidationError,
 )
 
 __all__ = ["MermaidProvider"]
@@ -135,7 +133,7 @@ class MermaidProvider(MultimodalProvider):
         # Check npx
         npx = shutil.which("npx")
         if npx:
-            return f"npx -y @mermaid-js/mermaid-cli"
+            return "npx -y @mermaid-js/mermaid-cli"
 
         return None
 

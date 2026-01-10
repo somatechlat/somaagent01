@@ -11,11 +11,11 @@ The runtime configuration is in django_setup.py for the gateway.
 """
 
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 # Import environment configuration helpers
-from services.common.env_config import get_required_env, get_optional_env
+from services.common.env_config import get_required_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent

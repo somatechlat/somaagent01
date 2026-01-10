@@ -1,9 +1,8 @@
 """Module features."""
 
+import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional
-
-import os
 
 Profile = Literal["minimal", "standard", "enhanced", "max"]
 State = Literal["on", "degraded", "disabled"]

@@ -9,9 +9,10 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
+from prometheus_client import Counter, Histogram
+
 from services.common.event_bus import KafkaEventBus
 from services.common.publisher import DurablePublisher
-from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
 

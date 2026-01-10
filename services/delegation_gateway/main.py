@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 import uuid
 from typing import Any
 
@@ -24,9 +23,8 @@ import django
 django.setup()
 
 from django.core.asgi import get_asgi_application
-from django.http import JsonResponse, HttpResponse
-from ninja import Router, NinjaAPI
-from pydantic import BaseModel
+from django.http import HttpResponse
+from ninja import NinjaAPI, Router
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
@@ -35,9 +33,10 @@ from prometheus_client import (
     Histogram,
     start_http_server,
 )
+from pydantic import BaseModel
+from services.common.delegation_store import DelegationStore
 
 from admin.common.exceptions import NotFoundError
-from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
 from services.common.tracing import setup_tracing

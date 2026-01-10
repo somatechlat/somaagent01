@@ -13,11 +13,11 @@ from admin.core.api.memory import router as memory_router
 from admin.core.api.migrate import router as migrate_router
 from admin.core.api.sessions import router as sessions_router
 from admin.core.infrastructure.api import router as infrastructure_router
-from admin.core.infrastructure.degradation_api import router as degradation_router
-from admin.core.infrastructure.settings_api import router as settings_router
-from admin.core.infrastructure.observability_api import router as observability_router
-from admin.core.infrastructure.feature_flags_api import router as feature_flags_router
 from admin.core.infrastructure.api_keys_api import router as api_keys_router
+from admin.core.infrastructure.degradation_api import router as degradation_router
+from admin.core.infrastructure.feature_flags_api import router as feature_flags_router
+from admin.core.infrastructure.observability_api import router as observability_router
+from admin.core.infrastructure.settings_api import router as settings_router
 
 # Master router for core admin domain
 router = Router(tags=["admin"])

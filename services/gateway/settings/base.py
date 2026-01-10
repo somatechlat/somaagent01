@@ -11,11 +11,11 @@ The runtime configuration is in django_setup.py for the gateway.
 """
 
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 # Import environment configuration helpers
-from services.common.env_config import get_required_env, get_optional_env
+from services.common.env_config import get_required_env
 
 # Import service registry
 from .service_registry import SERVICES
@@ -102,10 +102,13 @@ TEMPLATES = [
 
 # Database
 # Parse database DSN from environment (REQUIRED - no hardcoded credentials)
-db_dsn = get_required_env(
-    "SA01_DB_DSN",
-    "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)",
-)
+db_dsn = os.environ.get("SA01_DB_DSN", os.environ.get("DATABASE_URL"))
+if not db_dsn:
+    # This will raise the error with the detailed message
+    get_required_env(
+        "SA01_DB_DSN",
+        "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)",
+    )
 
 # Parse DSN components for Django DATABASE config
 db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)

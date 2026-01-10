@@ -18,25 +18,25 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
 interface RateLimit {
-    key: string;
-    label: string;
-    limit: number;
-    window_seconds: number;
-    policy: 'HARD' | 'SOFT';
+  key: string;
+  label: string;
+  limit: number;
+  window_seconds: number;
+  policy: 'HARD' | 'SOFT';
 }
 
 interface TierOverride {
-    tier: string;
-    api_calls: number | null;
-    voice_minutes: number | null;
-    llm_tokens: number | null;
-    file_uploads: number | null;
-    memory_queries: number | null;
+  tier: string;
+  api_calls: number | null;
+  voice_minutes: number | null;
+  llm_tokens: number | null;
+  file_uploads: number | null;
+  memory_queries: number | null;
 }
 
 @customElement('saas-rate-limits')
 export class SaasRateLimits extends LitElement {
-    static styles = css`
+  static styles = css`
     :host {
       display: flex;
       height: 100vh;
@@ -241,98 +241,99 @@ export class SaasRateLimits extends LitElement {
     .loading { display: flex; justify-content: center; padding: 60px; color: #999; }
   `;
 
-    @state() private limits: RateLimit[] = [];
-    @state() private tiers: TierOverride[] = [];
-    @state() private loading = true;
-    @state() private saving = false;
+  @state() private limits: RateLimit[] = [];
+  @state() private tiers: TierOverride[] = [];
+  @state() private loading = true;
+  @state() private saving = false;
 
-    connectedCallback() {
-        super.connectedCallback();
-        this.loadRateLimits();
+  connectedCallback() {
+    super.connectedCallback();
+    this.loadRateLimits();
+  }
+
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('auth_token');
+    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  private async loadRateLimits() {
+    this.loading = true;
+    try {
+      // Correct API endpoint matching admin/ratelimit/api.py
+      const res = await fetch('/api/v2/ratelimit/limits', { headers: this.getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        this.limits = data.limits || [];
+        this.tiers = data.tiers || [];
+      } else {
+        this.loadMockData();
+      }
+    } catch {
+      this.loadMockData();
+    } finally {
+      this.loading = false;
     }
+  }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  private loadMockData() {
+    this.limits = [
+      { key: 'api_calls', label: 'API Calls', limit: 1000, window_seconds: 3600, policy: 'HARD' },
+      { key: 'voice_minutes', label: 'Voice Minutes', limit: 60, window_seconds: 86400, policy: 'SOFT' },
+      { key: 'llm_tokens', label: 'LLM Tokens', limit: 100000, window_seconds: 86400, policy: 'SOFT' },
+      { key: 'file_uploads', label: 'File Uploads', limit: 50, window_seconds: 3600, policy: 'HARD' },
+      { key: 'memory_queries', label: 'Memory Queries', limit: 500, window_seconds: 3600, policy: 'SOFT' },
+    ];
+
+    this.tiers = [
+      { tier: 'Free', api_calls: 100, voice_minutes: 0, llm_tokens: 10000, file_uploads: 10, memory_queries: 50 },
+      { tier: 'Starter', api_calls: 1000, voice_minutes: 60, llm_tokens: 100000, file_uploads: 50, memory_queries: 500 },
+      { tier: 'Team', api_calls: 10000, voice_minutes: 500, llm_tokens: 1000000, file_uploads: 500, memory_queries: 5000 },
+      { tier: 'Enterprise', api_calls: null, voice_minutes: null, llm_tokens: null, file_uploads: null, memory_queries: null },
+    ];
+  }
+
+  private formatWindow(seconds: number): string {
+    if (seconds >= 86400) return `${seconds / 86400} day${seconds > 86400 ? 's' : ''}`;
+    if (seconds >= 3600) return `${seconds / 3600} hour${seconds > 3600 ? 's' : ''}`;
+    return `${seconds / 60} min${seconds > 60 ? 's' : ''}`;
+  }
+
+  private updateLimit(key: string, field: keyof RateLimit, value: unknown) {
+    this.limits = this.limits.map(l =>
+      l.key === key ? { ...l, [field]: value } : l
+    );
+  }
+
+  private updateTierOverride(tier: string, field: keyof TierOverride, value: unknown) {
+    this.tiers = this.tiers.map(t =>
+      t.tier === tier ? { ...t, [field]: value } : t
+    );
+  }
+
+  private async saveRateLimits() {
+    this.saving = true;
+    try {
+      const res = await fetch('/api/v2/infrastructure/ratelimits', {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ limits: this.limits, tiers: this.tiers }),
+      });
+      if (res.ok) {
+        console.log('Rate limits saved');
+      }
+    } catch (e) {
+      console.error('Failed to save:', e);
+    } finally {
+      this.saving = false;
     }
+  }
 
-    private async loadRateLimits() {
-        this.loading = true;
-        try {
-            const res = await fetch('/api/v2/infrastructure/ratelimits', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.limits = data.limits || [];
-                this.tiers = data.tiers || [];
-            } else {
-                this.loadMockData();
-            }
-        } catch {
-            this.loadMockData();
-        } finally {
-            this.loading = false;
-        }
-    }
+  private getTierClass(tier: string): string {
+    return `tier-${tier.toLowerCase()}`;
+  }
 
-    private loadMockData() {
-        this.limits = [
-            { key: 'api_calls', label: 'API Calls', limit: 1000, window_seconds: 3600, policy: 'HARD' },
-            { key: 'voice_minutes', label: 'Voice Minutes', limit: 60, window_seconds: 86400, policy: 'SOFT' },
-            { key: 'llm_tokens', label: 'LLM Tokens', limit: 100000, window_seconds: 86400, policy: 'SOFT' },
-            { key: 'file_uploads', label: 'File Uploads', limit: 50, window_seconds: 3600, policy: 'HARD' },
-            { key: 'memory_queries', label: 'Memory Queries', limit: 500, window_seconds: 3600, policy: 'SOFT' },
-        ];
-
-        this.tiers = [
-            { tier: 'Free', api_calls: 100, voice_minutes: 0, llm_tokens: 10000, file_uploads: 10, memory_queries: 50 },
-            { tier: 'Starter', api_calls: 1000, voice_minutes: 60, llm_tokens: 100000, file_uploads: 50, memory_queries: 500 },
-            { tier: 'Team', api_calls: 10000, voice_minutes: 500, llm_tokens: 1000000, file_uploads: 500, memory_queries: 5000 },
-            { tier: 'Enterprise', api_calls: null, voice_minutes: null, llm_tokens: null, file_uploads: null, memory_queries: null },
-        ];
-    }
-
-    private formatWindow(seconds: number): string {
-        if (seconds >= 86400) return `${seconds / 86400} day${seconds > 86400 ? 's' : ''}`;
-        if (seconds >= 3600) return `${seconds / 3600} hour${seconds > 3600 ? 's' : ''}`;
-        return `${seconds / 60} min${seconds > 60 ? 's' : ''}`;
-    }
-
-    private updateLimit(key: string, field: keyof RateLimit, value: unknown) {
-        this.limits = this.limits.map(l =>
-            l.key === key ? { ...l, [field]: value } : l
-        );
-    }
-
-    private updateTierOverride(tier: string, field: keyof TierOverride, value: unknown) {
-        this.tiers = this.tiers.map(t =>
-            t.tier === tier ? { ...t, [field]: value } : t
-        );
-    }
-
-    private async saveRateLimits() {
-        this.saving = true;
-        try {
-            const res = await fetch('/api/v2/infrastructure/ratelimits', {
-                method: 'PUT',
-                headers: this.getAuthHeaders(),
-                body: JSON.stringify({ limits: this.limits, tiers: this.tiers }),
-            });
-            if (res.ok) {
-                console.log('Rate limits saved');
-            }
-        } catch (e) {
-            console.error('Failed to save:', e);
-        } finally {
-            this.saving = false;
-        }
-    }
-
-    private getTierClass(tier: string): string {
-        return `tier-${tier.toLowerCase()}`;
-    }
-
-    render() {
-        return html`
+  render() {
+    return html`
       <aside class="sidebar">
         <saas-sidebar active-route="/platform/infrastructure/redis/ratelimits"></saas-sidebar>
       </aside>
@@ -429,38 +430,38 @@ export class SaasRateLimits extends LitElement {
                     </div>
                     <div class="tier-cell">
                       ${tier.api_calls === null
-                ? html`<span class="unlimited">Unlimited</span>`
-                : html`<input type="number" class="tier-input" .value=${String(tier.api_calls)}
+        ? html`<span class="unlimited">Unlimited</span>`
+        : html`<input type="number" class="tier-input" .value=${String(tier.api_calls)}
                             @change=${(e: Event) => this.updateTierOverride(tier.tier, 'api_calls', parseInt((e.target as HTMLInputElement).value))}>`
-            }
+      }
                     </div>
                     <div class="tier-cell">
                       ${tier.voice_minutes === null
-                ? html`<span class="unlimited">Unlimited</span>`
-                : html`<input type="number" class="tier-input" .value=${String(tier.voice_minutes)}
+        ? html`<span class="unlimited">Unlimited</span>`
+        : html`<input type="number" class="tier-input" .value=${String(tier.voice_minutes)}
                             @change=${(e: Event) => this.updateTierOverride(tier.tier, 'voice_minutes', parseInt((e.target as HTMLInputElement).value))}>`
-            }
+      }
                     </div>
                     <div class="tier-cell">
                       ${tier.llm_tokens === null
-                ? html`<span class="unlimited">Unlimited</span>`
-                : html`<input type="number" class="tier-input" .value=${String(tier.llm_tokens)}
+        ? html`<span class="unlimited">Unlimited</span>`
+        : html`<input type="number" class="tier-input" .value=${String(tier.llm_tokens)}
                             @change=${(e: Event) => this.updateTierOverride(tier.tier, 'llm_tokens', parseInt((e.target as HTMLInputElement).value))}>`
-            }
+      }
                     </div>
                     <div class="tier-cell">
                       ${tier.file_uploads === null
-                ? html`<span class="unlimited">Unlimited</span>`
-                : html`<input type="number" class="tier-input" .value=${String(tier.file_uploads)}
+        ? html`<span class="unlimited">Unlimited</span>`
+        : html`<input type="number" class="tier-input" .value=${String(tier.file_uploads)}
                             @change=${(e: Event) => this.updateTierOverride(tier.tier, 'file_uploads', parseInt((e.target as HTMLInputElement).value))}>`
-            }
+      }
                     </div>
                     <div class="tier-cell">
                       ${tier.memory_queries === null
-                ? html`<span class="unlimited">Unlimited</span>`
-                : html`<input type="number" class="tier-input" .value=${String(tier.memory_queries)}
+        ? html`<span class="unlimited">Unlimited</span>`
+        : html`<input type="number" class="tier-input" .value=${String(tier.memory_queries)}
                             @change=${(e: Event) => this.updateTierOverride(tier.tier, 'memory_queries', parseInt((e.target as HTMLInputElement).value))}>`
-            }
+      }
                     </div>
                   `)}
                 </div>
@@ -483,11 +484,11 @@ export class SaasRateLimits extends LitElement {
         </div>
       </main>
     `;
-    }
+  }
 }
 
 declare global {
-    interface HTMLElementTagNameMap {
-        'saas-rate-limits': SaasRateLimits;
-    }
+  interface HTMLElementTagNameMap {
+    'saas-rate-limits': SaasRateLimits;
+  }
 }

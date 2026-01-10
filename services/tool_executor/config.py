@@ -1,7 +1,8 @@
 """Configuration helpers for tool executor service."""
 
-from services.common.event_bus import KafkaSettings
 import os
+
+from services.common.event_bus import KafkaSettings
 
 SERVICE_SETTINGS = os.environ
 

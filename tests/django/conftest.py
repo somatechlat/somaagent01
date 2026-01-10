@@ -24,6 +24,7 @@ def pytest_configure(config):
 def api_client():
     """Create a test client for the Django Ninja API."""
     from ninja.testing import TestClient
+
     from admin.api import api
 
     return TestClient(api)

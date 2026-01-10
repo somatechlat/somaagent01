@@ -1,13 +1,13 @@
 """ClamAV Scanner Service."""
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from prometheus_client import Histogram, Counter
-import os
+from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
 

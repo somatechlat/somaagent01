@@ -13,7 +13,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from django.conf import settings
 
@@ -204,8 +204,9 @@ class LLMDegradationService:
         try:
             # Attempt a minimal LLM call to verify connectivity
             # Uses lazy import to avoid circular dependencies
-            from admin.llm.services.litellm_client import LiteLLMChatWrapper
             from langchain_core.messages import HumanMessage
+
+            from admin.llm.services.litellm_client import LiteLLMChatWrapper
 
             provider, model = provider_id.split("/", 1)
             wrapper = LiteLLMChatWrapper(model=model, provider=provider)

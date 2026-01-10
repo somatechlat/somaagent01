@@ -37,13 +37,13 @@ from services.tool_executor.config import (
 )
 from services.tool_executor.execution_engine import ExecutionEngine
 from services.tool_executor.metrics import ensure_metrics_server
+from services.tool_executor.multimodal_executor import MultimodalExecutor
 from services.tool_executor.request_handler import RequestHandler
 from services.tool_executor.resource_manager import ResourceManager
 from services.tool_executor.result_publisher import ResultPublisher
 from services.tool_executor.sandbox_manager import SandboxManager
 from services.tool_executor.telemetry import ToolTelemetryEmitter
 from services.tool_executor.tool_registry import ToolRegistry
-from services.tool_executor.multimodal_executor import MultimodalExecutor
 
 LOGGER = logging.getLogger(__name__)
 

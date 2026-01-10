@@ -177,8 +177,9 @@ async def get_token(request, payload: TokenRequest, response):
             await _update_last_login(token_payload)
 
             # Create session in Redis for gateway + websocket auth
-            from admin.common.session_manager import get_session_manager
             from django.conf import settings
+
+            from admin.common.session_manager import get_session_manager
 
             session_manager = await get_session_manager()
             permissions = await session_manager.resolve_permissions(
@@ -271,8 +272,9 @@ async def refresh_token(request, payload: RefreshRequest, response):
             token_data = response.json()
 
             token_payload = await decode_token(token_data["access_token"])
-            from admin.common.session_manager import get_session_manager
             from django.conf import settings
+
+            from admin.common.session_manager import get_session_manager
 
             session_manager = await get_session_manager()
             session_id = request.COOKIES.get("session_id")
@@ -824,9 +826,9 @@ async def login_with_email(request, payload: LoginRequest, response):
     - Audit logging
     """
     from admin.common.account_lockout import get_lockout_service
-    from admin.common.session_manager import get_session_manager
     from admin.common.exceptions import ForbiddenError
     from admin.common.rate_limit import check_rate_limit
+    from admin.common.session_manager import get_session_manager
 
     # Rate limit check FIRST (per IP)
     client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[

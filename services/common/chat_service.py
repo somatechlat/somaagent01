@@ -32,9 +32,8 @@ from asgiref.sync import sync_to_async
 from prometheus_client import Counter, Histogram
 
 from admin.agents.services.agentiq_governor import (
-    AgentIQGovernor,
-    TurnContext,
     create_governor,
+    TurnContext,
 )
 from admin.agents.services.context_builder import ContextBuilder
 from admin.core.observability.metrics import ContextBuilderMetrics
@@ -476,8 +475,7 @@ class ChatService:
         """
         import time
 
-        from admin.chat.models import Conversation as ConversationModel
-        from admin.chat.models import Message as MessageModel
+        from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
 
         start_time = time.perf_counter()
 
@@ -503,9 +501,10 @@ class ChatService:
         CHAT_TOKENS.labels(direction="input").inc(len(content.split()))
 
         try:
-            from admin.core.helpers.settings_defaults import get_default_settings
-            from admin.llm.services.litellm_client import LLMNotConfiguredError, get_chat_model
             from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+            from admin.core.helpers.settings_defaults import get_default_settings
+            from admin.llm.services.litellm_client import get_chat_model, LLMNotConfiguredError
 
             settings = get_default_settings(agent_id=agent_id)
             provider = settings.chat_model_provider or ""
@@ -926,9 +925,10 @@ class ChatService:
         start_time = time.perf_counter()
 
         try:
+            from langchain_core.messages import HumanMessage, SystemMessage
+
             from admin.core.helpers.settings_defaults import get_default_settings
             from admin.llm.services.litellm_client import get_chat_model
-            from langchain_core.messages import HumanMessage, SystemMessage
 
             @sync_to_async
             def get_agent_id():

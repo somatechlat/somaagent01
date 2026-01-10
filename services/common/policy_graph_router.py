@@ -15,9 +15,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.common.capability_registry import (
+    CapabilityHealth,
     CapabilityRecord,
     CapabilityRegistry,
-    CapabilityHealth,
     CostTier,
 )
 from services.common.policy_client import PolicyClient, PolicyRequest
