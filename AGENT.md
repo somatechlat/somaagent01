@@ -478,8 +478,8 @@ python manage.py runserver 0.0.0.0:8020
 
 # 5. Start frontend (separate terminal)
 cd webui
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ### Environment Variables
