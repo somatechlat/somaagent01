@@ -11,11 +11,11 @@ Seed initial SAAS data including tiers, features, roles, and rate limits.
 Per SRS-SEED-DATA.md specifications.
 """
 
+import logging
+from decimal import Decimal
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from uuid import uuid4
-from decimal import Decimal
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ class Command(BaseCommand):
 
     def seed_tier_features(self):
         """Seed tier feature matrix per SRS-SEED-DATA Section 4.2."""
-        from admin.saas.models import SubscriptionTier, SaasFeature, TierFeature
+        from admin.saas.models import SaasFeature, SubscriptionTier, TierFeature
 
         # Feature matrix: [tier_slug] -> [enabled features]
         matrix = {

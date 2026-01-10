@@ -7,10 +7,11 @@ Django URL Configuration for SomaAgent01.
 - SPA frontend catch-all (serves index.html for client-side routing)
 """
 
-from django.contrib import admin
-from django.http import JsonResponse, FileResponse
-from django.urls import path, re_path
 from django.conf import settings
+from django.contrib import admin
+from django.http import FileResponse, JsonResponse
+from django.urls import path, re_path
+
 from admin.api import api
 
 

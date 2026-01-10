@@ -13,10 +13,9 @@ Strategy:
 
 import os
 import sys
-import shutil
+
 import django
 from django.conf import settings
-from django.core.management import call_command
 
 # --- 1. CONFIGURATION & MOCKING ---
 
@@ -32,7 +31,7 @@ for p in REPO_PATHS:
 
 # MOCK 'common' dependencies that might be missing or conflict
 from unittest.mock import MagicMock
-import types
+
 
 # Helper to create a dummy package
 def mock_package(name):
@@ -121,8 +120,9 @@ if not settings.configured:
 # --- 3. SCHEMA CREATION (FORCE) ---
 print(">>> [INIT] Forcing Table Creation (Schema Proof)...")
 from django.db import connection
+
 # Import models to create tables for
-from somafractalmemory.models import Memory, AuditLog, GraphLink, VectorEmbedding, MemoryNamespace
+from somafractalmemory.models import AuditLog, GraphLink, Memory, MemoryNamespace, VectorEmbedding
 
 models_to_create = [Memory, AuditLog, GraphLink, VectorEmbedding, MemoryNamespace]
 
@@ -130,7 +130,7 @@ try:
     with connection.schema_editor() as schema_editor:
         for model in models_to_create:
             # Check if table exists (optional, but good for safety)
-            if not model._meta.db_table in connection.introspection.table_names():
+            if model._meta.db_table not in connection.introspection.table_names():
                 schema_editor.create_model(model)
                 print(f"    green: Created table for {model.__name__}")
             else:
@@ -144,7 +144,7 @@ except Exception as e:
 
 def verify_sfm_direct():
     print("\n>>> [PHASE 1] SFM Direct Write (Root Persistence)")
-    from somafractalmemory.models import Memory, AuditLog
+    from somafractalmemory.models import AuditLog, Memory
     from somafractalmemory.services import MemoryService
     
     svc = MemoryService(namespace="test-ns")
@@ -184,8 +184,8 @@ def verify_brain_direct():
     from somafractalmemory.models import Memory
     # Import Brain (mocked common should hold)
     try:
-        from somabrain.memory_client import MemoryClient
         import somabrain.memory_client
+        from somabrain.memory_client import MemoryClient
         print(f"    DEBUG: somabrain.memory_client loaded from: {somabrain.memory_client.__file__}")
         from somabrain.config import Config
     except ImportError as e:
@@ -232,9 +232,12 @@ def verify_brain_direct():
         return False
 
 import asyncio
+
+
 async def verify_agent_facade():
     print("\n>>> [PHASE 3] Agent Facade Write (Application Layer)")
     from somafractalmemory.models import Memory
+
     from soma_core.memory_client import BrainMemoryFacade
     from soma_core.models import MemoryWriteRequest
     

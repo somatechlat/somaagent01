@@ -20,10 +20,9 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional
 
-from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
-from admin.common.session_manager import SessionManager, get_session_manager
+from admin.common.session_manager import get_session_manager, SessionManager
 
 logger = logging.getLogger(__name__)
 

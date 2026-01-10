@@ -10,21 +10,20 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 from __future__ import annotations
 
 import logging
+import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import httpx
 
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
     GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
-    ProviderError,
-    RateLimitError,
     QuotaExceededError,
+    RateLimitError,
 )
-import os
 
 __all__ = ["DalleProvider"]
 

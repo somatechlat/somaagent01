@@ -15,15 +15,15 @@ from typing import Any
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
+from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 
 from services.common.dlq import DeadLetterQueue
-from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.tracing import setup_tracing
-
 from services.memory_replicator.service import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,

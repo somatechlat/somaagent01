@@ -49,9 +49,9 @@ class BrainBridge:
         logger.info("🧠 BrainBridge: Initializing DIRECT mode (in-process)")
         try:
             # Import SomaBrain directly
-            from somabrain.quantum import QuantumLayer, HRRConfig
             from somabrain.agent_memory import encode_memory, recall_memory
             from somabrain.math import cosine_similarity, normalize_vector
+            from somabrain.quantum import HRRConfig, QuantumLayer
             
             # Check Rust core
             try:

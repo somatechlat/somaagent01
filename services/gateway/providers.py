@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import os
+
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
-import os
 
 # Compatibility attributes for test suite
 JWKS_CACHE: dict = {}

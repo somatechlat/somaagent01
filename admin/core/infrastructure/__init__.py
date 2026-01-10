@@ -4,9 +4,9 @@
 """
 
 from admin.core.infrastructure.health_checker import (
+    health_checker,
     HealthCheckResult,
     InfrastructureHealthChecker,
-    health_checker,
 )
 from admin.core.infrastructure.models import (
     EnforcementPolicy,

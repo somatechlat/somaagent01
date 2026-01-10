@@ -1,10 +1,10 @@
 """Module auto_doc."""
 
 
-import os
 import ast
+import os
 import sys
-import re
+
 
 def to_camel_case(snake_str):
     """Execute to camel case.

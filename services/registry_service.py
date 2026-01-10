@@ -11,20 +11,17 @@ Implements the "Birth Protocol" and "Unhackable Covenant".
 - Strict Error Handling
 """
 
-import json
-import os
 import base64
 import logging
-from typing import Dict, Any, Optional, Tuple
+import os
+from typing import Optional
 from uuid import UUID
 
 import jcs  # RFC 8785 JSON Canonicalization
-from nacl.signing import SigningKey, VerifyKey
+from django.db import transaction
 from nacl.encoding import Base64Encoder
 from nacl.exceptions import BadSignatureError
-from django.conf import settings
-from django.utils import timezone
-from django.db import transaction
+from nacl.signing import SigningKey, VerifyKey
 
 from admin.core.models import Capsule, Constitution
 

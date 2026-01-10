@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Any
+from typing import Any, Iterable
 from uuid import UUID
 
 from prometheus_client import Counter
 
-from services.common.attachments_store import AttachmentsStore
 from services.common.asset_store import AssetStore
+from services.common.attachments_store import AttachmentsStore
 
 LOG = logging.getLogger(__name__)
 

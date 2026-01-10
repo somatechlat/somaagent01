@@ -16,10 +16,11 @@ Example:
     >>> user_id = payload["user_id"]
 """
 
-import jwt
 import httpx
+import jwt
 from django.conf import settings
-from admin.common.exceptions import UnauthorizedError, ForbiddenError
+
+from admin.common.exceptions import ForbiddenError, UnauthorizedError
 from services.common.policy_client import PolicyClient, PolicyRequest
 
 jwt_module = jwt
@@ -46,7 +47,7 @@ async def _resolve_signing_key(header: dict) -> str:
             pass
             
     # 2. Fallback to static public key/secret
-    return getattr(settings, "KEYCLOAK_PUBLIC_KEY", None) or getattr(settings, "SECRET_KEY")
+    return getattr(settings, "KEYCLOAK_PUBLIC_KEY", None) or settings.SECRET_KEY
 
 
 def _get_policy_client() -> PolicyClient | None:

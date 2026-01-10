@@ -5,8 +5,9 @@ These tests verify the foundational infrastructure is working correctly.
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 class TestDjangoCheck:

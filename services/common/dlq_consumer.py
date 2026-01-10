@@ -5,12 +5,12 @@ DLQ consumer and alerting helper.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict
 
 from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
-import os
 
 DLQ_CONSUMED_TOTAL = Counter(
     "sa01_dlq_events_total",

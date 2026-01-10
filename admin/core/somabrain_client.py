@@ -24,7 +24,7 @@ from django.conf import settings
 # Integration: BrainMemoryFacade
 try:
     from soma_core.memory_client import BrainMemoryFacade
-    from soma_core.models import MemoryWriteRequest, MemoryReadRequest
+    from soma_core.models import MemoryReadRequest, MemoryWriteRequest
     HAS_FACADE = True
 except ImportError:
     HAS_FACADE = False

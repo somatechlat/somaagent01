@@ -7,7 +7,6 @@ SomaAgent01, SomaBrain, and SomaFractalMemory.
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
 
 
 @dataclass

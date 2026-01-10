@@ -8,16 +8,14 @@ All services report health → centralized monitor → Kafka events → notifica
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
-from django.db import models, transaction
-from django.utils import timezone
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +109,10 @@ class DegradationNotificationService:
 
     async def _init_kafka_producer(self):
         """Initialize Kafka producer."""
+        import os
+
         from aiokafka import AIOKafkaProducer
         from django.conf import settings
-        import os
 
         bootstrap_servers = getattr(
             settings,

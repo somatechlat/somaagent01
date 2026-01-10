@@ -21,10 +21,9 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
-from admin.chat.models import Conversation as ConversationModel
-from admin.chat.models import Message as MessageModel
 
 router = Router(tags=["conversations"])
 logger = logging.getLogger(__name__)
@@ -155,8 +154,9 @@ async def start_conversation(
 
     PhD Dev: Conversation initialization.
     """
-    from services.common.chat_service import get_chat_service
     from asgiref.sync import sync_to_async
+
+    from services.common.chat_service import get_chat_service
 
     user = get_current_user(request)
     effective_user_id = user.sub
@@ -402,8 +402,9 @@ async def send_message(
 
     PhD Dev: Message processing.
     """
-    from services.common.chat_service import get_chat_service
     from asgiref.sync import sync_to_async
+
+    from services.common.chat_service import get_chat_service
 
     if role != "user":
         raise ServiceError("Only user messages can be sent")
@@ -526,8 +527,9 @@ async def chat(
 
     PhD Dev: Full chat cycle.
     """
-    from services.common.chat_service import get_chat_service
     from asgiref.sync import sync_to_async
+
+    from services.common.chat_service import get_chat_service
 
     @sync_to_async
     def _get_conversation():
@@ -565,7 +567,7 @@ async def chat(
         "conversation_id": conversation_id,
         "status": "streaming",
         "message": "Connect to WebSocket for streaming response",
-        "websocket_url": f"/ws/v2/chat",
+        "websocket_url": "/ws/v2/chat",
     }
 
 

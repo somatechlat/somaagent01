@@ -422,3 +422,82 @@ async def clone_agent(
         "name": new_name,
         "cloned": True,
     }
+
+
+# =============================================================================
+# ENDPOINTS - Multimodal Configuration (SRS 4.1)
+# =============================================================================
+
+
+class MultimodalConfig(BaseModel):
+    """Multimodal capabilities configuration."""
+    image_enabled: bool = True
+    image_quality: str = "standard"
+    image_style: str = "vivid"
+    diagram_enabled: bool = True
+    diagram_format: str = "svg"
+    diagram_theme: str = "default"
+    screenshot_enabled: bool = True
+    screenshot_width: int = 1920
+    screenshot_height: int = 1080
+    screenshot_full_page: bool = True
+    video_enabled: bool = False
+    vision_enabled: bool = True
+    chat_model_vision: bool = True
+    browser_model_vision: bool = True
+    image_provider: str = "dalle3"
+    diagram_provider: str = "mermaid"
+    screenshot_provider: str = "playwright"
+
+
+@router.get(
+    "/{agent_id}/multimodal-config",
+    response={200: dict},
+    summary="Get multimodal config",
+    auth=AuthBearer(),
+)
+async def get_multimodal_config(request, agent_id: str) -> dict:
+    """Get agent multimodal configuration.
+    
+    Uses GlobalDefault for persistence (Unified Policy).
+    """
+    from admin.saas.models.profiles import GlobalDefault
+    
+    gd = await GlobalDefault.aget_instance()
+    defaults = gd.defaults
+    
+    # Return stored config or defaults
+    config = defaults.get("multimodal_policy", MultimodalConfig().dict())
+    
+    return {
+        "config": config,
+        "quotas": {
+             "images": {"current": 0, "limit": 500},
+             "diagrams": {"current": 0, "limit": 1000},
+             "screenshots": {"current": 0, "limit": 1000},
+             "video_minutes": {"current": 0, "limit": 10},
+        }
+    }
+
+
+@router.put(
+    "/{agent_id}/multimodal-config",
+    summary="Update multimodal config",
+    auth=AuthBearer(),
+)
+async def update_multimodal_config(
+    request, 
+    agent_id: str, 
+    config: MultimodalConfig
+) -> dict:
+    """Update agent multimodal configuration.
+    
+    Persists to GlobalDefault (Unified Policy).
+    """
+    from admin.saas.models.profiles import GlobalDefault
+    
+    gd = await GlobalDefault.aget_instance()
+    gd.defaults["multimodal_policy"] = config.dict()
+    await gd.asave()
+    
+    return {"updated": True}

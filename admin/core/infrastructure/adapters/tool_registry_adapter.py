@@ -10,7 +10,6 @@ from admin.core.application.ports import (
     ToolDefinitionDTO,
     ToolRegistryPort,
 )
-
 from services.tool_executor.tool_registry import ToolRegistry
 
 

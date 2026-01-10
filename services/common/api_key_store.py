@@ -16,8 +16,6 @@ from typing import Any, List, Optional
 
 import redis.asyncio as redis
 
-import os
-
 __all__ = [
     "ApiKeyMetadata",
     "ApiKeySecret",

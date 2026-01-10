@@ -8,12 +8,11 @@ Provides automatic failover for audio providers.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Awaitable
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
@@ -264,10 +263,10 @@ class MultimodalDegradationService:
         When storage is unavailable, uploads are queued and retried
         when connection is restored.
         """
-        from admin.core.models import OutboxMessage
-        import json
-        import hashlib
         import base64
+        import hashlib
+
+        from admin.core.models import OutboxMessage
 
         # Create idempotency key
         file_hash = hashlib.sha256(file_data).hexdigest()[:16]

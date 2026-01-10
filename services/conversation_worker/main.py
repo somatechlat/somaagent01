@@ -14,32 +14,33 @@ from typing import Any, Dict
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
 from prometheus_client import start_http_server
 
-from admin.core.observability.metrics import ContextBuilderMetrics
-from admin.core.helpers.tokens import count_tokens
 from admin.agents.services.somabrain_integration import SomaBrainClient
+from admin.core.application.use_cases.conversation.generate_response import GenerateResponseUseCase
+from admin.core.application.use_cases.conversation.process_message import (
+    ProcessMessageInput,
+    ProcessMessageUseCase,
+)
+from admin.core.helpers.tokens import count_tokens
+from admin.core.observability.metrics import ContextBuilderMetrics
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
 from services.common.budget_manager import BudgetManager
+from services.common.degradation_monitor import degradation_monitor, DegradationLevel
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
-from services.common.degradation_monitor import degradation_monitor, DegradationLevel
 from services.common.telemetry import TelemetryPublisher
 from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
-from admin.core.application.use_cases.conversation.generate_response import GenerateResponseUseCase
-from admin.core.application.use_cases.conversation.process_message import (
-    ProcessMessageUseCase,
-    ProcessMessageInput,
-)
 
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead

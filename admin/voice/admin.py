@@ -9,7 +9,6 @@ from django.utils.html import format_html
 
 from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
 
-
 # =============================================================================
 # VOICE PERSONA ADMIN
 # =============================================================================

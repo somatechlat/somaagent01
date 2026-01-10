@@ -17,7 +17,6 @@ import logging
 from typing import Optional
 
 from asgiref.sync import sync_to_async
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel, Field
 
@@ -227,7 +226,7 @@ async def update_rate_limit(
             policy.window_seconds = payload.window_seconds
         if payload.policy is not None:
             if payload.policy not in [e.value for e in EnforcementPolicy]:
-                return None, f"Invalid policy"
+                return None, "Invalid policy"
             policy.policy = payload.policy
         if payload.tier_overrides is not None:
             policy.tier_overrides = payload.tier_overrides

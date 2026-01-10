@@ -80,8 +80,9 @@ async def list_integrations(
     PM: View connected services.
     VIBE: Real DB Query.
     """
-    from admin.integrations.models import Integration as IntegrationModel
     from asgiref.sync import sync_to_async
+
+    from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
     def _get_integrations():
@@ -134,8 +135,9 @@ async def create_integration(
     DevOps: Connect external services.
     VIBE: Real DB Creation.
     """
-    from admin.integrations.models import Integration as IntegrationModel
     from asgiref.sync import sync_to_async
+
+    from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
     def _create():
@@ -219,9 +221,10 @@ async def delete_integration(
     Security Auditor: Revoke access, cleanup.
     VIBE: Real DB Deletion.
     """
-    from admin.integrations.models import Integration as IntegrationModel
-    from admin.common.exceptions import NotFoundError
     from asgiref.sync import sync_to_async
+
+    from admin.common.exceptions import NotFoundError
+    from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
     def _delete():
@@ -262,10 +265,11 @@ async def start_oauth(
 
     Security Auditor: Secure OAuth 2.0 flow.
     """
-    from admin.integrations.models import Integration as IntegrationModel
-    from admin.common.exceptions import NotFoundError
+
     from asgiref.sync import sync_to_async
-    import os
+
+    from admin.common.exceptions import NotFoundError
+    from admin.integrations.models import Integration as IntegrationModel
 
     state = str(uuid4())
 

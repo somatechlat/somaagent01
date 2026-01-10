@@ -7,11 +7,11 @@ This script simulates the Monolith environment by:
 4. Performing a real `remember` call (using SQLite fallback if Postgres is unavailable, or mocking the ORM call slightly if strictly needed, but trying real first).
 """
 
+import asyncio
 import os
 import sys
-import asyncio
-import logging
 from datetime import datetime
+
 import django
 
 # 1. Simulate Imports (since we are cross-repo)
@@ -48,6 +48,7 @@ except Exception as e:
 # 3. Import Facade
 from soma_core.memory_client import BrainMemoryFacade
 from soma_core.models import MemoryWriteRequest
+
 
 async def verify():
     print("--- Starting Verification ---")

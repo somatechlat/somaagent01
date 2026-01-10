@@ -6,13 +6,12 @@ import asyncio
 import datetime
 import io
 import logging
+import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict
 
 import httpx
-
-import os
 
 try:
     import fitz  # PyMuPDF

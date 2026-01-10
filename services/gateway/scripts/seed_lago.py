@@ -3,8 +3,9 @@
 import os
 import sys
 import time
+
 from lago_python_client.client import Client
-from lago_python_client.models import Plan, Customer, BillableMetric, Charge
+from lago_python_client.models import Customer, Plan
 
 # Add project root to path
 sys.path.append(os.getcwd())

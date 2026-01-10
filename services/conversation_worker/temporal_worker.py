@@ -9,18 +9,20 @@ import os
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
-from temporalio import activity, workflow
 from datetime import timedelta
+
+from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from admin.core.helpers.tokens import count_tokens
 from admin.agents.services.somabrain_integration import SomaBrainClient
+from admin.core.helpers.tokens import count_tokens
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-from services.common.compensation import compensate_event
 from services.common.budget_manager import BudgetManager
+from services.common.compensation import compensate_event
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.model_profiles import ModelProfileStore

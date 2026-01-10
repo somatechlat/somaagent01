@@ -6,7 +6,6 @@ Provides Keycloak-based authentication and authorization.
 from __future__ import annotations
 
 import logging
-import os
 import time
 from functools import lru_cache
 from typing import Any

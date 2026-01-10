@@ -14,12 +14,10 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta
 from typing import Optional
 
 from django.conf import settings
-from ninja import Router, File as NinjaFile, UploadedFile
-from ninja.security import HttpBearer
+from ninja import Router
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Files V2"])
@@ -220,8 +218,9 @@ def delete_file(request, file_id: str):
 
     
     """
-    from admin.filesv2.models import File
     from django.utils import timezone
+
+    from admin.filesv2.models import File
 
     try:
         f = File.objects.get(id=file_id, deleted_at__isnull=True)

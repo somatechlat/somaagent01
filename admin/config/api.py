@@ -13,12 +13,10 @@ from __future__ import annotations
 
 import logging
 import os
-import uuid
 from typing import Optional
 
 from asgiref.sync import sync_to_async
 from django.conf import settings as django_settings
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 

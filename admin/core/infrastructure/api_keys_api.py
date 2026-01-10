@@ -7,14 +7,15 @@ API Keys API - Django Ninja CRUD endpoints for platform API keys
 - 10 personas in mind (especially Security Specialist, DevOps Engineer)
 """
 
-from typing import Optional, List
-from uuid import uuid4
-from datetime import datetime
-from ninja import Router
-from django.http import HttpRequest
-from pydantic import BaseModel
-import os
 import hashlib
+import os
+from datetime import datetime
+from typing import List, Optional
+from uuid import uuid4
+
+from django.http import HttpRequest
+from ninja import Router
+from pydantic import BaseModel
 
 router = Router(tags=["API Keys"])
 

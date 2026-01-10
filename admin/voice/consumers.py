@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import logging
 import uuid
 from dataclasses import dataclass, field
@@ -202,8 +201,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         if not self.state:
             return
 
-        from asgiref.sync import sync_to_async
         from datetime import datetime as dt
+
+        from asgiref.sync import sync_to_async
 
         try:
             from admin.voice.models import VoiceSession

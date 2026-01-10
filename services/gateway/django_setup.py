@@ -9,10 +9,9 @@ This module:
 """
 
 import os
-import sys
 import re
-from django.conf import settings
 
+from django.conf import settings
 
 # =============================================================================
 # 1. DJANGO CONFIGURATION (must be before any Django imports)
@@ -106,6 +105,7 @@ if not settings.configured:
 # =============================================================================
 
 from django.urls import path
+
 from admin.api import api
 
 urlpatterns = [

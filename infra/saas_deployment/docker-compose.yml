@@ -35,6 +35,8 @@ services:
     #   dockerfile: somaAgent01/infra/saas_deployment/Dockerfile
     env_file:
       - .env
+    environment:
+      - SOMA_API_TOKEN=soma_saas_secret_token_123
     ports:
       - "63900:9000" # Agent API
       - "63996:9696" # Brain API
@@ -52,6 +54,7 @@ services:
       - ../../../somaAgent01:/app/somaAgent01
       - ../../../somabrain:/app/somabrain
       - ../../../somafractalmemory:/app/somafractalmemory
+      - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
     deploy:
       resources:
         limits:
