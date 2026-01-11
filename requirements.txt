@@ -98,3 +98,5 @@ pytest==8.3.3
 pytest-asyncio==0.24.0
 pytest-playwright==0.5.1
 testcontainers[kafka,postgres,redis]==4.8.0
+whitenoise>=6.6.0
+hvac>=2.1.0
