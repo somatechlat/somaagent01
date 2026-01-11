@@ -190,7 +190,17 @@ AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "false").lower() == "true"
 
 # SomaBrain (Cognitive Runtime)
 SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")
+SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
+SOMABRAIN_API_KEY = os.environ.get("SA01_SOMABRAIN_API_KEY", "")
 OPA_URL = get_required_env("SA01_OPA_URL", "Open Policy Agent for authorization policies")
+
+# Voice Services (Whisper STT + Kokoro TTS)
+WHISPER_URL = os.environ.get("SA01_WHISPER_URL", "http://localhost:9100")
+KOKORO_URL = os.environ.get("SA01_KOKORO_URL", "http://localhost:9200")
+
+# Lago Billing
+LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:3000/api/v1")
+LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
 
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
