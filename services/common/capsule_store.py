@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import redis.asyncio as redis
 
@@ -87,11 +87,11 @@ class CapsuleStore:
     async def _update_field(self, capsule_id: str, field: str, value: Any) -> bool:
         """Execute update field.
 
-            Args:
-                capsule_id: The capsule_id.
-                field: The field.
-                value: The value.
-            """
+        Args:
+            capsule_id: The capsule_id.
+            field: The field.
+            value: The value.
+        """
 
         rec = await self.get(capsule_id)
         if not rec:
@@ -107,9 +107,9 @@ class CapsuleStore:
     def _serialize(self, record: CapsuleRecord) -> dict:
         """Execute serialize.
 
-            Args:
-                record: The record.
-            """
+        Args:
+            record: The record.
+        """
 
         d = record.__dict__.copy()
         # Handle enums
@@ -121,9 +121,9 @@ class CapsuleStore:
         # Convert status string back to Enum if needed, or just keep as consistent type
         """Execute deserialize.
 
-            Args:
-                data: The data.
-            """
+        Args:
+            data: The data.
+        """
 
         if "status" in data:
             try:

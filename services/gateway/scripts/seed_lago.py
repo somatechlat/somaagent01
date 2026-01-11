@@ -16,8 +16,7 @@ LAGO_API_URL = "http://localhost:20600/api/v1"
 
 
 def seed_lago():
-    """Execute seed lago.
-        """
+    """Execute seed lago."""
 
     print(f"🌱 Seeding Lago at {LAGO_API_URL}...")
 

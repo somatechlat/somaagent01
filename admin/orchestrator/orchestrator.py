@@ -3,7 +3,7 @@
 The project’s *canonical* roadmap specifies a single orchestrator implementation.  The previous
 file accidentally contained two completely different orchestrator classes – a lightweight
 ``BaseSomaService``‑based version and a much larger process‑manager version.  Keeping both
-confuses type‑checkers and makes the public API ambiguous.  According to the 
+confuses type‑checkers and makes the public API ambiguous.  According to the
 provide a **single, well‑documented implementation**.
 
 This file now contains only the lightweight version that works with ``BaseSomaService``
@@ -46,10 +46,10 @@ class ServiceRegistry:
         # Attach orchestrator metadata.
         """Execute register.
 
-            Args:
-                service: The service.
-                critical: The critical.
-            """
+        Args:
+            service: The service.
+            critical: The critical.
+        """
 
         service._critical = critical
         # Preserve explicit startup ordering if provided on the service; default to 0.
@@ -59,8 +59,7 @@ class ServiceRegistry:
 
     @property
     def services(self) -> List[BaseSomaService]:
-        """Execute services.
-            """
+        """Execute services."""
 
         return self._services
 
@@ -71,7 +70,7 @@ class SomaOrchestrator:
     The orchestrator is deliberately minimal: it registers a health router, then
     starts and stops each ``BaseSomaService`` instance in the order they were
     registered.  This satisfies the *single‑orchestrator* goal from the roadmap
-    and follows the 
+    and follows the
     implementation.
     """
 
@@ -95,10 +94,10 @@ class SomaOrchestrator:
     def register(self, service: BaseSomaService, critical: bool = False) -> None:
         """Execute register.
 
-            Args:
-                service: The service.
-                critical: The critical.
-            """
+        Args:
+            service: The service.
+            critical: The critical.
+        """
 
         self.registry.register(service, critical)
 
@@ -106,8 +105,7 @@ class SomaOrchestrator:
     # Lifecycle management.
     # ------------------------------------------------------------------
     async def _start_all(self) -> None:
-        """Execute start all.
-            """
+        """Execute start all."""
 
         services = sorted(self.registry.services, key=lambda s: getattr(s, "_startup_order", 0))
         LOGGER.info("Starting %d services", len(services))
@@ -123,8 +121,7 @@ class SomaOrchestrator:
         LOGGER.info("All services started")
 
     async def _stop_all(self) -> None:
-        """Execute stop all.
-            """
+        """Execute stop all."""
 
         LOGGER.info("Shutting down services")
         for svc in reversed(self.registry.services):
@@ -158,9 +155,9 @@ class SomaOrchestrator:
         async def lifespan(app: Any):
             """Execute lifespan.
 
-                Args:
-                    app: The app.
-                """
+            Args:
+                app: The app.
+            """
 
             await self._start_all()
             try:

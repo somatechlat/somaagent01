@@ -13,9 +13,9 @@ Implements require_permission decorator for route-level permission checks.
 - 🏗️ Django Architect: Decorator pattern, async support
 """
 
+import logging
 from functools import wraps
 from typing import Callable, List
-import logging
 
 from ninja.errors import HttpError
 
@@ -237,20 +237,11 @@ def require_permission(*permissions: str):
     """
 
     def decorator(func: Callable) -> Callable:
+        """Inner decorator for require_permission."""
+
         @wraps(func)
-        """Execute decorator.
-
-            Args:
-                func: The func.
-            """
-
         async def async_wrapper(request, *args, **kwargs):
-            """Execute async wrapper.
-
-                Args:
-                    request: The request.
-                """
-
+            """Async wrapper with permission check."""
             user_perms = get_user_permissions(getattr(request, "auth", None))
 
             # Super admin has all permissions
@@ -259,9 +250,7 @@ def require_permission(*permissions: str):
 
             # Check if user has any of the required permissions
             if not any(p in user_perms for p in permissions):
-                logger.warning(
-                    f"Permission denied: {permissions} required, " f"user has {user_perms}"
-                )
+                logger.warning(f"Permission denied: {permissions} required, user has {user_perms}")
                 raise HttpError(403, "Permission denied")
 
             return await func(request, *args, **kwargs)
@@ -270,9 +259,9 @@ def require_permission(*permissions: str):
         def sync_wrapper(request, *args, **kwargs):
             """Execute sync wrapper.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             user_perms = get_user_permissions(getattr(request, "auth", None))
 
@@ -280,9 +269,7 @@ def require_permission(*permissions: str):
                 return func(request, *args, **kwargs)
 
             if not any(p in user_perms for p in permissions):
-                logger.warning(
-                    f"Permission denied: {permissions} required, " f"user has {user_perms}"
-                )
+                logger.warning(f"Permission denied: {permissions} required, user has {user_perms}")
                 raise HttpError(403, "Permission denied")
 
             return func(request, *args, **kwargs)

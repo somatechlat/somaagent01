@@ -23,8 +23,7 @@ class ToolCatalog:
 
     @classmethod
     def get(cls) -> "ToolCatalog":
-        """Execute get.
-            """
+        """Execute get."""
 
         if cls._instance is None:
             cls._instance = cls()
@@ -32,38 +31,35 @@ class ToolCatalog:
 
     # Public API expected in tests
     def list_tools(self) -> List[ToolDefinition]:
-        """Execute list tools.
-            """
+        """Execute list tools."""
 
         return list(self._tools.values())
 
     async def alist_tools(self) -> List[ToolDefinition]:
-        """Execute alist tools.
-            """
+        """Execute alist tools."""
 
         return self.list_tools()
 
     def get_tool(self, name: str) -> Optional[ToolDefinition]:
         """Retrieve tool.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return self._tools.get(name)
 
     async def aget_tool(self, name: str) -> Optional[ToolDefinition]:
         """Execute aget tool.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return self.get_tool(name)
 
     def get_tools_schema(self) -> Dict[str, List[dict]]:
-        """Retrieve tools schema.
-            """
+        """Retrieve tools schema."""
 
         return {
             "functions": [t.to_openapi_function() for t in self._tools.values()],
@@ -72,8 +68,7 @@ class ToolCatalog:
     # Internal helpers
     def _load_defaults(self) -> None:
         # Search tool
-        """Execute load defaults.
-            """
+        """Execute load defaults."""
 
         self._tools["search"] = ToolDefinition(
             name="search",

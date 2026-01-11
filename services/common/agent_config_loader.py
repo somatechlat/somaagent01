@@ -1,7 +1,9 @@
 """Agent config loader - uses Django ORM for settings."""
 
 import json
+import logging
 import os
+from pathlib import Path
 from typing import Any, List
 
 from admin.llm.models import ModelConfig, ModelType  # Migrated from root models.py
@@ -32,10 +34,10 @@ async def validate_knowledge_subdirs(subdirs: List[str]) -> bool:
 def _find_section(settings: dict, section_id: str) -> dict:
     """Execute find section.
 
-        Args:
-            settings: The settings.
-            section_id: The section_id.
-        """
+    Args:
+        settings: The settings.
+        section_id: The section_id.
+    """
 
     sections = settings.get("sections", [])
     return next((s for s in sections if s["id"] == section_id), {})
@@ -44,11 +46,11 @@ def _find_section(settings: dict, section_id: str) -> dict:
 def _get_field(section: dict, field_id: str, default: Any = None) -> Any:
     """Execute get field.
 
-        Args:
-            section: The section.
-            field_id: The field_id.
-            default: The default.
-        """
+    Args:
+        section: The section.
+        field_id: The field_id.
+        default: The default.
+    """
 
     fields = section.get("fields", [])
     field = next((f for f in fields if f["id"] == field_id), None)
@@ -101,11 +103,11 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
     def build_model_config(idx: str, section: dict, model_type: ModelType) -> ModelConfig:
         """Execute build model config.
 
-            Args:
-                idx: The idx.
-                section: The section.
-                model_type: The model_type.
-            """
+        Args:
+            idx: The idx.
+            section: The section.
+            model_type: The model_type.
+        """
 
         provider = _get_field(section, f"{idx}_provider")  # REQUIRED - no hardcoded default
         # Model name must be explicitly configured in AgentSetting database
@@ -125,7 +127,7 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
         if isinstance(kwargs, str):
             try:
                 kwargs = json.loads(kwargs)
-            except:
+            except Exception:
                 kwargs = {}
 
         # Handle browser headers special case
@@ -135,7 +137,7 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
                 if isinstance(headers, str):
                     try:
                         headers = json.loads(headers)
-                    except:
+                    except Exception:
                         headers = {}
                 if isinstance(headers, dict):
                     # Add to kwargs for now, or handle in AgentConfig if it has specific field
@@ -160,7 +162,7 @@ async def load_agent_config(tenant: str = "default") -> AgentConfig:
     if isinstance(browser_headers, str):
         try:
             browser_headers = json.loads(browser_headers)
-        except:
+        except Exception:
             browser_headers = {}
 
     # AgentConfig instantiation

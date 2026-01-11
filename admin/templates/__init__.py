@@ -1,4 +1,1 @@
-"""Templates module - Agent and prompt templates.
-
-
-"""
+"""Templates module - Agent and prompt templates."""

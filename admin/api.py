@@ -275,7 +275,6 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/plugins", plugins_router)
 
-
     # Audit (Security logging)
     from admin.audit.api import router as audit_router
 

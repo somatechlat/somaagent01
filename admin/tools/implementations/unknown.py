@@ -10,8 +10,7 @@ class Unknown(Tool):
     """Unknown class implementation."""
 
     async def execute(self, **kwargs):
-        """Execute execute.
-            """
+        """Execute execute."""
 
         tools = get_tools_prompt(self.agent)
         return Response(

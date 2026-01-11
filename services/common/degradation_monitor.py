@@ -153,7 +153,7 @@ class DegradationMonitor:
         self._monitoring_active = False
         self._monitor_task: Optional[asyncio.Task] = None
         self._dependency_graph: Dict[str, List[str]] = self.SERVICE_DEPENDENCIES.copy()
-        # 
+        #
         self._history: List[DegradationHistoryRecord] = []
         self._temporal_client: Optional[TemporalClient] = None
 
@@ -203,7 +203,9 @@ class DegradationMonitor:
         ]
         for component in critical_components:
             self.circuit_breakers[component] = CircuitBreaker(
-                failure_threshold=5, recovery_timeout=60, expected_exception=Exception  # 1 minute
+                failure_threshold=5,
+                recovery_timeout=60,
+                expected_exception=Exception,  # 1 minute
             )
 
     async def start_monitoring(self) -> None:
@@ -359,10 +361,7 @@ class DegradationMonitor:
             logger.warning(f"SomaBrain health check failed: {e}")
 
     async def _check_database_health(self, component: ComponentHealth) -> None:
-        """Check database health with REAL PostgreSQL connection.
-
-        
-        """
+        """Check database health with REAL PostgreSQL connection."""
         try:
             from django.db import connection
 
@@ -382,7 +381,7 @@ class DegradationMonitor:
     async def _check_kafka_health(self, component: ComponentHealth) -> None:
         """Check Kafka health with REAL Kafka connection.
 
-        
+
         Uses aiokafka to verify broker connectivity.
         """
         try:
@@ -424,7 +423,7 @@ class DegradationMonitor:
     async def _check_redis_health(self, component: ComponentHealth) -> None:
         """Check Redis health with REAL Redis connection.
 
-        
+
         Uses redis-py to execute PING command.
         """
         try:
@@ -477,10 +476,7 @@ class DegradationMonitor:
         component.error_rate = 0.0 if component.healthy else 1.0
 
     async def _check_llm_health(self, component: ComponentHealth) -> None:
-        """Check LLM providers health via LLMDegradationService.
-
-        
-        """
+        """Check LLM providers health via LLMDegradationService."""
         try:
             from services.common.llm_degradation import llm_degradation_service
 
@@ -523,10 +519,7 @@ class DegradationMonitor:
             logger.warning(f"LLM health check failed: {e}")
 
     async def _check_audio_health(self, component: ComponentHealth) -> None:
-        """Check audio service health (TTS/STT).
-
-        
-        """
+        """Check audio service health (TTS/STT)."""
         try:
             from services.common.multimodal_degradation import multimodal_degradation_service
 
@@ -554,10 +547,7 @@ class DegradationMonitor:
             logger.warning(f"Audio health check failed for {component.name}: {e}")
 
     async def _check_storage_health(self, component: ComponentHealth) -> None:
-        """Check storage service health.
-
-        
-        """
+        """Check storage service health."""
         try:
             from services.common.multimodal_degradation import multimodal_degradation_service
 
@@ -871,10 +861,7 @@ class DegradationMonitor:
         logger.debug(f"Recorded success for {component_name}: {response_time:.3f}s")
 
     def _record_history(self, component: ComponentHealth, event_type: str = "check") -> None:
-        """Record a degradation event to history.
-
-        
-        """
+        """Record a degradation event to history."""
         record = DegradationHistoryRecord(
             timestamp=time.time(),
             component_name=component.name,
@@ -895,7 +882,7 @@ class DegradationMonitor:
     ) -> List[Dict[str, any]]:
         """Get degradation history records.
 
-        
+
 
         Args:
             limit: Maximum number of records to return

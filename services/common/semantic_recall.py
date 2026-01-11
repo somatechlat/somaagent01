@@ -53,10 +53,10 @@ class SemanticRecallIndex:
     def _cosine(self, a: List[float], b: List[float]) -> float:
         """Execute cosine.
 
-            Args:
-                a: The a.
-                b: The b.
-            """
+        Args:
+            a: The a.
+            b: The b.
+        """
 
         if not a or not b or len(a) != len(b):
             return 0.0
@@ -70,10 +70,10 @@ class SemanticRecallIndex:
     def add(self, vector: List[float], metadata: Dict[str, Any]) -> None:
         """Execute add.
 
-            Args:
-                vector: The vector.
-                metadata: The metadata.
-            """
+        Args:
+            vector: The vector.
+            metadata: The metadata.
+        """
 
         if not isinstance(vector, list) or not vector:
             return
@@ -89,11 +89,11 @@ class SemanticRecallIndex:
     ) -> List[Dict[str, Any]]:
         """Execute recall.
 
-            Args:
-                query_vec: The query_vec.
-                k: The k.
-                min_score: The min_score.
-            """
+        Args:
+            query_vec: The query_vec.
+            k: The k.
+            min_score: The min_score.
+        """
 
         if not query_vec:
             return []

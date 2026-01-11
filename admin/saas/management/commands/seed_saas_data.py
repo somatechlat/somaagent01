@@ -28,9 +28,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--force",
@@ -50,8 +50,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         self.stdout.write(self.style.HTTP_INFO("\n🌱 Seeding SAAS Data...\n"))
 

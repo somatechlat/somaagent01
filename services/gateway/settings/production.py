@@ -1,5 +1,7 @@
 """Production settings with strict validation."""
 
+import os
+
 from .base import *  # noqa
 from .service_registry import SERVICES
 

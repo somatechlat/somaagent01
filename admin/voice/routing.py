@@ -1,7 +1,4 @@
-"""Voice WebSocket URL Routing.
-
-
-"""
+"""Voice WebSocket URL Routing."""
 
 from django.urls import path
 

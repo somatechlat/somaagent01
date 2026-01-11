@@ -628,7 +628,7 @@ class AgentIQGovernor:
     Computes AIQ_pred, decides Fast Path vs Rescue Path.
     Target latency: ≤10ms p95.
 
-    
+
     - Real implementations only
     - Integrates with existing infrastructure
     - In-process execution (no network calls)

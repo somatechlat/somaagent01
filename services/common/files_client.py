@@ -130,7 +130,7 @@ class FilesServiceError(Exception):
 class FilesClient:
     """HTTP client for external files-service.
 
-    
+
     - Uses FILES_SERVICE_URL from environment
     - Real HTTP calls via httpx
     - Prometheus metrics

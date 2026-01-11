@@ -15,9 +15,8 @@ from typing import Any, Dict
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db import transaction
 
-# We avoid importing Tenant here directly if it causes circular imports, 
+# We avoid importing Tenant here directly if it causes circular imports,
 # but models.OneToOneField('saas.Tenant') handles it via string reference.
 
 
@@ -45,6 +44,7 @@ class GlobalDefault(models.Model):
 
     class Meta:
         """Meta options."""
+
         db_table = "saas_global_defaults"
         verbose_name = "Global Default"
         verbose_name_plural = "Global Defaults"
@@ -158,8 +158,7 @@ class AdminProfile(models.Model):
 
     def save(self, *args, **kwargs):
         # Initialize default notification prefs if empty
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
@@ -287,8 +286,7 @@ class UserPreferences(models.Model):
         }
 
     def save(self, *args, **kwargs):
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()

@@ -10,6 +10,7 @@ The script performs an internal streaming invoke (requiring X-Internal-Token)
 and records the ordered event sequence (type, hash(message), sequence, roles)
 to a JSON file. A compare run regenerates a fresh trace and reports diffs.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,15 +26,17 @@ import httpx
 
 def _get_gateway_base() -> str:
     """Get gateway base URL. Fails fast if not configured."""
-    return cfg.get_somabrain_url()
+    import os
+
+    return os.environ.get("SOMABRAIN_URL", "http://localhost:63996")
 
 
 def _hash(text: str) -> str:
     """Execute hash.
 
-        Args:
-            text: The text.
-        """
+    Args:
+        text: The text.
+    """
 
     h = hashlib.sha1(text.encode("utf-8", errors="ignore")).hexdigest()
     return f"sha1:{h}"[:18]
@@ -42,11 +45,11 @@ def _hash(text: str) -> str:
 async def _stream_prompt(prompt: str, internal_token: str, model: str) -> List[Dict[str, Any]]:
     """Execute stream prompt.
 
-        Args:
-            prompt: The prompt.
-            internal_token: The internal_token.
-            model: The model.
-        """
+    Args:
+        prompt: The prompt.
+        internal_token: The internal_token.
+        model: The model.
+    """
 
     url = f"{_get_gateway_base()}/v1/llm/invoke/stream"
     session_id = str(uuid.uuid4())
@@ -97,10 +100,10 @@ async def _stream_prompt(prompt: str, internal_token: str, model: str) -> List[D
 def _diff(expected: List[Dict[str, Any]], actual: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Execute diff.
 
-        Args:
-            expected: The expected.
-            actual: The actual.
-        """
+    Args:
+        expected: The expected.
+        actual: The actual.
+    """
 
     diffs: Dict[str, Any] = {"missing": [], "extra": [], "order_mismatch": []}
     # Compare by index for ordering, then membership ignoring sequence differences
@@ -122,9 +125,9 @@ def _diff(expected: List[Dict[str, Any]], actual: List[Dict[str, Any]]) -> Dict[
 async def main(argv: list[str]) -> int:
     """Execute main.
 
-        Args:
-            argv: The argv.
-        """
+    Args:
+        argv: The argv.
+    """
 
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)

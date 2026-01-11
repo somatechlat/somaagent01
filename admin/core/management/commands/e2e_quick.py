@@ -22,15 +22,16 @@ def _get_base_url() -> str:
     """Get base URL from args or config. Fails fast if not configured."""
     if len(sys.argv) > 1:
         return sys.argv[1]
-    return cfg.get_somabrain_url()
+    import os
+
+    return os.environ.get("SOMABRAIN_URL", "http://localhost:63996")
 
 
 BASE = None  # Initialized in main()
 
 
 async def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     base = _get_base_url()
     async with httpx.AsyncClient(timeout=10.0) as client:

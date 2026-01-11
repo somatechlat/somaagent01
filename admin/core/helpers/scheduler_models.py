@@ -66,8 +66,7 @@ class TaskSchedule(BaseModel):
     timezone: str = Field(default_factory=lambda: Localization.get().get_timezone())
 
     def to_crontab(self) -> str:
-        """Execute to crontab.
-            """
+        """Execute to crontab."""
 
         return f"{self.minute} {self.hour} {self.day} {self.month} {self.weekday}"
 
@@ -88,11 +87,11 @@ class TaskPlan(BaseModel):
     ):
         """Execute create.
 
-            Args:
-                todo: The todo.
-                in_progress: The in_progress.
-                done: The done.
-            """
+        Args:
+            todo: The todo.
+            in_progress: The in_progress.
+            done: The done.
+        """
 
         if todo:
             for idx, dt in enumerate(todo):
@@ -110,9 +109,9 @@ class TaskPlan(BaseModel):
     def add_todo(self, launch_time: datetime):
         """Execute add todo.
 
-            Args:
-                launch_time: The launch_time.
-            """
+        Args:
+            launch_time: The launch_time.
+        """
 
         if launch_time.tzinfo is None:
             launch_time = pytz.timezone("UTC").localize(launch_time)
@@ -122,9 +121,9 @@ class TaskPlan(BaseModel):
     def set_in_progress(self, launch_time: datetime):
         """Set in progress.
 
-            Args:
-                launch_time: The launch_time.
-            """
+        Args:
+            launch_time: The launch_time.
+        """
 
         if launch_time.tzinfo is None:
             launch_time = pytz.timezone("UTC").localize(launch_time)
@@ -137,9 +136,9 @@ class TaskPlan(BaseModel):
     def set_done(self, launch_time: datetime):
         """Set done.
 
-            Args:
-                launch_time: The launch_time.
-            """
+        Args:
+            launch_time: The launch_time.
+        """
 
         if launch_time.tzinfo is None:
             launch_time = pytz.timezone("UTC").localize(launch_time)
@@ -154,14 +153,12 @@ class TaskPlan(BaseModel):
         self.done = sorted(self.done)
 
     def get_next_launch_time(self) -> datetime | None:
-        """Retrieve next launch time.
-            """
+        """Retrieve next launch time."""
 
         return self.todo[0] if self.todo else None
 
     def should_launch(self) -> datetime | None:
-        """Execute should launch.
-            """
+        """Execute should launch."""
 
         next_launch_time = self.get_next_launch_time()
         if next_launch_time is None:
@@ -208,16 +205,16 @@ class BaseTask(BaseModel):
     ):
         """Execute update.
 
-            Args:
-                name: The name.
-                state: The state.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                attachments: The attachments.
-                last_run: The last_run.
-                last_result: The last_result.
-                context_id: The context_id.
-            """
+        Args:
+            name: The name.
+            state: The state.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            attachments: The attachments.
+            last_run: The last_run.
+            last_result: The last_result.
+            context_id: The context_id.
+        """
 
         with self._lock:
             if name is not None:
@@ -252,9 +249,9 @@ class BaseTask(BaseModel):
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
         """Execute check schedule.
 
-            Args:
-                frequency_seconds: The frequency_seconds.
-            """
+        Args:
+            frequency_seconds: The frequency_seconds.
+        """
 
         start = time.time()
         try:
@@ -270,16 +267,14 @@ class BaseTask(BaseModel):
             pass
 
     def get_next_run(self) -> datetime | None:
-        """Retrieve next run.
-            """
+        """Retrieve next run."""
 
         if self.last_run is None:
             return datetime.now(timezone.utc)
         return self.last_run + timedelta(seconds=60)
 
     def get_next_run_minutes(self) -> int | None:
-        """Retrieve next run minutes.
-            """
+        """Retrieve next run minutes."""
 
         next_run = self.get_next_run()
         if next_run is None:
@@ -288,14 +283,12 @@ class BaseTask(BaseModel):
         return max(0, minutes)
 
     async def on_run(self):
-        """Execute on run.
-            """
+        """Execute on run."""
 
         pass
 
     async def on_finish(self):
-        """Execute on finish.
-            """
+        """Execute on finish."""
 
         from admin.core.helpers.task_scheduler import TaskScheduler
 
@@ -304,9 +297,9 @@ class BaseTask(BaseModel):
     async def on_error(self, error: str):
         """Execute on error.
 
-            Args:
-                error: The error.
-            """
+        Args:
+            error: The error.
+        """
 
         from admin.core.helpers.print_style import PrintStyle
         from admin.core.helpers.task_scheduler import TaskScheduler
@@ -328,9 +321,9 @@ class BaseTask(BaseModel):
     async def on_success(self, result: str):
         """Execute on success.
 
-            Args:
-                result: The result.
-            """
+        Args:
+            result: The result.
+        """
 
         from admin.core.helpers.print_style import PrintStyle
         from admin.core.helpers.task_scheduler import TaskScheduler
@@ -370,14 +363,14 @@ class AdHocTask(BaseTask):
     ):
         """Execute create.
 
-            Args:
-                name: The name.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                token: The token.
-                attachments: The attachments.
-                context_id: The context_id.
-            """
+        Args:
+            name: The name.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            token: The token.
+            attachments: The attachments.
+            context_id: The context_id.
+        """
 
         return cls(
             name=name,
@@ -403,17 +396,17 @@ class AdHocTask(BaseTask):
     ):
         """Execute update.
 
-            Args:
-                name: The name.
-                state: The state.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                attachments: The attachments.
-                last_run: The last_run.
-                last_result: The last_result.
-                context_id: The context_id.
-                token: The token.
-            """
+        Args:
+            name: The name.
+            state: The state.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            attachments: The attachments.
+            last_run: The last_run.
+            last_result: The last_result.
+            context_id: The context_id.
+            token: The token.
+        """
 
         super().update(
             name=name,
@@ -448,15 +441,15 @@ class ScheduledTask(BaseTask):
     ):
         """Execute create.
 
-            Args:
-                name: The name.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                schedule: The schedule.
-                attachments: The attachments.
-                context_id: The context_id.
-                timezone: The timezone.
-            """
+        Args:
+            name: The name.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            schedule: The schedule.
+            attachments: The attachments.
+            context_id: The context_id.
+            timezone: The timezone.
+        """
 
         if timezone is not None:
             schedule.timezone = timezone
@@ -486,17 +479,17 @@ class ScheduledTask(BaseTask):
     ):
         """Execute update.
 
-            Args:
-                name: The name.
-                state: The state.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                attachments: The attachments.
-                last_run: The last_run.
-                last_result: The last_result.
-                context_id: The context_id.
-                schedule: The schedule.
-            """
+        Args:
+            name: The name.
+            state: The state.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            attachments: The attachments.
+            last_run: The last_run.
+            last_result: The last_result.
+            context_id: The context_id.
+            schedule: The schedule.
+        """
 
         super().update(
             name=name,
@@ -514,9 +507,9 @@ class ScheduledTask(BaseTask):
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
         """Execute check schedule.
 
-            Args:
-                frequency_seconds: The frequency_seconds.
-            """
+        Args:
+            frequency_seconds: The frequency_seconds.
+        """
 
         with self._lock:
             crontab = CronTab(crontab=self.schedule.to_crontab())
@@ -533,8 +526,7 @@ class ScheduledTask(BaseTask):
             return next_run_seconds < frequency_seconds
 
     def get_next_run(self) -> datetime | None:
-        """Retrieve next run.
-            """
+        """Retrieve next run."""
 
         with self._lock:
             crontab = CronTab(crontab=self.schedule.to_crontab())
@@ -559,14 +551,14 @@ class PlannedTask(BaseTask):
     ):
         """Execute create.
 
-            Args:
-                name: The name.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                plan: The plan.
-                attachments: The attachments.
-                context_id: The context_id.
-            """
+        Args:
+            name: The name.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            plan: The plan.
+            attachments: The attachments.
+            context_id: The context_id.
+        """
 
         return cls(
             name=name,
@@ -592,17 +584,17 @@ class PlannedTask(BaseTask):
     ):
         """Execute update.
 
-            Args:
-                name: The name.
-                state: The state.
-                system_prompt: The system_prompt.
-                prompt: The prompt.
-                attachments: The attachments.
-                last_run: The last_run.
-                last_result: The last_result.
-                context_id: The context_id.
-                plan: The plan.
-            """
+        Args:
+            name: The name.
+            state: The state.
+            system_prompt: The system_prompt.
+            prompt: The prompt.
+            attachments: The attachments.
+            last_run: The last_run.
+            last_result: The last_result.
+            context_id: The context_id.
+            plan: The plan.
+        """
 
         super().update(
             name=name,
@@ -620,23 +612,21 @@ class PlannedTask(BaseTask):
     def check_schedule(self, frequency_seconds: float = 60.0) -> bool:
         """Execute check schedule.
 
-            Args:
-                frequency_seconds: The frequency_seconds.
-            """
+        Args:
+            frequency_seconds: The frequency_seconds.
+        """
 
         with self._lock:
             return self.plan.should_launch() is not None
 
     def get_next_run(self) -> datetime | None:
-        """Retrieve next run.
-            """
+        """Retrieve next run."""
 
         with self._lock:
             return self.plan.get_next_launch_time()
 
     async def on_run(self):
-        """Execute on run.
-            """
+        """Execute on run."""
 
         with self._lock:
             next_launch_time = self.plan.should_launch()
@@ -645,8 +635,7 @@ class PlannedTask(BaseTask):
         await super().on_run()
 
     async def on_finish(self):
-        """Execute on finish.
-            """
+        """Execute on finish."""
 
         from admin.core.helpers.task_scheduler import TaskScheduler
 
@@ -665,18 +654,18 @@ class PlannedTask(BaseTask):
     async def on_success(self, result: str):
         """Execute on success.
 
-            Args:
-                result: The result.
-            """
+        Args:
+            result: The result.
+        """
 
         await super().on_success(result)
 
     async def on_error(self, error: str):
         """Execute on error.
 
-            Args:
-                error: The error.
-            """
+        Args:
+            error: The error.
+        """
 
         await super().on_error(error)
 

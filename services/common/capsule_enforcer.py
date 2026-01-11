@@ -78,8 +78,7 @@ class EnforcementResult:
 
     @property
     def allowed(self) -> bool:
-        """Execute allowed.
-            """
+        """Execute allowed."""
 
         return self.action in {EnforcementAction.ALLOW, EnforcementAction.WARN}
 

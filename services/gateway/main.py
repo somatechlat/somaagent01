@@ -40,8 +40,7 @@ if __name__ == "__main__":
 
 # Compatibility exports for tests
 def get_secret_manager():
-    """Retrieve secret manager.
-        """
+    """Retrieve secret manager."""
 
     from services.gateway import providers
 
@@ -49,8 +48,7 @@ def get_secret_manager():
 
 
 def get_event_bus():
-    """Retrieve event bus.
-        """
+    """Retrieve event bus."""
 
     from services.gateway import providers
 
@@ -58,8 +56,7 @@ def get_event_bus():
 
 
 def get_session_cache():
-    """Retrieve session cache.
-        """
+    """Retrieve session cache."""
 
     from services.gateway import providers
 
@@ -67,8 +64,7 @@ def get_session_cache():
 
 
 def get_session_store():
-    """Retrieve session store.
-        """
+    """Retrieve session store."""
 
     from services.gateway import providers
 

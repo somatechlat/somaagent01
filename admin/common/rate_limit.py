@@ -17,7 +17,6 @@ Personas:
 from __future__ import annotations
 
 import logging
-import os
 from functools import wraps
 from typing import Callable, Optional
 
@@ -106,21 +105,27 @@ def rate_limit(
     """
 
     def decorator(func: Callable) -> Callable:
+        """Inner decorator function.
+
+        Args:
+            func: The function to wrap.
+
+        Returns:
+            Wrapped function with rate limiting.
+        """
+
         @wraps(func)
-        """Execute decorator.
+        async def wrapper(request, *args, **kwargs):
+            """Rate-limited wrapper function.
 
             Args:
-                func: The func.
+                request: The Django request.
+                *args: Positional arguments.
+                **kwargs: Keyword arguments.
+
+            Returns:
+                Result from the wrapped function.
             """
-
-        async def wrapper(request, *args, **kwargs):
-            # Get IP address
-            """Execute wrapper.
-
-                Args:
-                    request: The request.
-                """
-
             if key_func:
                 key = key_func(request)
             else:

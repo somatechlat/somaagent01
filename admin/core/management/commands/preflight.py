@@ -12,6 +12,7 @@ Exit codes:
   1: Missing required variables / prior variables present
   2: Dependency check failed (OPA unreachable)
 """
+
 from __future__ import annotations
 
 import json
@@ -76,18 +77,17 @@ OPTIONAL = {
 def fail(msg: str, code: int = 1) -> None:
     """Execute fail.
 
-        Args:
-            msg: The msg.
-            code: The code.
-        """
+    Args:
+        msg: The msg.
+        code: The code.
+    """
 
     sys.stderr.write(msg + "\n")
     sys.exit(code)
 
 
 def check_prior_present() -> list[str]:
-    """Execute check prior present.
-        """
+    """Execute check prior present."""
 
     present = []
     for k in PRIOR_ENV:
@@ -97,8 +97,7 @@ def check_prior_present() -> list[str]:
 
 
 def check_required_present() -> list[str]:
-    """Execute check required present.
-        """
+    """Execute check required present."""
 
     missing = []
     for k in REQUIRED_CANONICAL:
@@ -108,8 +107,7 @@ def check_required_present() -> list[str]:
 
 
 def validate_mode_and_auth() -> list[str]:
-    """Execute validate mode and auth.
-        """
+    """Execute validate mode and auth."""
 
     errs: list[str] = []
     mode = os.environ.get("SA01_DEPLOYMENT_MODE", "").upper()
@@ -122,8 +120,7 @@ def validate_mode_and_auth() -> list[str]:
 
 
 def probe_opa() -> tuple[bool, str]:
-    """Execute probe opa.
-        """
+    """Execute probe opa."""
 
     base = os.environ.get("SA01_POLICY_URL", "").rstrip("/")
     path = os.environ.get("SA01_POLICY_DECISION_PATH", "")
@@ -158,8 +155,7 @@ def probe_opa() -> tuple[bool, str]:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     prior = check_prior_present()
     if prior:

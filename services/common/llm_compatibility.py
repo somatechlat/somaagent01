@@ -90,7 +90,7 @@ def clean_invalid_json(content: str) -> str:
     """
     if dirty_json is None:
         raise RuntimeError(
-            "dirty-json required for lenient JSON parsing. " "Install with: pip install dirty-json"
+            "dirty-json required for lenient JSON parsing. Install with: pip install dirty-json"
         )
 
     parsed = dirty_json.parse(content)

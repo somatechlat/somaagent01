@@ -262,4 +262,3 @@ class BrainMemoryFacade:
         # In a strict production environment, this would write to an append-only
         # immutable ledger. For this implementation, we target the standard logger.
         logger.info(f"AUDIT_EVENT: {json.dumps(entry)}")
-

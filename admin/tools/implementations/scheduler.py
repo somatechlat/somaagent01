@@ -27,12 +27,10 @@ DEFAULT_WAIT_TIMEOUT = 300
 
 
 class SchedulerTool(Tool):
-
     """Schedulertool class implementation."""
 
     async def execute(self, **kwargs):
-        """Execute execute.
-            """
+        """Execute execute."""
 
         if self.method == "list_tasks":
             return await self.list_tasks(**kwargs)
@@ -56,8 +54,7 @@ class SchedulerTool(Tool):
             return Response(message=f"Unknown method '{self.name}:{self.method}'", break_loop=False)
 
     async def list_tasks(self, **kwargs) -> Response:
-        """Execute list tasks.
-            """
+        """Execute list tasks."""
 
         state_filter: list[str] | None = kwargs.get("state", None)
         type_filter: list[str] | None = kwargs.get("type", None)
@@ -71,17 +68,24 @@ class SchedulerTool(Tool):
                 continue
             if type_filter and task.type not in type_filter:
                 continue
-            if next_run_within_filter and task.get_next_run_minutes() is not None and task.get_next_run_minutes() > next_run_within_filter:  # type: ignore
+            if (
+                next_run_within_filter
+                and task.get_next_run_minutes() is not None
+                and task.get_next_run_minutes() > next_run_within_filter
+            ):  # type: ignore
                 continue
-            if next_run_after_filter and task.get_next_run_minutes() is not None and task.get_next_run_minutes() < next_run_after_filter:  # type: ignore
+            if (
+                next_run_after_filter
+                and task.get_next_run_minutes() is not None
+                and task.get_next_run_minutes() < next_run_after_filter
+            ):  # type: ignore
                 continue
             filtered_tasks.append(serialize_task(task))
 
         return Response(message=json.dumps(filtered_tasks, indent=4), break_loop=False)
 
     async def find_task_by_name(self, **kwargs) -> Response:
-        """Execute find task by name.
-            """
+        """Execute find task by name."""
 
         name: str = kwargs.get("name", "")
         if not name:
@@ -97,8 +101,7 @@ class SchedulerTool(Tool):
         )
 
     async def show_task(self, **kwargs) -> Response:
-        """Execute show task.
-            """
+        """Execute show task."""
 
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
@@ -111,8 +114,7 @@ class SchedulerTool(Tool):
         return Response(message=json.dumps(serialize_task(task), indent=4), break_loop=False)
 
     async def run_task(self, **kwargs) -> Response:
-        """Execute run task.
-            """
+        """Execute run task."""
 
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
@@ -131,8 +133,7 @@ class SchedulerTool(Tool):
         return Response(message=f"Task started: {task_uuid}", break_loop=break_loop)
 
     async def delete_task(self, **kwargs) -> Response:
-        """Execute delete task.
-            """
+        """Execute delete task."""
 
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:
@@ -177,8 +178,7 @@ class SchedulerTool(Tool):
         #       "month": "*",
         #       "weekday": "*",
         #   }
-        """Execute create scheduled task.
-            """
+        """Execute create scheduled task."""
 
         name: str = kwargs.get("name", "")
         system_prompt: str = kwargs.get("system_prompt", "")
@@ -215,8 +215,7 @@ class SchedulerTool(Tool):
         return Response(message=f"Scheduled task '{name}' created: {task.uuid}", break_loop=False)
 
     async def create_adhoc_task(self, **kwargs) -> Response:
-        """Execute create adhoc task.
-            """
+        """Execute create adhoc task."""
 
         name: str = kwargs.get("name", "")
         system_prompt: str = kwargs.get("system_prompt", "")
@@ -237,8 +236,7 @@ class SchedulerTool(Tool):
         return Response(message=f"Adhoc task '{name}' created: {task.uuid}", break_loop=False)
 
     async def create_planned_task(self, **kwargs) -> Response:
-        """Execute create planned task.
-            """
+        """Execute create planned task."""
 
         name: str = kwargs.get("name", "")
         system_prompt: str = kwargs.get("system_prompt", "")
@@ -271,8 +269,7 @@ class SchedulerTool(Tool):
         return Response(message=f"Planned task '{name}' created: {task.uuid}", break_loop=False)
 
     async def wait_for_task(self, **kwargs) -> Response:
-        """Execute wait for task.
-            """
+        """Execute wait for task."""
 
         task_uuid: str = kwargs.get("uuid", "")
         if not task_uuid:

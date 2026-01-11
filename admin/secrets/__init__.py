@@ -1,4 +1,1 @@
-"""Secrets module - Credential management.
-
-
-"""
+"""Secrets module - Credential management."""

@@ -70,8 +70,7 @@ class WSMessage:
     timestamp: str = ""
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if not self.id:
             self.id = str(uuid4())
@@ -79,8 +78,7 @@ class WSMessage:
             self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return {
             "type": self.type,
@@ -428,8 +426,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         @sync_to_async
         def get_conversation_data():
-            """Retrieve conversation data.
-                """
+            """Retrieve conversation data."""
 
             try:
                 conv = Conversation.objects.get(id=conversation_id)

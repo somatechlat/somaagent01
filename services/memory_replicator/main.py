@@ -33,8 +33,8 @@ LOGGER = logging.getLogger(__name__)
 
 # Retrieve unified settings from central configuration.
 # Django settings used instead
-# OTLP endpoint is now under the external configuration section.
-setup_tracing("memory-replicator", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
+# OTLP endpoint is now under the external# Django settings used instead
+setup_tracing("memory-replicator", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 _METRICS_STARTED = False
 
@@ -83,7 +83,7 @@ def _kafka_settings() -> KafkaSettings:
 
 class MemoryReplicator:
     def __init__(self) -> None:
-        ensure_metrics_server(SERVICE_SETTINGS)
+        ensure_metrics_server(None)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
         self.wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")

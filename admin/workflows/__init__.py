@@ -1,4 +1,1 @@
-"""Workflows module - Temporal orchestration.
-
-
-"""
+"""Workflows module - Temporal orchestration."""

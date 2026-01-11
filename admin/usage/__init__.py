@@ -1,4 +1,1 @@
-"""Usage module - Metering and billing.
-
-
-"""
+"""Usage module - Metering and billing."""

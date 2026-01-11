@@ -42,10 +42,10 @@ DEFAULT_KEYS = {
 def _env_key_set(name: str, base: set[str]) -> set[str]:
     """Execute env key set.
 
-        Args:
-            name: The name.
-            base: The base.
-        """
+    Args:
+        name: The name.
+        base: The base.
+    """
 
     raw = os.environ.get(name, "").strip()
     if not raw:
@@ -57,9 +57,9 @@ def _env_key_set(name: str, base: set[str]) -> set[str]:
 def _compile_patterns(keys: Iterable[str]) -> list[re.Pattern]:
     """Execute compile patterns.
 
-        Args:
-            keys: The keys.
-        """
+    Args:
+        keys: The keys.
+    """
 
     patterns: list[re.Pattern] = []
     for k in keys:
@@ -90,9 +90,9 @@ class RedactionFilter(logging.Filter):
     def _redact(self, text: str) -> str:
         """Execute redact.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         if not text:
             return text
@@ -106,9 +106,9 @@ class RedactionFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
         """Execute filter.
 
-            Args:
-                record: The record.
-            """
+        Args:
+            record: The record.
+        """
 
         try:
             # Redact the formatted message (getMessage executed later by formatter)
@@ -129,9 +129,9 @@ class RedactionFilter(logging.Filter):
 def install_redaction_filter(root: logging.Logger | None = None) -> None:
     """Execute install redaction filter.
 
-        Args:
-            root: The root.
-        """
+    Args:
+        root: The root.
+    """
 
     logger = root or logging.getLogger()
     flt = RedactionFilter()

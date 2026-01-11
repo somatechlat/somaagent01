@@ -1,7 +1,7 @@
 """Rate Limiting API - Request throttling and quota enforcement.
 
 
-Per 
+Per
 
 7-Persona Implementation:
 - Security Auditor: Rate limiting, abuse prevention
@@ -91,27 +91,27 @@ async def get_rate_limits(request) -> dict:
     Security Auditor: View rate limiting rules.
     """
     from admin.saas.models.profiles import GlobalDefault
-    
+
     gd = await GlobalDefault.aget_instance()
     defaults = gd.defaults
-    
+
     # Initialize if missing
     if "ratelimits" not in defaults:
         defaults["ratelimits"] = [
             {
-                "name": "api_default", 
-                "requests_per_minute": 60, 
-                "requests_per_hour": 1000, 
+                "name": "api_default",
+                "requests_per_minute": 60,
+                "requests_per_hour": 1000,
                 "requests_per_day": 10000,
-                "enabled": True
+                "enabled": True,
             },
             {
-                "name": "chat_messages", 
-                "requests_per_minute": 20, 
-                "requests_per_hour": 500, 
+                "name": "chat_messages",
+                "requests_per_minute": 20,
+                "requests_per_hour": 500,
                 "requests_per_day": 5000,
-                "enabled": True
-            }
+                "enabled": True,
+            },
         ]
         await gd.asave()
 
@@ -156,13 +156,13 @@ async def create_rate_limit(
     Security Auditor: Admin only.
     """
     from admin.saas.models.profiles import GlobalDefault
-    
+
     gd = await GlobalDefault.aget_instance()
     defaults = gd.defaults
-    
+
     if "ratelimits" not in defaults:
         defaults["ratelimits"] = []
-        
+
     # Check for duplicate
     for limit in defaults["ratelimits"]:
         if limit["name"] == payload.name:
@@ -171,7 +171,7 @@ async def create_rate_limit(
     new_rule = payload.dict()
     defaults["ratelimits"].append(new_rule)
     await gd.asave()
-    
+
     logger.info(f"Rate limit created: {payload.name}")
 
     return {
@@ -194,13 +194,13 @@ async def update_rate_limit(
 ) -> dict:
     """Update a rate limit rule."""
     from admin.saas.models.profiles import GlobalDefault
-    
+
     gd = await GlobalDefault.aget_instance()
     defaults = gd.defaults
-    
+
     if "ratelimits" not in defaults:
         return {"error": "No rate limits defined", "updated": False}
-        
+
     found = False
     for limit in defaults["ratelimits"]:
         if limit["name"] == name:
@@ -212,11 +212,11 @@ async def update_rate_limit(
                 limit["enabled"] = enabled
             found = True
             break
-            
+
     if found:
         await gd.asave()
         return {"name": name, "updated": True}
-        
+
     return {"name": name, "updated": False, "error": "Not found"}
 
 
@@ -233,11 +233,11 @@ async def delete_rate_limit(request, name: str) -> dict:
     defaults = gd.defaults
 
     if "ratelimits" not in defaults:
-         return {"error": "No rate limits defined", "deleted": False}
+        return {"error": "No rate limits defined", "deleted": False}
 
     original_len = len(defaults["ratelimits"])
     defaults["ratelimits"] = [r for r in defaults["ratelimits"] if r["name"] != name]
-    
+
     if len(defaults["ratelimits"]) < original_len:
         await gd.asave()
         return {
@@ -245,11 +245,7 @@ async def delete_rate_limit(request, name: str) -> dict:
             "deleted": True,
         }
 
-    return {
-        "name": name,
-        "deleted": False,
-        "error": "Not found"
-    }
+    return {"name": name, "deleted": False, "error": "Not found"}
 
 
 # =============================================================================

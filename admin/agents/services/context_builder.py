@@ -16,8 +16,8 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, TYPE_CHECKING
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from admin.core.observability.metrics import ContextBuilderMetrics
+from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from services.common import degradation_monitor
 from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 
@@ -39,21 +39,24 @@ class SomabrainHealthState(str, Enum):
 
 
 class RedactorProtocol(Protocol):  # pragma: no cover - interface definition
-        """Execute redact.
+    """Protocol for text redaction services."""
 
-            Args:
-                text: The text.
-            """
+    def redact(self, text: str) -> str:
+        """Redact sensitive data from text.
 
-    """Redactorprotocol class implementation."""
+        Args:
+            text: The text to redact.
 
-    def redact(self, text: str) -> str: ...
+        Returns:
+            Redacted text.
+        """
+        ...
 
 
 class RealPresidioRedactor:
     """Production-grade sensitive data redaction using Presidio.
 
-    
+
     - Real implementation (no mocks) using presidio-analyzer/anonymizer
     - Lazy loading to reduce startup time
     - Handles PII entities: PHONE_NUMBER, EMAIL_ADDRESS, IBAN, CREDIT_CARD
@@ -67,8 +70,7 @@ class RealPresidioRedactor:
         self._entities = ["PHONE_NUMBER", "EMAIL_ADDRESS", "IBAN", "CREDIT_CARD", "US_SSN"]
 
     def _ensure_loaded(self):
-        """Execute ensure loaded.
-            """
+        """Execute ensure loaded."""
 
         if self._analyzer is None:
             try:
@@ -87,9 +89,9 @@ class RealPresidioRedactor:
     def redact(self, text: str) -> str:
         """Execute redact.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         if not text:
             return ""
@@ -305,8 +307,7 @@ class ContextBuilder:
             )
 
     def _current_health(self) -> SomabrainHealthState:
-        """Execute current health.
-            """
+        """Execute current health."""
 
         try:
             state = self.health_provider()
@@ -320,9 +321,9 @@ class ContextBuilder:
     def _coerce_history(self, history: Any) -> List[Dict[str, str]]:
         """Execute coerce history.
 
-            Args:
-                history: The history.
-            """
+        Args:
+            history: The history.
+        """
 
         if not isinstance(history, list):
             return []
@@ -344,10 +345,10 @@ class ContextBuilder:
     ) -> List[Dict[str, Any]]:
         """Execute retrieve snippets.
 
-            Args:
-                turn: The turn.
-                state: The state.
-            """
+        Args:
+            turn: The turn.
+            state: The state.
+        """
 
         top_k = self.DEFAULT_TOP_K if state == SomabrainHealthState.NORMAL else self.DEGRADED_TOP_K
         payload = {
@@ -369,9 +370,9 @@ class ContextBuilder:
                 async def _reliable_evaluate(p):
                     """Execute reliable evaluate.
 
-                        Args:
-                            p: The p.
-                        """
+                    Args:
+                        p: The p.
+                    """
 
                     return await SOMABRAIN_BREAKER.call(self.somabrain.context_evaluate, p)
 
@@ -417,9 +418,9 @@ class ContextBuilder:
     def _extract_text(self, item: Dict[str, Any]) -> str:
         """Execute extract text.
 
-            Args:
-                item: The item.
-            """
+        Args:
+            item: The item.
+        """
 
         if item.get("text"):
             return str(item["text"])
@@ -437,10 +438,10 @@ class ContextBuilder:
     ) -> List[Dict[str, Any]]:
         """Execute rank and clip snippets.
 
-            Args:
-                snippets: The snippets.
-                state: The state.
-            """
+        Args:
+            snippets: The snippets.
+            state: The state.
+        """
 
         if not snippets:
             return []
@@ -454,9 +455,9 @@ class ContextBuilder:
     def _apply_salience(self, snippets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Execute apply salience.
 
-            Args:
-                snippets: The snippets.
-            """
+        Args:
+            snippets: The snippets.
+        """
 
         if not snippets:
             return []
@@ -476,9 +477,9 @@ class ContextBuilder:
     def _safe_float(self, value: Any) -> float:
         """Execute safe float.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         try:
             return float(value)
@@ -488,10 +489,10 @@ class ContextBuilder:
     def _recency_boost(self, metadata: Dict[str, Any], now: datetime) -> float:
         """Execute recency boost.
 
-            Args:
-                metadata: The metadata.
-                now: The now.
-            """
+        Args:
+            metadata: The metadata.
+            now: The now.
+        """
 
         timestamp = metadata.get("timestamp") or metadata.get("created_at")
         if not timestamp:
@@ -508,9 +509,9 @@ class ContextBuilder:
     def _redact_snippets(self, snippets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Execute redact snippets.
 
-            Args:
-                snippets: The snippets.
-            """
+        Args:
+            snippets: The snippets.
+        """
 
         redacted: List[Dict[str, Any]] = []
         with self.metrics.time_redaction():
@@ -525,9 +526,9 @@ class ContextBuilder:
     def _count_snippet_tokens(self, snippets: List[Dict[str, Any]]) -> int:
         """Execute count snippet tokens.
 
-            Args:
-                snippets: The snippets.
-            """
+        Args:
+            snippets: The snippets.
+        """
 
         return sum(self.count_tokens(snippet.get("text", "")) for snippet in snippets)
 
@@ -539,11 +540,11 @@ class ContextBuilder:
     ) -> tuple[List[Dict[str, Any]], int]:
         """Execute trim snippets to budget.
 
-            Args:
-                snippets: The snippets.
-                snippet_tokens: The snippet_tokens.
-                allowed_tokens: The allowed_tokens.
-            """
+        Args:
+            snippets: The snippets.
+            snippet_tokens: The snippet_tokens.
+            allowed_tokens: The allowed_tokens.
+        """
 
         if allowed_tokens <= 0 or not snippets:
             return [], 0
@@ -626,10 +627,10 @@ class ContextBuilder:
     ) -> List[Dict[str, str]]:
         """Execute trim history.
 
-            Args:
-                history: The history.
-                allowed_tokens: The allowed_tokens.
-            """
+        Args:
+            history: The history.
+            allowed_tokens: The allowed_tokens.
+        """
 
         if allowed_tokens <= 0 or not history:
             return []
@@ -649,9 +650,9 @@ class ContextBuilder:
     def _format_snippet_block(self, snippets: List[Dict[str, Any]]) -> str:
         """Execute format snippet block.
 
-            Args:
-                snippets: The snippets.
-            """
+        Args:
+            snippets: The snippets.
+        """
 
         parts = []
         for idx, snippet in enumerate(snippets, start=1):

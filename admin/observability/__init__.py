@@ -1,4 +1,1 @@
-"""Observability module - Metrics, Traces, Health.
-
-
-"""
+"""Observability module - Metrics, Traces, Health."""

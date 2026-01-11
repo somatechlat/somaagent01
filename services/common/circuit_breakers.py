@@ -39,7 +39,7 @@ class CircuitBreaker:
     """
     Circuit Breaker implementation for resilient service calls.
 
-    
+
 
     Usage:
         breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)

@@ -161,8 +161,7 @@ class GranularPermission(TimestampedModel):
         return self.codename
 
     def save(self, *args, **kwargs):
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.codename:
             self.codename = f"{self.resource.name}:{self.action.name}"
@@ -269,8 +268,7 @@ class UserRoleAssignment(TenantScopedModel):
 
     @property
     def is_expired(self) -> bool:
-        """Check if expired.
-            """
+        """Check if expired."""
 
         if self.expires_at is None:
             return False

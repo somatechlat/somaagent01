@@ -39,8 +39,7 @@ class ToolDefinition:
     category: Optional[str] = None
 
     def to_openapi_function(self) -> dict[str, Any]:
-        """Execute to openapi function.
-            """
+        """Execute to openapi function."""
 
         props: dict[str, Any] = {}
         required: list[str] = []

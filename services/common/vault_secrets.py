@@ -19,15 +19,13 @@ except ImportError:
 
 
 def _ensure_hvac() -> Any:
-    """Execute ensure hvac.
-        """
+    """Execute ensure hvac."""
 
     return hvac
 
 
 def _resolve_vault_token(*, token: Optional[str], token_file: Optional[str]) -> Optional[str]:
-    """Execute resolve vault token.
-        """
+    """Execute resolve vault token."""
 
     if token:
         return token
@@ -46,9 +44,9 @@ def _resolve_vault_token(*, token: Optional[str], token_file: Optional[str]) -> 
 def _coerce_verify(verify: Optional[str | bool]) -> str | bool:
     """Execute coerce verify.
 
-        Args:
-            verify: The verify.
-        """
+    Args:
+        verify: The verify.
+    """
 
     if isinstance(verify, bool) or verify is None:
         return True if verify is None else verify

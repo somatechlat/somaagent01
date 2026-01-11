@@ -9,13 +9,13 @@ SEARCH_ENGINE_RESULTS = 10
 
 class SearchEngine(Tool):
     """Tool for performing web searches via SearXNG."""
-    async def execute(self, query="", **kwargs):
 
+    async def execute(self, query="", **kwargs):
         """Execute execute.
 
-            Args:
-                query: The query.
-            """
+        Args:
+            query: The query.
+        """
 
         searxng_result = await self.searxng_search(query)
 
@@ -28,9 +28,9 @@ class SearchEngine(Tool):
     async def searxng_search(self, question):
         """Execute searxng search.
 
-            Args:
-                question: The question.
-            """
+        Args:
+            question: The question.
+        """
 
         results = await searxng(question)
         return self.format_result_searxng(results, "Search Engine")
@@ -38,10 +38,10 @@ class SearchEngine(Tool):
     def format_result_searxng(self, result, source):
         """Execute format result searxng.
 
-            Args:
-                result: The result.
-                source: The source.
-            """
+        Args:
+            result: The result.
+            source: The source.
+        """
 
         if isinstance(result, Exception):
             handle_error(result)

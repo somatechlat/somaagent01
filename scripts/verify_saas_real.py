@@ -11,13 +11,13 @@ Usage:
 
 import os
 import sys
+
 import django
 from django.conf import settings
 
 # 1. Setup Django Environment
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
-from django.conf import settings
 
 # Configure SQLite for isolated testing (overriding Postgres)
 if not settings.configured:
@@ -33,7 +33,7 @@ if not settings.configured:
             "django.contrib.auth",
             "admin.saas",
             "admin.core",
-            "admin.capsules", # Required for api.py
+            "admin.capsules",  # Required for api.py
         ],
         SECRET_KEY="test-secret-key",
         TIME_ZONE="UTC",
@@ -57,16 +57,16 @@ except Exception:
 
 # Patch migrations to be skipped (Syncdb style)
 from django.core.management import call_command
-from admin.saas.models.profiles import GlobalDefault, TenantSettings
-from admin.saas.models.tenants import Tenant
+
 from admin.saas.api.settings import list_models, ModelConfigOut
+from admin.saas.models.profiles import GlobalDefault, TenantSettings
 
 # Patch migrations to be skipped (Syncdb style) or run migrate
-from django.core.management import call_command
+
 
 def verify_real_saas():
     print("🔍 [QA] Starting SaaS Real Implementation Verification...")
-    
+
     # Initialize DB
     print("   [DevOps] Initializing In-Memory SQLite DB...")
     call_command("migrate", verbosity=0, interactive=False)
@@ -84,9 +84,9 @@ def verify_real_saas():
 
     # Verify no mock data in API
     print("   [Security] Verifying API Endpoint correctness...")
-    request_mock = type('obj', (object,), {}) 
+    request_mock = type("obj", (object,), {})
     models = list_models(request_mock)
-    
+
     print(f"   ✅ API returned {len(models)} models from DB.")
     assert len(models) > 0, "API returned empty list!"
     assert isinstance(models[0], ModelConfigOut), "API did not return Pydantic models"
@@ -98,14 +98,14 @@ def verify_real_saas():
     print("   [DevOps] Verifying Persistence (Write/Read)...")
     original_rate = gd.defaults["models"][0].get("rate_limit", 100)
     new_rate = original_rate + 1
-    
+
     gd.defaults["models"][0]["rate_limit"] = new_rate
     gd.save()
-    
+
     # Reload from DB
     gd_refreshed = GlobalDefault.objects.first()
     saved_rate = gd_refreshed.defaults["models"][0]["rate_limit"]
-    
+
     if saved_rate == new_rate:
         print(f"   ✅ Persistence Verified! Rate limit changed {original_rate} -> {saved_rate}")
     else:
@@ -117,31 +117,35 @@ def verify_real_saas():
     # ------------------------------------------------------------------
     print("   [Arch] Verifying TenantSettings Deep Schema...")
     # Create a dummy tenant if needed (mocking dependency for speed, but using real Model)
-    # in a real run we might need a Tenant. 
+    # in a real run we might need a Tenant.
     # For now, we verify the Model class structure exists.
-    assert hasattr(TenantSettings, 'compliance'), "TenantSettings missing 'compliance' field"
-    assert hasattr(TenantSettings, 'compute'), "TenantSettings missing 'compute' field"
-    assert hasattr(TenantSettings, 'auth'), "TenantSettings missing 'auth' field"
+    assert hasattr(TenantSettings, "compliance"), "TenantSettings missing 'compliance' field"
+    assert hasattr(TenantSettings, "compute"), "TenantSettings missing 'compute' field"
+    assert hasattr(TenantSettings, "auth"), "TenantSettings missing 'auth' field"
     print("   ✅ TenantSettings Schema Verified (Compliance, Compute, Auth present).")
 
     # ------------------------------------------------------------------
     # 3. New RateLimit API (Persistent)
     # ------------------------------------------------------------------
     print("   [Arch] Verifying RateLimit API (Persistent GlobalDefault)...")
-    from admin.ratelimit.api import get_rate_limits, create_rate_limit, RateLimitConfig
-    from admin.agents.api import get_multimodal_config, update_multimodal_config, MultimodalConfig
     import asyncio
+
+    from admin.agents.api import get_multimodal_config, MultimodalConfig, update_multimodal_config
+    from admin.ratelimit.api import create_rate_limit, get_rate_limits, RateLimitConfig
 
     # Test Create Rate Limit
     async def test_extensions():
         # Create Limit
-        await create_rate_limit(None, RateLimitConfig(
-            name="test_limit_v1", 
-            requests_per_minute=10, 
-            requests_per_hour=100, 
-            requests_per_day=1000
-        ))
-        
+        await create_rate_limit(
+            None,
+            RateLimitConfig(
+                name="test_limit_v1",
+                requests_per_minute=10,
+                requests_per_hour=100,
+                requests_per_day=1000,
+            ),
+        )
+
         # Verify Persistence
         limits = await get_rate_limits(None)
         found = any(l["name"] == "test_limit_v1" for l in limits["limits"])
@@ -153,22 +157,24 @@ def verify_real_saas():
         # Test Multimodal Config
         config = MultimodalConfig(image_enabled=False, image_provider="test_provider")
         await update_multimodal_config(None, "agent_123", config)
-        
+
         res = await get_multimodal_config(None, "agent_123")
         if res["config"]["image_provider"] == "test_provider":
-              print("   ✅ Multimodal persistence verified.")
+            print("   ✅ Multimodal persistence verified.")
         else:
-              print("   ❌ Multimodal persistence FAILED.")
+            print("   ❌ Multimodal persistence FAILED.")
 
     # Run async tests
     asyncio.run(test_extensions())
 
     print("\n✅ [Unified] SaaS Real Implementation Verification PASSED.")
 
+
 if __name__ == "__main__":
     try:
         verify_real_saas()
     finally:
         import os
+
         if os.path.exists("verify_saas.db"):
             os.remove("verify_saas.db")

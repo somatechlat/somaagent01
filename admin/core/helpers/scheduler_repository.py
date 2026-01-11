@@ -37,8 +37,7 @@ class SchedulerTaskList(BaseModel):
 
     @classmethod
     def get(cls) -> "SchedulerTaskList":
-        """Execute get.
-            """
+        """Execute get."""
 
         path = get_abs_path(SCHEDULER_FOLDER, "tasks.json")
         if cls.__instance is None:
@@ -58,8 +57,7 @@ class SchedulerTaskList(BaseModel):
         self._lock = threading.RLock()
 
     async def reload(self) -> "SchedulerTaskList":
-        """Execute reload.
-            """
+        """Execute reload."""
 
         path = get_abs_path(SCHEDULER_FOLDER, "tasks.json")
         if exists(path):
@@ -72,9 +70,9 @@ class SchedulerTaskList(BaseModel):
     async def add_task(self, task: AnyTask) -> "SchedulerTaskList":
         """Execute add task.
 
-            Args:
-                task: The task.
-            """
+        Args:
+            task: The task.
+        """
 
         with self._lock:
             self.tasks.append(task)
@@ -82,8 +80,7 @@ class SchedulerTaskList(BaseModel):
         return self
 
     async def save(self) -> "SchedulerTaskList":
-        """Execute save.
-            """
+        """Execute save."""
 
         with self._lock:
             # Validate AdHocTasks have valid tokens
@@ -123,8 +120,7 @@ class SchedulerTaskList(BaseModel):
             return task
 
     def get_tasks(self) -> list[AnyTask]:
-        """Retrieve tasks.
-            """
+        """Retrieve tasks."""
 
         with self._lock:
             return self.tasks
@@ -132,10 +128,10 @@ class SchedulerTaskList(BaseModel):
     def get_tasks_by_context_id(self, context_id: str, only_running: bool = False) -> list[AnyTask]:
         """Retrieve tasks by context id.
 
-            Args:
-                context_id: The context_id.
-                only_running: The only_running.
-            """
+        Args:
+            context_id: The context_id.
+            only_running: The only_running.
+        """
 
         with self._lock:
             return [
@@ -146,8 +142,7 @@ class SchedulerTaskList(BaseModel):
             ]
 
     async def get_due_tasks(self) -> list[AnyTask]:
-        """Retrieve due tasks.
-            """
+        """Retrieve due tasks."""
 
         with self._lock:
             await self.reload()
@@ -160,9 +155,9 @@ class SchedulerTaskList(BaseModel):
     def get_task_by_uuid(self, task_uuid: str) -> AnyTask | None:
         """Retrieve task by uuid.
 
-            Args:
-                task_uuid: The task_uuid.
-            """
+        Args:
+            task_uuid: The task_uuid.
+        """
 
         with self._lock:
             return next((task for task in self.tasks if task.uuid == task_uuid), None)
@@ -170,9 +165,9 @@ class SchedulerTaskList(BaseModel):
     def get_task_by_name(self, name: str) -> AnyTask | None:
         """Retrieve task by name.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         with self._lock:
             return next((task for task in self.tasks if task.name == name), None)
@@ -180,9 +175,9 @@ class SchedulerTaskList(BaseModel):
     def find_task_by_name(self, name: str) -> list[AnyTask]:
         """Execute find task by name.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         with self._lock:
             return [task for task in self.tasks if name.lower() in task.name.lower()]
@@ -190,9 +185,9 @@ class SchedulerTaskList(BaseModel):
     async def remove_task_by_uuid(self, task_uuid: str) -> "SchedulerTaskList":
         """Execute remove task by uuid.
 
-            Args:
-                task_uuid: The task_uuid.
-            """
+        Args:
+            task_uuid: The task_uuid.
+        """
 
         with self._lock:
             self.tasks = [task for task in self.tasks if task.uuid != task_uuid]
@@ -202,9 +197,9 @@ class SchedulerTaskList(BaseModel):
     async def remove_task_by_name(self, name: str) -> "SchedulerTaskList":
         """Execute remove task by name.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         with self._lock:
             self.tasks = [task for task in self.tasks if task.name != name]

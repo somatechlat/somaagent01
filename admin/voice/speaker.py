@@ -14,7 +14,12 @@ from __future__ import annotations
 import asyncio
 import sys
 from dataclasses import dataclass
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import sounddevice
+
+    from admin.voice.config import AudioConfig
 
 from .exceptions import VoiceProcessingError
 
@@ -80,8 +85,7 @@ class Speaker:
         outdata[:] = np.frombuffer(raw, dtype=np.int16).reshape(outdata.shape)
 
     async def _start_stream(self) -> None:
-        """Execute start stream.
-            """
+        """Execute start stream."""
 
         if self._wrapper is not None:
             return

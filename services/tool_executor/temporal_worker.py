@@ -3,28 +3,28 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from datetime import timedelta
 
 from temporalio import activity, workflow
-from datetime import timedelta
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from services.common.event_bus import KafkaEventBus, KafkaSettings
-from services.common.publisher import DurablePublisher
-from services.common.dlq import DeadLetterQueue
 from services.common.compensation import compensate_event
-from services.tool_executor.main import ToolExecutor
+from services.common.dlq import DeadLetterQueue
+from services.common.event_bus import KafkaEventBus
+from services.common.publisher import DurablePublisher
 from services.tool_executor.config import kafka_settings
-import os
+from services.tool_executor.main import ToolExecutor
 
 
 @activity.defn
 async def handle_tool_request(event: dict) -> dict:
     """Execute handle tool request.
 
-        Args:
-            event: The event.
-        """
+    Args:
+        event: The event.
+    """
 
     kcfg = kafka_settings()
     bus = KafkaEventBus(kcfg)
@@ -46,15 +46,15 @@ async def handle_tool_request(event: dict) -> dict:
 
 @workflow.defn
 class ToolExecutorWorkflow:
-    @workflow.run
-    """Toolexecutorworkflow class implementation."""
+    """ToolExecutorWorkflow for processing tool requests via Temporal."""
 
+    @workflow.run
     async def run(self, event: dict) -> dict:
         """Execute run.
 
-            Args:
-                event: The event.
-            """
+        Args:
+            event: The event.
+        """
 
         return await workflow.execute_activity(
             handle_tool_request,
@@ -64,8 +64,7 @@ class ToolExecutorWorkflow:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_TOOL_QUEUE", "tool-executor")

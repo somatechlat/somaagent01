@@ -1,7 +1,7 @@
 """Observability API - Real Infrastructure Metrics & Health.
 
 
-Per 
+Per
 
 10-Persona Implementation:
 - PhD Developer: Clean async implementation

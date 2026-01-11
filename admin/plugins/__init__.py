@@ -1,4 +1,1 @@
-"""Plugins module - Extensibility system.
-
-
-"""
+"""Plugins module - Extensibility system."""

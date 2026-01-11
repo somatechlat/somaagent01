@@ -290,7 +290,7 @@ async def request_handoff(
     """
     handoff_id = str(uuid4())
 
-    logger.info(f"Handoff requested: {handoff_id}, " f"{payload.from_agent} → {payload.to_agent}")
+    logger.info(f"Handoff requested: {handoff_id}, {payload.from_agent} → {payload.to_agent}")
 
     # In production: notify target agent and wait for acceptance
 

@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 from langchain_core.messages import BaseMessage
 
+from admin.core.helpers import models
+
 
 def get_chat_model(agent: "Agent"):
     """Get the chat model for the agent.
@@ -96,10 +98,10 @@ async def call_utility_model(
     async def stream_callback(chunk: str, total: str):
         """Execute stream callback.
 
-            Args:
-                chunk: The chunk.
-                total: The total.
-            """
+        Args:
+            chunk: The chunk.
+            total: The total.
+        """
 
         if call_data["callback"]:
             await call_data["callback"](chunk)

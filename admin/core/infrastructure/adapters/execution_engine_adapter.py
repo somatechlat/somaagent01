@@ -53,11 +53,11 @@ class ExecutionEngineAdapter(ExecutionEnginePort):
         # Look up the tool definition
         """Execute execute.
 
-            Args:
-                tool_name: The tool_name.
-                args: The args.
-                limits: The limits.
-            """
+        Args:
+            tool_name: The tool_name.
+            args: The args.
+            limits: The limits.
+        """
 
         tool_def = self._registry.get(tool_name)
         if tool_def is None:

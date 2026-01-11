@@ -382,7 +382,6 @@ class MultimodalExecutor:
                     last_error_message = error_message
                     prompt_feedback = f"Provider error: {error_message}"
                 else:
-
                     asset_type = AssetType.IMAGE
                     if (
                         task.step_type == StepType.CAPTURE_SCREENSHOT

@@ -32,9 +32,9 @@ class TenantConfig:
     def get_settings(self, tenant: str) -> TenantSettings:
         """Retrieve settings.
 
-            Args:
-                tenant: The tenant.
-            """
+        Args:
+            tenant: The tenant.
+        """
 
         data = self._load()
         return data.get(tenant, data.get("default", TenantSettings()))
@@ -42,19 +42,19 @@ class TenantConfig:
     def get_fail_open(self, tenant: str) -> bool:
         """Retrieve fail open.
 
-            Args:
-                tenant: The tenant.
-            """
+        Args:
+            tenant: The tenant.
+        """
 
         return self.get_settings(tenant).fail_open
 
     def get_budget_limit(self, tenant: str, persona_id: Optional[str]) -> Optional[int]:
         """Retrieve budget limit.
 
-            Args:
-                tenant: The tenant.
-                persona_id: The persona_id.
-            """
+        Args:
+            tenant: The tenant.
+            persona_id: The persona_id.
+        """
 
         settings = self.get_settings(tenant)
         budgets = settings.budgets
@@ -69,16 +69,15 @@ class TenantConfig:
     def get_routing_policy(self, tenant: str) -> tuple[list[str], list[str]]:
         """Retrieve routing policy.
 
-            Args:
-                tenant: The tenant.
-            """
+        Args:
+            tenant: The tenant.
+        """
 
         settings = self.get_settings(tenant)
         return settings.routing_allow, settings.routing_deny
 
     def _load(self) -> dict[str, TenantSettings]:
-        """Execute load.
-            """
+        """Execute load."""
 
         if not os.path.exists(self.path):
             return {"default": TenantSettings()}

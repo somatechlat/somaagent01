@@ -27,14 +27,12 @@ else:  # pragma: no cover
         """Dummy class implementation."""
 
         def labels(self, *_args, **_kwargs):
-            """Execute labels.
-                """
+            """Execute labels."""
 
             return self
 
         def inc(self, *_args, **_kwargs):
-            """Execute inc.
-                """
+            """Execute inc."""
 
             pass
 
@@ -59,9 +57,9 @@ class EmbeddingCache:
     def make_key(text: str) -> str:
         """Execute make key.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         h = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return h
@@ -69,9 +67,9 @@ class EmbeddingCache:
     def get(self, text: str) -> List[float] | None:
         """Execute get.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         k = self.make_key(text)
         with _CACHE_LOCK:
@@ -87,10 +85,10 @@ class EmbeddingCache:
     def store(self, text: str, vector: List[float]) -> None:
         """Execute store.
 
-            Args:
-                text: The text.
-                vector: The vector.
-            """
+        Args:
+            text: The text.
+            vector: The vector.
+        """
 
         k = self.make_key(text)
         with _CACHE_LOCK:
@@ -107,8 +105,7 @@ class EmbeddingCache:
             EMBED_CACHE_EVENTS.labels("store").inc()
 
     def stats(self) -> Dict[str, int]:
-        """Execute stats.
-            """
+        """Execute stats."""
 
         with _CACHE_LOCK:
             return {"size": len(self._data), "capacity": self.capacity}
@@ -119,8 +116,7 @@ _GLOBAL_CACHE: EmbeddingCache | None = None
 
 
 def get_cache() -> EmbeddingCache:
-    """Retrieve cache.
-        """
+    """Retrieve cache."""
 
     global _GLOBAL_CACHE
     if _GLOBAL_CACHE is None:

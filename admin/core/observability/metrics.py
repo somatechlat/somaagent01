@@ -44,9 +44,9 @@ def _ensure_metric(metric_cls, name: str, *args, **kwargs):
 def Counter(name: str, *args, **kwargs):  # type: ignore
     """Execute Counter.
 
-        Args:
-            name: The name.
-        """
+    Args:
+        name: The name.
+    """
 
     return _ensure_metric(_BaseCounter, name, *args, **kwargs)
 
@@ -54,9 +54,9 @@ def Counter(name: str, *args, **kwargs):  # type: ignore
 def Gauge(name: str, *args, **kwargs):  # type: ignore
     """Execute Gauge.
 
-        Args:
-            name: The name.
-        """
+    Args:
+        name: The name.
+    """
 
     return _ensure_metric(_BaseGauge, name, *args, **kwargs)
 
@@ -64,9 +64,9 @@ def Gauge(name: str, *args, **kwargs):  # type: ignore
 def Histogram(name: str, *args, **kwargs):  # type: ignore
     """Execute Histogram.
 
-        Args:
-            name: The name.
-        """
+    Args:
+        name: The name.
+    """
 
     return _ensure_metric(_BaseHistogram, name, *args, **kwargs)
 
@@ -534,53 +534,46 @@ def record_memory_persistence(duration: float, operation: str, status: str, tena
     return None
 
     def time_total(self):
-        """Execute time total.
-            """
+        """Execute time total."""
 
         return thinking_total_seconds.time()
 
     def time_tokenisation(self):
-        """Execute time tokenisation.
-            """
+        """Execute time tokenisation."""
 
         return thinking_tokenisation_seconds.time()
 
     def time_retrieval(self, *, state: str):
-        """Execute time retrieval.
-            """
+        """Execute time retrieval."""
 
         return thinking_retrieval_seconds.labels(state=state).time()
 
     def time_salience(self):
-        """Execute time salience.
-            """
+        """Execute time salience."""
 
         return thinking_salience_seconds.time()
 
     def time_ranking(self):
-        """Execute time ranking.
-            """
+        """Execute time ranking."""
 
         return thinking_ranking_seconds.time()
 
     def time_redaction(self):
-        """Execute time redaction.
-            """
+        """Execute time redaction."""
 
         return thinking_redaction_seconds.time()
 
     def time_prompt(self):
-        """Execute time prompt.
-            """
+        """Execute time prompt."""
 
         return thinking_prompt_seconds.time()
 
     def record_event_publish(self, event_type: str, *, duration: float | None = None) -> None:
         """Execute record event publish.
 
-            Args:
-                event_type: The event_type.
-            """
+        Args:
+            event_type: The event_type.
+        """
 
         if duration is None:
             event_published_total.labels(event_type=event_type).inc()
@@ -589,8 +582,7 @@ def record_memory_persistence(duration: float, operation: str, status: str, tena
         event_publish_latency_seconds.labels(event_type=event_type).observe(duration)
 
     def record_event_failure(self) -> None:
-        """Execute record event failure.
-            """
+        """Execute record event failure."""
 
         event_publish_failure_total.inc()
 
@@ -601,8 +593,7 @@ def measure_duration(metric_name: str):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args, **kwargs) -> Any:
-            """Execute async wrapper.
-                """
+            """Execute async wrapper."""
 
             start_time = time.time()
             try:
@@ -625,8 +616,7 @@ def measure_duration(metric_name: str):
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs) -> Any:
-            """Execute sync wrapper.
-                """
+            """Execute sync wrapper."""
 
             start_time = time.time()
             try:
@@ -654,9 +644,9 @@ def get_metrics_snapshot() -> Dict[str, Any]:
     def _safe_total(counter: Counter) -> float:
         """Execute safe total.
 
-            Args:
-                counter: The counter.
-            """
+        Args:
+            counter: The counter.
+        """
 
         try:
             return float(sum(s.samples[0].value for s in counter.collect()))
@@ -666,9 +656,9 @@ def get_metrics_snapshot() -> Dict[str, Any]:
     def _safe_gauge(g: Gauge) -> float:
         """Execute safe gauge.
 
-            Args:
-                g: The g.
-            """
+        Args:
+            g: The g.
+        """
 
         try:
             return float(next(iter(g.collect())).samples[0].value)
@@ -709,10 +699,10 @@ class MetricsCollector:
         # back to ``errors_total`` which already captures error_type and location.
         """Execute track error.
 
-            Args:
-                error_type: The error_type.
-                component: The component.
-            """
+        Args:
+            error_type: The error_type.
+            component: The component.
+        """
 
         try:
             errors_total.labels(error_type=error_type, location=component).inc()
@@ -724,10 +714,10 @@ class MetricsCollector:
     def track_singleton_health(self, name: str, healthy: bool) -> None:
         """Execute track singleton health.
 
-            Args:
-                name: The name.
-                healthy: The healthy.
-            """
+        Args:
+            name: The name.
+            healthy: The healthy.
+        """
 
         try:
             singleton_health.labels(integration_name=name).set(1 if healthy else 0)
@@ -735,8 +725,7 @@ class MetricsCollector:
             pass
 
     def update_feature_metrics(self) -> None:
-        """Execute update feature metrics.
-            """
+        """Execute update feature metrics."""
 
         from services.common.features import build_default_registry
 
@@ -753,10 +742,10 @@ class MetricsCollector:
     def track_auth_result(self, result: str, source: str) -> None:
         """Execute track auth result.
 
-            Args:
-                result: The result.
-                source: The source.
-            """
+        Args:
+            result: The result.
+            source: The source.
+        """
 
         try:
             auth_requests.labels(result=result, source=source).inc()
@@ -767,10 +756,10 @@ class MetricsCollector:
     def track_circuit_state(self, name: str, state_value: int) -> None:
         """Execute track circuit state.
 
-            Args:
-                name: The name.
-                state_value: The state_value.
-            """
+        Args:
+            name: The name.
+            state_value: The state_value.
+        """
 
         try:
             circuit_breaker_state.labels(circuit_name=name).set(state_value)
@@ -801,8 +790,7 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_prompt() -> None:
-        """Execute record prompt.
-            """
+        """Execute record prompt."""
 
         try:
             context_builder_prompt_total.inc()
@@ -811,8 +799,7 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_tokens_before() -> None:
-        """Execute record tokens before.
-            """
+        """Execute record tokens before."""
 
         try:
             context_tokens_before_budget.inc()
@@ -821,8 +808,7 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_tokens_after() -> None:
-        """Execute record tokens after.
-            """
+        """Execute record tokens after."""
 
         try:
             context_tokens_after_budget.inc()
@@ -831,8 +817,7 @@ class ContextBuilderMetrics:
 
     @staticmethod
     def record_tokens_redacted() -> None:
-        """Execute record tokens redacted.
-            """
+        """Execute record tokens redacted."""
 
         try:
             context_tokens_after_redaction.inc()

@@ -75,10 +75,7 @@ def list_files(
     per_page: int = 20,
     tenant_id: Optional[str] = None,
 ):
-    """List files with pagination.
-
-    
-    """
+    """List files with pagination."""
     from admin.filesv2.models import File
 
     offset = (page - 1) * per_page
@@ -116,10 +113,7 @@ def list_files(
 
 @router.get("/{file_id}", response=FileOut)
 def get_file(request, file_id: str):
-    """Get file details.
-
-    
-    """
+    """Get file details."""
     from admin.filesv2.models import File
 
     try:
@@ -150,10 +144,7 @@ def create_upload_url(
     tenant_id: str,
     user_id: str,
 ):
-    """Create presigned upload URL.
-
-    
-    """
+    """Create presigned upload URL."""
     import boto3
     from botocore.config import Config
 
@@ -214,10 +205,7 @@ def create_upload_url(
 
 @router.delete("/{file_id}")
 def delete_file(request, file_id: str):
-    """Soft delete a file.
-
-    
-    """
+    """Soft delete a file."""
     from django.utils import timezone
 
     from admin.filesv2.models import File
@@ -233,10 +221,7 @@ def delete_file(request, file_id: str):
 
 @router.get("/{file_id}/download-url")
 def get_download_url(request, file_id: str):
-    """Get presigned download URL.
-
-    
-    """
+    """Get presigned download URL."""
     import boto3
     from botocore.config import Config
 

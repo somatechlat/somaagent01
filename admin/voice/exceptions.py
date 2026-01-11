@@ -6,7 +6,7 @@ voice‑related error while still being able to handle specific cases such as a
 processing failure or an unsupported provider.
 
 These classes are deliberately tiny – they carry no hidden state – in order to
-comply with the 
+comply with the
 behaviour).  Each exception has an informative docstring so that the generated
 documentation is accurate (
 """

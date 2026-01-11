@@ -10,9 +10,9 @@ class MemoryDelete(Tool):
     async def execute(self, ids="", **kwargs):
         """Execute execute.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         db = await Memory.get(self.agent)
         ids = [id.strip() for id in ids.split(",") if id.strip()]

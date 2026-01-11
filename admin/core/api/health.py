@@ -125,11 +125,11 @@ async def health_check() -> dict:
     def record_status(name: str, status: str, detail: Optional[str] = None) -> None:
         """Execute record status.
 
-            Args:
-                name: The name.
-                status: The status.
-                detail: The detail.
-            """
+        Args:
+            name: The name.
+            status: The status.
+            detail: The detail.
+        """
 
         nonlocal overall_status
         components[name] = {"status": status}

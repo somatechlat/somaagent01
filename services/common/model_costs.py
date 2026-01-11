@@ -21,9 +21,9 @@ def estimate_escalation_cost(
 ) -> Optional[float]:
     """Execute estimate escalation cost.
 
-        Args:
-            model: The model.
-        """
+    Args:
+        model: The model.
+    """
 
     rates = ESCALATION_MODEL_RATES.get(model)
     if not rates:

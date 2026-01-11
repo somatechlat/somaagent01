@@ -21,29 +21,29 @@ SAAS_MODE = os.getenv("SOMA_SAAS_MODE", "false").lower() == "true"
 class MemoryBridge:
     """
     Direct in-process bridge to FractalMemory.
-    
+
     In SAAS mode: Uses direct Python imports
     In DISTRIBUTED mode: Falls back to HTTP client
     """
-    
+
     _instance: Optional["MemoryBridge"] = None
     _initialized: bool = False
-    
+
     def __new__(cls) -> "MemoryBridge":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self) -> None:
         if self._initialized:
             return
         self._initialized = True
-        
+
         if SAAS_MODE:
             self._init_direct()
         else:
             self._init_http()
-    
+
     def _init_direct(self) -> None:
         """Initialize direct in-process access to FractalMemory."""
         logger.info("💾 MemoryBridge: Initializing DIRECT mode (in-process)")
@@ -52,65 +52,62 @@ class MemoryBridge:
             from fractal_memory.service import FractalMemoryService
             from fractal_memory.stores.milvus_store import MilvusVectorStore
             from fractal_memory.stores.redis_store import RedisKVStore
-            
+
             # Initialize stores
             milvus_host = os.getenv("MILVUS_HOST", "localhost")
             milvus_port = int(os.getenv("MILVUS_PORT", "19530"))
             redis_host = os.getenv("REDIS_HOST", "localhost")
             redis_port = int(os.getenv("REDIS_PORT", "6379"))
-            
+
             self._vector_store = MilvusVectorStore(host=milvus_host, port=milvus_port)
             self._kv_store = RedisKVStore(host=redis_host, port=redis_port)
             self._service = FractalMemoryService(
                 vector_store=self._vector_store,
                 kv_store=self._kv_store,
             )
-            
+
             self._mode = "direct"
             logger.info("✅ MemoryBridge: Direct mode initialized")
-            
+
         except ImportError as e:
             logger.error("❌ Failed to import FractalMemory: %s", e)
             raise RuntimeError(f"FractalMemory not available in saas: {e}")
-    
+
     def _init_http(self) -> None:
         """Initialize HTTP client for distributed mode."""
         logger.info("🌐 MemoryBridge: Initializing HTTP mode (distributed)")
-        
+
         import httpx
-        
+
         self._base_url = os.getenv("SFM_URL", "http://somafractalmemory:10101")
         self._client = httpx.AsyncClient(
-            base_url=self._base_url, 
+            base_url=self._base_url,
             timeout=30.0,
-            headers={"Authorization": "Bearer dev-token-somastack2024"}
+            headers={"Authorization": "Bearer dev-token-somastack2024"},
         )
         self._mode = "http"
         logger.info("✅ MemoryBridge: HTTP mode initialized -> %s", self._base_url)
-    
+
     @property
     def mode(self) -> str:
         """Return current mode: 'direct' or 'http'."""
         return self._mode
-    
+
     # =========================================================================
     # MEMORY OPERATIONS
     # =========================================================================
-    
+
     async def store(
-        self, 
-        coord: str, 
-        payload: Dict[str, Any],
-        vector: Optional[List[float]] = None
+        self, coord: str, payload: Dict[str, Any], vector: Optional[List[float]] = None
     ) -> Dict[str, Any]:
         """
         Store a memory at the given coordinate.
-        
+
         Args:
             coord: Fractal coordinate (x,y,z format)
             payload: Memory payload data
             vector: Optional embedding vector
-            
+
         Returns:
             Store result with coord and success status
         """
@@ -119,25 +116,21 @@ class MemoryBridge:
             return {"ok": True, "coord": coord, "result": result}
         else:
             resp = await self._client.post(
-                "/memories",
-                json={"coord": coord, "payload": payload, "vector": vector}
+                "/memories", json={"coord": coord, "payload": payload, "vector": vector}
             )
             return resp.json()
-    
+
     async def recall(
-        self, 
-        query: str, 
-        top_k: int = 5,
-        universe: Optional[str] = None
+        self, query: str, top_k: int = 5, universe: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Recall memories matching the query.
-        
+
         Args:
             query: Search query string
             top_k: Number of results to return
             universe: Optional universe filter
-            
+
         Returns:
             List of matching memories with scores
         """
@@ -146,18 +139,17 @@ class MemoryBridge:
             return results
         else:
             resp = await self._client.post(
-                "/memories/search",
-                json={"query": query, "limit": top_k, "universe": universe}
+                "/memories/search", json={"query": query, "limit": top_k, "universe": universe}
             )
             return resp.json().get("memories", [])
-    
+
     async def get(self, coord: str) -> Optional[Dict[str, Any]]:
         """
         Get a specific memory by coordinate.
-        
+
         Args:
             coord: Fractal coordinate
-            
+
         Returns:
             Memory data or None if not found
         """
@@ -168,14 +160,14 @@ class MemoryBridge:
             if resp.status_code == 404:
                 return None
             return resp.json()
-    
+
     async def delete(self, coord: str) -> bool:
         """
         Delete a memory by coordinate.
-        
+
         Args:
             coord: Fractal coordinate
-            
+
         Returns:
             True if deleted, False otherwise
         """
@@ -185,7 +177,7 @@ class MemoryBridge:
         else:
             resp = await self._client.delete(f"/memories/{coord}")
             return resp.status_code == 200
-    
+
     async def health(self) -> Dict[str, Any]:
         """Get memory system health status."""
         if self._mode == "direct":

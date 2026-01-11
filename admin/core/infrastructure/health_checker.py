@@ -1,7 +1,7 @@
 """Real Infrastructure Health Checker.
 
 
-Per 
+Per
 
 10-Persona Implementation:
 - PhD Developer: Async health checks with proper error handling
@@ -45,8 +45,7 @@ class HealthCheckResult:
         self.error = error
 
     def to_dict(self) -> dict:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return {
             "name": self.name,
@@ -61,7 +60,7 @@ class InfrastructureHealthChecker:
     """Real infrastructure health checker.
 
     Connects to actual services and verifies they are operational.
-    No mocks, no fake data - 
+    No mocks, no fake data -
     """
 
     def __init__(self):
@@ -136,8 +135,7 @@ class InfrastructureHealthChecker:
             # Use sync_to_async wrapper for Django ORM in async context
             @sync_to_async
             def _check_db():
-                """Execute check db.
-                    """
+                """Execute check db."""
 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT 1")

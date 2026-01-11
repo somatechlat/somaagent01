@@ -6,8 +6,12 @@ Pure Django Ninja implementation for agent management.
 from ninja import Router
 
 from admin.agents.api.agents import router as agents_router
-from admin.agents.api.core import router as core_router
-from admin.agents.api.core import get_multimodal_config, update_multimodal_config, MultimodalConfig
+from admin.agents.api.core import (
+    get_multimodal_config,
+    MultimodalConfig,
+    router as core_router,
+    update_multimodal_config,
+)
 
 # Master router for agents domain
 router = Router(tags=["agents"])
@@ -16,4 +20,4 @@ router = Router(tags=["agents"])
 router.add_router("", agents_router)
 router.add_router("", core_router)
 
-__all__ = ["router", "get_multimodal_config", "update_multimodal_config", "MultimodalConfig"]
+__all__ = ["MultimodalConfig", "get_multimodal_config", "router", "update_multimodal_config"]
