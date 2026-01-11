@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-WHISPER_URL = settings.WHISPER_URL  # VIBE: No fallback - fail fast
-KOKORO_URL = settings.KOKORO_URL  # VIBE: No fallback - fail fast
+WHISPER_URL = getattr(settings, "WHISPER_URL", "http://localhost:9100")
+KOKORO_URL = getattr(settings, "KOKORO_URL", "http://localhost:9200")
 MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
 
 
