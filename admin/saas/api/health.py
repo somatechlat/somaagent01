@@ -108,7 +108,7 @@ async def check_redis() -> ServiceHealth:
 async def check_keycloak() -> ServiceHealth:
     """Check Keycloak IAM health."""
     start = datetime.now()
-    keycloak_url = getattr(settings, "KEYCLOAK_URL", "http://localhost:20880")
+    keycloak_url = settings.KEYCLOAK_URL  # VIBE: No fallback - fail fast
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(f"{keycloak_url}/health/ready")
@@ -158,7 +158,7 @@ async def check_kafka() -> ServiceHealth:
 async def check_somabrain() -> ServiceHealth:
     """Check SomaBrain cognitive service health."""
     start = datetime.now()
-    somabrain_url = getattr(settings, "SOMABRAIN_URL", "http://localhost:8001")
+    somabrain_url = settings.SOMABRAIN_URL  # VIBE: No fallback - fail fast
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(f"{somabrain_url}/health")

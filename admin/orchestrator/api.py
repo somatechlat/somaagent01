@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # TEMPORAL CONFIGURATION
 # =============================================================================
 
-TEMPORAL_HOST = getattr(settings, "TEMPORAL_HOST", "localhost:7233")
+TEMPORAL_HOST = settings.TEMPORAL_HOST  # VIBE: No fallback - fail fast
 TEMPORAL_NAMESPACE = "soma-orchestrator"
 TASK_QUEUE = "soma-workflows"
 

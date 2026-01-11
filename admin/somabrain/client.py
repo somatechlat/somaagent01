@@ -48,8 +48,8 @@ class SomaBrainClient:
     ):
         """Initialize the instance."""
 
-        self.base_url = base_url or getattr(settings, "SOMABRAIN_BASE_URL", "http://localhost:9696")
-        self.api_key = api_key or getattr(settings, "SOMABRAIN_API_KEY", "")
+        self.base_url = base_url or settings.SOMABRAIN_BASE_URL  # VIBE: No fallback - fail fast
+        self.api_key = api_key or settings.SOMABRAIN_API_KEY  # VIBE: No fallback
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
 
