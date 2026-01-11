@@ -92,7 +92,8 @@ class MultimodalExecutor:
 
         # Prefer per-call secret retrieval to avoid stale keys.
         sm = SecretManager()
-        api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
+        def api_key_resolver():
+            return sm.get("provider:openai")  # returns awaitable
         self._llm_adapter = LLMAdapter(api_key_resolver=api_key_resolver)
 
         self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)

@@ -283,12 +283,8 @@ class PlaywrightProvider(MultimodalProvider):
 
     async def health_check(self) -> bool:
         """Check if Playwright is available."""
-        try:
-            from playwright.async_api import async_playwright
-
-            return True
-        except ImportError:
-            return False
+        import importlib.util
+        return importlib.util.find_spec("playwright") is not None
 
     def get_model_version(self) -> Optional[str]:
         """Get browser type as version."""

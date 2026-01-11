@@ -68,7 +68,8 @@ def get_llm_adapter():
     base_url = os.environ.get("SA01_LLM_BASE_URL") or None
     # Prefer per-call secret retrieval to avoid stale keys.
     sm = SecretManager()
-    api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
+    def api_key_resolver():
+        return sm.get("provider:openai")  # returns awaitable
     return LLMAdapter(service_url=base_url, api_key_resolver=api_key_resolver)
 
 
