@@ -30,13 +30,17 @@ services:
     container_name: somastack_saas
     # USE OPTIMIZED BUILD: ./build_saas.sh (Avoids 3GB context transfer)
     image: somatech/soma-saas:latest
+    pull_policy: never # Use local image only - VIBE Rule: No remote pulls in dev
     # build:
     #   context: ../../../ # Too large, use build_saas.sh
     #   dockerfile: somaAgent01/infra/saas_deployment/Dockerfile
     env_file:
       - .env
     environment:
-      - SOMA_API_TOKEN=soma_saas_secret_token_123
+      # VIBE Rule 164: Connection config only, NO SECRETS in env
+      - VAULT_ADDR=http://somastack_vault:8200
+      - VAULT_MOUNT=secret
+      - VAULT_PATH_PREFIX=soma
     ports:
       - "63900:9000" # Agent API
       - "63996:9696" # Brain API
@@ -44,6 +48,7 @@ services:
     networks:
       - soma_stack_net
     depends_on:
+      - somastack_vault
       - somastack_postgres
       - somastack_redis
       - somastack_milvus
@@ -64,7 +69,29 @@ services:
           memory: 1024M
 
   # ===========================================================================
-  # 2. SHARED INFRASTRUCTURE
+  # 2. SECRETS MANAGEMENT (VIBE Rule 164: All secrets from Vault)
+  # ===========================================================================
+
+  somastack_vault:
+    container_name: somastack_vault
+    image: hashicorp/vault:1.15
+    ports:
+      - "63982:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: soma_dev_token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - soma_stack_net
+    healthcheck:
+      test: [ "CMD", "vault", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 3. SHARED INFRASTRUCTURE
   # ===========================================================================
 
   # POSTGRES (Shared)
@@ -162,6 +189,11 @@ services:
     volumes:
       - somastack_etcd_data:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -183,7 +215,9 @@ services:
       - somastack_minio_data:/data
     command: minio server /data --console-address ":9001"
     networks:
-      - soma_stack_net
+      soma_stack_net:
+        aliases:
+          - minio
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
@@ -197,25 +231,32 @@ services:
 
   somastack_milvus:
     container_name: somastack_milvus
-    image: milvusdb/milvus:v2.3.4
+    image: milvusdb/milvus:v2.4.17
     command: [ "milvus", "run", "standalone" ]
+    security_opt:
+      - seccomp:unconfined
     environment:
       ETCD_ENDPOINTS: somastack_etcd:2379
-      MINIO_ADDRESS: somastack_minio:9000
-      MINIO_ACCESS_KEY_ID: minioadmin
-      MINIO_SECRET_ACCESS_KEY: minioadmin
+      MINIO_ADDRESS: minio:9000
     volumes:
       - somastack_milvus_data:/var/lib/milvus
     ports:
       - "63953:19530"
       - "63990:9091"
     depends_on:
-      - somastack_etcd
-      - somastack_minio
+      somastack_etcd:
+        condition: service_started
+      somastack_minio:
+        condition: service_healthy
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2048M
+          cpus: '4.0'
     networks:
       - soma_stack_net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
