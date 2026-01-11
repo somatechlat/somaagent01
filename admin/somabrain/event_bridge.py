@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-KAFKA_BOOTSTRAP_SERVERS = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+KAFKA_BOOTSTRAP_SERVERS = settings.KAFKA_BOOTSTRAP_SERVERS  # VIBE: No fallback - fail fast
 
 # Kafka Topics for Agent Events → SomaBrain
 SOMABRAIN_KAFKA_TOPICS = {
