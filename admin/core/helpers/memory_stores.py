@@ -38,23 +38,20 @@ class SomaMemory:
 
     @property
     def Area(self):
-        """Execute Area.
-            """
+        """Execute Area."""
 
         return self._memory_area_enum
 
     @property
     def context(self):
-        """Execute context.
-            """
+        """Execute context."""
 
         if self.agent and getattr(self.agent, "context", None):
             return self.agent.context
         return None
 
     async def refresh(self) -> None:
-        """Execute refresh.
-            """
+        """Execute refresh."""
 
         await self._docstore.refresh()
 
@@ -64,21 +61,21 @@ class SomaMemory:
         # SomaBrain handles knowledge centrally; nothing to preload locally.
         """Execute preload knowledge.
 
-            Args:
-                log_item: The log_item.
-                knowledge_dirs: The knowledge_dirs.
-                memory_subdir: The memory_subdir.
-            """
+        Args:
+            log_item: The log_item.
+            knowledge_dirs: The knowledge_dirs.
+            memory_subdir: The memory_subdir.
+        """
 
         return None
 
     async def insert_text(self, text: str, metadata: dict | None = None) -> str:
         """Execute insert text.
 
-            Args:
-                text: The text.
-                metadata: The metadata.
-            """
+        Args:
+            text: The text.
+            metadata: The metadata.
+        """
 
         metadata = dict(metadata or {})
         if "area" not in metadata:
@@ -92,18 +89,18 @@ class SomaMemory:
     async def insert_documents(self, docs: list[Document]) -> List[str]:
         """Execute insert documents.
 
-            Args:
-                docs: The docs.
-            """
+        Args:
+            docs: The docs.
+        """
 
         return await self._docstore.insert_documents(docs)
 
     async def update_documents(self, docs: list[Document]) -> List[str]:
         """Execute update documents.
 
-            Args:
-                docs: The docs.
-            """
+        Args:
+            docs: The docs.
+        """
 
         return await self._docstore.update_documents(docs)
 
@@ -112,12 +109,12 @@ class SomaMemory:
     ) -> List[Document]:
         """Execute search similarity threshold.
 
-            Args:
-                query: The query.
-                limit: The limit.
-                threshold: The threshold.
-                filter: The filter.
-            """
+        Args:
+            query: The query.
+            limit: The limit.
+            threshold: The threshold.
+            filter: The filter.
+        """
 
         return await self._docstore.search_similarity_threshold(query, limit, threshold, filter)
 
@@ -126,59 +123,57 @@ class SomaMemory:
     ) -> List[Document]:
         """Execute delete documents by query.
 
-            Args:
-                query: The query.
-                threshold: The threshold.
-                filter: The filter.
-            """
+        Args:
+            query: The query.
+            threshold: The threshold.
+            filter: The filter.
+        """
 
         return await self._docstore.delete_documents_by_query(query, threshold, filter)
 
     async def delete_documents_by_ids(self, ids: list[str]) -> List[Document]:
         """Execute delete documents by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         return await self._docstore.delete_documents_by_ids(ids)
 
     async def get_all_docs(self) -> Dict[str, Document]:
-        """Retrieve all docs.
-            """
+        """Retrieve all docs."""
 
         return await self._docstore.get_all_docs()
 
     async def get_documents_by_ids(self, ids: Sequence[str]) -> List[Document]:
         """Retrieve documents by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         return await self._docstore.get_documents_by_ids(ids)
 
     async def delete_by_ids(self, ids: Sequence[str]) -> List[Document]:
         """Execute delete by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         return await self._docstore.delete_documents_by_ids(list(ids))
 
     def get_document_by_id(self, doc_id: str) -> Optional[Document]:
         """Retrieve document by id.
 
-            Args:
-                doc_id: The doc_id.
-            """
+        Args:
+            doc_id: The doc_id.
+        """
 
         return self._docstore.get_document_by_id_sync(doc_id)
 
     def get_timestamp(self):
-        """Retrieve timestamp.
-            """
+        """Retrieve timestamp."""
 
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -194,45 +189,44 @@ class _SomaDocStoreAdapter:
     async def aget_by_ids(self, ids: Sequence[str]) -> List[Document]:
         """Execute aget by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         return await self._store.get_documents_by_ids(ids)
 
     def get_by_ids(self, ids: Sequence[str]) -> List[Document]:
         """Retrieve by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         return self._store.get_documents_by_ids_sync(ids)
 
     async def adelete(self, ids: Sequence[str]) -> None:
         """Execute adelete.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         await self._store.delete_documents_by_ids(list(ids))
 
     async def aadd_documents(self, documents: list[Document], ids: list[str]) -> None:
         """Execute aadd documents.
 
-            Args:
-                documents: The documents.
-                ids: The ids.
-            """
+        Args:
+            documents: The documents.
+            ids: The ids.
+        """
 
         for doc, _id in zip(documents, ids, strict=False):
             doc.metadata["id"] = _id
         await self._store.insert_documents(documents)
 
     def get_all_docs(self) -> Dict[str, Document]:
-        """Retrieve all docs.
-            """
+        """Retrieve all docs."""
 
         return self._store.get_all_docs_sync()
 
@@ -260,8 +254,7 @@ class _SomaDocStore:
         self._soma_cache_wm_limit = wm_limit
 
     def _get_lock(self) -> asyncio.Lock:
-        """Execute get lock.
-            """
+        """Execute get lock."""
 
         loop = asyncio.get_running_loop()
         lock = self._locks.get(loop)
@@ -271,8 +264,7 @@ class _SomaDocStore:
         return lock
 
     async def refresh(self) -> Dict[str, Document]:
-        """Execute refresh.
-            """
+        """Execute refresh."""
 
         async with self._get_lock():
             try:
@@ -289,16 +281,14 @@ class _SomaDocStore:
             return self._cache
 
     async def _ensure_cache(self) -> Dict[str, Document]:
-        """Execute ensure cache.
-            """
+        """Execute ensure cache."""
 
         if not self._cache_valid:
             return await self.refresh()
         return self._cache
 
     def _ensure_cache_sync(self) -> Dict[str, Document]:
-        """Execute ensure cache sync.
-            """
+        """Execute ensure cache sync."""
 
         if self._cache_valid:
             return self._cache
@@ -309,23 +299,21 @@ class _SomaDocStore:
         return loop.run_until_complete(self.refresh())
 
     async def get_all_docs(self) -> Dict[str, Document]:
-        """Retrieve all docs.
-            """
+        """Retrieve all docs."""
 
         return await self._ensure_cache()
 
     def get_all_docs_sync(self) -> Dict[str, Document]:
-        """Retrieve all docs sync.
-            """
+        """Retrieve all docs sync."""
 
         return self._ensure_cache_sync()
 
     async def get_documents_by_ids(self, ids: Sequence[str]) -> List[Document]:
         """Retrieve documents by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         cache = await self._ensure_cache()
         return [cache[id] for id in ids if id in cache]
@@ -333,9 +321,9 @@ class _SomaDocStore:
     def get_documents_by_ids_sync(self, ids: Sequence[str]) -> List[Document]:
         """Retrieve documents by ids sync.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         cache = self._ensure_cache_sync()
         return [cache[id] for id in ids if id in cache]
@@ -343,9 +331,9 @@ class _SomaDocStore:
     def get_document_by_id_sync(self, doc_id: str) -> Optional[Document]:
         """Retrieve document by id sync.
 
-            Args:
-                doc_id: The doc_id.
-            """
+        Args:
+            doc_id: The doc_id.
+        """
 
         cache = self._ensure_cache_sync()
         return cache.get(doc_id)
@@ -353,9 +341,9 @@ class _SomaDocStore:
     async def insert_documents(self, docs: list[Document]) -> List[str]:
         """Execute insert documents.
 
-            Args:
-                docs: The docs.
-            """
+        Args:
+            docs: The docs.
+        """
 
         await self._ensure_cache()
         ids: List[str] = []
@@ -399,9 +387,9 @@ class _SomaDocStore:
     async def update_documents(self, docs: list[Document]) -> List[str]:
         """Execute update documents.
 
-            Args:
-                docs: The docs.
-            """
+        Args:
+            docs: The docs.
+        """
 
         ids = [doc.metadata.get("id") for doc in docs if doc.metadata.get("id")]
         if ids:
@@ -411,9 +399,9 @@ class _SomaDocStore:
     async def delete_documents_by_ids(self, ids: list[str]) -> List[Document]:
         """Execute delete documents by ids.
 
-            Args:
-                ids: The ids.
-            """
+        Args:
+            ids: The ids.
+        """
 
         await self._ensure_cache()
         removed: List[Document] = []
@@ -439,12 +427,12 @@ class _SomaDocStore:
     ) -> List[Document]:
         """Execute search similarity threshold.
 
-            Args:
-                query: The query.
-                limit: The limit.
-                threshold: The threshold.
-                filter: The filter.
-            """
+        Args:
+            query: The query.
+            limit: The limit.
+            threshold: The threshold.
+            filter: The filter.
+        """
 
         try:
             response = await self._client.recall(
@@ -497,11 +485,11 @@ class _SomaDocStore:
     ) -> List[Document]:
         """Execute delete documents by query.
 
-            Args:
-                query: The query.
-                threshold: The threshold.
-                filter: The filter.
-            """
+        Args:
+            query: The query.
+            threshold: The threshold.
+            filter: The filter.
+        """
 
         matches = await self.search_similarity_threshold(query, 100, threshold, filter)
         ids = [doc.metadata.get("id") for doc in matches if doc.metadata.get("id")]
@@ -513,10 +501,10 @@ class _SomaDocStore:
     def _build_payload(self, metadata: MutableMapping[str, Any], content: str) -> Dict[str, Any]:
         """Execute build payload.
 
-            Args:
-                metadata: The metadata.
-                content: The content.
-            """
+        Args:
+            metadata: The metadata.
+            content: The content.
+        """
 
         payload: Dict[str, Any] = dict(metadata)
         area_enum = self.memory._memory_area_enum
@@ -550,9 +538,9 @@ class _SomaDocStore:
     def _parse_coord(self, coord: Any) -> List[float]:
         """Execute parse coord.
 
-            Args:
-                coord: The coord.
-            """
+        Args:
+            coord: The coord.
+        """
 
         if isinstance(coord, (list, tuple)):
             return [float(x) for x in coord[:3]]
@@ -564,9 +552,9 @@ class _SomaDocStore:
     def _format_coord(self, coord: Any) -> str:
         """Execute format coord.
 
-            Args:
-                coord: The coord.
-            """
+        Args:
+            coord: The coord.
+        """
 
         if isinstance(coord, str):
             return coord
@@ -577,9 +565,9 @@ class _SomaDocStore:
     def _generate_coord(self, seed: str) -> str:
         """Execute generate coord.
 
-            Args:
-                seed: The seed.
-            """
+        Args:
+            seed: The seed.
+        """
 
         rng = random.Random(seed)
         return ",".join(f"{rng.uniform(-10.0, 10.0):.6f}" for _ in range(3))
@@ -587,9 +575,9 @@ class _SomaDocStore:
     def _parse_memories(self, memories: Iterable[Any]) -> Dict[str, Document]:
         """Execute parse memories.
 
-            Args:
-                memories: The memories.
-            """
+        Args:
+            memories: The memories.
+        """
 
         cache: Dict[str, Document] = {}
         for raw in memories:
@@ -603,9 +591,9 @@ class _SomaDocStore:
     def _convert_memory_record(self, raw: Any) -> Optional[SomaMemoryRecord]:
         """Execute convert memory record.
 
-            Args:
-                raw: The raw.
-            """
+        Args:
+            raw: The raw.
+        """
 
         if not isinstance(raw, Mapping):
             return None
@@ -641,9 +629,9 @@ class _SomaDocStore:
     def _record_to_document(self, record: SomaMemoryRecord) -> Document:
         """Execute record to document.
 
-            Args:
-                record: The record.
-            """
+        Args:
+            record: The record.
+        """
 
         metadata = dict(record.payload)
         metadata.setdefault("id", record.identifier)

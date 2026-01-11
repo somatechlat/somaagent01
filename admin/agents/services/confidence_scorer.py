@@ -137,7 +137,7 @@ class ConfidenceScorer:
     - min: min(exp(logprobs)) - most conservative
     - percentile_90: 10th percentile of exp(logprobs) - robust to outliers
 
-    
+
     - Real implementation (no mocks)
     - Safe calculation that never raises
     - Graceful handling of missing/empty logprobs

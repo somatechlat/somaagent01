@@ -10,9 +10,7 @@ class NotifyUserTool(Tool):
     """Tool for sending notifications to the user interface."""
 
     async def execute(self, **kwargs):
-
-        """Execute execute.
-            """
+        """Execute execute."""
 
         message = self.args.get("message", "")
         title = self.args.get("title", "")

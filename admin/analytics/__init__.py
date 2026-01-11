@@ -1,4 +1,1 @@
-"""Analytics module - Metrics and reports.
-
-
-"""
+"""Analytics module - Metrics and reports."""

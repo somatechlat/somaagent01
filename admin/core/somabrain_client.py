@@ -1,4 +1,4 @@
-"""SomaBrain Client - Django 
+"""SomaBrain Client - Django
 
 Production-grade HTTP client for SomaBrain memory service.
 100% Django patterns - No FastAPI, No SQLAlchemy.
@@ -25,6 +25,7 @@ from django.conf import settings
 try:
     from soma_core.memory_client import BrainMemoryFacade
     from soma_core.models import MemoryReadRequest, MemoryWriteRequest
+
     HAS_FACADE = True
 except ImportError:
     HAS_FACADE = False
@@ -72,7 +73,7 @@ class SomaBrainClient:
     def _get_base_url() -> str:
         """Get SomaBrain URL from Django settings or environment.
 
-        Implements 
+        Implements
         Prioritizes Django settings, falls back to environment.
         """
         import os
@@ -201,8 +202,8 @@ class SomaBrainClient:
                         payload=payload,
                         tenant_id=tenant or "default",
                         namespace=namespace,
-                        universe=None, # Not in args
-                        tags=[]        # Not in args
+                        universe=None,  # Not in args
+                        tags=[],  # Not in args
                     )
                     # Call Facade
                     resp = await facade.remember(req)
@@ -210,14 +211,14 @@ class SomaBrainClient:
                     return {
                         "status": getattr(resp, "status", "success"),
                         "coordinate": resp.coordinate,
-                        "memory_id": resp.memory_id
+                        "memory_id": resp.memory_id,
                     }
                 except NotImplementedError:
-                    pass # Fallback to HTTP
+                    pass  # Fallback to HTTP
                 except Exception as e:
                     LOGGER.error(f"Direct remember failed, falling back to HTTP: {e}")
                     # Optional: decide if we fall back or raise. SRS implies we should probably fail if direct is intended.
-                    # But for robustness during migration, we log and fall back? 
+                    # But for robustness during migration, we log and fall back?
                     # SRS FR-6 says: "Reject direct call if... cannot be instantiated".
                     # But if we failed *during* call, it might be different.
                     # Let's fallback for now to keep strict continuity unless strictly broken.
@@ -271,7 +272,7 @@ class SomaBrainClient:
                         tenant_id=tenant or "default",
                         namespace=namespace,
                         universe=universe,
-                        tags=tags or []
+                        tags=tags or [],
                     )
                     resp = await facade.recall(req)
                     # Map back to expected Dict response structure from SomaBrain
@@ -282,8 +283,9 @@ class SomaBrainClient:
                                 "coordinate": m.coordinate,
                                 "payload": m.payload,
                                 "score": m.score,
-                                "created_at": m.created_at.isoformat()
-                            } for m in resp.memories
+                                "created_at": m.created_at.isoformat(),
+                            }
+                            for m in resp.memories
                         ]
                     }
                 except NotImplementedError:

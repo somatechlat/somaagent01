@@ -1,4 +1,1 @@
-"""Users module - User management.
-
-
-"""
+"""Users module - User management."""

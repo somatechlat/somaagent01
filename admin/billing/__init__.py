@@ -1,4 +1,1 @@
-"""Billing module - Lago integration.
-
-
-"""
+"""Billing module - Lago integration."""

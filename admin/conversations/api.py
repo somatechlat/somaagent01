@@ -98,8 +98,7 @@ async def list_conversations(
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         qs = ConversationModel.objects.all()
         if tenant_id:
@@ -200,8 +199,7 @@ async def start_conversation(
 
             @sync_to_async
             def update_title():
-                """Execute update title.
-                    """
+                """Execute update title."""
 
                 ConversationModel.objects.filter(id=conv.id).update(title=title)
 
@@ -240,8 +238,7 @@ async def get_conversation(request, conversation_id: str) -> Conversation:
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         try:
             return ConversationModel.objects.get(id=conversation_id)
@@ -283,8 +280,7 @@ async def update_conversation(
 
     @sync_to_async
     def _update():
-        """Execute update.
-            """
+        """Execute update."""
 
         return ConversationModel.objects.filter(id=conversation_id).update(title=title)
 
@@ -309,8 +305,7 @@ async def delete_conversation(request, conversation_id: str) -> dict:
 
     @sync_to_async
     def _delete():
-        """Execute delete.
-            """
+        """Execute delete."""
 
         return ConversationModel.objects.filter(id=conversation_id).update(status="deleted")
 
@@ -350,8 +345,7 @@ async def list_messages(
 
     @sync_to_async
     def _get_messages():
-        """Execute get messages.
-            """
+        """Execute get messages."""
 
         if not ConversationModel.objects.filter(id=conversation_id).exists():
             return None, 0
@@ -412,8 +406,7 @@ async def send_message(
     # Verify conversation exists and resolve agent
     @sync_to_async
     def _get_conversation():
-        """Execute get conversation.
-            """
+        """Execute get conversation."""
 
         try:
             return ConversationModel.objects.get(id=conversation_id)
@@ -442,8 +435,7 @@ async def send_message(
     # Return assistant message snapshot
     @sync_to_async
     def _get_last_assistant():
-        """Execute get last assistant.
-            """
+        """Execute get last assistant."""
 
         return (
             MessageModel.objects.filter(
@@ -482,8 +474,7 @@ async def get_message(
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         try:
             return MessageModel.objects.get(
@@ -533,8 +524,7 @@ async def chat(
 
     @sync_to_async
     def _get_conversation():
-        """Execute get conversation.
-            """
+        """Execute get conversation."""
 
         try:
             return ConversationModel.objects.get(id=conversation_id)
@@ -647,8 +637,7 @@ async def get_conversation_stats(
 
     @sync_to_async
     def _get_stats():
-        """Execute get stats.
-            """
+        """Execute get stats."""
 
         if not ConversationModel.objects.filter(id=conversation_id).exists():
             return None
@@ -731,8 +720,7 @@ async def search_conversations(
 
     @sync_to_async
     def _search():
-        """Execute search.
-            """
+        """Execute search."""
 
         qs = ConversationModel.objects.all()
         if tenant_id:

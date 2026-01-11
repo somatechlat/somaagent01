@@ -51,16 +51,14 @@ class AudioFallbackChain:
     current_index: int = 0
 
     def get_current(self) -> str:
-        """Retrieve current.
-            """
+        """Retrieve current."""
 
         if self.current_index == 0:
             return self.primary
         return self.fallbacks[self.current_index - 1]
 
     def get_next_fallback(self) -> Optional[str]:
-        """Retrieve next fallback.
-            """
+        """Retrieve next fallback."""
 
         if self.current_index >= len(self.fallbacks):
             return None

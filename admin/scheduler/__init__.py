@@ -1,4 +1,1 @@
-"""Scheduler module - Job scheduling.
-
-
-"""
+"""Scheduler module - Job scheduling."""

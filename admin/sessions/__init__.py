@@ -1,4 +1,1 @@
-"""Sessions module - User session management.
-
-
-"""
+"""Sessions module - User session management."""

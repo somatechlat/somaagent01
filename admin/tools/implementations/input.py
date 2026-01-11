@@ -5,16 +5,15 @@ from admin.tools.implementations.code_execution_tool import CodeExecution
 
 
 class Input(Tool):
-
     """Input class implementation."""
 
     async def execute(self, keyboard="", **kwargs):
         # normalize keyboard input
         """Execute execute.
 
-            Args:
-                keyboard: The keyboard.
-            """
+        Args:
+            keyboard: The keyboard.
+        """
 
         keyboard = keyboard.rstrip()
         # keyboard += "\n" # no need to, code_exec does that
@@ -31,8 +30,7 @@ class Input(Tool):
         return await cet.execute(**args)
 
     def get_log_object(self):
-        """Retrieve log object.
-            """
+        """Retrieve log object."""
 
         return self.agent.context.log.log(
             type="code_exe",
@@ -44,8 +42,8 @@ class Input(Tool):
     async def after_execution(self, response, **kwargs):
         """Execute after execution.
 
-            Args:
-                response: The response.
-            """
+        Args:
+            response: The response.
+        """
 
         self.agent.hist_add_tool_result(self.name, response.message, **(response.additional or {}))

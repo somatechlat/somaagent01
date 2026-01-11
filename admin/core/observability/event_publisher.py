@@ -220,8 +220,7 @@ class EventPublisher:
         """Start background task for periodic flushing."""
 
         def flush_loop():
-            """Execute flush loop.
-                """
+            """Execute flush loop."""
 
             while not self._stop_event.is_set():
                 time.sleep(self.flush_interval)
@@ -232,7 +231,6 @@ class EventPublisher:
                     self.event_buffer
                     and current_time - self._last_flush_time >= self.flush_interval
                 ):
-
                     # Run async flush in new event loop
                     try:
                         asyncio.run(self._flush_batch())

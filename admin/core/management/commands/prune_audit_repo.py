@@ -8,6 +8,7 @@ Produces:
 
 Run from repo root.
 """
+
 import json
 import os
 import subprocess

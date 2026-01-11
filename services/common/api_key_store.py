@@ -104,9 +104,9 @@ _ITERATIONS = 390_000
 def _hash_secret(secret: str, *, salt: bytes | None = None) -> dict[str, str | int]:
     """Execute hash secret.
 
-        Args:
-            secret: The secret.
-        """
+    Args:
+        secret: The secret.
+    """
 
     salt_bytes = salt or secrets.token_bytes(16)
     dk = hashlib.pbkdf2_hmac("sha256", secret.encode("utf-8"), salt_bytes, _ITERATIONS)
@@ -121,10 +121,10 @@ def _hash_secret(secret: str, *, salt: bytes | None = None) -> dict[str, str | i
 def _verify_secret(secret: str, payload: dict[str, Any]) -> bool:
     """Execute verify secret.
 
-        Args:
-            secret: The secret.
-            payload: The payload.
-        """
+    Args:
+        secret: The secret.
+        payload: The payload.
+    """
 
     if payload.get("algorithm") != "pbkdf2_sha256":
         return False
@@ -139,8 +139,7 @@ def _verify_secret(secret: str, payload: dict[str, Any]) -> bool:
 
 
 def _generate_api_key() -> tuple[str, str, str]:
-    """Execute generate api key.
-        """
+    """Execute generate api key."""
 
     key_id = uuid.uuid4().hex
     secret = secrets.token_urlsafe(32)
@@ -161,9 +160,9 @@ class InMemoryApiKeyStore(ApiKeyStore):
     async def create_key(self, label: str, *, created_by: str | None = None) -> ApiKeySecret:
         """Execute create key.
 
-            Args:
-                label: The label.
-            """
+        Args:
+            label: The label.
+        """
 
         async with self._lock:
             key_id, api_key, prefix = _generate_api_key()
@@ -181,8 +180,7 @@ class InMemoryApiKeyStore(ApiKeyStore):
         return ApiKeySecret(secret=api_key, **{k: record[k] for k in record if k != "hash"})
 
     async def list_keys(self) -> List[ApiKeyMetadata]:
-        """Execute list keys.
-            """
+        """Execute list keys."""
 
         async with self._lock:
             return [
@@ -193,9 +191,9 @@ class InMemoryApiKeyStore(ApiKeyStore):
     async def revoke_key(self, key_id: str) -> None:
         """Execute revoke key.
 
-            Args:
-                key_id: The key_id.
-            """
+        Args:
+            key_id: The key_id.
+        """
 
         async with self._lock:
             if key_id in self._records:
@@ -204,9 +202,9 @@ class InMemoryApiKeyStore(ApiKeyStore):
     async def verify_key(self, api_key: str) -> Optional[ApiKeyMetadata]:
         """Execute verify key.
 
-            Args:
-                api_key: The api_key.
-            """
+        Args:
+            api_key: The api_key.
+        """
 
         key_id = _key_id_from_value(api_key)
         if not key_id:
@@ -222,9 +220,9 @@ class InMemoryApiKeyStore(ApiKeyStore):
     async def touch_key(self, key_id: str) -> None:
         """Execute touch key.
 
-            Args:
-                key_id: The key_id.
-            """
+        Args:
+            key_id: The key_id.
+        """
 
         async with self._lock:
             if key_id in self._records:
@@ -234,9 +232,9 @@ class InMemoryApiKeyStore(ApiKeyStore):
 def _key_id_from_value(api_key: str) -> Optional[str]:
     """Execute key id from value.
 
-        Args:
-            api_key: The api_key.
-        """
+    Args:
+        api_key: The api_key.
+    """
 
     if not api_key or not api_key.startswith("sk_"):
         return None
@@ -262,9 +260,9 @@ class RedisApiKeyStore(ApiKeyStore):
     async def create_key(self, label: str, *, created_by: str | None = None) -> ApiKeySecret:
         """Execute create key.
 
-            Args:
-                label: The label.
-            """
+        Args:
+            label: The label.
+        """
 
         if not self._client:
             raise RuntimeError(
@@ -286,8 +284,7 @@ class RedisApiKeyStore(ApiKeyStore):
         return ApiKeySecret(secret=api_key, **{k: record[k] for k in record if k != "hash"})
 
     async def list_keys(self) -> List[ApiKeyMetadata]:
-        """Execute list keys.
-            """
+        """Execute list keys."""
 
         if not self._client:
             return []
@@ -297,9 +294,9 @@ class RedisApiKeyStore(ApiKeyStore):
     async def revoke_key(self, key_id: str) -> None:
         """Execute revoke key.
 
-            Args:
-                key_id: The key_id.
-            """
+        Args:
+            key_id: The key_id.
+        """
 
         if not self._client:
             return
@@ -313,9 +310,9 @@ class RedisApiKeyStore(ApiKeyStore):
     async def verify_key(self, api_key: str) -> Optional[ApiKeyMetadata]:
         """Execute verify key.
 
-            Args:
-                api_key: The api_key.
-            """
+        Args:
+            api_key: The api_key.
+        """
 
         key_id = _key_id_from_value(api_key)
         if not key_id:
@@ -333,9 +330,9 @@ class RedisApiKeyStore(ApiKeyStore):
     async def touch_key(self, key_id: str) -> None:
         """Execute touch key.
 
-            Args:
-                key_id: The key_id.
-            """
+        Args:
+            key_id: The key_id.
+        """
 
         record = await self._client.hget(self._namespace, key_id)
         if not record:
@@ -348,9 +345,9 @@ class RedisApiKeyStore(ApiKeyStore):
 def _metadata_from_record(record: dict[str, Any]) -> ApiKeyMetadata:
     """Execute metadata from record.
 
-        Args:
-            record: The record.
-        """
+    Args:
+        record: The record.
+    """
 
     return ApiKeyMetadata(
         key_id=str(record.get("key_id")),

@@ -13,7 +13,7 @@ from typing import Any
 
 class TelemetryStore:
     """Store for telemetry events.
-    
+
     Persists telemetry data to the configured storage backend.
     """
 

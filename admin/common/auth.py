@@ -53,6 +53,7 @@ class KeycloakConfig(BaseModel):
 def get_keycloak_config() -> KeycloakConfig:
     """Get cached Keycloak configuration from Django settings."""
     from django.conf import settings
+
     return KeycloakConfig(
         server_url=settings.KEYCLOAK_URL,
         realm=settings.KEYCLOAK_REALM,
@@ -311,16 +312,16 @@ def require_roles(*roles: str):
     def decorator(func):
         """Execute decorator.
 
-            Args:
-                func: The func.
-            """
+        Args:
+            func: The func.
+        """
 
         async def wrapper(request, *args, **kwargs):
             """Execute wrapper.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             user = get_current_user(request)
             user_roles = set(user.roles)
@@ -354,17 +355,17 @@ def require_permission(permission: str):
     def decorator(func):
         """Execute decorator.
 
-            Args:
-                func: The func.
-            """
+        Args:
+            func: The func.
+        """
 
         async def wrapper(request, *args, **kwargs):
             # For now, just verify authentication
             """Execute wrapper.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             user = get_current_user(request)
             return await func(request, *args, **kwargs)

@@ -24,13 +24,10 @@ class State:
 
 
 class CodeExecution(Tool):
-
     """Codeexecution class implementation."""
 
     async def execute(self, **kwargs):
-
-        """Execute execute.
-            """
+        """Execute execute."""
 
         await self.agent.handle_intervention()  # wait for intervention and handle it, if paused
 
@@ -61,8 +58,7 @@ class CodeExecution(Tool):
         return Response(message=response, break_loop=False)
 
     def get_log_object(self):
-        """Retrieve log object.
-            """
+        """Retrieve log object."""
 
         return self.agent.context.log.log(
             type="code_exe",
@@ -74,9 +70,9 @@ class CodeExecution(Tool):
     def get_heading(self, text: str = ""):
         """Retrieve heading.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         if not text:
             text = f"{self.name} - {self.args['runtime'] if 'runtime' in self.args else 'unknown'}"
@@ -88,19 +84,19 @@ class CodeExecution(Tool):
     async def after_execution(self, response, **kwargs):
         """Execute after execution.
 
-            Args:
-                response: The response.
-            """
+        Args:
+            response: The response.
+        """
 
         self.agent.hist_add_tool_result(self.name, response.message, **(response.additional or {}))
 
     async def prepare_state(self, reset=False, session: int | None = None):
         """Execute prepare state.
 
-            Args:
-                reset: The reset.
-                session: The session.
-            """
+        Args:
+            reset: The reset.
+            session: The session.
+        """
 
         self.state: State | None = self.agent.get_data("_cet_state")
         # always reset state when ssh_enabled changes
@@ -148,11 +144,11 @@ class CodeExecution(Tool):
     async def execute_python_code(self, session: int, code: str, reset: bool = False):
         """Execute execute python code.
 
-            Args:
-                session: The session.
-                code: The code.
-                reset: The reset.
-            """
+        Args:
+            session: The session.
+            code: The code.
+            reset: The reset.
+        """
 
         escaped_code = shlex.quote(code)
         command = f"ipython -c {escaped_code}"
@@ -162,11 +158,11 @@ class CodeExecution(Tool):
     async def execute_nodejs_code(self, session: int, code: str, reset: bool = False):
         """Execute execute nodejs code.
 
-            Args:
-                session: The session.
-                code: The code.
-                reset: The reset.
-            """
+        Args:
+            session: The session.
+            code: The code.
+            reset: The reset.
+        """
 
         escaped_code = shlex.quote(code)
         command = f"node /exe/node_eval.js {escaped_code}"
@@ -176,11 +172,11 @@ class CodeExecution(Tool):
     async def execute_terminal_command(self, session: int, command: str, reset: bool = False):
         """Execute execute terminal command.
 
-            Args:
-                session: The session.
-                command: The command.
-                reset: The reset.
-            """
+        Args:
+            session: The session.
+            command: The command.
+            reset: The reset.
+        """
 
         prefix = "bash> " + self.format_command_for_output(command) + "\n\n"
         return await self.terminal_session(session, command, reset, prefix)
@@ -188,15 +184,14 @@ class CodeExecution(Tool):
     async def terminal_session(
         self, session: int, command: str, reset: bool = False, prefix: str = ""
     ):
-
         """Execute terminal session.
 
-            Args:
-                session: The session.
-                command: The command.
-                reset: The reset.
-                prefix: The prefix.
-            """
+        Args:
+            session: The session.
+            command: The command.
+            reset: The reset.
+            prefix: The prefix.
+        """
 
         self.state = await self.prepare_state(reset=reset, session=session)
 
@@ -204,7 +199,6 @@ class CodeExecution(Tool):
         # try again on lost connection
         for i in range(2):
             try:
-
                 await self.state.shells[session].send_command(command)
 
                 locl = (
@@ -235,9 +229,9 @@ class CodeExecution(Tool):
         # truncate long commands
         """Execute format command for output.
 
-            Args:
-                command: The command.
-            """
+        Args:
+            command: The command.
+        """
 
         short_cmd = command[:200]
         # normalize whitespace for cleaner output
@@ -259,20 +253,19 @@ class CodeExecution(Tool):
         sleep_time=0.1,
         prefix="",
     ):
-
         # if not self.state:
         """Retrieve terminal output.
 
-            Args:
-                session: The session.
-                reset_full_output: The reset_full_output.
-                first_output_timeout: The first_output_timeout.
-                between_output_timeout: The between_output_timeout.
-                dialog_timeout: The dialog_timeout.
-                max_exec_timeout: The max_exec_timeout.
-                sleep_time: The sleep_time.
-                prefix: The prefix.
-            """
+        Args:
+            session: The session.
+            reset_full_output: The reset_full_output.
+            first_output_timeout: The first_output_timeout.
+            between_output_timeout: The between_output_timeout.
+            dialog_timeout: The dialog_timeout.
+            max_exec_timeout: The max_exec_timeout.
+            sleep_time: The sleep_time.
+            prefix: The prefix.
+        """
 
         self.state = await self.prepare_state(session=session)
 
@@ -394,10 +387,10 @@ class CodeExecution(Tool):
         # Print the reason for the reset to the console if provided
         """Execute reset terminal.
 
-            Args:
-                session: The session.
-                reason: The reason.
-            """
+        Args:
+            session: The session.
+            reason: The reason.
+        """
 
         if reason:
             PrintStyle(font_color="#FFA500", bold=True).print(
@@ -419,11 +412,11 @@ class CodeExecution(Tool):
     def get_heading_from_output(self, output: str, skip_lines=0, done=False):
         """Retrieve heading from output.
 
-            Args:
-                output: The output.
-                skip_lines: The skip_lines.
-                done: The done.
-            """
+        Args:
+            output: The output.
+            skip_lines: The skip_lines.
+            done: The done.
+        """
 
         done_icon = " icon://done_all" if done else ""
 
@@ -445,9 +438,9 @@ class CodeExecution(Tool):
         # remove any single byte \xXX escapes
         """Execute fix full output.
 
-            Args:
-                output: The output.
-            """
+        Args:
+            output: The output.
+        """
 
         output = re.sub(r"(?<!\\)\\x[0-9A-Fa-f]{2}", "", output)
         # Strip every line of output before truncation

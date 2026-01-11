@@ -29,15 +29,15 @@ if AGENT_PATH not in sys.path:
 os.environ["SOMA_SAAS_MODE"] = "direct"
 os.environ["DEBUG"] = "true"
 # Use SQLite for verification to avoid Postgres dependency if not running
-os.environ["SA01_DB_DSN"] = "sqlite:///verify_db.sqlite3" 
+os.environ["SA01_DB_DSN"] = "sqlite:///verify_db.sqlite3"
 
 # Setup Django (using gateway setup which we patched)
 # We need to ensure we don't conflict with existing setup if any
 try:
     from services.gateway.django_setup import settings
-    
+
     if not settings.configured:
-        # django_setup might have run on import? 
+        # django_setup might have run on import?
         # Inspecting django_setup.py: it runs settings.configure() on import if not configured.
         pass
     # ensure ready
@@ -54,7 +54,7 @@ async def verify():
     print("--- Starting Verification ---")
     facade = BrainMemoryFacade.get_instance()
     print(f"Facade Mode: {facade.mode}")
-    
+
     if facade.mode != "direct":
         print("FAIL: Facade not in direct mode")
         return
@@ -63,28 +63,32 @@ async def verify():
     req = MemoryWriteRequest(
         payload={"content": "Direct Integration Test", "timestamp": str(datetime.now())},
         tenant_id="verify-tenant",
-        tags=["verify", "direct"]
+        tags=["verify", "direct"],
     )
 
     print("--- Executing Remember ---")
     try:
         # NOTE: This calls MemoryService.aremember
-        # This will try to write to DB. 
+        # This will try to write to DB.
         # Since we use SQLite, it might fail if migrations aren't applied.
         # But we just want to see if it REACHES the service.
         # If it fails with "OperationalError: no such table", that is SUCCESS for integration (it called the code).
         # We don't want to run full migrations here unless necessary.
-        
+
         response = await facade.remember(req)
         print(f"SUCCESS: Memory stored. ID: {response.memory_id}")
     except Exception as e:
         error_str = str(e)
         if "no such table" in error_str or "relation" in error_str:
-             print(f"SUCCESS (Integration verified): Reached DB layer but tables missing (Expected in simplified script). Error: {e}")
+            print(
+                f"SUCCESS (Integration verified): Reached DB layer but tables missing (Expected in simplified script). Error: {e}"
+            )
         else:
             print(f"FAILURE: {e}")
             import traceback
+
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(verify())

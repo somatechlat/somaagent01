@@ -4,7 +4,8 @@ This adapter implements MemoryAdapterPort by delegating ALL operations
 to the existing production SomaBrainClient async functions.
 """
 
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, Dict, List, Optional, Protocol
 
 import httpx
 
@@ -13,6 +14,29 @@ from admin.agents.services.somabrain_integration import (
     get_weights_async,
     publish_reward_async,
 )
+
+
+class MemoryAdapterPort(Protocol):
+    """Port interface for memory operations."""
+
+    async def store_memory(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Store memory payload."""
+        ...
+
+    async def recall_memory(
+        self, query: str, *, session_id: Optional[str] = None, limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Recall memories matching query."""
+        ...
+
+
+def get_somabrain_url() -> str:
+    """Get SomaBrain URL from Django settings."""
+    from django.conf import settings
+
+    return getattr(
+        settings, "SOMABRAIN_URL", os.environ.get("SOMABRAIN_URL", "http://localhost:63996")
+    )
 
 
 class SomaBrainMemoryAdapter(MemoryAdapterPort):
@@ -33,7 +57,7 @@ class SomaBrainMemoryAdapter(MemoryAdapterPort):
         """Get the base URL for SomaBrain service."""
         if self._base_url:
             return self._base_url
-        return cfg.get_somabrain_url()
+        return get_somabrain_url()
 
     async def build_context(
         self,
@@ -41,15 +65,14 @@ class SomaBrainMemoryAdapter(MemoryAdapterPort):
     ) -> List[Dict[str, Any]]:
         """Execute build context.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: The payload.
+        """
 
         return await build_context_async(payload)
 
     async def get_weights(self) -> Dict[str, Any]:
-        """Retrieve weights.
-            """
+        """Retrieve weights."""
 
         return await get_weights_async()
 
@@ -59,9 +82,9 @@ class SomaBrainMemoryAdapter(MemoryAdapterPort):
     ) -> Dict[str, Any]:
         """Execute publish reward.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: The payload.
+        """
 
         return await publish_reward_async(payload)
 

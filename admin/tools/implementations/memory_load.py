@@ -20,12 +20,12 @@ class MemoryLoad(Tool):
     ):
         """Execute execute.
 
-            Args:
-                query: The query.
-                threshold: The threshold.
-                limit: The limit.
-                filter: The filter.
-            """
+        Args:
+            query: The query.
+            threshold: The threshold.
+            limit: The limit.
+            filter: The filter.
+        """
 
         client = SomaBrainClient.get()
         universe = None

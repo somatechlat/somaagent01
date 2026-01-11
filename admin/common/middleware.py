@@ -18,7 +18,10 @@ Personas:
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional
+from typing import Callable, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from admin.core.models import Session
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 

@@ -86,8 +86,7 @@ class ToolExecutor:
         self._result_publisher = ResultPublisher(self)
 
     def get_audit_store(self) -> _AuditStore:
-        """Retrieve audit store.
-            """
+        """Retrieve audit store."""
 
         if self._audit_store is not None:
             return self._audit_store
@@ -149,8 +148,7 @@ class ToolExecutor:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     executor = ToolExecutor()
     try:

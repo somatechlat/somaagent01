@@ -41,8 +41,7 @@ class NotificationItem:
     group: str = ""  # Group identifier for grouping related notifications
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if not self.id:
             self.id = str(uuid.uuid4())
@@ -51,15 +50,13 @@ class NotificationItem:
             self.type = NotificationType(self.type)
 
     def mark_read(self):
-        """Execute mark read.
-            """
+        """Execute mark read."""
 
         self.read = True
         self.manager._update_item(self.no, read=True)
 
     def output(self):
-        """Execute output.
-            """
+        """Execute output."""
 
         return {
             "no": self.no,
@@ -103,15 +100,15 @@ class NotificationManager:
     ) -> NotificationItem:
         """Execute send notification.
 
-            Args:
-                type: The type.
-                priority: The priority.
-                message: The message.
-                title: The title.
-                detail: The detail.
-                display_time: The display_time.
-                group: The group.
-            """
+        Args:
+            type: The type.
+            priority: The priority.
+            message: The message.
+            title: The title.
+            detail: The detail.
+            display_time: The display_time.
+            group: The group.
+        """
 
         from agent import AgentContext
 
@@ -132,15 +129,15 @@ class NotificationManager:
         # Create notification item
         """Execute add notification.
 
-            Args:
-                type: The type.
-                priority: The priority.
-                message: The message.
-                title: The title.
-                detail: The detail.
-                display_time: The display_time.
-                group: The group.
-            """
+        Args:
+            type: The type.
+            priority: The priority.
+            message: The message.
+            title: The title.
+            detail: The detail.
+            display_time: The display_time.
+            group: The group.
+        """
 
         item = NotificationItem(
             manager=self,
@@ -165,8 +162,7 @@ class NotificationManager:
         return item
 
     def _enforce_limit(self):
-        """Execute enforce limit.
-            """
+        """Execute enforce limit."""
 
         if len(self.notifications) > self.max_notifications:
             # Remove oldest notifications
@@ -181,9 +177,9 @@ class NotificationManager:
     def get_recent_notifications(self, seconds: int = 30) -> list[NotificationItem]:
         """Retrieve recent notifications.
 
-            Args:
-                seconds: The seconds.
-            """
+        Args:
+            seconds: The seconds.
+        """
 
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
         return [n for n in self.notifications if n.timestamp >= cutoff]
@@ -191,10 +187,10 @@ class NotificationManager:
     def output(self, start: int | None = None, end: int | None = None) -> list[dict]:
         """Execute output.
 
-            Args:
-                start: The start.
-                end: The end.
-            """
+        Args:
+            start: The start.
+            end: The end.
+        """
 
         if start is None:
             start = 0
@@ -213,9 +209,9 @@ class NotificationManager:
     def _update_item(self, no: int, **kwargs):
         """Execute update item.
 
-            Args:
-                no: The no.
-            """
+        Args:
+            no: The no.
+        """
 
         if no < len(self.notifications):
             item = self.notifications[no]
@@ -225,15 +221,13 @@ class NotificationManager:
             self.updates.append(no)
 
     def mark_all_read(self):
-        """Execute mark all read.
-            """
+        """Execute mark all read."""
 
         for notification in self.notifications:
             notification.read = True
 
     def clear_all(self):
-        """Execute clear all.
-            """
+        """Execute clear all."""
 
         self.notifications = []
         self.updates = []
@@ -242,8 +236,8 @@ class NotificationManager:
     def get_notifications_by_type(self, type: NotificationType) -> list[NotificationItem]:
         """Retrieve notifications by type.
 
-            Args:
-                type: The type.
-            """
+        Args:
+            type: The type.
+        """
 
         return [n for n in self.notifications if n.type == type]

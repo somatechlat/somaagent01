@@ -2,7 +2,7 @@
 
 Metrics are defined lazily – they are created on first import to avoid side effects
 when the module is imported in environments that do not expose a Prometheus
-endpoint (e.g., unit tests).  The 
+endpoint (e.g., unit tests).  The
 observed.
 """
 

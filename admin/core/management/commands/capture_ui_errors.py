@@ -14,7 +14,7 @@ part of CI.
 Usage:
     python -m scripts.capture_ui_errors
 
-The script follows 
+The script follows
 Playwright API and writes plain logs.
 """
 
@@ -37,8 +37,7 @@ def _timestamp() -> str:
 
 async def _run() -> int:
     # Ensure the log file is fresh each run.
-    """Execute run.
-        """
+    """Execute run."""
 
     with open(LOG_PATH, "w", encoding="utf-8") as f:
         f.write(f"# UI error capture – {_timestamp()}\n")
@@ -55,9 +54,9 @@ async def _run() -> int:
         async def on_console(msg: ConsoleMessage):
             """Execute on console.
 
-                Args:
-                    msg: The msg.
-                """
+            Args:
+                msg: The msg.
+            """
 
             nonlocal had_errors
             # ``msg.type()`` can be 'log', 'error', 'warning', etc.
@@ -75,9 +74,9 @@ async def _run() -> int:
         async def on_page_error(exception: Exception):
             """Execute on page error.
 
-                Args:
-                    exception: The exception.
-                """
+            Args:
+                exception: The exception.
+            """
 
             nonlocal had_errors
             entry = f"{_timestamp()} PAGEERROR {str(exception)}\n"
@@ -88,9 +87,9 @@ async def _run() -> int:
         async def on_request_failed(request: Request):
             """Execute on request failed.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             nonlocal had_errors
             # ``request.failure()`` returns a dict with ``errorText``.
@@ -123,8 +122,7 @@ async def _run() -> int:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     exit_code = asyncio.run(_run())
     if exit_code:

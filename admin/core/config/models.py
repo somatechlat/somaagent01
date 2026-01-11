@@ -200,9 +200,9 @@ class LocalVoiceConfig(BaseModel):
     def validate_stt(cls, v: str) -> str:
         """Execute validate stt.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         if v not in {"kokoro"}:
             raise ValueError("Unsupported STT engine; only 'kokoro' is supported")
@@ -213,9 +213,9 @@ class LocalVoiceConfig(BaseModel):
     def validate_tts(cls, v: str) -> str:
         """Execute validate tts.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         if v not in {"whisper", "openai"}:
             raise ValueError("Unsupported TTS engine; must be 'whisper' or 'openai'")
@@ -361,8 +361,7 @@ class Config(BaseModel):
 
     @property
     def auth_required(self) -> bool:  # pragma: no cover – exercised via tests
-        """Execute auth required.
-            """
+        """Execute auth required."""
 
         return self.auth.auth_required
 
@@ -370,17 +369,16 @@ class Config(BaseModel):
     def auth_required(self, value: bool) -> None:  # pragma: no cover
         """Execute auth required.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.auth.auth_required = value
 
     # Service metrics host/port
     @property
     def metrics_host(self) -> str:  # pragma: no cover
-        """Execute metrics host.
-            """
+        """Execute metrics host."""
 
         return self.service.metrics_host
 
@@ -388,16 +386,15 @@ class Config(BaseModel):
     def metrics_host(self, value: str) -> None:  # pragma: no cover
         """Execute metrics host.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.service.metrics_host = value
 
     @property
     def metrics_port(self) -> int:  # pragma: no cover
-        """Execute metrics port.
-            """
+        """Execute metrics port."""
 
         return self.service.metrics_port
 
@@ -405,16 +402,15 @@ class Config(BaseModel):
     def metrics_port(self, value: int) -> None:  # pragma: no cover
         """Execute metrics port.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.service.metrics_port = value
 
     @property
     def kafka_bootstrap_servers(self) -> str:  # pragma: no cover
-        """Execute kafka bootstrap servers.
-            """
+        """Execute kafka bootstrap servers."""
 
         return self.kafka.bootstrap_servers
 
@@ -422,16 +418,15 @@ class Config(BaseModel):
     def kafka_bootstrap_servers(self, value: str) -> None:  # pragma: no cover
         """Execute kafka bootstrap servers.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.kafka.bootstrap_servers = value
 
     @property
     def postgres_dsn(self) -> str:  # pragma: no cover
-        """Execute postgres dsn.
-            """
+        """Execute postgres dsn."""
 
         return self.database.dsn
 
@@ -439,16 +434,15 @@ class Config(BaseModel):
     def postgres_dsn(self, value: str) -> None:  # pragma: no cover
         """Execute postgres dsn.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.database.dsn = value
 
     @property
     def redis_url(self) -> str:  # pragma: no cover
-        """Execute redis url.
-            """
+        """Execute redis url."""
 
         return self.redis.url
 
@@ -456,16 +450,15 @@ class Config(BaseModel):
     def redis_url(self, value: str) -> None:  # pragma: no cover
         """Execute redis url.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.redis.url = value
 
     @property
     def opa_url(self) -> str:  # pragma: no cover
-        """Execute opa url.
-            """
+        """Execute opa url."""
 
         return self.external.opa_url or ""
 
@@ -473,16 +466,15 @@ class Config(BaseModel):
     def opa_url(self, value: str) -> None:  # pragma: no cover
         """Execute opa url.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.external.opa_url = value
 
     @property
     def soma_base_url(self) -> str:  # pragma: no cover
-        """Execute soma base url.
-            """
+        """Execute soma base url."""
 
         return self.external.somabrain_base_url or ""
 
@@ -490,16 +482,15 @@ class Config(BaseModel):
     def soma_base_url(self, value: str) -> None:  # pragma: no cover
         """Execute soma base url.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.external.somabrain_base_url = value
 
     @property
     def deployment_mode(self) -> str:  # pragma: no cover
-        """Execute deployment mode.
-            """
+        """Execute deployment mode."""
 
         return self.service.deployment_mode
 
@@ -507,16 +498,15 @@ class Config(BaseModel):
     def deployment_mode(self, value: str) -> None:  # pragma: no cover
         """Execute deployment mode.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.service.deployment_mode = value
 
     @property
     def environment(self) -> str:  # pragma: no cover
-        """Execute environment.
-            """
+        """Execute environment."""
 
         return self.service.environment
 
@@ -524,8 +514,8 @@ class Config(BaseModel):
     def environment(self, value: str) -> None:  # pragma: no cover
         """Execute environment.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         self.service.environment = value

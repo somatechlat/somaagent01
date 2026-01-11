@@ -1,4 +1,1 @@
-"""Export module - GDPR data export.
-
-
-"""
+"""Export module - GDPR data export."""

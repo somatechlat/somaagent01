@@ -8,11 +8,11 @@ import json
 def truncate_text(agent, output, threshold=1000):
     """Execute truncate text.
 
-        Args:
-            agent: The agent.
-            output: The output.
-            threshold: The threshold.
-        """
+    Args:
+        agent: The agent.
+        output: The output.
+        threshold: The threshold.
+    """
 
     threshold = int(threshold)
     if not threshold or len(output) <= threshold:
@@ -32,12 +32,12 @@ def truncate_text(agent, output, threshold=1000):
 def truncate_dict_by_ratio(agent, data: dict | list | str, threshold_chars: int, truncate_to: int):
     """Execute truncate dict by ratio.
 
-        Args:
-            agent: The agent.
-            data: The data.
-            threshold_chars: The threshold_chars.
-            truncate_to: The truncate_to.
-        """
+    Args:
+        agent: The agent.
+        data: The data.
+        threshold_chars: The threshold_chars.
+        truncate_to: The truncate_to.
+    """
 
     threshold_chars = int(threshold_chars)
     truncate_to = int(truncate_to)
@@ -45,9 +45,9 @@ def truncate_dict_by_ratio(agent, data: dict | list | str, threshold_chars: int,
     def process_item(item):
         """Execute process item.
 
-            Args:
-                item: The item.
-            """
+        Args:
+            item: The item.
+        """
 
         if isinstance(item, dict):
             truncated_dict = {}

@@ -1,6 +1,6 @@
 """Core Django ORM Models for Agent Domain.
 
-100% Django ORM - 
+100% Django ORM -
 Replaces raw SQL stores with Django models.
 """
 
@@ -113,10 +113,10 @@ class Capsule(models.Model):
 
     Contains the 'Soul' (Persona) and 'Body' (Capabilities).
     Must be certified by the Registry and bound to a Constitution.
-    
+
     Lifecycle: DRAFT → ACTIVE → ARCHIVED
     """
-    
+
     # Status choices for lifecycle management
     STATUS_DRAFT = "draft"
     STATUS_ACTIVE = "active"
@@ -132,24 +132,24 @@ class Capsule(models.Model):
     version = models.CharField(max_length=50, default="1.0.0")
     tenant = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True)
-    
+
     # Lifecycle Status
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default=STATUS_DRAFT,
         db_index=True,
-        help_text="Lifecycle state: draft, active, archived"
+        help_text="Lifecycle state: draft, active, archived",
     )
-    
+
     # Version Lineage (for edit-spawns-new-version pattern)
     parent = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='children',
-        help_text="Parent capsule this was cloned from"
+        related_name="children",
+        help_text="Parent capsule this was cloned from",
     )
 
     # Governance & Security
@@ -161,9 +161,7 @@ class Capsule(models.Model):
         help_text="The binding legal framework",
     )
     constitution_ref = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Cross-system reference: {'checksum': str, 'url': str}"
+        default=dict, blank=True, help_text="Cross-system reference: {'checksum': str, 'url': str}"
     )
     registry_signature = models.TextField(
         null=True, blank=True, help_text="Ed25519 Signature from Registry Authority"
@@ -185,9 +183,7 @@ class Capsule(models.Model):
     schema = models.JSONField(default=dict, help_text="Legacy: Tool schemas")
     config = models.JSONField(default=dict, help_text="Legacy: Configuration")
     capabilities_whitelist = models.JSONField(default=list, help_text="List of allowed Tool IDs")
-    resource_limits = models.JSONField(
-        default=dict, help_text="Max wall clock, concurrency, etc."
-    )
+    resource_limits = models.JSONField(default=dict, help_text="Max wall clock, concurrency, etc.")
 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -207,12 +203,12 @@ class Capsule(models.Model):
         """Return string representation."""
 
         return f"Capsule({self.name}:{self.version}:{self.status})"
-    
+
     @property
     def is_certified(self) -> bool:
         """Check if capsule has been certified."""
         return bool(self.registry_signature and self.status == self.STATUS_ACTIVE)
-    
+
     @property
     def soul(self) -> dict:
         """Return Soul (identity) as dict."""
@@ -221,7 +217,7 @@ class Capsule(models.Model):
             "personality_traits": self.personality_traits,
             "neuromodulator_baseline": self.neuromodulator_baseline,
         }
-    
+
     @property
     def body(self) -> dict:
         """Return Body (capabilities) as dict."""
@@ -229,7 +225,6 @@ class Capsule(models.Model):
             "capabilities_whitelist": self.capabilities_whitelist,
             "resource_limits": self.resource_limits,
         }
-
 
 
 class CapsuleInstance(models.Model):
@@ -603,7 +598,7 @@ class OutboxMessage(models.Model):
     - Publisher polls and sends to Kafka
     - Guarantees exactly-once delivery
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -689,7 +684,7 @@ class DeadLetterMessage(models.Model):
     - Alerting
     - Potential replay
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -746,7 +741,7 @@ class IdempotencyRecord(models.Model):
 
     Stores idempotency keys with TTL to prevent duplicate processing.
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -820,7 +815,7 @@ class PendingMemory(models.Model):
     When SomaBrain is unavailable (degradation mode), memories are
     stored here and synced when connection is restored.
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

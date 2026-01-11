@@ -24,11 +24,18 @@ EMBED_LATENCY = Histogram(
 
 
 class EmbeddingsProvider(ABC):
-    @abstractmethod
-    """Embeddingsprovider class implementation."""
+    """Abstract base class for embedding providers."""
 
+    @abstractmethod
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
-        """Return embeddings for a list of texts."""
+        """Return embeddings for a list of texts.
+
+        Args:
+            texts: Sequence of text strings.
+
+        Returns:
+            List of embedding vectors.
+        """
 
 
 class OpenAIEmbeddings(EmbeddingsProvider):
@@ -52,9 +59,9 @@ class OpenAIEmbeddings(EmbeddingsProvider):
     async def embed(self, texts: Sequence[str]) -> List[List[float]]:
         """Execute embed.
 
-            Args:
-                texts: The texts.
-            """
+        Args:
+            texts: The texts.
+        """
 
         provider = "openai"
         with EMBED_LATENCY.labels(provider).time():

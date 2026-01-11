@@ -13,8 +13,7 @@ class VaultAdapter:
 
     @classmethod
     def cipher(cls) -> Fernet:
-        """Execute cipher.
-            """
+        """Execute cipher."""
 
         if cls._cipher is None:
             key = os.environ.get("SA01_CRYPTO_FERNET_KEY")
@@ -26,9 +25,9 @@ class VaultAdapter:
     def encrypt(cls, plaintext: str) -> str:
         """Execute encrypt.
 
-            Args:
-                plaintext: The plaintext.
-            """
+        Args:
+            plaintext: The plaintext.
+        """
 
         return cls.cipher().encrypt(plaintext.encode()).decode()
 
@@ -36,9 +35,9 @@ class VaultAdapter:
     def decrypt(cls, ciphertext: str) -> str:
         """Execute decrypt.
 
-            Args:
-                ciphertext: The ciphertext.
-            """
+        Args:
+            ciphertext: The ciphertext.
+        """
 
         return cls.cipher().decrypt(ciphertext.encode()).decode()
 

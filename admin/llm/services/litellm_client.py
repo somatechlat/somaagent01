@@ -1,7 +1,7 @@
 """LiteLLM client wrapper - migrated from root models.py to Django app.
 
 This module provides LangChain-compatible LLM wrappers using LiteLLM.
-Migrated to admin.llm.services for Django compliance per 
+Migrated to admin.llm.services for Django compliance per
 """
 
 from __future__ import annotations
@@ -88,8 +88,7 @@ ModelType = None  # Will be imported lazily when needed
 
 # disable extra logging, must be done repeatedly, otherwise browser-use will turn it back on for some reason
 def turn_off_logging():
-    """Execute turn off logging.
-        """
+    """Execute turn off logging."""
 
     os.environ["LITELLM_LOG"] = "ERROR"  # only errors
     if litellm is not None:
@@ -129,10 +128,10 @@ if litellm is not None:
 def _env_flag(name: str, default: bool = True) -> bool:
     """Execute env flag.
 
-        Args:
-            name: The name.
-            default: The default.
-        """
+    Args:
+        name: The name.
+        default: The default.
+    """
 
     val = os.environ.get(name)
     if val is None:
@@ -143,9 +142,9 @@ def _env_flag(name: str, default: bool = True) -> bool:
 def _json_env(name: str):
     """Execute json env.
 
-        Args:
-            name: The name.
-        """
+    Args:
+        name: The name.
+    """
 
     import json
 
@@ -244,9 +243,9 @@ class ChatGenerationResult:
     def _process_thinking_chunk(self, chunk: ChatChunk) -> ChatChunk:
         """Execute process thinking chunk.
 
-            Args:
-                chunk: The chunk.
-            """
+        Args:
+            chunk: The chunk.
+        """
 
         response_delta = self.unprocessed + chunk["response_delta"]
         self.unprocessed = ""
@@ -262,10 +261,10 @@ class ChatGenerationResult:
         # opening tags that may be split across multiple chunks.
         """Execute process thinking tags.
 
-            Args:
-                response: The response.
-                reasoning: The reasoning.
-            """
+        Args:
+            response: The response.
+            reasoning: The reasoning.
+        """
 
         combined = self._buffer + response
         # Reset buffer; it will be rebuilt below if needed.
@@ -361,10 +360,10 @@ class ChatGenerationResult:
     def _split_partial_tag(self, text: str, tag: str) -> tuple[str, str]:
         """Execute split partial tag.
 
-            Args:
-                text: The text.
-                tag: The tag.
-            """
+        Args:
+            text: The text.
+            tag: The tag.
+        """
 
         for size in range(len(tag) - 1, 0, -1):
             if text.endswith(tag[:size]):
@@ -374,10 +373,10 @@ class ChatGenerationResult:
     def _is_partial_opening_tag(self, text: str, opening_tag: str) -> bool:
         """Execute is partial opening tag.
 
-            Args:
-                text: The text.
-                opening_tag: The opening_tag.
-            """
+        Args:
+            text: The text.
+            opening_tag: The opening_tag.
+        """
 
         for i in range(1, len(opening_tag)):
             if text == opening_tag[:i]:
@@ -387,9 +386,9 @@ class ChatGenerationResult:
     def _is_partial_closing_tag(self, text: str) -> bool:
         """Execute is partial closing tag.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         if not self.thinking_tag or not text:
             return False
@@ -400,8 +399,7 @@ class ChatGenerationResult:
         return False
 
     def output(self) -> ChatChunk:
-        """Execute output.
-            """
+        """Execute output."""
 
         response = self.response
         reasoning = self.reasoning
@@ -447,13 +445,13 @@ def get_rate_limiter(
 ) -> RateLimiter:
     """Retrieve rate limiter.
 
-        Args:
-            provider: The provider.
-            name: The name.
-            requests: The requests.
-            input: The input.
-            output: The output.
-        """
+    Args:
+        provider: The provider.
+        name: The name.
+        requests: The requests.
+        input: The input.
+        output: The output.
+    """
 
     key = f"{provider}\\{name}"
     rate_limiters[key] = limiter = rate_limiters.get(key, RateLimiter(seconds=60))
@@ -509,11 +507,11 @@ async def apply_rate_limiter(
 ):
     """Execute apply rate limiter.
 
-        Args:
-            model_config: The model_config.
-            input_text: The input_text.
-            rate_limiter_callback: The rate_limiter_callback.
-        """
+    Args:
+        model_config: The model_config.
+        input_text: The input_text.
+        rate_limiter_callback: The rate_limiter_callback.
+    """
 
     if not model_config:
         return
@@ -537,11 +535,11 @@ def apply_rate_limiter_sync(
 ):
     """Execute apply rate limiter sync.
 
-        Args:
-            model_config: The model_config.
-            input_text: The input_text.
-            rate_limiter_callback: The rate_limiter_callback.
-        """
+    Args:
+        model_config: The model_config.
+        input_text: The input_text.
+        rate_limiter_callback: The rate_limiter_callback.
+    """
 
     if not model_config:
         return
@@ -583,17 +581,16 @@ class LiteLLMChatWrapper(SimpleChatModel):
 
     @property
     def _llm_type(self) -> str:
-        """Execute llm type.
-            """
+        """Execute llm type."""
 
         return "litellm-chat"
 
     def _convert_messages(self, messages: List[BaseMessage]) -> List[dict]:
         """Execute convert messages.
 
-            Args:
-                messages: The messages.
-            """
+        Args:
+            messages: The messages.
+        """
 
         result = []
         # Map LangChain message types to LiteLLM roles
@@ -649,14 +646,13 @@ class LiteLLMChatWrapper(SimpleChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> str:
-
         """Execute call.
 
-            Args:
-                messages: The messages.
-                stop: The stop.
-                run_manager: The run_manager.
-            """
+        Args:
+            messages: The messages.
+            stop: The stop.
+            run_manager: The run_manager.
+        """
 
         msgs = self._convert_messages(messages)
 
@@ -710,14 +706,13 @@ class LiteLLMChatWrapper(SimpleChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
-
         """Execute stream.
 
-            Args:
-                messages: The messages.
-                stop: The stop.
-                run_manager: The run_manager.
-            """
+        Args:
+            messages: The messages.
+            stop: The stop.
+            run_manager: The run_manager.
+        """
 
         msgs = self._convert_messages(messages)
 
@@ -779,11 +774,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
     ) -> AsyncIterator[ChatGenerationChunk]:
         """Execute astream.
 
-            Args:
-                messages: The messages.
-                stop: The stop.
-                run_manager: The run_manager.
-            """
+        Args:
+            messages: The messages.
+            stop: The stop.
+            run_manager: The run_manager.
+        """
 
         msgs = self._convert_messages(messages)
 
@@ -825,18 +820,17 @@ class LiteLLMChatWrapper(SimpleChatModel):
         rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
         **kwargs: Any,
     ) -> Tuple[str, str]:
-
         """Execute unified call.
 
-            Args:
-                system_message: The system_message.
-                user_message: The user_message.
-                messages: The messages.
-                response_callback: The response_callback.
-                reasoning_callback: The reasoning_callback.
-                tokens_callback: The tokens_callback.
-                rate_limiter_callback: The rate_limiter_callback.
-            """
+        Args:
+            system_message: The system_message.
+            user_message: The user_message.
+            messages: The messages.
+            response_callback: The response_callback.
+            reasoning_callback: The reasoning_callback.
+            tokens_callback: The tokens_callback.
+            rate_limiter_callback: The rate_limiter_callback.
+        """
 
         turn_off_logging()
 
@@ -982,8 +976,7 @@ class AsyncAIChatReplacement:
 
         async def create(self, *args, **kwargs):
             # call the async _acall method on the wrapper
-            """Execute create.
-                """
+            """Execute create."""
 
             return await self._wrapper._acall(*args, **kwargs)
 
@@ -1020,21 +1013,18 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
 
     @property
     def model_name(self) -> str:
-        """Execute model name.
-            """
+        """Execute model name."""
 
         return self._wrapper.model_name
 
     @property
     def provider(self) -> str:
-        """Execute provider.
-            """
+        """Execute provider."""
 
         return self._wrapper.provider
 
     def get_client(self, *args, **kwargs):  # type: ignore
-        """Retrieve client.
-            """
+        """Retrieve client."""
 
         return AsyncAIChatReplacement(self, *args, **kwargs)
 
@@ -1048,11 +1038,11 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
         # Apply rate limiting if configured
         """Execute acall.
 
-            Args:
-                messages: The messages.
-                stop: The stop.
-                run_manager: The run_manager.
-            """
+        Args:
+            messages: The messages.
+            stop: The stop.
+            run_manager: The run_manager.
+        """
 
         apply_rate_limiter_sync(self._wrapper.a0_model_conf, str(messages))
 
@@ -1141,9 +1131,9 @@ class LiteLLMEmbeddingWrapper(Embeddings):
         # Apply rate limiting if configured
         """Execute embed documents.
 
-            Args:
-                texts: The texts.
-            """
+        Args:
+            texts: The texts.
+        """
 
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
 
@@ -1157,9 +1147,9 @@ class LiteLLMEmbeddingWrapper(Embeddings):
         # Apply rate limiting if configured
         """Execute embed query.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         apply_rate_limiter_sync(self.a0_model_conf, text)
 
@@ -1222,9 +1212,9 @@ class LocalSentenceTransformerWrapper(Embeddings):
         # Apply rate limiting if configured
         """Execute embed documents.
 
-            Args:
-                texts: The texts.
-            """
+        Args:
+            texts: The texts.
+        """
 
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
 
@@ -1235,9 +1225,9 @@ class LocalSentenceTransformerWrapper(Embeddings):
         # Apply rate limiting if configured
         """Execute embed query.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         apply_rate_limiter_sync(self.a0_model_conf, text)
 
@@ -1256,11 +1246,11 @@ def _get_litellm_chat(
     # do not log API keys; log instantiation metadata for visibility
     """Execute get litellm chat.
 
-        Args:
-            model_name: The model_name.
-            provider_name: The provider_name.
-            model_config: The model_config.
-        """
+    Args:
+        model_name: The model_name.
+        provider_name: The provider_name.
+        model_config: The model_config.
+    """
 
     try:
         llm_logger.info(
@@ -1299,11 +1289,11 @@ def _get_litellm_embedding(
     # Check if this is a local sentence-transformers model
     """Execute get litellm embedding.
 
-        Args:
-            model_name: The model_name.
-            provider_name: The provider_name.
-            model_config: The model_config.
-        """
+    Args:
+        model_name: The model_name.
+        provider_name: The provider_name.
+        model_config: The model_config.
+    """
 
     if provider_name == "huggingface" and model_name.startswith("sentence-transformers/"):
         # Use local sentence-transformers instead of LiteLLM for local models
@@ -1335,9 +1325,9 @@ def _get_litellm_embedding(
 def _parse_chunk(chunk: Any) -> ChatChunk:
     """Execute parse chunk.
 
-        Args:
-            chunk: The chunk.
-        """
+    Args:
+        chunk: The chunk.
+    """
 
     delta = chunk["choices"][0].get("delta", {})
     message = chunk["choices"][0].get("message", {}) or chunk["choices"][0].get(
@@ -1361,11 +1351,11 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
     # for openrouter add app reference
     """Execute adjust call args.
 
-        Args:
-            provider_name: The provider_name.
-            model_name: The model_name.
-            kwargs: The kwargs.
-        """
+    Args:
+        provider_name: The provider_name.
+        model_name: The model_name.
+        kwargs: The kwargs.
+    """
 
     if provider_name == "openrouter":
         kwargs["extra_headers"] = {
@@ -1386,18 +1376,18 @@ def _merge_provider_defaults(
     # Normalize .env-style numeric strings (e.g., "timeout=30") into ints/floats for LiteLLM
     """Execute merge provider defaults.
 
-        Args:
-            provider_type: The provider_type.
-            original_provider: The original_provider.
-            kwargs: The kwargs.
-        """
+    Args:
+        provider_type: The provider_type.
+        original_provider: The original_provider.
+        kwargs: The kwargs.
+    """
 
     def _normalize_values(values: dict) -> dict:
         """Execute normalize values.
 
-            Args:
-                values: The values.
-            """
+        Args:
+            values: The values.
+        """
 
         result: dict[str, Any] = {}
         for k, v in values.items():
@@ -1472,11 +1462,11 @@ def get_browser_model(
 ) -> BrowserCompatibleChatWrapper:
     """Retrieve browser model.
 
-        Args:
-            provider: The provider.
-            name: The name.
-            model_config: The model_config.
-        """
+    Args:
+        provider: The provider.
+        name: The name.
+        model_config: The model_config.
+    """
 
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
@@ -1490,11 +1480,11 @@ def get_embedding_model(
 ) -> LiteLLMEmbeddingWrapper | LocalSentenceTransformerWrapper:
     """Retrieve embedding model.
 
-        Args:
-            provider: The provider.
-            name: The name.
-            model_config: The model_config.
-        """
+    Args:
+        provider: The provider.
+        name: The name.
+        model_config: The model_config.
+    """
 
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("embedding", orig, kwargs)

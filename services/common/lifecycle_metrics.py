@@ -12,8 +12,7 @@ _shutdown = None
 
 
 def _ensure_metrics():
-    """Execute ensure metrics.
-        """
+    """Execute ensure metrics."""
 
     global _startup, _shutdown
     if _startup is not None and _shutdown is not None:
@@ -40,8 +39,7 @@ def _ensure_metrics():
 
 
 def now() -> float:
-    """Execute now.
-        """
+    """Execute now."""
 
     return time.perf_counter()
 
@@ -49,10 +47,10 @@ def now() -> float:
 def observe_startup(service: str, started_at: float) -> None:
     """Execute observe startup.
 
-        Args:
-            service: The service.
-            started_at: The started_at.
-        """
+    Args:
+        service: The service.
+        started_at: The started_at.
+    """
 
     try:
         elapsed = max(0.0, time.perf_counter() - float(started_at))
@@ -65,10 +63,10 @@ def observe_startup(service: str, started_at: float) -> None:
 def observe_shutdown(service: str, started_at: float) -> None:
     """Execute observe shutdown.
 
-        Args:
-            service: The service.
-            started_at: The started_at.
-        """
+    Args:
+        service: The service.
+        started_at: The started_at.
+    """
 
     try:
         elapsed = max(0.0, time.perf_counter() - float(started_at))

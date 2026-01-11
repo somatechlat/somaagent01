@@ -226,10 +226,7 @@ async def update_integration(
 
 @router.post("/{provider}/test", response=ConnectionTestResult)
 async def test_connection(request, provider: str) -> ConnectionTestResult:
-    """Test integration connection.
-
-    
-    """
+    """Test integration connection."""
     import time
 
     import httpx

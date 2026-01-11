@@ -26,16 +26,15 @@ async def call_llm(
     examples: list[Example] = [],
     callback: Callable[[str], None] | None = None,
 ):
-
     """Execute call llm.
 
-        Args:
-            system: The system.
-            model: The model.
-            message: The message.
-            examples: The examples.
-            callback: The callback.
-        """
+    Args:
+        system: The system.
+        model: The model.
+        message: The message.
+        examples: The examples.
+        callback: The callback.
+    """
 
     example_prompt = ChatPromptTemplate.from_messages(
         [

@@ -467,7 +467,7 @@ def get_profile(request) -> dict:
         user_id=user_id,
         defaults={
             "email": email,
-            "display_name": name,
+            "display_name": email.split("@")[0] if email else "User",
             "session_timeout": 30,
             "notification_prefs": {
                 "criticalAlerts": True,
@@ -486,7 +486,7 @@ def get_profile(request) -> dict:
         ProfileOut(
             id=str(profile.user_id),
             email=profile.email,
-            name=profile.display_name or name,
+            name=profile.display_name or (email.split("@")[0] if email else "User"),
             avatar_url=profile.avatar_url or None,
             role=roles[0] if roles else "user",
             roles=roles,
@@ -532,7 +532,7 @@ def update_profile(
         user_id=user_id,
         defaults={
             "email": email,
-            "display_name": name,
+            "display_name": email.split("@")[0] if email else "User",
             "session_timeout": 30,
         },
     )

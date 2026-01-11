@@ -35,7 +35,7 @@ def serve_spa(request, path=""):
     - /api/v2/ → Django Ninja API
     - Everything else → SPA (React/Lit frontend)
 
-    
+
     """
     index_path = settings.BASE_DIR / "webui" / "dist" / "index.html"
     if index_path.exists():

@@ -9,8 +9,7 @@ class A2AChatTool(Tool):
     """Communicate with another FastA2A-compatible agent."""
 
     async def execute(self, **kwargs):
-        """Execute execute.
-            """
+        """Execute execute."""
 
         if not is_client_available():
             return Response(

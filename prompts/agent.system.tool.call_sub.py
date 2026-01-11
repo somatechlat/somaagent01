@@ -11,14 +11,13 @@ class CallSubordinate(VariablesPlugin):
     """Callsubordinate class implementation."""
 
     def get_variables(self, file: str, backup_dirs: list[str] | None = None) -> dict[str, Any]:
-
         # collect all prompt profiles from subdirectories (_context.md file)
         """Retrieve variables.
 
-            Args:
-                file: The file.
-                backup_dirs: The backup_dirs.
-            """
+        Args:
+            file: The file.
+            backup_dirs: The backup_dirs.
+        """
 
         profiles = []
         agent_subdirs = files.get_subdirectories("agents", exclude=["_example"])

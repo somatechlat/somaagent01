@@ -38,14 +38,14 @@ async def _resolve_signing_key(header: dict) -> str:
                 resp = await client.get(jwks_url)
                 resp.raise_for_status()
                 jwks = resp.json()
-                
+
                 kid = header.get("kid")
                 for key in jwks.get("keys", []):
                     if key.get("kid") == kid:
                         return jwt.algorithms.RSAAlgorithm.from_jwk(key)
         except Exception:
             pass
-            
+
     # 2. Fallback to static public key/secret
     return getattr(settings, "KEYCLOAK_PUBLIC_KEY", None) or settings.SECRET_KEY
 
@@ -55,11 +55,11 @@ def _get_policy_client() -> PolicyClient | None:
     global _policy_client
     if _policy_client is not None:
         return _policy_client
-        
+
     opa_url = getattr(settings, "OPA_URL", None)
     if not opa_url:
         return None
-        
+
     _policy_client = PolicyClient(base_url=opa_url)
     return _policy_client
 
@@ -102,10 +102,15 @@ async def authorize_request(request, policy_context: dict = None):
         ForbiddenError: If authorization denied
     """
     auth_required = getattr(settings, "AUTH_REQUIRED", True)
-    
+
     # Dev/Test Bypass - ONLY if explicitly disabled
     if not auth_required:
-        return {"user_id": "test_user", "tenant": "test_tenant", "scope": "read", "sub": "test-user-123"}
+        return {
+            "user_id": "test_user",
+            "tenant": "test_tenant",
+            "scope": "read",
+            "sub": "test-user-123",
+        }
 
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -121,7 +126,7 @@ async def authorize_request(request, policy_context: dict = None):
     try:
         header = jwt_module.get_unverified_header(token)
         key = await _resolve_signing_key(header)
-        
+
         payload = jwt_module.decode(
             token,
             key=key,
@@ -137,7 +142,7 @@ async def authorize_request(request, policy_context: dict = None):
         if path:
             opa_context.setdefault("resource", path)
         opa_context.setdefault("tenant", payload.get("tenant"))
-        
+
         await _evaluate_opa(payload, opa_context)
 
         return {

@@ -19,10 +19,10 @@ def alias_for_key(key: str, placeholder: str = "§§secret({key})") -> str:
     # Return alias string for given key in upper-case
     """Execute alias for key.
 
-        Args:
-            key: The key.
-            placeholder: The placeholder.
-        """
+    Args:
+        key: The key.
+        placeholder: The placeholder.
+    """
 
     key = key.upper()
     return placeholder.format(key=key)
@@ -95,9 +95,9 @@ class StreamingSecretsFilter:
     def process_chunk(self, chunk: str) -> str:
         """Execute process chunk.
 
-            Args:
-                chunk: The chunk.
-            """
+        Args:
+            chunk: The chunk.
+        """
 
         if not chunk:
             return ""
@@ -150,8 +150,7 @@ class SecretsManager:
 
     @classmethod
     def get_instance(cls) -> "SecretsManager":
-        """Retrieve instance.
-            """
+        """Retrieve instance."""
 
         if cls._instance is None:
             cls._instance = cls()
@@ -274,9 +273,9 @@ class SecretsManager:
         def replacer(match):
             """Execute replacer.
 
-                Args:
-                    match: The match.
-                """
+            Args:
+                match: The match.
+            """
 
             key = match.group(1)
             key = key.upper()
@@ -352,9 +351,9 @@ class SecretsManager:
     def _parse_env_content(self, content: str) -> Dict[str, str]:
         """Execute parse env content.
 
-            Args:
-                content: The content.
-            """
+        Args:
+            content: The content.
+        """
 
         return self.parse_env_content(content)
 
@@ -440,15 +439,15 @@ class SecretsManager:
     ) -> str:
         """Execute serialize env lines.
 
-            Args:
-                lines: The lines.
-                with_values: The with_values.
-                with_comments: The with_comments.
-                with_blank: The with_blank.
-                with_other: The with_other.
-                key_delimiter: The key_delimiter.
-                key_formatter: The key_formatter.
-            """
+        Args:
+            lines: The lines.
+            with_values: The with_values.
+            with_comments: The with_comments.
+            with_blank: The with_blank.
+            with_other: The with_other.
+            key_delimiter: The key_delimiter.
+            key_formatter: The key_formatter.
+        """
 
         out: List[str] = []
         for ln in lines:

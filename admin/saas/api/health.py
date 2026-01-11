@@ -200,7 +200,7 @@ async def get_platform_health(request) -> PlatformHealth:
     """Check health of all platform services.
 
     Returns individual service status and overall platform status.
-    Per 
+    Per
     """
     # Run all health checks concurrently
     checks = await asyncio.gather(

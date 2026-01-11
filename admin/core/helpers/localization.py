@@ -20,8 +20,7 @@ class Localization:
 
     @classmethod
     def get(cls, *args, **kwargs):
-        """Execute get.
-            """
+        """Execute get."""
 
         if cls._instance is None:
             cls._instance = cls(*args, **kwargs)
@@ -54,17 +53,16 @@ class Localization:
                 save_dotenv_value("DEFAULT_USER_UTC_OFFSET_MINUTES", str(self._offset_minutes))
 
     def get_timezone(self) -> str:
-        """Retrieve timezone.
-            """
+        """Retrieve timezone."""
 
         return self.timezone
 
     def _compute_offset_minutes(self, timezone_name: str) -> int:
         """Execute compute offset minutes.
 
-            Args:
-                timezone_name: The timezone_name.
-            """
+        Args:
+            timezone_name: The timezone_name.
+        """
 
         tzinfo = pytz.timezone(timezone_name)
         now_in_tz = datetime.now(tzinfo)
@@ -72,8 +70,7 @@ class Localization:
         return int(offset.total_seconds() // 60) if offset else 0
 
     def get_offset_minutes(self) -> int:
-        """Retrieve offset minutes.
-            """
+        """Retrieve offset minutes."""
 
         return self._offset_minutes
 

@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     "admin.gateway",
     "admin.llm",
     "admin.memory",
-    "somafractalmemory", # Monolith Integration
+    "somafractalmemory",  # Monolith Integration
     "admin.multimodal",
     "admin.notifications",
     "admin.orchestrator",

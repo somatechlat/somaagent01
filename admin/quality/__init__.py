@@ -1,4 +1,1 @@
-"""Quality module - Asset Critic and Retry Logic.
-
-
-"""
+"""Quality module - Asset Critic and Retry Logic."""

@@ -7,8 +7,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 def generate_rsa_key():
-    """Execute generate rsa key.
-        """
+    """Execute generate rsa key."""
 
     key = rsa.generate_private_key(
         public_exponent=65537,
@@ -23,8 +22,7 @@ def generate_rsa_key():
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     print("Generating RSA Key...")
     rsa_key = generate_rsa_key()

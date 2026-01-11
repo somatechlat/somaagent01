@@ -117,10 +117,7 @@ async def get_tenant_usage(
 
 
 async def _get_usage_from_prometheus(request) -> list[UsageMetric]:
-    """Fetch usage metrics from Prometheus.
-
-    
-    """
+    """Fetch usage metrics from Prometheus."""
     import httpx
 
     prometheus_url = getattr(settings, "PROMETHEUS_URL", "http://localhost:20090")

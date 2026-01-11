@@ -20,16 +20,18 @@ from python.extensions.message_loop_start._10_iteration_no import get_iter_no
 
 
 class State:
+    """Browser agent state management."""
+
     @staticmethod
-    """State class implementation."""
-
     async def create(agent: Agent):
-        """Execute create.
+        """Create a new State instance.
 
-            Args:
-                agent: The agent.
-            """
+        Args:
+            agent: The agent instance.
 
+        Returns:
+            New State instance.
+        """
         state = State(agent)
         return state
 
@@ -44,23 +46,20 @@ class State:
         self.iter_no = 0
 
     def __del__(self):
-        """Execute del  .
-            """
+        """Execute del  ."""
 
         self.kill_task()
         files.delete_dir(self.get_user_data_dir())  # cleanup user data dir
 
     def get_user_data_dir(self):
-        """Retrieve user data dir.
-            """
+        """Retrieve user data dir."""
 
         return str(
             Path.home() / ".config" / "browseruse" / "profiles" / f"agent_{self.agent.context.id}"
         )
 
     async def _initialize(self):
-        """Execute initialize.
-            """
+        """Execute initialize."""
 
         if self.browser_session:
             return
@@ -124,9 +123,9 @@ class State:
     def start_task(self, task: str):
         """Execute start task.
 
-            Args:
-                task: The task.
-            """
+        Args:
+            task: The task.
+        """
 
         if self.task and self.task.is_alive():
             self.kill_task()
@@ -138,8 +137,7 @@ class State:
         return self.task
 
     def kill_task(self):
-        """Execute kill task.
-            """
+        """Execute kill task."""
 
         if self.task:
             self.task.kill(terminate_thread=True)
@@ -166,9 +164,9 @@ class State:
     async def _run_task(self, task: str):
         """Execute run task.
 
-            Args:
-                task: The task.
-            """
+        Args:
+            task: The task.
+        """
 
         await self._initialize()
 
@@ -187,9 +185,9 @@ class State:
         async def complete_task(params: DoneResult):
             """Execute complete task.
 
-                Args:
-                    params: The params.
-                """
+            Args:
+                params: The params.
+            """
 
             result = browser_use.ActionResult(
                 is_done=True, success=True, extracted_content=params.model_dump_json()
@@ -199,7 +197,6 @@ class State:
         model = self.agent.get_browser_model()
 
         try:
-
             secrets_manager = SecretsManager.get_instance()
             secrets_dict = secrets_manager.load_secrets()
 
@@ -226,9 +223,9 @@ class State:
         async def hook(agent: browser_use.Agent):
             """Execute hook.
 
-                Args:
-                    agent: The agent.
-                """
+            Args:
+                agent: The agent.
+            """
 
             await self.agent.wait_if_paused()
             if self.iter_no != get_iter_no(self.agent):
@@ -241,8 +238,7 @@ class State:
         return result
 
     async def get_page(self):
-        """Retrieve page.
-            """
+        """Retrieve page."""
 
         if self.use_agent and self.browser_session:
             try:
@@ -279,16 +275,15 @@ class State:
 
 
 class BrowserAgent(Tool):
-
     """Browseragent class implementation."""
 
     async def execute(self, message="", reset="", **kwargs):
         """Execute execute.
 
-            Args:
-                message: The message.
-                reset: The reset.
-            """
+        Args:
+            message: The message.
+            reset: The reset.
+        """
 
         self.guid = self.agent.context.generate_id()  # short random id
         reset = str(reset).lower().strip() == "true"
@@ -406,8 +401,7 @@ class BrowserAgent(Tool):
         return Response(message=answer_text, break_loop=False)
 
     def get_log_object(self):
-        """Retrieve log object.
-            """
+        """Retrieve log object."""
 
         return self.agent.context.log.log(
             type="browser",
@@ -417,8 +411,7 @@ class BrowserAgent(Tool):
         )
 
     async def get_update(self):
-        """Retrieve update.
-            """
+        """Retrieve update."""
 
         await self.prepare_state()
 
@@ -431,12 +424,10 @@ class BrowserAgent(Tool):
             try:
 
                 async def _get_update():
-
                     # await agent.wait_if_paused() # no need here
 
                     # Build short activity log
-                    """Execute get update.
-                        """
+                    """Execute get update."""
 
                     result["log"] = get_use_agent_log(ua)
 
@@ -461,9 +452,9 @@ class BrowserAgent(Tool):
     async def prepare_state(self, reset=False):
         """Execute prepare state.
 
-            Args:
-                reset: The reset.
-            """
+        Args:
+            reset: The reset.
+        """
 
         self.state = self.agent.get_data("_browser_agent_state")
         if reset and self.state:
@@ -475,9 +466,9 @@ class BrowserAgent(Tool):
     def update_progress(self, text):
         """Execute update progress.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         text = self._mask(text)
         short = text.split("\n")[-1]
@@ -491,9 +482,9 @@ class BrowserAgent(Tool):
     def _mask(self, text: str) -> str:
         """Execute mask.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         try:
             return SecretsManager.get_instance().mask_values(text or "")
@@ -508,9 +499,9 @@ class BrowserAgent(Tool):
 def get_use_agent_log(use_agent: browser_use.Agent | None):
     """Retrieve use agent log.
 
-        Args:
-            use_agent: The use_agent.
-        """
+    Args:
+        use_agent: The use_agent.
+    """
 
     result = ["🚦 Starting task"]
     if use_agent:

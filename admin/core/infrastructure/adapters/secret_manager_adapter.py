@@ -4,9 +4,21 @@ This adapter implements SecretManagerPort by delegating ALL operations
 to the existing production SecretManager implementation.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Protocol
 
 from services.common.secret_manager import SecretManager
+
+
+class SecretManagerPort(Protocol):
+    """Port interface for secret management operations."""
+
+    async def get_provider_key(self, provider: str) -> Optional[str]:
+        """Get API key for provider."""
+        ...
+
+    async def set_provider_key(self, provider: str, api_key: str) -> None:
+        """Set API key for provider."""
+        ...
 
 
 class SecretManagerAdapter(SecretManagerPort):
@@ -26,63 +38,60 @@ class SecretManagerAdapter(SecretManagerPort):
     async def set_provider_key(self, provider: str, api_key: str) -> None:
         """Set provider key.
 
-            Args:
-                provider: The provider.
-                api_key: The api_key.
-            """
+        Args:
+            provider: The provider.
+            api_key: The api_key.
+        """
 
         await self._manager.set_provider_key(provider, api_key)
 
     async def get_provider_key(self, provider: str) -> Optional[str]:
         """Retrieve provider key.
 
-            Args:
-                provider: The provider.
-            """
+        Args:
+            provider: The provider.
+        """
 
         return await self._manager.get_provider_key(provider)
 
     async def delete_provider_key(self, provider: str) -> None:
         """Execute delete provider key.
 
-            Args:
-                provider: The provider.
-            """
+        Args:
+            provider: The provider.
+        """
 
         await self._manager.delete_provider_key(provider)
 
     async def list_providers(self) -> List[str]:
-        """Execute list providers.
-            """
+        """Execute list providers."""
 
         return await self._manager.list_providers()
 
     async def set_internal_token(self, token: str) -> None:
         """Set internal token.
 
-            Args:
-                token: The token.
-            """
+        Args:
+            token: The token.
+        """
 
         await self._manager.set_internal_token(token)
 
     async def get_internal_token(self) -> Optional[str]:
-        """Retrieve internal token.
-            """
+        """Retrieve internal token."""
 
         return await self._manager.get_internal_token()
 
     async def has_provider_key(self, provider: str) -> bool:
         """Check if provider key.
 
-            Args:
-                provider: The provider.
-            """
+        Args:
+            provider: The provider.
+        """
 
         return await self._manager.has_provider_key(provider)
 
     async def has_internal_token(self) -> bool:
-        """Check if internal token.
-            """
+        """Check if internal token."""
 
         return await self._manager.has_internal_token()

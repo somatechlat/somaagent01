@@ -7,6 +7,7 @@ It can be run as a pre-commit hook or standalone.
 Usage:
     python scripts/check_file_sizes.py [--fix] [files...]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,8 +89,7 @@ def check_file(path: Path) -> tuple[bool, int, int]:
 
 
 def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = argparse.ArgumentParser(description="Check file sizes")
     parser.add_argument("files", nargs="*", help="Files to check")

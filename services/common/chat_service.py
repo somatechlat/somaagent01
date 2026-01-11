@@ -177,9 +177,9 @@ class ChatService:
     def _build_memory_headers(self, tenant_id: Optional[str]) -> dict:
         """Execute build memory headers.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         headers = {"Content-Type": "application/json"}
         if self.memory_api_token:
@@ -233,8 +233,7 @@ class ChatService:
 
             @sync_to_async
             def create_in_db():
-                """Execute create in db.
-                    """
+                """Execute create in db."""
 
                 conv = ConversationModel.objects.create(
                     agent_id=agent_id,
@@ -264,7 +263,7 @@ class ChatService:
             CHAT_REQUESTS.labels(method="create_conversation", result="success").inc()
 
             logger.info(
-                f"Conversation created: id={conversation.id}, " f"agent={agent_id}, user={user_id}"
+                f"Conversation created: id={conversation.id}, agent={agent_id}, user={user_id}"
             )
 
             return conversation
@@ -295,8 +294,7 @@ class ChatService:
 
         @sync_to_async
         def get_from_db():
-            """Retrieve from db.
-                """
+            """Retrieve from db."""
 
             try:
                 conv = ConversationModel.objects.get(
@@ -346,16 +344,13 @@ class ChatService:
 
         @sync_to_async
         def list_from_db():
-            """Execute list from db.
-                """
+            """Execute list from db."""
 
             return list(
                 ConversationModel.objects.filter(
                     user_id=user_id,
                     tenant_id=tenant_id,
-                ).order_by(
-                    "-updated_at"
-                )[offset : offset + limit]
+                ).order_by("-updated_at")[offset : offset + limit]
             )
 
         db_convs = await list_from_db()
@@ -408,8 +403,7 @@ class ChatService:
 
             @sync_to_async
             def create_session():
-                """Execute create session.
-                    """
+                """Execute create session."""
 
                 session_id = str(uuid4())
                 return SessionModel.objects.create(
@@ -482,8 +476,7 @@ class ChatService:
         # Store user message
         @sync_to_async
         def store_user_message():
-            """Execute store user message.
-                """
+            """Execute store user message."""
 
             msg = MessageModel.objects.create(
                 conversation_id=conversation_id,
@@ -532,8 +525,7 @@ class ChatService:
             # Load basic history first for the governor (without snippets)
             @sync_to_async
             def load_raw_history():
-                """Execute load raw history.
-                    """
+                """Execute load raw history."""
 
                 conv = (
                     ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
@@ -577,9 +569,9 @@ class ChatService:
             def simple_token_counter(text: str) -> int:
                 """Execute simple token counter.
 
-                    Args:
-                        text: The text.
-                    """
+                Args:
+                    text: The text.
+                """
 
                 return len(text.split())
 
@@ -636,8 +628,7 @@ class ChatService:
 
             @sync_to_async
             def store_assistant_message():
-                """Execute store assistant message.
-                    """
+                """Execute store assistant message."""
 
                 msg = MessageModel.objects.create(
                     conversation_id=conversation_id,
@@ -791,7 +782,7 @@ class ChatService:
             CHAT_REQUESTS.labels(method="recall_memories", result="success").inc()
 
             logger.debug(
-                f"Memories recalled: agent={agent_id}, user={user_id}, " f"count={len(memories)}"
+                f"Memories recalled: agent={agent_id}, user={user_id}, count={len(memories)}"
             )
 
             return memories
@@ -832,7 +823,9 @@ class ChatService:
 
             import hashlib
 
-            seed = f"{content}|{metadata.get('conversation_id','')}|{metadata.get('timestamp','')}"
+            seed = (
+                f"{content}|{metadata.get('conversation_id', '')}|{metadata.get('timestamp', '')}"
+            )
             digest = hashlib.sha256(seed.encode("utf-8")).digest()
             coord_values = [
                 int.from_bytes(digest[i : i + 2], "big") / 65535.0 for i in range(0, 6, 2)
@@ -932,8 +925,7 @@ class ChatService:
 
             @sync_to_async
             def get_agent_id():
-                """Retrieve agent id.
-                    """
+                """Retrieve agent id."""
 
                 conv = ConversationModel.objects.filter(id=conversation_id).only("agent_id").first()
                 return str(conv.agent_id) if conv else "default"
@@ -988,8 +980,7 @@ class ChatService:
             # Update database
             @sync_to_async
             def update_title():
-                """Execute update title.
-                    """
+                """Execute update title."""
 
                 ConversationModel.objects.filter(id=conversation_id).update(title=title)
 

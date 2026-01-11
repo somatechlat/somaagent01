@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class MemoryWriteRequest:
     """Request to write a memory."""
+
     payload: Dict[str, Any]
     tenant_id: str = "default"
     namespace: str = "wm"  # working memory
@@ -22,6 +23,7 @@ class MemoryWriteRequest:
 @dataclass
 class MemoryWriteResponse:
     """Response from a memory write."""
+
     coordinate: List[float]
     memory_id: str
     status: str = "success"
@@ -30,6 +32,7 @@ class MemoryWriteResponse:
 @dataclass
 class MemoryReadRequest:
     """Request to read/recall memories."""
+
     query: str
     limit: int = 10
     tenant_id: str = "default"
@@ -41,6 +44,7 @@ class MemoryReadRequest:
 @dataclass
 class MemoryItem:
     """Single memory item returned from recall."""
+
     memory_id: str
     coordinate: List[float]
     payload: Dict[str, Any]
@@ -51,4 +55,5 @@ class MemoryItem:
 @dataclass
 class MemoryReadResponse:
     """Response containing recalled memories."""
+
     memories: List[MemoryItem]

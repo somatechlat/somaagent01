@@ -115,8 +115,7 @@ class AssetEvaluation:
 
     @property
     def passed(self) -> bool:
-        """Execute passed.
-            """
+        """Execute passed."""
 
         return self.status == evaluation_status.PASSED
 

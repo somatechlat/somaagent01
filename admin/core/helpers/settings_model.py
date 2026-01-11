@@ -132,9 +132,9 @@ class SettingsModel(BaseModel):
     def __getitem__(self, item: str) -> Any:
         """Execute getitem  .
 
-            Args:
-                item: The item.
-            """
+        Args:
+            item: The item.
+        """
 
         return self.model_dump()[item]
 

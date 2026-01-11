@@ -39,9 +39,9 @@ class BaseTool:
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         raise NotImplementedError
 
@@ -61,9 +61,9 @@ class EchoTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         text = args.get("text")
         if not isinstance(text, str):
@@ -71,8 +71,7 @@ class EchoTool(BaseTool):
         return {"message": text}
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",
@@ -90,9 +89,9 @@ class TimestampTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         fmt = args.get("format", "%Y-%m-%dT%H:%M:%SZ")
         try:
@@ -110,8 +109,7 @@ class TimestampTool(BaseTool):
         return {"message": now}
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",
@@ -133,9 +131,9 @@ class CodeExecutionTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         language = args.get("language", "python").lower()
         if language != "python":
@@ -145,8 +143,7 @@ class CodeExecutionTool(BaseTool):
             raise ToolExecutionError("Provide Python source via 'code'")
 
         def _execute() -> dict[str, Any]:
-            """Execute execute.
-                """
+            """Execute execute."""
 
             buffer = io.StringIO()
             local_vars: dict[str, Any] = {}
@@ -182,8 +179,7 @@ class CodeExecutionTool(BaseTool):
         return await asyncio.to_thread(_execute)
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",
@@ -208,9 +204,9 @@ class FileReadTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
@@ -225,8 +221,7 @@ class FileReadTool(BaseTool):
         return {"path": str(target), "content": content}
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",
@@ -246,9 +241,9 @@ class HttpFetchTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         url = args.get("url")
         if not isinstance(url, str) or not url.startswith("http"):
@@ -265,8 +260,7 @@ class HttpFetchTool(BaseTool):
             }
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",
@@ -287,9 +281,9 @@ class CanvasAppendTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         session_id = args.get("session_id")
         if not isinstance(session_id, str) or not session_id:
@@ -320,8 +314,7 @@ class CanvasAppendTool(BaseTool):
         return {"status": "queued", "pane": pane}
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",
@@ -358,9 +351,9 @@ class IngestDocumentTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute run.
 
-            Args:
-                args: The args.
-            """
+        Args:
+            args: The args.
+        """
 
         attachment_id = args.get("attachment_id")
         metadata = args.get("metadata") or {}
@@ -377,9 +370,7 @@ class IngestDocumentTool(BaseTool):
 
         base = os.environ.get("SA01_GATEWAY_BASE")
         if not base:
-            raise ToolExecutionError(
-                "SA01_GATEWAY_BASE is required. No hardcoded defaults per "
-            )
+            raise ToolExecutionError("SA01_GATEWAY_BASE is required. No hardcoded defaults per ")
         base = base.rstrip("/")
         token = os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN")
         if not token:
@@ -461,8 +452,7 @@ class IngestDocumentTool(BaseTool):
         }
 
     def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema.
-            """
+        """Execute input schema."""
 
         return {
             "type": "object",

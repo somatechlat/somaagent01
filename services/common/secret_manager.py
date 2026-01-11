@@ -11,7 +11,7 @@ Why we need it
 ---------------
 * No component may read ``os.getenv`` directly – the only allowed env reads are
   in ``services.common.runtime_config`` (bootstrap).  By funnelling all secret
-  access through this module we satisfy the 
+  access through this module we satisfy the
 * Encryption at rest is mandatory for compliance.  The Fernet key is supplied
   via the ``SA01_CRYPTO_FERNET_KEY`` environment variable (a url‑safe base64
   32‑byte string).  If the key is missing the application fails fast.
@@ -111,10 +111,10 @@ class SecretManager:
     async def _set_encrypted(self, field: str, value: str) -> None:
         """Execute set encrypted.
 
-            Args:
-                field: The field.
-                value: The value.
-            """
+        Args:
+            field: The field.
+            value: The value.
+        """
 
         token = self._ensure_fernet().encrypt(value.encode()).decode("ascii")
         await self._redis.hset(self._namespace, field, token)
@@ -122,9 +122,9 @@ class SecretManager:
     async def _get_decrypted(self, field: str) -> Optional[str]:
         """Execute get decrypted.
 
-            Args:
-                field: The field.
-            """
+        Args:
+            field: The field.
+        """
 
         token = await self._redis.hget(self._namespace, field)
         if token is None:
@@ -146,9 +146,9 @@ class SecretManager:
     async def get_provider_key(self, provider: str) -> Optional[str]:
         """Retrieve provider key.
 
-            Args:
-                provider: The provider.
-            """
+        Args:
+            provider: The provider.
+        """
 
         field = self._hash_key(f"provider:{provider.lower()}")
         return await self._get_decrypted(field)
@@ -156,9 +156,9 @@ class SecretManager:
     async def delete_provider_key(self, provider: str) -> None:
         """Execute delete provider key.
 
-            Args:
-                provider: The provider.
-            """
+        Args:
+            provider: The provider.
+        """
 
         field = self._hash_key(f"provider:{provider.lower()}")
         await self._redis.hdel(self._namespace, field)
@@ -178,15 +178,14 @@ class SecretManager:
     async def set_internal_token(self, token: str) -> None:
         """Set internal token.
 
-            Args:
-                token: The token.
-            """
+        Args:
+            token: The token.
+        """
 
         await self._set_encrypted("internal_token", token)
 
     async def get_internal_token(self) -> Optional[str]:
-        """Retrieve internal token.
-            """
+        """Retrieve internal token."""
 
         return await self._get_decrypted("internal_token")
 
@@ -196,14 +195,13 @@ class SecretManager:
     async def has_provider_key(self, provider: str) -> bool:
         """Check if provider key.
 
-            Args:
-                provider: The provider.
-            """
+        Args:
+            provider: The provider.
+        """
 
         return (await self.get_provider_key(provider)) is not None
 
     async def has_internal_token(self) -> bool:
-        """Check if internal token.
-            """
+        """Check if internal token."""
 
         return (await self.get_internal_token()) is not None

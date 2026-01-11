@@ -48,14 +48,10 @@ class OpenFGAClient:
 
         self.base_url = base_url or os.environ.get("SA01_OPENFGA_API_URL")
         if not self.base_url:
-            raise ValueError(
-                "SA01_OPENFGA_API_URL is required. No hardcoded defaults per "
-            )
+            raise ValueError("SA01_OPENFGA_API_URL is required. No hardcoded defaults per ")
         self.store_id = store_id or os.environ.get("SA01_OPENFGA_STORE_ID")
         if not self.store_id:
-            raise ValueError(
-                "SA01_OPENFGA_STORE_ID is required. No hardcoded defaults per "
-            )
+            raise ValueError("SA01_OPENFGA_STORE_ID is required. No hardcoded defaults per ")
         self.user_namespace = user_namespace
         self.tenant_namespace = tenant_namespace
         self.relation = relation
@@ -127,13 +123,11 @@ class OpenFGAClient:
         return allowed
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         await self._client.aclose()
 
     def clear_cache(self) -> None:
-        """Execute clear cache.
-            """
+        """Execute clear cache."""
 
         self._cache.clear()

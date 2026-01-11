@@ -26,8 +26,7 @@ class CentralizedConfig(_Config):
 
     def __new__(cls, *args, **kwargs):  # pragma: no cover – simple delegation
         # Return the already‑instantiated configuration singleton.
-        """Execute new  .
-            """
+        """Execute new  ."""
 
         return _cfg
 

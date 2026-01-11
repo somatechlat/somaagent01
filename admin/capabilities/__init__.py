@@ -1,4 +1,1 @@
-"""Capabilities module - Registry and Circuit Breakers.
-
-
-"""
+"""Capabilities module - Registry and Circuit Breakers."""

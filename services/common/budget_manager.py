@@ -14,10 +14,10 @@ from services.common.tenant_config import TenantConfig
 def _int_from_env(name: str, default: int) -> int:
     """Execute int from env.
 
-        Args:
-            name: The name.
-            default: The default.
-        """
+    Args:
+        name: The name.
+        default: The default.
+    """
 
     raw = os.environ.get(name, str(default))
     try:
@@ -55,11 +55,11 @@ class BudgetManager:
     async def consume(self, tenant: str, persona_id: Optional[str], tokens: int) -> BudgetResult:
         """Execute consume.
 
-            Args:
-                tenant: The tenant.
-                persona_id: The persona_id.
-                tokens: The tokens.
-            """
+        Args:
+            tenant: The tenant.
+            persona_id: The persona_id.
+            tokens: The tokens.
+        """
 
         if tokens <= 0:
             current = await self._get_total(tenant, persona_id)
@@ -75,10 +75,10 @@ class BudgetManager:
     async def _get_total(self, tenant: str, persona_id: Optional[str]) -> int:
         """Execute get total.
 
-            Args:
-                tenant: The tenant.
-                persona_id: The persona_id.
-            """
+        Args:
+            tenant: The tenant.
+            persona_id: The persona_id.
+        """
 
         key = self._key(tenant, persona_id)
         value = await self.client.get(key)
@@ -87,18 +87,17 @@ class BudgetManager:
     def _key(self, tenant: str, persona_id: Optional[str]) -> str:
         """Execute key.
 
-            Args:
-                tenant: The tenant.
-                persona_id: The persona_id.
-            """
+        Args:
+            tenant: The tenant.
+            persona_id: The persona_id.
+        """
 
         persona = persona_id or "default"
         return f"{self.prefix}:{tenant}:{persona}:{self._current_window()}"
 
     def _current_window(self) -> str:
         # Simple daily window by default
-        """Execute current window.
-            """
+        """Execute current window."""
 
         from datetime import datetime, timezone
 
@@ -107,10 +106,10 @@ class BudgetManager:
     def _limit_for(self, tenant: str, persona_id: Optional[str]) -> Optional[int]:
         """Execute limit for.
 
-            Args:
-                tenant: The tenant.
-                persona_id: The persona_id.
-            """
+        Args:
+            tenant: The tenant.
+            persona_id: The persona_id.
+        """
 
         config_limit = self.tenant_config.get_budget_limit(tenant, persona_id)
         if config_limit is not None:

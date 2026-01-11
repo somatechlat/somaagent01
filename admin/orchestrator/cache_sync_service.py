@@ -1,7 +1,7 @@
 """CacheSyncService – a lightweight service that synchronises Redis‑based cache entries.
 
 The orchestrator will mount this service in the deterministic order after the
-memory service.  The implementation follows the 
+memory service.  The implementation follows the
 functional, documented, and uses the existing ``BaseSomaService`` contract.
 """
 
@@ -33,14 +33,12 @@ class CacheSyncService(BaseSomaService):
         self.app: Any = cache_app
 
     async def _start(self) -> None:
-        """Execute start.
-            """
+        """Execute start."""
 
         LOGGER.debug("CacheSyncService start – nothing to initialise")
 
     async def _stop(self) -> None:
-        """Execute stop.
-            """
+        """Execute stop."""
 
         LOGGER.debug("CacheSyncService stop – nothing to clean up")
 

@@ -107,7 +107,7 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
 
     Per SRS UC-04: POST /api/v2/voice/transcribe
 
-    
+
     - Real Whisper integration
     - Fallback to browser API if unavailable
     - Size and format validation
@@ -167,7 +167,7 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
 
     Per SRS UC-04: POST /api/v2/voice/synthesize
 
-    
+
     - Real Kokoro TTS integration
     - Fallback to browser API if unavailable
     - Multiple voice options

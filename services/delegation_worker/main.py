@@ -26,7 +26,7 @@ LOGGER = logging.getLogger(__name__)
 # Retrieve settings from the central configuration.
 # Django settings used instead
 # The OTLP endpoint is now located under the external configuration section.
-setup_tracing("delegation-worker", endpoint=APP_SETTINGS.external.otlp_endpoint)
+setup_tracing("delegation-worker", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 
 class DelegationWorker:
@@ -49,8 +49,7 @@ class DelegationWorker:
         self.store = DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
     async def start(self) -> None:
-        """Execute start.
-            """
+        """Execute start."""
 
         await self.store.ensure_schema()
         await self.bus.consume(self.topic, self.group, self._handle_event)
@@ -58,9 +57,9 @@ class DelegationWorker:
     async def _handle_event(self, event: dict[str, Any]) -> None:
         """Execute handle event.
 
-            Args:
-                event: The event.
-            """
+        Args:
+            event: The event.
+        """
 
         try:
             validate_event(event, "delegation_task")
@@ -82,8 +81,7 @@ class DelegationWorker:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     worker = DelegationWorker()
     await worker.start()

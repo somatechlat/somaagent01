@@ -15,15 +15,13 @@ KEY_ROOT_PASSWORD = "ROOT_PASSWORD"
 
 
 def load_dotenv():
-    """Execute load dotenv.
-        """
+    """Execute load dotenv."""
 
     _load_dotenv(get_dotenv_file_path(), override=True)
 
 
 def get_dotenv_file_path():
-    """Retrieve dotenv file path.
-        """
+    """Retrieve dotenv file path."""
 
     return get_abs_path(".env")
 
@@ -39,10 +37,10 @@ def get_dotenv_value(key: str, default: Any = None):
 def save_dotenv_value(key: str, value: str):
     """Execute save dotenv value.
 
-        Args:
-            key: The key.
-            value: The value.
-        """
+    Args:
+        key: The key.
+        value: The value.
+    """
 
     if value is None:
         value = ""

@@ -88,7 +88,7 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
 
     Per SRS UC-05: POST /api/v2/memory/search
 
-    
+
     - Real SomaBrain integration
     - Graceful degradation if unavailable
     """

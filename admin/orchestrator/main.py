@@ -20,6 +20,8 @@ from typing import Any, Dict
 # django.setup() should only be called if this is the entry point.
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+    import django
+
     django.setup()
 
 import uvicorn
@@ -126,8 +128,7 @@ def main() -> None:
     if args.dry_run:
 
         async def _smoke():
-            """Execute smoke.
-                """
+            """Execute smoke."""
 
             orch = _orchestrator
             await orch._start_all()

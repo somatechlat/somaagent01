@@ -431,6 +431,7 @@ async def clone_agent(
 
 class MultimodalConfig(BaseModel):
     """Multimodal capabilities configuration."""
+
     image_enabled: bool = True
     image_quality: str = "standard"
     image_style: str = "vivid"
@@ -458,25 +459,25 @@ class MultimodalConfig(BaseModel):
 )
 async def get_multimodal_config(request, agent_id: str) -> dict:
     """Get agent multimodal configuration.
-    
+
     Uses GlobalDefault for persistence (Unified Policy).
     """
     from admin.saas.models.profiles import GlobalDefault
-    
+
     gd = await GlobalDefault.aget_instance()
     defaults = gd.defaults
-    
+
     # Return stored config or defaults
     config = defaults.get("multimodal_policy", MultimodalConfig().dict())
-    
+
     return {
         "config": config,
         "quotas": {
-             "images": {"current": 0, "limit": 500},
-             "diagrams": {"current": 0, "limit": 1000},
-             "screenshots": {"current": 0, "limit": 1000},
-             "video_minutes": {"current": 0, "limit": 10},
-        }
+            "images": {"current": 0, "limit": 500},
+            "diagrams": {"current": 0, "limit": 1000},
+            "screenshots": {"current": 0, "limit": 1000},
+            "video_minutes": {"current": 0, "limit": 10},
+        },
     }
 
 
@@ -485,19 +486,15 @@ async def get_multimodal_config(request, agent_id: str) -> dict:
     summary="Update multimodal config",
     auth=AuthBearer(),
 )
-async def update_multimodal_config(
-    request, 
-    agent_id: str, 
-    config: MultimodalConfig
-) -> dict:
+async def update_multimodal_config(request, agent_id: str, config: MultimodalConfig) -> dict:
     """Update agent multimodal configuration.
-    
+
     Persists to GlobalDefault (Unified Policy).
     """
     from admin.saas.models.profiles import GlobalDefault
-    
+
     gd = await GlobalDefault.aget_instance()
     gd.defaults["multimodal_policy"] = config.dict()
     await gd.asave()
-    
+
     return {"updated": True}

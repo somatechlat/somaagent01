@@ -44,9 +44,9 @@ is_updating_model = False  # Tracks whether the model is currently updating
 async def preload(model_name: str):
     """Execute preload.
 
-        Args:
-            model_name: The model_name.
-        """
+    Args:
+        model_name: The model_name.
+    """
 
     if whisper is None:
         LOGGER.debug("Whisper preload skipped – audio support disabled")
@@ -62,9 +62,9 @@ async def preload(model_name: str):
 async def _preload(model_name: str):
     """Execute preload.
 
-        Args:
-            model_name: The model_name.
-        """
+    Args:
+        model_name: The model_name.
+    """
 
     if whisper is None:
         return None
@@ -85,7 +85,9 @@ async def _preload(model_name: str):
                 group="whisper-preload",
             )
             PrintStyle.standard(f"Loading Whisper model: {model_name}")
-            _model = whisper.load_model(name=model_name, download_root=files.get_abs_path("/tmp/models/whisper"))  # type: ignore
+            _model = whisper.load_model(
+                name=model_name, download_root=files.get_abs_path("/tmp/models/whisper")
+            )  # type: ignore
             _model_name = model_name
             NotificationManager.send_notification(
                 NotificationType.INFO,
@@ -100,22 +102,19 @@ async def _preload(model_name: str):
 
 async def is_downloading():
     # return await runtime.call_development_function(_is_downloading)
-    """Check if downloading.
-        """
+    """Check if downloading."""
 
     return _is_downloading()
 
 
 def _is_downloading():
-    """Execute is downloading.
-        """
+    """Execute is downloading."""
 
     return is_updating_model
 
 
 async def is_downloaded():
-    """Check if downloaded.
-        """
+    """Check if downloaded."""
 
     if whisper is None:
         return False
@@ -124,8 +123,7 @@ async def is_downloaded():
 
 
 def _is_downloaded():
-    """Execute is downloaded.
-        """
+    """Execute is downloaded."""
 
     return _model is not None
 
@@ -133,10 +131,10 @@ def _is_downloaded():
 async def transcribe(model_name: str, audio_bytes_b64: str):
     """Execute transcribe.
 
-        Args:
-            model_name: The model_name.
-            audio_bytes_b64: The audio_bytes_b64.
-        """
+    Args:
+        model_name: The model_name.
+        audio_bytes_b64: The audio_bytes_b64.
+    """
 
     if whisper is None:
         raise RuntimeError(
@@ -149,10 +147,10 @@ async def transcribe(model_name: str, audio_bytes_b64: str):
 async def _transcribe(model_name: str, audio_bytes_b64: str):
     """Execute transcribe.
 
-        Args:
-            model_name: The model_name.
-            audio_bytes_b64: The audio_bytes_b64.
-        """
+    Args:
+        model_name: The model_name.
+        audio_bytes_b64: The audio_bytes_b64.
+    """
 
     if whisper is None:
         raise RuntimeError(

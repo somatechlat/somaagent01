@@ -52,15 +52,13 @@ class AuditEvent:
     metadata: dict
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if not self.timestamp:
             self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return asdict(self)
 
@@ -84,8 +82,7 @@ class LoginAuditEvent(AuditEvent):
     mfa_used: bool = False
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         super().__post_init__()
         self.event_type = "auth.login"
@@ -104,8 +101,7 @@ class LogoutAuditEvent(AuditEvent):
     session_id: Optional[str] = None
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         super().__post_init__()
         self.event_type = "auth.logout"
@@ -126,8 +122,7 @@ class SessionAuditEvent(AuditEvent):
     permissions: list = None
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         super().__post_init__()
         self.event_type = "auth.session"
@@ -152,8 +147,7 @@ class PermissionDeniedAuditEvent(AuditEvent):
     endpoint: str = ""
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         super().__post_init__()
         self.event_type = "auth.permission_denied"
@@ -184,9 +178,9 @@ class AuditPublisher:
     ) -> Dict[str, Any]:
         """Execute publish.
 
-            Args:
-                event: The event.
-            """
+        Args:
+            event: The event.
+        """
 
         headers = build_headers(
             tenant=tenant,
@@ -390,8 +384,7 @@ class AuditPublisher:
 
             @sync_to_async
             def store():
-                """Execute store.
-                    """
+                """Execute store."""
 
                 AuditLog.objects.create(
                     tenant=event.tenant_id or "",

@@ -79,8 +79,7 @@ class DelegationWorkerService(BaseService):
 
         @app.api_route(f"{prefix}/health")
         async def health_check() -> Dict[str, Any]:
-            """Execute health check.
-                """
+            """Execute health check."""
 
             status = "healthy"
             details: Dict[str, Any] = {"service": self.service_name}
@@ -99,8 +98,7 @@ class DelegationWorkerService(BaseService):
 
         @app.api_route(f"{prefix}/metrics")
         async def metrics() -> Dict[str, Any]:
-            """Execute metrics.
-                """
+            """Execute metrics."""
 
             return {
                 "service": self.service_name,

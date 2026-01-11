@@ -277,10 +277,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         await self._send_status("listening")
 
     async def _transcribe_audio(self, audio_data: bytes) -> str:
-        """Transcribe audio using Whisper API.
-
-        
-        """
+        """Transcribe audio using Whisper API."""
         try:
             import httpx
 
@@ -306,10 +303,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             return ""
 
     async def _generate_llm_response(self, transcript: str):
-        """Generate AI response via LLM and TTS.
-
-        
-        """
+        """Generate AI response via LLM and TTS."""
         await self._send_status("speaking")
         self.state.is_speaking = True
 
@@ -372,10 +366,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         await self._send_status("listening")
 
     async def _stream_tts_audio(self, text: str):
-        """Stream TTS audio chunks using Kokoro.
-
-        
-        """
+        """Stream TTS audio chunks using Kokoro."""
         import httpx
 
         tts_url = getattr(settings, "KOKORO_TTS_URL", "http://localhost:8002/synthesize")
