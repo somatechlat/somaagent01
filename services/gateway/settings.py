@@ -196,7 +196,23 @@ OPA_URL = get_required_env("SA01_OPA_URL", "Open Policy Agent for authorization 
 
 # Voice Services (Whisper STT + Kokoro TTS)
 WHISPER_URL = os.environ.get("SA01_WHISPER_URL", "http://localhost:9100")
+WHISPER_API_URL = os.environ.get("SA01_WHISPER_API_URL", "http://localhost:8001/transcribe")
 KOKORO_URL = os.environ.get("SA01_KOKORO_URL", "http://localhost:9200")
+KOKORO_TTS_URL = os.environ.get("SA01_KOKORO_TTS_URL", "http://localhost:8002/synthesize")
+AGENTVOICEVOX_BASE_URL = os.environ.get("SA01_VOICEVOX_URL", "http://localhost:65009")
+
+# LLM Service
+LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat")
+LLM_API_KEY = os.environ.get("SA01_LLM_API_KEY", "")
+DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
+
+# Multimodal Services
+MERMAID_CLI_URL = os.environ.get("SA01_MERMAID_CLI_URL", "http://localhost:9300")
+IMAGE_GEN_URL = os.environ.get("SA01_IMAGE_GEN_URL", "http://localhost:8003/generate")
+DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
+
+# Monitoring
+PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:20090")
 
 # Lago Billing
 LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:3000/api/v1")
