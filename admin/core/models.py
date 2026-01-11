@@ -525,37 +525,7 @@ class MemoryReplica(models.Model):
         return f"MemoryReplica({self.event_id})"
 
 
-# =============================================================================
-# DEAD LETTER QUEUE MODELS (replaces dlq_store.py)
-# =============================================================================
-
-
-class DeadLetterMessage(models.Model):
-    """Dead letter queue message - replaces DLQStore."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    queue_name = models.CharField(max_length=255, db_index=True)
-    original_topic = models.CharField(max_length=255)
-    payload = models.JSONField()
-    error_message = models.TextField()
-    error_type = models.CharField(max_length=255)
-    retry_count = models.IntegerField(default=0)
-    max_retries = models.IntegerField(default=3)
-    is_processed = models.BooleanField(default=False, db_index=True)
-    processed_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        """Meta class implementation."""
-
-        db_table = "dead_letter_queue"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        """Return string representation."""
-
-        return f"DLQ({self.queue_name}:{self.error_type})"
-
+# NOTE: DeadLetterMessage deleted - use OutboxDeadLetter for all DLQ needs
 
 # =============================================================================
 # AGENT SETTINGS MODELS (replaces agent_settings_store.py)

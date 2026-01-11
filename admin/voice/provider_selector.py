@@ -35,13 +35,14 @@ class _BaseClient(Protocol):
 
     async def process(
         self,
-        audio_stream: "AsyncGenerator[bytes, None]"
-        """Execute process.
-
-            Args:
-                audio_stream: The audio_stream.
-            """,
-    ) -> "AsyncGenerator[object, None]": ...
+        audio_stream: "AsyncGenerator[bytes, None]",
+    ) -> "AsyncGenerator[object, None]":
+        """Process audio stream.
+        
+        Args:
+            audio_stream: The audio stream to process.
+        """
+        ...
 
 
 def get_provider_client(config: Config) -> _BaseClient:

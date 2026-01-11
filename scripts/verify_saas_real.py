@@ -148,7 +148,7 @@ def verify_real_saas():
 
         # Verify Persistence
         limits = await get_rate_limits(None)
-        found = any(l["name"] == "test_limit_v1" for l in limits["limits"])
+        found = any(limit_["name"] == "test_limit_v1" for limit_ in limits["limits"])
         if found:
             print("   ✅ RateLimit persistence verified.")
         else:

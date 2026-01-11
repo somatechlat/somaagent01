@@ -11,10 +11,13 @@ import hashlib
 import json
 import logging
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from django.db import transaction
 from django.dispatch import receiver, Signal
+
+if TYPE_CHECKING:
+    from admin.core.models import OutboxMessage
 
 logger = logging.getLogger(__name__)
 

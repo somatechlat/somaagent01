@@ -41,5 +41,5 @@ def load_config() -> _Config:
 
 
 # Export the public symbols.
-# ``cfg`` is the singleton configuration instance.
+cfg = _cfg  # Re-export the singleton
 __all__ = ["CentralizedConfig", "load_config", "cfg"]
