@@ -385,18 +385,12 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/orchestrator", orchestrator_router)
 
-    # Granular Permissions (RBAC)
+    # Granular Permissions (RBAC V2 - Advanced role permissions)
+    # NOTE: /permissions is already mounted at line 286 by admin.permissions.api
+    # This provides granular/advanced endpoints under a separate namespace
     from admin.permissions.granular import router as granular_permissions_router
 
-    safe_add_router("/permissions", granular_permissions_router)
-
-    # Permission (RBAC) - Duplicate?
-    # Line 235 mounted /permissions. This overrides it or conflicts.
-    # Keeping the granular one if it's V2. Or disabling if it conflicts.
-    # The log said "/permissions already attached". So the first one won.
-    # We should probably keep the FIRST one (admin.permissions.api) if it's the main one.
-    # Or commented out granular if it's causing noise.
-    # Let's leave it, safe_add_router handles it (logs warning now).
+    safe_add_router("/permissions/granular", granular_permissions_router)
 
     # Flink Stream Processing
     from admin.flink.api import router as flink_router

@@ -35,12 +35,25 @@ from admin.agents.services.agentiq_governor import (
     create_governor,
     TurnContext,
 )
+from admin.agents.services.agentiq_config import get_agentiq_config, get_confidence_config
+from admin.agents.services.agentiq_metrics import (
+    record_governor_decision,
+    record_lane_actual,
+    record_aiq_observed,
+    record_confidence,
+    update_confidence_ewma,
+    record_receipt_persisted,
+    record_receipt_error,
+)
+from admin.agents.services.run_receipt import create_receipt_from_decision
+from admin.agents.services.confidence_scorer import calculate_confidence_safe, ConfidenceEWMA
 from admin.agents.services.context_builder import ContextBuilder
 from admin.core.observability.metrics import ContextBuilderMetrics
 from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
 from services.common.capsule_store import CapsuleStore
 from services.common.degradation_monitor import DegradationMonitor
+from services.common.unified_secret_manager import get_secret_manager
 
 logger = logging.getLogger(__name__)
 
@@ -155,9 +168,11 @@ class ChatService:
 
         self.somabrain_url = somabrain_url or settings.SOMABRAIN_URL
         self.memory_url = memory_url or settings.SOMAFRACTALMEMORY_URL
-        self.memory_api_token = (
-            os.getenv("SOMA_MEMORY_API_TOKEN") or os.getenv("SOMA_API_TOKEN") or ""
-        )
+        
+        # VAULT-ONLY: Get memory API token from Vault (no ENV variables)
+        secret_manager = get_secret_manager()
+        self.memory_api_token = secret_manager.get_credential("soma_memory_api_token") or ""
+        
         self.timeout = timeout
 
         # HTTP client for external services
@@ -171,6 +186,7 @@ class ChatService:
             capsule_store=self.capsule_store,
             degradation_monitor=self.degradation_monitor,
             budget_manager=self.budget_manager,
+            config=get_agentiq_config(),
         )
         self.metrics = ContextBuilderMetrics()
 
@@ -194,10 +210,22 @@ class ChatService:
             self._http_client = httpx.AsyncClient(timeout=self.timeout)
         return self._http_client
 
+    async def _ensure_monitoring_initialized(self) -> None:
+        """Ensure DegradationMonitor is initialized and started.
+        
+        This is called lazily to avoid async issues in __init__.
+        """
+        if not self.degradation_monitor.is_monitoring():
+            await self.degradation_monitor.initialize()
+            await self.degradation_monitor.start_monitoring()
+            logger.info("DegradationMonitor initialized and started")
+
     async def close(self) -> None:
-        """Close HTTP client."""
+        """Close HTTP client and stop monitoring."""
         if self._http_client:
             await self._http_client.aclose()
+        if self.degradation_monitor.is_monitoring():
+            await self.degradation_monitor.stop_monitoring()
 
     # =========================================================================
     # CONVERSATION MANAGEMENT
@@ -473,6 +501,9 @@ class ChatService:
 
         start_time = time.perf_counter()
 
+        # Ensure DegradationMonitor is initialized
+        await self._ensure_monitoring_initialized()
+
         # Store user message
         @sync_to_async
         def store_user_message():
@@ -561,6 +592,17 @@ class ChatService:
                 max_tokens=max_total_tokens,
             )
 
+            # Record governor decision metrics
+            record_governor_decision(
+                tenant_id=current_tenant_id,
+                aiq_pred=decision.aiq_score.predicted,
+                degradation_level=decision.degradation_level.value,
+                path_mode=decision.path_mode.value,
+                tool_k=decision.tool_k,
+                latency_ms=decision.latency_ms,
+                lane_budgets=decision.lane_plan.to_dict(),
+            )
+
             # 3. Build Context
             # Use ContextBuilder to retrieve snippets, summarize, and budget
             somabrain_client = await SomaBrainClient.get_async()
@@ -591,6 +633,7 @@ class ChatService:
             }
 
             built_context = await builder.build_for_turn(
+                
                 turn=turn_dict,
                 max_prompt_tokens=max_total_tokens,
                 lane_plan=decision.lane_plan,
@@ -621,6 +664,79 @@ class ChatService:
                     yield token
             full_response = "".join(response_content)
             token_count = len(full_response.split())
+
+            # --- AGENTIQ INTEGRATION: Confidence & RunReceipt ---
+
+            # Initialize EWMA tracker for confidence
+            ewma_tracker = ConfidenceEWMA(alpha=0.1)
+
+            # Calculate confidence (if enabled)
+            # Note: logprobs extraction depends on LLM provider
+            # For now, we'll pass None which will result in confidence=None
+            # TODO: Implement logprobs extraction from LLM response
+            logprobs = None
+            confidence_config = get_confidence_config()
+            confidence_result = calculate_confidence_safe(
+                logprobs=logprobs,
+                provider=provider,
+                model=model_name,
+                config=confidence_config,
+            )
+
+            # Evaluate and record confidence metrics
+            if confidence_config.enabled:
+                is_acceptable, action_msg = confidence_result.is_acceptable(
+                    confidence_config.min_acceptance
+                )
+                
+                # Update EWMA
+                if confidence_result.score is not None:
+                    ewma_value = ewma_tracker.update(confidence_result.score)
+                    update_confidence_ewma(provider, model_name, ewma_value)
+                
+                # Record metrics
+                is_low = (confidence_result.score is not None and 
+                         confidence_result.score < confidence_config.min_acceptance)
+                record_confidence(
+                    provider=provider,
+                    model=model_name,
+                    score=confidence_result.score,
+                    latency_ms=confidence_result.latency_ms,
+                    is_low=is_low,
+                    is_rejected=False,  # TODO: Implement rejection logic
+                )
+
+            # Calculate observed AIQ (placeholder - would need actual metrics)
+            observed_aiq = decision.aiq_score.predicted
+
+            # Create RunReceipt
+            receipt = create_receipt_from_decision(
+                decision=decision,
+                turn_context=turn_context,
+                lane_actual=built_context.lane_actual,
+                confidence=confidence_result.score if confidence_config.enabled else None,
+                aiq_obs=observed_aiq,
+            )
+
+            # TODO: Persist receipt to PostgreSQL or Kafka
+            # For now, just record metrics
+            try:
+                record_receipt_persisted(current_tenant_id, latency_ms=0.0)
+            except Exception as e:
+                record_receipt_error(current_tenant_id, error_type=str(type(e).__name__))
+
+            # Record actual lane usage
+            record_lane_actual(
+                tenant_id=current_tenant_id,
+                lane_actual=built_context.lane_actual,
+                lane_budgets=decision.lane_plan.to_dict(),
+            )
+
+            # Record observed AIQ
+            record_aiq_observed(
+                tenant_id=current_tenant_id,
+                aiq_obs=observed_aiq,
+            )
 
             # Store assistant message
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)

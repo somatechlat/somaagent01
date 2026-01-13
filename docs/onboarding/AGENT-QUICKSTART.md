@@ -64,25 +64,46 @@
 
 ---
 
-## Port Namespace
+## Port Namespace - DEPLOYMENT MODES
 
-```
-SomaAgent01: 20xxx
-├── PostgreSQL:  20432
-├── Redis:       20379
-├── Kafka:       20092
-├── Milvus:      20530
-├── SpiceDB:     20051
-├── OPA:         20181
-├── Keycloak:    20880
-├── Prometheus:  20090
-├── Grafana:     20300
-├── Django API:  20020
-└── Frontend:    20080
+**⚠️ CRITICAL: Port numbers vary by deployment mode**
 
-SomaBrain:      30xxx (Cognitive Runtime, port 30101)
-SomaFractalMemory: 9xxx (Memory Storage, port 9595)
+### SAAS Deployment (Primary - ./infra/saas/)
 ```
+Internal (Container) → External (Host)
+├── PostgreSQL:  5432 → 63932
+├── Redis:       6379 → 63979
+├── Kafka:       9092 → 63992
+├── Vault:       8200 → 63982  (Secrets - NO ENV VARS!)
+├── Agent API:   9000 → 63900
+├── Brain API:   9696 → 63996
+├── Memory API:  10101 → 63901
+├── Milvus:      19530 → 63953
+├── OPA:         8181 → 63904
+├── Prometheus:  9090 → 63905
+└── Grafana:     3000 → 63906
+```
+
+### Kubernetes Deployment (./infra/k8s/)
+```
+Service → NodePort
+├── PostgreSQL:  5432 → 32432
+├── Redis:       6379 → 32379
+├── Kafka:       9092 → 32092
+├── Agent API:   9000 → 32900 (LoadBalancer)
+└── Vault:       8200 → 32982
+```
+
+### Local Development
+```
+Standard defaults:
+├── PostgreSQL:  5432
+├── Redis:       6379
+├── Kafka:       9092
+└── Vault:       8200
+```
+
+**⚠️ DEPRECATED: Port 20432 is NEVER used in current codebase.**
 
 ---
 

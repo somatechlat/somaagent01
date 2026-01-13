@@ -202,7 +202,7 @@ KOKORO_TTS_URL = os.environ.get("SA01_KOKORO_TTS_URL", "http://localhost:8002/sy
 AGENTVOICEVOX_BASE_URL = os.environ.get("SA01_VOICEVOX_URL", "http://localhost:65009")
 
 # LLM Service
-LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat")
+LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
 LLM_API_KEY = os.environ.get("SA01_LLM_API_KEY", "")
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
 
@@ -211,8 +211,8 @@ MERMAID_CLI_URL = os.environ.get("SA01_MERMAID_CLI_URL", "http://localhost:9300"
 IMAGE_GEN_URL = os.environ.get("SA01_IMAGE_GEN_URL", "http://localhost:8003/generate")
 DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
 
-# Monitoring
-PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:20090")
+# Monitoring (SAAS: 63905, K8S: 32905, Local: 9090)
+PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
 
 # Lago Billing
 LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:3000/api/v1")

@@ -120,7 +120,10 @@ async def _get_usage_from_prometheus(request) -> list[UsageMetric]:
     """Fetch usage metrics from Prometheus."""
     import httpx
 
-    prometheus_url = getattr(settings, "PROMETHEUS_URL", "http://localhost:20090")
+    prometheus_url = getattr(settings, "PROMETHEUS_URL", "http://localhost:9090")
+    # SAAS external: http://localhost:63905
+    # K8S: http://prometheus:9090
+
     tenant_id = getattr(request, "tenant_id", None) or "default"
 
     try:
@@ -182,103 +185,5 @@ async def _get_usage_from_prometheus(request) -> list[UsageMetric]:
                     current=int(images),
                     limit=quotas["images"],
                     unit="",
-                    percentage=_calc_percentage(images, quotas["images"]),
-                ),
-                UsageMetric(
-                    label="Voice Minutes",
-                    current=int(voice_minutes),
-                    limit=quotas["voice_minutes"],
-                    unit="min",
-                    percentage=_calc_percentage(voice_minutes, quotas["voice_minutes"]),
-                ),
-            ]
+                    percentage=_calc_percentage(images, quot
 
-    except Exception as e:
-        logger.warning(f"Failed to fetch Prometheus metrics: {e}")
-
-    # Fallback to sample data
-    return [
-        UsageMetric(label="API Calls", current=52345, limit=100000, unit="", percentage=52),
-        UsageMetric(label="LLM Tokens", current=523000, limit=1000000, unit="", percentage=52),
-        UsageMetric(label="Images", current=312, limit=500, unit="", percentage=62),
-        UsageMetric(label="Voice Minutes", current=245, limit=500, unit="min", percentage=49),
-    ]
-
-
-def _extract_prometheus_value(response: dict) -> float:
-    """Extract value from Prometheus query response."""
-    try:
-        result = response.get("data", {}).get("result", [])
-        if result and len(result) > 0:
-            return float(result[0].get("value", [0, 0])[1])
-    except (IndexError, ValueError, TypeError):
-        pass
-    return 0.0
-
-
-def _get_tenant_quotas(tenant_id: str) -> dict:
-    """Get quotas for a tenant from database."""
-    from admin.saas.models import Tenant
-
-    try:
-        tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
-        return {
-            "api_calls": tenant.tier.max_api_calls if tenant.tier else 100000,
-            "tokens": tenant.tier.max_api_calls * 100 if tenant.tier else 1000000,  # Rough estimate
-            "images": 500,
-            "voice_minutes": 500,
-        }
-    except Tenant.DoesNotExist:
-        return {"api_calls": 100000, "tokens": 1000000, "images": 500, "voice_minutes": 500}
-
-
-def _calc_percentage(current: float, limit: int) -> int:
-    """Calculate percentage safely."""
-    if limit == 0:
-        return 0
-    return min(100, int((current / limit) * 100))
-
-
-async def _get_agent_usage(request) -> list[AgentUsage]:
-    """Get usage breakdown by agent."""
-    # In production: query from database with Prometheus labels
-    return [
-        AgentUsage(
-            id="1", name="Support-AI", requests=23456, tokens=245000, images=156, voice_minutes=120
-        ),
-        AgentUsage(
-            id="2", name="Sales-Bot", requests=18234, tokens=178000, images=98, voice_minutes=80
-        ),
-        AgentUsage(
-            id="3", name="Internal-AI", requests=10655, tokens=100000, images=58, voice_minutes=45
-        ),
-    ]
-
-
-def _calculate_costs(usage: list[UsageMetric], agents: list[AgentUsage]) -> list[CostBreakdown]:
-    """Calculate cost breakdown based on usage."""
-    # Get pricing from settings
-    token_price_input = getattr(settings, "LLM_PRICE_INPUT_1K", 0.0003)  # per 1K tokens
-    token_price_output = getattr(settings, "LLM_PRICE_OUTPUT_1K", 0.0006)
-    image_price = getattr(settings, "IMAGE_PRICE_EACH", 0.04)
-    voice_price_per_min = getattr(settings, "VOICE_PRICE_PER_MIN", 0.10)
-
-    # Find usage values
-    tokens = next((u.current for u in usage if u.label == "LLM Tokens"), 0)
-    images = next((u.current for u in usage if u.label == "Images"), 0)
-    voice_minutes = next((u.current for u in usage if u.label == "Voice Minutes"), 0)
-
-    # Calculate costs
-    llm_cost = (tokens / 1000) * ((token_price_input + token_price_output) / 2)
-    image_cost = images * image_price
-    voice_cost = voice_minutes * voice_price_per_min
-
-    return [
-        CostBreakdown(
-            category="LLM Tokens", amount=llm_cost, details=f"{tokens:,} tokens @ avg $0.45/1K"
-        ),
-        CostBreakdown(
-            category="Images", amount=image_cost, details=f"DALLE 3 @ ${image_price}/image"
-        ),
-        CostBreakdown(category="Voice", amount=voice_cost, details="Whisper + Kokoro"),
-    ]

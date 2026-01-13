@@ -36,8 +36,8 @@ def main():
     key_derivation = secrets.token_hex(32)
 
     env_content = f"""LAGO_RSA_PRIVATE_KEY="{rsa_key}"
-LAGO_API_URL=http://localhost:3000
-LAGO_FRONT_URL=http://localhost
+LAGO_API_URL=http://localhost:3000/api/v1
+LAGO_FRONT_URL=http://localhost:3000
 POSTGRES_USER=lago
 POSTGRES_PASSWORD=changeme
 POSTGRES_DB=lago
@@ -57,3 +57,4 @@ LAGO_ENCRYPTION_KEY_DERIVATION_SALT={key_derivation}
 
 if __name__ == "__main__":
     main()
+

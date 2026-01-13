@@ -1,4 +1,4 @@
-"""
+ """
 Platform Integrations API
 Manage external service connections: Lago, Keycloak, SMTP, LLM, Storage.
 
