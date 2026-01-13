@@ -1,0 +1,141 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🐳 SOMAAGENT01 STANDALONE DEPLOYMENT
+# ═══════════════════════════════════════════════════════════════════════════════
+# Agent-Only deployment without SomaBrain or FractalMemory dependencies.
+# - Naming: somaagent_*
+# - Ports: 20xxx (Strict Isolation from SaaS 63xxx)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+networks:
+  somaagent_net:
+    driver: bridge
+
+volumes:
+  somaagent_postgres_data:
+  somaagent_redis_data:
+
+
+services:
+  # ===========================================================================
+  # 1. SOMAAGENT API (Standalone Mode)
+  # ===========================================================================
+  somaagent_standalone:
+    container_name: somaagent_standalone
+    build:
+      context: ../../
+      dockerfile: infra/standalone/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - SA01_DEPLOYMENT_MODE=STANDALONE
+      - SOMA_SAAS_MODE=false
+      - VAULT_ADDR=http://somaagent_vault:8200
+    ports:
+      - "20020:9000" # Agent API
+    networks:
+      - somaagent_net
+    depends_on:
+      somaagent_vault:
+        condition: service_healthy
+      somaagent_postgres:
+        condition: service_healthy
+      somaagent_redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          memory: 512M
+
+  # ===========================================================================
+  # 2. VAULT (Secrets Management - VIBE Rule 164)
+  # ===========================================================================
+  somaagent_vault:
+    container_name: somaagent_vault
+    image: hashicorp/vault:1.15
+    ports:
+      - "20882:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: somaagent_dev_token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - somaagent_net
+    healthcheck:
+      test: [ "CMD", "vault", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 3. POSTGRESQL (Database)
+  # ===========================================================================
+  somaagent_postgres:
+    container_name: somaagent_postgres
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: somaagent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-somaagent_dev}
+      POSTGRES_DB: somaagent
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "max_connections=100"
+    ports:
+      - "20432:5432"
+    volumes:
+      - somaagent_postgres_data:/var/lib/postgresql/data
+    networks:
+      - somaagent_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U somaagent" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 4. REDIS (Cache)
+  # ===========================================================================
+  somaagent_redis:
+    container_name: somaagent_redis
+    image: redis:7.2-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "20379:6379"
+    volumes:
+      - somaagent_redis_data:/data
+    networks:
+      - somaagent_net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 5. KEYCLOAK (Identity - Optional for Standalone)
+  # ===========================================================================
+  somaagent_keycloak:
+    container_name: somaagent_keycloak
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://somaagent_postgres:5432/somaagent
+      KC_DB_USERNAME: somaagent
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-somaagent_dev}
+    ports:
+      - "20880:8080"
+    networks:
+      - somaagent_net
+    depends_on:
+      somaagent_postgres:
+        condition: service_healthy
