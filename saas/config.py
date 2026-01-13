@@ -4,12 +4,71 @@ SOMA SaaS Configuration
 
 Unified configuration for the saas deployment.
 All settings from SomaBrain, FractalMemory, and Agent01 in one place.
+
+VIBE Rule 91: Zero-Fallback Mandate - Production must fail-fast, no localhost defaults.
+VIBE Rule 164: Zero-Hardcode Mandate - No hardcoded passwords in source.
 """
 
 from __future__ import annotations
 
 import os
+import logging
 from dataclasses import dataclass, field
+from typing import Optional
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _get_required_host(env_var: str, dev_default: str) -> str:
+    """Get host from environment, allowing localhost only in DEV mode.
+    
+    VIBE Rule 91: Zero-Fallback Mandate
+    """
+    value = os.getenv(env_var)
+    if value:
+        return value
+    
+    deployment_mode = os.getenv("SA01_DEPLOYMENT_MODE", "DEV").upper()
+    if deployment_mode == "PROD":
+        raise RuntimeError(
+            f"{env_var} is required in PROD mode. "
+            f"Set {env_var} in your environment. "
+            "VIBE Rule 91: No localhost fallbacks in production."
+        )
+    
+    # DEV mode allows localhost fallback with warning
+    LOGGER.warning(
+        "⚠️ Using localhost for %s in DEV mode. Set %s for production.",
+        env_var, env_var
+    )
+    return dev_default
+
+
+def _get_secret(env_var: str, dev_default: Optional[str] = None) -> str:
+    """Get secret from environment with fail-fast in production.
+    
+    VIBE Rule 164: Zero-Hardcode Mandate - Secrets from Vault only.
+    """
+    value = os.getenv(env_var)
+    if value:
+        return value
+    
+    deployment_mode = os.getenv("SA01_DEPLOYMENT_MODE", "DEV").upper()
+    if deployment_mode == "PROD":
+        raise RuntimeError(
+            f"{env_var} is required in PROD mode. "
+            "Secrets must be provided via Vault or environment. "
+            "VIBE Rule 164: No hardcoded secrets."
+        )
+    
+    if dev_default is None:
+        raise RuntimeError(f"{env_var} is required but not set.")
+    
+    LOGGER.warning(
+        "⚠️ Using insecure default for %s in DEV mode. Set %s for production.",
+        env_var, env_var
+    )
+    return dev_default
 
 
 @dataclass
@@ -24,19 +83,27 @@ class SaaSConfig:
     )
 
     # ==========================================================================
-    # External Services (still require network)
+    # External Services (mode-aware host resolution)
     # ==========================================================================
-    milvus_host: str = field(default_factory=lambda: os.getenv("MILVUS_HOST", "localhost"))
+    milvus_host: str = field(
+        default_factory=lambda: _get_required_host("MILVUS_HOST", "localhost")
+    )
     milvus_port: int = field(default_factory=lambda: int(os.getenv("MILVUS_PORT", "19530")))
 
-    redis_host: str = field(default_factory=lambda: os.getenv("REDIS_HOST", "localhost"))
+    redis_host: str = field(
+        default_factory=lambda: _get_required_host("REDIS_HOST", "localhost")
+    )
     redis_port: int = field(default_factory=lambda: int(os.getenv("REDIS_PORT", "6379")))
 
-    postgres_host: str = field(default_factory=lambda: os.getenv("POSTGRES_HOST", "localhost"))
+    postgres_host: str = field(
+        default_factory=lambda: _get_required_host("POSTGRES_HOST", "localhost")
+    )
     postgres_port: int = field(default_factory=lambda: int(os.getenv("POSTGRES_PORT", "5432")))
     postgres_db: str = field(default_factory=lambda: os.getenv("POSTGRES_DB", "soma"))
     postgres_user: str = field(default_factory=lambda: os.getenv("POSTGRES_USER", "soma"))
-    postgres_password: str = field(default_factory=lambda: os.getenv("POSTGRES_PASSWORD", "soma"))
+    postgres_password: str = field(
+        default_factory=lambda: _get_secret("POSTGRES_PASSWORD", "soma")
+    )
 
     # ==========================================================================
     # SomaBrain Settings (now in-process)

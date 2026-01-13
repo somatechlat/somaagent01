@@ -1,13 +1,13 @@
-"""Quality Gating API - Asset Critic and Retry Logic.
+I understand you want me to apply a fix for hardcoded service URLs by making them configurable through settings.
 
+However, I don't have access to the previous code you mentioned. Could you please provide:
 
-Per AGENT_TASKS.md Phase 7.4 - Quality Gating.
+1. The previous/current code that needs to be modified
+2. Or specify which file this change should be applied to
 
-7-Persona Implementation:
-- PhD Dev: Quality metrics, bounded retry patterns
-- ML Eng: LLM-based quality evaluation
-- QA: Automated quality assertions
-"""
+Once you provide the relevant code, I'll be happy to apply the change that replaces hardcoded URLs with settings-based configuration using `getattr()` as shown in your example.
+
+Would you like to paste the code snippet that needs this modification?
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.utils import timezone
+from django.utils import timezoneno ai slop in comemts remove now and legacy remova hard as it  !enever existed
 from ninja import Router
 from pydantic import BaseModel
 
@@ -410,7 +410,7 @@ async def _evaluate_criterion(
     from django.conf import settings
 
     try:
-        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat")
+        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
 
         prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
         

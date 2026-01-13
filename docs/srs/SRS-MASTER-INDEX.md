@@ -263,8 +263,8 @@
 
 | Parameter | Type | Default | UI Route |
 |-----------|------|---------|----------|
-| `PROMETHEUS_URL` | URL | `prometheus:20090` | `/platform/metrics` |
-| `GRAFANA_URL` | URL | `grafana:20030` | `/platform/metrics` |
+| `PROMETHEUS_URL` | URL | `prometheus:9090` (internal), `localhost:63905` (SAAS external) | `/platform/metrics` |
+| `GRAFANA_URL` | URL | `grafana:3000` (internal), `localhost:63906` (SAAS external) | `/platform/metrics` |
 | `METRICS_RETENTION_DAYS` | Integer | `30` | `/platform/metrics` |
 | `ALERT_WEBHOOK_URL` | URL | - | `/platform/metrics/sla` |
 

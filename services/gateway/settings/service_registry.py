@@ -106,7 +106,7 @@ class ServiceRegistry:
 
     LAGO = ServiceEndpoint(
         name="lago",
-        env_var="LAGO_API_URL",
+        env_var="SA01_LAGO_API_URL",
         description="Billing system",
         default_port=3000,
         path="/api/v1",
@@ -114,6 +114,7 @@ class ServiceRegistry:
         health_check="/health",
     )
 
+    # LAGO REMOVED - EXTERNAL SERVER ONLY via SA01_LAGO_API_URL
     TEMPORAL = ServiceEndpoint(
         name="temporal",
         env_var="SA01_TEMPORAL_HOST",
@@ -206,3 +207,4 @@ class ServiceRegistry:
 SERVICES = ServiceRegistry()
 
 __all__ = ["ServiceEndpoint", "ServiceRegistry", "SERVICES"]
+

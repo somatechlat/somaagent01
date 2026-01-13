@@ -80,10 +80,22 @@ class MemoryBridge:
         import httpx
 
         self._base_url = os.getenv("SFM_URL", "http://somafractalmemory:10101")
+        
+        # VIBE Rule 164: No hardcoded secrets - require auth token from environment
+        auth_token = os.getenv("SOMA_MEMORY_API_TOKEN") or os.getenv("SOMA_API_TOKEN")
+        if not auth_token:
+            logger.warning(
+                "⚠️ SOMA_MEMORY_API_TOKEN not set - HTTP requests will be unauthenticated. "
+                "Set SOMA_MEMORY_API_TOKEN or SOMA_API_TOKEN in production."
+            )
+            headers = {}
+        else:
+            headers = {"Authorization": f"Bearer {auth_token}"}
+        
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
             timeout=30.0,
-            headers={"Authorization": "Bearer dev-token-somastack2024"},
+            headers=headers,
         )
         self._mode = "http"
         logger.info("✅ MemoryBridge: HTTP mode initialized -> %s", self._base_url)

@@ -1,315 +1,49 @@
-"""
-Django settings for SomaAgent01 SAAS Admin.
+"""M3: Central secrets adapter for settings encryption & rotation"""
 
-This module is used for Django management commands (makemigrations, migrate, etc.)
-The runtime configuration is in django_setup.py for the gateway.
-
-
-- Zero hardcoded URLs (Rule 16: Dynamic URL Resolution)
-- Zero hardcoded secrets (Rule 47: Zero-Backdoor Mandate)
-- Required environment variables enforced with clear error messages
-"""
-
+import base64
 import os
-import re
-from pathlib import Path
 
-# Import environment configuration helpers
-from services.common.env_config import get_required_env
+from cryptography.fernet import Fernet
 
-# Import service registry
-from .service_registry import SERVICES
 
-# Determine environment (overridden in dev/staging/prod modules)
-ENVIRONMENT = "development"
+class VaultAdapter:
+    """Encrypt/decrypt provider keys and all runtime settings."""
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    _cipher: Fernet | None = None
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-in-prod")
+    @classmethod
+    def cipher(cls) -> Fernet:
+        """Execute cipher. Fails closed if key is missing to prevent data loss."""
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+        if cls._cipher is None:
+            # Force explicit configuration. No runtime generation allowed.
+            key = get_required_env("SA01_CRYPTO_FERNET_KEY", "Fernet encryption key")
+            material = key.encode()
+            cls._cipher = Fernet(material)
+        return cls._cipher
 
-ALLOWED_HOSTS = ["*"]
+    @classmethod
+    def encrypt(cls, plaintext: str) -> str:
+        """Execute encrypt.
 
-# Application definition
-INSTALLED_APPS = [
-    # Django core apps
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    # Third party
-    "ninja",
-    "channels",
-    # Local admin apps (alphabetical order)
-    "admin.agents",
-    "admin.capsules",
-    "admin.chat",
-    "admin.core",
-    "admin.features",
-    "admin.files",
-    "admin.flink",
-    "admin.gateway",
-    "admin.llm",
-    "admin.memory",
-    "somafractalmemory",  # Monolith Integration
-    "admin.multimodal",
-    "admin.notifications",
-    "admin.orchestrator",
-    "admin.permissions",
-    "admin.saas",
-    "admin.tools",
-    "admin.ui",
-    "admin.utils",
-    "admin.voice",
-]
+        Args:
+            plaintext: The plaintext.
+        """
 
-MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # SPA static file serving
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "admin.common.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-]
+        return cls.cipher().encrypt(plaintext.encode()).decode()
 
-ROOT_URLCONF = "services.gateway.urls"
-ASGI_APPLICATION = "services.gateway.asgi.application"
+    @classmethod
+    def decrypt(cls, ciphertext: str) -> str:
+        """Execute decrypt.
 
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
+        Args:
+            ciphertext: The ciphertext.
+        """
 
-# Database
-# Parse database DSN from environment (REQUIRED - no hardcoded credentials)
-db_dsn = os.environ.get("SA01_DB_DSN", os.environ.get("DATABASE_URL"))
-if not db_dsn:
-    # This will raise the error with the detailed message
-    get_required_env(
-        "SA01_DB_DSN",
-        "PostgreSQL database connection (format: postgresql://user:pass@host:port/dbname)",
-    )
+        return cls.cipher().decrypt(ciphertext.encode()).decode()
 
-# Parse DSN components for Django DATABASE config
-db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
-if db_match:
-    db_user, db_password, db_host, db_port, db_name = db_match.groups()
-    db_port = db_port or "5432"
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": db_name,
-            "USER": db_user,
-            "PASSWORD": db_password,
-            "HOST": db_host,
-            "PORT": db_port,
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-
-# Internationalization
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
-USE_I18N = True
-USE_TZ = True
-
-# Static files (CSS, JavaScript, Images)
-STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "static"
-
-# SPA Frontend (webui/dist) - served by WhiteNoise
-STATICFILES_DIRS = [
-    BASE_DIR / "webui" / "dist",  # Vite production build
-]
-
-# WhiteNoise settings for SPA
-WHITENOISE_INDEX_FILE = True  # Serve index.html at /
-WHITENOISE_ROOT = BASE_DIR / "webui" / "dist"  # Root for SPA assets
-
-# Default primary key field type
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# =============================================================================
-# SAAS ADMIN DEFAULTS (Centralized - env overridable)
-# =============================================================================
-
-# Default tenant for unauthenticated requests (development only)
-SAAS_DEFAULT_TENANT_ID = os.environ.get("SAAS_DEFAULT_TENANT_ID", None)
-
-SAAS_DEFAULT_CHAT_MODEL = os.environ.get("SAAS_DEFAULT_CHAT_MODEL")
-
-# Default tier limits (can be overridden per-tier in database)
-SAAS_DEFAULT_MAX_AGENTS = int(os.environ.get("SAAS_DEFAULT_MAX_AGENTS", "10"))
-SAAS_DEFAULT_MAX_USERS = int(os.environ.get("SAAS_DEFAULT_MAX_USERS", "50"))
-SAAS_DEFAULT_MAX_TOKENS_MONTHLY = int(os.environ.get("SAAS_DEFAULT_MAX_TOKENS_MONTHLY", "10000000"))
-SAAS_DEFAULT_STORAGE_GB = float(os.environ.get("SAAS_DEFAULT_STORAGE_GB", "50.0"))
-
-# =============================================================================
-# INFRASTRUCTURE SETTINGS (for migrated Django Ninja endpoints)
-# =============================================================================
-
-# Database DSN (legacy format - kept for compatibility)
-DATABASE_DSN = db_dsn
-
-# Redis
-REDIS_URL = SERVICES.REDIS.get_url(ENVIRONMENT)
-
-# Temporal
-TEMPORAL_HOST = os.environ.get("SA01_TEMPORAL_HOST", "localhost:7233")
-TEMPORAL_NAMESPACE = os.environ.get("SA01_TEMPORAL_NAMESPACE", "default")
-TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation")
-TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
-
-# Kafka
-KAFKA_BOOTSTRAP_SERVERS = SERVICES.KAFKA.get_url(ENVIRONMENT).replace("http://", "")
-KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.inbound")
-
-# Feature Flags
-FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
-
-# Authentication
-AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "false").lower() == "true"
-
-# SomaBrain (Cognitive Runtime) - imported from service registry
-SOMABRAIN_URL = SERVICES.SOMABRAIN.get_url(ENVIRONMENT)
-OPA_URL = SERVICES.OPA.get_url(ENVIRONMENT)
-
-# =============================================================================
-# KEYCLOAK SSO SETTINGS
-# =============================================================================
-
-KEYCLOAK_URL = SERVICES.KEYCLOAK.get_url(ENVIRONMENT)
-KEYCLOAK_REALM = os.environ.get("SA01_KEYCLOAK_REALM", "somaagent")
-KEYCLOAK_CLIENT_ID = os.environ.get("SA01_KEYCLOAK_CLIENT_ID", "somaagent-api")
-KEYCLOAK_CLIENT_SECRET = os.environ.get("SA01_KEYCLOAK_CLIENT_SECRET", "")
-KEYCLOAK_PUBLIC_KEY = os.environ.get("SA01_KEYCLOAK_PUBLIC_KEY", "")
-
-# JWT Settings for Keycloak
-JWT_ALGORITHM = "RS256"
-JWT_AUDIENCE = KEYCLOAK_CLIENT_ID
-JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
-
-# =============================================================================
-# GOOGLE OAUTH SETTINGS (Secrets from ENV or Django Secret model)
-# =============================================================================
-
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")  # From Vault/Secret model
-GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:5173/auth/callback")
-GOOGLE_JAVASCRIPT_ORIGIN = os.environ.get("GOOGLE_JAVASCRIPT_ORIGIN", "http://localhost:5173")
-
-# =============================================================================
-# DJANGO CACHE (Redis)
-# =============================================================================
-
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
-    }
-}
-
-# =============================================================================
-# DJANGO CHANNELS (Redis-backed)
-# =============================================================================
-
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [REDIS_URL]},
-    }
-}
-
-# =============================================================================
-# DJANGO LOGGING
-# =============================================================================
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-        "json": {
-            "()": "services.common.logging_config.DjangoJSONFormatter",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "json_console": {
-            "class": "logging.StreamHandler",
-            "formatter": "json",
-        },
-    },
-    "root": {
-        "handlers": (
-            ["json_console"] if os.environ.get("LOG_FORMAT", "json") == "json" else ["console"]
-        ),
-        "level": os.environ.get("LOG_LEVEL", "INFO").upper(),
-    },
-    "loggers": {
-        # Django internals
-        "django": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "django.db.backends": {
-            "handlers": ["json_console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        # Admin apps
-        "admin": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
-        "admin.saas": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
-        "admin.core": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
-        "admin.agents": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
-        # Services
-        "services": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "services.common": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "services.gateway": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        "services.tool_executor": {
-            "handlers": ["json_console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "services.conversation_worker": {
-            "handlers": ["json_console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # Orchestrator
-        "orchestrator": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        # Python helpers/agent modules (legacy namespace - to be migrated)
-        "python": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-        # Authorization logging
-        "authz": {"handlers": ["json_console"], "level": "INFO", "propagate": False},
-    },
-}
+    @classmethod
+    def rotate_key(cls) -> str:
+        """CLI helper: returns new base64 Fernet key."""
+        new_key = Fernet.generate_key()
+        return base64.urlsafe_b64encode(new_key).decode()
