@@ -26,7 +26,6 @@ from services.common.health_monitor import get_health_monitor
 from services.common.simple_context_builder import BuiltContext, create_context_builder
 from services.common.simple_governor import get_governor, GovernorDecision
 from services.common.unified_metrics import get_metrics, TurnPhase
-from services.common.unified_secret_manager import get_secret_manager
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +35,7 @@ SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 logger.info(
-    f"ChatService deployment mode: {DEPLOYMENT_MODE}",
-    extra={"deployment_mode": DEPLOYMENT_MODE}
+    f"ChatService deployment mode: {DEPLOYMENT_MODE}", extra={"deployment_mode": DEPLOYMENT_MODE}
 )
 
 # Prometheus Metrics
@@ -70,7 +68,9 @@ class ChatService:
         """
         from django.conf import settings
 
-        self.somabrain_url = somabrain_url or getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
+        self.somabrain_url = somabrain_url or getattr(
+            settings, "SOMABRAIN_URL", "http://localhost:9696"
+        )
         self.timeout = timeout
         self._http_client: Optional[httpx.AsyncClient] = None
 
@@ -282,7 +282,9 @@ class ChatService:
                     token_count=len(content.split()),
                 )
                 ConversationModel.objects.filter(id=conversation_id).update(
-                    message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
+                    message_count=MessageModel.objects.filter(
+                        conversation_id=conversation_id
+                    ).count()
                 )
                 return str(msg.id)
             except Exception as e:
@@ -368,13 +370,13 @@ class ChatService:
 
         # 7. Build context via ContextBuilder
         # CHAT-003: Deployment mode SomaBrain connection with error handling
-        somabrain_client = None
+        somabrain_client: SomaBrainClient | None = None
         try:
             somabrain_client = await SomaBrainClient.get_async()
             if SAAS_MODE:
                 logger.debug(f"SAAS mode: SomaBrainClient initialized for {tenant_id}")
             elif STANDALONE_MODE:
-                logger.debug(f"STANDALONE mode: SomaBrainClient uses embedded modules")
+                logger.debug("STANDALONE mode: SomaBrainClient uses embedded modules")
         except Exception as e:
             error_msg = f"{DEPLOYMENT_MODE} mode: SomaBrainClient initialization failed: {e}"
             if SAAS_MODE:
@@ -388,34 +390,9 @@ class ChatService:
         def simple_token_counter(text: str) -> int:
             return len(text.split())
 
-        builder = create_context_builder(
-            somabrain=somabrain_client,
-            token_counter=simple_token_counter,
-        )
-
-        turn_dict = {
-            "tenant_id": tenant_id,
-            "session_id": str(uuid4()),
-            "user_message": content,
-            "history": raw_history,
-            "system_prompt": "You are SomaAgent01.",
-        }
-
-        built: BuiltContext
-        try:
-            built = await builder.build_for_turn(
-                turn=turn_dict,
-                lane_budget=decision.lane_budget.to_dict(),
-                is_degraded=is_degraded,
-            )
-        except Exception as e:
-            error_msg = f"{DEPLOYMENT_MODE} mode: Context build failed: {e}"
-            if SAAS_MODE:
-                error_msg += " (SAAS: Check SomaBrain HTTP connectivity)"
-            elif STANDALONE_MODE:
-                error_msg += " (STANDALONE: Check embedded SomaBrain imports)"
-            logger.error(error_msg, exc_info=True)
-            # Fallback to minimal context
+        # Create builder only if somabrain_client is available
+        if somabrain_client is None:
+            # Use minimal context if SomaBrain client isn't available
             built = BuiltContext(
                 system_prompt="You are SomaAgent01.",
                 messages=[
@@ -437,6 +414,56 @@ class ChatService:
                     "buffer": 200,
                 },
             )
+        else:
+            builder = create_context_builder(
+                somabrain=somabrain_client,
+                token_counter=simple_token_counter,
+            )
+
+            turn_dict = {
+                "tenant_id": tenant_id,
+                "session_id": str(uuid4()),
+                "user_message": content,
+                "history": raw_history,
+                "system_prompt": "You are SomaAgent01.",
+            }
+
+            built: BuiltContext
+            try:
+                built = await builder.build_for_turn(
+                    turn=turn_dict,
+                    lane_budget=decision.lane_budget.to_dict(),
+                    is_degraded=is_degraded,
+                )
+            except Exception as e:
+                error_msg = f"{DEPLOYMENT_MODE} mode: Context build failed: {e}"
+                if SAAS_MODE:
+                    error_msg += " (SAAS: Check SomaBrain HTTP connectivity)"
+                elif STANDALONE_MODE:
+                    error_msg += " (STANDALONE: Check embedded SomaBrain imports)"
+                logger.error(error_msg, exc_info=True)
+                # Fallback to minimal context
+                built = BuiltContext(
+                    system_prompt="You are SomaAgent01.",
+                    messages=[
+                        {"role": "system", "content": "You are SomaAgent01."},
+                        {"role": "user", "content": content},
+                    ],
+                    token_counts={
+                        "system": 50,
+                        "history": 0,
+                        "memory": 0,
+                        "user": len(content.split()),
+                    },
+                    lane_actual={
+                        "system_policy": 50,
+                        "history": 0,
+                        "memory": 0,
+                        "tools": 0,
+                        "tool_results": 0,
+                        "buffer": 200,
+                    },
+                )
 
         metrics.record_turn_phase(turn_id, TurnPhase.CONTEXT_BUILT)
 
@@ -455,18 +482,16 @@ class ChatService:
 
         # Stream response
         # CHAT-003: Add timeout handling for SAAS mode
-        llm_timeout = settings.chat_model_kwargs.get("timeout", 30.0) if settings.chat_model_kwargs else 30.0
+        llm_timeout = (
+            settings.chat_model_kwargs.get("timeout", 30.0) if settings.chat_model_kwargs else 30.0
+        )
         if SAAS_MODE:
             llm_timeout = min(llm_timeout, 60.0)  # Cap at 60s for SAAS mode
 
         response_content = []
         try:
             async for chunk in llm._astream(messages=lc_messages):
-                token = ""
-                if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
-                    token = str(chunk.message.content)
-                elif hasattr(chunk, "content"):
-                    token = str(chunk.content)
+                token = str(chunk.message.content) if hasattr(chunk, "message") and hasattr(chunk.message, "content") else ""  # type: ignore[ reportAttributeAccessIssue]
 
                 if token:
                     response_content.append(token)
@@ -641,11 +666,7 @@ class ChatService:
                     HumanMessage(content=context),
                 ]
             ):
-                token = (
-                    str(chunk.message.content)
-                    if hasattr(chunk, "message") and getattr(chunk.message, "content", None)
-                    else (str(chunk.content) if hasattr(chunk, "content") else "")
-                )
+                token = str(chunk.message.content) if hasattr(chunk, "message") and hasattr(chunk.message, "content") else ""  # type: ignore[reportAttributeAccessIssue]
                 if token:
                     title_tokens.append(token)
 

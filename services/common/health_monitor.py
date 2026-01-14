@@ -204,7 +204,18 @@ class HealthMonitor:
                 await asyncio.sleep(5.0)
 
     async def _check_all_services(self) -> None:
-        """Check health of all registered services."""
+        """Check health of all registered services.
+
+        HEALTH-002: Deployment mode-specific health check strategy:
+        - SAAS mode: Check distributed services via HTTP endpoints
+        - STANDALONE mode: Check embedded modules via direct import checks
+        """
+        # Log deployment mode health check strategy
+        if SAAS_MODE:
+            logger.debug("SAAS mode: Checking distributed services via HTTP endpoints")
+        elif STANDALONE_MODE:
+            logger.debug("STANDALONE mode: Checking embedded modules")
+
         tasks = []
         for service_name, checker in self.health_checkers.items():
             tasks.append(self._check_service(service_name, checker))
@@ -217,7 +228,12 @@ class HealthMonitor:
         service_name: str,
         checker: Callable[[], HealthCheck],
     ) -> None:
-        """Check health of a single service."""
+        """Check health of a single service.
+
+        HEALTH-002: Deployment mode-aware error handling:
+        - SAAS mode: Log HTTP connectivity issues
+        - STANDALONE mode: Log embedded module import failures
+        """
         start = time.monotonic()
 
         try:
@@ -267,9 +283,22 @@ class HealthMonitor:
                 error=str(e),
             )
 
+            # HEALTH-002: Deployment mode-specific error logging
+            error_prefix = f"{DEPLOYMENT_MODE} mode:"
+            if SAAS_MODE and service_name == "somabrain":
+                error_msg = f"{error_prefix} Health check failed for {service_name}: {e} (HTTP endpoint likely unavailable)"
+            elif STANDALONE_MODE and service_name == "somabrain":
+                error_msg = f"{error_prefix} Health check failed for {service_name}: {e} (Embedded module likely unavailable)"
+            else:
+                error_msg = f"{error_prefix} Health check failed for {service_name}: {e}"
+
             logger.error(
-                f"Health check failed for {service_name}",
-                extra={"service": service_name, "error": str(e)},
+                error_msg,
+                extra={
+                    "service": service_name,
+                    "error": str(e),
+                    "deployment_mode": DEPLOYMENT_MODE,
+                },
                 exc_info=True,
             )
 

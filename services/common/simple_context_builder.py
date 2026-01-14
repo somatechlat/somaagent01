@@ -19,8 +19,6 @@ from typing import Any, Callable
 from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 
-from django.conf import settings
-
 logger = logging.getLogger(__name__)
 
 # Deployment mode detection
@@ -316,7 +314,7 @@ class ContextBuilder:
         # STANDALONE mode: Use embedded SomaBrain module
         if STANDALONE_MODE:
             return await self._add_memory_standalone(messages, turn, budget)
-        
+
         # SAAS mode: Use SomaBrain HTTP API
         return await self._add_memory_saas(messages, turn, budget)
 
@@ -422,6 +420,7 @@ class ContextBuilder:
         """
         try:
             from somabrain.cognition.core import HybridSearch  # Embedded import
+
             search_engine = HybridSearch()
 
             # Direct hybrid search query (no HTTP call)
@@ -463,7 +462,9 @@ class ContextBuilder:
                     }
                 )
 
-            logger.info(f"STANDALONE mode: Retrieved {len(added)} memory snippets via embedded module")
+            logger.info(
+                f"STANDALONE mode: Retrieved {len(added)} memory snippets via embedded module"
+            )
             return added, used_tokens
 
         except ImportError as e:
