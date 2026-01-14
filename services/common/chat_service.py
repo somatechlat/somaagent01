@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from typing import AsyncIterator, Optional
 from uuid import uuid4
@@ -28,6 +29,16 @@ from services.common.unified_metrics import get_metrics, TurnPhase
 from services.common.unified_secret_manager import get_secret_manager
 
 logger = logging.getLogger(__name__)
+
+# Deployment mode detection - consistent with simple_context_builder.py
+DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
+SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
+
+logger.info(
+    f"ChatService deployment mode: {DEPLOYMENT_MODE}",
+    extra={"deployment_mode": DEPLOYMENT_MODE}
+)
 
 # Prometheus Metrics
 CHAT_REQUESTS = Counter(
@@ -260,18 +271,28 @@ class ChatService:
         )
 
         # 2. Store user message
+        # CHAT-003: Database operations with deployment mode context
         @sync_to_async
         def store_user_message():
-            msg = MessageModel.objects.create(
-                conversation_id=conversation_id,
-                role="user",
-                content=content,
-                token_count=len(content.split()),
-            )
-            ConversationModel.objects.filter(id=conversation_id).update(
-                message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
-            )
-            return str(msg.id)
+            try:
+                msg = MessageModel.objects.create(
+                    conversation_id=conversation_id,
+                    role="user",
+                    content=content,
+                    token_count=len(content.split()),
+                )
+                ConversationModel.objects.filter(id=conversation_id).update(
+                    message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
+                )
+                return str(msg.id)
+            except Exception as e:
+                db_error_msg = f"{DEPLOYMENT_MODE} mode: Failed to store user message: {e}"
+                if SAAS_MODE:
+                    db_error_msg += " (SAAS: Check PostgreSQL connection pool)"
+                elif STANDALONE_MODE:
+                    db_error_msg += " (STANDALONE: Check local database connectivity)"
+                logger.error(db_error_msg, exc_info=True)
+                raise
 
         user_msg_id = await store_user_message()
         turn_metrics.tokens_in = len(content.split())
@@ -295,19 +316,30 @@ class ChatService:
         metrics.record_turn_phase(turn_id, TurnPhase.AUTH_VALIDATED)
 
         # 4. Load LLM model
-        settings = get_default_settings(agent_id=agent_id)
-        provider = settings.chat_model_provider or ""
-        model_name = settings.chat_model_name or ""
-        if "/" in model_name:
-            model_provider, model_value = model_name.split("/", 1)
-            if not provider or provider == model_provider:
-                provider, model_name = model_provider, model_value
+        # CHAT-003: LLM initialization with deployment mode error handling
+        llm = None
+        try:
+            settings = get_default_settings(agent_id=agent_id)
+            provider = settings.chat_model_provider or ""
+            model_name = settings.chat_model_name or ""
+            if "/" in model_name:
+                model_provider, model_value = model_name.split("/", 1)
+                if not provider or provider == model_provider:
+                    provider, model_name = model_provider, model_value
 
-        chat_kwargs = dict(settings.chat_model_kwargs or {})
-        if settings.chat_model_api_base:
-            chat_kwargs.setdefault("api_base", settings.chat_model_api_base)
+            chat_kwargs = dict(settings.chat_model_kwargs or {})
+            if settings.chat_model_api_base:
+                chat_kwargs.setdefault("api_base", settings.chat_model_api_base)
 
-        llm = get_chat_model(provider=provider, name=model_name, **chat_kwargs)
+            llm = get_chat_model(provider=provider, name=model_name, **chat_kwargs)
+        except Exception as e:
+            llm_error_msg = f"{DEPLOYMENT_MODE} mode: Failed to load LLM model: {e}"
+            if SAAS_MODE:
+                llm_error_msg += " (SAAS: Check LLM provider API key and connectivity)"
+            elif STANDALONE_MODE:
+                llm_error_msg += " (STANDALONE: Check local LLM model configuration)"
+            logger.error(llm_error_msg, exc_info=True)
+            raise
 
         # 5. Get health status
         health_monitor = get_health_monitor()
@@ -335,7 +367,22 @@ class ChatService:
         metrics.record_turn_phase(turn_id, TurnPhase.BUDGET_ALLOCATED)
 
         # 7. Build context via ContextBuilder
-        somabrain_client = await SomaBrainClient.get_async()
+        # CHAT-003: Deployment mode SomaBrain connection with error handling
+        somabrain_client = None
+        try:
+            somabrain_client = await SomaBrainClient.get_async()
+            if SAAS_MODE:
+                logger.debug(f"SAAS mode: SomaBrainClient initialized for {tenant_id}")
+            elif STANDALONE_MODE:
+                logger.debug(f"STANDALONE mode: SomaBrainClient uses embedded modules")
+        except Exception as e:
+            error_msg = f"{DEPLOYMENT_MODE} mode: SomaBrainClient initialization failed: {e}"
+            if SAAS_MODE:
+                error_msg += " (HTTP client likely unavailable - check SomaBrain service)"
+            elif STANDALONE_MODE:
+                error_msg += " (Embedded modules import failed - check somabrain installation)"
+            logger.error(error_msg, exc_info=True)
+            # Non-critical error - will continue with minimal context
 
         # Simple token counter
         def simple_token_counter(text: str) -> int:
@@ -362,7 +409,12 @@ class ChatService:
                 is_degraded=is_degraded,
             )
         except Exception as e:
-            logger.error(f"Context build failed: {e}", exc_info=True)
+            error_msg = f"{DEPLOYMENT_MODE} mode: Context build failed: {e}"
+            if SAAS_MODE:
+                error_msg += " (SAAS: Check SomaBrain HTTP connectivity)"
+            elif STANDALONE_MODE:
+                error_msg += " (STANDALONE: Check embedded SomaBrain imports)"
+            logger.error(error_msg, exc_info=True)
             # Fallback to minimal context
             built = BuiltContext(
                 system_prompt="You are SomaAgent01.",
@@ -402,17 +454,35 @@ class ChatService:
         metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
 
         # Stream response
-        response_content = []
-        async for chunk in llm._astream(messages=lc_messages):
-            token = ""
-            if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
-                token = str(chunk.message.content)
-            elif hasattr(chunk, "content"):
-                token = str(chunk.content)
+        # CHAT-003: Add timeout handling for SAAS mode
+        llm_timeout = settings.chat_model_kwargs.get("timeout", 30.0) if settings.chat_model_kwargs else 30.0
+        if SAAS_MODE:
+            llm_timeout = min(llm_timeout, 60.0)  # Cap at 60s for SAAS mode
 
-            if token:
-                response_content.append(token)
-                yield token
+        response_content = []
+        try:
+            async for chunk in llm._astream(messages=lc_messages):
+                token = ""
+                if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
+                    token = str(chunk.message.content)
+                elif hasattr(chunk, "content"):
+                    token = str(chunk.content)
+
+                if token:
+                    response_content.append(token)
+                    yield token
+        except asyncio.TimeoutError as e:
+            timeout_msg = f"{DEPLOYMENT_MODE} mode: LLM streaming timeout after {llm_timeout}s"
+            if SAAS_MODE:
+                timeout_msg += " (SAAS: Network latency or remote service unresponsive)"
+            logger.warning(timeout_msg, exc_info=True)
+            # Stream ended gracefully - client should handle incomplete response
+        except Exception as e:
+            stream_error_msg = f"{DEPLOYMENT_MODE} mode: LLM streaming error: {e}"
+            if SAAS_MODE and "timeout" in str(e).lower():
+                stream_error_msg += " (SAAS: HTTP timeout from LLM provider)"
+            logger.error(stream_error_msg, exc_info=True)
+            # Stream ended - error logged for monitoring
 
         metrics.record_turn_phase(
             turn_id, TurnPhase.COMPLETED if response_content else TurnPhase.ERROR

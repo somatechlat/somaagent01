@@ -7,18 +7,25 @@ VIBE COMPLIANT:
 - Binary healthy/degraded model (production reality)
 - No 17-component dependency graph propagation
 - Single health check loop
+- Deployment mode-specific health checks (HEALTH-002)
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
+
+# Deployment mode detection
+DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
+SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 
 class ServiceHealth(str, Enum):
