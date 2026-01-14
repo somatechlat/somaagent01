@@ -7,11 +7,13 @@ VIBE COMPLIANT:
 - No unnecessary abstractions or wrapper classes
 - Direct Prometheus integration
 - Semantic labeling for consistent query patterns
+- Deployment mode-specific monitoring (METRICS-002)
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -20,6 +22,15 @@ from typing import Optional
 from prometheus_client import Counter, Gauge, Histogram, Info
 
 logger = logging.getLogger(__name__)
+
+# Deployment mode detection (consistent across all unified components)
+DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
+SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
+
+logger.info(
+    f"UnifiedMetrics deployment mode: {DEPLOYMENT_MODE}", extra={"deployment_mode": DEPLOYMENT_MODE}
+)
 
 
 class HealthStatus(str, Enum):
@@ -246,17 +257,110 @@ class UnifiedMetrics:
         ).inc(tokens_out)
 
     def record_health_status(self, service_name: str, is_healthy: bool, latency_ms: float) -> None:
-        """Record health check result."""
+        """Record health check result.
+
+        METRICS-002: Enhanced with deployment mode context.
+        - SAAS mode: Track HTTP endpoint latency patterns
+        - STANDALONE mode: Track embedded module execution patterns
+
+        Args:
+            service_name: Name of the service
+            is_healthy: Whether service is healthy
+            latency_ms: Service ping latency in milliseconds
+        """
+        # Log deployment mode-specific health patterns
+        if SAAS_MODE:
+            if service_name == "somabrain" and latency_ms > 100:
+                # SAAS: SomaBrain HTTP endpoint latency warning
+                logger.warning(
+                    f"SAAS mode: High latency for {service_name}: {latency_ms:.2f}ms "
+                    f"(inter-service HTTP call, expected <100ms)",
+                    extra={
+                        "service": service_name,
+                        "latency_ms": latency_ms,
+                        "deployment_mode": DEPLOYMENT_MODE,
+                    },
+                )
+        elif STANDALONE_MODE:
+            if service_name == "somabrain" and latency_ms > 50:
+                # STANDALONE: Embedded module execution latency warning
+                logger.debug(
+                    f"STANDALONE mode: Elevated latency for {service_name}: {latency_ms:.2f}ms "
+                    f"(embedded module call, expected <50ms)",
+                    extra={
+                        "service": service_name,
+                        "latency_ms": latency_ms,
+                        "deployment_mode": DEPLOYMENT_MODE,
+                    },
+                )
+
         level = 0 if is_healthy else 4  # None (0) or Critical (4) for binary
         self.DEGRADATION_LEVEL.labels(service=service_name).set(level)
         self.SERVICE_LATENCY.labels(service_name=service_name).observe(latency_ms / 1000.0)
 
     def record_memory_retrieval(self, latency_seconds: float, snippet_count: int) -> None:
-        """Record memory retrieval metrics."""
+        """Record memory retrieval metrics.
+
+        METRICS-002: Enhanced with deployment mode context.
+        - SAAS mode: Track HTTP API call latency (expected 25-90ms)
+        - STANDALONE mode: Track embedded module query latency (expected 8-35ms)
+
+        Args:
+            latency_seconds: Time taken for memory retrieval in seconds
+            snippet_count: Number of snippets retrieved
+        """
+        # Log deployment mode-specific retrieval patterns
+        latency_ms = latency_seconds * 1000.0
+
+        if SAAS_MODE:
+            if latency_ms > 90:
+                logger.warning(
+                    f"SAAS mode: Slow memory retrieval: {latency_ms:.2f}ms, "
+                    f"{snippet_count} snippets (expected 25-90ms, HTTP API call)",
+                    extra={
+                        "latency_ms": latency_ms,
+                        "snippet_count": snippet_count,
+                        "deployment_mode": DEPLOYMENT_MODE,
+                    },
+                )
+        elif STANDALONE_MODE:
+            if latency_ms > 35:
+                logger.debug(
+                    f"STANDALONE mode: Elevated memory retrieval latency: {latency_ms:.2f}ms, "
+                    f"{snippet_count} snippets (expected 8-35ms, embedded query)",
+                    extra={
+                        "latency_ms": latency_ms,
+                        "snippet_count": snippet_count,
+                        "deployment_mode": DEPLOYMENT_MODE,
+                    },
+                )
+
         self.MEMORY_RETRIEVAL_TIME.observe(latency_seconds)
 
     def record_circuit_open(self, service_name: str) -> None:
-        """Record circuit breaker opening."""
+        """Record circuit breaker opening.
+
+        METRICS-002: Enhanced with deployment mode context.
+        - SAAS mode: HTTP service circuit breaks
+        - STANDALONE mode: Embedded module fallbacks
+
+        Args:
+            service_name: Name of service whose circuit opened
+        """
+        # Log deployment mode-specific circuit opens
+        if SAAS_MODE:
+            logger.warning(
+                f"SAAS mode: Circuit opened for {service_name} "
+                f"(HTTP service unavailable, fallback to degraded mode)",
+                extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
+            )
+        elif STANDALONE_MODE:
+            logger.warning(
+                f"STANDALONE mode: Circuit opened for {service_name} "
+                f"(Embedded module error, fallback to degraded mode)",
+                extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
+            )
+
         self.CIRCUIT_OPENS.labels(service_name=service_name).inc()
 
     def record_websocket_message(
