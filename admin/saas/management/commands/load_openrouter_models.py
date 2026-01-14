@@ -67,6 +67,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 8192,
                 "vision": False,
+                "capabilities": ["text"],
+                "priority": 30,
+                "cost_tier": "free",
             },
             {
                 "id": "meta-llama/llama-3.1-8b-instruct:free",
@@ -79,6 +82,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 8192,
                 "vision": False,
+                "capabilities": ["text", "code"],
+                "priority": 35,
+                "cost_tier": "free",
             },
             {
                 "id": "mistralai/mistral-7b-instruct:free",
@@ -91,6 +97,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 32768,
                 "vision": False,
+                "capabilities": ["text", "code"],
+                "priority": 40,
+                "cost_tier": "free",
             },
             {
                 "id": "microsoft/wizardlm-2-7b:free",
@@ -103,6 +112,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 128000,
                 "vision": False,
+                "capabilities": ["text", "long_context"],
+                "priority": 35,
+                "cost_tier": "free",
             },
             {
                 "id": "qwen/qwen-2-7b-instruct:free",
@@ -115,6 +127,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 32768,
                 "vision": False,
+                "capabilities": ["text", "code"],
+                "priority": 35,
+                "cost_tier": "free",
             },
             {
                 "id": "deepseek/deepseek-chat:free",
@@ -127,6 +142,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 32768,
                 "vision": False,
+                "capabilities": ["text", "code"],
+                "priority": 45,
+                "cost_tier": "free",
             },
             {
                 "id": "openai/gpt-4.1-mini:free",
@@ -139,6 +157,9 @@ class Command(BaseCommand):
                 "rate_limit": 200,
                 "ctx_length": 128000,
                 "vision": True,
+                "capabilities": ["text", "vision", "code", "long_context", "function_calling"],
+                "priority": 60,
+                "cost_tier": "free",
             },
         ]
 
@@ -155,6 +176,10 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 200000,
                 "vision": True,
+                "capabilities": ["text", "vision", "code", "long_context", "function_calling", "structured_output"],
+                "priority": 95,
+                "cost_tier": "premium",
+                "domains": ["code", "legal"],
             },
             {
                 "id": "openai/gpt-4o",
@@ -167,6 +192,9 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 128000,
                 "vision": True,
+                "capabilities": ["text", "vision", "code", "audio", "long_context", "function_calling", "structured_output"],
+                "priority": 90,
+                "cost_tier": "premium",
             },
             {
                 "id": "openai/gpt-4.1",
@@ -179,6 +207,9 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 1000000,
                 "vision": True,
+                "capabilities": ["text", "vision", "code", "long_context", "function_calling", "structured_output"],
+                "priority": 92,
+                "cost_tier": "premium",
             },
             {
                 "id": "anthropic/claude-3-opus",
@@ -191,6 +222,10 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 200000,
                 "vision": True,
+                "capabilities": ["text", "vision", "code", "long_context", "function_calling", "structured_output"],
+                "priority": 98,
+                "cost_tier": "premium",
+                "domains": ["scientific", "legal"],
             },
             {
                 "id": "google/gemini-pro",
@@ -203,6 +238,9 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 1000000,
                 "vision": True,
+                "capabilities": ["text", "vision", "video", "audio", "code", "long_context", "function_calling"],
+                "priority": 88,
+                "cost_tier": "standard",
             },
             {
                 "id": "perplexity/pplx-7b-online",
@@ -215,6 +253,9 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 8192,
                 "vision": False,
+                "capabilities": ["text"],
+                "priority": 50,
+                "cost_tier": "low",
             },
         ]
 
@@ -222,9 +263,13 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-        """Execute handle."""
+        """Load models into LLMModelConfig (SINGLE SOURCE OF TRUTH).
 
-        self.stdout.write(self.style.HTTP_INFO("\n🔄 Loading OpenRouter Models...\n"))
+        Models are stored in Django ORM, NOT GlobalDefault.
+        """
+        from admin.llm.models import LLMModelConfig
+
+        self.stdout.write(self.style.HTTP_INFO("\n🔄 Loading OpenRouter Models into LLMModelConfig...\n"))
 
         # Filter models by flags
         all_models = self.get_openrouter_models()
@@ -243,65 +288,67 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("  ❌ No models to load!\n"))
             return
 
-        # Get or create GlobalDefault instance
-        from admin.saas.models.profiles import GlobalDefault
-
-        gd = GlobalDefault.get_instance()
-        defaults = dict(gd.defaults)
-
         # Clear existing models if requested
         if options["clear_existing"]:
-            old_count = len(defaults.get("models", []))
-            defaults["models"] = []
+            old_count = LLMModelConfig.objects.count()
+            LLMModelConfig.objects.all().delete()
             self.stdout.write(self.style.WARNING(f"  🗑️  Cleared {old_count} existing models\n"))
-
-        # Merge/update models
-        existing_models = {m.get("id"): m for m in defaults.get("models", [])}
 
         added_count = 0
         updated_count = 0
 
-        for model in models_to_load:
-            model_id = model["id"]
-            if model_id in existing_models:
-                # Update existing
-                existing_models[model_id].update(model)
-                updated_count += 1
-            else:
-                # Add new
-                existing_models[model_id] = model
+        for model_data in models_to_load:
+            # Map JSON fields to ORM fields
+            name = model_data["model_name"]
+            defaults = {
+                "display_name": model_data.get("display_name", ""),
+                "provider": model_data.get("provider", "openrouter"),
+                "model_type": "chat",
+                "ctx_length": model_data.get("ctx_length", 0),
+                "limit_requests": model_data.get("rate_limit", 0),
+                "vision": model_data.get("vision", False),
+                "capabilities": model_data.get("capabilities", ["text"]),
+                "priority": model_data.get("priority", 50),
+                "cost_tier": model_data.get("cost_tier", "standard"),
+                "domains": model_data.get("domains", []),
+                "is_active": model_data.get("enabled", True),
+            }
+
+            obj, created = LLMModelConfig.objects.update_or_create(
+                name=name,
+                defaults=defaults,
+            )
+
+            if created:
                 added_count += 1
+            else:
+                updated_count += 1
 
-        # Save updated defaults
-        defaults["models"] = list(existing_models.values())
-        gd.defaults = defaults
-        gd.save()
-
-        self.stdout.write(self.style.SUCCESS("\n  ✅ Models loaded successfully!\n"))
+        total_count = LLMModelConfig.objects.count()
+        self.stdout.write(self.style.SUCCESS("\n  ✅ Models loaded to LLMModelConfig!\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • Added: {added_count}\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • Updated: {updated_count}\n"))
-        self.stdout.write(self.style.HTTP_INFO(f"     • Total: {len(defaults['models'])}\n"))
+        self.stdout.write(self.style.HTTP_INFO(f"     • Total in DB: {total_count}\n"))
 
         # Show model breakdown
-        free_enabled = len(
-            [m for m in defaults["models"] if m.get("enabled", False) and ":free" in m["id"]]
-        )
-        paid_enabled = len(
-            [m for m in defaults["models"] if m.get("enabled", False) and ":free" not in m["id"]]
-        )
-        default_chat = next(
-            (m for m in defaults["models"] if m.get("default_for_chat", False)), None
-        )
+        free_enabled = LLMModelConfig.objects.filter(
+            is_active=True, name__contains=":free"
+        ).count()
+        paid_enabled = LLMModelConfig.objects.filter(is_active=True).exclude(
+            name__contains=":free"
+        ).count()
+        default_chat = LLMModelConfig.objects.filter(is_active=True).order_by("-priority").first()
 
         self.stdout.write(self.style.HTTP_INFO("\n  📊 Model Summary:\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • FREE enabled: {free_enabled}\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • PAID enabled: {paid_enabled}\n"))
         if default_chat:
             self.stdout.write(
-                self.style.SUCCESS(f"     • Default Chat Model: {default_chat['display_name']}\n")
+                self.style.SUCCESS(f"     • Top Priority Model: {default_chat.display_name or default_chat.name} (priority={default_chat.priority})\n")
             )
         else:
-            self.stdout.write(self.style.WARNING("     • Default Chat Model: NONE\n"))
+            self.stdout.write(self.style.WARNING("     • No active models!\n"))
 
 
 __all__ = ["Command"]
+
