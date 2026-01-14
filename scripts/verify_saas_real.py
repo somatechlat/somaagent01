@@ -1,13 +1,4 @@
-"""Verification Script for SaaS Real Implementation (Vibe Rule #4).
-
-Personas:
-- QA Lead: Verifying functional correctness and data persistence.
-- Security Auditor: Ensuring no mocks or hardcoded secrets are used.
-- PhD Architect: Verifying the Singleton pattern and JSONB schema integrity.
-
-Usage:
-    python3 scripts/verify_saas_real.py
-"""
+"""Verification Script for SaaS Real Implementation."""
 
 import os
 import sys

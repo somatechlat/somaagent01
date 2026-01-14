@@ -1,18 +1,4 @@
-"""PKCE (Proof Key for Code Exchange) utilities for OAuth 2.0.
-
-
-Per login-to-chat-journey design.md Section 3.1: PKCE
-
-Implements:
-- code_verifier generation (43-128 chars, cryptographically random)
-- code_challenge computation (base64url(SHA256(code_verifier)))
-- State parameter generation and validation
-
-Personas:
-- Security Auditor: Cryptographic security, OAuth 2.0 compliance
-- Django Architect: Async Redis integration for state storage
-- Performance Engineer: Efficient operations
-"""
+"""PKCE (Proof Key for Code Exchange) utilities for OAuth 2.0."""
 
 from __future__ import annotations
 

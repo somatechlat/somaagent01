@@ -1,18 +1,4 @@
-"""SpiceDB client wrapper for fine-grained authorization.
-
-
-Per login-to-chat-journey design.md Section 5.1
-
-Implements:
-- check_permission(user_id, permission, resource_type, resource_id)
-- get_permissions(user_id, tenant_id) for session caching
-- lookup_resources(user_id, resource_type, permission) for agent list
-
-Personas:
-- Security Auditor: Fail-closed authorization, audit logging
-- Django Architect: Async gRPC integration
-- Performance Engineer: Connection pooling, caching
-"""
+"""SpiceDB client wrapper for fine-grained authorization."""
 
 from __future__ import annotations
 

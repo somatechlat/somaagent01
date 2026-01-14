@@ -1,18 +1,4 @@
-"""Rate Limiting for Django Ninja endpoints.
-
-
-Per login-to-chat-journey design.md Section 2.1: Rate Limiting
-
-Implements:
-- Per-IP rate limiting for login endpoints
-- 10 requests per minute per IP for /api/v2/auth/login
-- Returns 429 with retry_after when exceeded
-
-Personas:
-- Security Auditor: Brute-force protection
-- Django Architect: Django Ninja integration
-- Performance Engineer: Efficient Redis operations
-"""
+"""Rate Limiting for Django Ninja endpoints."""
 
 from __future__ import annotations
 

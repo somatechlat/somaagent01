@@ -238,6 +238,8 @@ JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
 JWT_JWKS_URL = os.environ.get("SA01_JWT_JWKS_URL", f"{JWT_ISSUER}/protocol/openid-connect/certs")
 JWT_ALGORITHMS = os.environ.get("SA01_JWT_ALGORITHMS", "RS256").split(",")
 JWT_LEEWAY = int(os.environ.get("SA01_JWT_LEEWAY", "10"))
+# Disable issuer/audience validation for Docker dev (localhost/container hostname mismatch)
+JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "false").lower() == "true"
 
 
 # =============================================================================

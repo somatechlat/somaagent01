@@ -1,19 +1,4 @@
-"""Session Middleware for Django Ninja API.
-
-
-Per login-to-chat-journey design.md Section: SessionMiddleware
-
-Implements:
-- JWT validation from httpOnly cookie
-- Session lookup from Redis
-- Activity tracking (TTL extension)
-- Request enrichment with session data
-
-Personas:
-- Django Architect: Django middleware integration
-- Security Auditor: Fail-closed authorization, token validation
-- Performance Engineer: Efficient async operations
-"""
+"""Session Middleware for Django Ninja API."""
 
 from __future__ import annotations
 

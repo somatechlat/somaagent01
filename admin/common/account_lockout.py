@@ -1,19 +1,4 @@
-"""Account Lockout Service for brute-force protection.
-
-
-Per login-to-chat-journey design.md Section 2.5: Account Lockout
-
-Implements:
-- Track failed login attempts in Redis
-- Lock account after 5 failures within 15 minutes
-- Return 403 with retry_after when locked
-- Auto-expire lockout after 15 minutes
-
-Personas:
-- Security Auditor: Brute-force protection, timing-safe operations
-- Django Architect: Async Redis integration
-- Performance Engineer: Efficient Redis operations
-"""
+"""Account Lockout Service for brute-force protection."""
 
 from __future__ import annotations
 

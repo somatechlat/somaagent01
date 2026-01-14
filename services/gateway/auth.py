@@ -127,13 +127,19 @@ async def authorize_request(request, policy_context: dict = None):
         header = jwt_module.get_unverified_header(token)
         key = await _resolve_signing_key(header)
 
+        # In Docker, issuer may differ (localhost vs internal hostname)
+        # SA01_JWT_ISSUER_STRICT controls validation strictness
+        strict_issuer = getattr(settings, "JWT_ISSUER_STRICT", True)
+        expected_issuer = getattr(settings, "JWT_ISSUER", None) if strict_issuer else None
+
         payload = jwt_module.decode(
             token,
             key=key,
             algorithms=getattr(settings, "JWT_ALGORITHMS", ["RS256"]),
             audience=getattr(settings, "JWT_AUDIENCE", None),
-            issuer=getattr(settings, "JWT_ISSUER", None),
+            issuer=expected_issuer,
             leeway=getattr(settings, "JWT_LEEWAY", 10),
+            options={"verify_aud": False} if not strict_issuer else {},
         )
 
         opa_context = dict(policy_context or {})

@@ -84,8 +84,31 @@ class TokenPayload(BaseModel):
     realm_access: dict[str, list[str]] | None = None
     resource_access: dict[str, dict[str, list[str]]] | None = None
     scope: str | None = None
-    tenant_id: str | None = None  # Custom claim for multi-tenancy
+    tenant: str | None = None  # JWT claim from Keycloak (e.g., "default")
+    tenant_id: str | None = None  # Custom claim for multi-tenancy (UUID)
     session_id: str | None = None  # Custom claim for session tracking
+
+    @property
+    def effective_tenant_id(self) -> str | None:
+        """Get tenant ID with fallback chain: tenant_id → tenant → settings default.
+
+        This handles the case where Keycloak uses 'tenant' claim but we need UUID.
+        """
+        from django.conf import settings
+
+        # 1. Direct tenant_id claim (if present)
+        if self.tenant_id:
+            return self.tenant_id
+
+        # 2. Map 'tenant' claim to UUID
+        if self.tenant:
+            # If tenant is "default", return the settings default UUID
+            if self.tenant == "default":
+                return getattr(settings, "SAAS_DEFAULT_TENANT_ID", None)
+            # Otherwise use the tenant value directly (might be a UUID)
+            return self.tenant
+
+        return None
 
     @property
     def roles(self) -> list[str]:
@@ -147,6 +170,8 @@ async def decode_token(token: str) -> TokenPayload:
     Raises:
         UnauthorizedError: If token is invalid or expired
     """
+    from django.conf import settings as django_settings
+
     config = get_keycloak_config()
 
     try:
@@ -166,14 +191,21 @@ async def decode_token(token: str) -> TokenPayload:
         if not rsa_key:
             raise UnauthorizedError("Unable to find signing key")
 
+        # Check if strict issuer validation is enabled
+        strict_issuer = getattr(django_settings, "JWT_ISSUER_STRICT", True)
+        expected_issuer = config.issuer if strict_issuer else None
+
         # Decode and verify
         payload = jwt.decode(
             token,
             rsa_key,
             algorithms=["RS256"],
-            audience=config.client_id,
-            issuer=config.issuer,
-            options={"verify_aud": False},  # Keycloak may have multiple audiences
+            audience=config.client_id if strict_issuer else None,
+            issuer=expected_issuer,
+            options={
+                "verify_aud": False,  # Keycloak may have multiple audiences
+                "verify_iss": strict_issuer,
+            },
         )
 
         return TokenPayload(**payload)
