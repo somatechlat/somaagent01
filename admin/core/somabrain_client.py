@@ -619,3 +619,25 @@ class SomaBrainClient:
         }
         result = await self._request("POST", "/v1/learning/reward", json=body)
         return result.get("ok", False)
+
+
+# Backwards compatibility aliases
+SomaBrainError = SomaClientError
+
+
+def get_somabrain_client() -> SomaBrainClient:
+    """Get SomaBrain client singleton (synchronous helper).
+
+    Returns:
+        SomaBrainClient instance
+    """
+    return SomaBrainClient.get()
+
+
+__all__ = [
+    "SomaBrainClient",
+    "SomaClientError",
+    "SomaBrainError",
+    "get_somabrain_client",
+]
+
