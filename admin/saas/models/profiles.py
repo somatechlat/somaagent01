@@ -73,12 +73,13 @@ class GlobalDefault(models.Model):
 
     @staticmethod
     def _initial_defaults() -> Dict[str, Any]:
-        """Return hardcoded bootstrap defaults to prevent empty system."""
+        """Return hardcoded bootstrap defaults to prevent empty system.
+
+        NOTE: Models are NOT stored here. LLMModelConfig is the SINGLE
+        canonical source of truth for model configurations.
+        """
         return {
-            "models": [
-                {"id": "gpt-4o", "provider": "openai", "enabled": True},
-                {"id": "claude-3-5-sonnet", "provider": "anthropic", "enabled": True},
-            ],
+            # Models removed - use LLMModelConfig table instead
             "roles": [
                 {"id": "admin", "permissions": ["*"]},
                 {"id": "member", "permissions": ["read"]},
@@ -98,6 +99,7 @@ class GlobalDefault(models.Model):
                 "rate_limits_multiplier": 1.0,
             },
         }
+
 
     def __str__(self) -> str:
         return "Global SaaS Defaults"

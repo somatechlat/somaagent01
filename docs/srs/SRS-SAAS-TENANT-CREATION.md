@@ -114,7 +114,9 @@ graph TD
 
 #### Step 3: Inherited Defaults (The "Soul")
 
-This step is critical. It defines what the Tenant SysAdmin sees when *they* first log in.
+This step defines the `TenantSettings` model fields that the Tenant SysAdmin initially sees.
+
+**Source Model:** `admin/saas/models/profiles.py:140-239` (TenantSettings)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -124,24 +126,42 @@ This step is critical. It defines what the Tenant SysAdmin sees when *they* firs
 │  1. IDENTITY             2. PLAN               3. DEFAULTS       4. REVIEW  │
 │  ✓                       ✓                     ●●●●○             ○          │
 │                                                                             │
-│  🤖 Model Whitelist (Restrict what models this tenant can access)           │
+│  🎨 BRAND CONFIGURATION (TenantSettings.branding fields)                    │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ ☑ GPT-4o   ☑ Claude 3.5 Sonnet   ☐ Llama 3 (Local)                    │  │
-│  │ ☑ SomaBrain v1 (Internal)                                             │  │
+│  │ Logo URL:                                    [ https://...        ]      │  │
+│  │ Primary Color (Hex):                        [ #2563eb            ]      │  │
+│  │ Accent Color (Hex):                         [ #3b82f6            ]      │  │
+│  │ Custom Domain (White-label):                [ console.acme.com   ]      │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│  🔐 Authentication Strictness                                               │
+│  🔐 SECURITY SETTINGS (TenantSettings.security fields)                      │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ Enforce MFA for all users?            [ Yes / No ]                        │  │
-│  │ Allow Social Login (Google/Github)?   [ Yes / No ]                        │  │
-│  │ Session Timeout                       [ 4 hours ▼ ]                       │  │
+│  │ MFA Policy:          [ Optional ▼ ]  (Choices: Off/Optional/Required)  │  │
+│  │ Enable SSO?          [ ☑ ] Yes            (Enables sso_config JSON     │  │
+│  │ Session Timeout:     [ 30 ] Minutes     (Field: session_timeout)       │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│  🎨 Default Branding (Can be overridden by Tenant Admin)                    │
-│  Theme: [ Dark Modern ▼ ]    Accent Color: [ #00E5FF ]                      │
+│  ⚙️ FEATURE OVERRIDES (TenantSettings.feature_overrides JSONB)              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ 🤖 Default Model:           [ gpt-4o ▼ ]                                │  │
+│  │ 🚀 Max Concurrent Agents:   [ 50 ]      (Tier limit applies)            │  │
+│  │ 🎤 Enable Voice:            [ ☑ ]                                       │  │
+│  │ 👁️ Enable Vision:           [ ☑ ]                                       │  │
+│  │ 💻 Code Interpreter:        [ ☐ ] (Disabled for enterprise tenants)    │  │
+│  │ 🌐 Web Browsing:            [ ☑ ]                                       │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│  👥 Initial Admin User                                                      │
-│  Email: [ admin@acme.com _________ ]  (Will receive magic link)             │
+│  📋 COMPLIANCE FRAMEWORK (TenantSettings.compliance JSONB)                  │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ ☑ HIPAA Mode                (Enforces audit_level: verbose)             │  │
+│  │ ☐ GDPR Mode                  (Data residency enforcement)                │  │
+│  │ ☐ SOC2 Mode                  (Audit logging enabled)                     │  │
+│  │ Data Retention Days:        [ 365 ]                                     │  │
+│  │ PII Redaction:              [ ☑ ] Enabled                               │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  👥 INITIAL ADMIN USER (TenantUser model - see Section 4.2)                 │
+│  Email: [ admin@acme-health.com _________ ]  (Keycloak user_id creation)   │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  [← Back]                                                 [Next: Review →]  │

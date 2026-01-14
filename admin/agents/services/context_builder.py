@@ -19,7 +19,11 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from admin.core.observability.metrics import ContextBuilderMetrics
 from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from services.common import degradation_monitor
-from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
+# MIGRATION: Use new circuit_breaker instead of resilience
+try:
+    from services.common.circuit_breaker import AsyncCircuitBreaker, CircuitBreakerError
+except ImportError:
+    from services.common.resilience import AsyncCircuitBreaker, CircuitBreakerError
 
 if TYPE_CHECKING:
     from admin.agents.services.agentiq_governor import LanePlan

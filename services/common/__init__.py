@@ -4,16 +4,17 @@ from importlib import import_module
 from typing import Any
 
 _SUBMODULES = {
-    "budget_manager",
-    "degradation_monitor",
-    "escalation",
-    "event_bus",
+    "chat_schemas",
+    "chat_memory",
+    "circuit_breaker",
+    "unified_metrics",
+    "simple_governor",
+    "health_monitor",
+    "simple_context_builder",
+    "unified_secret_manager",
+    "litellm_client",
     "model_costs",
     "model_profiles",
-    "policy_client",
-    "requeue_store",
-    "router_client",
-    "session_repository",
     "telemetry",
     "telemetry_store",
 }

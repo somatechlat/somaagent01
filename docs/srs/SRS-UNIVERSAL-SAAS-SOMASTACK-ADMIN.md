@@ -176,7 +176,7 @@ Links Keycloak users to tenants with role-based access.
 | `user_id` | UUIDField | Indexed | Keycloak User ID |
 | `email` | EmailField | Indexed | User Email Display |
 | `display_name` | CharField | max_length=200, Blank | User Name |
-| `role` | CharField | Choices: Owner/Admin/Member/Billing | Role Badge |
+| `role` | CharField | Choices: OWNER/ADMIN/MEMBER/VIEWER | Role Badge |
 | `is_active` | BooleanField | Default: true, Indexed | Active Status |
 | `last_login_at` | DateTimeField | Null, Blank | Last Login Display |
 | `created_at` | DateTimeField | auto_now_add | Audit Field |
@@ -184,28 +184,40 @@ Links Keycloak users to tenants with role-based access.
 
 **Role Choices (from `admin/saas/models/choices.py:20-26`):**
 - `OWNER`: Full control, can delete tenant
-- `ADMIN`: Manage users and settings
+- `ADMIN`: Manage users and settings, cannot delete tenant
 - `MEMBER`: Standard user access
-- `BILLING`: Billing access only
+- `VIEWER`: Read-only permissions
+
+**Note:** Billing is not a separate role in the actual enum.
 
 **Unique Constraint:** `tenant` + `user_id` (prevent duplicates)
 
-### 6.4 SubscriptionTier Model
-**File:** `admin/saas/models/tiers.py`
+**Source File:** `admin/saas/models/tiers.py:13-135` (SubscriptionTier)
 
-Defines subscription tiers with feature limits and pricing.
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | UUIDField | Primary Key, Default: uuid.uuid4 | Unique tier identifier |
+| `name` | CharField | max_length=50, Unique | Tier display name |
+| `slug` | SlugField | max_length=50, Unique | URL-safe identifier |
+| `description` | TextField | Blank | Marketing description |
+| `base_price_cents` | BigIntegerField | Default: 0 | Monthly price in cents (USD) |
+| `billing_interval` | CharField | Choices: Monthly/Yearly/Weekly, Default: Monthly | Billing cycle |
+| `lago_plan_code` | CharField | max_length=100, Blank | Lago billing plan code |
+| `max_agents` | IntegerField | Default: 1 | Maximum agents allowed |
+| `max_users_per_agent` | IntegerField | Default: 5 | Maximum users per agent |
+| `max_monthly_voice_minutes` | IntegerField | Default: 60 | Monthly voice minutes allowance |
+| `max_monthly_api_calls` | IntegerField | Default: 1000 | Monthly API calls allowance |
+| `max_storage_gb` | DecimalField | max_digits=10, decimal_places=2, Default: 1.00 | Storage allowance in GB |
+| `feature_defaults` | JSONField | Default: dict, Blank | Default feature configurations |
+| `is_active` | BooleanField | Default: true, Indexed | Tier availability |
+| `is_public` | BooleanField | Default: true, Indexed | Show on pricing page |
+| `sort_order` | IntegerField | Default: 0 | Display order for sorting tiers |
+| `created_at` | DateTimeField | auto_now_add | Audit Field |
+| `updated_at` | DateTimeField | auto_now | Audit Field |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUIDField | Primary Key |
-| `name` | CharField | Tier display name (Free, Standard, Enterprise) |
-| `slug` | CharField | URL-safe tier identifier |
-| `description` | TextField | Tier description |
-| `price_monthly` | DecimalField | Monthly price in USD |
-| `price_yearly` | DecimalField | Yearly price in USD |
-| `features` | JSONField | Feature entitlements dictionary |
-| `quotas` | JSONField | Resource quotas (agents, users, storage) |
-| `is_active` | BooleanField | Tier availability |
-| `tier_order` | IntegerField | Display order hierarchy |
+**BillingInterval Choices (from choices.py:35-40):**
+- `MONTHLY`: Monthly billing cycle
+- `YEARLY`: Yearly billing cycle
+- `WEEKLY`: Weekly billing cycle
 
 ---
