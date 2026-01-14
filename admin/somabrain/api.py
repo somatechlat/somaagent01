@@ -92,7 +92,7 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
     - Real SomaBrain integration
     - Graceful degradation if unavailable
     """
-    from admin.somabrain.client import get_somabrain_client, SomaBrainError
+    from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
     # Get tenant from auth context (placeholder)
     tenant_id = "default"
@@ -139,7 +139,7 @@ async def get_recent_memories(
 
     Per SRS UC-05: GET /api/v2/memory/recent
     """
-    from admin.somabrain.client import get_somabrain_client
+    from admin.core.somabrain_client import get_somabrain_client
 
     tenant_id = "default"
     client = get_somabrain_client()
@@ -176,7 +176,7 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     Creates a memory record that will be synced to SomaBrain.
     Uses ZDL pattern if SomaBrain is unavailable.
     """
-    from admin.somabrain.client import get_somabrain_client, SomaBrainError
+    from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
     tenant_id = "default"
     user_id = "default"
@@ -220,7 +220,7 @@ async def delete_memory(request, memory_id: str) -> dict:
 
     Per SRS UC-05: DELETE /api/v2/memory/{id}
     """
-    from admin.somabrain.client import get_somabrain_client
+    from admin.core.somabrain_client import get_somabrain_client
 
     tenant_id = "default"
     client = get_somabrain_client()
@@ -244,7 +244,7 @@ async def get_pending_count(request) -> dict:
 
     Used for degradation mode status display.
     """
-    from admin.somabrain.client import get_somabrain_client
+    from admin.core.somabrain_client import get_somabrain_client
 
     tenant_id = "default"
     client = get_somabrain_client()
