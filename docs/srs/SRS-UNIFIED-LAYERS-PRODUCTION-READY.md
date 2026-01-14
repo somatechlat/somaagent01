@@ -81,54 +81,170 @@ This refactoring achieves:
 
 ### 2.1 Product Perspective
 
+#### 2.1.1 SAAS Deployment Mode
+
+**Description**: Services communicate via HTTP APIs with centralized tenant management, billing, and authentication through SomaBrain.
+
+**Configuration**: Set `SA01_DEPLOYMENT_MODE=SAAS` in environment.
+
+**Deployment Mode Differences**:
+
+| Component | SAAS Mode | Behavior |
+|-----------|------------|----------|
+| **SomaAgent01** | Port 20001 | Connects to SomaBrain/SomaFractalMemory via HTTP |
+| **SomaBrain** | Port 30001 | SaaS auth mode, tenant management, subscription validation |
+| **SomaFractalMemory** | Port 10001 | SaaS auth mode, API key validation via SomaBrain, usage tracking middleware |
+| **UnifiedMetrics** | Records SAAS mode | `deployment_mode="saas"` label in all metrics |
+
 ```mermaid
 graph TB
     subgraph "Client Layer"
         UI[Web UI / Mobile App]
-        API[REST API / WebSocket]
     end
 
-    subgraph "SomaAgent01 - Unified Layers"
-        Chat[ChatService<br/>send_message 1]
-        Metrics[UnifiedMetrics<br/>11 metrics]
+    subgraph "SomaAgent01 SAAS Mode"
+        Chat[ChatService<br/>send_message]
+        Metrics[UnifiedMetrics<br/>deployment_mode=saas]
         Governor[SimpleGovernor<br/>budget allocation]
         Health[HealthMonitor<br/>binary health]
         Builder[SimpleContextBuilder<br/>context assembly]
     end
 
-    subgraph "External Services"
-        SomaBrain[SomaBrain<br/>Cognitive Runtime]
-        SomaMem[SomaFractalMemory<br/>Vector Storage]
-        LLM[LLM Provider<br/>OpenAI/Anthropic/Custom]
-        DB[(PostgreSQL<br/>Conversation Data)]
-        Vault[(HashiCorp Vault<br/>Secrets)]
-        Prometheus[Prometheus<br/>Metrics Collection]
+    subgraph "SomaBrain SAAS Mode"
+        SBAuth[SaaS Auth<br/>Validate sbk_* keys]
+        SBTenant[Tenant Mgmt<br/>Billing, Quotas]
+        SBBrain[Cognitive Runtime<br/>Hybrid Search]
     end
 
-    UI --> API
-    API --> Chat
-    Chat -->|record turn| Metrics
-    Chat -->|check health| Health
-    Chat -->|allocate budget| Governor
-    Chat -->|build context| Builder
-    Builder -->|vector search| SomaBrain
-    Builder -->|protect by circuit breaker| SomaMem
-    Chat -->|fetch model config| Vault
-    Chat -->|stream tokens| LLM
-    Chat -->|store messages| DB
-    Metrics -->|expose metrics| Prometheus
+    subgraph "SomaFractalMemory SAAS Mode"
+        SFMAuth[SaaS Auth<br/>Validate sfm_* keys]
+        SFMUsage[Usage Tracking<br/>Billing Middleware]
+        SFMStore[Vector Storage<br/>Milvus + PostgreSQL]
+    end
+
+    subgraph "External Services SAAS"
+        LLM[LLM Provider<br/>OpenAI/Anthropic/Custom]
+        DB[(PostgreSQL<br/>Conversation Data)]
+        Vault[(HashiCorp Vault<br/>Central Secrets)]
+        Billing[Lago<br/>Billing System]
+    end
+
+    UI --> Chat
+    Chat -->|HTTP API| SBAuth
+    Chat -->|HTTP API| SFMAuth
+    Chat -->|HTTP API| SBBrain
+    Chat -->|HTTP API| SFMStore
+    Chat --> Metrics
+    Metrics -->|label: saas| Prometheus
 
     style Chat fill:#e1f5ff
     style Metrics fill:#fff4e1
     style Governor fill:#e1f5ff
     style Health fill:#fff4e1
     style Builder fill:#e1f5ff
-    style SomaBrain fill:#ffe1e1
-    style SomaMem fill:#ffe1e1
-    style LLM fill:#ffe1e1
-    style DB fill:#e1ffe1
-    style Vault fill:#f0e1ff
-    style Prometheus fill:#e1f5ff
+    style SBAuth fill:#ffe1e1
+    style SFMAuth fill:#ffe1e1
+    style SBBrain fill:#ffe1e1
+    style SFMStore fill:#ffe1e1
+    style Billing fill:#f0e1ff
+```
+
+#### 2.1.2 STANDALONE Deployment Mode
+
+**Description**: Services run independently with direct database connections, local configuration, and embedded SomaBrain/SomaFractalMemory.
+
+**Configuration**: Set `SA01_DEPLOYMENT_MODE=STANDALONE` in environment.
+
+**Deployment Mode Differences**:
+
+| Component | STANDALONE Mode | Behavior |
+|-----------|------------------|----------|
+| **SomaAgent01** | Port 20001 | Embeds SomaBrain and SomaFractalMemory directly |
+| **SomaBrain** | Not deployed独立 (embedded) | Cognitive runtime runs as in-process module |
+| **SomaFractalMemory** | Not deployed独立 (embedded) | Vector storage runs as direct PostgreSQL queries |
+| **UnifiedMetrics** | Records STANDALONE mode | `deployment_mode="standalone"` label in all metrics |
+
+**Standalone Mode Benefits**:
+- ✅ **Zero HTTP latency**: Direct in-process calls (<1ms overhead)
+- ✅ **Simpler deployment**: One service instead of three
+- ✅ **Reduced infrastructure**: No inter-service network calls
+- ✅ **Complete control**: No dependency on central auth or billing
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        UI[Web UI / Mobile App]
+    end
+
+    subgraph "SomaAgent01 STANDALONE Mode"
+        Chat[ChatService<br/>send_message]
+        Metrics[UnifiedMetrics<br/>deployment_mode=standalone]
+        Governor[SimpleGovernor<br/>budget allocation]
+        Health[HealthMonitor<br/>binary health]
+        Builder[SimpleContextBuilder<br/>context assembly]
+        EmbedBrain[Embedded<br/>SomaBrain]
+        EmbedMemory[Embedded<br/>SomaFractalMemory]
+    end
+
+    subgraph "Embedded Modules"
+        SBBrain[Cognitive Runtime<br/>In-Process Hook]
+        SFMStore[Vector Storage<br/>Direct PostgreSQL]
+    end
+
+    subgraph "External Services STANDALONE"
+        LLM[LLM Provider<br/>OpenAI/Anthropic/Custom]
+        DB[(PostgreSQL<br/>Conversation + Memory)]
+        Vault[(HashiCorp Vault<br/>Local Secrets)]
+    end
+
+    UI --> Chat
+    Chat -->|Direct Hook| SBBrain
+    Chat -->|Direct Query| SFMStore
+    Chat --> Metrics
+    Chat --> Builder
+    Builder -->|Direct Call| SBBrain
+    Builder -->|Direct Query| SFMStore
+    Metrics -->|label: standalone| Prometheus
+
+    style Chat fill:#e1f5ff
+    style Metrics fill:#fff4e1
+    style Governor fill:#e1f5ff
+    style Health fill:#fff4e1
+    style Builder fill:#e1f5ff
+    style EmbedBrain fill:#ffe1e1
+    style EmbedMemory fill:#ffe1e1
+    style SBBrain fill:#e1ffe1
+    style SFMStore fill:#e1ffe1
+```
+
+#### 2.1.3 Deployment Mode Comparison
+
+| Aspect | SAAS Mode | STANDALONE Mode |
+|--------|------------|------------------|
+| **Service Count** | 3 (Agent + Brain + Memory) | 1 (All-in-one) |
+| **Communication** | HTTP APIs (network latency ~10-50ms) | In-process calls (<1ms) |
+| **Authentication** | Centralized via SomaBrain (sbk_* keys) | Local via Vault (sfm_* keys) |
+| **Tenant Management** | SomaBrain central database | PostgreSQL tenant isolation |
+| **Billing** | Lago integration (per-tenant usage) | Local billing (optional integration) |
+| **Metrics Labels** | `deployment_mode=saas` | `deployment_mode=standalone` |
+| **Vault Secrets** | Centralized in SomaBrain Vault | Local Vault per tenant |
+| **Scalability** | Independent horizontal scaling | Monolithic vertical scaling |
+| **Operational Complexity** | Higher (multiple services) | Lower (single service) |
+| **Use Case** | Multi-tenant SaaS platform | Single-tenant deployment, on-premises |
+
+#### 2.1.4 Unified Layers Apply to Both Modes
+
+`UnifiedMetrics` automatically records deployment mode for **observability**:
+
+```python
+# UnifiedMetrics.set_system_info() - records deployment_mode to Prometheus
+metrics.set_system_info(
+    version="1.0.0",
+    deployment_mode="saas"  # or "standalone"
+)
+
+# PromQL query example
+deployment_mode: deployment_mode  # Results: saas or standalone
 ```
 
 ### 2.2 Component Architecture
@@ -403,6 +519,96 @@ flowchart LR
     style Error fill:#ffe1e1
 ```
 
+#### 3.2.6 Deployment Mode Behavior
+
+**SAAS Mode Metrics**:
+
+| Metric | Label: `deployment_mode` | Value | Purpose |
+|--------|-------------------------|-------|---------|
+| `agent_turns_total` | `deployment_mode="saas"` | Counter labeled by tenant_id | Track per-tenant usage for billing |
+| `agent_health_status` | `deployment_mode="saas"` | Status by service (somaagent01, somabrain, somafractalmemory) | Monitor all 3 services health |
+| `agent_turn_latency_seconds` | `deployment_mode="saas"` | Latency including HTTP inter-service calls | Measure SAAS mode total latency |
+| `SYSTEM_INFO` | `deployment_mode="saas"` | Static gauge with deployment metadata | Identify service operation mode |
+
+**STANDALONE Mode Metrics**:
+
+| Metric | Label: `deployment_mode` | Value | Purpose |
+|--------|-------------------------|-------|---------|
+| `agent_turns_total` | `deployment_mode="standalone"` | Counter labeled by tenant_id | Track usage in local deployment |
+| `agent_health_status` | `deployment_mode="standalone"` | Status by service (somaagent01 only) | Monitor single service health |
+| `agent_turn_latency_seconds` | `deployment_mode="standalone"` | Latency excluding inter-service calls | Measure embedded mode latency |
+| `SYSTEM_INFO` | `deployment_mode="standalone"` | Static gauge with deployment metadata | Identify single-service mode |
+
+**Deployment Mode Setup in UnifiedMetrics**:
+
+```python
+# UnifiedMetrics class initialization - detects deployment mode
+class UnifiedMetrics:
+    def __init__(self):
+        # Read SAAS/STANDALONE mode from environment
+        self.deployment_mode = os.environ.get(
+            "SA01_DEPLOYMENT_MODE",
+            "saas"  # Default to SAAS for safety
+        ).strip().upper()
+    
+    def set_system_info(self, version: str, deployment_mode_override: str = None) -> None:
+        """Set static system information including deployment mode."""
+        self.SYSTEM_INFO.info(
+            {
+                "version": version,
+                "deployment_mode": deployment_mode_override or self.deployment_mode,
+                "service": "somaagent01"
+            }
+        )
+
+# Metrics initialization in app startup
+# config/settings_registry.py
+if settings.deployment_mode == "STANDALONE":
+    # Standalone mode uses embedded modules
+    metrics = UnifiedMetrics()
+    metrics.set_system_info(
+        version="1.0.0",
+        deployment_mode="standalone"
+    )
+else:
+    # SAAS mode uses HTTP inter-service calls
+    metrics = UnifiedMetrics()
+    metrics.set_system_info(
+        version="1.0.0",
+        deployment_mode="saas"
+    )
+```
+
+**PromQL Queries for Deployment Mode Comparison**:
+
+```promql
+# Total turns by deployment mode
+sum by (deployment_mode) (agent_turns_total)
+
+# Turn latency P95 by deployment mode
+histogram_quantile(0.95,
+    sum by (deployment_mode, le) (agent_turn_latency_seconds_bucket)
+)
+
+# Health status by deployment mode
+agent_health_status{deployment_mode="saas"}
+agent_health_status{deployment_mode="standalone"}
+
+# Token consumption by deployment mode
+sum by (deployment_mode, direction) (agent_tokens_total)
+```
+
+**Deployment Mode Observability Differences**:
+
+| Aspect | SAAS Mode | STANDALONE Mode |
+|--------|------------|------------------|
+| `SYSTEM_INFO` metrics | 3 services (agent01, brain, memory) | 1 service (agent01) |
+| Health monitoring | Inter-service health checks | Single-service health checks |
+| Latency breakdown | Includes network latency (~25-90ms) | Pure processing latency (~8-35ms) |
+| Labels | `deployment_mode=saas`, plus tenant_id | `deployment_mode=standalone`, plus tenant_id |
+| Billing metrics | Per-tenant token counts for Lago | Optional: local usage tracking |
+| Troubleshooting | Requires across-service trace correlation | Simplified single-service trace |
+
 ---
 
 ### 3.3 FR-03: Simple Governor - Token Budget Allocation
@@ -490,6 +696,135 @@ flowchart TD
     style Rescue fill:#ffe1e1
 ```
 
+#### 3.3.6 Deployment Mode Behavior
+
+**SAAS Mode Budget Allocation**:
+
+| Context | Budget Size | Behavior | Reason |
+|---------|---------------|----------|--------|
+| **All Services Healthy** | 10,000 tokens | Normal ratios: 15% system_policy, 25% history, 25% memory, 20% tools | Optimal for full functionality with HTTP inter-service calls |
+| **SomaBrain Degraded** | 10,000 tokens | Degraded ratios: 70% system_policy, 0% history, 10% memory | Preserve chat functionality with reduced SomaBrain capacity |
+| **SomaFractalMemory Degraded** | 10,000 tokens | Degraded ratios: 70% system_policy, 10% memory (circuit open) | Protect against slow vector search |
+| **Critical Failure** | 10,000 tokens | Rescue path: 100% system_policy (no tools, no memory) | Fallback to pure LLM interaction |
+
+**STANDALONE Mode Budget Allocation**:
+
+| Context | Budget Size | Behavior | Reason |
+|---------|---------------|----------|--------|
+| **All Modules Healthy** | 10,000 tokens | Same ratios as SAAS mode: 15% system_policy, 25% history, 25% memory, 20% tools | Embedded modules behave identically |
+| **SomaBrain Module Slow** | 10,000 tokens | Degraded ratios apply (same as SAAS) | In-process slowdown triggers degraded mode |
+| **PostgreSQL Memory Slow** | 10,000 tokens | Degraded ratios with reduced memory lane | Direct PostgreSQL query performance affects allocation |
+| **Critical Error in Module** | 10,000 tokens | Rescue path: 100% system_policy (no tools, no memory) | Fallback to pure LLM interaction |
+
+**Deployment Mode Differences**:
+
+| Aspect | SAAS Mode | STANDALONE Mode |
+|--------|------------|------------------|
+| **Budget calculation** | Same ratios across both modes | Same ratios across both modes |
+| **Degraded trigger** | HealthMonitor detects HTTP timeout from SomaBrain/SomaMem | HealthMonitor detects slow in-process calls or PostgreSQL queries |
+| **Rescue path** | Closes circuit breaker to SomaBrain/SomaMem HTTP APIs | Disables embedded module imports, pure LLM mode |
+| **Budget enforcement** | GovernorDecision tools_enabled bool controls HTTP API calls | GovernorDecision tools_enabled bool controls module function calls |
+| **Health integration** | 3 services monitored (Agent + Brain + Memory) | Single service (Agent only) with embedded module flags |
+
+**Code Example: Budget Allocation Based on Health**
+
+```python
+# SimpleGovernor.allocate_budget() - deployment mode-independent
+def allocate_budget(self, health: dict) -> GovernorDecision:
+    """
+    Allocate token budget based on health status.
+    Works identically in both SAAS and STANDALONE modes.
+    
+    Args:
+        health: Dict with 'overall_status' (HEALTHY/DEGRADED/UNKNOWN)
+    
+    Returns:
+        GovernorDecision with lane_budget, tools_enabled, etc.
+    """
+    status = health.get('overall_status', HealthStatus.HEALTHY)
+    
+    if status == HealthStatus.HEALTHY:
+        ratios = HealthStatus.HEALTHY.value  # NORMAL_RATIOS
+        mode = "normal"
+        tools_enabled = True
+        tool_count_limit = 5
+    elif status == HealthStatus.DEGRADED:
+        ratios = HealthStatus.DEGRADED.value  # DEGRADED_RATIOS
+        mode = "degraded"
+        tools_enabled = False
+        tool_count_limit = 0
+    else:
+        # Unknown health or critical failure
+        ratios = HealthStatus.RESCUE.value  # RESCUE_RATIOS
+        mode = "rescue"
+        tools_enabled = False
+        tool_count_limit = 0
+    
+    lane_budget = self._calculate_budget(self.max_tokens, ratios)
+    lane_budget = self._enforce_minimums(lane_budget)
+    
+    return GovernorDecision(
+        lane_budget=lane_budget,
+        health_status=status,
+        mode=mode,
+        tools_enabled=tools_enabled,
+        tool_count_limit=tool_count_limit
+    )
+```
+
+**SAAS Mode Budget Enforcement**:
+
+```python
+# ChatService using GovernorDecision in SAAS mode
+def send_message(self, request: ChatRequest):
+    # ... auth check via SomaBrain HTTP API ...
+    health = health_monitor.get_overall_health()
+    decision = governor.allocate_budget(health)
+    
+    if decision.tools_enabled:
+        # Call SomaFractalMemory HTTP API for vector search
+        memory_results = http_client.post(
+            f"{SOMA_MEMORY_URL}/search",
+            json={"query": content, "top_k": decision.lane_budget['memory'] / 100}
+        )
+    else:
+        # Circuit breaker open, skip memory retrieval
+        memory_results = []
+    
+    context = context_builder.build_for_turn(
+        budget=decision.lane_budget,
+        history=history,
+        memory=memory_results  # Will be empty if tools_enabled=False
+    )
+```
+
+**STANDALONE Mode Budget Enforcement**:
+
+```python
+# ChatService using GovernorDecision in STANDALONE mode
+def send_message(self, request: ChatRequest):
+    # ... local auth check via Vault ...
+    health = health_monitor.get_overall_health()  # Checks embedded module flags
+    decision = governor.allocate_budget(health)
+    
+    if decision.tools_enabled:
+        # Direct in-process call to embedded SomaFractalMemory
+        from somabrain.cognition.core import HybridSearch  # Embedded import
+        memory_results = HybridSearch().search(
+            query_text=content,
+            top_k=decision.lane_budget['memory'] / 100
+        )
+    else:
+        # Degraded mode, skip memory retrieval
+        memory_results = []
+    
+    context = context_builder.build_for_turn(
+        budget=decision.lane_budget,
+        history=history,
+        memory=memory_results
+    )
+```
+
 ---
 
 ### 3.4 FR-04: Health Monitor - Binary Health Tracking
@@ -561,6 +896,140 @@ flowchart TD
     style SetDegraded fill:#ffe1e1
     style SetHealthy fill:#e1ffe1
 ```
+
+#### 3.4.6 Deployment Mode Behavior
+
+**SAAS Mode Health Checks**:
+
+| Service | Check Method | Critical? | Degraded Mode Trigger |
+|---------|--------------|-----------|-----------------------|
+| **SomaBrain** | HTTP `GET /health` (circuit breaker) | ✅ Yes | 3 consecutive timeouts (>5s) |
+| **SomaFractalMemory** | HTTP `GET /health` (circuit breaker) | ✅ Yes | 3 consecutive timeouts (>5s) |
+| **PostgreSQL** | `psycopg2.connect()` + simple query | ✅ Yes | Connection failure >3 times |
+| **LLM Provider** | HTTP `GET /models` circuitbreaker | ✅ Yes | API key invalid or rate limited |
+| **Kafka** | Produce test message | ❌ No | Log warning, no degraded mode |
+| **Redis** | `GET health_check` | ❌ No | Log warning, no degraded mode |
+
+```python
+# HealthMonitor.checkers in SAAS mode
+SAAS_CHECKERS = {
+    'somabrain': HealthCheck(
+        checker=lambda: http_client.get(f"{SOMA_BRAIN_URL}/health", timeout=5),
+        is_critical=True,
+        circuit_breaker=CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=30,
+            expected_exception=HTTPError
+        )
+    ),
+    'somafractalmemory': HealthCheck(
+        checker=lambda: http_client.get(f"{SOMA_MEMORY_URL}/health", timeout=5),
+        is_critical=True,
+        circuit_breaker=CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=30,
+            expected_exception=HTTPError
+        )
+    ),
+    'database': HealthCheck(
+        checker=database_health_check,
+        is_critical=True,
+        circuit_breaker=None  # No circuitbreaker for DB
+    ),
+    'llm': HealthCheck(
+        checker=lambda: llm_provider.list_models(),
+        is_critical=True,
+        circuit_breaker=CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=30,
+            expected_exception=RateLimitError
+        )
+    ),
+    'kafka': HealthCheck(
+        checker=lambda: kafka_producer.send('health_check', 'ping'),
+        is_critical=False,  # Non-critical
+        circuit_breaker=None
+    ),
+    'redis': HealthCheck(
+        checker=lambda: redis_client.get('health_check'),
+        is_critical=False,  # Non-critical
+        circuit_breaker=None
+    )
+}
+```
+
+**STANDALONE Mode Health Checks**:
+
+| Service | Check Method | Critical? | Degraded Mode Trigger |
+|---------|--------------|-----------|-----------------------|
+| **SomaBrain (embedded)** | Import and create instance | ✅ Yes | Import error or initialization failure |
+| **SomaFractalMemory (embedded)** | PostgreSQL connection for vector search | ✅ Yes | Connection failure during query |
+| **PostgreSQL** | `psycopg2.connect()` + simple query | ✅ Yes | Connection failure >3 times |
+| **LLM Provider** | HTTP `GET /models` circuitbreaker | ✅ Yes | API key invalid or rate limited |
+| **Kafka** | Produce test message | ❌ No | Log warning, no degraded mode |
+| **Redis** | `GET health_check` | ❌ No | Log warning, no degraded mode |
+
+```python
+# HealthMonitor.checkers in STANDALONE mode
+STANDALONE_CHECKERS = {
+    'somabrain': HealthCheck(
+        checker=lambda: check_embedded_somabrain(),  # Import and instance creation
+        is_critical=True,
+        circuit_breaker=None  # No circuit breaker for in-process calls
+    ),
+    'somafractalmemory': HealthCheck(
+        checker=lambda: check_embedded_memory(),  # Direct PostgreSQL query
+        is_critical=True,
+        circuit_breaker=None
+    ),
+    'database': HealthCheck(
+        checker=database_health_check,
+        is_critical=True,
+        circuit_breaker=None
+    ),
+    'llm': HealthCheck(
+        checker=lambda: llm_provider.list_models(),
+        is_critical=True,
+        circuit_breaker=CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=30,
+            expected_exception=RateLimitError
+        )
+    ),
+    'kafka': HealthCheck(
+        checker=lambda: kafka_producer.send('health_check', 'ping'),
+        is_critical=False,
+        circuit_breaker=None
+    ),
+    'redis': HealthCheck(
+        checker=lambda: redis_client.get('health_check'),
+        is_critical=False,
+        circuit_breaker=None
+    )
+}
+
+def check_embedded_somabrain():
+    """Check if embedded SomaBrain module can be imported and initialized."""
+    try:
+        from somabrain.cognition.core import HybridSearch  # Embedded import
+        search_engine = HybridSearch()
+        return True
+    except ImportError:
+        return False
+    except Exception:
+        return False
+```
+
+**Deployment Mode Health Monitoring Differences**:
+
+| Aspect | SAAS Mode | STANDALONE Mode |
+|--------|------------|------------------|
+| **SomaBrain health** | HTTP GET request with circuit breaker | Python import validation |
+| **SomaFractalMemory health** | HTTP GET request with circuit breaker | Direct PostgreSQL query validation |
+| **Circuit breaker usage** | Used for HTTP inter-service calls | Not used for in-process calls |
+| **Health check latency** | ~10-20ms for each HTTP check | ~1-5ms for import/validation |
+| **Failure detection** | Network timeout >5s triggers circuit breaker | Import error triggers degraded mode |
+| **Recovery mechanism** | Circuit breaker auto-opens after 30s | Module re-import attempted on failure |
 
 ---
 
@@ -666,6 +1135,217 @@ BuiltContext(
     }
 )
 ```
+
+#### 3.5.6 Deployment Mode Behavior
+
+**SAAS Mode Context Building**:
+
+| Step | Action | Protocol | Latency |
+|------|--------|----------|---------|
+| 1. Add system prompt | Load from config or database | Direct | ~1-5ms |
+| 2. Add history | Load from PostgreSQL | TCP | ~5-15ms |
+| 3. Add memory | HTTP POST to SomaBrain `POST /context` | HTTP | ~10-30ms |
+| 4. Add tools | Load tool definitions | Direct | ~2-10ms |
+| 5. Add user message | From request | Direct | ~1ms |
+| **Total Latency** | | | **~19-61ms** |
+
+```python
+# SimpleContextBuilder.build_for_turn() - SAAS mode
+def build_for_turn(self, budget: GovernorDecision, conversation: Conversation) -> BuiltContext:
+    system_prompt = self._load_system_prompt(conversation)
+    
+    # Load history from local PostgreSQL
+    history = self._load_history(conversation, budget.lane_budget['history'])
+    
+    # Memory retrieval via SomaBrain HTTP API (circuit breaker protected)
+    memory_results = []
+    if budget.tools_enabled:  # Check if tools enabled by governor
+        try:
+            with self.soma_brain_circuit_breaker:
+                response = http_client.post(
+                    f"{SOMA_BRAIN_URL}/context",
+                    json={
+                        "conversation_id": conversation.id,
+                        "top_k": budget.lane_budget['memory'] // 100
+                    },
+                    timeout=5
+                )
+                memory_results = response.json()['results']
+        except HTTPError:
+            # Circuit breaker opened, skip memory
+            pass
+    
+    # Load tool definitions from config or database
+    tools = self._load_tools(conversation, budget.lane_budget['tools'])
+    
+    # Build context
+    messages = [
+        {"role": "system", "content": system_prompt},
+        *history,
+        *memory_results,
+        *tools,
+        {"role": "user", "content": conversation.user_message}
+    ]
+    
+    return BuiltContext(
+        system_prompt=system_prompt,
+        messages=messages,
+        token_counts=self._count_tokens(messages),
+        lane_actual=budget.lane_budget
+    )
+```
+
+**STANDALONE Mode Context Building**:
+
+| Step | Action | Protocol | Latency |
+|------|--------|----------|---------|
+| 1. Add system prompt | Load from config or database | Direct | ~1-5ms |
+| 2. Add history | Load from PostgreSQL | TCP | ~5-15ms |
+| 3. Add memory | Direct PostgreSQL query (hybrid search) | TCP | ~5-20ms |
+| 4. Add tools | Load tool definitions | Direct | ~2-10ms |
+| 5. Add user message | From request | Direct | ~1ms |
+| **Total Latency** | | | **~14-51ms (∼26% faster)** |
+
+```python
+# SimpleContextBuilder.build_for_turn() - STANDALONE mode
+def build_for_turn(self, budget: GovernorDecision, conversation: Conversation) -> BuiltContext:
+    system_prompt = self._load_system_prompt(conversation)
+    
+    # Load history from PostgreSQL
+    history = self._load_history(conversation, budget.lane_budget['history'])
+    
+    # Memory retrieval via embedded SomaBrain (direct PostgreSQL query)
+    memory_results = []
+    if budget.tools_enabled:
+        try:
+            # Import embedded SomaBrain module
+            from somabrain.cognition.core import HybridSearch
+            search_engine = HybridSearch()
+            
+            # Direct hybrid search query (no HTTP call)
+            results = search_engine.search(
+                query_text=conversation.user_message,
+                conversation_id=conversation.id,
+                top_k=budget.lane_budget['memory'] // 100
+            )
+            memory_results = [{"role": "user", "content": r} for r in results]
+        except Exception:
+            # Module error, skip memory
+            pass
+    
+    # Load tool definitions from config or database
+    tools = self._load_tools(conversation, budget.lane_budget['tools'])
+    
+    # Build context
+    messages = [
+        {"role": "system", "content": system_prompt},
+        *history,
+        *memory_results,
+        *tools,
+        {"role": "user", "content": conversation.user_message}
+    ]
+    
+    return BuiltContext(
+        system_prompt=system_prompt,
+        messages=messages,
+        token_counts=self._count_tokens(messages),
+        lane_actual=budget.lane_budget
+    )
+```
+
+**Deployment Mode Context Building Differences**:
+
+| Aspect | SAAS Mode | STANDALONE Mode |
+|--------|------------|------------------|
+| **Memory retrieval** | HTTP POST to SomaBrain API | Direct PostgreSQL query via embedded module |
+| **Circuit breaker** | `CircuitBreaker` protecting HTTP call | Try/catch except for module import error |
+| **Error handling** | Circuit breaker auto-opens/ | Module exception caught and logged |
+| **Latency overhead** | ~10-30ms for HTTP round-trip | ~5-20ms for direct query |
+| **Failure mode** | Circuit breaker open → empty memory | Module import/execution error → empty memory |
+| **Configuration** | Requires `SOMA_BRAIN_URL` env variable | Requires embedded SomaBrain module installed |
+| **Budget enforcement** | Same lane budgets across both modes | Same lane budgets across both modes |
+| **PII redaction** | Applied in both modes (identical) | Applied in both modes (identical) |
+
+**Circuit Breaker Protection (SAAS Mode)**:
+
+```python
+# CircuitBreaker configuration for SomaBrain HTTP calls
+from pybreaker import CircuitBreaker
+
+class SimpleContextBuilder:
+    def __init__(self):
+        # Circuit breaker opens after 3 consecutive failures
+        self.soma_brain_circuit_breaker = CircuitBreaker(
+            fail_max=3,
+            timeout_duration=30,  # seconds to try again after opening
+            exception=HTTPError
+        )
+    
+    def add_memory(self, budget: dict) -> list[dict]:
+        """Add memory from SomaBrain with circuit breaker protection."""
+        memory_results = []
+        
+        if budget['memory'] > 0:
+            try:
+                with self.soma_brain_circuit_breaker:
+                    response = http_client.post(
+                        f"{SOMA_BRAIN_URL}/context",
+                        json={"conversation_id": self.conversation.id},
+                        timeout=5
+                    )
+                    memory_results = response.json()['results']
+            except HTTPError:
+                # Circuit breaker opened or HTTP error
+                logger.warning("Circuit breaker opened, skipping memory retrieval")
+            except CircuitBreakerError:
+                logger.warning("Circuit breaker is open, skipping memory retrieval")
+        
+        return memory_results
+```
+
+**Embedded Module Error Handling (STANDALONE Mode)**:
+
+```python
+# Embedded module protection for STANDALONE mode
+class SimpleContextBuilder:
+    def add_memory(self, budget: dict) -> list[dict]:
+        """Add memory from embedded SomaBrain with error handling."""
+        memory_results = []
+        
+        if budget['memory'] > 0:
+            try:
+                # Import embedded SomaBrain module
+                from somabrain.cognition.core import HybridSearch
+                search_engine = HybridSearch()
+                
+                # Direct hybrid search query
+                results = search_engine.search(
+                    query_text=self.user_message,
+                    conversation_id=self.conversation.id,
+                    top_k=budget['memory'] // 100
+                )
+                memory_results = [{"role": "user", "content": r} for r in results]
+                
+            except ImportError as e:
+                # Module not installed
+                logger.error(f"Embedded SomaBrain module not found: {e}")
+            except Exception as e:
+                # Module execution error
+                logger.error(f"Error in embedded SomaBrain: {e}")
+        
+        return memory_results
+```
+
+**Deployment Mode Configuration Requirements**:
+
+| Environment Variable | SAAS Mode Required? | STANDALONE Mode Required? |
+|------------------------|---------------------|---------------------------|
+| `SA01_DEPLOYMENT_MODE=saas` | ✅ Yes | ❌ No |
+| `SA01_DEPLOYMENT_MODE=standalone` | ❌ No | ✅ Yes |
+| `SOMA_BRAIN_URL` | ✅ Yes (e.g., `http://somabrain:30001`) | ❌ No |
+| `SOMA_MEMORY_URL` | ✅ Yes (e.g., `http://somafractalmemory:10001`) | ❌ No |
+| `DATABASE_URL` | ✅ Yes | ✅ Yes |
+| `VAULT_ADDR` | ✅ Yes | ✅ Yes |
 
 ---
 
