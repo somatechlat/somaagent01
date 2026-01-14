@@ -14,6 +14,7 @@
 | `SRS-UNIFIED-LAYERS-PRODUCTION-READY.md` | Unified Layers SRS | - | 11 metrics, 5 components |
 | `SRS-UNIFIED-LAYERS-PRODUCTION-PLAN.md` | Deployment strategy | - | 0 |
 | `SRS-UNIFIED-LAYERS-VERIFICATION.md` | Feature parity checklist | - | 0 |
+| `DEPLOYMENT-MODE-VERIFICATION.md` | Code-to-doc sync report | - | 0 |
 | `SRS-INFRASTRUCTURE-ADMIN.md` | Service administration | 12 | 50+ |
 | `SRS-INFRASTRUCTURE-JOURNEYS.md` | Admin user flows | - | - |
 | `SRS-SEED-DATA.md` | Default data | - | 78 permissions |
