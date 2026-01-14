@@ -93,12 +93,99 @@ In `SA01_DEPLOYMENT_MODE=PROD`:
 
 ## 5. Configuration Contract
 
-| Variable | Repo | Values | Notes |
-|----------|------|--------|-------|
-| `SA01_DEPLOYMENT_MODE` | SomaAgent01 | `DEV` / `PROD` | Controls fail-fast behavior |
-| `SOMA_SAAS_MODE` | SomaAgent01 | `true` / `false` | In-process vs HTTP |
-| `SOMABRAIN_MODE` | SomaBrain | `dev` / `staging` / `prod` | Brain-specific |
-| `SFM_AUTH_MODE` | SomaFractalMemory | Maps to StandAlone/Cluster | Memory auth |
+### 5.1 SomaAgent01 Configuration
+
+| Variable | Environment Variable | Values | Purpose |
+|----------|----------------------|--------|----------|
+| **Deployment Mode** | `SA01_DEPLOYMENT_MODE` | `DEV` / `PROD` | Controls fail-fast behavior, localhost fallbacks |
+| **Software Mode** | `SOMASTACK_SOFTWARE_MODE` | `StandAlone` / `SomaStackClusterMode` | Service coupling and dependencies |
+| **SaaS Mode** | `SOMA_SAAS_MODE` | `true` / `false` | In-process imports vs HTTP calls |
+| **Target Platform** | `SA01_DEPLOYMENT_TARGET` | `LOCAL`, `FARGATE`, `EKS`, `ECS_EC2`, `EC2`, `APP_RUNNER` | Infrastructure target |
+| **Chat Provider** | `SA01_CHAT_PROVIDER` | `openrouter` (code) / `openai` / `anthropic` | Default chat_model_provider |
+| **Default Model** | `SA01_CHAT_MODEL` | `openai/gpt-4.1` / `gpt-4o` / etc. | Default chat_model_name |
+| **Debug Mode** | `DEBUG` | `true` / `false` | Django DEBUG flag |
+| **Allowed Hosts** | `ALLOWED_HOSTS` | Comma-separated domains | Django ALLOWED_HOSTS |
+| **Secret Key** | `SECRET_KEY`, `DJANGO_SECRET_KEY`, `SOMA_SECRET_KEY` | String | Django SECRET_KEY |
+
+**Example PROD Configuration**:
+```bash
+SA01_DEPLOYMENT_MODE=PROD
+SOMASTACK_SOFTWARE_MODE=SomaStackClusterMode
+SOMA_SAAS_MODE=true
+SA01_DEPLOYMENT_TARGET=FARGATE
+SA01_CHAT_PROVIDER=openai
+SA01_CHAT_MODEL=openai/gpt-4.1
+DEBUG=false
+ALLOWED_HOSTS=api.somastack.io,www.somastack.io
+SECRET_KEY=$VAULT_SECRET_KEY
+```
+
+**Example DEV Configuration**:
+```bash
+SA01_DEPLOYMENT_MODE=DEV
+SOMASTACK_SOFTWARE_MODE=StandAlone
+SOMA_SAAS_MODE=false
+SA01_DEPLOYMENT_TARGET=LOCAL
+DEBUG=true
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+### 5.2 SomaBrain Configuration
+
+| Variable | Environment Variable | Values | Purpose |
+|----------|----------------------|--------|----------|
+| **Deployment Mode** | `SOMA_DEPLOYMENT_MODE`, `SA01_DEPLOYMENT_MODE` | `prod` / `staging` / `dev` | Production vs development mode |
+| **Port** | `SOMABRAIN_PORT`, `SOMA_API_PORT` | Integer (default: 30101) | HTTP API server port |
+| **PostgreSQL URL** | `SOMA_DB_URL`, `DATABASE_URL` | `postgresql://...` | Database connection |
+| **Redis URL** | `SOMA_REDIS_URL`, `REDIS_URL` | `redis://...` | Cache connection |
+| **Kafka Brokers** | `SOMA_KAFKA_BROKERS` | Comma-separated hosts | Kafka bootstrap servers |
+| **Milvus Host** | `SOMA_MILVUS_HOST` | Hostname or IP | Vector DB location |
+| **Milvus Port** | `SOMA_MILVUS_PORT` | Integer (default: 19530) | Vector DB port |
+
+### 5.3 SomaFractalMemory Configuration
+
+| Variable | Environment Variable | Values | Purpose |
+|----------|----------------------|--------|----------|
+| **Software Mode** | `SOMASTACK_SOFTWARE_MODE` | `StandAlone` / `SomaStackClusterMode` | Service coupling |
+| **Auth Mode** | `SFM_AUTH_MODE` | `api_token` / `oidc` | Authentication method |
+| **API Token** | `SOMA_API_TOKEN` | String | API token for HTTP mode |
+| **DB Name** | `SOMA_DB_NAME` | String (default: `somafractalmemory`) | PostgreSQL database name |
+| **DB Host** | `SOMA_DB_HOST`, `SOMA_INFRA__POSTGRES` | Hostname (default: `postgres`) | PostgreSQL host |
+| **DB Port** | `SOMA_DB_PORT` | Integer (default: 5432) | PostgreSQL port |
+| **Milvus Host** | `SOMA_MILVUS_HOST`, `SOMA_INFRA__MILVUS` | Hostname (default: `milvus`) | Vector DB host |
+| **Milvus Port** | `SOMA_MILVUS_PORT` | Integer (default: 19530) | Vector DB port |
+| **Memory Mode** | `SOMA_MEMORY_MODE` | `evented_enterprise` / `simple` | Memory system mode |
+| **API Port** | `SOMA_API_PORT` | Integer (default: 10101) | HTTP API server port |
+
+**Example StandAlone Configuration**:
+```bash
+SOMASTACK_SOFTWARE_MODE=StandAlone
+SFM_AUTH_MODE=api_token
+SOMA_API_TOKEN=$(openssl rand -hex 32)
+SOMA_DB_HOST=postgres
+SOMA_DB_NAME=somafractalmemory
+SOMA_MILVUS_HOST=milvus
+```
+
+**Example SomaStackClusterMode Configuration**:
+```bash
+SOMASTACK_SOFTWARE_MODE=SomaStackClusterMode
+SFM_AUTH_MODE=oidc
+SOMA_DB_NAME=soma_shared
+SOMA_MILVUS_HOST=shared-milvus
+```
+
+### 5.4 Shared Infrastructure Variables
+
+| Variable | Applies To | Values | Purpose |
+|----------|-------------|--------|----------|
+| **PostgreSQL Host** | All 3 repos | `SOMA_DB_HOST`, `SOMA_INFRA__POSTGRES` | Shared database server |
+| **PostgreSQL Port** | All 3 repos | `SOMA_DB_PORT` (default: 5432) | Database port |
+| **Redis Host** | All 3 repos | `SOMA_REDIS_HOST`, `SOMA_INFRA__REDIS` | Shared Redis server |
+| **Redis Port** | All 3 repos | `SOMA_REDIS_PORT` (default: 6379) | Redis port |
+| **Kafka Brokers** | All 3 repos | `SOMA_KAFKA_BROKERS`, `SOMA_INFRA__KAFKA` | Event streaming |
+| **Milvus Host** | All 3 repos | `SOMA_MILVUS_HOST`, `SOMA_INFRA__MILVUS` | Vector DB server |
+| **Secrets Backend** | All 3 repos | `VAULT_ADDR`, `VAULT_TOKEN` | Vault integration for secrets |
 | `SOMASTACK_SOFTWARE_MODE` | All | `StandAlone` / `SomaStackClusterMode` | Cross-repo |
 
 ---

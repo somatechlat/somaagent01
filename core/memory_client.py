@@ -126,9 +126,9 @@ class BrainMemoryFacade:
                 raise RuntimeError("Direct Mode active but MemoryService is not linked.")
             return await self._remember_direct(request)
         else:
-            # TODO(Architecture): Re-integrate the legacy HTTP client here for full polymorphism.
-            # Currently, the legacy HTTP client exists in `admin.core.soma_client`.
-            raise NotImplementedError("HTTP mode not fully integrated in Facade yet")
+            # HTTP Mode: Use legacy HTTP client from admin.core.soma_client
+            # This is used when SOMA_SAAS_MODE != 'direct'
+            return await self._remember_http(request)
 
     async def recall(self, request: MemoryReadRequest) -> MemoryReadResponse:
         """
@@ -148,7 +148,82 @@ class BrainMemoryFacade:
                 raise RuntimeError("Direct Mode active but MemoryService is not linked.")
             return await self._recall_direct(request)
         else:
-            raise NotImplementedError("HTTP mode not fully integrated in Facade yet")
+            # HTTP Mode: Use legacy HTTP client
+            return await self._recall_http(request)
+
+    # --- HTTP Mode Implementations ---
+
+    async def _remember_http(self, request: MemoryWriteRequest) -> MemoryWriteResponse:
+        """
+        Execute a memory write operation via HTTP to SomaFractalMemory API.
+        """
+        import httpx
+        from django.conf import settings
+
+        coordinate = self._generate_coordinate(request.payload)
+        self._audit_log("remember", request.tenant_id, request.payload)
+
+        url = f"{settings.SOMAFRACTALMEMORY_URL}/api/v1/memories"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                url,
+                json={
+                    "coord": ",".join(str(c) for c in coordinate),
+                    "payload": request.payload,
+                    "memory_type": "episodic",
+                },
+                headers={
+                    "X-Soma-Tenant": request.tenant_id,
+                    "Authorization": f"Bearer {settings.SOMA_MEMORY_API_TOKEN}",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return MemoryWriteResponse(
+            coordinate=coordinate,
+            memory_id=data.get("coord", str(coordinate)),
+            status="success",
+        )
+
+    async def _recall_http(self, request: MemoryReadRequest) -> MemoryReadResponse:
+        """
+        Execute a memory search operation via HTTP to SomaFractalMemory API.
+        """
+        import httpx
+        from django.conf import settings
+
+        self._audit_log("search", request.tenant_id, {"query": request.query})
+
+        url = f"{settings.SOMAFRACTALMEMORY_URL}/api/v1/memories/search"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                url,
+                json={
+                    "query": request.query,
+                    "top_k": request.limit,
+                },
+                headers={
+                    "X-Soma-Tenant": request.tenant_id,
+                    "Authorization": f"Bearer {settings.SOMA_MEMORY_API_TOKEN}",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        memories: List[MemoryItem] = []
+        for res in data.get("memories", []):
+            memories.append(
+                MemoryItem(
+                    memory_id=str(res.get("coordinate")),
+                    coordinate=res.get("coordinate", [0.0, 0.0, 0.0]),
+                    payload=res.get("payload", {}),
+                    score=res.get("importance", 0.0),
+                    created_at=datetime.now(timezone.utc),
+                )
+            )
+
+        return MemoryReadResponse(memories=memories)
 
     # --- Direct Mode Implementations ---
 
