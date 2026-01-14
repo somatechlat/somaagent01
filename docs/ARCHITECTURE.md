@@ -57,20 +57,40 @@ SomaAgent01 is the agent orchestration layer of the SOMA Stack. It provides:
 # docker-compose.yml
 somastack_saas:
   ports:
-    - "63900:9000"  # Agent API
+    - "20020:20020"  # Gateway API
+    - "20042:20042"  # Admin API
 ```
+
+### Port Namespace (SomaAgent01)
+
+| Port | Service | Description |
+|------|----------|-------------|
+| 20020 | Gateway | Main entry point, WebSocket traffic |
+| 20042 | Admin | Django Ninja admin APIs |
+| 20880 | Keycloak | OIDC authentication (external) |
+| 20051 | SpiceDB | Zanzibar-style permissions (external) |
+| 20181 | OPA | Open Policy Agent (external) |
+| 5432 | PostgreSQL | Primary database |
+| 6379 | Redis | Cache, sessions |
 
 ## Technology Stack
 
-| Component | Technology |
-|-----------|------------|
-| **API Framework** | Django Ninja |
-| **ORM** | Django ORM |
-| **Settings** | Pydantic + django-environ |
-| **Database** | PostgreSQL 15 |
-| **Cache/Sessions** | Redis 7.2 |
-| **UI** | Bun + Lit (VIBE Rule 95) |
-| **Message Queue** | Kafka 3.7 |
+**100% Django Compliant - NO FastAPI, NO SQLAlchemy (VIBE Rule 105: Tech Stack Purity)**
+
+| Component | Technology | Version |
+|-----------|------------|----------|
+| **Web Framework** | Django | 5.0+ |
+| **API Framework** | Django Ninja | 1.3+ |
+| **ORM** | Django ORM | Built-in (Django) |
+| **Settings** | Pydantic + django-environ | Latest |
+| **Database** | PostgreSQL | 16+ |
+| **Cache/Sessions** | Redis | 7+ |
+| **Authentication** | Keycloak (OIDC) | Latest |
+| **Authorization** | SpiceDB (Zanzibar) | Latest |
+| **Message Broker** | Kafka | 3.7+ |
+| **Task Queue** | Temporal | Latest |
+| **Frontend Build** | Bun | Latest |
+| **Frontend Components** | Lit Web Components | 3.x (VIBE Rule 95) |
 
 ## Directory Structure
 
@@ -104,23 +124,49 @@ somaAgent01/
 
 ## API Endpoints
 
-### SaaS Admin
+**All APIs use Django Ninja with Pydantic schemas - NO FastAPI, NO SQLAlchemy**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/saas/tenants` | List tenants |
-| POST | `/saas/tenants` | Create tenant |
-| GET | `/saas/subscriptions` | List subscriptions |
-| POST | `/saas/api-keys` | Generate API key |
+### SaaS Admin (`admin/saas/api/`)
 
-### Agent Management
+| Module | Endpoints | File |
+|--------|-----------|-------|
+| **Dashboard** | `GET /api/v2/saas/dashboard` | `dashboard.py` |
+| **Tenants** | `GET/POST/PUT/DELETE /api/v2/saas/tenants` | `tenants.py` |
+| **Tenant Agents** | `GET /api/v2/saas/tenant-agents` | `tenant_agents.py` |
+| **Users** | `GET/POST/PUT/DELETE /api/v2/saas/users` | `users.py` |
+| **User Invite** | `POST/DELETE /api/v2/saas/users/{id}/invite` | `users.py` |
+| **User Password** | `POST /api/v2/saas/users/{id}/reset-password` | `users.py` |
+| **User Impersonate** | `PUT /api/v2/saas/users/{id}/impersonate` | `users.py` |
+| **Tiers** | `GET/POST/PATCH/DELETE /api/v2/saas/tiers` | `tiers.py` |
+| **Features** | `GET/POST /api/v2/saas/features` | `features.py` |
+| **Settings** | `GET/PUT /api/v2/saas/settings` | `settings.py` |
+| **API Keys** | `GET/POST/DELETE /api/v2/saas/settings/api-keys` | `settings.py` |
+| **SSO** | `GET/PUT/POST /api/v2/saas/settings/sso` | `settings.py` |
+| **Integrations** | `GET/PUT /api/v2/saas/integrations` | `integrations.py` |
+| **Billing** | `GET /api/v2/saas/billing` | `billing.py` |
+| **Invoices** | `GET /api/v2/saas/billing/invoices` | `billing.py` |
+| **Audit** | `GET /api/v2/saas/audit` | `audit.py` |
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/agents` | List agents |
-| POST | `/agents` | Create agent |
-| GET | `/agents/{id}/capsule` | Get agent capsule |
-| POST | `/agents/{id}/execute` | Execute agent action |
+**Authentication:** Bearer token (ApiKey) + OIDC (Keycloak)
+
+### Core API (`admin/core/api/`)
+
+| Module | Endpoints | File |
+|--------|-----------|-------|
+| **Health** | `GET /api/v2/core/health`, `/health/quick`, `/health/ready` | `health.py` |
+| **Ping** | `GET /api/v2/core/ping` | `general.py` |
+| **Settings** | `GET/PUT /api/v2/api/settings/*` | `ui_settings.py` |
+| **Sessions** | `GET/POST /api/v2/api/sessions/*` | `sessions.py` |
+| **Memory** | `GET/POST /api/v2/api/memory/*` | `memory.py` |
+| **Kafka** | `GET/POST /api/v2/api/kafka/*` | `kafka.py` |
+
+### Gateway API (`admin/gateway/api/`)
+
+| Module | Endpoints | File |
+|--------|-----------|-------|
+| **A2A** | `POST /api/v2/gateway/a2a/execute` | `gateway.py` |
+| **A2A Terminate** | `POST /api/v2/gateway/a2a/terminate/{id}` | `gateway.py` |
+| **Workflow Describe** | `GET /api/v2/gateway/describe/{id}` | `gateway.py` |
 
 ### Authentication
 
@@ -132,26 +178,91 @@ somaAgent01/
 
 ## Configuration
 
-### Environment Variables
+**All configuration uses Django settings pattern with environment variables. NO FastAPI or SQLAlchemy.**
+
+### Database Configuration
 
 ```bash
-# Database
-DATABASE_URL=postgresql://soma:soma@somastack_postgres:5432/somaagent
+# PostgreSQL (Django settings DATABASES)
+SA01_DB_DSN=postgresql://soma:soma@postgres:5432/somaagent
+DATABASE_URL=postgresql://soma:soma@postgres:5432/somaagent
+```
 
-# Redis
-REDIS_URL=redis://somastack_redis:6379/0
+### Redis Configuration
 
-# Agent Identity
-AGENT_NAME=SomaStack_SaaS_Root
-AGENT_ID=00000000-0000-0000-0000-000000000001
+```bash
+SA01_REDIS_URL=redis://redis:6379/0
+REDIS_URL=redis://redis:6379/0
+```
 
-# Debug
-DJANGO_DEBUG=True
-LOG_LEVEL=INFO
+### Keycloak (Authentication - Port 20880)
 
-# SaaS Mode
+```bash
+KEYCLOAK_URL=http://keycloak:20880
+KEYCLOAK_REALM=somastack
+KEYCLOAK_CLIENT_ID=soma-agent
+```
+
+### SpiceDB (Authorization - Port 20051)
+
+```bash
+SPICEDB_URL=http://spicedb:20051
+SPICEDB_API_KEY=spicedb-secret-key
+```
+
+### OPA (Policy Engine - Port 20181)
+
+```bash
+OPA_URL=http://opa:20181
+```
+
+### SaaS Mode Configuration
+
+```bash
+# Deployment Modes
+SA01_DEPLOYMENT_MODE=DEV
+SOMASTACK_SOFTWARE_MODE=SomaStackClusterMode
 SOMA_SAAS_MODE=true
-ENABLE_IN_PROCESS_BRIDGE=true
+SA01_DEPLOYMENT_TARGET=LOCAL
+```
+
+### Core Django Settings
+
+```bash
+DJANGO_SECRET_KEY=your-secret-key
+DEBUG=false
+ALLOWED_HOSTS=localhost,api.somastack.io
+```
+
+### Model Provider Configuration
+
+```bash
+# These are defaults - can be overridden per-tenant in GlobalDefault
+# Code default: "openrouter" (settings_model.py:23)
+# Platform default: "openai" (profiles.py:79)
+SAAS_DEFAULT_CHAT_MODEL=openai/gpt-4.1
+SA01_CHAT_PROVIDER=openai
+```
+
+### Cross-Service Integration (SomaStackClusterMode)
+
+```bash
+SOMABRAIN_API_URL=http://somabrain:30101
+SOMAMEMORY_API_URL=http://somafractalmemory:10101
+SOMA_MEMORY_API_TOKENyour-memory-token
+MILVUS_HOST=milvus
+MILVUS_PORT=19530
+KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+```
+
+### Environment Variable Priority
+
+Configuration follows this precedence:
+
+```
+1. Environment Variables (highest priority) - for dev/ops control
+2. Django Settings (settings.py) - defaults per environment
+3. Code Defaults (models) - ultimate fallback
 ```
 
 ## SaaS Multi-Tenancy
