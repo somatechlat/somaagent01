@@ -154,30 +154,86 @@ This step is critical. It defines what the Tenant SysAdmin sees when *they* firs
 
 We must expose every variable that controls a tenant's reality.
 
-### 4.1 The Settings Schema (`tenant_settings` JSONB)
+### 4.1 The Settings Architecture
 
-This schema lives in the `tenants` table but feeds into the UI for "Tenant Settings".
+Tenant settings are managed through two separate models following Django ORM best practices:
+
+#### 4.1.1 `Tenant` Model (Identity & Billing)
+**File:** `admin/saas/models/tenants.py:11-113`
+
+The primary tenant model with fields for identity, subscriptions, and billing.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | UUIDField | Primary Key, Default: uuid.uuid4 | Tenant unique identifier |
+| `name` | CharField | max_length=100 | Organization display name |
+| `slug` | SlugField | max_length=100, Unique | URL-safe tenant identifier |
+| `tier` | ForeignKey | To: SubscriptionTier, on_delete=PROTECT | Current subscription tier |
+| `status` | CharField | Default: PENDING, choices: Active/Pending/Suspended/Terminated | Tenant lifecycle status |
+| `keycloak_realm` | CharField | max_length=100, Blank | Keycloak realm for this tenant |
+| `lago_customer_id` | CharField | max_length=100, Indexed, Blank | Lago billing customer ID |
+| `lago_subscription_id` | CharField | max_length=100, Blank | Lago subscription external ID |
+| `billing_email` | EmailField | Blank | Primary billing contact |
+| `feature_overrides` | JSONField | Default: dict, Blank | Per-tenant feature configuration overrides |
+| `metadata` | JSONField | Default: dict, Blank | Arbitrary metadata for integrations |
+| `trial_ends_at` | DateTimeField | Null, Blank | When trial period ends |
+| `created_at` | DateTimeField | Auto_now_add=True | Tenant creation timestamp |
+| `updated_at` | DateTimeField | Auto_now=True | Last update timestamp |
+
+**Indexes:** `slug`, `status`, `lago_customer_id`, `-created_at`
+
+#### 4.1.2 `TenantSettings` Model (Configuration & Branding)
+**File:** `admin/saas/models/profiles.py:140-239`
+
+One-to-one extension with branding, security, and feature settings.
+
+| Category | Field | Type | Default | Description |
+|----------|-------|------|---------|-------------|
+| **Primary Key** | `tenant` | OneToOneField | - | Link to Tenant model (CASCADE) |
+| **Branding** | `logo_url` | URLField | "" | Custom logo URL |
+| | `primary_color` | CharField | "#2563eb" | Primary brand color (hex) |
+| | `accent_color` | CharField | "#3b82f6" | Accent brand color (hex) |
+| | `custom_domain` | CharField | "" | White-label domain |
+| **Security** | `mfa_policy` | CharField | "optional" | Choices: off/optional/required |
+| | `sso_enabled` | BooleanField | false | SSO provider enabled |
+| | `sso_config` | JSONField | dict | SSO provider configuration |
+| | `session_timeout` | IntegerField | 30 | Session timeout in minutes |
+| **Features** | `feature_overrides` | JSONField | dict | Feature overrides within tier limits |
+| **SRS Compliance** | `compliance` | JSONField | dict | HIPAA/GDPR/SOC2 settings |
+| | `compute` | JSONField | dict | Model and compute settings |
+| | `auth` | JSONField | dict | Authentication and authorization |
+| **Metadata** | `timezone` | CharField | "UTC" | Tenant timezone |
+| | `language` | CharField | "en" | Default language code |
+| **Timestamps** | `created_at` | DateTimeField | auto_now_add | Settings creation time |
+| | `updated_at` | DateTimeField | auto_now | Last update time |
+
+**Table:** `saas_tenant_settings`
+
+#### 4.1.3 Example JSONB Schema for Flexible Fields
+
+The JSONB fields (`feature_overrides`, `compliance`, `compute`, `auth`, `sso_config`) use this structure:
 
 ```json
 {
-  "branding": {
-    "logo_url": "https://...",
-    "favicon_url": "https://...",
-    "primary_color": "#000000",
-    "white_label_css": "/* custom override */", 
-    "portal_title": "Acme AI Portal"
+  "feature_overrides": {
+    "enable_voice": true,
+    "enable_vision": true,
+    "enable_code_interpreter": false,
+    "enable_web_browsing": true,
+    "max_concurrent_agents": 50,
+    "gpu_priority": "standard"
   },
   "compliance": {
     "hipaa_mode": true,
-    "audit_level": "verbose", // 'minimal', 'standard', 'verbose'
+    "audit_level": "verbose",
     "data_retention_days": 365,
     "pii_redaction_enabled": true
   },
   "compute": {
     "default_model": "gpt-4o",
-    "allowed_models": ["gpt-4o", "claude-3-opus"],
-    "max_concurrent_agents": 50,
-    "gpu_priority": "standard" // 'standard', 'high', 'dedicated'
+    "allowed_models": ["gpt-4o", "claude-3-5-sonnet"],
+    "temperature": 0.7,
+    "max_tokens": 4096
   },
   "auth": {
     "sso_provider": "google-workspace",
@@ -185,13 +241,25 @@ This schema lives in the `tenants` table but feeds into the UI for "Tenant Setti
     "mfa_enforced": true,
     "password_policy": "nist-800-63b"
   },
-  "features": {
-    "enable_voice": true,
-    "enable_vision": true,
-    "enable_code_interpreter": false, // Sandbox risk
-    "enable_web_browsing": true
+  "sso_config": {
+    "provider": "saml",
+    "entity_id": "https://sso.acme.com",
+    "sso_url": "https://sso.acme.com/saml/sso",
+    "slo_url": "https://sso.acme.com/saml/slo",
+    "certificate": "-----BEGIN CERTIFICATE-----..."
   }
 }
+```
+
+#### 4.1.4 Settings Resolution Priority
+
+When retrieving settings for a tenant (via `admin/core/helpers/settings_defaults.py:37-89`):
+
+```
+1. TenantSettings.feature_overrides (highest priority)
+2. Tenant.feature_overrides (fallback)
+3. GlobalDefault._initial_defaults() (platform blueprint)
+4. SettingsModel defaults (code-level defaults)
 ```
 
 ---
