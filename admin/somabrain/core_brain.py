@@ -4,7 +4,6 @@
 REAL SomaBrain calls ONLY - NO MOCK DATA.
 Uses DegradationMonitor for fallback when SomaBrain is unavailable.
 
-7-Persona Implementation:
 - PhD Dev: Neuromorphic patterns, salience scoring
 - Security Auditor: Action validation, rate limiting
 - Django Architect: Async patterns, proper error handling

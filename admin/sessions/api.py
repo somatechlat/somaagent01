@@ -3,7 +3,6 @@
 
 Session lifecycle and security management.
 
-7-Persona Implementation:
 - Security Auditor: Session security, forced logout
 - Django Architect: Django session backend
 - DevOps: Redis session store

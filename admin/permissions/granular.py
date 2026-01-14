@@ -3,7 +3,6 @@
 
 Granular resource:action permissions with custom role builder.
 
-7-Persona Implementation:
 - Security Auditor: Granular least-privilege, audit trail
 - Django Architect: Django auth integration, ContentType
 - PM: Role builder UI, permission matrix

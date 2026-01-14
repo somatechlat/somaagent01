@@ -152,7 +152,7 @@ async def health_check() -> dict:
 
     # Check external services
     somabrain_status, somabrain_detail = await _check_http_target(
-        "somabrain", getattr(settings, "SOMABRAIN_URL", "http://localhost:8090")
+        "somabrain", getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
     )
     record_status("somabrain", somabrain_status, somabrain_detail)
 

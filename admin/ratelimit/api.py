@@ -3,7 +3,6 @@
 
 Per
 
-7-Persona Implementation:
 - Security Auditor: Rate limiting, abuse prevention
 - DevOps: Redis integration, distributed limits
 - PM: Quota management, usage transparency

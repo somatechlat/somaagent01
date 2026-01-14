@@ -1,8 +1,4 @@
-"""Voice API Schemas - Pydantic models for API.
-
-
-7-Persona Implementation for Voice API.
-"""
+"""Voice API Schemas - Pydantic models for API."""
 
 from __future__ import annotations
 

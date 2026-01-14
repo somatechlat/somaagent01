@@ -277,22 +277,31 @@ class Command(BaseCommand):
         gd.defaults = defaults
         gd.save()
 
-        self.stdout.write(self.style.SUCCESS(f"\n  ✅ Models loaded successfully!\n"))
+        self.stdout.write(self.style.SUCCESS("\n  ✅ Models loaded successfully!\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • Added: {added_count}\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • Updated: {updated_count}\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • Total: {len(defaults['models'])}\n"))
 
         # Show model breakdown
-        free_enabled = len([m for m in defaults["models"] if m.get("enabled", False) and ":free" in m["id"]])
-        paid_enabled = len([m for m in defaults["models"] if m.get("enabled", False) and ":free" not in m["id"]])
-        default_chat = next((m for m in defaults["models"] if m.get("default_for_chat", False)), None)
+        free_enabled = len(
+            [m for m in defaults["models"] if m.get("enabled", False) and ":free" in m["id"]]
+        )
+        paid_enabled = len(
+            [m for m in defaults["models"] if m.get("enabled", False) and ":free" not in m["id"]]
+        )
+        default_chat = next(
+            (m for m in defaults["models"] if m.get("default_for_chat", False)), None
+        )
 
         self.stdout.write(self.style.HTTP_INFO("\n  📊 Model Summary:\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • FREE enabled: {free_enabled}\n"))
         self.stdout.write(self.style.HTTP_INFO(f"     • PAID enabled: {paid_enabled}\n"))
         if default_chat:
-            self.stdout.write(self.style.SUCCESS(f"     • Default Chat Model: {default_chat['display_name']}\n"))
+            self.stdout.write(
+                self.style.SUCCESS(f"     • Default Chat Model: {default_chat['display_name']}\n")
+            )
         else:
             self.stdout.write(self.style.WARNING("     • Default Chat Model: NONE\n"))
+
 
 __all__ = ["Command"]

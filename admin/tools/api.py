@@ -3,7 +3,6 @@
 
 Tool registration and execution for agents.
 
-7-Persona Implementation:
 - PhD Dev: Tool architecture, MCP
 - Security Auditor: Tool sandboxing
 - DevOps: Tool execution limits

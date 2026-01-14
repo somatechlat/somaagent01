@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 2.3 - Password Reset.
 
-7-Persona Implementation:
 - PhD Dev: Secure token generation
 - Security Auditor: Rate limiting, token expiration
 - Django Architect: Clean async patterns

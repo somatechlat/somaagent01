@@ -1,6 +1,5 @@
 """Django Management Command: run_conversation_worker.
 
-
 Replaces: services/conversation_worker/main.py (FastAPI container)
 
 Usage:

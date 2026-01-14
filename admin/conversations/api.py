@@ -3,7 +3,6 @@
 
 Conversation lifecycle and messaging.
 
-7-Persona Implementation:
 - PhD Dev: Conversation architecture, streaming
 - PM: Chat experience
 - QA: Message validation

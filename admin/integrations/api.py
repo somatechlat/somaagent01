@@ -3,7 +3,6 @@
 
 Manage external service integrations.
 
-7-Persona Implementation:
 - DevOps: Service connectors, health checks
 - Security Auditor: Credential management, OAuth
 - PM: Integration marketplace

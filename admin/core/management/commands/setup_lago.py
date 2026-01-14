@@ -57,4 +57,3 @@ LAGO_ENCRYPTION_KEY_DERIVATION_SALT={key_derivation}
 
 if __name__ == "__main__":
     main()
-

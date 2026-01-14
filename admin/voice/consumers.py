@@ -3,7 +3,6 @@
 
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
-7-Persona Implementation:
 - 🏗️ Django Architect: Channels consumer, async handlers
 - 🔒 Security Auditor: Token validation, tenant isolation
 - 📈 PM: Clear message protocol, status updates
@@ -313,9 +312,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             import httpx
 
             # Get LLM response via internal API
-            llm_url = getattr(
-                settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat"
-            )
+            llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 llm_response = await client.post(

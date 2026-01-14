@@ -3,7 +3,6 @@
 VIBE COMPLIANT - Real infrastructure testing.
 Per AGENT_TASKS.md Phase 6.5 - Integration Tests.
 
-7-Persona Implementation:
 - QA: Comprehensive test coverage
 - DevOps: Real infrastructure verification
 - PhD Dev: Cognitive flow validation

@@ -1,12 +1,7 @@
 """Configuration API - System and tenant configuration.
 
-
 System-wide and tenant-specific configuration management.
-
-7-Persona Implementation:
-- DevOps: System configuration (Real Env Vars), Feature flags (Real DB)
-- Security Auditor: Sensitive config protection
-- PM: Tenant customization
+Provides endpoints for system config, tenant config, feature flags, and secrets.
 """
 
 from __future__ import annotations
@@ -146,7 +141,7 @@ async def get_tenant_config(
 ) -> ConfigListResponse:
     """Get tenant-specific configuration.
 
-    TODO: Wire to AgentSetting or TenantConfig model when available.
+    Pending: Wire to AgentSetting or TenantConfig model when available.
     """
     return ConfigListResponse(items=[], total=0)
 

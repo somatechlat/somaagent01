@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md - Search functionality.
 
-7-Persona Implementation:
 - PhD Dev: Search algorithms, ranking
 - PM: User search experience
 - DevOps: Elasticsearch integration

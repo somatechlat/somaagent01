@@ -1,8 +1,4 @@
-"""LLM Django Admin.
-
-
-7-Persona Implementation for LLM Model Configuration.
-"""
+"""LLM Django Admin."""
 
 from django.contrib import admin
 from django.utils.html import format_html

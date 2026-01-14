@@ -8,7 +8,6 @@ Architecture:
                               ↓
                       Payload cleared after sync
 
-7-Persona Implementation:
 - PhD Dev: ZDL pattern
 - DevOps: Temporal durability
 - Security Auditor: Data integrity

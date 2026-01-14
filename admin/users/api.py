@@ -3,7 +3,6 @@
 
 User lifecycle and profile management.
 
-7-Persona Implementation:
 - Security Auditor: User security, MFA
 - PM: User onboarding
 - Django Architect: Django User model

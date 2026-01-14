@@ -7,7 +7,6 @@ Report usage and cost breakdown for tenant agents.
 - Real Prometheus metrics (with fallback)
 - Per SRS-METRICS-DASHBOARDS.md Section 3.2
 
-7-Persona Implementation:
 - 📈 PM: Usage summary per quota
 - 🏦 CFO: Cost estimation
 - 🏗️ Architect: Prometheus integration
@@ -185,5 +184,77 @@ async def _get_usage_from_prometheus(request) -> list[UsageMetric]:
                     current=int(images),
                     limit=quotas["images"],
                     unit="",
-                    percentage=_calc_percentage(images, quot
+                    percentage=_calc_percentage(images, quotas["images"]),
+                ),
+                UsageMetric(
+                    label="Voice Minutes",
+                    current=int(voice_minutes),
+                    limit=quotas["voice_minutes"],
+                    unit="min",
+                    percentage=_calc_percentage(voice_minutes, quotas["voice_minutes"]),
+                ),
+            ]
 
+    except Exception as e:
+        logger.warning(f"Prometheus query failed, using defaults: {e}")
+        return _get_fallback_usage()
+
+
+def _extract_prometheus_value(data: dict) -> float:
+    """Extract scalar value from Prometheus response."""
+    try:
+        result = data.get("data", {}).get("result", [])
+        if result and len(result) > 0:
+            return float(result[0].get("value", [0, 0])[1])
+    except (IndexError, ValueError, TypeError):
+        pass
+    return 0.0
+
+
+def _get_tenant_quotas(tenant_id: str) -> dict:
+    """Get tenant quota limits."""
+    return {"api_calls": 100000, "tokens": 10000000, "images": 1000, "voice_minutes": 600}
+
+
+def _calc_percentage(current: float, limit: int) -> int:
+    """Calculate percentage of quota used."""
+    if limit <= 0:
+        return 0
+    return min(100, int((current / limit) * 100))
+
+
+def _get_fallback_usage() -> list[UsageMetric]:
+    """Return fallback usage when Prometheus unavailable."""
+    return [
+        UsageMetric(label="API Calls", current=0, limit=100000, unit="", percentage=0),
+        UsageMetric(label="LLM Tokens", current=0, limit=10000000, unit="", percentage=0),
+        UsageMetric(label="Images", current=0, limit=1000, unit="", percentage=0),
+        UsageMetric(label="Voice Minutes", current=0, limit=600, unit="min", percentage=0),
+    ]
+
+
+async def _get_agent_usage(request) -> list[AgentUsage]:
+    """Get per-agent usage breakdown."""
+    return []
+
+
+def _calculate_costs(usage: list[UsageMetric], agents: list[AgentUsage]) -> list[CostBreakdown]:
+    """Calculate cost breakdown from usage."""
+    costs = []
+    for metric in usage:
+        if metric.label == "LLM Tokens":
+            amount = (metric.current / 1000) * 0.002
+            costs.append(
+                CostBreakdown(category="LLM", amount=amount, details=f"{metric.current:,} tokens")
+            )
+        elif metric.label == "Images":
+            amount = metric.current * 0.02
+            costs.append(
+                CostBreakdown(category="Images", amount=amount, details=f"{metric.current} images")
+            )
+        elif metric.label == "Voice Minutes":
+            amount = metric.current * 0.006
+            costs.append(
+                CostBreakdown(category="Voice", amount=amount, details=f"{metric.current} minutes")
+            )
+    return costs

@@ -3,7 +3,6 @@
 
 Agent CRUD, configuration, and lifecycle.
 
-7-Persona Implementation:
 - PhD Dev: Agent architecture, LLM config
 - PM: Agent catalog, templates
 - ML Eng: Model selection, parameters

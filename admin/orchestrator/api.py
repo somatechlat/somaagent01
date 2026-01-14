@@ -3,7 +3,6 @@
 
 Multi-agent workflow orchestration.
 
-7-Persona Implementation:
 - PhD Dev: Workflow theory, DAG execution
 - DevOps: Temporal integration
 - ML Eng: Agent coordination patterns

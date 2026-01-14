@@ -3,7 +3,6 @@
 
 Real-time notifications for SomaBrain events.
 
-7-Persona Implementation:
 - DevOps: WebSocket integration, event streaming
 - PM: User notification preferences
 - Security Auditor: Rate limiting, channel permissions

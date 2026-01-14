@@ -4,7 +4,6 @@
 REAL SomaBrain calls ONLY - NO MOCK DATA.
 Uses DegradationMonitor for fallback when SomaBrain is unavailable.
 
-7-Persona Implementation:
 - PhD Dev: Cognitive architecture patterns
 - Django Architect: Async client integration
 - QA: State validation, error handling

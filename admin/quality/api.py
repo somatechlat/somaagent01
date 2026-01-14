@@ -1,13 +1,8 @@
-I understand you want me to apply a fix for hardcoded service URLs by making them configurable through settings.
+"""
+Quality Evaluation API.
 
-However, I don't have access to the previous code you mentioned. Could you please provide:
-
-1. The previous/current code that needs to be modified
-2. Or specify which file this change should be applied to
-
-Once you provide the relevant code, I'll be happy to apply the change that replaces hardcoded URLs with settings-based configuration using `getattr()` as shown in your example.
-
-Would you like to paste the code snippet that needs this modification?
+Asset quality evaluation, LLM-based critique, and bounded retry logic.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +10,7 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.utils import timezoneno ai slop in comemts remove now and legacy remova hard as it  !enever existed
+from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
@@ -510,7 +505,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
         "generate_image": getattr(settings, "IMAGE_GEN_URL", "http://localhost:8003/generate"),
         "render_diagram": getattr(settings, "DIAGRAM_URL", "http://localhost:8004/render"),
         "llm_completion": getattr(
-            settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat"
+            settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat"
         ),
     }
 

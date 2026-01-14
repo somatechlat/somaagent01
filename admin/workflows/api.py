@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.3 - Temporal Orchestration.
 
-7-Persona Implementation:
 - PhD Dev: Workflow patterns, saga orchestration
 - DevOps: Temporal cluster integration
 - Security Auditor: Workflow access control

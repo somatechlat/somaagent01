@@ -3,7 +3,6 @@
 
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
-7-Persona Implementation:
 - PhD Dev: Proper audio encoding, streaming
 - Security Auditor: File size limits, content validation
 - Django Architect: Async patterns, proper error handling

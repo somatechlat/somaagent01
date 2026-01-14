@@ -127,10 +127,9 @@ class Command(BaseCommand):
             from aiokafka import AIOKafkaProducer
             from django.conf import settings
 
-            bootstrap_servers = getattr(
-                settings,
-                "KAFKA_BOOTSTRAP_SERVERS",
-                os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+            bootstrap_servers = os.environ.get(
+                "SA01_KAFKA_BOOTSTRAP_SERVERS",
+                getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
             )
 
             self._producer = AIOKafkaProducer(
@@ -241,4 +240,3 @@ class Command(BaseCommand):
 
 # Import models for Q object
 from django.db import models
-

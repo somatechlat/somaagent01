@@ -12,7 +12,6 @@ Degraded Mode:
     - Agent QUEUES memories for later sync
     - Flink CAPTURES everything for later persistence
 
-7-Persona Implementation:
 - PhD Dev: Cognitive event patterns
 - DevOps: Kafka/Flink integration
 - ML Eng: Memory consolidation patterns

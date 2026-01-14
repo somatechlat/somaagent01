@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from services.common.secret_manager import SecretManager
+
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
     AuditLog,
@@ -27,7 +29,6 @@ from admin.core.models import (
 
 # --- REAL SERVICE IMPORTS (Verified on physical disk) ---
 from services.common.api_key_store import ApiKeyStore
-from services.common.secret_manager import SecretManager
 
 
 class RepositoryManager:

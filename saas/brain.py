@@ -83,7 +83,18 @@ class BrainBridge:
 
         import httpx
 
-        self._base_url = os.getenv("SOMABRAIN_URL", "http://somabrain:30101")
+        # VIBE Rule 100: Use centralized config instead of os.getenv
+        try:
+            from config import get_settings
+            _settings = get_settings()
+            # Use somabrain internal host/port from centralized config
+            self._base_url = f"http://{getattr(_settings, 'somabrain_host', 'somastack_saas')}:9696"
+            logger.info("📦 Using centralized config for SomaBrain URL")
+        except ImportError:
+            # Fallback for non-SaaS environments
+            self._base_url = os.getenv("SOMABRAIN_URL", "http://somastack_saas:9696")
+            logger.warning("⚠️ Centralized config not available, using environment")
+        
         self._client = httpx.AsyncClient(base_url=self._base_url, timeout=30.0)
         self._mode = "http"
         logger.info("✅ BrainBridge: HTTP mode initialized -> %s", self._base_url)

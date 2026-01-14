@@ -76,14 +76,13 @@ class SomaBrainClient:
         Implements
         Prioritizes Django settings, falls back to environment.
         """
-        import os
 
         # Try Django settings first
         if hasattr(settings, "SOMABRAIN_URL"):
             return str(settings.SOMABRAIN_URL)
 
         # Fallback to environment variable
-        return os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:9696")
+        return getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
 
     @classmethod
     def get(cls) -> "SomaBrainClient":

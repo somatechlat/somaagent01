@@ -3,7 +3,6 @@
 
 Seeds 65+ granular permissions and 8 predefined roles.
 
-7-Persona Implementation:
 - Django Architect: Management command pattern
 - Security Auditor: Least-privilege defaults
 - PM: Role definitions for UI

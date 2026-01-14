@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
@@ -31,23 +30,23 @@ import httpx
 from asgiref.sync import sync_to_async
 from prometheus_client import Counter, Histogram
 
+from admin.agents.services.agentiq_config import get_agentiq_config, get_confidence_config
 from admin.agents.services.agentiq_governor import (
     create_governor,
     TurnContext,
 )
-from admin.agents.services.agentiq_config import get_agentiq_config, get_confidence_config
 from admin.agents.services.agentiq_metrics import (
-    record_governor_decision,
-    record_lane_actual,
     record_aiq_observed,
     record_confidence,
-    update_confidence_ewma,
-    record_receipt_persisted,
+    record_governor_decision,
+    record_lane_actual,
     record_receipt_error,
+    record_receipt_persisted,
+    update_confidence_ewma,
 )
-from admin.agents.services.run_receipt import create_receipt_from_decision
 from admin.agents.services.confidence_scorer import calculate_confidence_safe, ConfidenceEWMA
 from admin.agents.services.context_builder import ContextBuilder
+from admin.agents.services.run_receipt import create_receipt_from_decision
 from admin.core.observability.metrics import ContextBuilderMetrics
 from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
@@ -168,11 +167,11 @@ class ChatService:
 
         self.somabrain_url = somabrain_url or settings.SOMABRAIN_URL
         self.memory_url = memory_url or settings.SOMAFRACTALMEMORY_URL
-        
+
         # VAULT-ONLY: Get memory API token from Vault (no ENV variables)
         secret_manager = get_secret_manager()
         self.memory_api_token = secret_manager.get_credential("soma_memory_api_token") or ""
-        
+
         self.timeout = timeout
 
         # HTTP client for external services
@@ -212,7 +211,7 @@ class ChatService:
 
     async def _ensure_monitoring_initialized(self) -> None:
         """Ensure DegradationMonitor is initialized and started.
-        
+
         This is called lazily to avoid async issues in __init__.
         """
         if not self.degradation_monitor.is_monitoring():
@@ -633,7 +632,6 @@ class ChatService:
             }
 
             built_context = await builder.build_for_turn(
-                
                 turn=turn_dict,
                 max_prompt_tokens=max_total_tokens,
                 lane_plan=decision.lane_plan,
@@ -671,9 +669,8 @@ class ChatService:
             ewma_tracker = ConfidenceEWMA(alpha=0.1)
 
             # Calculate confidence (if enabled)
-            # Note: logprobs extraction depends on LLM provider
-            # For now, we'll pass None which will result in confidence=None
-            # TODO: Implement logprobs extraction from LLM response
+            # Logprobs extraction depends on LLM provider.
+            # Passing None results in confidence=None.
             logprobs = None
             confidence_config = get_confidence_config()
             confidence_result = calculate_confidence_safe(
@@ -688,22 +685,24 @@ class ChatService:
                 is_acceptable, action_msg = confidence_result.is_acceptable(
                     confidence_config.min_acceptance
                 )
-                
+
                 # Update EWMA
                 if confidence_result.score is not None:
                     ewma_value = ewma_tracker.update(confidence_result.score)
                     update_confidence_ewma(provider, model_name, ewma_value)
-                
+
                 # Record metrics
-                is_low = (confidence_result.score is not None and 
-                         confidence_result.score < confidence_config.min_acceptance)
+                is_low = (
+                    confidence_result.score is not None
+                    and confidence_result.score < confidence_config.min_acceptance
+                )
                 record_confidence(
                     provider=provider,
                     model=model_name,
                     score=confidence_result.score,
                     latency_ms=confidence_result.latency_ms,
                     is_low=is_low,
-                    is_rejected=False,  # TODO: Implement rejection logic
+                    is_rejected=False,  # Rejection logic pending
                 )
 
             # Calculate observed AIQ (placeholder - would need actual metrics)
@@ -718,8 +717,7 @@ class ChatService:
                 aiq_obs=observed_aiq,
             )
 
-            # TODO: Persist receipt to PostgreSQL or Kafka
-            # For now, just record metrics
+            # Receipt persistence to PostgreSQL or Kafka pending.
             try:
                 record_receipt_persisted(current_tenant_id, latency_ms=0.0)
             except Exception as e:

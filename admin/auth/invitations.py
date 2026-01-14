@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 2.4 - Invitation Flow.
 
-7-Persona Implementation:
 - PhD Dev: Cryptographic token generation
 - Security Auditor: Token expiration, single-use
 - Django Architect: ORM patterns

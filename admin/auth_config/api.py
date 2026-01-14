@@ -3,7 +3,6 @@
 
 Platform Defaults → Tenant Overrides architecture.
 
-7-Persona Implementation:
 - Security Auditor: Auth policy enforcement
 - DevOps: SSO configuration
 - PM: Tenant customization

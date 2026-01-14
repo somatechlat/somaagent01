@@ -3,7 +3,6 @@
 
 No mocks, no placeholders, no hardcoded URLs.
 
-7-Persona Implementation:
 - PhD Dev: Async HTTP client with retry logic
 - Security Auditor: Checksum verification, quarantine handling
 - DevOps: Health checks, circuit breaker
