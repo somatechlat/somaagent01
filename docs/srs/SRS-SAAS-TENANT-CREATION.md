@@ -132,9 +132,9 @@ This step is critical. It defines what the Tenant SysAdmin sees when *they* firs
 │                                                                             │
 │  🔐 Authentication Strictness                                               │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ Enforce MFA for all users?            [ Yes / No ]                        │
-│  │ Allow Social Login (Google/Github)?   [ Yes / No ]                        │
-│  │ Session Timeout                       [ 4 hours ▼ ]                       │
+│  │ Enforce MFA for all users?            [ Yes / No ]                        │  │
+│  │ Allow Social Login (Google/Github)?   [ Yes / No ]                        │  │
+│  │ Session Timeout                       [ 4 hours ▼ ]                       │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 │  🎨 Default Branding (Can be overridden by Tenant Admin)                    │
@@ -147,6 +147,20 @@ This step is critical. It defines what the Tenant SysAdmin sees when *they* firs
 │  [← Back]                                                 [Next: Review →]  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+**Field Mapping (TenantSettings Model):**
+| UI Field | Model Field | Type | Default | Source |
+|----------|-------------|------|---------|--------|
+| Logo URL | `logo_url` | URLField | "" | `profiles.py:152` |
+| Primary Color | `primary_color` | CharField | "#2563eb" | `profiles.py:153` |
+| Accent Color | `accent_color` | CharField | "#3b82f6" | `profiles.py:154` |
+| Custom Domain | `custom_domain` | CharField | "" | `profiles.py:155` |
+| MFA Policy | `mfa_policy` | CharField | "optional" | `profiles.py:159` |
+| Enable SSO | `sso_enabled` | BooleanField | false | `profiles.py:160` |
+| Session Timeout | `session_timeout` | IntegerField | 30 | `profiles.py:162` |
+| Feature Overrides | `feature_overrides` | JSONField | dict | `profiles.py:165` |
+| Compliance | `compliance` | JSONField | dict | `profiles.py:172` |
+| Timezone | `timezone` | CharField | "UTC" | `profiles.py:183` |
+| Language | `language` | CharField | "en" | `profiles.py:184` |
 
 ---
 

@@ -263,3 +263,105 @@ def test_sso_connection(request, provider: str):
         message="Provider unreachable",
         provider=provider,
     )
+
+
+# =============================================================================
+# LLM PROVIDER API KEYS - VIBE Rule 164 (Vault-Mandatory)
+# =============================================================================
+# These endpoints manage LLM provider API keys stored in Vault.
+# Path: secret/agent/api_keys/{provider}_api_key
+# =============================================================================
+
+from pydantic import BaseModel, Field
+from services.common.unified_secret_manager import get_secret_manager
+
+
+class LLMProviderKeyIn(BaseModel):
+    """Input for setting LLM provider API key."""
+
+    provider: str = Field(..., description="Provider name: openai, anthropic, openrouter, groq")
+    api_key: str = Field(..., description="The API key value")
+
+
+class LLMProviderOut(BaseModel):
+    """Output for LLM provider status."""
+
+    provider: str
+    configured: bool
+    masked_key: Optional[str] = None  # First 8 chars only
+
+
+@router.get("/llm-providers", response=list[LLMProviderOut])
+def list_llm_providers(request):
+    """List all LLM providers and their configuration status.
+
+    Returns which providers have API keys configured in Vault.
+    VIBE Rule 164: Keys stored in Vault, never exposed.
+    """
+    sm = get_secret_manager()
+    providers = ["openai", "anthropic", "openrouter", "groq", "ollama", "fireworks"]
+
+    result = []
+    for provider in providers:
+        key = sm.get_provider_key(provider)
+        configured = bool(key)
+        masked = f"{key[:8]}..." if key and len(key) > 8 else None
+        result.append(
+            LLMProviderOut(
+                provider=provider,
+                configured=configured,
+                masked_key=masked,
+            )
+        )
+
+    return result
+
+
+@router.post("/llm-providers", response=MessageResponse)
+def set_llm_provider_key(request, payload: LLMProviderKeyIn):
+    """Set API key for an LLM provider.
+
+    Stores the key securely in Vault at secret/agent/api_keys/{provider}_api_key.
+    VIBE Rule 164: All secrets in Vault, never in ENV or database.
+    """
+    sm = get_secret_manager()
+
+    # Validate provider name
+    valid_providers = ["openai", "anthropic", "openrouter", "groq", "ollama", "fireworks"]
+    provider = payload.provider.lower()
+
+    if provider not in valid_providers:
+        return MessageResponse(
+            message=f"Invalid provider '{provider}'. Valid: {valid_providers}",
+            success=False,
+        )
+
+    # Store in Vault
+    success = sm.set_provider_key(provider, payload.api_key)
+
+    if success:
+        return MessageResponse(
+            message=f"API key for '{provider}' saved to Vault successfully"
+        )
+    else:
+        return MessageResponse(
+            message=f"Failed to save API key for '{provider}'. Check Vault connectivity.",
+            success=False,
+        )
+
+
+@router.delete("/llm-providers/{provider}", response=MessageResponse)
+def delete_llm_provider_key(request, provider: str):
+    """Delete API key for an LLM provider from Vault."""
+    sm = get_secret_manager()
+
+    success = sm.delete_provider_key(provider.lower())
+
+    if success:
+        return MessageResponse(message=f"API key for '{provider}' deleted from Vault")
+    else:
+        return MessageResponse(
+            message=f"Failed to delete API key for '{provider}'",
+            success=False,
+        )
+

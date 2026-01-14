@@ -50,9 +50,9 @@ def get_session_cache():
 
 def get_secret_manager():
     """Get the SecretManager instance."""
-    from services.common.secret_manager import SecretManager
+    from services.common.unified_secret_manager import get_secret_manager as _get_sm
 
-    return SecretManager()
+    return _get_sm()
 
 
 def get_api_key_store() -> ApiKeyStore:
@@ -65,14 +65,14 @@ def get_api_key_store() -> ApiKeyStore:
 def get_llm_adapter():
     """Get the LLM adapter instance for the gateway."""
     from services.common.llm_adapter import LLMAdapter
-    from services.common.secret_manager import SecretManager
+    from services.common.unified_secret_manager import get_secret_manager
 
     base_url = os.environ.get("SA01_LLM_BASE_URL") or None
     # Prefer per-call secret retrieval to avoid stale keys.
-    sm = SecretManager()
+    sm = get_secret_manager()
 
     def api_key_resolver():
-        return sm.get("provider:openai")  # returns awaitable
+        return sm.get_provider_key("openai")
 
     return LLMAdapter(service_url=base_url, api_key_resolver=api_key_resolver)
 
