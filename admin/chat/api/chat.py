@@ -130,7 +130,7 @@ async def list_conversations(
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_conversations():
@@ -204,7 +204,8 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    # Defensive extraction: Use getattr with fallback pattern
+    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
     agent_id = payload.agent_id or str(uuid4())
 
     # Create conversation using ChatService
@@ -343,13 +344,22 @@ async def get_messages(
     Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
+    from django.conf import settings
+
+    user = get_current_user(request)
+    user_id = user.sub
+    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_messages():
-        # Verify conversation exists
+        # Verify conversation exists AND belongs to current user/tenant
         """Execute get messages."""
 
-        if not Conversation.objects.filter(id=conversation_id).exists():
+        if not Conversation.objects.filter(
+            id=conversation_id,
+            user_id=user_id,
+            tenant_id=tenant_id
+        ).exists():
             return None, 0
 
         qs = Message.objects.filter(conversation_id=conversation_id).order_by("created_at")

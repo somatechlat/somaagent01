@@ -275,8 +275,10 @@ class TestHealthMonitorDeploymentMode:
             def standalone_module_check():
                 # Simulate STANDALONE mode embedded module health check
                 try:
-                    # Try importing embedded module
-                    import somabrain  # type: ignore
+                    # Try importing embedded module to check availability
+                    import somabrain  # noqa: F401  # Intentional side-effect import
+                    if False:
+                        pass  # type: ignore[unreachable]  # Ruff: F401 side-effect import
                     return HealthCheck(healthy=True, latency_ms=15.0)
                 except ImportError:
                     return HealthCheck(healthy=False, latency_ms=0.0, error="Module not found")

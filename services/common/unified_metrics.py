@@ -99,93 +99,134 @@ class UnifiedMetrics:
     - admin/core/observability/metrics.py (50+ re-exports)
 
     Total: 11 well-defined metrics vs 70+ scattered.
+
+    VIBE COMPLIANT: Singleton pattern to prevent Prometheus duplicate registration.
     """
 
-    # Counter Metrics - Monotonically increasing
-    TURNS_TOTAL = Counter(
-        "agent_turns_total",
-        "Total number of agent turns processed",
-        ["tenant_id", "health_status", "result"],
-    )
-    TOKENS_TOTAL = Counter(
-        "agent_tokens_total",
-        "Total tokens processed",
-        ["tenant_id", "direction", "provider", "model"],
-    )
-    ERRORS_TOTAL = Counter(
-        "agent_errors_total", "Total errors encountered", ["tenant_id", "error_type", "component"]
-    )
-    CIRCUIT_OPENS = Counter(
-        "circuit_breaker_opens_total", "Total times circuit opened", ["service_name"]
-    )
-    WEBSOCKET_MESSAGES = Counter(
-        "websocket_messages_total", "Total WebSocket messages", ["direction", "type"]
-    )
+    # Lazy initialization - metrics created only once on first access
+    _instance: Optional[UnifiedMetrics] = None
+    _initialized: bool = False
+
+    # Placeholder for metrics (assigned on first access)
+    TURNS_TOTAL: Optional[Counter] = None
+    TOKENS_TOTAL: Optional[Counter] = None
+    ERRORS_TOTAL: Optional[Counter] = None
+    CIRCUIT_OPENS: Optional[Counter] = None
+    WEBSOCKET_MESSAGES: Optional[Counter] = None
 
     # Gauge Metrics - Current state
-    ACTIVE_TURNS = Gauge(
-        "agent_turns_active", "Number of currently processing turns", ["tenant_id"]
-    )
-    SERVICES_HEALTHY = Gauge(
-        "services_healthy_count",
-        "Number of healthy services",
-    )
-    DEGRADATION_LEVEL = Gauge(
-        "degradation_level",
-        "Current system degradation level (0=none, 1=minor, 2=moderate, 3=severe, 4=critical)",
-        ["service"],
-    )
-    WEBSOCKET_CONNECTIONS = Gauge(
-        "websocket_connections_active", "Active WebSocket connections", ["agent_id"]
-    )
+    ACTIVE_TURNS: Optional[Gauge] = None
+    SERVICES_HEALTHY: Optional[Gauge] = None
+    DEGRADATION_LEVEL: Optional[Gauge] = None
+    WEBSOCKET_CONNECTIONS: Optional[Gauge] = None
 
     # Histogram Metrics - Distribution of values
-    TURN_LATENCY = Histogram(
-        "agent_turn_latency_seconds",
-        "Turn processing latency",
-        ["tenant_id", "health_status"],
-        buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
-    )
-    TOKEN_LATENCY = Histogram(
-        "token_generation_latency_seconds",
-        "Time per token generation",
-        ["provider", "model"],
-        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
-    )
-    SERVICE_LATENCY = Histogram(
-        "service_call_latency_seconds",
-        "Service call latency",
-        ["service_name"],
-        buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
-    )
-    MEMORY_RETRIEVAL_TIME = Histogram(
-        "memory_retrieval_time_seconds",
-        "Time to retrieve from memory",
-        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
-    )
-    WEBSOCKET_MESSAGE_LATENCY = Histogram(
-        "websocket_message_latency_seconds",
-        "WebSocket message processing latency",
-        ["type"],
-        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
-    )
+    TURN_LATENCY: Optional[Histogram] = None
+    TOKEN_LATENCY: Optional[Histogram] = None
+    SERVICE_LATENCY: Optional[Histogram] = None
+    MEMORY_RETRIEVAL_TIME: Optional[Histogram] = None
+    WEBSOCKET_MESSAGE_LATENCY: Optional[Histogram] = None
 
     # Info Metrics - Static labels
-    SYSTEM_INFO = Info("agent_system_info", "System information")
+    SYSTEM_INFO: Optional[Info] = None
 
-    _instance: Optional[UnifiedMetrics] = None
     _active_turns: dict[str, TurnMetrics] = {}
 
+    def _initialize(self) -> None:
+        """Initialize Prometheus metrics (called once on single creation)."""
+        if UnifiedMetrics._initialized:
+            return
+
+        UnifiedMetrics._initialized = True
+
+        # Counter Metrics - Monotonically increasing
+        UnifiedMetrics.TURNS_TOTAL = Counter(
+            "agent_turns_total",
+            "Total number of agent turns processed",
+            ["tenant_id", "health_status", "result"],
+        )
+        UnifiedMetrics.TOKENS_TOTAL = Counter(
+            "agent_tokens_total",
+            "Total tokens processed",
+            ["tenant_id", "direction", "provider", "model"],
+        )
+        UnifiedMetrics.ERRORS_TOTAL = Counter(
+            "agent_errors_total", "Total errors encountered", ["tenant_id", "error_type", "component"]
+        )
+        UnifiedMetrics.CIRCUIT_OPENS = Counter(
+            "circuit_breaker_opens_total", "Total times circuit opened", ["service_name"]
+        )
+        UnifiedMetrics.WEBSOCKET_MESSAGES = Counter(
+            "websocket_messages_total", "Total WebSocket messages", ["direction", "type"]
+        )
+
+        # Gauge Metrics - Current state
+        UnifiedMetrics.ACTIVE_TURNS = Gauge(
+            "agent_turns_active", "Number of currently processing turns", ["tenant_id"]
+        )
+        UnifiedMetrics.SERVICES_HEALTHY = Gauge(
+            "services_healthy_count",
+            "Number of healthy services",
+        )
+        UnifiedMetrics.DEGRADATION_LEVEL = Gauge(
+            "degradation_level",
+            "Current system degradation level (0=none, 1=minor, 2=moderate, 3=severe, 4=critical)",
+            ["service"],
+        )
+        UnifiedMetrics.WEBSOCKET_CONNECTIONS = Gauge(
+            "websocket_connections_active", "Active WebSocket connections", ["agent_id"]
+        )
+
+        # Histogram Metrics - Distribution of values
+        UnifiedMetrics.TURN_LATENCY = Histogram(
+            "agent_turn_latency_seconds",
+            "Turn processing latency",
+            ["tenant_id", "health_status"],
+            buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+        )
+        UnifiedMetrics.TOKEN_LATENCY = Histogram(
+            "token_generation_latency_seconds",
+            "Time per token generation",
+            ["provider", "model"],
+            buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+        )
+        UnifiedMetrics.SERVICE_LATENCY = Histogram(
+            "service_call_latency_seconds",
+            "Service call latency",
+            ["service_name"],
+            buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+        )
+        UnifiedMetrics.MEMORY_RETRIEVAL_TIME = Histogram(
+            "memory_retrieval_time_seconds",
+            "Time to retrieve from memory",
+            buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+        )
+        UnifiedMetrics.WEBSOCKET_MESSAGE_LATENCY = Histogram(
+            "websocket_message_latency_seconds",
+            "WebSocket message processing latency",
+            ["type"],
+            buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+        )
+
+        # Info Metrics - Static labels
+        UnifiedMetrics.SYSTEM_INFO = Info("agent_system_info", "System information")
+
+        logger.info("UnifiedMetrics: Prometheus metrics initialized (singleton)")
+
     def __new__(cls) -> UnifiedMetrics:
-        """Singleton pattern."""
+        """Singleton pattern - ensure only one instance exists."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            # Initialize metrics on first instantiation
+            cls._instance._initialize()
         return cls._instance
 
     @classmethod
-    def get(cls) -> UnifiedMetrics:
+    def get_instance(cls) -> UnifiedMetrics:
         """Get singleton instance."""
-        return cls()
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     def record_turn_start(
         self, turn_id: str, tenant_id: str, user_id: str, agent_id: str
@@ -388,7 +429,7 @@ class UnifiedMetrics:
 
 
 # Singleton instance
-_metrics = UnifiedMetrics.get()
+_metrics = UnifiedMetrics.get_instance()
 
 
 def get_metrics() -> UnifiedMetrics:

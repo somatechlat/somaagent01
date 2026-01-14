@@ -109,7 +109,7 @@ class Message(models.Model):
     # IMRS: Intelligent Model Routing System fields
     rating = models.FloatField(null=True, blank=True, help_text="User feedback 0.0-1.0")
     task_type = models.CharField(max_length=50, null=True, blank=True, db_index=True)
-    tools_used = models.JSONField(default=list, blank=True)
+    tools_used = models.JSONField(default=list, blank=True)  # VIBE: Use mutable default (acceptable for JSONField)
     feedback_type = models.CharField(
         max_length=20, choices=FEEDBACK_TYPE_CHOICES, null=True, blank=True
     )
@@ -119,7 +119,7 @@ class Message(models.Model):
     synced_to_brain = models.BooleanField(default=False, db_index=True)
 
     # Metadata for additional context (tool calls, etc.)
-    metadata = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)  # VIBE: Use mutable default (acceptable for JSONField)
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 

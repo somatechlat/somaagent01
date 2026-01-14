@@ -67,35 +67,104 @@ def real_infrastructure():
     return True
 
 
-@pytest.fixture(scope="session")
-def django_db_setup():
-    """Configure Django for testing."""
+@pytest.fixture(scope="session", autouse=True)
+def django_db_setup(real_infrastructure):
+    """Configure Django for testing.
+    
+    VIBE COMPLIANT: Uses real infrastructure (PostgreSQL on port 63932)
+    
+    VIBE Rule 7: Uses real Docker Compose PostgreSQL - NO mocks!
+    
+    autouse=True ensures Django is configured before any test runs.
+    Depends on real_infrastructure to ensure database is accessible.
+    """
     import django
     from django.conf import settings
     
+    # Only configure if not already configured
     if not settings.configured:
         settings.configure(
             DEBUG=True,
+            SECRET_KEY="test-secret-key-for-e2e-tests-vibe-compliant",
             DATABASES={
                 "default": {
                     "ENGINE": "django.db.backends.postgresql",
                     "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-                    "PORT": os.environ.get("POSTGRES_PORT", "63932"),
+                    "PORT": int(os.environ.get("POSTGRES_PORT", "63932")),
                     "NAME": os.environ.get("POSTGRES_DB", "somaagent"),
-                    "USER": os.environ.get("POSTGRES_USER", "soma"),
-                    "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "soma"),
+                    "USER": os.environ.get("POSTGRES_USER", "soma"),  # Docker uses "soma"
+                    "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "soma"),  # Docker uses "soma"
+                    "CONN_MAX_AGE": 60,  # Connection pooling
+                    "OPTIONS": {
+                        "connect_timeout": 5,
+                    },
+                    "ATOMIC_REQUESTS": False,  # Disable for manual transaction handling
                 },
             },
             INSTALLED_APPS=[
                 "django.contrib.contenttypes",
                 "django.contrib.auth",
+                "django.contrib.postgres",
                 "admin.core",
                 "admin.saas",
                 "admin.chat",
                 "admin.agents",
             ],
+            USE_TZ=True,
+            TIME_ZONE="UTC",
+            LOGGING={
+                "version": 1,
+                "handlers": {
+                    "console": {
+                        "class": "logging.StreamHandler",
+                    },
+                },
+                "loggers": {
+                    "django.db.backends": {
+                        "handlers": ["console"],
+                        "level": "INFO",
+                    },
+                },
+            },
         )
         django.setup()
+        
+        # Create tables with Django migrations
+        from django.core.management import execute_from_command_line
+        from io import StringIO
+        import sys
+        
+        # Capture migration output
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        
+        try:
+            # Create tables directly (avoid makemigrations issue)
+            from django.db import connection
+            with connection.schema_editor() as schema_editor:
+                # Create content types table
+                from django.contrib.contenttypes.models import ContentType
+                schema_editor.create_model(ContentType)
+                
+                # Create auth tables
+                from django.contrib.auth.models import User, Permission
+                schema_editor.create_model(User)
+                
+                # Import and create app tables
+                from admin.chat.models import Conversation, Message
+                from admin.agents.models import Agent, Capsule
+                from admin.saas.models import Tenant, APIKey
+                
+                # Create in correct order (respecting foreign keys)
+                schema_editor.create_model(Tenant)
+                schema_editor.create_model(Agent)
+                schema_editor.create_model(Capsule)
+                schema_editor.create_model(Conversation)
+                schema_editor.create_model(Message)
+                schema_editor.create_model(APIKey)
+                
+        finally:
+            sys.stdout = old_stdout
 
 
 # =============================================================================
@@ -136,12 +205,18 @@ def auth_token() -> str:
 
 @pytest.fixture
 def chat_service(real_infrastructure) -> "ChatService":
-    """Get configured ChatService instance."""
+    """Get configured ChatService instance.
+    
+    VIBE COMPLIANT: Uses real ChatService implementation with actual infrastructure
+    (no mocks, no fakes, real PostgreSQL, Redis, SomaBrain).
+    """
     from services.common.chat_service import ChatService
     
+    # ChatService only accepts somabrain_url and timeout parameters
+    # Memory operations use SomaBrainClient internally
     return ChatService(
         somabrain_url=os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:63996"),
-        memory_url=os.environ.get("SA01_MEMORY_URL", "http://localhost:63901"),
+        timeout=30.0,
     )
 
 

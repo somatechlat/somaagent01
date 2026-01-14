@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🐳 SOMA STACK SAAS DEPLOYMENT
@@ -68,6 +66,8 @@ services:
       - SA01_TEMPORAL_URI=somastack_temporal:7233
       # Redis URL for legacy
       - SA01_REDIS_URL=redis://somastack_redis:6379/0
+      # Multi-tenancy: Default tenant ID when not in JWT
+      - SAAS_DEFAULT_TENANT_ID=00000000-0000-0000-0000-000000000003
       # Keycloak OIDC Identity Provider
       - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
       # Legacy compatibility (for settings.py fallback)
@@ -84,6 +84,7 @@ services:
       - somastack_redis
       - somastack_milvus
       - somastack_kafka
+      - somastack_keycloak
     restart: unless-stopped
     volumes:
       # Mount source code for live editing (optional, good for dev)
@@ -139,6 +140,38 @@ services:
     # Note: OPA distroless image lacks shell utilities for healthcheck
     # Monitor via diagnostic endpoint from host: curl http://localhost:63983/health
 
+    # ===========================================================================
+    # KEYCLOAK (OIDC Identity Provider) - VIBE Rule 94: Single Auth Path
+    # ===========================================================================
+  somastack_keycloak:
+    container_name: somastack_keycloak
+    image: quay.io/keycloak/keycloak:23.0
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+    ports:
+      - "63980:8080" # SOMA Port Authority: 639xx range
+    volumes:
+      - ./keycloak-realm.json:/opt/keycloak/data/import/realm.json:ro
+    networks:
+      - soma_stack_net
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q 'UP'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          memory: 512M
     # ===========================================================================
     # 3. SHARED INFRASTRUCTURE
     # ===========================================================================

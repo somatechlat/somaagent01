@@ -1,19 +1,4 @@
-"""Session Manager for Redis-backed user sessions.
-
-
-Per login-to-chat-journey design.md Section: SessionManager
-
-Implements:
-- Session creation with Redis storage (key: session:{user_id}:{session_id})
-- Session retrieval and validation
-- Activity tracking with TTL extension
-- Session deletion (single and bulk)
-
-Personas:
-- Django Architect: Async Redis integration
-- Security Auditor: Session isolation, TTL enforcement
-- Performance Engineer: Efficient Redis operations
-"""
+"""Session Manager for Redis-backed user sessions."""
 
 from __future__ import annotations
 

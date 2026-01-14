@@ -20,6 +20,10 @@ from services.common.unified_secret_manager import UnifiedSecretManager, get_sec
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
     AuditLog,
+    Capsule,
+    CapsuleInstance,
+    Capability,
+    Constitution,
     DeadLetterMessage,
     MemoryReplica,
     Notification,
@@ -80,6 +84,24 @@ class RepositoryManager:
     def get_replica_store(self):
         """Get MemoryReplica manager (replaces MemoryReplicaStore)."""
         return MemoryReplica.objects
+
+    # --- CAPSULE & GOVERNANCE ACCESSORS ---
+
+    def get_capsule_store(self):
+        """Get Capsule manager for capsule operations."""
+        return Capsule.objects
+
+    def get_capsule_instance_store(self):
+        """Get CapsuleInstance manager for running instances."""
+        return CapsuleInstance.objects
+
+    def get_constitution_store(self):
+        """Get Constitution manager for governance."""
+        return Constitution.objects
+
+    def get_capability_store(self):
+        """Get Capability manager for tool registry."""
+        return Capability.objects
 
     # --- PENDING MIGRATIONS ---
 
@@ -147,6 +169,27 @@ def get_replica_store():
     return get_repository_manager().get_replica_store()
 
 
+def get_capsule_store():
+    """Get global Capsule manager."""
+    return get_repository_manager().get_capsule_store()
+
+
+def get_capsule_instance_store():
+    """Get global CapsuleInstance manager."""
+    return get_repository_manager().get_capsule_instance_store()
+
+
+def get_constitution_store():
+    """Get global Constitution manager."""
+    return get_repository_manager().get_constitution_store()
+
+
+def get_capability_store():
+    """Get global Capability manager."""
+    return get_repository_manager().get_capability_store()
+
+
 async def get_settings_repo():
     """Get UI settings store (Async compatibility wrapper)."""
     return get_ui_settings_store()
+

@@ -1,0 +1,151 @@
+{
+    "realm": "somaagent",
+    "enabled": true,
+    "sslRequired": "none",
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": false,
+    "bruteForceProtected": true,
+    "accessTokenLifespan": 3600,
+    "refreshTokenMaxReuse": 0,
+    "clients": [
+        {
+            "clientId": "somaagent-api",
+            "name": "SOMA Agent API",
+            "description": "Backend API client for SomaAgent01",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "publicClient": false,
+            "secret": "soma-api-secret",
+            "directAccessGrantsEnabled": true,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "serviceAccountsEnabled": true,
+            "authorizationServicesEnabled": false,
+            "redirectUris": [
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://localhost:5173/*",
+                "http://localhost:63900/*"
+            ],
+            "webOrigins": [
+                "+"
+            ],
+            "attributes": {
+                "access.token.lifespan": "3600",
+                "client.secret.creation.time": "1705248000"
+            },
+            "protocolMappers": [
+                {
+                    "name": "tenant-mapper",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-hardcoded-claim-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "claim.name": "tenant",
+                        "claim.value": "default",
+                        "jsonType.label": "String",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "userinfo.token.claim": "true"
+                    }
+                },
+                {
+                    "name": "soma-tier-mapper",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-hardcoded-claim-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "claim.name": "soma_tier",
+                        "claim.value": "dev",
+                        "jsonType.label": "String",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true"
+                    }
+                }
+            ]
+        },
+        {
+            "clientId": "somaagent-web",
+            "name": "SOMA Agent Web UI",
+            "description": "Frontend SPA client",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "publicClient": true,
+            "directAccessGrantsEnabled": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "redirectUris": [
+                "http://localhost:5173/*",
+                "http://localhost:63900/*"
+            ],
+            "webOrigins": [
+                "+"
+            ]
+        }
+    ],
+    "users": [
+        {
+            "username": "testuser",
+            "enabled": true,
+            "emailVerified": true,
+            "email": "test@soma.dev",
+            "firstName": "Test",
+            "lastName": "User",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "testpass",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "default-roles-somaagent",
+                "user"
+            ]
+        },
+        {
+            "username": "admin",
+            "enabled": true,
+            "emailVerified": true,
+            "email": "admin@soma.dev",
+            "firstName": "Admin",
+            "lastName": "User",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "adminpass",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "default-roles-somaagent",
+                "admin",
+                "user"
+            ]
+        }
+    ],
+    "roles": {
+        "realm": [
+            {
+                "name": "user",
+                "description": "Standard user access to SOMA services"
+            },
+            {
+                "name": "admin",
+                "description": "Administrator access with full permissions"
+            },
+            {
+                "name": "agent-operator",
+                "description": "Can create and manage agents"
+            }
+        ]
+    },
+    "defaultRoles": [
+        "user"
+    ],
+    "scopeMappings": [],
+    "clientScopeMappings": {}
+}

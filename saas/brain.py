@@ -94,7 +94,7 @@ class BrainBridge:
             # Fallback for non-SaaS environments
             self._base_url = os.getenv("SOMABRAIN_URL", "http://somastack_saas:9696")
             logger.warning("⚠️ Centralized config not available, using environment")
-        
+
         self._client = httpx.AsyncClient(base_url=self._base_url, timeout=30.0)
         self._mode = "http"
         logger.info("✅ BrainBridge: HTTP mode initialized -> %s", self._base_url)
@@ -154,6 +154,107 @@ class BrainBridge:
         else:
             resp = await self._client.get("/health")
             return resp.json()
+
+    # =========================================================================
+    # GMD LEARNING / RL FEEDBACK (Theorem 2)
+    # =========================================================================
+
+    def apply_feedback(self, tenant_id: str, utility: float, reward: float) -> bool:
+        """Apply RL feedback signal - GMD Theorem 2.
+
+        SAAS (direct): AdaptationEngine.apply_feedback()
+        DISTRIBUTED (http): Falls back to HTTP
+        """
+        if self._mode == "direct":
+            try:
+                from somabrain.learning.adaptation import AdaptationEngine
+
+                if not hasattr(self, "_engines"):
+                    self._engines: Dict[str, Any] = {}
+                if tenant_id not in self._engines:
+                    self._engines[tenant_id] = AdaptationEngine(tenant_id=tenant_id)
+                return self._engines[tenant_id].apply_feedback(utility=utility, reward=reward)
+            except Exception as e:
+                logger.error(f"[GMD] Direct feedback failed: {e}")
+                return False
+        else:
+            logger.warning("[GMD] apply_feedback() in HTTP mode - use async version")
+            return False
+
+    async def apply_feedback_async(
+        self, session_id: str, signal: str, value: float, meta: Optional[Dict] = None
+    ) -> bool:
+        """Apply RL feedback - async version for HTTP mode."""
+        if self._mode == "direct":
+            return self.apply_feedback(session_id, utility=value, reward=value)
+        else:
+            try:
+                resp = await self._client.post(
+                    "/v1/learning/reward",
+                    json={"session_id": session_id, "signal": signal, "value": value, "meta": meta or {}},
+                )
+                return resp.json().get("ok", False)
+            except Exception as e:
+                logger.error(f"[GMD] HTTP feedback failed: {e}")
+                return False
+
+    # =========================================================================
+    # NEUROMODULATORS
+    # =========================================================================
+
+    def get_neuromodulators(self, tenant_id: str) -> Dict[str, float]:
+        """Get neuromodulator state - GMD baseline.
+
+        SAAS (direct): PerTenantNeuromodulators
+        """
+        if self._mode == "direct":
+            try:
+                from somabrain.neuromodulators import PerTenantNeuromodulators
+
+                if not hasattr(self, "_neuromod"):
+                    self._neuromod = PerTenantNeuromodulators()
+                state = self._neuromod.get_state(tenant_id)
+                return {
+                    "dopamine": state.dopamine,
+                    "serotonin": state.serotonin,
+                    "noradrenaline": state.noradrenaline,
+                    "acetylcholine": state.acetylcholine,
+                }
+            except Exception as e:
+                logger.error(f"[GMD] Direct get_neuromodulators failed: {e}")
+        return {"dopamine": 0.5, "serotonin": 0.5, "noradrenaline": 0.5, "acetylcholine": 0.5}
+
+    def set_neuromodulators(self, tenant_id: str, **levels) -> None:
+        """Set neuromodulator state - GMD baseline.
+
+        SAAS (direct): PerTenantNeuromodulators
+        """
+        if self._mode == "direct":
+            try:
+                from somabrain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+
+                if not hasattr(self, "_neuromod"):
+                    self._neuromod = PerTenantNeuromodulators()
+                state = NeuromodState(**levels)
+                self._neuromod.set_state(tenant_id, state)
+                logger.info(f"[GMD] Neuromodulators set for tenant {tenant_id[:8]}")
+            except Exception as e:
+                logger.error(f"[GMD] Direct set_neuromodulators failed: {e}")
+
+    async def set_neuromodulators_async(
+        self, tenant_id: str, persona_id: str, neuromodulators: Dict[str, float]
+    ) -> None:
+        """Set neuromodulators - async for HTTP mode."""
+        if self._mode == "direct":
+            self.set_neuromodulators(tenant_id, **neuromodulators)
+        else:
+            try:
+                await self._client.put(
+                    "/v1/neuromodulators",
+                    json={"tenant": tenant_id, "persona": persona_id, "neuromodulators": neuromodulators},
+                )
+            except Exception as e:
+                logger.error(f"[GMD] HTTP set_neuromodulators failed: {e}")
 
 
 # Singleton instance

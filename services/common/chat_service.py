@@ -85,6 +85,52 @@ class ChatService:
         if self._http_client:
             await self._http_client.aclose()
 
+    async def _load_neuromodulators(
+        self, agent_id: str, tenant_id: Optional[str], persona_id: Optional[str]
+    ) -> None:
+        """Load neuromodulator baseline from Capsule and apply to SomaBrain.
+
+        GMD Integration: Implements neuromodulator loading per whitepaper.
+        Uses default baseline if Capsule not found.
+        """
+        from admin.core.models import Capsule
+        from saas.brain import brain
+
+        # Default neuromodulators (GMD baseline)
+        default_neuro = {
+            "dopamine": 0.5,
+            "serotonin": 0.5,
+            "norepinephrine": 0.5,
+            "acetylcholine": 0.5,
+        }
+
+        try:
+            @sync_to_async
+            def get_capsule_neuro():
+                capsule = Capsule.objects.filter(id=agent_id).first()
+                if capsule and capsule.neuromodulator_baseline:
+                    return capsule.neuromodulator_baseline
+                return None
+
+            capsule_neuro = await get_capsule_neuro()
+            neuromodulators = capsule_neuro or default_neuro
+
+            # Apply to SomaBrain (uses direct or HTTP based on mode)
+            try:
+                await brain.set_neuromodulators_async(
+                    tenant_id=tenant_id or "default",
+                    persona_id=persona_id or "default",
+                    neuromodulators=neuromodulators,
+                )
+                logger.info(
+                    f"[GMD] Loaded neuromodulators for agent {agent_id[:8]}: {neuromodulators}"
+                )
+            except Exception as e:
+                logger.warning(f"[GMD] Failed to update neuromodulators: {e}")
+
+        except Exception as e:
+            logger.warning(f"[GMD] Failed to load capsule neuromodulators: {e}")
+
     # =========================================================================
     # CONVERSATION MANAGEMENT
     # =========================================================================
@@ -226,6 +272,16 @@ class ChatService:
                 conversation_id=conversation_id,
                 created_at=session_record.created_at,
             )
+
+            # GMD Integration: Load neuromodulator baseline from Capsule (non-blocking)
+            asyncio.create_task(
+                self._load_neuromodulators(
+                    agent_id=agent_id,
+                    tenant_id=user_context.get("tenant_id"),
+                    persona_id=user_context.get("persona_id"),
+                )
+            )
+
             CHAT_LATENCY.labels(method="initialize_agent_session").observe(
                 time.perf_counter() - start_time
             )
@@ -561,6 +617,26 @@ class ChatService:
                 latency_ms=elapsed_ms,
             )
         )
+
+        # 12. GMD Integration: Collect implicit RL signals (non-blocking)
+        from services.common.implicit_signals import signal_follow_up, signal_long_response
+
+        # Signal follow-up based on history timing
+        if len(raw_history) >= 2:
+            # If last message was assistant and now user is responding, it's a follow-up
+            last_role = raw_history[-1].get("role") if raw_history else None
+            if last_role == "assistant":
+                # Approximate time since last message (use message count as proxy)
+                time_since_estimate = min(60 * 5, 30 * len(raw_history))  # Heuristic
+                asyncio.create_task(
+                    signal_follow_up(conversation_id, time_since_estimate)
+                )
+
+        # Signal long user message (indicates engagement)
+        if len(content) > 200:
+            asyncio.create_task(
+                signal_long_response(conversation_id, len(content))
+            )
 
         # Track overall metrics
         CHAT_TOKENS.labels(direction="input").inc(turn_metrics.tokens_in)
