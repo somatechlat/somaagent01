@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl build-esse
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN pip install maturin
 
-# Copy Rust source from SomaBrain context (Assumed context is root of MONOREPO logic, 
+# Copy Rust source from SomaBrain context (Assumed context is root of MONOREPO logic,
 # but here we copy from the specific relative paths mapped in docker-compose context)
 COPY somabrain/rust_core /rust/rust_core
 WORKDIR /rust/rust_core
@@ -87,8 +87,8 @@ COPY --from=python-builder /usr/local/bin /usr/local/bin
 # ---------------------------------------------------------------------------
 # Note: Docker Compose build context must be set effectively to allow this.
 # We assume the build context is the PARENT directory containing all 3 repos,
-# OR we rely on the `somaAgent01` repo having copied them? 
-# NO - The USER said "somaAgent01" is the repo. 
+# OR we rely on the `somaAgent01` repo having copied them?
+# NO - The USER said "somaAgent01" is the repo.
 # WE MUST ASSUME the user will build this with a context that has access to all 3.
 # Or better: We assume the standard layout where directories are siblings.
 # But Dockerfile CANNOT step out of context.
@@ -109,8 +109,8 @@ ENV PYTHONPATH=/app/somaAgent01:/app/somabrain:/app/somafractalmemory:/app:$PYTH
 # ---------------------------------------------------------------------------
 # CONFIGURATION & SCRIPTS
 # ---------------------------------------------------------------------------
-COPY somaAgent01/infra/saas_deployment/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY somaAgent01/infra/saas_deployment/start_saas.sh /app/start_saas.sh
+COPY somaAgent01/infra/saas/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY somaAgent01/infra/saas/start_saas.sh /app/start_saas.sh
 
 # Create Helper Management Scripts
 # (Symlinks to manage.py in respective folders)

@@ -55,19 +55,292 @@ gantt
     Final Validation        :          p4-3, 2026-01-19, 1d
 ```
 
-### 1.2 Deployment Flowchart
+### 1.2 Deployment Prerequisites - Deployment Mode Configuration
+
+**Critical Requirement**: Before deployment, you MUST configure deployment mode (`SAAS` or `STANDALONE`) based on your infrastructure requirements.
+
+#### 1.2.1 SAAS Mode Prerequisites
+
+**Description**: Services communicate via HTTP APIs. Use for multi-tenant cloud deployments with centralized services.
+
+**Configuration**:
+
+| Environment Variable | Value | Purpose |
+|-----------------------|-------|---------|
+| `SA01_DEPLOYMENT_MODE` | `saas` | Enable SAAS deployment mode |
+| `SOMA_BRAIN_URL` | `http://somabrain:30001` | SomaBrain API endpoint |
+| `SOMA_MEMORY_URL` | `http://somafractalmemory:10001` | SomaFractalMemory API endpoint |
+| `SOMA_DEPLOYMENT_MODE` | `saas` | SomaBrain SAAS mode |
+| `SFM_AUTH_MODE` | `integrated` | SomaFractalMemory auth via SomaBrain |
+
+**Infrastructure Requirements**:
+
+| Component | Required | Minimum Specs |
+|-----------|----------|---------------|
+| **SomaAgent01 Service** | ✅ Required | 2 CPU, 4GB RAM |
+| **SomaBrain Service** | ✅ Required | 4 CPU, 8GB RAM |
+| **SomaFractalMemory Service** | ✅ Required | 4 CPU, 8GB RAM |
+| **PostgreSQL** | ✅ Required | 4 CPU, 16GB RAM |
+| **Redis** | ✅ Required | 2 CPU, 4GB RAM |
+| **Kafka** | ✅ Required | 4 CPU, 8GB RAM |
+| **HashiCorp Vault** | ✅ Required | 2 CPU, 4GB RAM |
+| **Prometheus** | ✅ Required | 2 CPU, 4GB RAM |
+| **Lago Billing** | Optional | 2 CPU, 4GB RAM |
+
+**Docker Compose Configuration**:
+
+```yaml
+# docker-compose.yml - SAAS mode
+version: '3.8'
+
+services:
+  # SomaAgent01 - SAAS mode
+  somaagent01:
+    image: sotaai/somaagent01:1.0.0
+    ports:
+      - "20001:20001"
+    environment:
+      - SA01_DEPLOYMENT_MODE=saas
+      - SOMA_BRAIN_URL=http://somabrain:30001
+      - SOMA_MEMORY_URL=http://somafractalmemory:10001
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/somaagent01
+      - VAULT_ADDR=http://vault:8200
+    depends_on:
+      - postgres
+      - somabrain
+      - somafractalmemory
+      - vault
+
+  # SomaBrain - SAAS mode
+  somabrain:
+    image: sotaai/somabrain:1.0.0
+    ports:
+      - "30001:30001"
+    environment:
+      - SOMA_DEPLOYMENT_MODE=saas
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/somabrain
+    depends_on:
+      - postgres
+
+  # SomaFractalMemory - SAAS mode
+  somafractalmemory:
+    image: sotaai/somafractalmemory:1.0.0
+    ports:
+      - "10001:10001"
+    environment:
+      - SFM_AUTH_MODE=integrated  # Validate via SomaBrain
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/somafractalmemory
+    depends_on:
+      - postgres
+      - somabrain
+
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_MULTIPLE_DATABASES=somaagent01,somabrain,somafractalmemory
+
+  vault:
+    image: hashicorp/vault:1.15
+    ports:
+      - "8200:8200"
+```
+
+**Network Topology**:
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Web[Web Client]
+        Mobile[Mobile App]
+    end
+
+    subgraph "Load Balancer"
+        NGINX[NGINX<br/>Port 80/443]
+    end
+
+    subgraph "SomaAgent01 (SAAS Mode)"
+        SA01[SomaAgent01<br/>Port 20001<br/>SAAS mode]
+    end
+
+    subgraph "SomaBrain (SAAS Mode)"
+        SB[SomaBrain<br/>Port 30001<br/>SAAS mode]
+    end
+
+    subgraph "SomaFractalMemory (SAAS Mode)"
+        SFM[SomaFractalMemory<br/>Port 10001<br/>Integrated Auth]
+    end
+
+    subgraph "Infrastructure"
+        PG[(PostgreSQL<br/>Multi-DB)]
+        REDIS[(Redis)]
+        KAFKA[Kafka]
+        VAULT[HashiCorp Vault]
+        PROM[Prometheus]
+    end
+
+    Web --> NGINX
+    Mobile --> NGINX
+    NGINX --> SA01
+    SA01 -->|HTTP API| SB
+    SA01 -->|HTTP API| SFM
+    SB -->|Validate Auth| SFM
+    SA01 --> PG
+    SB --> PG
+    SFM --> PG
+    SA01 --> REDIS
+    SA01 --> KAFKA
+    SA01 --> VAULT
+    SA01 --> PROM
+```
+
+#### 1.2.2 STANDALONE Mode Prerequisites
+
+**Description**: Services run independently with embedded SomaBrain and SomaFractalMemory. Use for single-tenant, on-premises, or simplified deployments.
+
+**Configuration**:
+
+| Environment Variable | Value | Purpose |
+|-----------------------|-------|---------|
+| `SA01_DEPLOYMENT_MODE` | `standalone` | Enable STANDALONE deployment mode |
+| `SOMA_BRAIN_URL` | *Not required* | Embedded module used instead |
+| `SOMA_MEMORY_URL` | *Not required* | Embedded module used instead |
+| `DATABASE_URL` | `postgresql://user:pass@postgres:5432/somaagent01` | Single database for all data |
+
+**Infrastructure Requirements**:
+
+| Component | Required | Minimum Specs |
+|-----------|----------|---------------|
+| **SomaAgent01 Service** | ✅ Required | 8 CPU, 16GB RAM (includes embedded modules) |
+| **SomaBrain Service** | ❌ Not deployed | Embedded in SomaAgent01 |
+| **SomaFractalMemory Service** | ❌ Not deployed | Embedded in SomaAgent01 |
+| **PostgreSQL** | ✅ Required | 4 CPU, 16GB RAM (single DB for all data) |
+| **Redis** | ✅ Optional (caching) | 2 CPU, 4GB RAM |
+| **Kafka** | ❌ Optional (async) | 4 CPU, 8GB RAM |
+| **HashiCorp Vault** | ✅ Required | 2 CPU, 4GB RAM |
+| **Prometheus** | ✅ Required | 2 CPU, 4GB RAM |
+| **Lago Billing** | ❌ Optional | 2 CPU, 4GB RAM (local billing) |
+
+**Docker Compose Configuration**:
+
+```yaml
+# docker-compose.yml - STANDALONE mode
+version: '3.8'
+
+services:
+  # SomaAgent01 - STANDALONE mode (includes embedded SomaBrain and SomaFractalMemory)
+  somaagent01:
+    image: sotaai/somaagent01:1.0.0-standalone
+    ports:
+      - "20001:20001"
+    environment:
+      - SA01_DEPLOYMENT_MODE=standalone
+      # No SOMA_BRAIN_URL or SOMA_MEMORY_URL (embedded modules)
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/somaagent01
+      - VAULT_ADDR=http://vault:8200
+    depends_on:
+      - postgres
+      - vault
+    # Extended resource allocation for embedded modules
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          cpus: '4'
+          memory: 8G
+    volumes:
+      - ./config:/app/config
+
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=somaagent01
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+
+  vault:
+    image: hashicorp/vault:1.15
+    ports:
+      - "8200:8200"
+```
+
+**Network Topology**:
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Web[Web Client]
+        Mobile[Mobile App]
+    end
+
+    subgraph "Load Balancer"
+        NGINX[NGINX<br/>Port 80/443]
+    end
+
+    subgraph "SomaAgent01 (STANDALONE Mode)"
+        SA01[SomaAgent01<br/>Port 20001<br/>STANDALONE mode]
+        EmbedSB[Embedded<br/>SomaBrain Module]
+        EmbedSFM[Embedded<br/>SomaFractalMemory Module]
+    end
+
+    subgraph "Infrastructure"
+        PG[(PostgreSQL<br/>Single DB)]
+        REDIS[(Redis)]
+        KAFKA[Kafka]
+        VAULT[HashiCorp Vault]
+        PROM[Prometheus]
+    end
+
+    Web --> NGINX
+    Mobile --> NGINX
+    NGINX --> SA01
+    SA01 -->|In-process Calls| EmbedSB
+    SA01 -->|Direct Queries| EmbedSFM
+    SA01 --> PG
+    SA01 --> REDIS
+    SA01 --> KAFKA
+    SA01 --> VAULT
+    SA01 --> PROM
+```
+
+#### 1.2.3 Deployment Mode Selection Guide
+
+| Criteria | Choose SAAS Mode | Choose STANDALONE Mode |
+|----------|-----------------|-----------------------|
+| **Deployment size** | Multi-tenant, cloud-scale | Single-tenant or on-premises |
+| **Infrastructure complexity** | Can manage 3+ services | Prefer single service |
+| **Latency requirements** | Acceptable 25-90ms overhead | Need <30ms latency |
+| **Tenant isolation** | Need per-service isolation | Accept single-service isolation |
+| **Billing** | Need centralized billing | Optional local billing |
+| **Development** | Distributed team | Small team or local development |
+| **Horizontal scaling** | Need independent scaling | Vertical scaling acceptable |
+| **Operational overhead** | Can handle 3+ services | Prefer simpler ops |
+| **Cost** | Higher (3 services) | Lower (1 service) |
+| **Use case** | SaaS platform | Enterprise, on-premises, dev |
+
+#### 1.2.4 Deployment Flowchart (With Mode Selection)
 
 ```mermaid
 flowchart TD
-    Start([Deployment Start]) --> PreDeploy[Pre-deployment Checks]
+    Start([Deployment Start]) --> SelectMode{Select Deployment Mode}
+    
+    SelectMode|SAAS| PrepSAAS[Prepare SAAS prerequisites<br/>- 3 services<br/>- SOMA_BRAIN_URL<br/>- SOMA_MEMORY_URL]
+    SelectMode|STANDALONE| PrepStandalone[Prepare STANDALONE prerequisites<br/>- 1 service<br/>- Embedded modules<br/>- Single DB]
+    
+    PrepSAAS --> PreDeploy[Pre-deployment Checks]
+    PrepStandalone --> PreDeploy
+    
     PreDeploy --> PreCheck{All checks pass?}
     
     PreCheck|No| Block[Rollback: Fix issues and retry]
     Block --> Start
     
     PreCheck|Yes| Backup[Create database backup]
-    Backup --> Migrate[Run database migrations]
-    Migrate --> Deploy[Deploy unified layers]
+    Backup --> SetMode[Set deployment_mode<br/>in environment]
+    
+    SetMode --> Migrate[Run database migrations]
+    Migrate --> Deploy[Deploy unified layers<br/>with specified mode]
     
     Deploy --> Healthz[Health check endpoint]
     Healthz --> HealthzCheck{Healthy?}
@@ -75,7 +348,11 @@ flowchart TD
     HealthzCheck|No| Rollback[Rollback to previous version]
     HealthzCheck|Yes| Canary[Route 1% traffic to new version]
     
-    Canary --> Monitor[Monitor metrics for 1 hour]
+    Canary --> CheckMode{Verify deployment mode}
+    CheckMode|Unexpected| RollbackMode[Check environment variables<br/>and redeploy]
+    CheckMode|Expected| Monitor[Monitor metrics for 1 hour]
+    RollbackMode --> Deploy
+    
     Monitor --> CanaryCheck{Errors < 1%?}
     
     CanaryCheck|No| Rollback

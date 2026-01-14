@@ -44,7 +44,7 @@ EXCLUDES="--exclude=.git --exclude=.venv --exclude=node_modules --exclude=target
 
 # Note: We excluded *.toml but we need pyproject.toml for Brain.
 # Strategy: We can't exclude *.toml globally if we need specific ones.
-# Let's refine: Keep Cargo.toml and pyproject.toml, exclude others if any? 
+# Let's refine: Keep Cargo.toml and pyproject.toml, exclude others if any?
 # Actually, tar excludes are strict. If I exclude *.toml, I lose pyproject.toml.
 # Better to exclude specific folders and extensions that are clearly waste.
 EXCLUDES="--exclude=.git --exclude=.venv --exclude=node_modules --exclude=target --exclude=__pycache__ --exclude=*.log --exclude=.DS_Store \
@@ -55,7 +55,7 @@ EXCLUDES="--exclude=.git --exclude=.venv --exclude=node_modules --exclude=target
 # We are in WORKSPACE_ROOT
 # We select the 3 repos explicitly to avoid sending other workspace junk
 tar -czh $EXCLUDES somaAgent01 somabrain somafractalmemory | docker build \
-    -f somaAgent01/infra/saas_deployment/Dockerfile \
+    -f somaAgent01/infra/saas/Dockerfile \
     -t somatech/soma-saas:latest \
     -t somatech/soma-saas:$(date +%Y%m%d) \
     -
