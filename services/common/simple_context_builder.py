@@ -19,7 +19,14 @@ from typing import Any, Callable
 from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
+
+# Deployment mode detection
+DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
+SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 
 @dataclass
@@ -289,6 +296,10 @@ class ContextBuilder:
         - If is_degraded=True (system-level decision)
         - If circuit breaker is OPEN (SomaBrain-specific failure)
 
+        Deployment mode support:
+        - SAAS mode: HTTP POST to SomaBrain with circuit breaker
+        - STANDALONE mode: Direct PostgreSQL query via embedded module
+
         Args:
             messages: Existing message list to append to
             turn: Turn context
@@ -299,23 +310,52 @@ class ContextBuilder:
             Tuple of (snippet_messages, tokens_used)
         """
         if budget <= 0 or is_degraded:
+            logger.debug(f"Memory retrieval skipped: budget={budget}, degraded={is_degraded}")
             return [], 0
 
+        # STANDALONE mode: Use embedded SomaBrain module
+        if STANDALONE_MODE:
+            return await self._add_memory_standalone(messages, turn, budget)
+        
+        # SAAS mode: Use SomaBrain HTTP API
+        return await self._add_memory_saas(messages, turn, budget)
+
+    async def _add_memory_saas(
+        self,
+        messages: list[dict[str, Any]],
+        turn: dict[str, Any],
+        budget: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Add memory snippets via SomaBrain HTTP API (SAAS mode).
+
+        Protected by circuit breaker. Uses cached somafactalmemory client.
+
+        Args:
+            messages: Existing message list to append to
+            turn: Turn context
+            budget: Token budget for memory
+
+        Returns:
+            Tuple of (snippet_messages, tokens_used)
+        """
         try:
             # Call SomaBrain with circuit breaker protection
             async def retrieve():
                 return await self.somabrain.context_evaluate(
-                    tenant_id=turn.get("tenant_id", ""),
-                    session_id=turn.get("session_id", ""),
-                    query=turn.get("user_message", ""),
-                    top_k=3,  # Fixed top_k for simplicity
+                    {
+                        "tenant_id": turn.get("tenant_id", ""),
+                        "session_id": turn.get("session_id", ""),
+                        "query": turn.get("user_message", ""),
+                        "top_k": 3,  # Fixed top_k for simplicity
+                    }
                 )
 
             response: dict[str, Any] = await self.somabrain_breaker.call(retrieve)
 
-            results = response.get("candidates") or response.get("results") or []
+            results = response.get("memories") or []
 
             if not results:
+                logger.debug("SAAS mode: No memories returned from SomaBrain")
                 return [], 0
 
             # Redact and budget snippets
@@ -347,18 +387,91 @@ class ContextBuilder:
                     }
                 )
 
+            logger.info(f"SAAS mode: Retrieved {len(added)} memory snippets")
             return added, used_tokens
 
-        except CircuitBreakerError:
-            logger.debug("SomaBrain circuit open - skipping memory")
+        except CircuitBreakerError as e:
+            logger.warning(f"SAAS mode: SomaBrain circuit breaker open - {e}")
             return [], 0
 
         except SomaClientError as e:
-            logger.info(f"SomaBrain error: {e} - skipping memory")
+            logger.warning(f"SAAS mode: SomaBrain client error - {e}")
             return [], 0
 
         except Exception as e:
-            logger.error(f"Unexpected error retrieving memory: {e}", exc_info=True)
+            logger.error(f"SAAS mode: Unexpected error retrieving memory - {e}", exc_info=True)
+            return [], 0
+
+    async def _add_memory_standalone(
+        self,
+        messages: list[dict[str, Any]],
+        turn: dict[str, Any],
+        budget: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Add memory snippets via embedded SomaBrain (STANDALONE mode).
+
+        Uses direct PostgreSQL queries via hybrid search, no HTTP calls.
+
+        Args:
+            messages: Existing message list to append to
+            turn: Turn context
+            budget: Token budget for memory
+
+        Returns:
+            Tuple of (snippet_messages, tokens_used)
+        """
+        try:
+            from somabrain.cognition.core import HybridSearch  # Embedded import
+            search_engine = HybridSearch()
+
+            # Direct hybrid search query (no HTTP call)
+            results: list[str] = search_engine.search(
+                query_text=turn.get("user_message", ""),
+                conversation_id=turn.get("session_id", ""),
+                top_k=3,  # Fixed top_k for simplicity
+            )
+
+            if not results:
+                logger.debug("STANDALONE mode: No memories from embedded SomaBrain")
+                return [], 0
+
+            # Redact and budget snippets
+            added = []
+            used_tokens = 0
+
+            for text in results:
+                if not text:
+                    continue
+
+                redacted = self.redactor.redact(text)
+                tokens = self.count_tokens(redacted)
+
+                if used_tokens + tokens > budget:
+                    break
+
+                added.append(redacted)
+                used_tokens += tokens
+
+            # Add as memory block
+            if added:
+                memory_block = self._format_snippet_block(added)
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": memory_block,
+                        "name": "memory",
+                    }
+                )
+
+            logger.info(f"STANDALONE mode: Retrieved {len(added)} memory snippets via embedded module")
+            return added, used_tokens
+
+        except ImportError as e:
+            logger.error(f"STANDALONE mode: Embedded SomaBrain module not found - {e}")
+            return [], 0
+
+        except Exception as e:
+            logger.error(f"STANDALONE mode: Error in embedded SomaBrain - {e}", exc_info=True)
             return [], 0
 
     def _extract_snippet_text(self, item: dict[str, Any]) -> str:

@@ -56,10 +56,14 @@ See Also:
 from __future__ import annotations
 
 from functools import lru_cache
+import importlib
+import logging
 
 from ninja import NinjaAPI
 
 from admin.common.handlers import register_exception_handlers
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -286,9 +290,11 @@ def create_api() -> NinjaAPI:
     safe_add_router("/permissions", permissions_router)
 
     # API Keys (Programmatic access)
-    from admin.apikeys.api import router as apikeys_router
-
-    safe_add_router("/apikeys", apikeys_router)
+    try:
+        apikeys_module = importlib.import_module("admin.apikeys.api")
+        safe_add_router("/apikeys", apikeys_module.router)
+    except ModuleNotFoundError:
+        logger.warning("API keys router not found; /apikeys is disabled.")
 
     # Sessions (User session management)
     from admin.sessions.api import router as sessions_router
@@ -371,9 +377,11 @@ def create_api() -> NinjaAPI:
     safe_add_router("/auth-config", auth_config_router)
 
     # Secrets (Credential management)
-    from admin.secrets.api import router as secrets_router
-
-    safe_add_router("/secrets", secrets_router)
+    try:
+        secrets_module = importlib.import_module("admin.secrets.api")
+        safe_add_router("/secrets", secrets_module.router)
+    except ModuleNotFoundError:
+        logger.warning("Secrets router not found; /secrets is disabled.")
 
     # Scheduler (Job scheduling)
     from admin.scheduler.api import router as scheduler_router
