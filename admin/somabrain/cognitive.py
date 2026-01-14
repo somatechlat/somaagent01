@@ -21,7 +21,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceUnavailableError
-from admin.somabrain.client import get_somabrain_client, SomaBrainError
+from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
 router = Router(tags=["cognitive"])
 logger = logging.getLogger(__name__)

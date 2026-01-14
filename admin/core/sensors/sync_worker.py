@@ -19,7 +19,7 @@ import asyncio
 import logging
 
 from admin.core.sensors.outbox import SensorOutbox
-from admin.somabrain.client import get_somabrain_client, SomaBrainError
+from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
 logger = logging.getLogger(__name__)
 
