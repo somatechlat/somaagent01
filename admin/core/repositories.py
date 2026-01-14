@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from services.common.secret_manager import SecretManager
+from services.common.unified_secret_manager import UnifiedSecretManager, get_secret_manager
 
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
@@ -39,7 +39,7 @@ class RepositoryManager:
         """Initialize the instance."""
 
         self._api_key_store: Optional[ApiKeyStore] = None
-        self._secret_manager: Optional[SecretManager] = None
+        self._secret_manager: Optional[UnifiedSecretManager] = None
 
     # --- SERVICE ACCESSORS ---
 
@@ -49,10 +49,10 @@ class RepositoryManager:
             self._api_key_store = ApiKeyStore()
         return self._api_key_store
 
-    def get_secret_manager(self) -> SecretManager:
-        """Get singleton instance of SecretManager."""
+    def get_secret_manager(self) -> UnifiedSecretManager:
+        """Get singleton instance of UnifiedSecretManager."""
         if self._secret_manager is None:
-            self._secret_manager = SecretManager()
+            self._secret_manager = get_secret_manager()
         return self._secret_manager
 
     # --- DJANGO MODEL MANAGER ACCESSORS (Replacing Legacy Stores) ---

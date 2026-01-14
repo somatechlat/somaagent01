@@ -88,13 +88,13 @@ class MultimodalExecutor:
         # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
         from services.common.llm_adapter import LLMAdapter
-        from services.common.secret_manager import SecretManager
+        from services.common.unified_secret_manager import get_secret_manager
 
         # Prefer per-call secret retrieval to avoid stale keys.
-        sm = SecretManager()
+        sm = get_secret_manager()
 
         def api_key_resolver():
-            return sm.get("provider:openai")  # returns awaitable
+            return sm.get_provider_key("openai")
 
         self._llm_adapter = LLMAdapter(api_key_resolver=api_key_resolver)
 

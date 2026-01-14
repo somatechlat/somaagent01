@@ -61,9 +61,38 @@ curl -s -X POST \
     -d '{"data": {"token": ""}}' \
     "$VAULT_ADDR/v1/secret/data/soma/milvus"
 
+# =============================================================================
+# LLM PROVIDER API KEYS - VIBE Rule 164 (Vault-Mandatory)
+# =============================================================================
+# Path: secret/agent/api_keys/{provider}_api_key
+# Used by: UnifiedSecretManager.get_provider_key()
+# =============================================================================
+
+echo "🤖 Initializing LLM provider API keys path..."
+
+# Create agent/api_keys path with placeholder structure
+# Actual keys should be set via Admin UI or CLI, NOT hardcoded here
+curl -s -X POST \
+    -H "X-Vault-Token: $VAULT_TOKEN" \
+    -d '{"data": {"_initialized": "true"}}' \
+    "$VAULT_ADDR/v1/secret/data/agent/api_keys"
+
+# Create agent/credentials path for other secrets
+curl -s -X POST \
+    -H "X-Vault-Token: $VAULT_TOKEN" \
+    -d '{"data": {"_initialized": "true"}}' \
+    "$VAULT_ADDR/v1/secret/data/agent/credentials"
+
 echo ""
 echo "✅ Vault initialization complete!"
-echo "   Secrets seeded at path: secret/soma/*"
+echo "   Infrastructure secrets: secret/soma/*"
+echo "   LLM Provider keys:      secret/agent/api_keys/*"
+echo "   Agent credentials:      secret/agent/credentials/*"
+echo ""
+echo "   To add LLM provider key:"
+echo "   curl -X POST -H 'X-Vault-Token: $VAULT_TOKEN' \\"
+echo "     -d '{\"data\": {\"openrouter_api_key\": \"sk-or-...\"}}'  \\"
+echo "     $VAULT_ADDR/v1/secret/data/agent/api_keys"
 echo ""
 echo "   To verify:"
-echo "   curl -H 'X-Vault-Token: $VAULT_TOKEN' $VAULT_ADDR/v1/secret/data/soma/postgres"
+echo "   curl -H 'X-Vault-Token: $VAULT_TOKEN' $VAULT_ADDR/v1/secret/data/agent/api_keys"

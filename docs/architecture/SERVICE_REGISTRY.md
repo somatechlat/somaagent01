@@ -322,8 +322,202 @@ ValueError: ❌ Missing required service: SA01_SOMA_BASE_URL
 
 ---
 
-## See Also
+## Complete Environment Variable Reference
 
-- `.env.template` - Complete environment variable reference
-- `scripts/validate_env.py` - Environment validation script
-- `AGENT.md` - Service architecture documentation
+### SomaFractalMemory (somafractalmemory/settings/base.py)
+
+**Source File:** `somafractalmemory/settings/base.py` (367 lines)
+
+| Category | Variable | Type | Default | Description |
+|----------|-----------|------|---------|-------------|
+| **Security** | `SOMA_SECRET_KEY` | str | dev-only-change-in-production | Django secret key |
+| | `DJANGO_SECRET_KEY` | str | fallback | Alternative secret key |
+| | `SOMA_DEBUG` | str | false | Debug mode (true/false) |
+| | `SOMA_ALLOWED_HOSTS` | str | localhost,127.0.0.1,host.docker.internal | Comma-separated hosts |
+| | `SOMA_API_TOKEN` | str | (none) | API authentication token |
+| | `SOMA_API_TOKEN_FILE` | str | (none) | Path to API token file |
+| **Database** | `SOMA_POSTGRES_URL` | str | **REQUIRED** | PostgreSQL DSN |
+| | `SOMA_DB_NAME` | str | parsed from DSN | Database name |
+| | `SOMA_POSTGRES_SSL_MODE` | str | (none) | SSL mode (require,disable,etc.) |
+| | `SOMA_POSTGRES_SSL_ROOT_CERT` | str | (none) | SSL root certificate path |
+| | `SOMA_POSTGRES_SSL_CERT` | str | (none) | SSL certificate path |
+| | `SOMA_POSTGRES_SSL_KEY` | str | (none) | SSL key path |
+| **Redis** | `SOMA_REDIS_HOST` | str | redis | Redis hostname |
+| | `SOMA_REDIS_PORT` | str/int | 6379 | Redis port (handles tcp:// format) |
+| | `SOMA_REDIS_DB` | int | 0 | Redis database number |
+| | `SOMA_REDIS_PASSWORD` | str | from Vault | Redis password (Vault preferred) |
+| **Milvus** | `SOMA_MILVUS_HOST` | str | milvus (or SOMA_INFRA__MILVUS) | Milvus hostname |
+| | `SOMA_MILVUS_PORT` | str/int | 19530 | Milvus port |
+| **Memory Config** | `SOMA_NAMESPACE` | str | default | Global namespace |
+| | `SOMA_MEMORY_NAMESPACE` | str | api_ns | Memory namespace |
+| | `SOMA_MEMORY_MODE` | str | evented_enterprise | Memory mode |
+| | `SOMA_MODEL_NAME` | str | microsoft/codebert-base | Embedding model |
+| | `SOMA_VECTOR_DIM` | int | 768 | Vector dimension |
+| | `SOMA_MAX_MEMORY_SIZE` | int | 100000 | Max memory entries |
+| | `SOMA_PRUNING_INTERVAL_SECONDS` | int | 600 | Pruning interval |
+| | `SOMA_FORCE_HASH_EMBEDDINGS` | str | false | Force hash embeddings |
+| | `MEMORY_DB_PATH` | str | ./data/memory.db | Memory database path |
+| **Hybrid Search** | `SOMA_HYBRID_RECALL_DEFAULT` | str | true | Enable hybrid search |
+| | `SOMA_HYBRID_BOOST` | float | 2.0 | Hybrid search boost |
+| | `SOMA_HYBRID_CANDIDATE_MULTIPLIER` | float | 4.0 | Candidate multiplier |
+| **Similarity** | `SOMA_SIMILARITY_METRIC` | str | cosine | Similarity metric |
+| | `SOMA_SIMILARITY_ALLOW_NEGATIVE` | str | false | Allow negative similarity |
+| **API Config** | `SOMA_API_PORT` | int | **10101** | API server port |
+| | `SOMA_LOG_LEVEL` | str | INFO | Logging level |
+| | `SOMA_MAX_REQUEST_BODY_MB` | float | 5.0 | Max request body size |
+| **Rate Limiting** | `SOMA_RATE_LIMIT_MAX` | int | 60 | Max requests per window |
+| | `SOMA_RATE_LIMIT_WINDOW` | float | 60.0 | Rate limit window (seconds) |
+| **CORS** | `SOMA_CORS_ORIGINS` | str | (none) | CORS allowed origins |
+| **Importance** | `SOMA_IMPORTANCE_RESERVOIR_MAX` | int | 512 | Reservoir max |
+| | `SOMA_IMPORTANCE_RECOMPUTE_STRIDE` | int | 64 | Recompute stride |
+| | `SOMA_IMPORTANCE_WINSOR_DELTA` | float | 0.25 | Winsorization delta |
+| | `SOMA_IMPORTANCE_LOGISTIC_TARGET_RATIO` | float | 9.0 | Logistic target ratio |
+| | `SOMA_IMPORTANCE_LOGISTIC_K_MAX` | float | 25.0 | Logistic K max |
+| **Decay** | `SOMA_DECAY_AGE_HOURS_WEIGHT` | float | 1.0 | Age weight |
+| | `SOMA_DECAY_RECENCY_HOURS_WEIGHT` | float | 1.0 | Recency weight |
+| | `SOMA_DECAY_ACCESS_WEIGHT` | float | 0.5 | Access weight |
+| | `SOMA_DECAY_IMPORTANCE_WEIGHT` | float | 2.0 | Importance weight |
+| | `SOMA_DECAY_THRESHOLD` | float | 2.0 | Decay threshold |
+| **Batch Processing** | `SOMA_ENABLE_BATCH_UPSERT` | str | false | Enable batch upsert |
+| | `SOMA_BATCH_SIZE` | int | 1 | Batch size |
+| | `SOMA_BATCH_FLUSH_MS` | int | 0 | Flush interval (ms) |
+| **Feature Flags** | `SOMA_ASYNC_METRICS_ENABLED` | str | false | Async metrics |
+| | `SFM_FAST_CORE` | str | false | Fast core enabled |
+| | `SOMA_FAST_CORE_INITIAL_CAPACITY` | int | 1024 |Fast core capacity |
+| **JWT Auth** | `SOMA_JWT_ENABLED` | str | false | Enable JWT auth |
+| | `SOMA_JWT_ISSUER` | str | (none) | JWT issuer |
+| | `SOMA_JWT_AUDIENCE` | str | (none) | JWT audience |
+| | `SOMA_JWT_SECRET` | str | (none) | JWT secret |
+| | `SOMA_JWT_PUBLIC_KEY` | str | (none) | JWT public key |
+| **External Services** | `SOMA_VAULT_URL` | str | (none) | Vault URL |
+| | `SOMA_SECRETS_PATH` | str | (none) | Vault secrets path |
+| | `SOMA_LANGFUSE_PUBLIC` | str | (none) | Langfuse public key |
+| | `SOMA_LANGFUSE_SECRET` | str | (none) | Langfuse secret |
+| | `SOMA_LANGFUSE_HOST` | str | (none) | Langfuse host |
+| **Circuit Breaker** | `SOMA_CIRCUIT_FAILURE_THRESHOLD` | int | 3 | Failure threshold |
+| | `SOMA_CIRCUIT_RESET_INTERVAL` | float | 60.0 | Reset interval |
+| | `SOMA_CIRCUIT_COOLDOWN_INTERVAL` | float | 0.0 | Cooldown interval |
+| **Data Directories** | `SOMA_BACKUP_DIR` | Path | ./backups | Backup directory |
+| | `SOMA_MEMORY_DATA_DIR` | Path | ./data | Memory data directory |
+| | `SOMA_S3_BUCKET` | str | (none) | S3 bucket name |
+| | `SOMA_SERIALIZER` | str | json | Serialization format |
+| **Test** | `SOMA_TEST_MEMORY_NAMESPACE` | str | test_ns | Test namespace |
+
+**Total Variables:** 50+ SOMA_ prefixed environment variables
+
+---
+
+### SomaBrain (somabrain/settings/base.py)
+
+**Source File:** `somabrain/settings/base.py` (897 lines)
+
+| Category | Variable | Type | Default | Description |
+|----------|-----------|------|---------|-------------|
+| **Core** | `SECRET_KEY` | str | django-insecure-change-me | Django secret |
+| | `SOMABRAIN_JWT_SECRET` | str | fallback | JWT secret |
+| | `ALLOWED_HOSTS` | list | [*] | Allowed hosts |
+| | `DEBUG` | bool | False | Debug mode |
+| | `SOMABRAIN_LOG_LEVEL` | str | INFO | Log level |
+| **Database** | `SOMABRAIN_POSTGRES_DSN` | str | **REQUIRED** | PostgreSQL DSN |
+| **Redis** | `SOMABRAIN_REDIS_URL` | str | (none) | Redis URL |
+| | `SOMABRAIN_REDIS_HOST` | str | localhost | Redis hostname |
+| | `SOMABRAIN_REDIS_PORT` | str/int | 6379 | Redis port (handles tcp://) |
+| | `SOMABRAIN_REDIS_DB` | int | 0 | Redis DB |
+| **Kafka** | `KAFKA_BOOTSTRAP_SERVERS` | str | (none) | Kafka bootstrap servers |
+| | `SOMABRAIN_KAFKA_URL` | str | fallback | Kafka URL |
+| | `SOMABRAIN_KAFKA_HOST` | str | (none) | Kafka hostname |
+| | `KAFKA_HOST` | str | fallback | Kafka hostname |
+| | `SOMABRAIN_KAFKA_PORT` | int | (none) | Kafka port |
+| | `KAFKA_PORT` | int | fallback | Kafka port |
+| **Memory System** | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | str | http://localhost:9595 | SomaFractalMemory URL |
+| | `MEMORY_SERVICE_URL` | str | fallback | Memory service URL |
+| | `SOMABRAIN_MEMORY_HTTP_HOST` | str | (none) | Memory hostname |
+| | `MEMORY_HTTP_HOST` | str | fallback | Memory hostname |
+| | `SOMABRAIN_MEMORY_HTTP_PORT` | int | 0 | Memory port |
+| | `MEMORY_HTTP_PORT` | int | fallback | Memory port |
+| | `SOMABRAIN_MEMORY_HTTP_SCHEME` | str | http | Memory scheme |
+| | `MEMORY_HTTP_SCHEME` | str | fallback | Memory scheme |
+| | `SOMABRAIN_MEMORY_HTTP_TOKEN` | str | (none) | Memory auth token |
+| | `SOMABRAIN_MEMORY_MAX` | str | 10GB | Memory max |
+| **Health Endpoints** | `HEALTH_PORT` | int | (none) | Health check port |
+| | `SOMABRAIN_INTEGRATOR_HEALTH_PORT` | int | 9015 | Integrator health port |
+| | `SOMABRAIN_INTEGRATOR_HEALTH_URL` | str | http://somabrain_integrator_triplet:9015/health | Integrator health URL |
+| | `SOMABRAIN_SEGMENTATION_HEALTH_URL` | str | http://somabrain_cog:9016/health | Segmentation health URL |
+| **Kafka Topics** | `SOMABRAIN_TOPIC_CONFIG_UPDATES` | str | cog.config.updates | Config updates topic |
+| | `SOMABRAIN_TOPIC_NEXT_EVENT` | str | cog.next_event | Next event topic |
+| | `SOMABRAIN_TOPIC_STATE_UPDATES` | str | cog.state.updates | State updates topic |
+| | `SOMABRAIN_TOPIC_AGENT_UPDATES` | str | cog.agent.updates | Agent updates topic |
+| | `SOMABRAIN_TOPIC_ACTION_UPDATES` | str | cog.action.updates | Action updates topic |
+| | `SOMABRAIN_TOPIC_GLOBAL_FRAME` | str | cog.global.frame | Global frame topic |
+| | `SOMABRAIN_TOPIC_SEGMENTS` | str | cog.segments | Segments topic |
+| | `SOMABRAIN_AUDIT_TOPIC` | str | soma.audit | Audit topic |
+| **Outbox** | `OUTBOX_BATCH_SIZE` | int | 100 | Outbox batch size |
+| | `OUTBOX_MAX_DELAY` | float | 5.0 | Max delay (seconds) |
+| | `OUTBOX_MAX_RETRIES` | int | 5 | Max retries |
+| | `OUTBOX_POLL_INTERVAL` | float | 1.0 | Poll interval (seconds) |
+| | `OUTBOX_PRODUCER_RETRY_MS` | int | 1000 | Producer retry (ms) |
+| | `OUTBOX_API_TOKEN` | str | (none) | Outbox API token |
+| | `SOMA_API_TOKEN` | str | fallback | API token |
+| **Journal** | `SOMABRAIN_JOURNAL_DIR` | str | /tmp/somabrain_journal | Journal directory |
+| | `JOURNAL_REPLAY_INTERVAL` | int | 300 | Replay interval (seconds) |
+| | `SOMABRAIN_JOURNAL_MAX_FILE_SIZE` | int | 104857600 | Max file size (bytes, 100MB) |
+| | `SOMABRAIN_JOURNAL_MAX_FILES` | int | 10 | Max files |
+| | `SOMABRAIN_JOURNAL_ROTATION_INTERVAL` | int | 86400 | Rotation interval (seconds) |
+| | `SOMABRAIN_JOURNAL_RETENTION_DAYS` | int | 7 | Retention days |
+| | `SOMABRAIN_JOURNAL_COMPRESSION` | bool | True | Enable compression |
+| | `SOMABRAIN_JOURNAL_SYNC_WRITES` | bool | True | Sync writes |
+| **Test Mode** | `PYTEST_CURRENT_TEST` | str | (none) | Current test name |
+| | `OAK_TEST_MODE` | bool | False | OAK test mode |
+| **CLI** | `HOST` | str | 0.0.0.0 | CLI host |
+| | `PORT` | int | 8000 | CLI port |
+| **Mode** | `SOMABRAIN_MODE` | str | full-local | SomaBrain mode |
+| **External Services** | `OTEL_EXPORTER_OTLP_ENDPOINT` | str | (none) | OpenTelemetry exporter |
+
+**Total Variables:** 50+ SOMABRAIN_ prefixed + 20+ Kafka/Redis/Health vars
+
+---
+
+### SomaAgent01 Platform Settings
+
+**Source Files:** 
+- `admin/core/helpers/settings_model.py` (86 fields)
+- `admin/core/helpers/settings_defaults.py` (settings resolution)
+
+**SettingsModel Fields (from settings_model.py):**
+
+| Category | Field | Type | Default | Description |
+|----------|-------|------|---------|-------------|
+| **Identity** | `agent_id` | str | (required) | Agent UUID |
+| | `agent_name` | str | (required) | Agent display name |
+| | `agent_type` | str | "generic" | Agent type |
+| **Chat Model** | `chat_model_provider` | str | "openrouter" | LLM provider |
+| | `chat_model` | str | (required) | Model identifier |
+| | `chat_temperature` | float | 0.7 | Temperature |
+| | `chat_max_tokens` | int | 4096 | Max tokens |
+| **Memory Config** | `memory_enabled` | bool | true | Enable memory |
+| | `memory_mode` | str | "standard" | Memory mode |
+| | `memory_max_size` | int | 10000 | Max memory entries |
+| | `memory_retention_days` | int | 30 | Retention period |
+| **Voice Config** | `voice_enabled` | bool | false | Voice synthesis |
+| | `voice_provider` | str | "kokoro" | TTS provider |
+| | `voice_rate` | float | 1.0 | Voice rate |
+| | `voice_pitch` | float | 1.0 | Voice pitch |
+| **Tool Config** | `enabled_tools` | list[str] | [] | Enabled tool IDs |
+| | `tool_timeout_seconds` | int | 30 | Tool timeout |
+| | `tool_max_parallel` | int | 3 | Max parallel tools |
+| **Safety** | `safety_enabled` | bool | true | Safety checks |
+| | `safety_filter_content` | bool | true | Content filtering |
+| | `safety_allow_code_exec` | bool | true | Allow code execution |
+| **System Prompt** | `system_prompt` | str | "" | Custom system prompt |
+| | `prompt_template` | str | "default" | Prompt template |
+
+**Settings Resolution Priority (from settings_defaults.py):**
+1. AgentSetting ORM (per-agent)
+2. Environment Variables (SA01_*, SOMA_*)
+3. Tenant Settings (TenantSettings model)
+4. GlobalDefault._initial_defaults() (platform blueprint)
+5. Code Defaults (SettingsModel)
+
+**Total SettingsModel Fields:** 86 fields across 10+ categories
+
+---
