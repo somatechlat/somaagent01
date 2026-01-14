@@ -1,4 +1,4 @@
- """
+"""
 Platform Integrations API
 Manage external service connections: Lago, Keycloak, SMTP, LLM, Storage.
 
@@ -8,7 +8,6 @@ Manage external service connections: Lago, Keycloak, SMTP, LLM, Storage.
 - Secret masking
 - Per SRS-SAAS-INTEGRATIONS.md
 
-7-Persona Implementation:
 - 🏗️ Django Architect: CRUD for integrations
 - 🔒 Security Auditor: Secret masking, encrypted storage
 - 📈 PM: Provider status, health checks

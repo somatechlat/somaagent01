@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.3 - Multimodal Execution.
 
-7-Persona Implementation:
 - PhD Dev: DAG execution, parallel processing
 - ML Eng: OpenAI DALL-E, image generation
 - DevOps: External service integration

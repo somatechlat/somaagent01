@@ -3,7 +3,6 @@
 
 Real-time stream processing for analytics, metering, and monitoring.
 
-7-Persona Implementation:
 - PhD Dev: Stream processing theory, windowing
 - DevOps: Flink cluster, Kafka integration
 - ML Eng: Anomaly detection patterns
@@ -15,7 +14,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Optional
@@ -36,7 +34,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 KAFKA_BOOTSTRAP_SERVERS = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-FLINK_REST_URL = os.environ.get("FLINK_REST_URL", "http://localhost:8081")
+FLINK_REST_URL = getattr(settings, "FLINK_REST_URL", "http://localhost:8081")
 
 # Kafka Topics (source)
 KAFKA_TOPICS = {

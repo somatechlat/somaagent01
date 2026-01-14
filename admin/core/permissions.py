@@ -8,7 +8,6 @@ Implements require_permission decorator for route-level permission checks.
 - Supports wildcard (*) for super admin
 - Per SRS-PERMISSION-JOURNEYS.md Section 10
 
-7-Persona Implementation:
 - 🔒 Security Auditor: Permission enforcement, 403 handling
 - 🏗️ Django Architect: Decorator pattern, async support
 """

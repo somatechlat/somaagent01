@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+from django.conf import settings
+
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
@@ -24,7 +26,7 @@ def get_event_bus() -> KafkaEventBus:
 def get_bus() -> KafkaEventBus:
     """Create a Kafka event bus using admin settings."""
     kafka_settings = KafkaSettings(
-        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
@@ -68,8 +70,10 @@ def get_llm_adapter():
     base_url = os.environ.get("SA01_LLM_BASE_URL") or None
     # Prefer per-call secret retrieval to avoid stale keys.
     sm = SecretManager()
+
     def api_key_resolver():
         return sm.get("provider:openai")  # returns awaitable
+
     return LLMAdapter(service_url=base_url, api_key_resolver=api_key_resolver)
 
 

@@ -6,7 +6,6 @@ Processes Kafka events and persists to SomaBrain.
 Architecture:
     Kafka → Flink → PostgreSQL/SomaBrain
 
-7-Persona Implementation:
 - PhD Dev: Stream processing theory
 - DevOps: Flink job configuration
 - ML Eng: Learning signal aggregation

@@ -38,7 +38,7 @@ class _BaseClient(Protocol):
         audio_stream: "AsyncGenerator[bytes, None]",
     ) -> "AsyncGenerator[object, None]":
         """Process audio stream.
-        
+
         Args:
             audio_stream: The audio stream to process.
         """

@@ -15,6 +15,7 @@ from typing import Any
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+from django.conf import settings
 
 django.setup()
 
@@ -73,7 +74,7 @@ def ensure_metrics_server(settings: object) -> None:
 def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
-        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),

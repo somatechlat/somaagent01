@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.1 - Capability Registry.
 
-7-Persona Implementation:
 - PhD Dev: Capability matching algorithms
 - DevOps: Circuit breakers, health tracking
 - Security Auditor: Access control, rate limiting

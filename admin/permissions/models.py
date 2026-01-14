@@ -4,7 +4,6 @@
 Granular RBAC stored in PostgreSQL.
 Keycloak integration for authentication.
 
-7-Persona Implementation:
 - Django Architect: ORM models, migrations
 - Security Auditor: Least privilege, audit trail
 - DevOps: DB performance, indexes

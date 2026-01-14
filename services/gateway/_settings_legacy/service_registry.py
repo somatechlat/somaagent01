@@ -169,7 +169,7 @@ class ServiceRegistry:
         name="grafana",
         env_var="GRAFANA_URL",
         description="Metrics visualization",
-        default_port=63690,
+        default_port=3000,
         required=False,
         health_check="/api/health",
     )

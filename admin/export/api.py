@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 8 - Data Export.
 
-7-Persona Implementation:
 - Security Auditor: GDPR compliance, audit trail
 - PhD Dev: Large data handling, streaming
 - PM: User-friendly export process

@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 6.4 - Admin Endpoints.
 
-7-Persona Implementation:
 - Security Auditor: ADMIN-only access
 - DevOps: Service lifecycle management
 - PM: Comprehensive diagnostics

@@ -3,7 +3,6 @@
 
 Log aggregation and search.
 
-7-Persona Implementation:
 - DevOps: Log management
 - Security Auditor: Audit logging
 - QA: Debug tracing

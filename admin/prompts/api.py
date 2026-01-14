@@ -3,7 +3,6 @@
 
 Prompt versioning and rendering.
 
-7-Persona Implementation:
 - PhD Dev: Prompt engineering
 - PM: Prompt library
 - QA: Prompt validation

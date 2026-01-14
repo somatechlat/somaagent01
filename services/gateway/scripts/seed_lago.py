@@ -13,6 +13,7 @@ sys.path.append(os.getcwd())
 # Import Django settings for centralized configuration
 try:
     from django.conf import settings
+
     LAGO_API_URL = settings.LAGO_API_URL
     LAGO_API_KEY = settings.LAGO_API_KEY
 except ImportError:
@@ -22,7 +23,7 @@ except ImportError:
 
 def seed_lago():
     """Execute seed lago."""
-    
+
     if not LAGO_API_URL or not LAGO_API_KEY:
         print("❌ LAGO_API_URL or LAGO_API_KEY not configured")
         print("Set SA01_LAGO_API_URL and SA01_LAGO_API_KEY environment variables")

@@ -1,8 +1,4 @@
-"""Permissions Django Admin.
-
-
-7-Persona Implementation for Granular Permissions System.
-"""
+"""Permissions Django Admin."""
 
 from django.contrib import admin
 from django.utils.html import format_html

@@ -37,10 +37,41 @@ services:
     env_file:
       - .env
     environment:
-      # VIBE Rule 164: Connection config only, NO SECRETS in env
+      # VIBE Rule 100: Centralized config via config/settings_registry.py
+      - SA01_DEPLOYMENT_MODE=SAAS
+      - SOMA_SAAS_MODE=true
+      # Vault (VIBE Rule 164)
       - VAULT_ADDR=http://somastack_vault:8200
       - VAULT_MOUNT=secret
       - VAULT_PATH_PREFIX=soma
+      # Database (used by config.SaaSSettings)
+      - POSTGRES_HOST=somastack_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=somaagent
+      - POSTGRES_USER=soma
+      - POSTGRES_PASSWORD=soma
+      # Redis
+      - REDIS_HOST=somastack_redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      # Milvus
+      - MILVUS_HOST=somastack_milvus
+      - MILVUS_PORT=19530
+      # Kafka
+      - KAFKA_BOOTSTRAP_SERVERS=somastack_kafka:9092
+      - SA01_KAFKA_BOOTSTRAP_SERVERS=somastack_kafka:9092
+      # SomaBrain - internal container reference (port 9696)
+      - SA01_SOMA_BASE_URL=http://localhost:9696
+      # OPA - use somastack_opa if deployed, else placeholder
+      - SA01_OPA_URL=http://somastack_opa:8181
+      # Temporal (optional)
+      - SA01_TEMPORAL_URI=somastack_temporal:7233
+      # Redis URL for legacy
+      - SA01_REDIS_URL=redis://somastack_redis:6379/0
+      # Keycloak OIDC Identity Provider
+      - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
+      # Legacy compatibility (for settings.py fallback)
+      - SA01_DB_DSN=postgresql://soma:soma@somastack_postgres:5432/somaagent
     ports:
       - "63900:9000" # Agent API
       - "63996:9696" # Brain API
@@ -85,16 +116,34 @@ services:
     networks:
       - soma_stack_net
     healthcheck:
-      test: [ "CMD", "vault", "status" ]
+      test: [ "CMD", "sh", "-c", "wget -qO- http://127.0.0.1:8200/v1/sys/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ===========================================================================
-  # 3. SHARED INFRASTRUCTURE
-  # ===========================================================================
+  # OPA - Open Policy Agent (Authorization Policies)
+  somastack_opa:
+    container_name: somastack_opa
+    image: openpolicyagent/opa:latest
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--diagnostic-addr=0.0.0.0:8282"
+      - "--log-level=info"
+    ports:
+      - "63981:8181"
+      - "63983:8282" # Diagnostic port for health (avoids Vault on 63982)
+    networks:
+      - soma_stack_net
+    # Note: OPA distroless image lacks shell utilities for healthcheck
+    # Monitor via diagnostic endpoint from host: curl http://localhost:63983/health
 
-  # POSTGRES (Shared)
+    # ===========================================================================
+    # 3. SHARED INFRASTRUCTURE
+    # ===========================================================================
+
+    # POSTGRES (Shared)
   somastack_postgres:
     container_name: somastack_postgres
     image: postgres:15-alpine

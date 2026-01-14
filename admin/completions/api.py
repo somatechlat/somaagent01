@@ -3,7 +3,6 @@
 
 Chat completions with streaming support.
 
-7-Persona Implementation:
 - ML Eng: LLM inference
 - PhD Dev: Completion parameters
 - DevOps: Streaming, rate limits

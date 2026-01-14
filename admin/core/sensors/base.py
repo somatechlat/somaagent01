@@ -3,7 +3,6 @@
 
 All sensors inherit from BaseSensor for ZDL guarantees.
 
-7-Persona Implementation:
 - PhD Dev: Observability patterns
 - DevOps: Queue reliability
 - Security Auditor: Data integrity

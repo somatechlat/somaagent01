@@ -3,7 +3,6 @@
 
 API key lifecycle management.
 
-7-Persona Implementation:
 - Security Auditor: Key rotation, expiry
 - DevOps: Programmatic access
 - PM: Developer experience

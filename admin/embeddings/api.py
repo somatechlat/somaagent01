@@ -3,7 +3,6 @@
 
 Embedding endpoint for RAG and semantic search.
 
-7-Persona Implementation:
 - ML Eng: Embedding models, batch processing
 - PhD Dev: Vector representation
 - DevOps: Model serving

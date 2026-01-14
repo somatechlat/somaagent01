@@ -53,11 +53,23 @@ class MemoryBridge:
             from fractal_memory.stores.milvus_store import MilvusVectorStore
             from fractal_memory.stores.redis_store import RedisKVStore
 
-            # Initialize stores
-            milvus_host = os.getenv("MILVUS_HOST", "localhost")
-            milvus_port = int(os.getenv("MILVUS_PORT", "19530"))
-            redis_host = os.getenv("REDIS_HOST", "localhost")
-            redis_port = int(os.getenv("REDIS_PORT", "6379"))
+            # VIBE Rule 100: Use centralized config instead of os.getenv
+            try:
+                from config import get_settings
+                _settings = get_settings()
+                milvus_host = _settings.milvus_host
+                milvus_port = _settings.milvus_port
+                redis_host = _settings.redis_host
+                redis_port = _settings.redis_port
+                logger.info("📦 Using centralized config: Milvus=%s:%s, Redis=%s:%s",
+                           milvus_host, milvus_port, redis_host, redis_port)
+            except ImportError:
+                # Fallback for non-SaaS environments
+                milvus_host = os.getenv("MILVUS_HOST", "somastack_milvus")
+                milvus_port = int(os.getenv("MILVUS_PORT", "19530"))
+                redis_host = os.getenv("REDIS_HOST", "somastack_redis")
+                redis_port = int(os.getenv("REDIS_PORT", "6379"))
+                logger.warning("⚠️ Centralized config not available, using environment")
 
             self._vector_store = MilvusVectorStore(host=milvus_host, port=milvus_port)
             self._kv_store = RedisKVStore(host=redis_host, port=redis_port)

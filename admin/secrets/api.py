@@ -3,7 +3,6 @@
 
 Encrypted secret storage (Vault-like).
 
-7-Persona Implementation:
 - Security Auditor: Encryption, access control
 - DevOps: Secret rotation
 - PhD Dev: Secure key management

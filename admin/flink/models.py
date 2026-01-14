@@ -3,7 +3,6 @@
 
 PostgreSQL tables for Flink streaming output.
 
-7-Persona Implementation:
 - Django Architect: ORM models for Flink sinks
 - DevOps: Table structure for stream processing
 - PM: Analytics dashboards data source

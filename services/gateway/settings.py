@@ -215,7 +215,7 @@ DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
 PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
 
 # Lago Billing
-LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:3000/api/v1")
+LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:63690/api/v1")
 LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
 
 # =============================================================================

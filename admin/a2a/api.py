@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.5 - A2A Workflows.
 
-7-Persona Implementation:
 - PhD Dev: Multi-agent orchestration, handoff patterns
 - PM: Conversation flows, escalation handling
 - DevOps: Maintenance workflows, system health
