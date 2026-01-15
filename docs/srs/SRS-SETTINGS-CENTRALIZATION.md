@@ -22,23 +22,90 @@
 
 ### 2.1 Layer 0: Platform (God Mode 🔴)
 
-| Category | Setting | Model | Hot-Reload |
-|----------|---------|-------|------------|
-| **Infra Services** | | | |
-| │ | `whisper_url` | `PlatformConfig` | ✅ |
-| │ | `kokoro_url` | `PlatformConfig` | ✅ |
-| │ | `kokoro_tts_url` | `PlatformConfig` | ✅ |
-| │ | `searxng_url` | `PlatformConfig` | ✅ |
-| │ | `somabrain_url` | `PlatformConfig` | ✅ |
-| │ | `milvus_url` | `PlatformConfig` | ✅ |
-| **Model Catalog** | | | |
-| │ | LLM Models | `LLMModelConfig` | ✅ |
-| │ | Voice Models | `VoiceModel` | ✅ |
-| **MCP Registry** | | | |
-| │ | Global Servers | `GlobalMCPServer` | ✅ |
-| **Permissions** | | | |
-| │ | Roles | `Role` (SpiceDB sync) | ⚠️ |
-| │ | Permissions | `Permission` | ⚠️ |
+#### 2.1.1 Core Infrastructure (Required)
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| **Database** | | | | |
+| │ PostgreSQL DSN | `SA01_DB_DSN` | (required) | `PlatformConfig` | ✅ Vault |
+| **Cache/Queue** | | | | |
+| │ Redis URL | `SA01_REDIS_URL` | (required) | `PlatformConfig` | ✅ Vault |
+| │ Kafka Brokers | `SA01_KAFKA_BOOTSTRAP_SERVERS` | (required) | `PlatformConfig` | ❌ |
+| │ Kafka SASL Username | `KAFKA_SASL_USERNAME` | - | - | ✅ Vault |
+| │ Kafka SASL Password | `KAFKA_SASL_PASSWORD` | - | - | ✅ Vault |
+| **Orchestration** | | | | |
+| │ Temporal Host | `SA01_TEMPORAL_HOST` | `localhost:7233` | `PlatformConfig` | ❌ |
+| │ Temporal Namespace | `SA01_TEMPORAL_NAMESPACE` | `default` | `PlatformConfig` | ❌ |
+
+#### 2.1.2 Authentication & Authorization
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| **Keycloak** | | | | |
+| │ URL | `SA01_KEYCLOAK_URL` | (required) | `PlatformConfig` | ❌ |
+| │ Realm | `SA01_KEYCLOAK_REALM` | `somaagent` | `PlatformConfig` | ❌ |
+| │ Client ID | `SA01_KEYCLOAK_CLIENT_ID` | `somaagent-api` | `PlatformConfig` | ❌ |
+| │ Client Secret | `SA01_KEYCLOAK_CLIENT_SECRET` | - | - | ✅ Vault |
+| │ Public Key | `SA01_KEYCLOAK_PUBLIC_KEY` | - | - | ✅ Vault |
+| **SpiceDB** | | | | |
+| │ Host | `SPICEDB_HOST` | `localhost` | `PlatformConfig` | ❌ |
+| │ Port | `SPICEDB_PORT` | `50051` | `PlatformConfig` | ❌ |
+| │ Token | `SPICEDB_TOKEN` | - | - | ✅ Vault |
+| **OPA** | | | | |
+| │ URL | `SA01_OPA_URL` | (required) | `PlatformConfig` | ❌ |
+
+#### 2.1.3 Billing & Metering
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| │ Lago API URL | `SA01_LAGO_API_URL` | `http://localhost:63690/api/v1` | `PlatformConfig` | ❌ |
+| │ Lago API Key | `SA01_LAGO_API_KEY` | - | - | ✅ Vault |
+| │ Prometheus URL | `SA01_PROMETHEUS_URL` | `http://localhost:9090` | `PlatformConfig` | ❌ |
+
+#### 2.1.4 Cognitive Runtime (SomaBrain)
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| │ SomaBrain URL | `SA01_SOMA_BASE_URL` | (required) | `PlatformConfig` | ❌ |
+| │ SomaBrain API Key | `SA01_SOMABRAIN_API_KEY` | - | - | ✅ Vault |
+| │ Milvus URL | `MILVUS_URL` | - | `PlatformConfig` | ❌ |
+
+#### 2.1.5 Voice Services
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| │ Whisper URL | `SA01_WHISPER_URL` | `http://localhost:9100` | `PlatformConfig` | ❌ |
+| │ Whisper API | `SA01_WHISPER_API_URL` | `http://localhost:8001/transcribe` | `PlatformConfig` | ❌ |
+| │ Kokoro URL | `SA01_KOKORO_URL` | `http://localhost:9200` | `PlatformConfig` | ❌ |
+| │ Kokoro TTS | `SA01_KOKORO_TTS_URL` | `http://localhost:8002/synthesize` | `PlatformConfig` | ❌ |
+| │ VoiceVox URL | `SA01_VOICEVOX_URL` | `http://localhost:65009` | `PlatformConfig` | ❌ |
+| │ Default Voice Model | `SA01_DEFAULT_VOICE_MODEL` | `gpt-4o-mini` | `PlatformConfig` | ❌ |
+
+#### 2.1.6 Multimodal Services
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| │ LLM API URL | `SA01_LLM_API_URL` | `http://localhost:9000/api/v2/core/llm/chat` | `PlatformConfig` | ❌ |
+| │ LLM API Key | `SA01_LLM_API_KEY` | - | - | ✅ Vault |
+| │ Mermaid CLI | `SA01_MERMAID_CLI_URL` | `http://localhost:9300` | `PlatformConfig` | ❌ |
+| │ Image Gen | `SA01_IMAGE_GEN_URL` | `http://localhost:8003/generate` | `PlatformConfig` | ❌ |
+| │ Diagram Render | `SA01_DIAGRAM_URL` | `http://localhost:8004/render` | `PlatformConfig` | ❌ |
+
+#### 2.1.7 External OAuth
+
+| Setting | Env Variable | Default | Model | Secret? |
+|---------|--------------|---------|-------|---------|
+| │ Google Client ID | `GOOGLE_CLIENT_ID` | - | `PlatformConfig` | ❌ |
+| │ Google Client Secret | `GOOGLE_CLIENT_SECRET` | - | - | ✅ Vault |
+| │ Google Redirect URI | `GOOGLE_REDIRECT_URI` | - | `PlatformConfig` | ❌ |
+
+#### 2.1.8 Model Catalog
+
+| Setting | Model | Hot-Reload |
+|---------|-------|------------|
+| LLM Models | `LLMModelConfig` | ✅ |
+| Voice Models | `VoiceModel` | ✅ |
+| Global MCP Servers | `GlobalMCPServer` | ✅ |
 
 ### 2.2 Layer 1: Subscription Tier
 
