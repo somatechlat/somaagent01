@@ -23,6 +23,12 @@ from prometheus_client import Counter, Histogram
 from admin.core.somabrain_client import SomaBrainClient
 from services.common.chat_schemas import AgentSession, Conversation, Memory, Message
 from services.common.health_monitor import get_health_monitor
+from services.common.model_router import (
+    detect_required_capabilities,
+    NoCapableModelError,
+    select_model,
+    SelectedModel,
+)
 from services.common.simple_context_builder import BuiltContext, create_context_builder
 from services.common.simple_governor import get_governor, GovernorDecision
 from services.common.unified_metrics import get_metrics, TurnPhase
@@ -373,29 +379,60 @@ class ChatService:
         turn_metrics.tenant_id = tenant_id
         metrics.record_turn_phase(turn_id, TurnPhase.AUTH_VALIDATED)
 
-        # 4. Load LLM model
-        # CHAT-003: LLM initialization with deployment mode error handling
+        # 4. Load Capsule for system_prompt and model constraints (NO HARDCODING)
+        from admin.core.models import Capsule
+
+        @sync_to_async
+        def load_capsule():
+            return Capsule.objects.filter(id=agent_id).first()
+
+        capsule = await load_capsule()
+        # Build capsule_body for model_router constraints
+        # allowed_models comes from Capsule.config (not the body property)
+        capsule_config = capsule.config if capsule and capsule.config else {}
+        capsule_body = {
+            "allowed_models": capsule_config.get("allowed_models", []),
+        }
+
+        # System prompt from Capsule.system_prompt (the Soul)
+        system_prompt = capsule.system_prompt if capsule else ""
+        if not system_prompt:
+            logger.warning(f"No system_prompt in Capsule {agent_id} - agent may behave unexpectedly")
+            system_prompt = ""  # Empty, NOT hardcoded fallback
+
+        # 5. Detect required capabilities from content (attachments would be added here)
+        # TODO: Add attachments parameter to send_message() signature
+        required_caps = detect_required_capabilities(message=content, attachments=None)
+        logger.info(f"Detected capabilities for turn: {required_caps}")
+
+        # 6. Select model via capability-based routing (SINGLE SOURCE: LLMModelConfig ORM)
         llm = None
+        selected_model: SelectedModel | None = None
         try:
-            settings = get_default_settings(agent_id=agent_id)
-            provider = settings.chat_model_provider or ""
-            model_name = settings.chat_model_name or ""
-            if "/" in model_name:
-                model_provider, model_value = model_name.split("/", 1)
-                if not provider or provider == model_provider:
-                    provider, model_name = model_provider, model_value
+            selected_model = await select_model(
+                required_capabilities=required_caps,
+                capsule_body=capsule_body,
+                tenant_id=tenant_id,
+            )
+            logger.info(
+                f"Model Router selected: {selected_model.provider}/{selected_model.name} "
+                f"(caps={selected_model.capabilities}, priority={selected_model.priority})"
+            )
 
-            chat_kwargs = dict(settings.chat_model_kwargs or {})
-            if settings.chat_model_api_base:
-                chat_kwargs.setdefault("api_base", settings.chat_model_api_base)
-
-            llm = get_chat_model(provider=provider, name=model_name, **chat_kwargs)
+            # Build LLM from selected model
+            llm = get_chat_model(
+                provider=selected_model.provider,
+                name=selected_model.name,
+            )
+        except NoCapableModelError as e:
+            logger.error(f"No capable model found: {e}")
+            raise ValueError(f"No LLM model available with capabilities: {required_caps}")
         except Exception as e:
-            llm_error_msg = f"{DEPLOYMENT_MODE} mode: Failed to load LLM model: {e}"
+            llm_error_msg = f"{DEPLOYMENT_MODE} mode: Model selection/load failed: {e}"
             if SAAS_MODE:
-                llm_error_msg += " (SAAS: Check LLM provider API key and connectivity)"
+                llm_error_msg += " (SAAS: Check LLMModelConfig table and API keys)"
             elif STANDALONE_MODE:
-                llm_error_msg += " (STANDALONE: Check local LLM model configuration)"
+                llm_error_msg += " (STANDALONE: Check local model configuration)"
             logger.error(llm_error_msg, exc_info=True)
             raise
 
@@ -481,7 +518,7 @@ class ChatService:
                 "session_id": str(uuid4()),
                 "user_message": content,
                 "history": raw_history,
-                "system_prompt": "You are SomaAgent01.",
+                "system_prompt": system_prompt,  # From Capsule, NOT hardcoded
             }
 
             built: BuiltContext
@@ -499,20 +536,22 @@ class ChatService:
                     error_msg += " (STANDALONE: Check embedded SomaBrain imports)"
                 logger.error(error_msg, exc_info=True)
                 # Fallback to minimal context
+                # Fallback context uses Capsule system_prompt (no hardcoding)
+                fallback_system = system_prompt or "Assistant ready."
                 built = BuiltContext(
-                    system_prompt="You are SomaAgent01.",
+                    system_prompt=fallback_system,
                     messages=[
-                        {"role": "system", "content": "You are SomaAgent01."},
+                        {"role": "system", "content": fallback_system},
                         {"role": "user", "content": content},
                     ],
                     token_counts={
-                        "system": 50,
+                        "system": len(fallback_system.split()),
                         "history": 0,
                         "memory": 0,
                         "user": len(content.split()),
                     },
                     lane_actual={
-                        "system_policy": 50,
+                        "system_policy": len(fallback_system.split()),
                         "history": 0,
                         "memory": 0,
                         "tools": 0,
