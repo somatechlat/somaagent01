@@ -40,6 +40,25 @@ class Agent(models.Model):
         default=dict, blank=True, help_text="Feature configuration for this agent"
     )
 
+    # Capsules - The Identity Definitions (Soul + Body)
+    # An Agent can have multiple nested Capsules for layered capabilities
+    capsules = models.ManyToManyField(
+        'core.Capsule',
+        blank=True,
+        related_name='agents',
+        help_text="Capsules defining agent identity, prompts, and capabilities (can be nested)",
+    )
+
+    # Primary capsule for main identity (optional - system_prompt comes from here)
+    primary_capsule = models.ForeignKey(
+        'core.Capsule',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='primary_agents',
+        help_text="Primary capsule for system_prompt and core identity",
+    )
+
     # Skin/Theme
     skin_id = models.UUIDField(null=True, blank=True, help_text="Associated skin/theme ID")
 
