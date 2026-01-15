@@ -98,7 +98,7 @@ class TestFullChatFlow:
         self, chat_service, test_agent_id, test_user_id, test_tenant_id
     ):
         """Test that Governor decisions are properly recorded."""
-        from admin.agents.services.agentiq_schemas import GovernorDecision
+        from services.common.simple_governor import GovernorDecision
         
         conversation = await chat_service.create_conversation(
             agent_id=test_agent_id,

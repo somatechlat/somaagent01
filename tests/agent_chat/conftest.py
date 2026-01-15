@@ -188,27 +188,16 @@ def chat_service() -> "ChatService":
 
 @pytest.fixture
 async def governor(real_infrastructure):
-    """Get configured AgentIQ Governor."""
-    from admin.agents.services.agentiq_governor import create_governor
-    from services.common.budget_manager import BudgetManager
-    from services.common.capsule_store import CapsuleStore
-    from services.common.degradation_monitor import DegradationMonitor
+    """Get configured Simple Governor."""
+    from services.common.simple_governor import get_governor, SimpleGovernor
     
-    capsule_store = CapsuleStore()
-    degradation_monitor = DegradationMonitor()
-    budget_manager = BudgetManager()
+    # SimpleGovernor doesn't require complex dependencies
+    # It uses binary health/degraded decision model
+    gov = get_governor()
     
-    await degradation_monitor.start()
-    
-    gov = create_governor(
-        capsule_store=capsule_store,
-        degradation_monitor=degradation_monitor,
-        budget_manager=budget_manager,
-    )
+    assert isinstance(gov, SimpleGovernor), "Should return SimpleGovernor instance"
     
     yield gov
-    
-    await degradation_monitor.stop()
 
 
 @pytest.fixture
