@@ -130,7 +130,16 @@ class Capsule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     version = models.CharField(max_length=50, default="1.0.0")
-    tenant = models.CharField(max_length=255, db_index=True)
+
+    # Tenant FK for proper referential integrity
+    tenant = models.ForeignKey(
+        'saas.Tenant',
+        on_delete=models.CASCADE,
+        related_name='capsules',
+        db_index=True,
+        help_text="Owning tenant",
+    )
+
     description = models.TextField(blank=True)
 
     # Lifecycle Status
@@ -449,35 +458,11 @@ class FeatureFlag(models.Model):
 
 
 # =============================================================================
-# AUDIT MODELS (replaces audit_store.py)
+# AUDIT MODELS - MOVED TO admin/saas/models/audit.py
 # =============================================================================
-
-
-class AuditLog(models.Model):
-    """Audit log entry - replaces AuditStore."""
-
-    id = models.BigAutoField(primary_key=True)
-    tenant = models.CharField(max_length=255, db_index=True)
-    user_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-    action = models.CharField(max_length=100, db_index=True)
-    resource_type = models.CharField(max_length=100, db_index=True)
-    resource_id = models.CharField(max_length=255, null=True, blank=True)
-    old_value = models.JSONField(null=True, blank=True)
-    new_value = models.JSONField(null=True, blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-
-    class Meta:
-        """Meta class implementation."""
-
-        db_table = "agent_audit_logs"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        """Return string representation."""
-
-        return f"AuditLog({self.action}:{self.resource_type})"
+# NOTE: AuditLog is now in admin.saas.models.AuditLog (canonical location)
+# The duplicate here was removed to prevent confusion.
+# Table: audit_logs (not agent_audit_logs)
 
 
 # =============================================================================

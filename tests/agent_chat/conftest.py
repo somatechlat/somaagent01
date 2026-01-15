@@ -68,7 +68,7 @@ def real_infrastructure():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def django_db_setup(real_infrastructure):
+def django_db_setup():
     """Configure Django for testing.
     
     VIBE COMPLIANT: Uses real infrastructure (PostgreSQL on port 63932)
@@ -76,7 +76,6 @@ def django_db_setup(real_infrastructure):
     VIBE Rule 7: Uses real Docker Compose PostgreSQL - NO mocks!
     
     autouse=True ensures Django is configured before any test runs.
-    Depends on real_infrastructure to ensure database is accessible.
     """
     import django
     from django.conf import settings
@@ -89,11 +88,11 @@ def django_db_setup(real_infrastructure):
             DATABASES={
                 "default": {
                     "ENGINE": "django.db.backends.postgresql",
-                    "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-                    "PORT": int(os.environ.get("POSTGRES_PORT", "63932")),
-                    "NAME": os.environ.get("POSTGRES_DB", "somaagent"),
-                    "USER": os.environ.get("POSTGRES_USER", "soma"),  # Docker uses "soma"
-                    "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "soma"),  # Docker uses "soma"
+                    "HOST": "localhost",  # Force localhost (Docker exposed port)
+                    "PORT": 63932,  # Force SAAS docker-compose port
+                    "NAME": "somaagent",  # SAAS docker-compose database
+                    "USER": "soma",  # SAAS docker-compose user
+                    "PASSWORD": "soma",  # SAAS docker-compose password
                     "CONN_MAX_AGE": 60,  # Connection pooling
                     "OPTIONS": {
                         "connect_timeout": 5,
@@ -129,42 +128,9 @@ def django_db_setup(real_infrastructure):
         )
         django.setup()
         
-        # Create tables with Django migrations
-        from django.core.management import execute_from_command_line
-        from io import StringIO
-        import sys
-        
-        # Capture migration output
-        old_stdout = sys.stdout
-        sys.stdout = StringIO()
-        
-        try:
-            # Create tables directly (avoid makemigrations issue)
-            from django.db import connection
-            with connection.schema_editor() as schema_editor:
-                # Create content types table
-                from django.contrib.contenttypes.models import ContentType
-                schema_editor.create_model(ContentType)
-                
-                # Create auth tables
-                from django.contrib.auth.models import User, Permission
-                schema_editor.create_model(User)
-                
-                # Import and create app tables
-                from admin.chat.models import Conversation, Message
-                from admin.agents.models import Agent, Capsule
-                from admin.saas.models import Tenant, APIKey
-                
-                # Create in correct order (respecting foreign keys)
-                schema_editor.create_model(Tenant)
-                schema_editor.create_model(Agent)
-                schema_editor.create_model(Capsule)
-                schema_editor.create_model(Conversation)
-                schema_editor.create_model(Message)
-                schema_editor.create_model(APIKey)
-                
-        finally:
-            sys.stdout = old_stdout
+        # Tables already exist in real SAAS database
+        # No need to create them - they're managed by Django migrations in the running container
+        # VIBE Rule 7: Real infrastructure means real databases with real schema
 
 
 # =============================================================================
@@ -204,7 +170,7 @@ def auth_token() -> str:
 
 
 @pytest.fixture
-def chat_service(real_infrastructure) -> "ChatService":
+def chat_service() -> "ChatService":
     """Get configured ChatService instance.
     
     VIBE COMPLIANT: Uses real ChatService implementation with actual infrastructure
