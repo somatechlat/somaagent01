@@ -660,6 +660,9 @@ class ChatService:
         # 12. GMD Integration: Collect implicit RL signals (non-blocking)
         from services.common.implicit_signals import signal_follow_up, signal_long_response
 
+        # Extract learning config from Capsule (Rule 91)
+        learning_config = capsule.learning_config if capsule else {}
+
         # Signal follow-up based on history timing
         if len(raw_history) >= 2:
             # If last message was assistant and now user is responding, it's a follow-up
@@ -668,13 +671,17 @@ class ChatService:
                 # Approximate time since last message (use message count as proxy)
                 time_since_estimate = min(60 * 5, 30 * len(raw_history))  # Heuristic
                 asyncio.create_task(
-                    signal_follow_up(conversation_id, time_since_estimate)
+                    signal_follow_up(
+                        conversation_id, time_since_estimate, learning_config=learning_config
+                    )
                 )
 
         # Signal long user message (indicates engagement)
         if len(content) > 200:
             asyncio.create_task(
-                signal_long_response(conversation_id, len(content))
+                signal_long_response(
+                    conversation_id, len(content), learning_config=learning_config
+                )
             )
 
         # Track overall metrics

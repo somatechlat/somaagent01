@@ -20,7 +20,7 @@ from django.db import models
 # but models.OneToOneField('saas.Tenant') handles it via string reference.
 
 
-class GlobalDefault(models.Model):
+class PlatformConfig(models.Model):
     """Singleton model storing platform-wide default configurations.
 
     This model acts as the "Master Blueprint" for:
@@ -45,18 +45,18 @@ class GlobalDefault(models.Model):
     class Meta:
         """Meta options."""
 
-        db_table = "saas_global_defaults"
-        verbose_name = "Global Default"
-        verbose_name_plural = "Global Defaults"
+        db_table = "saas_platform_config"
+        verbose_name = "Platform Configuration"
+        verbose_name_plural = "Platform Configuration"
 
     def save(self, *args, **kwargs):
         """Enforce Singleton Pattern."""
-        if not self.pk and GlobalDefault.objects.exists():
-            raise ValidationError("There can be only one GlobalDefault instance")
+        if not self.pk and PlatformConfig.objects.exists():
+            raise ValidationError("There can be only one PlatformConfig instance")
         super().save(*args, **kwargs)
 
     @classmethod
-    def get_instance(cls) -> "GlobalDefault":
+    def get_instance(cls) -> "PlatformConfig":
         """Retrieve or create the singleton instance."""
         obj = cls.objects.first()
         if not obj:
@@ -64,7 +64,7 @@ class GlobalDefault(models.Model):
         return obj
 
     @classmethod
-    async def aget_instance(cls) -> "GlobalDefault":
+    async def aget_instance(cls) -> "PlatformConfig":
         """Async retrieve or create the singleton instance."""
         obj = await cls.objects.afirst()
         if not obj:
@@ -102,7 +102,7 @@ class GlobalDefault(models.Model):
 
 
     def __str__(self) -> str:
-        return "Global SaaS Defaults"
+        return "Platform Configuration"
 
 
 class AdminProfile(models.Model):

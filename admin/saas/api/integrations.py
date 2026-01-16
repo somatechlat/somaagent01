@@ -81,57 +81,50 @@ class ConnectionTestResult(BaseModel):
 # IN-MEMORY STORE (Would be Django model in production)
 # =============================================================================
 
-INTEGRATIONS = {
-    "lago": {
-        "name": "Lago (Billing)",
-        "icon": "💰",
-        "endpoint": getattr(settings, "LAGO_API_URL", "https://api.getlago.com/v1"),
-        "api_key": getattr(settings, "LAGO_API_KEY", ""),
-        "webhook_secret": getattr(settings, "LAGO_WEBHOOK_SECRET", ""),
-        "sync_frequency": "realtime",
-        "last_check": None,
-        "status": "unconfigured" if not getattr(settings, "LAGO_API_KEY", "") else "connected",
-    },
-    "keycloak": {
-        "name": "Keycloak (Auth)",
-        "icon": "🔐",
-        "endpoint": getattr(settings, "KEYCLOAK_URL", "http://localhost:8080"),
-        "admin_client_id": getattr(settings, "KEYCLOAK_ADMIN_CLIENT_ID", "admin-cli"),
-        "api_key": getattr(settings, "KEYCLOAK_ADMIN_SECRET", ""),
-        "last_check": None,
-        "status": "connected",
-    },
-    "smtp": {
-        "name": "SMTP (Email)",
-        "icon": "📧",
-        "endpoint": getattr(settings, "EMAIL_HOST", "smtp.resend.com"),
-        "smtp_port": getattr(settings, "EMAIL_PORT", 587),
-        "smtp_user": getattr(settings, "EMAIL_HOST_USER", ""),
-        "api_key": getattr(settings, "EMAIL_HOST_PASSWORD", ""),
-        "default_from": getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@soma.ai"),
-        "last_check": None,
-        "status": "unconfigured" if not getattr(settings, "EMAIL_HOST_USER", "") else "connected",
-    },
-    "openai": {
-        "name": "OpenAI (LLM)",
-        "icon": "🤖",
-        "endpoint": getattr(settings, "OPENAI_API_URL", "https://api.openai.com/v1"),
-        "api_key": getattr(settings, "OPENAI_API_KEY", ""),
-        "default_model": getattr(settings, "DEFAULT_LLM_MODEL", "gpt-4o-mini"),
-        "last_check": None,
-        "status": "connected" if getattr(settings, "OPENAI_API_KEY", "") else "unconfigured",
-    },
-    "s3": {
-        "name": "AWS S3 (Storage)",
-        "icon": "☁️",
-        "endpoint": getattr(settings, "AWS_S3_ENDPOINT", "https://s3.amazonaws.com"),
-        "api_key": getattr(settings, "AWS_ACCESS_KEY_ID", ""),
-        "bucket": getattr(settings, "AWS_STORAGE_BUCKET_NAME", "soma-assets"),
-        "region": getattr(settings, "AWS_S3_REGION_NAME", "us-east-1"),
-        "last_check": None,
-        "status": "connected" if getattr(settings, "AWS_ACCESS_KEY_ID", "") else "unconfigured",
-    },
-}
+
+from admin.saas.models.profiles import PlatformConfig
+from admin.llm.models import LLMModelConfig
+
+# =============================================================================
+# HELPER FUNCTIONS (Dynamic Resolution)
+# =============================================================================
+
+
+async def _get_integration_config(provider: str) -> dict:
+    """Resolve integration configuration from DB (Rule 91).
+
+    Sources:
+    - PlatformConfig (Singleton)
+    - LLMModelConfig (for 'openai'/'llm')
+    """
+    defaults = await PlatformConfig.aget_instance()
+    # TODO: In future, this should merge with TenantSettings if we allow overrides
+
+    # 1. LLM Provider Special Case
+    if provider == "openai":
+         # Find primary model
+         model = await LLMModelConfig.objects.filter(provider="openai", is_active=True).afirst()
+         if model:
+             return {
+                 "name": "OpenAI (LLM)",
+                 "icon": "🤖",
+                 "endpoint": "https://api.openai.com/v1", # Hardcoded base or from model.api_base
+                 "api_key": "managed-by-vault", # We don't expose keys here
+                 "status": "connected",
+                 "last_check": None
+             }
+         return {"name": "OpenAI", "status": "unconfigured"}
+
+    # 2. Platform Config Defaults
+    # We map the monolithic defaults JSON to this virtual "Integration" concept
+    # This is a bridge until we have a dedicated Integration model
+    config = defaults.defaults.get("integrations", {}).get(provider, {})
+
+    if not config:
+        # Fallback to minimal stub
+        return {"name": provider.title(), "status": "unconfigured"}
+
+    return config
 
 
 def _mask_secret(secret: str) -> str:
@@ -146,6 +139,15 @@ def _mask_secret(secret: str) -> str:
 # =============================================================================
 
 
+# Supported providers list (until we have a dynamic Provider registry)
+SUPPORTED_PROVIDERS = ["lago", "keycloak", "smtp", "openai", "s3"]
+
+
+# =============================================================================
+# ENDPOINTS
+# =============================================================================
+
+
 @router.get("", response=list[IntegrationStatus])
 async def list_integrations(request) -> list[IntegrationStatus]:
     """List all platform integrations with status.
@@ -153,14 +155,20 @@ async def list_integrations(request) -> list[IntegrationStatus]:
     Permission: platform:view_settings
     """
     result = []
-    for provider, config in INTEGRATIONS.items():
+    # In future: fetch installed providers from CapabilityRegistry
+    for provider in SUPPORTED_PROVIDERS:
+        config = await _get_integration_config(provider)
+
+        # Determine strict status
+        is_connected = config.get("status") == "connected"
+
         result.append(
             IntegrationStatus(
                 provider=provider,
-                name=config["name"],
-                icon=config["icon"],
-                connected=config["status"] == "connected",
-                status=config["status"],
+                name=config.get("name", provider.title()),
+                icon=config.get("icon", "🔌"),
+                connected=is_connected,
+                status=config.get("status", "unconfigured"),
                 status_message=config.get("status_message"),
                 last_check=config.get("last_check"),
                 last_24h_events=config.get("events_24h", 0),
@@ -175,22 +183,25 @@ async def get_integration(request, provider: str) -> IntegrationConfig:
 
     Permission: platform:view_settings
     """
-    if provider not in INTEGRATIONS:
-        return IntegrationConfig(provider=provider, name="Unknown", is_configured=False)
+    if provider not in SUPPORTED_PROVIDERS:
+        # Fallback for dynamic providers if we ever support them
+        pass
 
-    config = INTEGRATIONS[provider]
+    config = await _get_integration_config(provider)
+
+    # Filter out internal keys
+    extra = {
+        k: v for k, v in config.items()
+        if k not in ["name", "icon", "endpoint", "api_key", "last_check", "status", "status_message"]
+    }
+
     return IntegrationConfig(
         provider=provider,
-        name=config["name"],
+        name=config.get("name", provider.title()),
         endpoint=config.get("endpoint"),
         api_key_masked=_mask_secret(config.get("api_key", "")),
-        extra_settings={
-            k: v
-            for k, v in config.items()
-            if k
-            not in ["name", "icon", "endpoint", "api_key", "last_check", "status", "status_message"]
-        },
-        is_configured=config["status"] != "unconfigured",
+        extra_settings=extra,
+        is_configured=config.get("status") != "unconfigured",
         updated_at=config.get("updated_at"),
     )
 
@@ -203,11 +214,17 @@ async def update_integration(
 
     Permission: platform:manage_settings (requires sudo/re-auth)
     """
-    if provider not in INTEGRATIONS:
-        INTEGRATIONS[provider] = {"name": provider.title(), "icon": "⚙️", "status": "unconfigured"}
+    # 1. Fetch PlatformConfig
+    platform_config = await PlatformConfig.aget_instance()
 
-    config = INTEGRATIONS[provider]
+    # 2. Get current defaults (ensure 'integrations' dict exists)
+    integrations = platform_config.defaults.get("integrations", {})
+    if provider not in integrations:
+        integrations[provider] = {"name": provider.title(), "icon": "⚙️", "status": "unconfigured"}
 
+    config = integrations[provider]
+
+    # 3. Apply updates
     if payload.endpoint:
         config["endpoint"] = payload.endpoint
     if payload.api_key:
@@ -218,6 +235,10 @@ async def update_integration(
     config["updated_at"] = timezone.now().isoformat()
     config["status"] = "connected" if config.get("api_key") else "unconfigured"
 
+    # 4. Save back to DB
+    platform_config.defaults["integrations"] = integrations
+    await platform_config.asave()
+
     logger.info(f"Integration {provider} updated by user")
 
     return await get_integration(request, provider)
@@ -227,19 +248,20 @@ async def update_integration(
 async def test_connection(request, provider: str) -> ConnectionTestResult:
     """Test integration connection."""
     import time
-
     import httpx
 
-    if provider not in INTEGRATIONS:
+    if provider not in SUPPORTED_PROVIDERS:
         return ConnectionTestResult(
             provider=provider,
             success=False,
-            message="Unknown provider",
+            message=f"Unknown/Unsupported provider: {provider}",
             latency_ms=0,
         )
 
-    config = INTEGRATIONS[provider]
+    config = await _get_integration_config(provider)
     start = time.time()
+
+    # ... logic continues below ...
 
     try:
         if provider == "lago":
@@ -299,10 +321,28 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
 
     latency = (time.time() - start) * 1000
 
-    # Update status
-    config["last_check"] = timezone.now().isoformat()
-    config["status"] = "connected" if success else "error"
-    config["status_message"] = message
+    # Update status (Ephemerally for now, or save back to DB)
+    # Since checking status shouldn't necessarily trigger a DB write every time for perf,
+    # we might just return the result. But if we want to persist "last_check", we need to save.
+
+    # For this implementation, we will try to update the PlatformConfig if it's not OpenAI
+    # OpenAI status is managed by LLMModelConfig state.
+    if provider != "openai":
+         platform_config = await PlatformConfig.aget_instance()
+         integrations = platform_config.defaults.get("integrations", {})
+         if provider in integrations:
+             integrations[provider]["last_check"] = timezone.now().isoformat()
+             integrations[provider]["status"] = "connected" if success else "error"
+             integrations[provider]["status_message"] = message
+             platform_config.defaults["integrations"] = integrations
+             await platform_config.asave()
+
+    return ConnectionTestResult(
+        provider=provider,
+        success=success,
+        message=message,
+        latency_ms=round(latency, 2),
+    )
 
     return ConnectionTestResult(
         provider=provider,
@@ -320,7 +360,9 @@ async def sync_lago_plans(request) -> dict:
     """
     import httpx
 
-    config = INTEGRATIONS.get("lago", {})
+    import httpx
+
+    config = await _get_integration_config("lago")
     if not config.get("api_key"):
         return {"success": False, "message": "Lago not configured"}
 
@@ -360,7 +402,7 @@ async def send_test_email(request, to_email: str) -> dict:
         send_mail(
             subject="SomaAgent Test Email",
             message="This is a test email from SomaAgent Platform.",
-            from_email=INTEGRATIONS["smtp"].get("default_from", "no-reply@soma.ai"),
+            from_email=(await _get_integration_config("smtp")).get("default_from", "no-reply@soma.ai"),
             recipient_list=[to_email],
             fail_silently=False,
         )

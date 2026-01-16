@@ -219,7 +219,7 @@ sequenceDiagram
   - LLM (available?)
 
 **Health Model:** Binary (Healthy | Degraded)
-- NO multi-level degradation (simplified from AgentIQ)
+- Production-grade binary health decisions (no multi-level degradation)
 
 ### 6. **Context Builder** (`services/common/simple_context_builder.py`)
 - **Connected:** YES (when SomaBrain available)

@@ -47,14 +47,11 @@ flowchart TB
         CTX_LEN["chat_model_ctx_length<br/>128000"]
     end
 
-    subgraph GOVERNOR["⚖️ 7. AGENTIQ GOVERNOR"]
-        TURN_CTX["Build TurnContext<br/>turn_id, session_id,<br/>tenant_id, history"]
-        GOV_CALL["governor.govern_with_fallback()<br/>turn, max_tokens"]
-        DEG_STATUS["DegradationMonitor<br/>get_degradation_status()"]
-        LANE_ALLOC["LaneAllocator<br/>.allocate()"]
-        AIQ_CALC["AIQCalculator<br/>.compute_predicted()"]
-        PATH_MODE["Determine<br/>Fast/Rescue Path"]
-        GOV_DECISION["GovernorDecision<br/>lane_plan + aiq_score"]
+    subgraph GOVERNOR["⚖️ 7. SIMPLE GOVERNOR"]
+        TURN_CTX["LaneBudget + HealthStatus<br/>━━━━━━━━━━━━━━━━━<br/>max_tokens, is_degraded"]
+        HEALTH_CHK["HealthMonitor<br/>.get_overall_health()"]
+        BUDGET_ALLOC["allocate_budget()<br/>━━━━━━━━━━━━━━━━━<br/>Normal: system=15%, history=25%,<br/>memory=25%, tools=20%, buffer=5%<br/>Degraded: system=40%, history=10%,<br/>memory=15%, tools=0%, buffer=35%"]
+        DECISION["GovernorDecision<br/>lane_budget + health_status + mode"]
     end
 
     subgraph CONTEXT["🧠 8. CONTEXT BUILDING"]
@@ -186,7 +183,7 @@ flowchart TB
 
 ---
 
-## ⚖️ DETAILED: AgentIQ Governor Token Budgeting
+## ⚖️ DETAILED: SimpleGovernor Token Budgeting
 
 ```mermaid
 flowchart TB
@@ -639,9 +636,9 @@ flowchart TB
 | Component | File Path | Key Functions |
 |-----------|-----------|--------------|
 | **ChatService** | [chat_service.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/services/common/chat_service.py) | `send_message()`, `create_conversation()` |
-| **AgentIQ Governor** | [agentiq_governor.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/agents/services/agentiq_governor.py) | `govern()`, `govern_with_fallback()` |
-| **AgentIQ Schemas** | [agentiq_schemas.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/agents/services/agentiq_schemas.py) | `LanePlan`, `AIQScore`, `GovernorDecision` |
-| **ContextBuilder** | [context_builder.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/agents/services/context_builder.py) | `build_for_turn()`, `_retrieve_snippets()` |
+| **SimpleGovernor** | [simple_governor.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/services/common/simple_governor.py) | `allocate_budget()`, `get_fallback_decision()` |
+| **HealthMonitor** | [health_monitor.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/services/common/health_monitor.py) | `get_overall_health()`, `get_component_health()` |
+| **SimpleContextBuilder** | [simple_context_builder.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/services/common/simple_context_builder.py) | `build_for_turn()`, `_add_memory_saas()`, `_add_memory_standalone()` |
 | **CapsuleCore** | [capsule_core.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/services/capsule_core.py) | `verify_capsule()`, `inject_capsule()`, `certify_capsule()` |
 | **SpiceDB Client** | [spicedb_client.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/services/common/spicedb_client.py) | `check_permission()`, `get_permissions()` |
 | **LiteLLM Client** | [litellm_client.py](file:///Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/llm/services/litellm_client.py) | `get_chat_model()`, `_astream()` |
