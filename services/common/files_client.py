@@ -156,8 +156,7 @@ class FilesClient:
         )
         if not self.base_url:
             raise ValueError(
-                "FILES_SERVICE_URL environment variable not set. "
-                "Files service is an external dependency."
+                "FILES_SERVICE_URL environment variable not set. Files service is an external dependency."
             )
 
         self.api_token = (

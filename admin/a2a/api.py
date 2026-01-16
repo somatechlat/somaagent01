@@ -162,8 +162,7 @@ async def start_conversation_workflow(
     workflow_id = str(uuid4())
 
     logger.info(
-        f"A2A conversation started: {workflow_id}, "
-        f"{payload.initiator_agent} → {payload.target_agent}"
+        f"A2A conversation started: {workflow_id}, {payload.initiator_agent} → {payload.target_agent}"
     )
 
     # In production: start Temporal workflow
@@ -421,8 +420,7 @@ async def create_escalation(
     }
 
     logger.warning(
-        f"Escalation created: {escalation_id}, "
-        f"type: {payload.escalation_type}, priority: {payload.priority}"
+        f"Escalation created: {escalation_id}, type: {payload.escalation_type}, priority: {payload.priority}"
     )
 
     return EscalationResponse(

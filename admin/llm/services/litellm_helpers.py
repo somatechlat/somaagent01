@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Awaitable, Callable, Optional, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, TYPE_CHECKING
 
 import litellm
 import openai
@@ -50,6 +50,7 @@ def _env_flag(name: str, default: bool = True) -> bool:
 def _json_env(name: str):
     """Get JSON-parsed value from environment variable."""
     import json
+
     raw = os.environ.get(name)
     if not raw:
         return {}
@@ -64,6 +65,7 @@ def _get_secret_manager():
     global _secret_manager
     if _secret_manager is None:
         from services.common.unified_secret_manager import get_secret_manager
+
         _secret_manager = get_secret_manager()
     return _secret_manager
 
@@ -157,7 +159,9 @@ def apply_rate_limiter_sync(
     if not model_config:
         return
     import asyncio
+
     import nest_asyncio
+
     nest_asyncio.apply()
     return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
 
@@ -165,7 +169,7 @@ def apply_rate_limiter_sync(
 def _parse_chunk(chunk: Any) -> dict:
     """Parse LLM response chunk into standardized format."""
     from admin.llm.services.litellm_schemas import ChatChunk
-    
+
     delta = chunk["choices"][0].get("delta", {})
     message = chunk["choices"][0].get("message", {}) or chunk["choices"][0].get(
         "model_extra", {}

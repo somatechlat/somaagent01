@@ -82,8 +82,7 @@ def generate_soma_token(
     valid_qualifiers = VALID_QUALIFIERS.get(token_type, [])
     if qualifier not in valid_qualifiers:
         raise ValueError(
-            f"Invalid qualifier '{qualifier}' for {token_type.name}. "
-            f"Valid options: {valid_qualifiers}"
+            f"Invalid qualifier '{qualifier}' for {token_type.name}. Valid options: {valid_qualifiers}"
         )
 
     # Use lowercase alphanumeric for URL-safe tokens

@@ -5,10 +5,9 @@ Compares legacy AgentIQ path vs new simplified path
 
 import asyncio
 import os
-import time
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
-from unittest.mock import Mock, AsyncMock, patch
+from typing import Dict
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -20,6 +19,7 @@ os.environ.setdefault("SA01_USE_SIMPLIFIED_LAYERS", "false")
 @dataclass
 class ValidationMetrics:
     """Metrics collected from a single chat turn."""
+
     path: str  # "legacy" or "simplified"
     latency_ms: float
     tokens_total: int  # Total tokens in context
@@ -38,21 +38,29 @@ class Phase4Validator:
         self.test_scenarios = [
             {"name": "Normal Turn", "token_budget": 4096, "degraded": False},
             {"name": "Degraded Turn", "token_budget": 4096, "degraded": True},
-            {"name": "Memory-Rich Turn", "token_budget": 8192, "degraded": False, "memory_snippets": 5},
+            {
+                "name": "Memory-Rich Turn",
+                "token_budget": 8192,
+                "degraded": False,
+                "memory_snippets": 5,
+            },
             {"name": "Tool-Heavy Turn", "token_budget": 4096, "degraded": False, "tools_count": 3},
         ]
 
     async def test_simplified_budget_allocation(self):
         """Test SimpleGovernor budget allocation vs legacy."""
-        from services.common.simple_governor import SimpleGovernor, get_governor, GovernorDecision, HealthStatus
+        from services.common.simple_governor import (
+            get_governor,
+            GovernorDecision,
+            HealthStatus,
+        )
 
         governor = get_governor()
         print("\n[TEST 1] SimpleGovernor Budget Allocation")
 
         # Test NORMAL mode
         result_normal: GovernorDecision = governor.allocate_budget(
-            max_tokens=4096,
-            is_degraded=False
+            max_tokens=4096, is_degraded=False
         )
         print(f"  NORMAL budget: {result_normal.lane_budget}")
         print(f"    System Policy: {result_normal.lane_budget.system_policy} (expected 15% = 614)")
@@ -62,7 +70,9 @@ class Phase4Validator:
 
         # Verify ratios
         assert result_normal.health_status == HealthStatus.HEALTHY
-        assert abs(result_normal.lane_budget.system_policy - 614) < 10, "Normal system ratio incorrect"
+        assert (
+            abs(result_normal.lane_budget.system_policy - 614) < 10
+        ), "Normal system ratio incorrect"
         assert abs(result_normal.lane_budget.history - 1024) < 10, "Normal history ratio incorrect"
         assert abs(result_normal.lane_budget.memory - 1024) < 10, "Normal memory ratio incorrect"
         assert abs(result_normal.lane_budget.tools - 819) < 10, "Normal tools ratio incorrect"
@@ -72,18 +82,23 @@ class Phase4Validator:
 
         # Test DEGRADED mode
         result_degraded: GovernorDecision = governor.allocate_budget(
-            max_tokens=4096,
-            is_degraded=True
+            max_tokens=4096, is_degraded=True
         )
         print(f"\n  DEGRADED budget: {result_degraded.lane_budget}")
-        print(f"    System Policy: {result_degraded.lane_budget.system_policy} (expected 40% = 1638)")
+        print(
+            f"    System Policy: {result_degraded.lane_budget.system_policy} (expected 40% = 1638)"
+        )
         print(f"    History: {result_degraded.lane_budget.history} (expected 10% = 409)")
         print(f"    Memory: {result_degraded.lane_budget.memory} (expected 15% = 614)")
         print(f"    Tools: {result_degraded.lane_budget.tools} (expected 0%)")
 
         assert result_degraded.health_status == HealthStatus.DEGRADED
-        assert abs(result_degraded.lane_budget.system_policy - 1638) < 10, "Degraded system ratio incorrect"
-        assert abs(result_degraded.lane_budget.history - 409) < 10, "Degraded history ratio incorrect"
+        assert (
+            abs(result_degraded.lane_budget.system_policy - 1638) < 10
+        ), "Degraded system ratio incorrect"
+        assert (
+            abs(result_degraded.lane_budget.history - 409) < 10
+        ), "Degraded history ratio incorrect"
         assert abs(result_degraded.lane_budget.tools - 0) < 1, "Degraded tools should be 0"
         assert result_degraded.tools_enabled is False
         assert result_degraded.mode == "degraded"
@@ -93,10 +108,9 @@ class Phase4Validator:
 
     async def test_unified_metrics(self):
         """Test UnifiedMetrics collection vs legacy scattered metrics."""
-        from services.common.unified_metrics import (
-            get_metrics, HealthStatus, TurnPhase
-        )
         from prometheus_client import REGISTRY
+
+        from services.common.unified_metrics import get_metrics, TurnPhase
 
         print("\n[TEST 2] UnifiedMetrics Collection")
 
@@ -105,10 +119,7 @@ class Phase4Validator:
         # Record turn start
         turn_id = "test-turn-123"
         turn = metrics.record_turn_start(
-            turn_id=turn_id,
-            tenant_id="tenant-1",
-            user_id="user-789",
-            agent_id="agent-456"
+            turn_id=turn_id, tenant_id="tenant-1", user_id="user-789", agent_id="agent-456"
         )
         print(f"  Turn started: {turn_id}")
 
@@ -122,11 +133,11 @@ class Phase4Validator:
         # Record health status
         metrics.record_health_status(service_name="somabrain", is_healthy=True, latency_ms=25.0)
         metrics.record_health_status(service_name="database", is_healthy=True, latency_ms=5.0)
-        print(f"  Health statuses recorded")
+        print("  Health statuses recorded")
 
         # Record memory retrieval
         metrics.record_memory_retrieval(latency_seconds=0.045, snippet_count=3)
-        print(f"  Memory retrieval recorded")
+        print("  Memory retrieval recorded")
 
         # Complete turn with tokens
         metrics.record_turn_complete(
@@ -135,9 +146,9 @@ class Phase4Validator:
             tokens_out=300,
             model="gpt-4o",
             provider="openai",
-            error=None
+            error=None,
         )
-        print(f"  Turn completed: 800 tokens total")
+        print("  Turn completed: 800 tokens total")
 
         # Check metrics in Registry
         print(f"  Total metrics registered: {len(list(REGISTRY.collect()))}")
@@ -149,7 +160,9 @@ class Phase4Validator:
         assert turn.latency_ms is not None and turn.latency_ms > 0
         assert turn.error is None
 
-        print(f"  Turn stats: latency_ms={turn.latency_ms:.2f}, tokens={turn.tokens_in + turn.tokens_out}")
+        print(
+            f"  Turn stats: latency_ms={turn.latency_ms:.2f}, tokens={turn.tokens_in + turn.tokens_out}"
+        )
         print("  ✅ UnifiedMetrics working correctly")
 
         return True
@@ -157,7 +170,10 @@ class Phase4Validator:
     async def test_circuit_breaker(self):
         """Test unified circuit breaker behavior."""
         from services.common.circuit_breaker import (
-            CircuitBreaker, CircuitState, CircuitBreakerConfig, CircuitBreakerError
+            CircuitBreaker,
+            CircuitBreakerConfig,
+            CircuitBreakerError,
+            CircuitState,
         )
 
         print("\n[TEST 3] Unified Circuit Breaker")
@@ -217,9 +233,7 @@ class Phase4Validator:
 
     async def test_health_monitor(self):
         """Test HealthMonitor binary health detection."""
-        from services.common.health_monitor import (
-            HealthMonitor, HealthCheck, ServiceStatus
-        )
+        from services.common.health_monitor import HealthCheck, HealthMonitor
 
         print("\n[TEST 4] HealthMonitor Binary Detection")
 
@@ -254,9 +268,13 @@ class Phase4Validator:
 
         # Get OverallHealth
         overall = monitor.get_overall_health()
-        print(f"  Overall (healthy): healthy={overall.healthy}, degraded={overall.degraded}, critical_failure={overall.critical_failure}")
+        print(
+            f"  Overall (healthy): healthy={overall.healthy}, degraded={overall.degraded}, critical_failure={overall.critical_failure}"
+        )
         assert overall.healthy is True, "Should be healthy when all critical services healthy"
-        assert overall.critical_failure is False, "Should not have critical failure when all healthy"
+        assert (
+            overall.critical_failure is False
+        ), "Should not have critical failure when all healthy"
 
         # Now register an unhealthy checker for a critical service
         monitor.register_health_checker("somabrain", create_unhealthy_checker)
@@ -269,7 +287,9 @@ class Phase4Validator:
 
         # Check OverallHealth after failure - get_critical_failures() is on OverallHealth
         overall = monitor.get_overall_health()
-        print(f"  Overall (unhealthy): healthy={overall.healthy}, degraded={overall.degraded}, critical_failure={overall.critical_failure}")
+        print(
+            f"  Overall (unhealthy): healthy={overall.healthy}, degraded={overall.degraded}, critical_failure={overall.critical_failure}"
+        )
         assert overall.critical_failure is True, "Should have critical failure flag set"
         # Call get_critical_failures on OverallHealth instance
         critical_failures = overall.get_critical_failures()
@@ -285,10 +305,7 @@ class Phase4Validator:
 
     async def test_context_builder(self):
         """Test SimpleContextBuilder vs legacy."""
-        from unittest.mock import AsyncMock, Mock
-        from services.common.simple_context_builder import (
-            ContextBuilder, BuiltContext
-        )
+        from services.common.simple_context_builder import ContextBuilder
 
         print("\n[TEST 5] SimpleContextBuilder")
 
@@ -307,7 +324,7 @@ class Phase4Validator:
             somabrain=mock_somabrain,
             token_counter=mock_token_counter,
         )
-        print(f"  ContextBuilder initialized")
+        print("  ContextBuilder initialized")
 
         # Test degraded mode first (simpler - no memory retrieval)
         turn_degraded = {
@@ -317,7 +334,7 @@ class Phase4Validator:
                 {"role": "user", "content": "Hello"},
                 {"role": "assistant", "content": "Hi there"},
                 {"role": "user", "content": "How are you?"},
-            ]
+            ],
         }
 
         lane_budget_degraded = {
@@ -331,12 +348,10 @@ class Phase4Validator:
 
         # Build context in degraded mode
         built_degraded = await builder.build_for_turn(
-            turn=turn_degraded,
-            lane_budget=lane_budget_degraded,
-            is_degraded=True
+            turn=turn_degraded, lane_budget=lane_budget_degraded, is_degraded=True
         )
 
-        print(f"  Degraded context built:")
+        print("  Degraded context built:")
         print(f"    System prompt length: {len(built_degraded.system_prompt)} chars")
         print(f"    Messages count: {len(built_degraded.messages)}")
         print(f"    Token counts: {built_degraded.token_counts}")
@@ -345,8 +360,10 @@ class Phase4Validator:
         assert built_degraded.system_prompt is not None, "System prompt should be built"
         assert built_degraded.messages, "Messages should be built"
         # In degraded mode, memory should not be used
-        assert built_degraded.token_counts.get("memory", 0) == 0, "Memory should be 0 in degraded mode"
-        print(f"  ✅ Degraded mode working correctly")
+        assert (
+            built_degraded.token_counts.get("memory", 0) == 0
+        ), "Memory should be 0 in degraded mode"
+        print("  ✅ Degraded mode working correctly")
 
         # Now test normal mode (with memory retrieval)
         lane_budget_normal = {
@@ -360,12 +377,10 @@ class Phase4Validator:
 
         # Build context in normal mode
         built_normal = await builder.build_for_turn(
-            turn=turn_degraded,
-            lane_budget=lane_budget_normal,
-            is_degraded=False
+            turn=turn_degraded, lane_budget=lane_budget_normal, is_degraded=False
         )
 
-        print(f"  Normal context built:")
+        print("  Normal context built:")
         print(f"    System prompt length: {len(built_normal.system_prompt)} chars")
         print(f"    Messages count: {len(built_normal.messages)}")
         print(f"    Token counts: {built_normal.token_counts}")
@@ -373,7 +388,7 @@ class Phase4Validator:
         assert built_normal.system_prompt is not None, "System prompt should be built"
         assert built_normal.messages, "Messages should be built"
         # In normal mode, memory should be retrieved (may fail due to circuit breaker, but should try)
-        print(f"  ✅ Normal mode completed")
+        print("  ✅ Normal mode completed")
 
         print("  ✅ Context builder working correctly")
 
@@ -415,7 +430,7 @@ class Phase4Validator:
 
         passed = sum(1 for _, status, _ in results if status == "PASS")
         total = len(results)
-        print(f"\nPassed: {passed}/{total} ({passed/total*100:.1f}%)")
+        print(f"\nPassed: {passed}/{total} ({passed / total * 100:.1f}%)")
 
         if passed == total:
             print("\n🎉 ALL TESTS PASSED - Ready for Phase 5 cleanup!")
@@ -456,4 +471,5 @@ async def test_phase4_complete():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(asyncio.run(test_phase4_complete()))

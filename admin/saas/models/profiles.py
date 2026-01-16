@@ -100,7 +100,6 @@ class PlatformConfig(models.Model):
             },
         }
 
-
     def __str__(self) -> str:
         return "Platform Configuration"
 

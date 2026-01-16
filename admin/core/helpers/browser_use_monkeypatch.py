@@ -192,8 +192,7 @@ try:
     from browser_use.llm import ChatGoogle  # type: ignore
 except ImportError as exc:  # pragma: no cover - requires external dependency
     raise ImportError(
-        "browser_use library is required for production web automation. "
-        "Install with: pip install browser-use"
+        "browser_use library is required for production web automation. Install with: pip install browser-use"
     ) from exc
 
 

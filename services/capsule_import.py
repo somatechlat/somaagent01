@@ -21,15 +21,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
 
 from django.db import transaction
 
 from admin.core.models import (
     AgentSetting,
-    Capsule,
     Capability,
-    FeatureFlag,
+    Capsule,
     Prompt,
     UISetting,
 )
@@ -233,9 +231,7 @@ def import_tenant_capsules(
 
     # Verify checksum
     if not verify_export_checksum(export_data):
-        failed = ImportResult(
-            success=False, error="Tenant export checksum verification failed"
-        )
+        failed = ImportResult(success=False, error="Tenant export checksum verification failed")
         result.failed_imports.append(failed)
         return result
 
@@ -280,9 +276,7 @@ def import_tenant_capsules(
 # =============================================================================
 
 
-def _import_related_data(
-    related_data: dict, tenant: str, agent_id: str
-) -> list[str]:
+def _import_related_data(related_data: dict, tenant: str, agent_id: str) -> list[str]:
     """Import related data entities for a single capsule.
 
     Returns list of warning messages.

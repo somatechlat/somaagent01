@@ -56,13 +56,19 @@ class MemoryBridge:
             # VIBE Rule 100: Use centralized config instead of os.getenv
             try:
                 from config import get_settings
+
                 _settings = get_settings()
                 milvus_host = _settings.milvus_host
                 milvus_port = _settings.milvus_port
                 redis_host = _settings.redis_host
                 redis_port = _settings.redis_port
-                logger.info("📦 Using centralized config: Milvus=%s:%s, Redis=%s:%s",
-                           milvus_host, milvus_port, redis_host, redis_port)
+                logger.info(
+                    "📦 Using centralized config: Milvus=%s:%s, Redis=%s:%s",
+                    milvus_host,
+                    milvus_port,
+                    redis_host,
+                    redis_port,
+                )
             except ImportError:
                 # Fallback for non-SaaS environments
                 milvus_host = os.getenv("MILVUS_HOST", "somastack_milvus")
@@ -92,7 +98,7 @@ class MemoryBridge:
         import httpx
 
         self._base_url = os.getenv("SFM_URL", "http://somafractalmemory:10101")
-        
+
         # VIBE Rule 164: No hardcoded secrets - require auth token from environment
         auth_token = os.getenv("SOMA_MEMORY_API_TOKEN") or os.getenv("SOMA_API_TOKEN")
         if not auth_token:
@@ -103,7 +109,7 @@ class MemoryBridge:
             headers = {}
         else:
             headers = {"Authorization": f"Bearer {auth_token}"}
-        
+
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
             timeout=30.0,

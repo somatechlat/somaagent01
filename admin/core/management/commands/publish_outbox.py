@@ -173,7 +173,8 @@ class Command(BaseCommand):
             )
             .filter(
                 # Only get messages ready for retry
-                models.Q(next_retry_at__isnull=True) | models.Q(next_retry_at__lte=timezone.now())
+                models.Q(next_retry_at__isnull=True)
+                | models.Q(next_retry_at__lte=timezone.now())
             )
             .order_by("created_at")[:batch_size]
         )

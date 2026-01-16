@@ -35,11 +35,13 @@ import logging
 # VIBE Rule 100: Use centralized config
 try:
     from config import get_settings
+
     _settings = get_settings()
-    SAAS_MODE = getattr(_settings, 'soma_saas_mode', False)
+    SAAS_MODE = getattr(_settings, "soma_saas_mode", False)
 except ImportError:
     # Fallback for standalone imports
     import os
+
     SAAS_MODE = os.getenv("SOMA_SAAS_MODE", "false").lower() == "true"
     logging.getLogger(__name__).warning(
         "⚠️ Could not import config.settings_registry. Using environment fallback."
@@ -47,4 +49,3 @@ except ImportError:
 
 __version__ = "2.0.0"
 __all__ = ["brain", "memory", "SAAS_MODE"]
-

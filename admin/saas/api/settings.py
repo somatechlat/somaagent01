@@ -273,6 +273,7 @@ def test_sso_connection(request, provider: str):
 # =============================================================================
 
 from pydantic import BaseModel, Field
+
 from services.common.unified_secret_manager import get_secret_manager
 
 
@@ -340,9 +341,7 @@ def set_llm_provider_key(request, payload: LLMProviderKeyIn):
     success = sm.set_provider_key(provider, payload.api_key)
 
     if success:
-        return MessageResponse(
-            message=f"API key for '{provider}' saved to Vault successfully"
-        )
+        return MessageResponse(message=f"API key for '{provider}' saved to Vault successfully")
     else:
         return MessageResponse(
             message=f"Failed to save API key for '{provider}'. Check Vault connectivity.",
@@ -364,4 +363,3 @@ def delete_llm_provider_key(request, provider: str):
             message=f"Failed to delete API key for '{provider}'",
             success=False,
         )
-

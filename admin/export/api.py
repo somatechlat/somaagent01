@@ -262,8 +262,7 @@ async def request_deletion(request, payload: DeletionRequest) -> DeletionRespons
     scheduled_date = timezone.now() + timedelta(days=30)
 
     logger.warning(
-        f"DELETION REQUEST: {request_id}, type: {payload.delete_type}, "
-        f"scheduled: {scheduled_date.date()}"
+        f"DELETION REQUEST: {request_id}, type: {payload.delete_type}, scheduled: {scheduled_date.date()}"
     )
 
     # In production:

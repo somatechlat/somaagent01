@@ -295,8 +295,7 @@ class SpiceDBClient:
             SPICEDB_REQUESTS.labels(method="get_permissions", result="success").inc()
 
             logger.debug(
-                f"Permissions retrieved: user={user_id}, tenant={tenant_id}, "
-                f"permissions={granted_permissions}"
+                f"Permissions retrieved: user={user_id}, tenant={tenant_id}, permissions={granted_permissions}"
             )
 
             return granted_permissions

@@ -167,7 +167,9 @@ class Command(BaseCommand):
             PendingMemory.objects.filter(
                 synced=False,
                 sync_attempts__lt=max_retries,
-            ).order_by("created_at")[:batch_size]
+            ).order_by(
+                "created_at"
+            )[:batch_size]
         )
 
         if self._client is None:

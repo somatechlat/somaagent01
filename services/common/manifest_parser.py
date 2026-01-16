@@ -123,8 +123,7 @@ class ManifestParser:
         if "egress_mode" in manifest:
             if manifest["egress_mode"] not in self.VALID_EGRESS_MODES:
                 errors.append(
-                    f"Invalid egress_mode: {manifest['egress_mode']}. "
-                    f"Must be one of: {self.VALID_EGRESS_MODES}"
+                    f"Invalid egress_mode: {manifest['egress_mode']}. Must be one of: {self.VALID_EGRESS_MODES}"
                 )
 
         if "default_hitl_mode" in manifest:

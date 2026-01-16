@@ -224,8 +224,7 @@ class AccountLockoutService:
 
             ACCOUNT_LOCKOUTS.inc()
             logger.warning(
-                f"Account locked: email={email}, attempts={attempts_count}, "
-                f"duration={self.config.lockout_duration}s"
+                f"Account locked: email={email}, attempts={attempts_count}, duration={self.config.lockout_duration}s"
             )
 
             return LockoutStatus(

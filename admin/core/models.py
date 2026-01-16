@@ -136,9 +136,9 @@ class Capsule(models.Model):
 
     # Tenant FK for proper referential integrity
     tenant = models.ForeignKey(
-        'saas.Tenant',
+        "saas.Tenant",
         on_delete=models.CASCADE,
-        related_name='capsules',
+        related_name="capsules",
         db_index=True,
         help_text="Owning tenant",
     )
@@ -201,35 +201,41 @@ class Capsule(models.Model):
 
     # 🧠 PRIMARY BRAIN
     chat_model = models.ForeignKey(
-        'llm.LLMModelConfig',
-        related_name='capabilities_chat',
+        "llm.LLMModelConfig",
+        related_name="capabilities_chat",
         on_delete=models.PROTECT,
-        null=True, # Allowed to be null in draft
-        help_text="The main cognitive engine (e.g. gpt-4-turbo)"
+        null=True,  # Allowed to be null in draft
+        help_text="The main cognitive engine (e.g. gpt-4-turbo)",
     )
 
     # 👁️ VISION & IMAGE
     image_model = models.ForeignKey(
-        'llm.LLMModelConfig',
-        related_name='capabilities_image',
-        on_delete=models.SET_NULL, null=True, blank=True,
-        help_text="Image generation model (e.g. dall-e-3)"
+        "llm.LLMModelConfig",
+        related_name="capabilities_image",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Image generation model (e.g. dall-e-3)",
     )
 
     # 🗣️ VOICE (TTS/STT)
     voice_model = models.ForeignKey(
-        'llm.LLMModelConfig',
-        related_name='capabilities_voice',
-        on_delete=models.SET_NULL, null=True, blank=True,
-        help_text="Voice synthesis model (e.g. elevenlabs-v1)"
+        "llm.LLMModelConfig",
+        related_name="capabilities_voice",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Voice synthesis model (e.g. elevenlabs-v1)",
     )
 
     # 🌐 BROWSER
     browser_model = models.ForeignKey(
-        'llm.LLMModelConfig',
-        related_name='capabilities_browser',
-        on_delete=models.SET_NULL, null=True, blank=True,
-        help_text="Web browsing and vision model (e.g. perplexity)"
+        "llm.LLMModelConfig",
+        related_name="capabilities_browser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Web browsing and vision model (e.g. perplexity)",
     )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -237,10 +243,10 @@ class Capsule(models.Model):
     # ═══════════════════════════════════════════════════════════════════
 
     capabilities = models.ManyToManyField(
-        'Capability',
-        related_name='capsules',
+        "Capability",
+        related_name="capsules",
         blank=True,
-        help_text="Active tools/MCP servers available to this agent"
+        help_text="Active tools/MCP servers available to this agent",
     )
 
     # ═══════════════════════════════════════════════════════════════════
@@ -248,17 +254,20 @@ class Capsule(models.Model):
     # ═══════════════════════════════════════════════════════════════════
 
     memory_config = models.ForeignKey(
-        'somabrain.MemoryConfig',
+        "somabrain.MemoryConfig",
         on_delete=models.PROTECT,
-        null=True, blank=True,
-        help_text="Memory retention and retrieval strategy"
+        null=True,
+        blank=True,
+        help_text="Memory retention and retrieval strategy",
     )
 
     # Legacy Fields (Deprecated - Rule 91)
     # kept for migration, do not use for new logic
     schema = models.JSONField(default=dict, help_text="DEPRECATED: Use Capability M2M")
     config = models.JSONField(default=dict, help_text="DEPRECATED: Use Model Configs")
-    capabilities_whitelist = models.JSONField(default=list, help_text="DEPRECATED: Use Capability M2M")
+    capabilities_whitelist = models.JSONField(
+        default=list, help_text="DEPRECATED: Use Capability M2M"
+    )
     resource_limits = models.JSONField(default=dict, help_text="Max wall clock, concurrency, etc.")
 
     is_active = models.BooleanField(default=True)

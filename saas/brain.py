@@ -86,6 +86,7 @@ class BrainBridge:
         # VIBE Rule 100: Use centralized config instead of os.getenv
         try:
             from config import get_settings
+
             _settings = get_settings()
             # Use somabrain internal host/port from centralized config
             self._base_url = f"http://{getattr(_settings, 'somabrain_host', 'somastack_saas')}:9696"
@@ -191,7 +192,12 @@ class BrainBridge:
             try:
                 resp = await self._client.post(
                     "/v1/learning/reward",
-                    json={"session_id": session_id, "signal": signal, "value": value, "meta": meta or {}},
+                    json={
+                        "session_id": session_id,
+                        "signal": signal,
+                        "value": value,
+                        "meta": meta or {},
+                    },
                 )
                 return resp.json().get("ok", False)
             except Exception as e:
@@ -251,7 +257,11 @@ class BrainBridge:
             try:
                 await self._client.put(
                     "/v1/neuromodulators",
-                    json={"tenant": tenant_id, "persona": persona_id, "neuromodulators": neuromodulators},
+                    json={
+                        "tenant": tenant_id,
+                        "persona": persona_id,
+                        "neuromodulators": neuromodulators,
+                    },
                 )
             except Exception as e:
                 logger.error(f"[GMD] HTTP set_neuromodulators failed: {e}")

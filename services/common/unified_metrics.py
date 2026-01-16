@@ -151,7 +151,9 @@ class UnifiedMetrics:
             ["tenant_id", "direction", "provider", "model"],
         )
         UnifiedMetrics.ERRORS_TOTAL = Counter(
-            "agent_errors_total", "Total errors encountered", ["tenant_id", "error_type", "component"]
+            "agent_errors_total",
+            "Total errors encountered",
+            ["tenant_id", "error_type", "component"],
         )
         UnifiedMetrics.CIRCUIT_OPENS = Counter(
             "circuit_breaker_opens_total", "Total times circuit opened", ["service_name"]
@@ -391,8 +393,7 @@ class UnifiedMetrics:
         # Log deployment mode-specific circuit opens
         if SAAS_MODE:
             logger.warning(
-                f"SAAS mode: Circuit opened for {service_name} "
-                f"(HTTP service unavailable, fallback to degraded mode)",
+                f"SAAS mode: Circuit opened for {service_name} (HTTP service unavailable, fallback to degraded mode)",
                 extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
             )
         elif STANDALONE_MODE:

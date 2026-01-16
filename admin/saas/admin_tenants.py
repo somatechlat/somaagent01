@@ -8,6 +8,7 @@ from admin.saas.models import SubscriptionTier, Tenant, TenantUser, TierFeature
 
 class TenantUserInline(admin.TabularInline):
     """Inline for managing users within a tenant."""
+
     model = TenantUser
     extra = 0
     readonly_fields = ["created_at"]
@@ -18,6 +19,7 @@ class TenantUserInline(admin.TabularInline):
 
 class TierFeatureInline(admin.TabularInline):
     """Inline for managing features within a tier."""
+
     model = TierFeature
     extra = 0
     fields = ["feature", "is_enabled", "quota_limit"]
@@ -27,7 +29,17 @@ class TierFeatureInline(admin.TabularInline):
 @admin.register(SubscriptionTier)
 class SubscriptionTierAdmin(admin.ModelAdmin):
     """Full Django Admin for Subscription Tiers."""
-    list_display = ["name", "slug", "price_display", "tenant_count", "is_active", "is_public", "sort_order", "created_at"]
+
+    list_display = [
+        "name",
+        "slug",
+        "price_display",
+        "tenant_count",
+        "is_active",
+        "is_public",
+        "sort_order",
+        "created_at",
+    ]
     list_filter = ["is_active", "is_public", "billing_interval", "created_at"]
     search_fields = ["name", "slug", "description"]
     readonly_fields = ["id", "created_at", "updated_at", "tenant_count"]
@@ -40,7 +52,19 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Tier Information", {"fields": ("id", "name", "slug", "description")}),
         ("Pricing", {"fields": ("base_price_cents", "billing_interval", "lago_plan_code")}),
-        ("Limits", {"fields": ("max_agents", "max_users_per_agent", "max_monthly_voice_minutes", "max_monthly_api_calls", "max_storage_gb"), "classes": ("collapse",)}),
+        (
+            "Limits",
+            {
+                "fields": (
+                    "max_agents",
+                    "max_users_per_agent",
+                    "max_monthly_voice_minutes",
+                    "max_monthly_api_calls",
+                    "max_storage_gb",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
         ("Status", {"fields": ("is_active", "is_public", "sort_order")}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
@@ -77,7 +101,17 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
     """Full Django Admin for Tenants with inlines."""
-    list_display = ["name", "slug", "tier", "status_badge", "user_count", "agent_count", "billing_email", "created_at"]
+
+    list_display = [
+        "name",
+        "slug",
+        "tier",
+        "status_badge",
+        "user_count",
+        "agent_count",
+        "billing_email",
+        "created_at",
+    ]
     list_filter = ["status", "tier", "created_at"]
     search_fields = ["name", "slug", "billing_email", "lago_customer_id"]
     readonly_fields = ["id", "created_at", "updated_at", "user_count", "agent_count"]
@@ -91,7 +125,10 @@ class TenantAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Tenant Information", {"fields": ("id", "name", "slug", "status")}),
         ("Subscription", {"fields": ("tier", "trial_ends_at")}),
-        ("Billing (Lago)", {"fields": ("billing_email", "lago_customer_id", "lago_subscription_id")}),
+        (
+            "Billing (Lago)",
+            {"fields": ("billing_email", "lago_customer_id", "lago_subscription_id")},
+        ),
         ("Authentication (Keycloak)", {"fields": ("keycloak_realm",), "classes": ("collapse",)}),
         ("Configuration", {"fields": ("feature_overrides", "metadata"), "classes": ("collapse",)}),
         ("Statistics", {"fields": ("user_count", "agent_count")}),
@@ -100,9 +137,18 @@ class TenantAdmin(admin.ModelAdmin):
 
     @admin.display(description="Status")
     def status_badge(self, obj):
-        colors = {"active": "#22c55e", "pending": "#f59e0b", "suspended": "#ef4444", "trial": "#3b82f6"}
+        colors = {
+            "active": "#22c55e",
+            "pending": "#f59e0b",
+            "suspended": "#ef4444",
+            "trial": "#3b82f6",
+        }
         color = colors.get(obj.status, "#94a3b8")
-        return format_html('<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>', color, obj.status.upper())
+        return format_html(
+            '<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>',
+            color,
+            obj.status.upper(),
+        )
 
     @admin.display(description="Users")
     def user_count(self, obj):
@@ -126,6 +172,7 @@ class TenantAdmin(admin.ModelAdmin):
 @admin.register(TenantUser)
 class TenantUserAdmin(admin.ModelAdmin):
     """Full Django Admin for Tenant Users."""
+
     list_display = ["email", "display_name", "tenant", "role_badge", "is_active", "created_at"]
     list_filter = ["role", "is_active", "tenant", "created_at"]
     search_fields = ["email", "display_name", "user_id"]
@@ -146,7 +193,11 @@ class TenantUserAdmin(admin.ModelAdmin):
     def role_badge(self, obj):
         colors = {"owner": "#ef4444", "admin": "#f59e0b", "member": "#3b82f6", "viewer": "#94a3b8"}
         color = colors.get(obj.role, "#94a3b8")
-        return format_html('<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>', color, obj.role.upper())
+        return format_html(
+            '<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>',
+            color,
+            obj.role.upper(),
+        )
 
     @admin.action(description="Activate selected users")
     def activate_users(self, request, queryset):

@@ -85,8 +85,7 @@ class OPAPolicyAdapter:
         )
         if not self.base_url:
             raise ValueError(
-                "OPA base URL required. Set SA01_OPA_URL or SA01_SOMA_BASE_URL. "
-                "No hardcoded defaults per "
+                "OPA base URL required. Set SA01_OPA_URL or SA01_SOMA_BASE_URL. No hardcoded defaults per "
             )
 
         self.evaluate_url = f"{self.base_url}/v1/policy/evaluate"
@@ -225,8 +224,7 @@ class OPAPolicyAdapter:
         OPA_REQUESTS.labels(action, resource, decision).inc()
 
         LOGGER.debug(
-            f"OPA decision: action={action} resource={resource} "
-            f"tenant={context.tenant_id} allowed={allowed}"
+            f"OPA decision: action={action} resource={resource} tenant={context.tenant_id} allowed={allowed}"
         )
 
         return PolicyDecision(
