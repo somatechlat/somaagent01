@@ -49,7 +49,7 @@ class ResourceManager:
             return True
 
     @asynccontextmanager
-    async def reserve(self) -> asyncio.Semaphore:
+    async def reserve(self) -> Any:  # type: ignore[return]
         """Execute reserve."""
 
         await self._semaphore.acquire()

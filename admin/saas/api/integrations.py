@@ -362,7 +362,6 @@ async def sync_lago_plans(request) -> dict:
     """
     import httpx
 
-
     config = await _get_integration_config("lago")
     if not config.get("api_key"):
         return {"success": False, "message": "Lago not configured"}

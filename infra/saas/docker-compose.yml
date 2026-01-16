@@ -47,7 +47,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=somaagent
       - POSTGRES_USER=soma
-      - POSTGRES_PASSWORD=soma
+      - POSTGRES_PASSWORD=${VAULT_POSTGRES_PASSWORD:-soma}
       # Redis
       - REDIS_HOST=somastack_redis
       - REDIS_PORT=6379
@@ -71,7 +71,7 @@ services:
       # Keycloak OIDC Identity Provider
       - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
       # Legacy compatibility (for settings.py fallback)
-      - SA01_DB_DSN=postgresql://soma:soma@somastack_postgres:5432/somaagent
+      - SA01_DB_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somaagent
     ports:
       - "63900:9000" # Agent API
       - "63996:9696" # Brain API
@@ -110,7 +110,7 @@ services:
     ports:
       - "63982:8200"
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: soma_dev_token
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-soma_dev_token}
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
     cap_add:
       - IPC_LOCK
@@ -148,8 +148,8 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     command: start-dev --import-realm
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN: ${VAULT_KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${VAULT_KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HTTP_PORT: 8080
       KC_HEALTH_ENABLED: true
       KC_METRICS_ENABLED: true
@@ -182,7 +182,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: soma
-      POSTGRES_PASSWORD: soma
+      POSTGRES_PASSWORD: ${VAULT_POSTGRES_PASSWORD:-soma}
       POSTGRES_DB: soma # Initial DB, others created by init-db.sh
     command:
       - "postgres"
@@ -288,8 +288,8 @@ services:
     container_name: somastack_minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      MINIO_ACCESS_KEY: ${VAULT_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${VAULT_MINIO_SECRET_KEY:-minioadmin}
     ports:
       - "63902:9000"
       - "63911:9001"
@@ -327,13 +327,14 @@ services:
       - "63990:9091"
     depends_on:
       somastack_etcd:
-        condition: service_started
+        condition: service_healthy
       somastack_minio:
         condition: service_healthy
     deploy:
       resources:
         limits:
           cpus: '4.0'
+          memory: 4096M
     networks:
       - soma_stack_net
     healthcheck:
