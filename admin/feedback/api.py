@@ -3,7 +3,6 @@
 
 Conversation ratings and improvement signals.
 
-7-Persona Implementation:
 - PM: User satisfaction
 - QA: Quality monitoring
 - ML Eng: RLHF data

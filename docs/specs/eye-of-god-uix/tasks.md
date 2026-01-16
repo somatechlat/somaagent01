@@ -86,9 +86,9 @@
 - `ui/frontend/src/index.ts`
 
 **Acceptance Criteria:**
-- `npm run dev` starts dev server with HMR
-- `npm run build` produces optimized bundle
-- `npm run test` runs component tests
+- `bun run dev` starts dev server with HMR
+- `bun run build` produces optimized bundle
+- `bun run test` runs component tests
 
 ---
 

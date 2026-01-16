@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 8 - Data Export.
 
-7-Persona Implementation:
 - Security Auditor: GDPR compliance, audit trail
 - PhD Dev: Large data handling, streaming
 - PM: User-friendly export process
@@ -121,7 +120,7 @@ async def request_export(request, payload: ExportRequest) -> ExportResponse:
     estimated_completion = timezone.now() + timedelta(minutes=estimated_minutes)
 
     logger.info(
-        f"Export requested: {export_id}, type: {payload.export_type}, " f"format: {payload.format}"
+        f"Export requested: {export_id}, type: {payload.export_type}, format: {payload.format}"
     )
 
     # In production: queue ZDL task for export

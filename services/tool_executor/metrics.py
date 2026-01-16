@@ -1,10 +1,9 @@
 """Prometheus metrics for tool executor service."""
 
 import logging
+import os
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
-
-import os
 
 LOGGER = logging.getLogger(__name__)
 

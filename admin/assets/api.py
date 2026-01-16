@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.2 - Asset Storage.
 
-7-Persona Implementation:
 - PhD Dev: Content-addressable storage, provenance tracking
 - Security Auditor: Integrity verification, access control
 - DevOps: S3-compatible storage integration

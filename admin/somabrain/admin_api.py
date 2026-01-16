@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 6.4 - Admin Endpoints.
 
-7-Persona Implementation:
 - Security Auditor: ADMIN-only access
 - DevOps: Service lifecycle management
 - PM: Comprehensive diagnostics
@@ -203,9 +202,7 @@ async def service_action(
     if payload.action not in valid_actions:
         raise BadRequestError(f"Invalid action. Must be one of: {valid_actions}")
 
-    logger.warning(
-        f"ADMIN ACTION: {payload.action} service {service_name} " f"(force={payload.force})"
-    )
+    logger.warning(f"ADMIN ACTION: {payload.action} service {service_name} (force={payload.force})")
 
     # In production: execute via systemd/docker/k8s
     # subprocess.run(["systemctl", payload.action, service_name])

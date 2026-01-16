@@ -65,8 +65,7 @@ class MCPTool(Tool):
     """MCP Tool wrapper for agent integration."""
 
     async def execute(self, **kwargs: Any):
-        """Execute execute.
-            """
+        """Execute execute."""
 
         error = ""
         try:
@@ -88,8 +87,7 @@ class MCPTool(Tool):
         return Response(message=message, break_loop=False)
 
     async def before_execution(self, **kwargs: Any):
-        """Execute before execution.
-            """
+        """Execute before execution."""
 
         PrintStyle(font_color="#1B4F72", padding=True, background_color="white", bold=True).print(
             f"{self.agent.agent_name}: Using tool '{self.name}'"
@@ -105,9 +103,9 @@ class MCPTool(Tool):
     async def after_execution(self, response: Response, **kwargs: Any):
         """Execute after execution.
 
-            Args:
-                response: The response.
-            """
+        Args:
+            response: The response.
+        """
 
         raw_tool_response = response.message.strip() if response.message else ""
         if not raw_tool_response:
@@ -147,8 +145,7 @@ class MCPConfig(BaseModel):
 
     @classmethod
     def get_instance(cls) -> "MCPConfig":
-        """Retrieve instance.
-            """
+        """Retrieve instance."""
 
         if cls.__instance is None:
             cls.__instance = cls(servers_list=[])
@@ -156,8 +153,7 @@ class MCPConfig(BaseModel):
 
     @classmethod
     def wait_for_lock(cls):
-        """Execute wait for lock.
-            """
+        """Execute wait for lock."""
 
         with cls.__lock:
             return
@@ -166,9 +162,9 @@ class MCPConfig(BaseModel):
     def update(cls, config_str: str) -> Any:
         """Execute update.
 
-            Args:
-                config_str: The config_str.
-            """
+        Args:
+            config_str: The config_str.
+        """
 
         with cls.__lock:
             servers_data: List[Dict[str, Any]] = []
@@ -190,9 +186,9 @@ class MCPConfig(BaseModel):
     def normalize_config(cls, servers: Any):
         """Execute normalize config.
 
-            Args:
-                servers: The servers.
-            """
+        Args:
+            servers: The servers.
+        """
 
         normalized = []
         if isinstance(servers, list):
@@ -270,9 +266,9 @@ class MCPConfig(BaseModel):
     def get_server_log(self, server_name: str) -> str:
         """Retrieve server log.
 
-            Args:
-                server_name: The server_name.
-            """
+        Args:
+            server_name: The server_name.
+        """
 
         with self.__lock:
             for server in self.servers:
@@ -281,8 +277,7 @@ class MCPConfig(BaseModel):
             return ""
 
     def get_servers_status(self) -> list[dict[str, Any]]:
-        """Retrieve servers status.
-            """
+        """Retrieve servers status."""
 
         result = []
         with self.__lock:
@@ -311,9 +306,9 @@ class MCPConfig(BaseModel):
     def get_server_detail(self, server_name: str) -> dict[str, Any]:
         """Retrieve server detail.
 
-            Args:
-                server_name: The server_name.
-            """
+        Args:
+            server_name: The server_name.
+        """
 
         with self.__lock:
             for server in self.servers:
@@ -326,15 +321,13 @@ class MCPConfig(BaseModel):
             return {}
 
     def is_initialized(self) -> bool:
-        """Check if initialized.
-            """
+        """Check if initialized."""
 
         with self.__lock:
             return self.__initialized
 
     def get_tools(self) -> List[dict[str, dict[str, Any]]]:
-        """Retrieve tools.
-            """
+        """Retrieve tools."""
 
         with self.__lock:
             tools = []
@@ -348,9 +341,9 @@ class MCPConfig(BaseModel):
     def get_tools_prompt(self, server_name: str = "") -> str:
         """Retrieve tools prompt.
 
-            Args:
-                server_name: The server_name.
-            """
+        Args:
+            server_name: The server_name.
+        """
 
         with self.__lock:
             pass
@@ -379,9 +372,9 @@ class MCPConfig(BaseModel):
     def has_tool(self, tool_name: str) -> bool:
         """Check if tool.
 
-            Args:
-                tool_name: The tool_name.
-            """
+        Args:
+            tool_name: The tool_name.
+        """
 
         if "." not in tool_name:
             return False
@@ -395,10 +388,10 @@ class MCPConfig(BaseModel):
     def get_tool(self, agent: Any, tool_name: str) -> MCPTool | None:
         """Retrieve tool.
 
-            Args:
-                agent: The agent.
-                tool_name: The tool_name.
-            """
+        Args:
+            agent: The agent.
+            tool_name: The tool_name.
+        """
 
         if not self.has_tool(tool_name):
             return None
@@ -409,10 +402,10 @@ class MCPConfig(BaseModel):
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         """Execute call tool.
 
-            Args:
-                tool_name: The tool_name.
-                input_data: The input_data.
-            """
+        Args:
+            tool_name: The tool_name.
+            input_data: The input_data.
+        """
 
         if "." not in tool_name:
             raise ValueError(f"Tool {tool_name} not found")

@@ -16,16 +16,14 @@ class LocalInteractiveSession:
         self.full_output = ""
 
     async def connect(self):
-        """Execute connect.
-            """
+        """Execute connect."""
 
         self.session = tty_session.TTYSession("/bin/bash")
         await self.session.start()
         await self.session.read_full_until_idle(idle_timeout=1, total_timeout=1)
 
     async def close(self):
-        """Execute close.
-            """
+        """Execute close."""
 
         if self.session:
             self.session.kill()
@@ -34,9 +32,9 @@ class LocalInteractiveSession:
     async def send_command(self, command: str):
         """Execute send command.
 
-            Args:
-                command: The command.
-            """
+        Args:
+            command: The command.
+        """
 
         if not self.session:
             raise Exception("Shell not connected")
@@ -48,10 +46,10 @@ class LocalInteractiveSession:
     ) -> Tuple[str, Optional[str]]:
         """Execute read output.
 
-            Args:
-                timeout: The timeout.
-                reset_full_output: The reset_full_output.
-            """
+        Args:
+            timeout: The timeout.
+            reset_full_output: The reset_full_output.
+        """
 
         if not self.session:
             raise Exception("Shell not connected")

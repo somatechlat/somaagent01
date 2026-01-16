@@ -33,9 +33,9 @@ class ResponseNormalizer:
     def normalize(raw: Mapping[str, Any]) -> Mapping[str, Any]:
         """Execute normalize.
 
-            Args:
-                raw: The raw.
-            """
+        Args:
+            raw: The raw.
+        """
 
         if not isinstance(raw, Mapping):
             raise VoiceProcessingError(

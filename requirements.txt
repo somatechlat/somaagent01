@@ -12,9 +12,12 @@ slowapi==0.1.9
 # Core config and serialization
 pydantic==2.11.6
 pydantic-settings==2.6.1
+django-environ==0.11.2
 python-dotenv==1.1.0
+email-validator==2.1.0.post1
 PyYAML==6.0.2
 PyJWT==2.9.0
+python-jose==3.3.0
 
 # Databases and brokers
 jsonschema==4.22.0
@@ -95,3 +98,5 @@ pytest==8.3.3
 pytest-asyncio==0.24.0
 pytest-playwright==0.5.1
 testcontainers[kafka,postgres,redis]==4.8.0
+whitenoise>=6.6.0
+hvac>=2.1.0

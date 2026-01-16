@@ -3,7 +3,6 @@
 
 User lifecycle and profile management.
 
-7-Persona Implementation:
 - Security Auditor: User security, MFA
 - PM: User onboarding
 - Django Architect: Django User model
@@ -15,12 +14,12 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from asgiref.sync import sync_to_async
 
 router = Router(tags=["users"])
 logger = logging.getLogger(__name__)
@@ -125,6 +124,7 @@ async def create_user(
 async def get_user(request, user_id: str) -> User:
     """Get user details."""
     from django.contrib.auth import get_user_model
+
     from admin.common.exceptions import NotFoundError
 
     UserModel = get_user_model()
@@ -237,6 +237,7 @@ async def activate_user(request, user_id: str) -> dict:
 async def get_profile(request, user_id: str) -> UserProfile:
     """Get user profile."""
     from django.contrib.auth import get_user_model
+
     from admin.common.exceptions import NotFoundError
 
     UserModel = get_user_model()

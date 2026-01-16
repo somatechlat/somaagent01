@@ -11,6 +11,10 @@
 | SRS Document | Focus | Screens | Settings |
 |--------------|-------|---------|----------|
 | `SRS-ARCHITECTURE.md` | System layers | - | - |
+| `SRS-UNIFIED-LAYERS-PRODUCTION-READY.md` | Unified Layers SRS | - | 11 metrics, 5 components |
+| `SRS-UNIFIED-LAYERS-PRODUCTION-PLAN.md` | Deployment strategy | - | 0 |
+| `SRS-UNIFIED-LAYERS-VERIFICATION.md` | Feature parity checklist | - | 0 |
+| `DEPLOYMENT-MODE-VERIFICATION.md` | Code-to-doc sync report | - | 0 |
 | `SRS-INFRASTRUCTURE-ADMIN.md` | Service administration | 12 | 50+ |
 | `SRS-INFRASTRUCTURE-JOURNEYS.md` | Admin user flows | - | - |
 | `SRS-SEED-DATA.md` | Default data | - | 78 permissions |
@@ -263,8 +267,8 @@
 
 | Parameter | Type | Default | UI Route |
 |-----------|------|---------|----------|
-| `PROMETHEUS_URL` | URL | `prometheus:20090` | `/platform/metrics` |
-| `GRAFANA_URL` | URL | `grafana:20030` | `/platform/metrics` |
+| `PROMETHEUS_URL` | URL | `prometheus:9090` (internal), `localhost:63905` (SAAS external) | `/platform/metrics` |
+| `GRAFANA_URL` | URL | `grafana:3000` (internal), `localhost:63906` (SAAS external) | `/platform/metrics` |
 | `METRICS_RETENTION_DAYS` | Integer | `30` | `/platform/metrics` |
 | `ALERT_WEBHOOK_URL` | URL | - | `/platform/metrics/sla` |
 

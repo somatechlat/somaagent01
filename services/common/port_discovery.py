@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class PortDiscovery:
-    """In-memory port discovery - no file storage per """
+    """In-memory port discovery - no file storage per"""
 
     PORT_RANGE_START = 68000
     PORT_RANGE_END = 69000

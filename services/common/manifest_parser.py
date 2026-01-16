@@ -7,16 +7,15 @@ based on environment mode (DEV, STAGING, PROD).
 
 from __future__ import annotations
 
+import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import yaml
 
-import os
 from services.common.capsule_store import CapsuleRecord, CapsuleStatus, CapsuleStore
-
 
 __all__ = ["ManifestParser", "ManifestValidationError", "parse_manifest"]
 

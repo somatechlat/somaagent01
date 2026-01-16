@@ -9,8 +9,8 @@ from __future__ import annotations
 import fnmatch
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 
 @dataclass
@@ -78,8 +78,7 @@ class EnforcementResult:
 
     @property
     def allowed(self) -> bool:
-        """Execute allowed.
-            """
+        """Execute allowed."""
 
         return self.action in {EnforcementAction.ALLOW, EnforcementAction.WARN}
 
@@ -108,7 +107,7 @@ class EgressEnforcer:
         if self.egress_mode == "none":
             return EnforcementResult(
                 action=EnforcementAction.DENY,
-                reason=f"Egress blocked: mode is 'none'",
+                reason="Egress blocked: mode is 'none'",
                 details={"domain": domain, "egress_mode": self.egress_mode},
             )
 
@@ -298,7 +297,7 @@ class HITLEnforcer:
                 if self._pending_count >= self.max_pending:
                     return EnforcementResult(
                         action=EnforcementAction.DENY,
-                        reason=f"High risk action, but max pending HITL reached",
+                        reason="High risk action, but max pending HITL reached",
                         details={"risk_score": risk_score, "threshold": threshold},
                     )
                 return EnforcementResult(

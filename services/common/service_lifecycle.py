@@ -47,9 +47,9 @@ def run_service(
     def _request_shutdown(signame: str) -> None:  # pragma: no cover (signal path)
         """Execute request shutdown.
 
-            Args:
-                signame: The signame.
-            """
+        Args:
+            signame: The signame.
+        """
 
         if stop_flag["stopping"]:
             return
@@ -69,8 +69,7 @@ def run_service(
             pass
 
     async def _runner() -> None:
-        """Execute runner.
-            """
+        """Execute runner."""
 
         try:
             await main_coro_factory()

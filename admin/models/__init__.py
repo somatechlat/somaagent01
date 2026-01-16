@@ -1,4 +1,1 @@
-"""Models module - LLM catalog.
-
-
-"""
+"""Models module - LLM catalog."""

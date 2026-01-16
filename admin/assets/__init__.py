@@ -1,4 +1,1 @@
-"""Assets module - Storage and Provenance.
-
-
-"""
+"""Assets module - Storage and Provenance."""

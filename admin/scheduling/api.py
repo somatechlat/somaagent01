@@ -3,7 +3,6 @@
 
 Durable workflow scheduling and execution.
 
-7-Persona Implementation:
 - DevOps: Temporal workflows, durable execution
 - PM: Scheduled reports, maintenance windows
 - QA: Workflow monitoring, failure handling

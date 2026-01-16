@@ -14,8 +14,7 @@ pause_time = 0
 
 
 async def run_loop():
-    """Execute run loop.
-        """
+    """Execute run loop."""
 
     global pause_time, keep_running
 
@@ -43,8 +42,7 @@ async def run_loop():
 
 async def scheduler_tick():
     # Get the task scheduler instance and print detailed debug info
-    """Execute scheduler tick.
-        """
+    """Execute scheduler tick."""
 
     scheduler = TaskScheduler.get()
     # Run the scheduler tick
@@ -52,8 +50,7 @@ async def scheduler_tick():
 
 
 def pause_loop():
-    """Execute pause loop.
-        """
+    """Execute pause loop."""
 
     global keep_running, pause_time
     keep_running = False
@@ -61,8 +58,7 @@ def pause_loop():
 
 
 def resume_loop():
-    """Execute resume loop.
-        """
+    """Execute resume loop."""
 
     global keep_running, pause_time
     keep_running = True

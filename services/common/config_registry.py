@@ -26,9 +26,9 @@ from jsonschema import Draft202012Validator
 def _stable_hash(obj: Any) -> str:
     """Execute stable hash.
 
-        Args:
-            obj: The obj.
-        """
+    Args:
+        obj: The obj.
+    """
 
     data = json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(
         "utf-8"
@@ -64,17 +64,16 @@ class ConfigRegistry:
         return snap
 
     def get(self) -> Optional[ConfigSnapshot]:
-        """Execute get.
-            """
+        """Execute get."""
 
         return self._snapshot
 
     def subscribe(self, callback: Callable[[ConfigSnapshot], None]) -> None:
         """Execute subscribe.
 
-            Args:
-                callback: The callback.
-            """
+        Args:
+            callback: The callback.
+        """
 
         self._subscribers.append(callback)
 

@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.3 - Multimodal Execution.
 
-7-Persona Implementation:
 - PhD Dev: DAG execution, parallel processing
 - ML Eng: OpenAI DALL-E, image generation
 - DevOps: External service integration
@@ -31,8 +30,9 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-OPENAI_API_KEY = getattr(settings, "OPENAI_API_KEY", None)
-MERMAID_CLI_URL = getattr(settings, "MERMAID_CLI_URL", "http://localhost:9300")
+from admin.saas.models.profiles import PlatformConfig
+from admin.llm.models import LLMModelConfig
+from services.common.unified_secret_manager import get_secret_manager
 
 
 # =============================================================================
@@ -152,21 +152,44 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
     """
     import httpx
 
-    if not OPENAI_API_KEY:
-        raise ServiceUnavailableError("openai", "OpenAI API key not configured")
+    # 1. Resolve Model Configuration (Rule 91)
+    # We look for a model with 'image_generation' capability
+    # In future, this should be scoped to the Tenant/Capsule
+    model_config = await LLMModelConfig.objects.filter(
+        capabilities__contains="image_generation",
+        is_active=True
+    ).order_by("-priority").afirst()
+
+    if not model_config:
+         raise ServiceUnavailableError("openai", "No image generation model configured in LLMModelConfig")
+
+    # 2. Retrieve Secret from Vault (No Env Vars)
+    sm = get_secret_manager()
+    try:
+        api_key = sm.get_provider_key(model_config.provider)
+    except Exception as e:
+        logger.error(f"Vault error: {e}")
+        raise ServiceUnavailableError("openai", "Could not retrieve API key from Vault")
+
+    if not api_key:
+        raise ServiceUnavailableError("openai", f"API keys not configured for provider {model_config.provider}")
 
     if len(payload.prompt) > 4000:
         raise BadRequestError("Prompt exceeds maximum length of 4000 characters")
 
     image_id = str(uuid4())
 
+    # 3. Execute Request
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
+            # Use model-specific URL if defined, else default to OpenAI
+            base_url = model_config.api_base or "https://api.openai.com/v1"
+
             response = await client.post(
-                "https://api.openai.com/v1/images/generations",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                f"{base_url}/images/generations",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "dall-e-3",
+                    "model": model_config.name, # Use specific model name from DB (e.g. dall-e-3)
                     "prompt": payload.prompt,
                     "size": payload.size,
                     "quality": payload.quality,
@@ -187,12 +210,12 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
                     created_at=timezone.now().isoformat(),
                 )
             else:
-                logger.error(f"DALL-E error: {response.status_code}")
-                raise ServiceUnavailableError("openai", f"DALL-E error: {response.status_code}")
+                logger.error(f"DALL-E error: {response.status_code} - {response.text}")
+                raise ServiceUnavailableError("openai", f"Provider error: {response.status_code}")
 
     except httpx.HTTPError as e:
-        logger.error(f"OpenAI connection error: {e}")
-        raise ServiceUnavailableError("openai", "OpenAI service unavailable")
+        logger.error(f"Provider connection error: {e}")
+        raise ServiceUnavailableError("openai", "Image generation service unavailable")
 
 
 # =============================================================================
@@ -216,12 +239,16 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
 
     import httpx
 
+    # Resolve Mermaid URL from PlatformConfig (Rule 91)
+    defaults = await PlatformConfig.aget_instance()
+    mermaid_url = defaults.defaults.get("mermaid_cli_url", "http://localhost:9300")
+
     diagram_id = str(uuid4())
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{MERMAID_CLI_URL}/render",
+                f"{mermaid_url}/render",
                 json={
                     "code": payload.code,
                     "format": payload.format,
@@ -238,17 +265,13 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
                     created_at=timezone.now().isoformat(),
                 )
             else:
+                logger.error(f"Mermaid error: {response.status_code} - {response.text}")
                 raise ServiceUnavailableError("mermaid", "Mermaid rendering failed")
 
-    except httpx.HTTPError:
-        # Fallback: return pre-rendered placeholder
-        logger.warning("Mermaid CLI unavailable, using fallback")
-        return DiagramResponse(
-            diagram_id=diagram_id,
-            format=payload.format,
-            url=f"/api/v2/multimodal/diagrams/{diagram_id}",
-            created_at=timezone.now().isoformat(),
-        )
+    except httpx.HTTPError as e:
+        logger.error(f"Mermaid service unreachable: {e}")
+        # Fail closed (Vibe Rule 124 - Real Infra Only)
+        raise ServiceUnavailableError("mermaid", "Mermaid service unreachable")
 
 
 # =============================================================================

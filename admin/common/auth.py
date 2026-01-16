@@ -6,7 +6,6 @@ Provides Keycloak-based authentication and authorization.
 from __future__ import annotations
 
 import logging
-import os
 import time
 from functools import lru_cache
 from typing import Any
@@ -52,12 +51,14 @@ class KeycloakConfig(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_keycloak_config() -> KeycloakConfig:
-    """Get cached Keycloak configuration from environment."""
+    """Get cached Keycloak configuration from Django settings."""
+    from django.conf import settings
+
     return KeycloakConfig(
-        server_url=os.environ.get("KEYCLOAK_URL", "http://localhost:49010"),
-        realm=os.environ.get("KEYCLOAK_REALM", "somaagent"),
-        client_id=os.environ.get("KEYCLOAK_CLIENT_ID", "eye-of-god"),
-        client_secret=os.environ.get("KEYCLOAK_CLIENT_SECRET"),
+        server_url=settings.KEYCLOAK_URL,
+        realm=settings.KEYCLOAK_REALM,
+        client_id=settings.KEYCLOAK_CLIENT_ID,
+        client_secret=settings.KEYCLOAK_CLIENT_SECRET,
     )
 
 
@@ -83,8 +84,31 @@ class TokenPayload(BaseModel):
     realm_access: dict[str, list[str]] | None = None
     resource_access: dict[str, dict[str, list[str]]] | None = None
     scope: str | None = None
-    tenant_id: str | None = None  # Custom claim for multi-tenancy
+    tenant: str | None = None  # JWT claim from Keycloak (e.g., "default")
+    tenant_id: str | None = None  # Custom claim for multi-tenancy (UUID)
     session_id: str | None = None  # Custom claim for session tracking
+
+    @property
+    def effective_tenant_id(self) -> str | None:
+        """Get tenant ID with fallback chain: tenant_id → tenant → settings default.
+
+        This handles the case where Keycloak uses 'tenant' claim but we need UUID.
+        """
+        from django.conf import settings
+
+        # 1. Direct tenant_id claim (if present)
+        if self.tenant_id:
+            return self.tenant_id
+
+        # 2. Map 'tenant' claim to UUID
+        if self.tenant:
+            # If tenant is "default", return the settings default UUID
+            if self.tenant == "default":
+                return getattr(settings, "SAAS_DEFAULT_TENANT_ID", None)
+            # Otherwise use the tenant value directly (might be a UUID)
+            return self.tenant
+
+        return None
 
     @property
     def roles(self) -> list[str]:
@@ -146,6 +170,8 @@ async def decode_token(token: str) -> TokenPayload:
     Raises:
         UnauthorizedError: If token is invalid or expired
     """
+    from django.conf import settings as django_settings
+
     config = get_keycloak_config()
 
     try:
@@ -165,14 +191,21 @@ async def decode_token(token: str) -> TokenPayload:
         if not rsa_key:
             raise UnauthorizedError("Unable to find signing key")
 
+        # Check if strict issuer validation is enabled
+        strict_issuer = getattr(django_settings, "JWT_ISSUER_STRICT", True)
+        expected_issuer = config.issuer if strict_issuer else None
+
         # Decode and verify
         payload = jwt.decode(
             token,
             rsa_key,
             algorithms=["RS256"],
-            audience=config.client_id,
-            issuer=config.issuer,
-            options={"verify_aud": False},  # Keycloak may have multiple audiences
+            audience=config.client_id if strict_issuer else None,
+            issuer=expected_issuer,
+            options={
+                "verify_aud": False,  # Keycloak may have multiple audiences
+                "verify_iss": strict_issuer,
+            },
         )
 
         return TokenPayload(**payload)
@@ -311,16 +344,16 @@ def require_roles(*roles: str):
     def decorator(func):
         """Execute decorator.
 
-            Args:
-                func: The func.
-            """
+        Args:
+            func: The func.
+        """
 
         async def wrapper(request, *args, **kwargs):
             """Execute wrapper.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             user = get_current_user(request)
             user_roles = set(user.roles)
@@ -354,17 +387,17 @@ def require_permission(permission: str):
     def decorator(func):
         """Execute decorator.
 
-            Args:
-                func: The func.
-            """
+        Args:
+            func: The func.
+        """
 
         async def wrapper(request, *args, **kwargs):
             # For now, just verify authentication
             """Execute wrapper.
 
-                Args:
-                    request: The request.
-                """
+            Args:
+                request: The request.
+            """
 
             user = get_current_user(request)
             return await func(request, *args, **kwargs)

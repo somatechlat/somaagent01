@@ -4,7 +4,6 @@
 REAL SomaBrain calls ONLY - NO MOCK DATA.
 Uses DegradationMonitor for fallback when SomaBrain is unavailable.
 
-7-Persona Implementation:
 - PhD Dev: Cognitive architecture patterns
 - Django Architect: Async client integration
 - QA: State validation, error handling
@@ -22,7 +21,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceUnavailableError
-from admin.somabrain.client import get_somabrain_client, SomaBrainError
+from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
 router = Router(tags=["cognitive"])
 logger = logging.getLogger(__name__)

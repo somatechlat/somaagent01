@@ -41,8 +41,7 @@ class UnifiedHealthRouter:
         self._services_provider = services_provider
 
     async def _gather(self) -> Dict[str, Dict]:
-        """Execute gather.
-            """
+        """Execute gather."""
 
         results: Dict[str, Dict] = {}
         if self._services_provider is not None:
@@ -59,8 +58,7 @@ class UnifiedHealthRouter:
         return results
 
     async def health_endpoint(self) -> Dict:
-        """Execute health endpoint.
-            """
+        """Execute health endpoint."""
 
         per = await self._gather()
         overall = all(v.get("healthy", False) for v in per.values())
@@ -78,8 +76,7 @@ def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
 
     @router.get("/v1/health")
     async def health() -> Dict:  # pragma: no cover – exercised via API tests
-        """Execute health.
-            """
+        """Execute health."""
 
         return await router_obj.health_endpoint()
 

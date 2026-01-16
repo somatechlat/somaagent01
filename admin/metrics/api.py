@@ -3,7 +3,6 @@
 
 Prometheus-compatible metrics export.
 
-7-Persona Implementation:
 - DevOps: Infrastructure monitoring
 - QA: Performance tracking
 - PhD Dev: System health

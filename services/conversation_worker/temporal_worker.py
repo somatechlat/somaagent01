@@ -9,18 +9,21 @@ import os
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+
 django.setup()
 
-from temporalio import activity, workflow
 from datetime import timedelta
+
+from django.conf import settings as django_settings
+from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from admin.core.helpers.tokens import count_tokens
 from admin.agents.services.somabrain_integration import SomaBrainClient
+from admin.core.helpers.tokens import count_tokens
 from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
-from services.common.compensation import compensate_event
 from services.common.budget_manager import BudgetManager
+from services.common.compensation import compensate_event
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.model_profiles import ModelProfileStore
@@ -40,7 +43,7 @@ from services.conversation_worker.service import (
 
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead
-setup_tracing("conversation-temporal-worker", endpoint=APP.external.otlp_endpoint)
+setup_tracing("conversation-temporal-worker", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 
 def _somabrain_health() -> SomabrainHealthState:
@@ -50,7 +53,7 @@ def _somabrain_health() -> SomabrainHealthState:
 
 def _build_use_case():
     kafka = KafkaSettings(
-        bootstrap_servers=APP.kafka.bootstrap_servers,
+        bootstrap_servers=django_settings.KAFKA_BOOTSTRAP_SERVERS,
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
@@ -61,23 +64,23 @@ def _build_use_case():
     dlq = DeadLetterQueue(os.environ.get("CONVERSATION_INBOUND", "conversation.inbound"), bus=bus)
     # Use Django ORM Session model
     from admin.core.models import Session
+
     store = Session.objects
-    profiles = ModelProfileStore.from_settings(APP)
-    tenants = TenantConfig(
-        path=os.environ.get("TENANT_CONFIG_PATH", APP.extra.get("tenant_config_path", "conf/tenants.yaml"))
-    )
-    budgets = BudgetManager(url=APP.redis.url, tenant_config=tenants)
-    policy_client = PolicyClient(base_url=APP.external.opa_url, tenant_config=tenants)
+    profiles = ModelProfileStore.from_env()
+    tenants = TenantConfig(path=os.environ.get("TENANT_CONFIG_PATH", "conf/tenants.yaml"))
+    budgets = BudgetManager(url=django_settings.REDIS_URL, tenant_config=tenants)
+    policy_client = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=tenants)
     enforcer = ConversationPolicyEnforcer(policy_client)
-    telemetry = TelemetryPublisher(publisher=publisher, store=TelemetryStore.from_settings(APP))
+    telemetry = TelemetryPublisher(publisher=publisher, store=TelemetryStore.from_env())
     soma = SomaBrainClient.get()
-    router = RouterClient(base_url=os.environ.get("ROUTER_URL") or APP.extra.get("router_url"))
+    router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
     ctx_builder = ContextBuilder(
         somabrain=soma,
         metrics=None,
         token_counter=count_tokens,
         health_provider=_somabrain_health,
-        use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower() == "true",
+        use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower()
+        == "true",
     )
     gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
     if not gateway_base:

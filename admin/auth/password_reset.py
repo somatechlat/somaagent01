@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 2.3 - Password Reset.
 
-7-Persona Implementation:
 - PhD Dev: Secure token generation
 - Security Auditor: Rate limiting, token expiration
 - Django Architect: Clean async patterns
@@ -113,8 +112,7 @@ async def request_password_reset(request, payload: PasswordResetRequest) -> Pass
         # Keycloak option: Use Keycloak's built-in reset
         # KeycloakAdmin.send_reset_email(email)
 
-        """Execute create reset request.
-            """
+        """Execute create reset request."""
 
         logger.info(f"Password reset requested for {email}")
         return True
@@ -185,8 +183,7 @@ async def confirm_password_reset(
         # reset_token.used_at = timezone.now()
         # reset_token.save()
 
-        """Execute reset password.
-            """
+        """Execute reset password."""
 
         return True
 
@@ -229,8 +226,7 @@ async def validate_reset_token(request, token: str) -> dict:
         #     expires_at__gt=timezone.now(),
         # ).first()
         # return reset_token is not None
-        """Execute check token.
-            """
+        """Execute check token."""
 
         return True
 

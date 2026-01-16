@@ -11,15 +11,14 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
     GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
     ProviderError,
-    ValidationError,
 )
 
 __all__ = ["PlaywrightProvider"]
@@ -78,36 +77,31 @@ class PlaywrightProvider(MultimodalProvider):
 
     @property
     def name(self) -> str:
-        """Execute name.
-            """
+        """Execute name."""
 
         return "playwright_screenshot"
 
     @property
     def provider_id(self) -> str:
-        """Execute provider id.
-            """
+        """Execute provider id."""
 
         return "local"
 
     @property
     def capabilities(self) -> List[ProviderCapability]:
-        """Execute capabilities.
-            """
+        """Execute capabilities."""
 
         return [ProviderCapability.SCREENSHOT]
 
     @property
     def supported_formats(self) -> List[str]:
-        """Execute supported formats.
-            """
+        """Execute supported formats."""
 
         return ["png", "jpeg"]
 
     @property
     def max_dimensions(self) -> Optional[Dict[str, int]]:
-        """Execute max dimensions.
-            """
+        """Execute max dimensions."""
 
         return self.MAX_VIEWPORT
 
@@ -289,12 +283,9 @@ class PlaywrightProvider(MultimodalProvider):
 
     async def health_check(self) -> bool:
         """Check if Playwright is available."""
-        try:
-            from playwright.async_api import async_playwright
+        import importlib.util
 
-            return True
-        except ImportError:
-            return False
+        return importlib.util.find_spec("playwright") is not None
 
     def get_model_version(self) -> Optional[str]:
         """Get browser type as version."""

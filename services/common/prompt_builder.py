@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -11,7 +12,6 @@ from admin.core.soma_client import (
     SomaClient,  # type: ignore
     SomaClientError,
 )
-import os
 
 
 @dataclass
@@ -43,8 +43,7 @@ class ConstitutionPromptProvider:
         self._lock = asyncio.Lock()
 
     async def get(self) -> ConstitutionPayload:
-        """Execute get.
-            """
+        """Execute get."""
 
         now = time.time()
         if self._cached and now < self._expires_at:
@@ -58,8 +57,7 @@ class ConstitutionPromptProvider:
             return payload
 
     async def reload(self) -> ConstitutionPayload:
-        """Execute reload.
-            """
+        """Execute reload."""
 
         async with self._lock:
             payload = await self._fetch()
@@ -68,8 +66,7 @@ class ConstitutionPromptProvider:
             return payload
 
     async def _fetch(self) -> ConstitutionPayload:
-        """Execute fetch.
-            """
+        """Execute fetch."""
 
         try:
             resp = await self.client.constitution_version()
@@ -96,10 +93,10 @@ class PersonaProvider:
     async def get(self, tenant_id: str, persona_id: Optional[str]) -> PersonaPayload:
         """Execute get.
 
-            Args:
-                tenant_id: The tenant_id.
-                persona_id: The persona_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            persona_id: The persona_id.
+        """
 
         key = (tenant_id, persona_id or "")
         now = time.time()
@@ -117,10 +114,10 @@ class PersonaProvider:
     async def _fetch(self, tenant_id: str, persona_id: Optional[str]) -> PersonaPayload:
         """Execute fetch.
 
-            Args:
-                tenant_id: The tenant_id.
-                persona_id: The persona_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            persona_id: The persona_id.
+        """
 
         if not persona_id:
             return PersonaPayload(version=None, text="")
@@ -136,10 +133,10 @@ class PersonaProvider:
 def ttl_from_env(key: str, default: int) -> int:
     """Execute ttl from env.
 
-        Args:
-            key: The key.
-            default: The default.
-        """
+    Args:
+        key: The key.
+        default: The default.
+    """
 
     try:
         return int(os.environ.get(key, str(default)) or default)

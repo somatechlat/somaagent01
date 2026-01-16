@@ -8,6 +8,43 @@ It contains NO infrastructure code - only business logic coordination.
 """
 
 import uuid
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Protocol
+
+
+class MemoryAdapterPort(Protocol):
+    """Port for memory storage operations."""
+
+    async def store_memory(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Store memory payload."""
+        ...
+
+
+class EventBusPort(Protocol):
+    """Port for event publishing."""
+
+    async def publish(self, topic: str, payload: Any) -> None:
+        """Publish event to topic."""
+        ...
+
+
+@dataclass
+class StoreMemoryInput:
+    """Input data for store memory use case."""
+
+    session_id: str
+    content: str
+    memory_type: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class StoreMemoryOutput:
+    """Output data from store memory use case."""
+
+    memory_id: str
+    stored: bool
+    metadata: Dict[str, Any]
 
 
 class StoreMemoryUseCase:

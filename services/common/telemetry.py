@@ -45,10 +45,10 @@ class TelemetryPublisher:
     async def _publish(self, topic: str, event: dict[str, Any]) -> None:
         """Execute publish.
 
-            Args:
-                topic: The topic.
-                event: The event.
-            """
+        Args:
+            topic: The topic.
+            event: The event.
+        """
 
         await self.publisher.publish(
             topic,
@@ -70,8 +70,7 @@ class TelemetryPublisher:
         output_tokens: int,
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
-        """Execute emit llm.
-            """
+        """Execute emit llm."""
 
         event = {
             "event_id": str(uuid.uuid4()),
@@ -100,8 +99,7 @@ class TelemetryPublisher:
         latency_seconds: float,
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
-        """Execute emit tool.
-            """
+        """Execute emit tool."""
 
         event = {
             "event_id": str(uuid.uuid4()),
@@ -128,8 +126,7 @@ class TelemetryPublisher:
         status: str,
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
-        """Execute emit budget.
-            """
+        """Execute emit budget."""
 
         event = {
             "event_id": str(uuid.uuid4()),
@@ -159,8 +156,7 @@ class TelemetryPublisher:
         status: str = "success",
         metadata: Optional[dict[str, Any]] = None,
     ) -> None:
-        """Execute emit escalation llm.
-            """
+        """Execute emit escalation llm."""
 
         event = {
             "event_id": str(uuid.uuid4()),

@@ -1,4 +1,1 @@
-"""Tenants module - Multi-tenant management.
-
-
-"""
+"""Tenants module - Multi-tenant management."""

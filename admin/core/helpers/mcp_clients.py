@@ -64,7 +64,9 @@ class MCPClientBase(ABC):
         self.log_file: Optional[TextIO] = None
 
     @abstractmethod
-    async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
+    async def _create_stdio_transport(
+        self, current_exit_stack: AsyncExitStack
+    ) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
@@ -111,9 +113,9 @@ class MCPClientBase(ABC):
         async def list_tools_op(current_session: ClientSession):
             """Execute list tools op.
 
-                Args:
-                    current_session: The current_session.
-                """
+            Args:
+                current_session: The current_session.
+            """
 
             response: ListToolsResult = await current_session.list_tools()
             with self.__lock:
@@ -148,16 +150,15 @@ class MCPClientBase(ABC):
     def has_tool(self, tool_name: str) -> bool:
         """Check if tool.
 
-            Args:
-                tool_name: The tool_name.
-            """
+        Args:
+            tool_name: The tool_name.
+        """
 
         with self.__lock:
             return any(tool["name"] == tool_name for tool in self.tools)
 
     def get_tools(self) -> List[dict[str, Any]]:
-        """Retrieve tools.
-            """
+        """Retrieve tools."""
 
         with self.__lock:
             return self.tools
@@ -165,10 +166,10 @@ class MCPClientBase(ABC):
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         """Execute call tool.
 
-            Args:
-                tool_name: The tool_name.
-                input_data: The input_data.
-            """
+        Args:
+            tool_name: The tool_name.
+            input_data: The input_data.
+        """
 
         if not self.has_tool(tool_name):
             await self.update_tools()
@@ -178,9 +179,9 @@ class MCPClientBase(ABC):
         async def call_tool_op(current_session: ClientSession):
             """Execute call tool op.
 
-                Args:
-                    current_session: The current_session.
-                """
+            Args:
+                current_session: The current_session.
+            """
 
             set = settings.get_settings()
             return await current_session.call_tool(
@@ -195,8 +196,7 @@ class MCPClientBase(ABC):
             raise ConnectionError(f"Failed to call tool '{tool_name}' on '{self.server.name}': {e}")
 
     def get_log(self):
-        """Retrieve log.
-            """
+        """Retrieve log."""
 
         if not hasattr(self, "log_file") or self.log_file is None:
             return ""
@@ -211,8 +211,7 @@ class MCPClientLocal(MCPClientBase):
     """Local MCP client using stdio transport."""
 
     def __del__(self):
-        """Execute del  .
-            """
+        """Execute del  ."""
 
         if hasattr(self, "log_file") and self.log_file is not None:
             try:
@@ -221,15 +220,17 @@ class MCPClientLocal(MCPClientBase):
                 pass
             self.log_file = None
 
-    async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
+    async def _create_stdio_transport(
+        self, current_exit_stack: AsyncExitStack
+    ) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
         """Execute create stdio transport.
 
-            Args:
-                current_exit_stack: The current_exit_stack.
-            """
+        Args:
+            current_exit_stack: The current_exit_stack.
+        """
 
         from admin.core.helpers.mcp_servers import MCPServerLocal
 
@@ -272,11 +273,11 @@ class CustomHTTPClientFactory:
     ) -> httpx.AsyncClient:
         """Execute call  .
 
-            Args:
-                headers: The headers.
-                timeout: The timeout.
-                auth: The auth.
-            """
+        Args:
+            headers: The headers.
+            timeout: The timeout.
+            auth: The auth.
+        """
 
         kwargs: dict[str, Any] = {"follow_redirects": True}
         kwargs["timeout"] = timeout if timeout else httpx.Timeout(30.0)
@@ -297,15 +298,17 @@ class MCPClientRemote(MCPClientBase):
         self.session_id: Optional[str] = None
         self.session_id_callback: Optional[Callable[[], Optional[str]]] = None
 
-    async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
+    async def _create_stdio_transport(
+        self, current_exit_stack: AsyncExitStack
+    ) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
         """Execute create stdio transport.
 
-            Args:
-                current_exit_stack: The current_exit_stack.
-            """
+        Args:
+            current_exit_stack: The current_exit_stack.
+        """
 
         from admin.core.helpers.mcp_servers import MCPServerRemote
 
@@ -342,8 +345,7 @@ class MCPClientRemote(MCPClientBase):
             )
 
     def get_session_id(self) -> Optional[str]:
-        """Retrieve session id.
-            """
+        """Retrieve session id."""
 
         if self.session_id_callback is not None:
             return self.session_id_callback()

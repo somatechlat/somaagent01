@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somaagent
+  namespace: agent
+  labels:
+    app: somaagent
+    tier: execution
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somaagent
+  template:
+    metadata:
+      labels:
+        app: somaagent
+    spec:
+      containers:
+        - name: somaagent
+          image: somatech/soma-saas:latest  # Polymorphic: Same image as SaaS
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          env:
+            # ---------------------------------------------------------
+            # POLYMORPHIC MODE SWITCH: K8S Cluster Mode
+            # ---------------------------------------------------------
+            - name: SOMA_SAAS_MODE
+              value: "false"
+            # ---------------------------------------------------------
+            - name: AGENT_PORT
+              value: "9000"
+            - name: DJANGO_SETTINGS_MODULE
+              value: "services.gateway.settings"
+            # Database Connection (K8s Service DNS)
+            - name: POSTGRES_HOST
+              value: "postgres.shared.svc.cluster.local"
+            - name: REDIS_HOST
+              value: "redis.shared.svc.cluster.local"
+            - name: MILVUS_HOST
+              value: "milvus.shared.svc.cluster.local"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.shared.svc.cluster.local:9092"
+            # Internal Bridges (K8s Service DNS)
+            - name: SOMABRAIN_URL
+              value: "http://somabrain.brain.svc.cluster.local:63996"
+            - name: SFM_URL
+              value: "http://somafractalmemory.memory.svc.cluster.local:63901"
+            # Auth
+            - name: SA01_KEYCLOAK_URL
+              value: "http://keycloak.shared.svc.cluster.local:8080"

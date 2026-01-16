@@ -56,7 +56,7 @@ def verify_lago_signature(request: HttpRequest) -> bool:
 async def lago_webhook(request: HttpRequest) -> dict:
     """Handle Lago webhook events.
 
-    
+
     - Signature verification
     - Idempotent processing
     - Audit logging
@@ -117,8 +117,7 @@ async def handle_invoice_created(data: dict) -> None:
 
     @sync_to_async
     def log_event():
-        """Execute log event.
-            """
+        """Execute log event."""
 
         try:
             tenant = Tenant.objects.get(id=customer_id)
@@ -153,8 +152,7 @@ async def handle_invoice_paid(data: dict) -> None:
 
     @sync_to_async
     def log_event():
-        """Execute log event.
-            """
+        """Execute log event."""
 
         try:
             tenant = Tenant.objects.get(id=customer_id)
@@ -187,8 +185,7 @@ async def handle_subscription_started(data: dict) -> None:
 
     @sync_to_async
     def update_tenant():
-        """Execute update tenant.
-            """
+        """Execute update tenant."""
 
         from admin.saas.models import SubscriptionTier
 
@@ -214,8 +211,7 @@ async def handle_subscription_terminated(data: dict) -> None:
 
     @sync_to_async
     def downgrade_tenant():
-        """Execute downgrade tenant.
-            """
+        """Execute downgrade tenant."""
 
         from admin.saas.models import SubscriptionTier
 

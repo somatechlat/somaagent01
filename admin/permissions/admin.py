@@ -1,8 +1,4 @@
-"""Permissions Django Admin.
-
-
-7-Persona Implementation for Granular Permissions System.
-"""
+"""Permissions Django Admin."""
 
 from django.contrib import admin
 from django.utils.html import format_html
@@ -16,7 +12,6 @@ from admin.permissions.models import (
     Role,
     UserRoleAssignment,
 )
-
 
 # =============================================================================
 # INLINES
@@ -62,9 +57,9 @@ class PermissionResourceAdmin(admin.ModelAdmin):
     def permission_count(self, obj):
         """Execute permission count.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.permissions.count() if hasattr(obj, "permissions") else 0
 
@@ -87,9 +82,9 @@ class PermissionActionAdmin(admin.ModelAdmin):
     def is_destructive_badge(self, obj):
         """Check if destructive badge.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         if obj.is_destructive:
             return format_html(
@@ -185,9 +180,9 @@ class RoleAdmin(admin.ModelAdmin):
     def scope_badge(self, obj):
         """Execute scope badge.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         colors = {
             "platform": "#ef4444",
@@ -206,9 +201,9 @@ class RoleAdmin(admin.ModelAdmin):
     def permission_count(self, obj):
         """Execute permission count.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.permissions.count()
 
@@ -216,9 +211,9 @@ class RoleAdmin(admin.ModelAdmin):
     def is_system_badge(self, obj):
         """Check if system badge.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         if obj.is_system:
             return format_html(
@@ -231,10 +226,10 @@ class RoleAdmin(admin.ModelAdmin):
     def set_as_default(self, request, queryset):
         """Set as default.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         queryset.update(is_default=True)
 
@@ -242,10 +237,10 @@ class RoleAdmin(admin.ModelAdmin):
     def unset_default(self, request, queryset):
         """Execute unset default.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         queryset.update(is_default=False)
 
@@ -253,10 +248,10 @@ class RoleAdmin(admin.ModelAdmin):
     def clone_role(self, request, queryset):
         """Execute clone role.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         for role in queryset:
             permissions = list(role.permissions.all())
@@ -299,9 +294,9 @@ class UserRoleAssignmentAdmin(admin.ModelAdmin):
     def user_id_short(self, obj):
         """Execute user id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.user_id)[:12] if obj.user_id else "-"
 
@@ -309,9 +304,9 @@ class UserRoleAssignmentAdmin(admin.ModelAdmin):
     def tenant_id_short(self, obj):
         """Execute tenant id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
 
@@ -319,9 +314,9 @@ class UserRoleAssignmentAdmin(admin.ModelAdmin):
     def scope_id_short(self, obj):
         """Execute scope id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.scope_id)[:8] if obj.scope_id else "-"
 
@@ -329,9 +324,9 @@ class UserRoleAssignmentAdmin(admin.ModelAdmin):
     def granted_by_short(self, obj):
         """Execute granted by short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.granted_by)[:8] if obj.granted_by else "-"
 
@@ -363,9 +358,9 @@ class PermissionGrantAdmin(admin.ModelAdmin):
     def user_id_short(self, obj):
         """Execute user id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.user_id)[:12] if obj.user_id else "-"
 
@@ -373,9 +368,9 @@ class PermissionGrantAdmin(admin.ModelAdmin):
     def tenant_id_short(self, obj):
         """Execute tenant id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.tenant_id)[:8] if obj.tenant_id else "-"
 
@@ -383,9 +378,9 @@ class PermissionGrantAdmin(admin.ModelAdmin):
     def scope_id_short(self, obj):
         """Execute scope id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.scope_id)[:8] if obj.scope_id else "-"
 
@@ -428,9 +423,9 @@ class PermissionCheckLogAdmin(admin.ModelAdmin):
     def user_id_short(self, obj):
         """Execute user id short.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return str(obj.user_id)[:12] if obj.user_id else "-"
 
@@ -438,9 +433,9 @@ class PermissionCheckLogAdmin(admin.ModelAdmin):
     def allowed_badge(self, obj):
         """Execute allowed badge.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         if obj.allowed:
             return format_html(
@@ -455,28 +450,28 @@ class PermissionCheckLogAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """Check if add permission.
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         return False  # Logs are system-generated
 
     def has_change_permission(self, request, obj=None):
         """Check if change permission.
 
-            Args:
-                request: The request.
-                obj: The obj.
-            """
+        Args:
+            request: The request.
+            obj: The obj.
+        """
 
         return False
 
     def has_delete_permission(self, request, obj=None):
         """Check if delete permission.
 
-            Args:
-                request: The request.
-                obj: The obj.
-            """
+        Args:
+            request: The request.
+            obj: The obj.
+        """
 
         return False  # Compliance - cannot delete audit logs

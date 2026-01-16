@@ -1,23 +1,8 @@
-"""Rate Limiting for Django Ninja endpoints.
-
-
-Per login-to-chat-journey design.md Section 2.1: Rate Limiting
-
-Implements:
-- Per-IP rate limiting for login endpoints
-- 10 requests per minute per IP for /api/v2/auth/login
-- Returns 429 with retry_after when exceeded
-
-Personas:
-- Security Auditor: Brute-force protection
-- Django Architect: Django Ninja integration
-- Performance Engineer: Efficient Redis operations
-"""
+"""Rate Limiting for Django Ninja endpoints."""
 
 from __future__ import annotations
 
 import logging
-import os
 from functools import wraps
 from typing import Callable, Optional
 
@@ -106,21 +91,27 @@ def rate_limit(
     """
 
     def decorator(func: Callable) -> Callable:
+        """Inner decorator function.
+
+        Args:
+            func: The function to wrap.
+
+        Returns:
+            Wrapped function with rate limiting.
+        """
+
         @wraps(func)
-        """Execute decorator.
+        async def wrapper(request, *args, **kwargs):
+            """Rate-limited wrapper function.
 
             Args:
-                func: The func.
+                request: The Django request.
+                *args: Positional arguments.
+                **kwargs: Keyword arguments.
+
+            Returns:
+                Result from the wrapped function.
             """
-
-        async def wrapper(request, *args, **kwargs):
-            # Get IP address
-            """Execute wrapper.
-
-                Args:
-                    request: The request.
-                """
-
             if key_func:
                 key = key_func(request)
             else:

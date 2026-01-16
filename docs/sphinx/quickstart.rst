@@ -130,8 +130,34 @@ Port Namespace
 - SomaBrain: Port 30101
 - SomaFractalMemory: Port 40000 (40xxx range)
 
+.. list-table:: SAAS Deployment Ports (639xx)
+   :header-rows: 1
+
+   * - Service
+     - Internal Port
+     - External Port
+   * - PostgreSQL
+     - 5432
+     - 63932
+   * - Redis
+     - 6379
+     - 63979
+   * - Kafka
+     - 9092
+     - 63992
+   * - Vault
+     - 8200
+     - 63982
+   * - Agent API
+     - 9000
+     - 63900
+
+.. warning::
+   Port 20432 is DEPRECATED. Current deployments use 639xx (SAAS) or 32xxx (K8S).
+
 Next Steps
 ==========
 
 * Read :doc:`agent-quickstart` for AI agent context
 * Explore `API Documentation <http://localhost:20020/api/v2/docs>`_
+

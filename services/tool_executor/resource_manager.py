@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-
-import os
 
 
 @dataclass
@@ -34,14 +33,12 @@ class ResourceManager:
 
     async def initialize(self) -> None:
         # Implementation for future resource discovery hooks (GPU, CPU quotas, etc.).
-        """Execute initialize.
-            """
+        """Execute initialize."""
 
         return None
 
     async def can_execute(self) -> bool:
-        """Execute can execute.
-            """
+        """Execute can execute."""
 
         try:
             self._semaphore.acquire_nowait()
@@ -53,8 +50,7 @@ class ResourceManager:
 
     @asynccontextmanager
     async def reserve(self) -> asyncio.Semaphore:
-        """Execute reserve.
-            """
+        """Execute reserve."""
 
         await self._semaphore.acquire()
         try:
@@ -64,16 +60,15 @@ class ResourceManager:
 
 
 def default_limits() -> ExecutionLimits:
-    """Execute default limits.
-        """
+    """Execute default limits."""
 
     def _float(name: str, default: float) -> float:
         """Execute float.
 
-            Args:
-                name: The name.
-                default: The default.
-            """
+        Args:
+            name: The name.
+            default: The default.
+        """
 
         raw = os.environ.get(name, str(default))
         try:
@@ -84,10 +79,10 @@ def default_limits() -> ExecutionLimits:
     def _int(name: str, default: int) -> int:
         """Execute int.
 
-            Args:
-                name: The name.
-                default: The default.
-            """
+        Args:
+            name: The name.
+            default: The default.
+        """
 
         raw = os.environ.get(name, str(default))
         try:

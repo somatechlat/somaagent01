@@ -11,7 +11,6 @@ from admin.core.application.ports import (
     ExecutionLimitsDTO,
     ExecutionResultDTO,
 )
-
 from services.tool_executor.execution_engine import ExecutionEngine
 from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
 from services.tool_executor.sandbox_manager import SandboxManager
@@ -54,11 +53,11 @@ class ExecutionEngineAdapter(ExecutionEnginePort):
         # Look up the tool definition
         """Execute execute.
 
-            Args:
-                tool_name: The tool_name.
-                args: The args.
-                limits: The limits.
-            """
+        Args:
+            tool_name: The tool_name.
+            args: The args.
+            limits: The limits.
+        """
 
         tool_def = self._registry.get(tool_name)
         if tool_def is None:

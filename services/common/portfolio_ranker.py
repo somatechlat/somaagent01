@@ -7,10 +7,10 @@ Currently operates in Shadow Mode for data collection and validation.
 from __future__ import annotations
 
 import logging
-from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
-from services.common.soma_brain_outcomes import SomaBrainOutcomesStore, MultimodalOutcome
+from services.common.soma_brain_outcomes import MultimodalOutcome, SomaBrainOutcomesStore
 
 logger = logging.getLogger(__name__)
 

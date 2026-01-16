@@ -3,7 +3,6 @@
 
 Available LLM models and configuration.
 
-7-Persona Implementation:
 - ML Eng: Model selection, parameters
 - PhD Dev: Model capabilities
 - DevOps: Provider management

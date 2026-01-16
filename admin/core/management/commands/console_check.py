@@ -3,6 +3,7 @@
 Usage: python3 scripts/console_check.py [BASE_URL]
 If BASE_URL is omitted, defaults to http://localhost:21016
 """
+
 import asyncio
 import sys
 
@@ -12,9 +13,9 @@ from playwright.async_api import async_playwright
 async def main(base_url: str):
     """Execute main.
 
-        Args:
-            base_url: The base_url.
-        """
+    Args:
+        base_url: The base_url.
+    """
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -28,9 +29,9 @@ async def main(base_url: str):
             # msg.type() is a method; msg.text is an attribute in newer Playwright versions.
             """Execute on console.
 
-                Args:
-                    msg: The msg.
-                """
+            Args:
+                msg: The msg.
+            """
 
             msg_type = msg.type() if callable(msg.type) else getattr(msg, "type", "")
             msg_text = msg.text() if callable(msg.text) else getattr(msg, "text", "")

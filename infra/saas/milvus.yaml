@@ -1,0 +1,20 @@
+# Milvus Configuration for SomaStack Standalone
+# Per VIBE Rule 9: All settings in one place
+
+# Etcd configuration
+etcd:
+  endpoints: somastack_etcd:2379
+
+# MinIO configuration - REQUIRED for standalone mode
+minio:
+  address: somastack_minio
+  port: 9000
+  accessKeyID: minioadmin
+  secretAccessKey: minioadmin
+  bucketName: a-bucket
+  useSSL: false
+  rootPath: files
+
+# Common settings
+common:
+  storageType: minio

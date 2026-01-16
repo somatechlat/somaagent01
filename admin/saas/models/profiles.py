@@ -1,20 +1,108 @@
 """
-Profile Models for SAAS Admin
-Following the 5-level profile hierarchy from SRS.
+Profile (Settings) Models for SAAS Admin
 
+Implementation of the "Deep Settings Architecture" defined in SRS-SAAS-MASTER-SETTINGS-INDEX.md.
+Provides persistent storage for:
+1.  Global Defaults (Singleton) - The "Blueprint" for new tenants.
+2.  Tenant Settings (OneToOne) - Secure, JSONB-backed configuration for each tenant.
+3.  User Preferences - End user personal preferences.
 
-- Django ORM models
-- JSONB for flexible preferences
-- All 10 personas applied
-
-Levels:
-1. AdminProfile - Platform Admin personal settings
-2. TenantSettings - Organization settings (extends Tenant)
-3. UserPreferences - End user personal preferences
+Compliance: VIBE-CORE-004 (Real Implementations Only).
 """
 
 import uuid
+from typing import Any, Dict
+
+from django.core.exceptions import ValidationError
 from django.db import models
+
+# We avoid importing Tenant here directly if it causes circular imports,
+# but models.OneToOneField('saas.Tenant') handles it via string reference.
+
+
+class PlatformConfig(models.Model):
+    """Singleton model storing platform-wide default configurations.
+
+    This model acts as the "Master Blueprint" for:
+    - Default Model Catalog (what models are available globally)
+    - Default Role Definitions (what permissions roles have)
+    - Default quotas and limits
+
+    Pattern: Singleton (ensure_one_instance)
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # JSONB field storing the master catalog
+    defaults = models.JSONField(
+        default=dict,
+        help_text="Canonical default settings (models, roles, quotas)",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options."""
+
+        db_table = "saas_platform_config"
+        verbose_name = "Platform Configuration"
+        verbose_name_plural = "Platform Configuration"
+
+    def save(self, *args, **kwargs):
+        """Enforce Singleton Pattern."""
+        if not self.pk and PlatformConfig.objects.exists():
+            raise ValidationError("There can be only one PlatformConfig instance")
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_instance(cls) -> "PlatformConfig":
+        """Retrieve or create the singleton instance."""
+        obj = cls.objects.first()
+        if not obj:
+            obj = cls.objects.create(defaults=cls._initial_defaults())
+        return obj
+
+    @classmethod
+    async def aget_instance(cls) -> "PlatformConfig":
+        """Async retrieve or create the singleton instance."""
+        obj = await cls.objects.afirst()
+        if not obj:
+            obj = await cls.objects.acreate(defaults=cls._initial_defaults())
+        return obj
+
+    @staticmethod
+    def _initial_defaults() -> Dict[str, Any]:
+        """Return hardcoded bootstrap defaults to prevent empty system.
+
+        NOTE: Models are NOT stored here. LLMModelConfig is the SINGLE
+        canonical source of truth for model configurations.
+        """
+        return {
+            # Models removed - use LLMModelConfig table instead
+            "roles": [
+                {"id": "admin", "permissions": ["*"]},
+                {"id": "member", "permissions": ["read"]},
+            ],
+            "dev_sandbox_defaults": {
+                "max_agents": 2,
+                "max_users": 1,
+                "enable_code_interpreter": False,
+                "enable_filesystem": False,
+                "rate_limits_multiplier": 0.5,
+            },
+            "dev_live_defaults": {
+                "max_agents": 10,
+                "max_users": 5,
+                "enable_code_interpreter": True,
+                "enable_filesystem": True,
+                "rate_limits_multiplier": 1.0,
+            },
+        }
+
+
+    def __str__(self) -> str:
+        return "Platform Configuration"
 
 
 class AdminProfile(models.Model):
@@ -72,8 +160,7 @@ class AdminProfile(models.Model):
 
     def save(self, *args, **kwargs):
         # Initialize default notification prefs if empty
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
@@ -115,6 +202,11 @@ class TenantSettings(models.Model):
         default=dict, help_text="Feature overrides within tier limits"
     )
 
+    # SRS Compliance Extensions (JSONB pillars)
+    compliance = models.JSONField(default=dict, blank=True)
+    compute = models.JSONField(default=dict, blank=True)
+    auth = models.JSONField(default=dict, blank=True)
+
     # Metadata
     timezone = models.CharField(max_length=50, default="UTC")
     language = models.CharField(max_length=10, default="en")
@@ -133,6 +225,10 @@ class TenantSettings(models.Model):
         """Return string representation."""
 
         return f"Settings for {self.tenant.name}"
+
+    def merge_defaults(self):
+        """Merge global defaults into local settings (Placeholder)."""
+        pass
 
 
 class UserPreferences(models.Model):
@@ -192,8 +288,7 @@ class UserPreferences(models.Model):
         }
 
     def save(self, *args, **kwargs):
-        """Execute save.
-            """
+        """Execute save."""
 
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()

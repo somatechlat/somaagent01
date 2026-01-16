@@ -1,4 +1,1 @@
-"""Webhooks module - Event delivery.
-
-
-"""
+"""Webhooks module - Event delivery."""

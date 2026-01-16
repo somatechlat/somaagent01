@@ -39,9 +39,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--batch-size",
@@ -127,10 +127,9 @@ class Command(BaseCommand):
             from aiokafka import AIOKafkaProducer
             from django.conf import settings
 
-            bootstrap_servers = getattr(
-                settings,
-                "KAFKA_BOOTSTRAP_SERVERS",
-                os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:20092"),
+            bootstrap_servers = os.environ.get(
+                "SA01_KAFKA_BOOTSTRAP_SERVERS",
+                getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
             )
 
             self._producer = AIOKafkaProducer(
@@ -174,8 +173,7 @@ class Command(BaseCommand):
             )
             .filter(
                 # Only get messages ready for retry
-                models.Q(next_retry_at__isnull=True)
-                | models.Q(next_retry_at__lte=timezone.now())
+                models.Q(next_retry_at__isnull=True) | models.Q(next_retry_at__lte=timezone.now())
             )
             .order_by("created_at")[:batch_size]
         )

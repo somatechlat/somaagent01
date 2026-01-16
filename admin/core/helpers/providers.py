@@ -24,8 +24,7 @@ class ProviderManager:
 
     @classmethod
     def get_instance(cls):
-        """Retrieve instance.
-            """
+        """Retrieve instance."""
 
         if cls._instance is None:
             cls._instance = cls()

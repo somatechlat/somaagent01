@@ -62,13 +62,13 @@ Complete technical specification for SomaAgent01, the execution layer of the SOM
 │   ├── AgentIQGovernor               ─── 6-lane token budgeting              │
 │   ├── ContextBuilder                ─── LLM context construction            │
 │   ├── ConversationWorkerImpl        ─── Kafka-driven message processing     │
-│   └── DegradationMonitor            ─── Component health tracking           │
-│                          │                                                   │
+│   └── BrainMemoryFacade             ─── DIRECT MEMORY BRIDGE (<0.1ms)       │
+│                          │          (In-Process Call)                        │
 │                          ▼                                                   │
-│   SomaBrain (Port 30xxx)            ─── Cognitive Runtime                   │
-│                          │                                                   │
+│   SomaBrain (Port 30xxx)            ─── Cognitive Runtime (Hybrid)          │
+│                          │          (Direct Hook)                            │
 │                          ▼                                                   │
-│   SomaFractalMemory (Port 9xxx)     ─── Storage Layer                       │
+│   SomaFractalMemory (Port 9xxx)     ─── Storage Layer (Raw SQL Access)      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -195,10 +195,17 @@ class Message(models.Model):
 ## 6.1 SomaBrain Integration
 
 ```python
-# ContextBuilder → SomaBrain
-from admin.core.soma_client import SomaClient
-client = SomaClient.get()
-snippets = await client.recall(query, top_k=5)
+# ContextBuilder → SomaBrain (Direct Mode)
+from soma_core.memory_client import BrainMemoryFacade
+
+# 1. Memory Operations (Direct <0.1ms)
+facade = BrainMemoryFacade.get_instance()
+snippets = await facade.recall(query, top_k=5)
+
+# 2. Cognitive Operations (HTTP via SomaClient)
+from admin.core.somabrain_client import SomaBrainClient
+client = SomaBrainClient.get()
+reward = await client.publish_reward(session_id, "thumbs_up", 1.0)
 ```
 
 ## 6.2 Environment Variables

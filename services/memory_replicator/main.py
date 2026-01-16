@@ -15,15 +15,16 @@ from typing import Any
 # Django setup for logging and ORM
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 import django
+from django.conf import settings
+
 django.setup()
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
+from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 
 from services.common.dlq import DeadLetterQueue
-from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.tracing import setup_tracing
-
 from services.memory_replicator.service import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
@@ -33,8 +34,8 @@ LOGGER = logging.getLogger(__name__)
 
 # Retrieve unified settings from central configuration.
 # Django settings used instead
-# OTLP endpoint is now under the external configuration section.
-setup_tracing("memory-replicator", endpoint=SERVICE_SETTINGS.external.otlp_endpoint)
+# OTLP endpoint is now under the external# Django settings used instead
+setup_tracing("memory-replicator", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 _METRICS_STARTED = False
 
@@ -73,7 +74,7 @@ def ensure_metrics_server(settings: object) -> None:
 def _kafka_settings() -> KafkaSettings:
     # Centralise Kafka bootstrap configuration via ADMIN_SETTINGS.
     return KafkaSettings(
-        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
@@ -83,7 +84,7 @@ def _kafka_settings() -> KafkaSettings:
 
 class MemoryReplicator:
     def __init__(self) -> None:
-        ensure_metrics_server(SERVICE_SETTINGS)
+        ensure_metrics_server(None)
         self.kafka_settings = _kafka_settings()
         self.bus = KafkaEventBus(self.kafka_settings)
         self.wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")

@@ -3,7 +3,6 @@
 
 Manage external service integrations.
 
-7-Persona Implementation:
 - DevOps: Service connectors, health checks
 - Security Auditor: Credential management, OAuth
 - PM: Integration marketplace
@@ -80,13 +79,13 @@ async def list_integrations(
     PM: View connected services.
     VIBE: Real DB Query.
     """
-    from admin.integrations.models import Integration as IntegrationModel
     from asgiref.sync import sync_to_async
+
+    from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
     def _get_integrations():
-        """Execute get integrations.
-            """
+        """Execute get integrations."""
 
         qs = IntegrationModel.objects.all()
         if status:
@@ -134,13 +133,13 @@ async def create_integration(
     DevOps: Connect external services.
     VIBE: Real DB Creation.
     """
-    from admin.integrations.models import Integration as IntegrationModel
     from asgiref.sync import sync_to_async
+
+    from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
     def _create():
-        """Execute create.
-            """
+        """Execute create."""
 
         integration_id = uuid4()
         obj = IntegrationModel.objects.create(
@@ -219,14 +218,14 @@ async def delete_integration(
     Security Auditor: Revoke access, cleanup.
     VIBE: Real DB Deletion.
     """
-    from admin.integrations.models import Integration as IntegrationModel
-    from admin.common.exceptions import NotFoundError
     from asgiref.sync import sync_to_async
+
+    from admin.common.exceptions import NotFoundError
+    from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
     def _delete():
-        """Execute delete.
-            """
+        """Execute delete."""
 
         count, _ = IntegrationModel.objects.filter(id=integration_id).delete()
         return count
@@ -262,10 +261,11 @@ async def start_oauth(
 
     Security Auditor: Secure OAuth 2.0 flow.
     """
-    from admin.integrations.models import Integration as IntegrationModel
-    from admin.common.exceptions import NotFoundError
+
     from asgiref.sync import sync_to_async
-    import os
+
+    from admin.common.exceptions import NotFoundError
+    from admin.integrations.models import Integration as IntegrationModel
 
     state = str(uuid4())
 

@@ -1,4 +1,1 @@
-"""Traces module - Distributed tracing.
-
-
-"""
+"""Traces module - Distributed tracing."""

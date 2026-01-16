@@ -1,7 +1,7 @@
 """Observability API - Real Infrastructure Metrics & Health.
 
 
-Per 
+Per
 
 10-Persona Implementation:
 - PhD Developer: Clean async implementation
@@ -13,7 +13,6 @@ Per
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from typing import Optional
@@ -242,9 +241,9 @@ async def get_prometheus_metrics(request) -> str:
         lines = [
             "# HELP soma_up Server is up",
             "# TYPE soma_up gauge",
-            f"soma_up 1",
-            f"# HELP soma_uptime_seconds Server uptime in seconds",
-            f"# TYPE soma_uptime_seconds gauge",
+            "soma_up 1",
+            "# HELP soma_uptime_seconds Server uptime in seconds",
+            "# TYPE soma_uptime_seconds gauge",
             f"soma_uptime_seconds {time.time() - _app_start_time:.2f}",
         ]
         return "\n".join(lines)

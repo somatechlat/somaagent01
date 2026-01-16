@@ -3,7 +3,6 @@
 
 Knowledge base for RAG document retrieval.
 
-7-Persona Implementation:
 - PhD Dev: RAG architecture, embeddings
 - ML Eng: Vector search, chunking
 - PM: Knowledge management

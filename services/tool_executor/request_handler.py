@@ -7,6 +7,7 @@ requests, extracted from main.py to keep the entry point thin.
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from typing import Any, TYPE_CHECKING
@@ -23,7 +24,6 @@ from services.tool_executor.metrics import (
 from services.tool_executor.resource_manager import default_limits
 from services.tool_executor.tools import ToolExecutionError
 from services.tool_executor.validation import validate_tool_request
-import os
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor

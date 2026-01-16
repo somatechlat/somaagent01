@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.1 - Capability Registry.
 
-7-Persona Implementation:
 - PhD Dev: Capability matching algorithms
 - DevOps: Circuit breakers, health tracking
 - Security Auditor: Access control, rate limiting
@@ -364,6 +363,8 @@ async def health_summary(request) -> dict:
         "overall_health": (
             "healthy"
             if open_circuits == 0
-            else "degraded" if open_circuits < len(_circuit_breakers) / 2 else "critical"
+            else "degraded"
+            if open_circuits < len(_circuit_breakers) / 2
+            else "critical"
         ),
     }

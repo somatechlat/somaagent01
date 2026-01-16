@@ -1,7 +1,4 @@
-"""Centralized Error Codes and Messages.
-
-
-"""
+"""Centralized Error Codes and Messages."""
 
 from enum import Enum
 

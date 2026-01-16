@@ -14,11 +14,10 @@ idempotent and only applies to string fields.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
-
-import os
 
 try:  # Metrics are optional in some test contexts
     from prometheus_client import Counter
@@ -62,8 +61,7 @@ _MASK_EVENTS_TOTAL: Any = None  # type: ignore
 
 
 def _init_metrics() -> None:
-    """Execute init metrics.
-        """
+    """Execute init metrics."""
 
     global _MASK_RULE_HITS, _MASK_EVENTS_TOTAL
     if Counter is None:
@@ -89,8 +87,7 @@ def _init_metrics() -> None:
 
 
 def _load_rules_from_env() -> List[MaskRule]:
-    """Execute load rules from env.
-        """
+    """Execute load rules from env."""
 
     raw = os.environ.get("SA01_MASK_RULES")
     path = os.environ.get("SA01_MASK_RULES_FILE")
@@ -123,8 +120,7 @@ def _load_rules_from_env() -> List[MaskRule]:
 
 
 def _rules() -> List[MaskRule]:
-    """Execute rules.
-        """
+    """Execute rules."""
 
     global _RULES
     if _RULES is None:

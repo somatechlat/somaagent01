@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Optional
 
 import httpx
-
-import os
 
 
 @dataclass
@@ -34,8 +33,7 @@ class RouterClient:
         deployment_mode: str,
         candidates: list[str],
     ) -> Optional[RouteDecision]:
-        """Execute route.
-            """
+        """Execute route."""
 
         if not self._client or not self.base_url:
             return None
@@ -52,8 +50,7 @@ class RouterClient:
         return RouteDecision(model=data["model"], score=float(data.get("score", 0.0)))
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         if self._client:
             await self._client.aclose()

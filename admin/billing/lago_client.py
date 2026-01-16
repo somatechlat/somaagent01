@@ -23,22 +23,22 @@ logger = logging.getLogger(__name__)
 class LagoConfig:
     """Lago API configuration."""
 
-    api_url: str = "http://localhost:3000/api/v1"
-    api_key: str = ""
+    api_url: str  # VIBE: No default - fail fast
+    api_key: str  # VIBE: No default - fail fast
 
     @classmethod
     def from_settings(cls) -> "LagoConfig":
         """Load config from Django settings."""
         return cls(
-            api_url=getattr(settings, "LAGO_API_URL", "http://localhost:3000/api/v1"),
-            api_key=getattr(settings, "LAGO_API_KEY", ""),
+            api_url=settings.LAGO_API_URL,  # VIBE: No fallback - fail fast
+            api_key=settings.LAGO_API_KEY,  # VIBE: No fallback
         )
 
 
 class LagoClient:
     """Async client for Lago billing API.
 
-    
+
     - Full async support
     - Proper error handling
     - Typed responses

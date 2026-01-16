@@ -15,10 +15,10 @@ from django.utils import timezone
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.chat.models import Conversation, Message
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.responses import paginated_response
-from admin.chat.models import Conversation, Message
 from admin.core.models import Session
 
 router = Router(tags=["chat"])
@@ -126,18 +126,16 @@ async def list_conversations(
     Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
-
     from django.conf import settings
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_conversations():
         # Query Conversation model
-        """Execute get conversations.
-            """
+        """Execute get conversations."""
 
         qs = Conversation.objects.filter(status="active")
 
@@ -200,13 +198,14 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
     - Recalls memories from SomaFractalMemory
     """
     from asgiref.sync import sync_to_async
-    from services.common.chat_service import get_chat_service
-
     from django.conf import settings
+
+    from services.common.chat_service import get_chat_service
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    # Defensive extraction: Use getattr with fallback pattern
+    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
     agent_id = payload.agent_id or str(uuid4())
 
     # Create conversation using ChatService
@@ -253,8 +252,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
             @sync_to_async
             def update_title():
-                """Execute update title.
-                    """
+                """Execute update title."""
 
                 Conversation.objects.filter(id=conversation.id).update(title=payload.title)
 
@@ -294,8 +292,7 @@ async def get_conversation(request, conversation_id: str) -> dict:
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         try:
             conv = Conversation.objects.get(id=conversation_id)
@@ -347,14 +344,22 @@ async def get_messages(
     Per login-to-chat-journey design.md Section 6.2
     """
     from asgiref.sync import sync_to_async
+    from django.conf import settings
+
+    user = get_current_user(request)
+    user_id = user.sub
+    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_messages():
-        # Verify conversation exists
-        """Execute get messages.
-            """
+        # Verify conversation exists AND belongs to current user/tenant
+        """Execute get messages."""
 
-        if not Conversation.objects.filter(id=conversation_id).exists():
+        if not Conversation.objects.filter(
+            id=conversation_id,
+            user_id=user_id,
+            tenant_id=tenant_id
+        ).exists():
             return None, 0
 
         qs = Message.objects.filter(conversation_id=conversation_id).order_by("created_at")
@@ -410,12 +415,13 @@ async def send_message(
     - Stores messages in database
     - Returns response (sync mode) or initiates stream
 
-    
+
     - Real ChatService integration
     - Degradation handling ready
     - ZDL via OutboxMessage
     """
     from asgiref.sync import sync_to_async
+
     from services.common.chat_service import get_chat_service
 
     user = get_current_user(request)
@@ -424,8 +430,7 @@ async def send_message(
     # Verify conversation exists and get agent_id
     @sync_to_async
     def _get_conversation():
-        """Execute get conversation.
-            """
+        """Execute get conversation."""
 
         try:
             conv = Conversation.objects.get(id=conversation_id)
@@ -462,8 +467,7 @@ async def send_message(
             # Get the created message
             @sync_to_async
             def get_last_message():
-                """Retrieve last message.
-                    """
+                """Retrieve last message."""
 
                 return (
                     Message.objects.filter(
@@ -496,8 +500,7 @@ async def send_message(
     # Store user message
     @sync_to_async
     def store_user_message():
-        """Execute store user message.
-            """
+        """Execute store user message."""
 
         msg = Message.objects.create(
             conversation_id=conversation_id,
@@ -542,8 +545,7 @@ async def get_chat_session(request, session_id: str) -> dict:
 
         @sync_to_async
         def _get():
-            """Execute get.
-                """
+            """Execute get."""
 
             return Session.objects.filter(session_id=session_id).first()
 

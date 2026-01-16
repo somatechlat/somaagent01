@@ -1,4 +1,1 @@
-"""Integrations module - Third-party services.
-
-
-"""
+"""Integrations module - Third-party services."""

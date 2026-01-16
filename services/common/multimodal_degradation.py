@@ -8,12 +8,11 @@ Provides automatic failover for audio providers.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Awaitable
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
@@ -52,16 +51,14 @@ class AudioFallbackChain:
     current_index: int = 0
 
     def get_current(self) -> str:
-        """Retrieve current.
-            """
+        """Retrieve current."""
 
         if self.current_index == 0:
             return self.primary
         return self.fallbacks[self.current_index - 1]
 
     def get_next_fallback(self) -> Optional[str]:
-        """Retrieve next fallback.
-            """
+        """Retrieve next fallback."""
 
         if self.current_index >= len(self.fallbacks):
             return None
@@ -264,10 +261,10 @@ class MultimodalDegradationService:
         When storage is unavailable, uploads are queued and retried
         when connection is restored.
         """
-        from admin.core.models import OutboxMessage
-        import json
-        import hashlib
         import base64
+        import hashlib
+
+        from admin.core.models import OutboxMessage
 
         # Create idempotency key
         file_hash = hashlib.sha256(file_data).hexdigest()[:16]

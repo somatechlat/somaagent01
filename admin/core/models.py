@@ -1,6 +1,6 @@
 """Core Django ORM Models for Agent Domain.
 
-100% Django ORM - 
+100% Django ORM -
 Replaces raw SQL stores with Django models.
 """
 
@@ -109,14 +109,17 @@ class Constitution(models.Model):
 
 
 class Capsule(models.Model):
-    """Capsule definition - The Atomic Unit of Agent Identity.
+    """Capsule definition - The Atomic Unit of Agent Identity (Rule 91).
 
-    Contains the 'Soul' (Persona) and 'Body' (Capabilities).
-    Must be certified by the Registry and bound to a Constitution.
-    
+    The Capsule acts as the "Sole Unit" of exchange, containing:
+    1.  Identity (Soul)
+    2.  Body (Model Configs via FK)
+    3.  Hands (capabilities via M2M)
+    4.  Memory (MemoryConfig via FK)
+
     Lifecycle: DRAFT → ACTIVE → ARCHIVED
     """
-    
+
     # Status choices for lifecycle management
     STATUS_DRAFT = "draft"
     STATUS_ACTIVE = "active"
@@ -130,26 +133,35 @@ class Capsule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, db_index=True)
     version = models.CharField(max_length=50, default="1.0.0")
-    tenant = models.CharField(max_length=255, db_index=True)
+
+    # Tenant FK for proper referential integrity
+    tenant = models.ForeignKey(
+        'saas.Tenant',
+        on_delete=models.CASCADE,
+        related_name='capsules',
+        db_index=True,
+        help_text="Owning tenant",
+    )
+
     description = models.TextField(blank=True)
-    
+
     # Lifecycle Status
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default=STATUS_DRAFT,
         db_index=True,
-        help_text="Lifecycle state: draft, active, archived"
+        help_text="Lifecycle state: draft, active, archived",
     )
-    
+
     # Version Lineage (for edit-spawns-new-version pattern)
     parent = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='children',
-        help_text="Parent capsule this was cloned from"
+        related_name="children",
+        help_text="Parent capsule this was cloned from",
     )
 
     # Governance & Security
@@ -161,9 +173,7 @@ class Capsule(models.Model):
         help_text="The binding legal framework",
     )
     constitution_ref = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Cross-system reference: {'checksum': str, 'url': str}"
+        default=dict, blank=True, help_text="Cross-system reference: {'checksum': str, 'url': str}"
     )
     registry_signature = models.TextField(
         null=True, blank=True, help_text="Ed25519 Signature from Registry Authority"
@@ -180,14 +190,76 @@ class Capsule(models.Model):
     neuromodulator_baseline = models.JSONField(
         default=dict, help_text="Baseline chemical state (Dopamine, etc.)"
     )
-
-    # The Body (Capabilities)
-    schema = models.JSONField(default=dict, help_text="Legacy: Tool schemas")
-    config = models.JSONField(default=dict, help_text="Legacy: Configuration")
-    capabilities_whitelist = models.JSONField(default=list, help_text="List of allowed Tool IDs")
-    resource_limits = models.JSONField(
-        default=dict, help_text="Max wall clock, concurrency, etc."
+    learning_config = models.JSONField(
+        default=dict,
+        help_text="GMD Hyperparameters (eta, lambda, alpha) & Reward Thresholds",
     )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 2. BODY: MODEL SOVEREIGNTY (Foreign Keys Only - Rule 91)
+    # ═══════════════════════════════════════════════════════════════════
+
+    # 🧠 PRIMARY BRAIN
+    chat_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_chat',
+        on_delete=models.PROTECT,
+        null=True, # Allowed to be null in draft
+        help_text="The main cognitive engine (e.g. gpt-4-turbo)"
+    )
+
+    # 👁️ VISION & IMAGE
+    image_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_image',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Image generation model (e.g. dall-e-3)"
+    )
+
+    # 🗣️ VOICE (TTS/STT)
+    voice_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_voice',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Voice synthesis model (e.g. elevenlabs-v1)"
+    )
+
+    # 🌐 BROWSER
+    browser_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_browser',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Web browsing and vision model (e.g. perplexity)"
+    )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 3. HANDS: TOOLS & CAPABILITIES
+    # ═══════════════════════════════════════════════════════════════════
+
+    capabilities = models.ManyToManyField(
+        'Capability',
+        related_name='capsules',
+        blank=True,
+        help_text="Active tools/MCP servers available to this agent"
+    )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 4. MEMORY & HISTORY
+    # ═══════════════════════════════════════════════════════════════════
+
+    memory_config = models.ForeignKey(
+        'somabrain.MemoryConfig',
+        on_delete=models.PROTECT,
+        null=True, blank=True,
+        help_text="Memory retention and retrieval strategy"
+    )
+
+    # Legacy Fields (Deprecated - Rule 91)
+    # kept for migration, do not use for new logic
+    schema = models.JSONField(default=dict, help_text="DEPRECATED: Use Capability M2M")
+    config = models.JSONField(default=dict, help_text="DEPRECATED: Use Model Configs")
+    capabilities_whitelist = models.JSONField(default=list, help_text="DEPRECATED: Use Capability M2M")
+    resource_limits = models.JSONField(default=dict, help_text="Max wall clock, concurrency, etc.")
 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -207,12 +279,12 @@ class Capsule(models.Model):
         """Return string representation."""
 
         return f"Capsule({self.name}:{self.version}:{self.status})"
-    
+
     @property
     def is_certified(self) -> bool:
         """Check if capsule has been certified."""
         return bool(self.registry_signature and self.status == self.STATUS_ACTIVE)
-    
+
     @property
     def soul(self) -> dict:
         """Return Soul (identity) as dict."""
@@ -221,7 +293,7 @@ class Capsule(models.Model):
             "personality_traits": self.personality_traits,
             "neuromodulator_baseline": self.neuromodulator_baseline,
         }
-    
+
     @property
     def body(self) -> dict:
         """Return Body (capabilities) as dict."""
@@ -229,7 +301,6 @@ class Capsule(models.Model):
             "capabilities_whitelist": self.capabilities_whitelist,
             "resource_limits": self.resource_limits,
         }
-
 
 
 class CapsuleInstance(models.Model):
@@ -454,35 +525,11 @@ class FeatureFlag(models.Model):
 
 
 # =============================================================================
-# AUDIT MODELS (replaces audit_store.py)
+# AUDIT MODELS - MOVED TO admin/saas/models/audit.py
 # =============================================================================
-
-
-class AuditLog(models.Model):
-    """Audit log entry - replaces AuditStore."""
-
-    id = models.BigAutoField(primary_key=True)
-    tenant = models.CharField(max_length=255, db_index=True)
-    user_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-    action = models.CharField(max_length=100, db_index=True)
-    resource_type = models.CharField(max_length=100, db_index=True)
-    resource_id = models.CharField(max_length=255, null=True, blank=True)
-    old_value = models.JSONField(null=True, blank=True)
-    new_value = models.JSONField(null=True, blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-
-    class Meta:
-        """Meta class implementation."""
-
-        db_table = "agent_audit_logs"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        """Return string representation."""
-
-        return f"AuditLog({self.action}:{self.resource_type})"
+# NOTE: AuditLog is now in admin.saas.models.AuditLog (canonical location)
+# The duplicate here was removed to prevent confusion.
+# Table: audit_logs (not agent_audit_logs)
 
 
 # =============================================================================
@@ -530,37 +577,7 @@ class MemoryReplica(models.Model):
         return f"MemoryReplica({self.event_id})"
 
 
-# =============================================================================
-# DEAD LETTER QUEUE MODELS (replaces dlq_store.py)
-# =============================================================================
-
-
-class DeadLetterMessage(models.Model):
-    """Dead letter queue message - replaces DLQStore."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    queue_name = models.CharField(max_length=255, db_index=True)
-    original_topic = models.CharField(max_length=255)
-    payload = models.JSONField()
-    error_message = models.TextField()
-    error_type = models.CharField(max_length=255)
-    retry_count = models.IntegerField(default=0)
-    max_retries = models.IntegerField(default=3)
-    is_processed = models.BooleanField(default=False, db_index=True)
-    processed_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        """Meta class implementation."""
-
-        db_table = "dead_letter_queue"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        """Return string representation."""
-
-        return f"DLQ({self.queue_name}:{self.error_type})"
-
+# NOTE: DeadLetterMessage deleted - use OutboxDeadLetter for all DLQ needs
 
 # =============================================================================
 # AGENT SETTINGS MODELS (replaces agent_settings_store.py)
@@ -603,7 +620,7 @@ class OutboxMessage(models.Model):
     - Publisher polls and sends to Kafka
     - Guarantees exactly-once delivery
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -689,7 +706,7 @@ class DeadLetterMessage(models.Model):
     - Alerting
     - Potential replay
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -746,7 +763,7 @@ class IdempotencyRecord(models.Model):
 
     Stores idempotency keys with TTL to prevent duplicate processing.
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -820,7 +837,7 @@ class PendingMemory(models.Model):
     When SomaBrain is unavailable (degradation mode), memories are
     stored here and synced when connection is restored.
 
-    
+
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

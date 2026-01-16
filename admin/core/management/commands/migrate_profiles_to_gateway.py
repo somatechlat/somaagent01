@@ -9,6 +9,7 @@ Usage:
 This script will attempt the UI-friendly /v1/settings PUT first (which overlays the dialogue profile),
 then fall back to the ModelProfile CRUD endpoints if necessary.
 """
+
 import argparse
 import json
 import os
@@ -27,9 +28,9 @@ MODEL_PROFILES = f"{GATEWAY_BASE}/v1/model-profiles"
 def _push_via_ui_settings(profile: Dict[str, Any]) -> bool:
     """Execute push via ui settings.
 
-        Args:
-            profile: The profile.
-        """
+    Args:
+        profile: The profile.
+    """
 
     payload = {"model_profile": profile}
     try:
@@ -43,9 +44,9 @@ def _push_via_api(profile: Dict[str, Any]) -> bool:
     # direct upsert requires two path params (role/deployment). We'll call the PUT endpoint
     """Execute push via api.
 
-        Args:
-            profile: The profile.
-        """
+    Args:
+        profile: The profile.
+    """
 
     role = profile.get("role") or "dialogue"
     dep = profile.get("deployment_mode") or os.environ.get("DEPLOYMENT_MODE", "DEV") or "DEV"
@@ -60,9 +61,9 @@ def _push_via_api(profile: Dict[str, Any]) -> bool:
 def migrate(profiles: List[Dict[str, Any]]) -> int:
     """Execute migrate.
 
-        Args:
-            profiles: The profiles.
-        """
+    Args:
+        profiles: The profiles.
+    """
 
     failed = 0
     for p in profiles:
@@ -84,8 +85,7 @@ def migrate(profiles: List[Dict[str, Any]]) -> int:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", help="Path to JSON file with a list of profiles")

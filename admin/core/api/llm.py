@@ -60,7 +60,7 @@ class LlmInvokeResponse(BaseModel):
 def get_default_model() -> str:
     """Get the default chat model from settings or environment.
 
-    Per 
+    Per
     """
     model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
     if not model:
@@ -71,22 +71,19 @@ def get_default_model() -> str:
 
 
 def get_multimodal_enabled() -> bool:
-    """Retrieve multimodal enabled.
-        """
+    """Retrieve multimodal enabled."""
 
     return getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
 
 
 def get_confidence_enabled() -> bool:
-    """Retrieve confidence enabled.
-        """
+    """Retrieve confidence enabled."""
 
     return getattr(settings, "CONFIDENCE_ENABLED", False)
 
 
 def get_confidence_aggregation() -> str:
-    """Retrieve confidence aggregation.
-        """
+    """Retrieve confidence aggregation."""
 
     return getattr(settings, "CONFIDENCE_AGGREGATION", "average")
 
@@ -215,8 +212,8 @@ async def invoke(req: LlmInvokeRequest) -> dict:
             base_url=base_url,
             temperature=temperature,
             overrides=overrides,
-            request_logprobs=CONFIDENCE_ENABLED,
-            aggregation=CONFIDENCE_AGGREGATION,
+            request_logprobs=get_confidence_enabled(),
+            aggregation=get_confidence_aggregation(),
         )
     except Exception as exc:
         logger.error(f"LLM invocation failed: {exc}")
@@ -264,7 +261,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
         "content": content,
         "usage": usage,
         "metadata": req.metadata or {},
-        "confidence": confidence if CONFIDENCE_ENABLED else None,
+        "confidence": confidence if get_confidence_enabled() else None,
     }
 
 
@@ -278,8 +275,8 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
         raise ValidationError("prompt_or_messages_required")
 
     overrides = req.overrides or {}
-    model = overrides.get("model", DEFAULT_MODEL)
-    base_url = overrides.get("base_url", DEFAULT_BASE_URL)
+    model = overrides.get("model", get_default_model())
+    base_url = overrides.get("base_url", getattr(settings, "LLM_DEFAULT_BASE_URL", None))
     temperature = overrides.get("temperature")
 
     messages = (
@@ -288,7 +285,7 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
         else [{"role": "user", "content": req.prompt}]
     )
 
-    if req.multimodal and MULTIMODAL_ENABLED:
+    if req.multimodal and get_multimodal_enabled():
         messages = [{"role": "system", "content": _multimodal_instructions()}] + messages
 
     try:

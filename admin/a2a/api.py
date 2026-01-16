@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 7.5 - A2A Workflows.
 
-7-Persona Implementation:
 - PhD Dev: Multi-agent orchestration, handoff patterns
 - PM: Conversation flows, escalation handling
 - DevOps: Maintenance workflows, system health
@@ -290,7 +289,7 @@ async def request_handoff(
     """
     handoff_id = str(uuid4())
 
-    logger.info(f"Handoff requested: {handoff_id}, " f"{payload.from_agent} → {payload.to_agent}")
+    logger.info(f"Handoff requested: {handoff_id}, {payload.from_agent} → {payload.to_agent}")
 
     # In production: notify target agent and wait for acceptance
 

@@ -14,12 +14,10 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta
 from typing import Optional
 
 from django.conf import settings
-from ninja import Router, File as NinjaFile, UploadedFile
-from ninja.security import HttpBearer
+from ninja import Router
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Files V2"])
@@ -77,10 +75,7 @@ def list_files(
     per_page: int = 20,
     tenant_id: Optional[str] = None,
 ):
-    """List files with pagination.
-
-    
-    """
+    """List files with pagination."""
     from admin.filesv2.models import File
 
     offset = (page - 1) * per_page
@@ -118,10 +113,7 @@ def list_files(
 
 @router.get("/{file_id}", response=FileOut)
 def get_file(request, file_id: str):
-    """Get file details.
-
-    
-    """
+    """Get file details."""
     from admin.filesv2.models import File
 
     try:
@@ -152,10 +144,7 @@ def create_upload_url(
     tenant_id: str,
     user_id: str,
 ):
-    """Create presigned upload URL.
-
-    
-    """
+    """Create presigned upload URL."""
     import boto3
     from botocore.config import Config
 
@@ -216,12 +205,10 @@ def create_upload_url(
 
 @router.delete("/{file_id}")
 def delete_file(request, file_id: str):
-    """Soft delete a file.
-
-    
-    """
-    from admin.filesv2.models import File
+    """Soft delete a file."""
     from django.utils import timezone
+
+    from admin.filesv2.models import File
 
     try:
         f = File.objects.get(id=file_id, deleted_at__isnull=True)
@@ -234,10 +221,7 @@ def delete_file(request, file_id: str):
 
 @router.get("/{file_id}/download-url")
 def get_download_url(request, file_id: str):
-    """Get presigned download URL.
-
-    
-    """
+    """Get presigned download URL."""
     import boto3
     from botocore.config import Config
 

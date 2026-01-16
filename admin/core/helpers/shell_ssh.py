@@ -14,7 +14,6 @@ from admin.core.helpers.print_style import PrintStyle
 
 
 class SSHInteractiveSession:
-
     # end_comment = "# @@==>> SSHInteractiveSession End-of-Command  <<==@@"
     # ps1_label = "SSHInteractiveSession CLI>"
 
@@ -90,8 +89,7 @@ class SSHInteractiveSession:
                     raise e
 
     async def close(self):
-        """Execute close.
-            """
+        """Execute close."""
 
         if self.shell:
             self.shell.close()
@@ -101,9 +99,9 @@ class SSHInteractiveSession:
     async def send_command(self, command: str):
         """Execute send command.
 
-            Args:
-                command: The command.
-            """
+        Args:
+            command: The command.
+        """
 
         if not self.shell:
             raise Exception("Shell not connected")
@@ -121,10 +119,10 @@ class SSHInteractiveSession:
     ) -> Tuple[str, str]:
         """Execute read output.
 
-            Args:
-                timeout: The timeout.
-                reset_full_output: The reset_full_output.
-            """
+        Args:
+            timeout: The timeout.
+            reset_full_output: The reset_full_output.
+        """
 
         if not self.shell:
             raise Exception("Shell not connected")
@@ -135,7 +133,6 @@ class SSHInteractiveSession:
         start_time = time.time()
 
         while self.shell.recv_ready() and (timeout <= 0 or time.time() - start_time < timeout):
-
             # data = self.shell.recv(1024)
             data = self.receive_bytes()
 
@@ -182,9 +179,9 @@ class SSHInteractiveSession:
     def receive_bytes(self, num_bytes=1024):
         """Execute receive bytes.
 
-            Args:
-                num_bytes: The num_bytes.
-            """
+        Args:
+            num_bytes: The num_bytes.
+        """
 
         if not self.shell:
             raise Exception("Shell not connected")
@@ -196,9 +193,9 @@ class SSHInteractiveSession:
         def recv_all(num_bytes):
             """Execute recv all.
 
-                Args:
-                    num_bytes: The num_bytes.
-                """
+            Args:
+                num_bytes: The num_bytes.
+            """
 
             data = b""
             while len(data) < num_bytes:
@@ -238,9 +235,9 @@ def clean_string(input_string):
     # Remove ANSI escape codes
     """Execute clean string.
 
-        Args:
-            input_string: The input_string.
-        """
+    Args:
+        input_string: The input_string.
+    """
 
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
     cleaned = ansi_escape.sub("", input_string)

@@ -3,7 +3,6 @@
 
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
-7-Persona Implementation:
 - PhD Dev: Proper audio encoding, streaming
 - Security Auditor: File size limits, content validation
 - Django Architect: Async patterns, proper error handling
@@ -107,7 +106,7 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
 
     Per SRS UC-04: POST /api/v2/voice/transcribe
 
-    
+
     - Real Whisper integration
     - Fallback to browser API if unavailable
     - Size and format validation
@@ -167,7 +166,7 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
 
     Per SRS UC-04: POST /api/v2/voice/synthesize
 
-    
+
     - Real Kokoro TTS integration
     - Fallback to browser API if unavailable
     - Multiple voice options
@@ -320,17 +319,17 @@ from uuid import UUID
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
-from admin.voice.models import VoicePersona, VoiceSession, VoiceModel
+from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
 from admin.voice.schemas import (
-    VoicePersonaCreate,
-    VoicePersonaUpdate,
-    VoicePersonaOut,
-    VoicePersonaListOut,
-    VoiceSessionOut,
-    VoiceSessionListOut,
-    VoiceSessionStats,
-    VoiceModelOut,
     VoiceModelListOut,
+    VoiceModelOut,
+    VoicePersonaCreate,
+    VoicePersonaListOut,
+    VoicePersonaOut,
+    VoicePersonaUpdate,
+    VoiceSessionListOut,
+    VoiceSessionOut,
+    VoiceSessionStats,
 )
 
 

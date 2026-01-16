@@ -3,7 +3,6 @@
 
 Per AGENT_TASKS.md Phase 2.4 - Invitation Flow.
 
-7-Persona Implementation:
 - PhD Dev: Cryptographic token generation
 - Security Auditor: Token expiration, single-use
 - Django Architect: ORM patterns
@@ -101,7 +100,7 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
 
     Per Phase 2.4: POST /saas/users/invite
 
-    
+
     - Cryptographic token (secrets.token_urlsafe)
     - SHA-256 hash stored (never plaintext)
     - Configurable expiration
@@ -130,8 +129,7 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
         # )
 
         # Audit log
-        """Execute create invitation.
-            """
+        """Execute create invitation."""
 
         logger.info(f"Invitation sent to {payload.email} by admin")
         return True
@@ -179,8 +177,7 @@ async def get_invitation(request, token: str) -> InvitationStatusResponse:
         #     status='pending'
         # ).first()
         # return invitation
-        """Execute get invitation.
-            """
+        """Execute get invitation."""
 
         return None
 
@@ -215,7 +212,7 @@ async def accept_invitation(
 
     Per Phase 2.4: POST /auth/invite/{token}/accept
 
-    
+
     - Validates token
     - Creates user in Keycloak
     - Creates TenantUser record
@@ -236,8 +233,7 @@ async def accept_invitation(
         # 4. Create TenantUser record
         # 5. Mark invitation accepted
 
-        """Execute accept invitation.
-            """
+        """Execute accept invitation."""
 
         user_id = str(uuid4())
 
@@ -323,8 +319,7 @@ async def revoke_invitation(request, invitation_id: str) -> dict:
         #     id=invitation_id,
         #     status='pending'
         # ).update(status='revoked')
-        """Execute revoke.
-            """
+        """Execute revoke."""
 
         return True
 

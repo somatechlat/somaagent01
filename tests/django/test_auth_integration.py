@@ -43,11 +43,11 @@ class TestLoginFlow:
     @pytest.fixture
     def auth_client(self):
         """Create test client for auth API."""
-        from ninja.testing import TestClient
-        from admin.auth.api import router
-
         # Create a minimal NinjaAPI for testing the router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.auth.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/auth", router)
@@ -160,9 +160,10 @@ class TestAccountLockout:
     @pytest.fixture
     def auth_client(self):
         """Create test client for auth API."""
-        from ninja.testing import TestClient
-        from admin.auth.api import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.auth.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/auth", router)
@@ -250,9 +251,10 @@ class TestRateLimiting:
     @pytest.fixture
     def auth_client(self):
         """Create test client for auth API."""
-        from ninja.testing import TestClient
-        from admin.auth.api import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.auth.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/auth", router)
@@ -296,9 +298,10 @@ class TestOAuthPKCE:
     @pytest.fixture
     def auth_client(self):
         """Create test client for auth API."""
-        from ninja.testing import TestClient
-        from admin.auth.api import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.auth.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/auth", router)
@@ -368,9 +371,10 @@ class TestTokenRefresh:
     @pytest.fixture
     def auth_client(self):
         """Create test client for auth API."""
-        from ninja.testing import TestClient
-        from admin.auth.api import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.auth.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/auth", router)
@@ -432,9 +436,10 @@ class TestUserInfo:
     @pytest.fixture
     def auth_client(self):
         """Create test client for auth API."""
-        from ninja.testing import TestClient
-        from admin.auth.api import router
         from ninja import NinjaAPI
+        from ninja.testing import TestClient
+
+        from admin.auth.api import router
 
         test_api = NinjaAPI()
         test_api.add_router("/auth", router)

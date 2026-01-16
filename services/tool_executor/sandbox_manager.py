@@ -34,8 +34,7 @@ class SandboxManager:
 
     async def initialize(self) -> None:
         # Implementation for future container pool warmup.
-        """Execute initialize.
-            """
+        """Execute initialize."""
 
         return None
 
@@ -47,11 +46,11 @@ class SandboxManager:
     ) -> SandboxExecutionResult:
         """Execute run.
 
-            Args:
-                func: The func.
-                args: The args.
-                limits: The limits.
-            """
+        Args:
+            func: The func.
+            args: The args.
+            limits: The limits.
+        """
 
         start = time.time()
         logs: list[str] = []

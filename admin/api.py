@@ -56,10 +56,14 @@ See Also:
 from __future__ import annotations
 
 from functools import lru_cache
+import importlib
+import logging
 
 from ninja import NinjaAPI
 
 from admin.common.handlers import register_exception_handlers
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -275,7 +279,6 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/plugins", plugins_router)
 
-
     # Audit (Security logging)
     from admin.audit.api import router as audit_router
 
@@ -287,9 +290,11 @@ def create_api() -> NinjaAPI:
     safe_add_router("/permissions", permissions_router)
 
     # API Keys (Programmatic access)
-    from admin.apikeys.api import router as apikeys_router
-
-    safe_add_router("/apikeys", apikeys_router)
+    try:
+        apikeys_module = importlib.import_module("admin.apikeys.api")
+        safe_add_router("/apikeys", apikeys_module.router)
+    except ModuleNotFoundError:
+        logger.warning("API keys router not found; /apikeys is disabled.")
 
     # Sessions (User session management)
     from admin.sessions.api import router as sessions_router
@@ -372,9 +377,11 @@ def create_api() -> NinjaAPI:
     safe_add_router("/auth-config", auth_config_router)
 
     # Secrets (Credential management)
-    from admin.secrets.api import router as secrets_router
-
-    safe_add_router("/secrets", secrets_router)
+    try:
+        secrets_module = importlib.import_module("admin.secrets.api")
+        safe_add_router("/secrets", secrets_module.router)
+    except ModuleNotFoundError:
+        logger.warning("Secrets router not found; /secrets is disabled.")
 
     # Scheduler (Job scheduling)
     from admin.scheduler.api import router as scheduler_router
@@ -386,18 +393,12 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/orchestrator", orchestrator_router)
 
-    # Granular Permissions (RBAC)
+    # Granular Permissions (RBAC V2 - Advanced role permissions)
+    # NOTE: /permissions is already mounted at line 286 by admin.permissions.api
+    # This provides granular/advanced endpoints under a separate namespace
     from admin.permissions.granular import router as granular_permissions_router
 
-    safe_add_router("/permissions", granular_permissions_router)
-
-    # Permission (RBAC) - Duplicate?
-    # Line 235 mounted /permissions. This overrides it or conflicts.
-    # Keeping the granular one if it's V2. Or disabling if it conflicts.
-    # The log said "/permissions already attached". So the first one won.
-    # We should probably keep the FIRST one (admin.permissions.api) if it's the main one.
-    # Or commented out granular if it's causing noise.
-    # Let's leave it, safe_add_router handles it (logs warning now).
+    safe_add_router("/permissions/granular", granular_permissions_router)
 
     # Flink Stream Processing
     from admin.flink.api import router as flink_router

@@ -16,7 +16,6 @@ import nest_asyncio
 
 nest_asyncio.apply()
 
-from admin.core.helpers.session_store_adapter import save_context
 from agent import AgentContext, UserMessage
 from initialize import initialize_agent
 
@@ -39,6 +38,7 @@ from admin.core.helpers.scheduler_serialization import (
     serialize_task,
     serialize_tasks,
 )
+from admin.core.helpers.session_store_adapter import save_context
 
 
 class TaskScheduler:
@@ -50,8 +50,7 @@ class TaskScheduler:
 
     @classmethod
     def get(cls) -> "TaskScheduler":
-        """Execute get.
-            """
+        """Execute get."""
 
         if cls._instance is None:
             cls._instance = cls()
@@ -66,33 +65,31 @@ class TaskScheduler:
             self._initialized = True
 
     async def reload(self):
-        """Execute reload.
-            """
+        """Execute reload."""
 
         await self._tasks.reload()
 
     def get_tasks(self) -> list[AnyTask]:
-        """Retrieve tasks.
-            """
+        """Retrieve tasks."""
 
         return self._tasks.get_tasks()
 
     def get_tasks_by_context_id(self, context_id: str, only_running: bool = False) -> list[AnyTask]:
         """Retrieve tasks by context id.
 
-            Args:
-                context_id: The context_id.
-                only_running: The only_running.
-            """
+        Args:
+            context_id: The context_id.
+            only_running: The only_running.
+        """
 
         return self._tasks.get_tasks_by_context_id(context_id, only_running)
 
     async def add_task(self, task: AnyTask) -> "TaskScheduler":
         """Execute add task.
 
-            Args:
-                task: The task.
-            """
+        Args:
+            task: The task.
+        """
 
         await self._tasks.add_task(task)
         await self._get_chat_context(task)
@@ -101,9 +98,9 @@ class TaskScheduler:
     async def remove_task_by_uuid(self, task_uuid: str) -> "TaskScheduler":
         """Execute remove task by uuid.
 
-            Args:
-                task_uuid: The task_uuid.
-            """
+        Args:
+            task_uuid: The task_uuid.
+        """
 
         await self._tasks.remove_task_by_uuid(task_uuid)
         return self
@@ -111,9 +108,9 @@ class TaskScheduler:
     async def remove_task_by_name(self, name: str) -> "TaskScheduler":
         """Execute remove task by name.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         await self._tasks.remove_task_by_name(name)
         return self
@@ -121,33 +118,32 @@ class TaskScheduler:
     def get_task_by_uuid(self, task_uuid: str) -> AnyTask | None:
         """Retrieve task by uuid.
 
-            Args:
-                task_uuid: The task_uuid.
-            """
+        Args:
+            task_uuid: The task_uuid.
+        """
 
         return self._tasks.get_task_by_uuid(task_uuid)
 
     def get_task_by_name(self, name: str) -> AnyTask | None:
         """Retrieve task by name.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return self._tasks.get_task_by_name(name)
 
     def find_task_by_name(self, name: str) -> list[AnyTask]:
         """Execute find task by name.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return self._tasks.find_task_by_name(name)
 
     async def tick(self):
-        """Execute tick.
-            """
+        """Execute tick."""
 
         for task in await self._tasks.get_due_tasks():
             await self._run_task(task)
@@ -155,10 +151,10 @@ class TaskScheduler:
     async def run_task_by_uuid(self, task_uuid: str, task_context: str | None = None):
         """Execute run task by uuid.
 
-            Args:
-                task_uuid: The task_uuid.
-                task_context: The task_context.
-            """
+        Args:
+            task_uuid: The task_uuid.
+            task_context: The task_context.
+        """
 
         await self._tasks.reload()
         task = self.get_task_by_uuid(task_uuid)
@@ -180,10 +176,10 @@ class TaskScheduler:
     async def run_task_by_name(self, name: str, task_context: str | None = None):
         """Execute run task by name.
 
-            Args:
-                name: The name.
-                task_context: The task_context.
-            """
+        Args:
+            name: The name.
+            task_context: The task_context.
+        """
 
         task = self._tasks.get_task_by_name(name)
         if task is None:
@@ -191,8 +187,7 @@ class TaskScheduler:
         await self._run_task(task, task_context)
 
     async def save(self):
-        """Execute save.
-            """
+        """Execute save."""
 
         await self._tasks.save()
 
@@ -204,17 +199,17 @@ class TaskScheduler:
     ) -> AnyTask | None:
         """Execute update task checked.
 
-            Args:
-                task_uuid: The task_uuid.
-                verify_func: The verify_func.
-            """
+        Args:
+            task_uuid: The task_uuid.
+            verify_func: The verify_func.
+        """
 
         def _update_task(task):
             """Execute update task.
 
-                Args:
-                    task: The task.
-                """
+            Args:
+                task: The task.
+            """
 
             task.update(**update_params)
 
@@ -223,18 +218,18 @@ class TaskScheduler:
     async def update_task(self, task_uuid: str, **update_params) -> AnyTask | None:
         """Execute update task.
 
-            Args:
-                task_uuid: The task_uuid.
-            """
+        Args:
+            task_uuid: The task_uuid.
+        """
 
         return await self.update_task_checked(task_uuid, lambda task: True, **update_params)
 
     async def __new_context(self, task: AnyTask) -> AgentContext:
         """Execute new context.
 
-            Args:
-                task: The task.
-            """
+        Args:
+            task: The task.
+        """
 
         if not task.context_id:
             raise ValueError(f"Task {task.name} has no context ID")
@@ -246,9 +241,9 @@ class TaskScheduler:
     async def _get_chat_context(self, task: AnyTask) -> AgentContext:
         """Execute get chat context.
 
-            Args:
-                task: The task.
-            """
+        Args:
+            task: The task.
+        """
 
         context = AgentContext.get(task.context_id) if task.context_id else None
         if context:
@@ -263,10 +258,10 @@ class TaskScheduler:
     async def _checkpoint_session(self, task: AnyTask, context: AgentContext):
         """Execute checkpoint session.
 
-            Args:
-                task: The task.
-                context: The context.
-            """
+        Args:
+            task: The task.
+            context: The context.
+        """
 
         if context.id != task.context_id:
             raise ValueError(f"Context ID mismatch: {context.id} != {task.context_id}")
@@ -275,18 +270,18 @@ class TaskScheduler:
     async def _run_task(self, task: AnyTask, task_context: str | None = None):
         """Execute run task.
 
-            Args:
-                task: The task.
-                task_context: The task_context.
-            """
+        Args:
+            task: The task.
+            task_context: The task_context.
+        """
 
         async def _run_task_wrapper(task_uuid: str, task_context: str | None = None):
             """Execute run task wrapper.
 
-                Args:
-                    task_uuid: The task_uuid.
-                    task_context: The task_context.
-                """
+            Args:
+                task_uuid: The task_uuid.
+                task_context: The task_context.
+            """
 
             task_snapshot = self.get_task_by_uuid(task_uuid)
             if task_snapshot is None:
@@ -384,17 +379,16 @@ class TaskScheduler:
         asyncio.create_task(asyncio.sleep(0.1))
 
     def serialize_all_tasks(self) -> list[Dict[str, Any]]:
-        """Execute serialize all tasks.
-            """
+        """Execute serialize all tasks."""
 
         return serialize_tasks(self.get_tasks())
 
     def serialize_task(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Execute serialize task.
 
-            Args:
-                task_id: The task_id.
-            """
+        Args:
+            task_id: The task_id.
+        """
 
         task = self.get_task_by_uuid(task_id)
         if task:

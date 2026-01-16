@@ -3,7 +3,6 @@
 
 OpenTelemetry-compatible trace export.
 
-7-Persona Implementation:
 - DevOps: Distributed tracing
 - PhD Dev: Request flow analysis
 - QA: Performance debugging

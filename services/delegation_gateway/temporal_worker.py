@@ -3,27 +3,27 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from datetime import timedelta
 
 from temporalio import activity, workflow
-from datetime import timedelta
 from temporalio.client import Client
 from temporalio.worker import Worker
 
+from services.common.compensation import compensate_event
+from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
-from services.common.dlq import DeadLetterQueue
-from services.common.compensation import compensate_event
 from services.delegation_gateway.main import DelegationGateway
-import os
 
 
 @activity.defn
 async def handle_a2a(event: dict) -> dict:
     """Execute handle a2a.
 
-        Args:
-            event: The event.
-        """
+    Args:
+        event: The event.
+    """
 
     kcfg = KafkaSettings(
         bootstrap_servers=os.environ.get(
@@ -49,16 +49,18 @@ async def handle_a2a(event: dict) -> dict:
 
 @workflow.defn
 class A2AWorkflow:
+    """Temporal workflow for A2A event processing."""
+
     @workflow.run
-    """A2aworkflow class implementation."""
-
     async def run(self, event: dict) -> dict:
-        """Execute run.
+        """Execute workflow run.
 
-            Args:
-                event: The event.
-            """
+        Args:
+            event: The event to process.
 
+        Returns:
+            Result dictionary.
+        """
         return await workflow.execute_activity(
             handle_a2a,
             event,
@@ -67,8 +69,7 @@ class A2AWorkflow:
 
 
 async def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
     task_queue = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")

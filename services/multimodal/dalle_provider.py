@@ -10,21 +10,20 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 from __future__ import annotations
 
 import logging
+import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import httpx
 
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
     GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
-    ProviderError,
-    RateLimitError,
     QuotaExceededError,
+    RateLimitError,
 )
-import os
 
 __all__ = ["DalleProvider"]
 
@@ -90,36 +89,31 @@ class DalleProvider(MultimodalProvider):
 
     @property
     def name(self) -> str:
-        """Execute name.
-            """
+        """Execute name."""
 
         return "dalle3_image_gen"
 
     @property
     def provider_id(self) -> str:
-        """Execute provider id.
-            """
+        """Execute provider id."""
 
         return "openai"
 
     @property
     def capabilities(self) -> List[ProviderCapability]:
-        """Execute capabilities.
-            """
+        """Execute capabilities."""
 
         return [ProviderCapability.IMAGE]
 
     @property
     def supported_formats(self) -> List[str]:
-        """Execute supported formats.
-            """
+        """Execute supported formats."""
 
         return ["png"]
 
     @property
     def max_dimensions(self) -> Optional[Dict[str, int]]:
-        """Execute max dimensions.
-            """
+        """Execute max dimensions."""
 
         return {"width": 1792, "height": 1792}
 

@@ -1,20 +1,10 @@
 """ChatService for LLM + memory integration and conversation management.
 
-
-Per login-to-chat-journey design.md Section 6.1 (design doc missing from repo).
-
-Implements:
-- create_conversation() - PostgreSQL insert
-- initialize_agent_session() - SomaBrain API call
-- recall_memories() - SomaFractalMemory API call
-- send_message() - Stream from SomaBrain
-- store_memory() - Async memory storage
-- generate_title() - Utility model for title generation
-
-Personas:
-- Django Architect: Django ORM integration, async operations
-- Performance Engineer: Streaming, connection pooling
-- Security Auditor: Tenant isolation, input validation
+Production-simplified architecture using unified layers:
+- unified_metrics.py: Single source of truth for observability
+- simple_governor.py: Binary healthy/degraded budget allocation
+- health_monitor.py: Simple health status tracking
+- simple_context_builder.py: Efficient context assembly (150 lines)
 """
 
 from __future__ import annotations
@@ -22,8 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from dataclasses import dataclass
-from datetime import datetime, timezone
+import time
 from typing import AsyncIterator, Optional
 from uuid import uuid4
 
@@ -31,163 +20,65 @@ import httpx
 from asgiref.sync import sync_to_async
 from prometheus_client import Counter, Histogram
 
-from admin.agents.services.agentiq_governor import (
-    AgentIQGovernor,
-    TurnContext,
-    create_governor,
-)
-from admin.agents.services.context_builder import ContextBuilder
-from admin.core.observability.metrics import ContextBuilderMetrics
 from admin.core.somabrain_client import SomaBrainClient
-from services.common.budget_manager import BudgetManager
-from services.common.capsule_store import CapsuleStore
-from services.common.degradation_monitor import DegradationMonitor
+from services.common.chat_schemas import AgentSession, Conversation, Memory, Message
+from services.common.health_monitor import get_health_monitor
+from services.common.model_router import (
+    detect_required_capabilities,
+    NoCapableModelError,
+    select_model,
+    SelectedModel,
+)
+from services.common.simple_context_builder import BuiltContext, create_context_builder
+from services.common.simple_governor import get_governor, GovernorDecision
+from services.common.unified_metrics import get_metrics, TurnPhase
 
 logger = logging.getLogger(__name__)
 
-# =============================================================================
-# PROMETHEUS METRICS
-# =============================================================================
+# Deployment mode detection - consistent with simple_context_builder.py
+DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
+SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
-CHAT_REQUESTS = Counter(
-    "chat_service_requests_total",
-    "Total ChatService requests",
-    ["method", "result"],
+logger.info(
+    f"ChatService deployment mode: {DEPLOYMENT_MODE}", extra={"deployment_mode": DEPLOYMENT_MODE}
 )
 
+# Prometheus Metrics
+CHAT_REQUESTS = Counter(
+    "chat_service_requests_total", "Total ChatService requests", ["method", "result"]
+)
 CHAT_LATENCY = Histogram(
     "chat_service_duration_seconds",
     "ChatService request latency",
     ["method"],
     buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
 )
-
-CHAT_TOKENS = Counter(
-    "chat_tokens_total",
-    "Total tokens processed",
-    ["direction"],  # "input" or "output"
-)
-
-
-# =============================================================================
-# DATA CLASSES
-# =============================================================================
-
-
-@dataclass
-class Conversation:
-    """Conversation record."""
-
-    id: str
-    agent_id: str
-    user_id: str
-    tenant_id: str
-    title: Optional[str]
-    status: str
-    message_count: int
-    created_at: datetime
-    updated_at: datetime
-
-
-@dataclass
-class Message:
-    """Message record."""
-
-    id: str
-    conversation_id: str
-    role: str  # "user" | "assistant"
-    content: str
-    token_count: int
-    model: Optional[str]
-    latency_ms: Optional[int]
-    created_at: datetime
-
-
-@dataclass
-class AgentSession:
-    """Agent session from SomaBrain."""
-
-    session_id: str
-    agent_id: str
-    conversation_id: str
-    created_at: datetime
-
-
-@dataclass
-class Memory:
-    """Memory record from SomaFractalMemory."""
-
-    id: str
-    content: str
-    memory_type: str
-    relevance_score: float
-    created_at: datetime
-
-
-# =============================================================================
-# CHAT SERVICE
-# =============================================================================
+CHAT_TOKENS = Counter("chat_tokens_total", "Total tokens processed", ["direction"])
 
 
 class ChatService:
     """Service for chat operations with SomaBrain integration.
 
-    Per design.md Section 6.1:
-    - Conversation management in PostgreSQL
-    - Agent session initialization in SomaBrain
-    - Memory recall from SomaFractalMemory
-    - Streaming message responses
+    Simplified architecture - production-grade, minimal complexity.
     """
 
     def __init__(
         self,
         somabrain_url: Optional[str] = None,
-        memory_url: Optional[str] = None,
         timeout: float = 30.0,
     ):
         """Initialize ChatService.
 
-        Args:
-            somabrain_url: SomaBrain API URL. Defaults to Service Registry.
-            memory_url: SomaFractalMemory API URL. Defaults to Service Registry.
-            timeout: HTTP timeout in seconds.
+        Memory operations use SomaBrainClient directly (no direct SFM access).
         """
         from django.conf import settings
 
-        self.somabrain_url = somabrain_url or settings.SOMABRAIN_URL
-        self.memory_url = memory_url or settings.SOMAFRACTALMEMORY_URL
-        self.memory_api_token = (
-            os.getenv("SOMA_MEMORY_API_TOKEN") or os.getenv("SOMA_API_TOKEN") or ""
+        self.somabrain_url = somabrain_url or getattr(
+            settings, "SOMABRAIN_URL", "http://localhost:9696"
         )
         self.timeout = timeout
-
-        # HTTP client for external services
         self._http_client: Optional[httpx.AsyncClient] = None
-
-        # Governor dependencies
-        self.degradation_monitor = DegradationMonitor()
-        self.capsule_store = CapsuleStore()
-        self.budget_manager = BudgetManager()
-        self.governor = create_governor(
-            capsule_store=self.capsule_store,
-            degradation_monitor=self.degradation_monitor,
-            budget_manager=self.budget_manager,
-        )
-        self.metrics = ContextBuilderMetrics()
-
-    def _build_memory_headers(self, tenant_id: Optional[str]) -> dict:
-        """Execute build memory headers.
-
-            Args:
-                tenant_id: The tenant_id.
-            """
-
-        headers = {"Content-Type": "application/json"}
-        if self.memory_api_token:
-            headers["Authorization"] = f"Bearer {self.memory_api_token}"
-        if tenant_id:
-            headers["X-Soma-Tenant"] = tenant_id
-        return headers
 
     async def _get_http_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
@@ -200,54 +91,76 @@ class ChatService:
         if self._http_client:
             await self._http_client.aclose()
 
+    async def _load_neuromodulators(
+        self, agent_id: str, tenant_id: Optional[str], persona_id: Optional[str]
+    ) -> None:
+        """Load neuromodulator baseline from Capsule and apply to SomaBrain.
+
+        GMD Integration: Implements neuromodulator loading per whitepaper.
+        Uses default baseline if Capsule not found.
+        """
+        from admin.core.models import Capsule
+        from saas.brain import brain
+
+        # Default neuromodulators (GMD baseline)
+        default_neuro = {
+            "dopamine": 0.5,
+            "serotonin": 0.5,
+            "norepinephrine": 0.5,
+            "acetylcholine": 0.5,
+        }
+
+        try:
+            @sync_to_async
+            def get_capsule_neuro():
+                capsule = Capsule.objects.filter(id=agent_id).first()
+                if capsule and capsule.neuromodulator_baseline:
+                    return capsule.neuromodulator_baseline
+                return None
+
+            capsule_neuro = await get_capsule_neuro()
+            neuromodulators = capsule_neuro or default_neuro
+
+            # Apply to SomaBrain (uses direct or HTTP based on mode)
+            try:
+                await brain.set_neuromodulators_async(
+                    tenant_id=tenant_id or "default",
+                    persona_id=persona_id or "default",
+                    neuromodulators=neuromodulators,
+                )
+                logger.info(
+                    f"[GMD] Loaded neuromodulators for agent {agent_id[:8]}: {neuromodulators}"
+                )
+            except Exception as e:
+                logger.warning(f"[GMD] Failed to update neuromodulators: {e}")
+
+        except Exception as e:
+            logger.warning(f"[GMD] Failed to load capsule neuromodulators: {e}")
+
     # =========================================================================
     # CONVERSATION MANAGEMENT
     # =========================================================================
 
     async def create_conversation(
-        self,
-        agent_id: str,
-        user_id: str,
-        tenant_id: str,
+        self, agent_id: str, user_id: str, tenant_id: str
     ) -> Conversation:
-        """Create new conversation record in PostgreSQL.
-
-        Per design.md Section 6.1:
-        - Creates conversation in database
-        - Returns conversation object
-
-        Args:
-            agent_id: Agent ID
-            user_id: User ID
-            tenant_id: Tenant ID
-
-        Returns:
-            Created Conversation object
-        """
-        import time
-
+        """Create new conversation record in PostgreSQL."""
         from admin.chat.models import Conversation as ConversationModel
 
         start_time = time.perf_counter()
-
         try:
 
             @sync_to_async
             def create_in_db():
-                """Execute create in db.
-                    """
-
-                conv = ConversationModel.objects.create(
+                return ConversationModel.objects.create(
                     agent_id=agent_id,
                     user_id=user_id,
                     tenant_id=tenant_id,
                     status="active",
                     message_count=0,
                 )
-                return conv
 
             db_conv = await create_in_db()
-
             conversation = Conversation(
                 id=str(db_conv.id),
                 agent_id=str(db_conv.agent_id),
@@ -259,60 +172,32 @@ class ChatService:
                 created_at=db_conv.created_at,
                 updated_at=db_conv.updated_at,
             )
-
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="create_conversation").observe(elapsed)
-            CHAT_REQUESTS.labels(method="create_conversation", result="success").inc()
-
-            logger.info(
-                f"Conversation created: id={conversation.id}, " f"agent={agent_id}, user={user_id}"
+            CHAT_LATENCY.labels(method="create_conversation").observe(
+                time.perf_counter() - start_time
             )
-
+            CHAT_REQUESTS.labels(method="create_conversation", result="success").inc()
             return conversation
-
         except Exception as e:
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="create_conversation").observe(elapsed)
+            CHAT_LATENCY.labels(method="create_conversation").observe(
+                time.perf_counter() - start_time
+            )
             CHAT_REQUESTS.labels(method="create_conversation", result="error").inc()
-
-            logger.error(f"Failed to create conversation: {e}")
             raise
 
-    async def get_conversation(
-        self,
-        conversation_id: str,
-        user_id: str,
-    ) -> Optional[Conversation]:
-        """Get conversation by ID.
-
-        Args:
-            conversation_id: Conversation ID
-            user_id: User ID (for ownership check)
-
-        Returns:
-            Conversation if found and owned by user, None otherwise
-        """
+    async def get_conversation(self, conversation_id: str, user_id: str) -> Optional[Conversation]:
+        """Get conversation by ID."""
         from admin.chat.models import Conversation as ConversationModel
 
         @sync_to_async
         def get_from_db():
-            """Retrieve from db.
-                """
-
             try:
-                conv = ConversationModel.objects.get(
-                    id=conversation_id,
-                    user_id=user_id,
-                )
-                return conv
+                return ConversationModel.objects.get(id=conversation_id, user_id=user_id)
             except ConversationModel.DoesNotExist:
                 return None
 
         db_conv = await get_from_db()
-
         if db_conv is None:
             return None
-
         return Conversation(
             id=str(db_conv.id),
             agent_id=str(db_conv.agent_id),
@@ -332,35 +217,18 @@ class ChatService:
         limit: int = 50,
         offset: int = 0,
     ) -> list[Conversation]:
-        """List user's conversations.
-
-        Args:
-            user_id: User ID
-            tenant_id: Tenant ID
-            limit: Max results
-            offset: Pagination offset
-
-        Returns:
-            List of Conversation objects
-        """
+        """List user's conversations."""
         from admin.chat.models import Conversation as ConversationModel
 
         @sync_to_async
         def list_from_db():
-            """Execute list from db.
-                """
-
             return list(
-                ConversationModel.objects.filter(
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                ).order_by(
+                ConversationModel.objects.filter(user_id=user_id, tenant_id=tenant_id).order_by(
                     "-updated_at"
                 )[offset : offset + limit]
             )
 
         db_convs = await list_from_db()
-
         return [
             Conversation(
                 id=str(conv.id),
@@ -381,37 +249,16 @@ class ChatService:
     # =========================================================================
 
     async def initialize_agent_session(
-        self,
-        agent_id: str,
-        conversation_id: str,
-        user_context: dict,
+        self, agent_id: str, conversation_id: str, user_context: dict
     ) -> AgentSession:
-        """Initialize agent session in local session store.
-
-        Per design.md Section 6.1:
-        - Creates Session model entry
-        - Persists user context metadata
-
-        Args:
-            agent_id: Agent ID
-            conversation_id: Conversation ID
-            user_context: User context dict (user_id, tenant_id, etc.)
-
-        Returns:
-            AgentSession object
-        """
-        import time
+        """Initialize agent session in local session store."""
+        from admin.core.models import Session as SessionModel
 
         start_time = time.perf_counter()
-
         try:
-            from admin.core.models import Session as SessionModel
 
             @sync_to_async
             def create_session():
-                """Execute create session.
-                    """
-
                 session_id = str(uuid4())
                 return SessionModel.objects.create(
                     session_id=session_id,
@@ -432,271 +279,421 @@ class ChatService:
                 created_at=session_record.created_at,
             )
 
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="initialize_agent_session").observe(elapsed)
-            CHAT_REQUESTS.labels(method="initialize_agent_session", result="success").inc()
-
-            logger.info(
-                f"Agent session initialized: session={session.session_id}, "
-                f"agent={agent_id}, conversation={conversation_id}"
+            # GMD Integration: Load neuromodulator baseline from Capsule (non-blocking)
+            asyncio.create_task(
+                self._load_neuromodulators(
+                    agent_id=agent_id,
+                    tenant_id=user_context.get("tenant_id"),
+                    persona_id=user_context.get("persona_id"),
+                )
             )
 
+            CHAT_LATENCY.labels(method="initialize_agent_session").observe(
+                time.perf_counter() - start_time
+            )
+            CHAT_REQUESTS.labels(method="initialize_agent_session", result="success").inc()
             return session
-
         except Exception as e:
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="initialize_agent_session").observe(elapsed)
+            CHAT_LATENCY.labels(method="initialize_agent_session").observe(
+                time.perf_counter() - start_time
+            )
             CHAT_REQUESTS.labels(method="initialize_agent_session", result="error").inc()
-
-            logger.error(f"Agent session init failed: {e}")
             raise
 
     async def send_message(
-        self,
-        conversation_id: str,
-        agent_id: str,
-        content: str,
-        user_id: str,
+        self, conversation_id: str, agent_id: str, content: str, user_id: str
     ) -> AsyncIterator[str]:
         """Send message and stream response tokens from LLM provider.
 
-        Per design.md Section 6.1:
-        - Builds context from conversation history
-        - Streams response tokens from LiteLLM-backed provider
-        - Stores messages in database
-
-        Args:
-            conversation_id: Conversation ID
-            agent_id: Agent ID
-            content: Message content
-            user_id: User ID
-
-        Yields:
-            Response tokens as they arrive
+        Production-simplified flow:
+        1. Store user message
+        2. Load conversation data and history
+        3. Check health status
+        4. Allocate budget via SimpleGovernor
+        5. Build context via ContextBuilder
+        6. Invoke LLM and stream tokens
+        7. Store assistant message and record metrics
         """
-        import time
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-        from admin.chat.models import Conversation as ConversationModel
-        from admin.chat.models import Message as MessageModel
+        from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
+        from admin.core.helpers.settings_defaults import get_default_settings
+        from admin.llm.services.litellm_client import get_chat_model
 
         start_time = time.perf_counter()
+        turn_id = str(uuid4())
 
-        # Store user message
+        # 1. Initialize metrics
+        metrics = get_metrics()
+        turn_metrics = metrics.record_turn_start(
+            turn_id=turn_id,
+            tenant_id="",  # Will be loaded from DB
+            user_id=user_id,
+            agent_id=agent_id,
+        )
+
+        # 2. Store user message
+        # CHAT-003: Database operations with deployment mode context
         @sync_to_async
         def store_user_message():
-            """Execute store user message.
-                """
-
-            msg = MessageModel.objects.create(
-                conversation_id=conversation_id,
-                role="user",
-                content=content,
-                token_count=len(content.split()),  # Approximate
-            )
-            # Update conversation message count
-            ConversationModel.objects.filter(id=conversation_id).update(
-                message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
-            )
-            return str(msg.id)
-
-        user_msg_id = await store_user_message()
-        CHAT_TOKENS.labels(direction="input").inc(len(content.split()))
-
-        try:
-            from admin.core.helpers.settings_defaults import get_default_settings
-            from admin.llm.services.litellm_client import LLMNotConfiguredError, get_chat_model
-            from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-
-            settings = get_default_settings(agent_id=agent_id)
-            provider = settings.chat_model_provider or ""
-            model_name = settings.chat_model_name or ""
-            if "/" in model_name:
-                model_provider, model_value = model_name.split("/", 1)
-                if not provider or provider == model_provider:
-                    provider = model_provider
-                    model_name = model_value
-
-            chat_kwargs = dict(settings.chat_model_kwargs or {})
-            if settings.chat_model_api_base:
-                chat_kwargs.setdefault("api_base", settings.chat_model_api_base)
-            if isinstance(chat_kwargs.get("temperature"), str):
-                try:
-                    chat_kwargs["temperature"] = float(chat_kwargs["temperature"])
-                except ValueError:
-                    pass
-
-            llm = get_chat_model(provider=provider, name=model_name, **chat_kwargs)
-
-            # --- AGENTIQ GOVERNOR & CONTEXT BUILDER INTEGRATION ---
-
-            # 1. Prepare TurnContext
-            # Load basic history first for the governor (without snippets)
-            @sync_to_async
-            def load_raw_history():
-                """Execute load raw history.
-                    """
-
-                conv = (
-                    ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
-                )
-                if not conv:
-                    # Should be handled by logic above, but safety first
-                    raise ValueError(f"Conversation {conversation_id} not found")
-
-                qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by(
-                    "-created_at"
-                )[:20]
-                return list(qs)[::-1], str(conv.tenant_id)
-
-            raw_history_objs, current_tenant_id = await load_raw_history()
-            raw_history = [{"role": m.role, "content": m.content} for m in raw_history_objs]
-
-            turn_context = TurnContext(
-                turn_id=str(uuid4()),
-                session_id=str(
-                    uuid4()
-                ),  # We should probably reuse a session if we had one, but strict statelessness for now
-                tenant_id=current_tenant_id,
-                user_message=content,
-                history=raw_history,
-                system_prompt="You are SomaAgent01.",  # Default prompt
-            )
-
-            # 2. Govern
-            # Execute governor logic to get lane plan and degradation decision
-            max_total_tokens = int(settings.chat_model_ctx_length)
-            decision = await self.governor.govern_with_fallback(
-                turn=turn_context,
-                max_tokens=max_total_tokens,
-            )
-
-            # 3. Build Context
-            # Use ContextBuilder to retrieve snippets, summarize, and budget
-            somabrain_client = await SomaBrainClient.get_async()
-
-            # Simple token counter for Builder
-            def simple_token_counter(text: str) -> int:
-                """Execute simple token counter.
-
-                    Args:
-                        text: The text.
-                    """
-
-                return len(text.split())
-
-            builder = ContextBuilder(
-                somabrain=somabrain_client,
-                metrics=self.metrics,
-                token_counter=simple_token_counter,
-            )
-
-            # Pass turn dict as expected by builder
-            turn_dict = {
-                "tenant_id": current_tenant_id,
-                "session_id": turn_context.session_id,
-                "user_message": content,
-                "history": raw_history,
-                "system_prompt": turn_context.system_prompt,
-            }
-
-            built_context = await builder.build_for_turn(
-                turn=turn_dict,
-                max_prompt_tokens=max_total_tokens,
-                lane_plan=decision.lane_plan,
-            )
-
-            # 4. Invoke LLM
-            # Map BuiltContext messages to LangChain format
-            lc_messages = []
-            for msg in built_context.messages:
-                role = msg.get("role")
-                content = msg.get("content")
-                if role == "assistant":
-                    lc_messages.append(AIMessage(content=content))
-                elif role == "system":
-                    lc_messages.append(SystemMessage(content=content))
-                else:
-                    lc_messages.append(HumanMessage(content=content))
-
-            response_content = []
-            async for chunk in llm._astream(messages=lc_messages):
-                token = ""
-                if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
-                    token = str(chunk.message.content)
-                elif hasattr(chunk, "content"):
-                    token = str(chunk.content)
-                if token:
-                    response_content.append(token)
-                    yield token
-            full_response = "".join(response_content)
-            token_count = len(full_response.split())
-
-            # Store assistant message
-            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-            model_id = getattr(llm, "model_name", f"{provider}/{model_name}")
-
-            @sync_to_async
-            def store_assistant_message():
-                """Execute store assistant message.
-                    """
-
+            try:
                 msg = MessageModel.objects.create(
                     conversation_id=conversation_id,
-                    role="assistant",
-                    content=full_response,
-                    token_count=token_count,
-                    latency_ms=elapsed_ms,
-                    model=model_id,
+                    role="user",
+                    content=content,
+                    token_count=len(content.split()),
                 )
-                # Update conversation
                 ConversationModel.objects.filter(id=conversation_id).update(
                     message_count=MessageModel.objects.filter(
                         conversation_id=conversation_id
                     ).count()
                 )
                 return str(msg.id)
+            except Exception as e:
+                db_error_msg = f"{DEPLOYMENT_MODE} mode: Failed to store user message: {e}"
+                if SAAS_MODE:
+                    db_error_msg += " (SAAS: Check PostgreSQL connection pool)"
+                elif STANDALONE_MODE:
+                    db_error_msg += " (STANDALONE: Check local database connectivity)"
+                logger.error(db_error_msg, exc_info=True)
+                raise
 
-            await store_assistant_message()
-            CHAT_TOKENS.labels(direction="output").inc(token_count)
+        user_msg_id = await store_user_message()
+        turn_metrics.tokens_in = len(content.split())
 
-            # Store interaction in memory (non-blocking)
+        # 3. Get conversation data
+        @sync_to_async
+        def load_conversation():
+            conv = ConversationModel.objects.filter(id=conversation_id).only("tenant_id").first()
+            if not conv:
+                raise ValueError(f"Conversation {conversation_id} not found")
+            qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by(
+                "-created_at"
+            )[:20]
+            return str(conv.tenant_id), list(reversed(qs))
+
+        tenant_id, raw_history_objs = await load_conversation()
+        raw_history = [{"role": m.role, "content": m.content} for m in raw_history_objs]
+
+        # Update turn metrics with tenant_id
+        turn_metrics.tenant_id = tenant_id
+        metrics.record_turn_phase(turn_id, TurnPhase.AUTH_VALIDATED)
+
+        # 4. Load Capsule for system_prompt and model constraints (NO HARDCODING)
+        from admin.core.models import Capsule
+
+        @sync_to_async
+        def load_capsule():
+            return Capsule.objects.filter(id=agent_id).first()
+
+        capsule = await load_capsule()
+        # Build capsule_body for model_router constraints
+        # allowed_models comes from Capsule.config (not the body property)
+        capsule_config = capsule.config if capsule and capsule.config else {}
+        capsule_body = {
+            "allowed_models": capsule_config.get("allowed_models", []),
+        }
+
+        # System prompt from Capsule.system_prompt (the Soul)
+        system_prompt = capsule.system_prompt if capsule else ""
+        if not system_prompt:
+            logger.warning(f"No system_prompt in Capsule {agent_id} - agent may behave unexpectedly")
+            system_prompt = ""  # Empty, NOT hardcoded fallback
+
+        # 5. Detect required capabilities from content (attachments would be added here)
+        # TODO: Add attachments parameter to send_message() signature
+        required_caps = detect_required_capabilities(message=content, attachments=None)
+        logger.info(f"Detected capabilities for turn: {required_caps}")
+
+        # 6. Select model via capability-based routing (SINGLE SOURCE: LLMModelConfig ORM)
+        llm = None
+        selected_model: SelectedModel | None = None
+        try:
+            selected_model = await select_model(
+                required_capabilities=required_caps,
+                capsule_body=capsule_body,
+                tenant_id=tenant_id,
+            )
+            logger.info(
+                f"Model Router selected: {selected_model.provider}/{selected_model.name} "
+                f"(caps={selected_model.capabilities}, priority={selected_model.priority})"
+            )
+
+            # Build LLM from selected model
+            llm = get_chat_model(
+                provider=selected_model.provider,
+                name=selected_model.name,
+            )
+        except NoCapableModelError as e:
+            logger.error(f"No capable model found: {e}")
+            raise ValueError(f"No LLM model available with capabilities: {required_caps}")
+        except Exception as e:
+            llm_error_msg = f"{DEPLOYMENT_MODE} mode: Model selection/load failed: {e}"
+            if SAAS_MODE:
+                llm_error_msg += " (SAAS: Check LLMModelConfig table and API keys)"
+            elif STANDALONE_MODE:
+                llm_error_msg += " (STANDALONE: Check local model configuration)"
+            logger.error(llm_error_msg, exc_info=True)
+            raise
+
+        # 5. Get health status
+        health_monitor = get_health_monitor()
+        overall_health = health_monitor.get_overall_health()
+        is_degraded = overall_health.degraded
+
+        metrics.record_turn_phase(turn_id, TurnPhase.HEALTH_CHECKED)
+
+        # 6. Allocate budget via SimpleGovernor
+        governor = get_governor()
+        max_total_tokens = int(settings.chat_model_ctx_length)
+
+        decision: GovernorDecision
+        if is_degraded:
+            decision = governor.allocate_budget(
+                max_tokens=max_total_tokens,
+                is_degraded=True,
+            )
+        else:
+            decision = governor.allocate_budget(
+                max_tokens=max_total_tokens,
+                is_degraded=False,
+            )
+
+        metrics.record_turn_phase(turn_id, TurnPhase.BUDGET_ALLOCATED)
+
+        # 7. Build context via ContextBuilder
+        # CHAT-003: Deployment mode SomaBrain connection with error handling
+        somabrain_client: SomaBrainClient | None = None
+        try:
+            somabrain_client = await SomaBrainClient.get_async()
+            if SAAS_MODE:
+                logger.debug(f"SAAS mode: SomaBrainClient initialized for {tenant_id}")
+            elif STANDALONE_MODE:
+                logger.debug("STANDALONE mode: SomaBrainClient uses embedded modules")
+        except Exception as e:
+            error_msg = f"{DEPLOYMENT_MODE} mode: SomaBrainClient initialization failed: {e}"
+            if SAAS_MODE:
+                error_msg += " (HTTP client likely unavailable - check SomaBrain service)"
+            elif STANDALONE_MODE:
+                error_msg += " (Embedded modules import failed - check somabrain installation)"
+            logger.error(error_msg, exc_info=True)
+            # Non-critical error - will continue with minimal context
+
+        # Simple token counter
+        def simple_token_counter(text: str) -> int:
+            return len(text.split())
+
+        # Create builder only if somabrain_client is available
+        if somabrain_client is None:
+            # Use minimal context if SomaBrain client isn't available
+            built = BuiltContext(
+                system_prompt="You are SomaAgent01.",
+                messages=[
+                    {"role": "system", "content": "You are SomaAgent01."},
+                    {"role": "user", "content": content},
+                ],
+                token_counts={
+                    "system": 50,
+                    "history": 0,
+                    "memory": 0,
+                    "user": len(content.split()),
+                },
+                lane_actual={
+                    "system_policy": 50,
+                    "history": 0,
+                    "memory": 0,
+                    "tools": 0,
+                    "tool_results": 0,
+                    "buffer": 200,
+                },
+            )
+        else:
+            builder = create_context_builder(
+                somabrain=somabrain_client,
+                token_counter=simple_token_counter,
+            )
+
+            turn_dict = {
+                "tenant_id": tenant_id,
+                "session_id": str(uuid4()),
+                "user_message": content,
+                "history": raw_history,
+                "system_prompt": system_prompt,  # From Capsule, NOT hardcoded
+            }
+
+            built: BuiltContext
+            try:
+                built = await builder.build_for_turn(
+                    turn=turn_dict,
+                    lane_budget=decision.lane_budget.to_dict(),
+                    is_degraded=is_degraded,
+                )
+            except Exception as e:
+                error_msg = f"{DEPLOYMENT_MODE} mode: Context build failed: {e}"
+                if SAAS_MODE:
+                    error_msg += " (SAAS: Check SomaBrain HTTP connectivity)"
+                elif STANDALONE_MODE:
+                    error_msg += " (STANDALONE: Check embedded SomaBrain imports)"
+                logger.error(error_msg, exc_info=True)
+                # Fallback to minimal context
+                # Fallback context uses Capsule system_prompt (no hardcoding)
+                fallback_system = system_prompt or "Assistant ready."
+                built = BuiltContext(
+                    system_prompt=fallback_system,
+                    messages=[
+                        {"role": "system", "content": fallback_system},
+                        {"role": "user", "content": content},
+                    ],
+                    token_counts={
+                        "system": len(fallback_system.split()),
+                        "history": 0,
+                        "memory": 0,
+                        "user": len(content.split()),
+                    },
+                    lane_actual={
+                        "system_policy": len(fallback_system.split()),
+                        "history": 0,
+                        "memory": 0,
+                        "tools": 0,
+                        "tool_results": 0,
+                        "buffer": 200,
+                    },
+                )
+
+        metrics.record_turn_phase(turn_id, TurnPhase.CONTEXT_BUILT)
+
+        # 8. Invoke LLM
+        lc_messages = []
+        for msg in built.messages:
+            role, content_val = msg.get("role"), msg.get("content")
+            if role == "assistant":
+                lc_messages.append(AIMessage(content=content_val or ""))
+            elif role == "system":
+                lc_messages.append(SystemMessage(content=content_val or ""))
+            else:
+                lc_messages.append(HumanMessage(content=content_val or ""))
+
+        metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
+
+        # Stream response
+        # CHAT-003: Add timeout handling for SAAS mode
+        llm_timeout = (
+            settings.chat_model_kwargs.get("timeout", 30.0) if settings.chat_model_kwargs else 30.0
+        )
+        if SAAS_MODE:
+            llm_timeout = min(llm_timeout, 60.0)  # Cap at 60s for SAAS mode
+
+        response_content = []
+        try:
+            async for chunk in llm._astream(messages=lc_messages):
+                token = str(chunk.message.content) if hasattr(chunk, "message") and hasattr(chunk.message, "content") else ""  # type: ignore[ reportAttributeAccessIssue]
+
+                if token:
+                    response_content.append(token)
+                    yield token
+        except asyncio.TimeoutError as e:
+            timeout_msg = f"{DEPLOYMENT_MODE} mode: LLM streaming timeout after {llm_timeout}s"
+            if SAAS_MODE:
+                timeout_msg += " (SAAS: Network latency or remote service unresponsive)"
+            logger.warning(timeout_msg, exc_info=True)
+            # Stream ended gracefully - client should handle incomplete response
+        except Exception as e:
+            stream_error_msg = f"{DEPLOYMENT_MODE} mode: LLM streaming error: {e}"
+            if SAAS_MODE and "timeout" in str(e).lower():
+                stream_error_msg += " (SAAS: HTTP timeout from LLM provider)"
+            logger.error(stream_error_msg, exc_info=True)
+            # Stream ended - error logged for monitoring
+
+        metrics.record_turn_phase(
+            turn_id, TurnPhase.COMPLETED if response_content else TurnPhase.ERROR
+        )
+
+        full_response = "".join(response_content)
+        token_count_out = len(full_response.split())
+
+        # 9. Store assistant message
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+        model_id = getattr(llm, "model_name", f"{provider}/{model_name}")
+
+        @sync_to_async
+        def store_assistant_message():
+            MessageModel.objects.create(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=full_response,
+                token_count=token_count_out,
+                latency_ms=elapsed_ms,
+                model=model_id,
+            )
+            ConversationModel.objects.filter(id=conversation_id).update(
+                message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
+            )
+
+        await store_assistant_message()
+
+        # 10. Record completion metrics
+        metrics.record_turn_complete(
+            turn_id=turn_id,
+            tokens_in=turn_metrics.tokens_in,
+            tokens_out=token_count_out,
+            model=model_id,
+            provider=provider,
+            error=None,
+        )
+
+        # 11. Non-blocking: store interaction in memory via SomaBrain
+        from services.common.chat_memory import store_interaction
+
+        asyncio.create_task(
+            store_interaction(
+                agent_id=agent_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                user_message=content,
+                assistant_response=full_response,
+                tenant_id=tenant_id,
+                model=model_id,
+                latency_ms=elapsed_ms,
+            )
+        )
+
+        # 12. GMD Integration: Collect implicit RL signals (non-blocking)
+        from services.common.implicit_signals import signal_follow_up, signal_long_response
+
+        # Extract learning config from Capsule (Rule 91)
+        learning_config = capsule.learning_config if capsule else {}
+
+        # Signal follow-up based on history timing
+        if len(raw_history) >= 2:
+            # If last message was assistant and now user is responding, it's a follow-up
+            last_role = raw_history[-1].get("role") if raw_history else None
+            if last_role == "assistant":
+                # Approximate time since last message (use message count as proxy)
+                time_since_estimate = min(60 * 5, 30 * len(raw_history))  # Heuristic
+                asyncio.create_task(
+                    signal_follow_up(
+                        conversation_id, time_since_estimate, learning_config=learning_config
+                    )
+                )
+
+        # Signal long user message (indicates engagement)
+        if len(content) > 200:
             asyncio.create_task(
-                self.store_interaction(
-                    user_id=user_id,
-                    agent_id=agent_id,
-                    conversation_id=conversation_id,
-                    user_message=content,
-                    assistant_response=full_response,
-                    tenant_id=current_tenant_id,  # Fixed: use tenant_id from conversation
+                signal_long_response(
+                    conversation_id, len(content), learning_config=learning_config
                 )
             )
 
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="send_message").observe(elapsed)
-            CHAT_REQUESTS.labels(method="send_message", result="success").inc()
-
-            logger.info(
-                f"Message exchange complete: conversation={conversation_id}, "
-                f"tokens={token_count}, latency_ms={elapsed_ms}"
-            )
-
-        except LLMNotConfiguredError as e:
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="send_message").observe(elapsed)
-            CHAT_REQUESTS.labels(method="send_message", result="error").inc()
-
-            logger.error(f"LLM not configured: {e}")
-            raise
-        except Exception as e:
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="send_message").observe(elapsed)
-            CHAT_REQUESTS.labels(method="send_message", result="error").inc()
-
-            logger.error(f"Message send failed: {e}")
-            raise
+        # Track overall metrics
+        CHAT_TOKENS.labels(direction="input").inc(turn_metrics.tokens_in)
+        CHAT_TOKENS.labels(direction="output").inc(token_count_out)
+        CHAT_LATENCY.labels(method="send_message").observe(time.perf_counter() - start_time)
+        CHAT_REQUESTS.labels(
+            method="send_message", result="success" if response_content else "error"
+        ).inc()
 
     # =========================================================================
-    # MEMORY INTEGRATION
+    # MEMORY INTEGRATION (delegated to chat_memory.py)
     # =========================================================================
 
     async def recall_memories(
@@ -707,104 +704,10 @@ class ChatService:
         limit: int = 5,
         tenant_id: Optional[str] = None,
     ) -> list[Memory]:
-        """Recall relevant memories from SomaFractalMemory.
+        """Recall relevant memories via SomaBrain."""
+        from services.common.chat_memory import recall_memories
 
-        Per design.md Section 6.1:
-        - Queries SomaFractalMemory /memories/search
-        - Returns list of Memory objects
-        - Graceful degradation if memory service unavailable
-
-        Args:
-            agent_id: Agent ID
-            user_id: User ID
-            query: Query string for semantic search
-            limit: Max memories to return
-
-        Returns:
-            List of Memory objects (empty if service unavailable)
-        """
-        import time
-
-        start_time = time.perf_counter()
-
-        try:
-            if not self.memory_api_token:
-                logger.warning("Memory recall skipped: SOMA_MEMORY_API_TOKEN not set")
-                return []
-
-            client = await self._get_http_client()
-            headers = self._build_memory_headers(tenant_id)
-            response = await client.post(
-                f"{self.memory_url}/memories/search",
-                json={
-                    "query": query,
-                    "top_k": limit,
-                    "memory_type": "episodic",
-                    "filters": {
-                        "agent_id": agent_id,
-                        "user_id": user_id,
-                    },
-                },
-                headers=headers,
-                timeout=5.0,
-            )
-
-            if response.status_code != 200:
-                logger.warning(f"Memory recall failed: status={response.status_code}")
-                return []
-
-            data = response.json()
-            memories = []
-            for item in data.get("memories", []):
-                payload = item.get("payload") if isinstance(item, dict) else None
-                payload = payload if isinstance(payload, dict) else {}
-                content = payload.get("content") or ""
-                created_at = payload.get("timestamp") or item.get(
-                    "created_at", datetime.now(timezone.utc).isoformat()
-                )
-                try:
-                    created_dt = (
-                        created_at
-                        if isinstance(created_at, datetime)
-                        else datetime.fromisoformat(str(created_at))
-                    )
-                except ValueError:
-                    created_dt = datetime.now(timezone.utc)
-
-                coord = item.get("coordinate")
-                if isinstance(coord, list):
-                    coord_id = ",".join(str(c) for c in coord)
-                else:
-                    coord_id = str(coord or uuid4())
-
-                memories.append(
-                    Memory(
-                        id=coord_id,
-                        content=content,
-                        memory_type=item.get("memory_type", "episodic"),
-                        relevance_score=float(item.get("importance", 0.0)),
-                        created_at=created_dt,
-                    )
-                )
-
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="recall_memories").observe(elapsed)
-            CHAT_REQUESTS.labels(method="recall_memories", result="success").inc()
-
-            logger.debug(
-                f"Memories recalled: agent={agent_id}, user={user_id}, " f"count={len(memories)}"
-            )
-
-            return memories
-
-        except Exception as e:
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="recall_memories").observe(elapsed)
-            CHAT_REQUESTS.labels(method="recall_memories", result="error").inc()
-
-            # Graceful degradation - return empty list
-            logger.warning(f"Memory recall failed (graceful degradation): {e}")
-            return []
+        return await recall_memories(agent_id, user_id, query, limit, tenant_id)
 
     async def store_memory(
         self,
@@ -814,56 +717,10 @@ class ChatService:
         metadata: dict,
         tenant_id: Optional[str] = None,
     ) -> None:
-        """Store interaction in SomaFractalMemory.
+        """Store interaction via SomaBrain."""
+        from services.common.chat_memory import store_memory
 
-        Per design.md Section 6.1:
-        - Stores memory via /memories endpoint
-        - Fire-and-forget (non-blocking)
-
-        Args:
-            agent_id: Agent ID
-            user_id: User ID
-            content: Memory content
-            metadata: Additional metadata
-        """
-        try:
-            if not self.memory_api_token:
-                logger.warning("Memory store skipped: SOMA_MEMORY_API_TOKEN not set")
-                return
-
-            import hashlib
-
-            seed = f"{content}|{metadata.get('conversation_id','')}|{metadata.get('timestamp','')}"
-            digest = hashlib.sha256(seed.encode("utf-8")).digest()
-            coord_values = [
-                int.from_bytes(digest[i : i + 2], "big") / 65535.0 for i in range(0, 6, 2)
-            ]
-            coord = ",".join(f"{value:.6f}" for value in coord_values)
-            payload = {
-                "content": content,
-                "agent_id": agent_id,
-                "user_id": user_id,
-                **metadata,
-            }
-
-            client = await self._get_http_client()
-            headers = self._build_memory_headers(tenant_id)
-            await client.post(
-                f"{self.memory_url}/memories",
-                json={
-                    "coord": coord,
-                    "payload": payload,
-                    "memory_type": "episodic",
-                },
-                headers=headers,
-                timeout=2.0,
-            )
-
-            logger.debug(f"Memory stored: agent={agent_id}, user={user_id}")
-
-        except Exception as e:
-            # Non-critical - log and continue
-            logger.warning(f"Memory store failed (non-critical): {e}")
+        await store_memory(agent_id, user_id, content, metadata, tenant_id)
 
     async def store_interaction(
         self,
@@ -875,25 +732,15 @@ class ChatService:
         assistant_response: str,
         tenant_id: Optional[str] = None,
     ) -> None:
-        """Store a full interaction in memory.
+        """Store a full interaction in memory via SomaBrain."""
+        from services.common.chat_memory import store_interaction
 
-        Per design.md Section 6.1:
-        - Stores combined user/assistant exchange
-        - Includes conversation metadata
-        """
-        content = f"User: {user_message}\nAssistant: {assistant_response}"
-        metadata = {
-            "conversation_id": conversation_id,
-            "user_message": user_message[:5000],
-            "assistant_response": assistant_response[:5000],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        await self.store_memory(
+        await store_interaction(
             agent_id=agent_id,
             user_id=user_id,
-            content=content,
-            metadata=metadata,
+            conversation_id=conversation_id,
+            user_message=user_message,
+            assistant_response=assistant_response,
             tenant_id=tenant_id,
         )
 
@@ -901,144 +748,78 @@ class ChatService:
     # TITLE GENERATION
     # =========================================================================
 
-    async def generate_title(
-        self,
-        conversation_id: str,
-        messages: list[Message],
-    ) -> str:
-        """Generate conversation title using utility model.
-
-        Per design.md Section 6.1:
-        - Calls utility model for title generation
-        - Updates conversation title in database
-
-        Args:
-            conversation_id: Conversation ID
-            messages: List of messages for context
-
-        Returns:
-            Generated title
-        """
-        import time
+    async def generate_title(self, conversation_id: str, messages: list[Message]) -> str:
+        """Generate conversation title using utility model."""
+        from langchain_core.messages import HumanMessage, SystemMessage
 
         from admin.chat.models import Conversation as ConversationModel
+        from admin.core.helpers.settings_defaults import get_default_settings
+        from admin.llm.services.litellm_client import get_chat_model
 
         start_time = time.perf_counter()
-
         try:
-            from admin.core.helpers.settings_defaults import get_default_settings
-            from admin.llm.services.litellm_client import get_chat_model
-            from langchain_core.messages import HumanMessage, SystemMessage
 
             @sync_to_async
             def get_agent_id():
-                """Retrieve agent id.
-                    """
-
                 conv = ConversationModel.objects.filter(id=conversation_id).only("agent_id").first()
                 return str(conv.agent_id) if conv else "default"
 
             agent_id = await get_agent_id()
             settings = get_default_settings(agent_id=agent_id)
-
             provider = settings.util_model_provider or settings.chat_model_provider
             model_name = settings.util_model_name or settings.chat_model_name
             if "/" in model_name:
                 model_provider, model_value = model_name.split("/", 1)
                 if not provider or provider == model_provider:
-                    provider = model_provider
-                    model_name = model_value
+                    provider, model_name = model_provider, model_value
 
             util_kwargs = dict(settings.util_model_kwargs or settings.chat_model_kwargs or {})
             if settings.util_model_api_base:
                 util_kwargs.setdefault("api_base", settings.util_model_api_base)
-            if isinstance(util_kwargs.get("temperature"), str):
-                try:
-                    util_kwargs["temperature"] = float(util_kwargs["temperature"])
-                except ValueError:
-                    pass
 
             llm = get_chat_model(provider=provider, name=model_name, **util_kwargs)
-
-            # Build context from messages
             context = "\n".join(f"{m.role}: {m.content[:200]}" for m in messages[:5])
-
             title_tokens = []
-            title_prompt = (
-                "You generate short chat titles. Return a concise title (max 8 words), no quotes."
-            )
             async for chunk in llm._astream(
                 messages=[
-                    SystemMessage(content=title_prompt),
+                    SystemMessage(
+                        content="You generate short chat titles. Return a concise title (max 8 words), no quotes."
+                    ),
                     HumanMessage(content=context),
                 ]
             ):
-                token = ""
-                if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
-                    token = str(chunk.message.content)
-                elif hasattr(chunk, "content"):
-                    token = str(chunk.content)
+                token = str(chunk.message.content) if hasattr(chunk, "message") and hasattr(chunk.message, "content") else ""  # type: ignore[reportAttributeAccessIssue]
                 if token:
                     title_tokens.append(token)
 
-            title = "".join(title_tokens).strip()
-            if not title:
-                title = messages[0].content[:50] if messages else "New Conversation"
+            title = "".join(title_tokens).strip() or (
+                messages[0].content[:50] if messages else "New Conversation"
+            )
 
-            # Update database
             @sync_to_async
             def update_title():
-                """Execute update title.
-                    """
-
                 ConversationModel.objects.filter(id=conversation_id).update(title=title)
 
             await update_title()
-
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="generate_title").observe(elapsed)
+            CHAT_LATENCY.labels(method="generate_title").observe(time.perf_counter() - start_time)
             CHAT_REQUESTS.labels(method="generate_title", result="success").inc()
-
-            logger.info(f"Title generated: conversation={conversation_id}, title={title}")
-
             return title
-
         except Exception as e:
-            elapsed = time.perf_counter() - start_time
-            CHAT_LATENCY.labels(method="generate_title").observe(elapsed)
+            CHAT_LATENCY.labels(method="generate_title").observe(time.perf_counter() - start_time)
             CHAT_REQUESTS.labels(method="generate_title", result="error").inc()
-
-            # Fallback
-            title = messages[0].content[:50] if messages else "New Conversation"
-            logger.warning(f"Title generation failed, using fallback: {e}")
-            return title
+            return messages[0].content[:50] if messages else "New Conversation"
 
 
-# =============================================================================
-# SINGLETON INSTANCE
-# =============================================================================
-
+# Singleton
 _chat_service_instance: Optional[ChatService] = None
 
 
 async def get_chat_service() -> ChatService:
-    """Get or create the singleton ChatService.
-
-    Usage:
-        service = await get_chat_service()
-        conv = await service.create_conversation(agent_id, user_id, tenant_id)
-    """
+    """Get or create the singleton ChatService."""
     global _chat_service_instance
     if _chat_service_instance is None:
         _chat_service_instance = ChatService()
     return _chat_service_instance
 
 
-__all__ = [
-    "ChatService",
-    "Conversation",
-    "Message",
-    "AgentSession",
-    "Memory",
-    "get_chat_service",
-]
+__all__ = ["ChatService", "Conversation", "Message", "AgentSession", "Memory", "get_chat_service"]

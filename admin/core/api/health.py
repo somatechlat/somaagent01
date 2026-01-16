@@ -125,11 +125,11 @@ async def health_check() -> dict:
     def record_status(name: str, status: str, detail: Optional[str] = None) -> None:
         """Execute record status.
 
-            Args:
-                name: The name.
-                status: The status.
-                detail: The detail.
-            """
+        Args:
+            name: The name.
+            status: The status.
+            detail: The detail.
+        """
 
         nonlocal overall_status
         components[name] = {"status": status}
@@ -152,7 +152,7 @@ async def health_check() -> dict:
 
     # Check external services
     somabrain_status, somabrain_detail = await _check_http_target(
-        "somabrain", getattr(settings, "SOMABRAIN_URL", "http://localhost:8090")
+        "somabrain", getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
     )
     record_status("somabrain", somabrain_status, somabrain_detail)
 

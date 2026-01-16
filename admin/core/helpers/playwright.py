@@ -10,8 +10,7 @@ from admin.core.helpers import files
 
 
 def get_playwright_binary():
-    """Retrieve playwright binary.
-        """
+    """Retrieve playwright binary."""
 
     pw_cache = Path(get_playwright_cache_dir())
     headless_shell = next(pw_cache.glob("chromium_headless_shell-*/chrome-*/headless_shell"), None)
@@ -19,15 +18,13 @@ def get_playwright_binary():
 
 
 def get_playwright_cache_dir():
-    """Retrieve playwright cache dir.
-        """
+    """Retrieve playwright cache dir."""
 
     return files.get_abs_path("tmp/playwright")
 
 
 def ensure_playwright_binary():
-    """Execute ensure playwright binary.
-        """
+    """Execute ensure playwright binary."""
 
     bin = get_playwright_binary()
     if not bin:
