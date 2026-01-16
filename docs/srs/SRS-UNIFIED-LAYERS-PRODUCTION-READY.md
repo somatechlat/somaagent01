@@ -1949,3 +1949,1022 @@ BUDGET_PHASES = Histogram("agent_budget_allocation_seconds", [...])
 ---
 
 **END OF DOCUMENT**
+# Design Document
+
+## Introduction
+
+This document specifies the technical design for achieving full SomaBrain integration in SomaAgent01. The design covers new SomaClient methods, wrapper functions in somabrain_integration.py, bug fixes in cognitive.py, and neuromodulator clamping compliance.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         SomaAgent01                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                    Agent (agent.py)                              │    │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │    │
+│  │  │ cognitive.py    │  │ somabrain_      │  │ soma_client.py  │  │    │
+│  │  │ (high-level)    │──│ integration.py  │──│ (HTTP client)   │  │    │
+│  │  │                 │  │ (wrappers)      │  │                 │  │    │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ HTTP/REST
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         SomaBrain (Port 9696)                            │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
+│  │ /act            │  │ /context/       │  │ /sleep/run      │          │
+│  │ /plan/suggest   │  │ adaptation/     │  │ /sleep/status   │          │
+│  │ /micro/diag     │  │ reset           │  │ /api/brain/     │          │
+│  │                 │  │ /state          │  │ sleep_mode      │          │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Design Details
+
+### Component 1: SomaClient New Methods
+
+**Relevant Requirements:** REQ-1, REQ-2, REQ-3, REQ-4, REQ-8, REQ-9
+
+#### 1.1 adaptation_reset() Method
+
+```python
+async def adaptation_reset(
+    self,
+    *,
+    tenant_id: Optional[str] = None,
+    base_lr: Optional[float] = None,
+    reset_history: bool = True,
+    retrieval_defaults: Optional[Mapping[str, float]] = None,
+    utility_defaults: Optional[Mapping[str, float]] = None,
+    gains: Optional[Mapping[str, float]] = None,
+    constraints: Optional[Mapping[str, float]] = None,
+) -> Mapping[str, Any]:
+    """Reset adaptation engine to defaults for clean benchmarks.
+
+    Args:
+        tenant_id: Tenant identifier for per-tenant reset
+        base_lr: Optional base learning rate override
+        reset_history: Whether to clear feedback history (default True)
+        retrieval_defaults: Optional retrieval weight defaults {alpha, beta, gamma, tau}
+        utility_defaults: Optional utility weight defaults {lambda_, mu, nu}
+        gains: Optional adaptation gains {alpha, gamma, lambda_, mu, nu}
+        constraints: Optional adaptation constraints {*_min, *_max}
+
+    Returns:
+        {"ok": True, "tenant_id": str}
+
+    Raises:
+        SomaClientError: On HTTP 4xx/5xx or network failure
+    """
+```
+
+**Endpoint:** `POST /context/adaptation/reset`
+
+**Request Body:**
+```json
+{
+  "tenant_id": "string|null",
+  "base_lr": 0.01,
+  "reset_history": true,
+  "retrieval_defaults": {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "tau": 0.5},
+  "utility_defaults": {"lambda_": 0.5, "mu": 0.5, "nu": 0.5},
+  "gains": {"alpha": 0.1, "gamma": 0.1, "lambda_": 0.1, "mu": 0.1, "nu": 0.1},
+  "constraints": {"alpha_min": 0.0, "alpha_max": 1.0, ...}
+}
+```
+
+#### 1.2 act() Method
+
+```python
+async def act(
+    self,
+    task: str,
+    *,
+    top_k: int = 3,
+    universe: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Mapping[str, Any]:
+    """Execute a cognitive action step with salience scoring.
+
+    Args:
+        task: The task/action description to execute
+        top_k: Number of memory hits to consider (default 3)
+        universe: Optional universe scope for memory operations
+        session_id: Optional session ID for focus state tracking
+
+    Returns:
+        ActResponse with task, results (list of ActStepResult), plan, plan_universe
+
+    Raises:
+        SomaClientError: On HTTP 4xx/5xx or network failure
+    """
+```
+
+**Endpoint:** `POST /act`
+
+**Request Body:**
+```json
+{
+  "task": "string",
+  "top_k": 3,
+  "universe": "string|null"
+}
+```
+
+**Response:**
+```json
+{
+  "task": "string",
+  "results": [
+    {
+      "step": "string",
+      "novelty": 0.5,
+      "pred_error": 0.5,
+      "salience": 0.7,
+      "stored": true,
+      "wm_hits": 2,
+      "memory_hits": 5,
+      "policy": null
+    }
+  ],
+  "plan": ["step1", "step2"],
+  "plan_universe": "string|null"
+}
+```
+
+#### 1.3 brain_sleep_mode() Method
+
+```python
+async def brain_sleep_mode(
+    self,
+    target_state: str,
+    *,
+    ttl_seconds: Optional[int] = None,
+    async_mode: bool = False,
+    trace_id: Optional[str] = None,
+) -> Mapping[str, Any]:
+    """Transition tenant sleep state via cognitive endpoint.
+
+    Args:
+        target_state: One of "active", "light", "deep", "freeze"
+        ttl_seconds: Optional TTL after which state auto-reverts to active
+        async_mode: If True, return immediately (non-blocking)
+        trace_id: Optional trace identifier for observability
+
+    Returns:
+        Sleep transition response
+
+    Raises:
+        SomaClientError: On HTTP 4xx/5xx or network failure
+        ValueError: If target_state is invalid
+    """
+```
+
+**Endpoint:** `POST /api/brain/sleep_mode`
+
+#### 1.4 util_sleep() Method
+
+```python
+async def util_sleep(
+    self,
+    target_state: str,
+    *,
+    ttl_seconds: Optional[int] = None,
+    async_mode: bool = False,
+    trace_id: Optional[str] = None,
+) -> Mapping[str, Any]:
+    """Transition tenant sleep state via utility endpoint.
+
+    Args:
+        target_state: One of "active", "light", "deep", "freeze"
+        ttl_seconds: Optional TTL after which state auto-reverts to active
+        async_mode: If True, return immediately (non-blocking)
+        trace_id: Optional trace identifier for observability
+
+    Returns:
+        Sleep transition response
+
+    Raises:
+        SomaClientError: On HTTP 4xx/5xx or network failure
+        ValueError: If target_state is invalid
+    """
+```
+
+**Endpoint:** `POST /api/util/sleep`
+
+#### 1.5 micro_diag() Method
+
+```python
+async def micro_diag(self) -> Mapping[str, Any]:
+    """Get microcircuit diagnostics (admin mode).
+
+    Returns:
+        Diagnostic info with enabled, tenant, columns, namespace
+
+    Raises:
+        SomaClientError: On HTTP 4xx/5xx or network failure
+    """
+```
+
+**Endpoint:** `GET /micro/diag`
+
+#### 1.6 sleep_status_all() Method
+
+```python
+async def sleep_status_all(self) -> Mapping[str, Any]:
+    """Get sleep status for all tenants (admin mode).
+
+    Returns:
+        {"enabled": bool, "interval_seconds": int, "tenants": {tid: {nrem, rem}}}
+
+    Raises:
+        SomaClientError: On HTTP 4xx/5xx or network failure
+    """
+```
+
+**Endpoint:** `GET /sleep/status/all`
+
+---
+
+### Component 2: Neuromodulator Clamping
+
+**Relevant Requirements:** REQ-5
+
+The SomaBrain neuromod.py router enforces these physiological ranges:
+
+| Neuromodulator | Min | Max |
+|----------------|-----|-----|
+| dopamine       | 0.0 | 0.8 |
+| serotonin      | 0.0 | 1.0 |
+| noradrenaline  | 0.0 | 0.1 |
+| acetylcholine  | 0.0 | 0.5 |
+
+**Implementation in somabrain_integration.py:**
+
+```python
+# Neuromodulator clamping ranges (from SomaBrain neuromod.py)
+NEUROMOD_CLAMP_RANGES = {
+    "dopamine": (0.0, 0.8),
+    "serotonin": (0.0, 1.0),
+    "noradrenaline": (0.0, 0.1),
+    "acetylcholine": (0.0, 0.5),
+}
+
+def clamp_neuromodulator(name: str, value: float) -> float:
+    """Clamp neuromodulator value to physiological range."""
+    min_val, max_val = NEUROMOD_CLAMP_RANGES.get(name, (0.0, 1.0))
+    return max(min_val, min(max_val, value))
+```
+
+---
+
+### Component 3: Wrapper Functions in somabrain_integration.py
+
+**Relevant Requirements:** REQ-6
+
+#### 3.1 reset_adaptation_state()
+
+```python
+async def reset_adaptation_state(
+    agent: "Agent",
+    base_lr: Optional[float] = None,
+    reset_history: bool = True,
+) -> bool:
+    """Reset adaptation state to defaults for clean benchmarks.
+
+    Args:
+        agent: The agent instance
+        base_lr: Optional base learning rate override
+        reset_history: Whether to clear feedback history
+
+    Returns:
+        True if reset succeeded, False otherwise
+    """
+```
+
+#### 3.2 execute_action()
+
+```python
+async def execute_action(
+    agent: "Agent",
+    task: str,
+    *,
+    universe: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Execute a cognitive action through SomaBrain.
+
+    Args:
+        agent: The agent instance
+        task: The task/action description
+        universe: Optional universe scope
+
+    Returns:
+        ActResponse dict or None on failure
+    """
+```
+
+#### 3.3 transition_sleep_state()
+
+```python
+async def transition_sleep_state(
+    agent: "Agent",
+    target_state: str,
+    *,
+    ttl_seconds: Optional[int] = None,
+) -> bool:
+    """Transition agent to specified sleep state.
+
+    Args:
+        agent: The agent instance
+        target_state: One of "active", "light", "deep", "freeze"
+        ttl_seconds: Optional TTL for auto-revert
+
+    Returns:
+        True if transition succeeded, False otherwise
+    """
+```
+
+---
+
+### Component 4: Bug Fix in cognitive.py
+
+**Relevant Requirements:** REQ-7
+
+**Current (Buggy) Code:**
+```python
+sleep_result = await agent.soma_client.sleep_cycle(
+    tenant_id=agent.tenant_id,
+    persona_id=agent.persona_id,
+    duration_minutes=5,  # BUG: SomaBrain doesn't use duration_minutes
+)
+```
+
+**Fixed Code:**
+```python
+sleep_result = await agent.soma_client.sleep_cycle(
+    tenant_id=agent.tenant_id,
+    persona_id=agent.persona_id,
+    nrem=True,
+    rem=True,
+)
+```
+
+---
+
+### Component 5: Metrics and Observability
+
+**Relevant Requirements:** REQ-10
+
+All new SomaClient methods will:
+1. Emit `somabrain_http_requests_total` counter with labels (method, path, status)
+2. Emit `somabrain_request_seconds` histogram with labels (method, path, status)
+3. Propagate OpenTelemetry trace context via `inject()`
+4. Include `X-Request-ID` header on all requests
+
+This is already handled by the existing `_request()` method infrastructure.
+
+---
+
+### Component 6: Error Handling
+
+**Relevant Requirements:** REQ-11
+
+All new methods will:
+1. Raise `SomaClientError` for HTTP 4xx/5xx responses
+2. Include status code and detail in error messages
+3. Increment circuit breaker counter on 5xx errors
+4. Respect `Retry-After` header on 429 responses
+
+This is already handled by the existing `_request()` method infrastructure.
+
+---
+
+## Correctness Properties (for Property-Based Testing)
+
+### Property 1: Neuromodulator Clamping Idempotence
+```
+∀ name ∈ {dopamine, serotonin, noradrenaline, acetylcholine},
+∀ value ∈ ℝ:
+  clamp(name, clamp(name, value)) == clamp(name, value)
+```
+
+### Property 2: Neuromodulator Range Compliance
+```
+∀ name ∈ {dopamine, serotonin, noradrenaline, acetylcholine},
+∀ value ∈ ℝ:
+  min_range[name] ≤ clamp(name, value) ≤ max_range[name]
+```
+
+### Property 3: Sleep State Validity
+```
+∀ state ∈ {"active", "light", "deep", "freeze"}:
+  brain_sleep_mode(state) succeeds OR raises SomaClientError
+```
+
+### Property 4: Circuit Breaker Monotonicity
+```
+After N consecutive 5xx errors where N ≥ CB_THRESHOLD:
+  circuit_breaker_open == True
+```
+
+### Property 5: Retry-After Compliance
+```
+∀ response with status 429 and Retry-After header:
+  actual_delay ≥ min(Retry-After_seconds, 120)
+```
+
+---
+
+## Data Flow Diagrams
+
+### Sleep Cycle Flow (Fixed)
+
+```
+┌─────────────┐     ┌─────────────────────┐     ┌─────────────┐
+│ cognitive.py│     │ somabrain_          │     │ soma_client │
+│             │     │ integration.py      │     │             │
+└──────┬──────┘     └──────────┬──────────┘     └──────┬──────┘
+       │                       │                       │
+       │ consider_sleep_cycle()│                       │
+       │──────────────────────>│                       │
+       │                       │                       │
+       │                       │ sleep_cycle(nrem=T,  │
+       │                       │ rem=T)               │
+       │                       │──────────────────────>│
+       │                       │                       │
+       │                       │                       │ POST /sleep/run
+       │                       │                       │ {nrem:true,rem:true}
+       │                       │                       │──────────────────>
+       │                       │                       │
+       │                       │<──────────────────────│
+       │                       │ SleepRunResponse      │
+       │<──────────────────────│                       │
+       │ sleep_result          │                       │
+       │                       │                       │
+       │ optimize_cognitive_   │                       │
+       │ parameters()          │                       │
+       │                       │                       │
+```
+
+### Action Execution Flow
+
+```
+┌─────────────┐     ┌─────────────────────┐     ┌─────────────┐
+│ Agent Code  │     │ somabrain_          │     │ soma_client │
+│             │     │ integration.py      │     │             │
+└──────┬──────┘     └──────────┬──────────┘     └──────┬──────┘
+       │                       │                       │
+       │ execute_action(task)  │                       │
+       │──────────────────────>│                       │
+       │                       │                       │
+       │                       │ act(task, session_id) │
+       │                       │──────────────────────>│
+       │                       │                       │
+       │                       │                       │ POST /act
+       │                       │                       │ X-Session-ID: ...
+       │                       │                       │──────────────────>
+       │                       │                       │
+       │                       │<──────────────────────│
+       │                       │ ActResponse           │
+       │<──────────────────────│                       │
+       │ {salience, pred_error,│                       │
+       │  stored, plan}        │                       │
+```
+
+---
+
+## Security Considerations
+
+1. **Admin Endpoints**: `micro_diag()` and `sleep_status_all()` require admin authentication in SomaBrain. The client will propagate auth headers but not enforce admin mode locally.
+
+2. **Adaptation Reset**: Only allowed in dev mode per SomaBrain implementation. The client will receive HTTP 403 if called in prod.
+
+3. **Tenant Isolation**: All methods propagate `X-Tenant-ID` header for proper tenant scoping.
+
+---
+
+## Testing Strategy
+
+1. **Integration Tests**: Real SomaBrain instance (port 9696) to verify all endpoint flows
+2. **Property Tests**: Hypothesis-based tests for clamping and state machine properties with real infrastructure
+3. **Load Tests**: Verify circuit breaker behavior under real failure conditions
+4. **Skip Pattern**: Tests skip gracefully when SomaBrain infrastructure unavailable
+
+**NO MOCKS** - All tests use real SomaBrain service per VIBE Coding Rules.
+
+---
+
+## Dependencies
+
+- `httpx`: Async HTTP client (existing)
+- `opentelemetry`: Trace propagation (existing)
+- `prometheus_client`: Metrics (existing via observability.metrics)
+
+No new dependencies required.
+# Requirements Document
+
+## Introduction
+
+This specification defines the requirements for achieving full, lightning-fast integration between SomaAgent01 and SomaBrain cognitive services. The integration enables advanced cognitive capabilities including memory storage/recall, neuromodulation, adaptation learning, sleep cycles, action execution, and planning.
+
+## Glossary
+
+- **SomaAgent01**: The AI agent framework that consumes SomaBrain services
+- **SomaBrain**: Cognitive AI service providing memory, neuromodulation, and adaptation APIs (Port 9696)
+- **SomaClient**: HTTP client singleton in SomaAgent01 for SomaBrain communication
+- **Neuromodulator**: Simulated neurotransmitter levels (dopamine, serotonin, noradrenaline, acetylcholine)
+- **Adaptation_Engine**: Learning system that adjusts retrieval and utility weights based on feedback
+- **Sleep_Cycle**: Memory consolidation process with NREM and REM phases
+- **Circuit_Breaker**: Fault tolerance pattern that opens after consecutive failures
+
+## Requirements
+
+### Requirement 1: Adaptation Reset Integration
+
+**User Story:** As a cognitive agent, I want to reset my adaptation state to defaults, so that I can start fresh for benchmarks or after significant context changes.
+
+#### Acceptance Criteria
+
+1. WHEN an agent requests adaptation reset, THE SomaClient SHALL call POST `/context/adaptation/reset` with tenant_id, base_lr, and reset_history parameters
+2. WHEN the reset succeeds, THE System SHALL update the agent's local adaptation_state to reflect defaults
+3. IF the reset fails, THEN THE System SHALL raise SomaClientError with the failure detail
+4. THE SomaClient method SHALL use existing circuit breaker and retry patterns
+
+### Requirement 2: Action Execution Integration
+
+**User Story:** As a cognitive agent, I want to execute actions through SomaBrain's `/act` endpoint, so that I can leverage salience scoring and focus tracking for cognitive processing.
+
+#### Acceptance Criteria
+
+1. WHEN an agent executes an action, THE SomaClient SHALL call POST `/act` with task, novelty, and universe parameters
+2. WHEN the action succeeds, THE System SHALL return results including salience, pred_error, stored flag, and plan
+3. THE System SHALL propagate X-Session-ID header for focus state tracking
+4. IF the action fails, THEN THE System SHALL raise SomaClientError with the failure detail
+
+### Requirement 3: Sleep State Transitions
+
+**User Story:** As a cognitive agent, I want to transition between sleep states (active, light, deep, freeze), so that I can manage cognitive load and memory consolidation.
+
+#### Acceptance Criteria
+
+1. WHEN an agent requests sleep state transition, THE SomaClient SHALL call POST `/api/brain/sleep_mode` with target_state, ttl_seconds, async_mode, and trace_id
+2. THE target_state parameter SHALL accept values: "active", "light", "deep", "freeze"
+3. WHEN ttl_seconds is provided, THE System SHALL auto-revert to previous state after expiration
+4. IF the transition fails, THEN THE System SHALL raise SomaClientError with the failure detail
+
+### Requirement 4: Utility Sleep Endpoint
+
+**User Story:** As a cognitive agent, I want to use the utility sleep endpoint for tenant-level sleep transitions, so that I have an alternative path for sleep management.
+
+#### Acceptance Criteria
+
+1. WHEN an agent requests utility sleep, THE SomaClient SHALL call POST `/api/util/sleep` with target_state and optional parameters
+2. THE System SHALL support the same target_state values as brain_sleep_mode
+3. IF the transition fails, THEN THE System SHALL raise SomaClientError with the failure detail
+
+### Requirement 5: Neuromodulator Clamping Compliance
+
+**User Story:** As a cognitive agent, I want neuromodulator updates to respect physiological ranges, so that the cognitive system remains stable.
+
+#### Acceptance Criteria
+
+1. WHEN updating neuromodulators, THE System SHALL clamp dopamine to [0.0, 0.8]
+2. WHEN updating neuromodulators, THE System SHALL clamp serotonin to [0.0, 1.0]
+3. WHEN updating neuromodulators, THE System SHALL clamp noradrenaline to [0.0, 0.1]
+4. WHEN updating neuromodulators, THE System SHALL clamp acetylcholine to [0.0, 0.5]
+5. THE somabrain_integration module SHALL apply clamping before sending to SomaBrain
+
+### Requirement 6: Cognitive Integration Wrappers
+
+**User Story:** As a developer, I want high-level wrapper functions in somabrain_integration.py, so that agent code can easily use all SomaBrain capabilities.
+
+#### Acceptance Criteria
+
+1. THE somabrain_integration module SHALL provide `reset_adaptation_state(agent)` wrapper
+2. THE somabrain_integration module SHALL provide `execute_action(agent, task, novelty, universe)` wrapper
+3. THE somabrain_integration module SHALL provide `transition_sleep_state(agent, target_state, ttl_seconds)` wrapper
+4. WHEN any wrapper fails, THE System SHALL log the error and return appropriate fallback (None or False)
+
+### Requirement 7: Sleep Cycle Fix
+
+**User Story:** As a cognitive agent, I want the sleep_cycle call in cognitive.py to use correct SomaBrain API parameters, so that memory consolidation works properly.
+
+#### Acceptance Criteria
+
+1. WHEN consider_sleep_cycle triggers, THE System SHALL call sleep_cycle with nrem=True and rem=True
+2. THE System SHALL NOT pass duration_minutes as it is not used by SomaBrain
+3. THE System SHALL use tenant_id from agent context
+
+### Requirement 8: Microcircuit Diagnostics (Admin Mode)
+
+**User Story:** As a system administrator, I want to retrieve microcircuit diagnostics, so that I can monitor cognitive system health.
+
+#### Acceptance Criteria
+
+1. WHEN in ADMIN mode, THE SomaClient SHALL provide `micro_diag()` method calling GET `/micro/diag`
+2. THE response SHALL include enabled flag, tenant, columns stats, and namespace
+3. IF not in ADMIN mode, THE System SHALL return limited diagnostics
+
+### Requirement 9: Sleep Status All Tenants (Admin Mode)
+
+**User Story:** As a system administrator, I want to view sleep status for all tenants, so that I can monitor system-wide consolidation.
+
+#### Acceptance Criteria
+
+1. WHEN in ADMIN mode, THE SomaClient SHALL provide `sleep_status_all()` method calling GET `/sleep/status/all`
+2. THE response SHALL include enabled flag, interval_seconds, and per-tenant sleep timestamps
+3. IF not in ADMIN mode, THE System SHALL raise appropriate authorization error
+
+### Requirement 10: Metrics and Observability
+
+**User Story:** As a system operator, I want all SomaBrain calls to emit Prometheus metrics, so that I can monitor integration health.
+
+#### Acceptance Criteria
+
+1. THE SomaClient SHALL emit `somabrain_http_requests_total` counter for all new endpoints
+2. THE SomaClient SHALL emit `somabrain_request_seconds` histogram for all new endpoints
+3. THE SomaClient SHALL propagate OpenTelemetry trace context via inject()
+4. THE SomaClient SHALL include X-Request-ID header on all requests
+
+### Requirement 11: Error Handling Consistency
+
+**User Story:** As a developer, I want consistent error handling across all SomaBrain integrations, so that failures are predictable and recoverable.
+
+#### Acceptance Criteria
+
+1. THE SomaClient SHALL raise SomaClientError for all HTTP 4xx and 5xx responses
+2. THE SomaClient SHALL include status code and detail in error messages
+3. THE SomaClient SHALL increment circuit breaker counter on 5xx errors
+4. THE SomaClient SHALL respect Retry-After header on 429 responses
+
+### Requirement 12: Type Safety and Documentation
+
+**User Story:** As a developer, I want all new methods to have complete type hints and docstrings, so that the code is maintainable.
+
+#### Acceptance Criteria
+
+1. THE SomaClient SHALL have complete type hints for all new method parameters and returns
+2. THE SomaClient SHALL have docstrings describing purpose, args, and returns for all new methods
+3. THE somabrain_integration module SHALL have complete type hints for all new functions
+4. THE cognitive module SHALL have complete type hints for all modified functions
+# Implementation Tasks
+
+## Task 1: Add adaptation_reset() method to SomaClient
+
+**Requirements:** REQ-1
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Add `adaptation_reset()` async method after `adaptation_state()` method
+- [x] Accept parameters: tenant_id, base_lr, reset_history, retrieval_defaults, utility_defaults, gains, constraints
+- [x] Build request body with non-None values only
+- [x] Call `POST /context/adaptation/reset`
+- [x] Return response mapping
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Method calls correct endpoint with correct payload structure
+- Uses existing `_request()` infrastructure for metrics/retry/circuit breaker
+- Raises `SomaClientError` on failure
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 2: Add act() method to SomaClient
+
+**Requirements:** REQ-2
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Add `act()` async method in cognitive endpoints section
+- [x] Accept parameters: task (required), top_k, universe, session_id
+- [x] Build request body with task, top_k, universe
+- [x] Add `X-Session-ID` header if session_id provided
+- [x] Call `POST /act`
+- [x] Return ActResponse mapping
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Method calls correct endpoint with correct payload structure
+- Propagates X-Session-ID header for focus state tracking
+- Uses existing `_request()` infrastructure
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 3: Add brain_sleep_mode() method to SomaClient
+
+**Requirements:** REQ-3
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Add `brain_sleep_mode()` async method in sleep endpoints section
+- [x] Accept parameters: target_state (required), ttl_seconds, async_mode, trace_id
+- [x] Validate target_state is one of: "active", "light", "deep", "freeze"
+- [x] Build SleepRequest body
+- [x] Call `POST /api/brain/sleep_mode`
+- [x] Return response mapping
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Method validates target_state before sending
+- Raises ValueError for invalid target_state
+- Uses existing `_request()` infrastructure
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 4: Add util_sleep() method to SomaClient
+
+**Requirements:** REQ-4
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Add `util_sleep()` async method in sleep endpoints section
+- [x] Accept parameters: target_state (required), ttl_seconds, async_mode, trace_id
+- [x] Validate target_state is one of: "active", "light", "deep", "freeze"
+- [x] Build SleepRequest body
+- [x] Call `POST /api/util/sleep`
+- [x] Return response mapping
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Method validates target_state before sending
+- Raises ValueError for invalid target_state
+- Uses existing `_request()` infrastructure
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 5: Add micro_diag() method to SomaClient
+
+**Requirements:** REQ-8
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Add `micro_diag()` async method in cognitive endpoints section
+- [x] No parameters required
+- [x] Call `GET /micro/diag`
+- [x] Return diagnostic mapping
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Method calls correct endpoint
+- Uses existing `_request()` infrastructure
+- Returns diagnostic info or raises SomaClientError
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 6: Add sleep_status_all() method to SomaClient
+
+**Requirements:** REQ-9
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Add `sleep_status_all()` async method in sleep endpoints section
+- [x] No parameters required
+- [x] Call `GET /sleep/status/all`
+- [x] Return status mapping with tenants dict
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Method calls correct endpoint
+- Uses existing `_request()` infrastructure
+- Returns all-tenant status or raises SomaClientError
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 7: Add neuromodulator clamping to somabrain_integration.py
+
+**Requirements:** REQ-5
+
+**File:** `somaAgent01/python/somaagent/somabrain_integration.py`
+
+**Changes:**
+- [x] Add `NEUROMOD_CLAMP_RANGES` constant dict at module level
+- [x] Add `clamp_neuromodulator(name: str, value: float) -> float` function
+- [x] Update `update_neuromodulators()` to use clamping before sending to SomaBrain
+- [x] Update clamping ranges: dopamine [0.0, 0.8], serotonin [0.0, 1.0], noradrenaline [0.0, 0.1], acetylcholine [0.0, 0.5]
+
+**Acceptance Criteria:**
+- All neuromodulator values are clamped before API call
+- Clamping function is idempotent
+- Existing tests continue to pass
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 8: Add reset_adaptation_state() wrapper to somabrain_integration.py
+
+**Requirements:** REQ-6
+
+**File:** `somaAgent01/python/somaagent/somabrain_integration.py`
+
+**Changes:**
+- [x] Add `reset_adaptation_state(agent, base_lr, reset_history) -> bool` async function
+- [x] Call `agent.soma_client.adaptation_reset()`
+- [x] Handle SomaClientError and log warning
+- [x] Return True on success, False on failure
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Wrapper handles errors gracefully
+- Returns boolean success indicator
+- Logs failures with PrintStyle
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 9: Add execute_action() wrapper to somabrain_integration.py
+
+**Requirements:** REQ-6
+
+**File:** `somaAgent01/python/somaagent/somabrain_integration.py`
+
+**Changes:**
+- [x] Add `execute_action(agent, task, universe) -> Optional[Dict]` async function
+- [x] Call `agent.soma_client.act()` with session_id from agent
+- [x] Handle SomaClientError and log warning
+- [x] Return ActResponse dict on success, None on failure
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Wrapper handles errors gracefully
+- Propagates session_id for focus tracking
+- Returns response dict or None
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 10: Add transition_sleep_state() wrapper to somabrain_integration.py
+
+**Requirements:** REQ-6
+
+**File:** `somaAgent01/python/somaagent/somabrain_integration.py`
+
+**Changes:**
+- [x] Add `transition_sleep_state(agent, target_state, ttl_seconds) -> bool` async function
+- [x] Call `agent.soma_client.brain_sleep_mode()`
+- [x] Handle SomaClientError and ValueError, log warning
+- [x] Return True on success, False on failure
+- [x] Add complete type hints and docstring
+
+**Acceptance Criteria:**
+- Wrapper handles errors gracefully
+- Returns boolean success indicator
+- Logs failures with PrintStyle
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 11: Fix sleep_cycle call in cognitive.py
+
+**Requirements:** REQ-7
+
+**File:** `somaAgent01/python/somaagent/cognitive.py`
+
+**Changes:**
+- [x] Locate `consider_sleep_cycle()` function
+- [x] Change `duration_minutes=5` to `nrem=True, rem=True`
+- [x] Remove unused `duration_minutes` parameter
+
+**Before:**
+```python
+sleep_result = await agent.soma_client.sleep_cycle(
+    tenant_id=agent.tenant_id,
+    persona_id=agent.persona_id,
+    duration_minutes=5,
+)
+```
+
+**After:**
+```python
+sleep_result = await agent.soma_client.sleep_cycle(
+    tenant_id=agent.tenant_id,
+    persona_id=agent.persona_id,
+    nrem=True,
+    rem=True,
+)
+```
+
+**Acceptance Criteria:**
+- sleep_cycle called with correct SomaBrain API parameters
+- No duration_minutes parameter used
+- Memory consolidation triggers correctly
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 12: Update __all__ export in soma_client.py
+
+**Requirements:** REQ-12
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Verify `__all__` list includes all public exports
+- [x] No changes needed if already correct (SomaClient, SomaClientError, SomaMemoryRecord)
+
+**Acceptance Criteria:**
+- Module exports are complete and correct
+
+**STATUS: COMPLETE (no changes needed)**
+
+---
+
+## Task 13: Add integration tests for new endpoints
+
+**Requirements:** REQ-10, REQ-11
+
+**File:** `somaAgent01/tests/integrations/test_soma_client_integration.py`
+
+**Changes:**
+- [x] Add test for `adaptation_reset()` with real SomaBrain
+- [x] Add test for `act()` with real SomaBrain (xfail - SomaBrain bug)
+- [x] Add test for `brain_sleep_mode()` with real SomaBrain (xfail - SomaBrain bug)
+- [x] Add test for `util_sleep()` with real SomaBrain (xfail - SomaBrain bug)
+- [x] Add test for `micro_diag()` with real SomaBrain
+- [x] Add test for `sleep_status_all()` with real SomaBrain
+- [x] Add test for neuromodulator clamping (moved to separate file due to import deps)
+- [x] Skip tests if infrastructure unavailable
+
+**Acceptance Criteria:**
+- Tests use real infrastructure (no mocks per VIBE rules)
+- Tests skip gracefully when SomaBrain unavailable
+- All new methods have test coverage
+
+**Known SomaBrain Bugs (xfail):**
+- `/act` endpoint: Cognitive processing error
+- `/api/brain/sleep_mode` and `/api/util/sleep`: TenantSleepState model missing `updated_at` default
+
+**STATUS: COMPLETE**
+
+---
+
+## Task 14: Verify metrics emission for new endpoints
+
+**Requirements:** REQ-10
+
+**File:** `somaAgent01/python/integrations/soma_client.py`
+
+**Changes:**
+- [x] Verify all new methods use `_request()` which emits metrics
+- [x] No additional changes needed if using `_request()` infrastructure
+
+**Acceptance Criteria:**
+- `somabrain_http_requests_total` counter incremented for new endpoints
+- `somabrain_request_seconds` histogram recorded for new endpoints
+- OpenTelemetry trace context propagated
+
+**STATUS: COMPLETE (all new methods use _request())**
+
+---
+
+## Summary
+
+| Task | File | Priority | Complexity |
+|------|------|----------|------------|
+| 1 | soma_client.py | HIGH | LOW |
+| 2 | soma_client.py | HIGH | LOW |
+| 3 | soma_client.py | HIGH | LOW |
+| 4 | soma_client.py | MEDIUM | LOW |
+| 5 | soma_client.py | MEDIUM | LOW |
+| 6 | soma_client.py | MEDIUM | LOW |
+| 7 | somabrain_integration.py | HIGH | LOW |
+| 8 | somabrain_integration.py | MEDIUM | LOW |
+| 9 | somabrain_integration.py | HIGH | LOW |
+| 10 | somabrain_integration.py | MEDIUM | LOW |
+| 11 | cognitive.py | CRITICAL | LOW |
+| 12 | soma_client.py | LOW | LOW |
+| 13 | tests/ | HIGH | MEDIUM |
+| 14 | soma_client.py | LOW | LOW |
+
+**Recommended Order:**
+1. Task 11 (Critical bug fix)
+2. Tasks 1-6 (SomaClient methods)
+3. Task 7 (Neuromodulator clamping)
+4. Tasks 8-10 (Wrapper functions)
+5. Tasks 12-14 (Cleanup and tests)
