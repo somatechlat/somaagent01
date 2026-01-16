@@ -15,7 +15,9 @@ import time
 from typing import Any, Dict, List
 
 from admin.core.observability.metrics import ContextBuilderMetrics
-from python.somaagent.context_builder import ContextBuilder, SomabrainHealthState
+# FIXED: Broken import from non-existent python.somaagent path
+from admin.agents.services.context_builder import SomabrainHealthState
+from services.common.simple_context_builder import ContextBuilder
 
 
 class SyntheticSomabrain:
