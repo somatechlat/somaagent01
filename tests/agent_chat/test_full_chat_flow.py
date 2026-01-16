@@ -218,7 +218,7 @@ class TestErrorHandling:
         """Test handling of invalid conversation ID."""
         fake_conversation_id = str(uuid4())
 
-        with pytest.raises(Exception):  # Should raise error
+        with pytest.raises((ValueError, LookupError)):  # Invalid conversation should raise error
             async for _ in chat_service.send_message(
                 conversation_id=fake_conversation_id,
                 agent_id=test_agent_id,

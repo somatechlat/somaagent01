@@ -2,15 +2,17 @@
 Type stubs for Django model managers to resolve Pyright errors.
 Django model managers like 'objects' are added dynamically at runtime.
 """
-from typing import TypeVar, Generic, TYPE_CHECKING
+
+from typing import Generic, TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
     from django.db import models
 
-    _T = TypeVar('_T')
+    _T = TypeVar("_T")
 
     class Manager(Generic[_T]):
         """Base manager type stub."""
+
         def all(self) -> models.QuerySet[_T]: ...
         def filter(self, **kwargs: object) -> models.QuerySet[_T]: ...
         def get(self, **kwargs: object) -> _T: ...
@@ -21,6 +23,7 @@ if TYPE_CHECKING:
 
     class QuerySet(Generic[_T]):
         """QuerySet type stub."""
+
         def all(self) -> models.QuerySet[_T]: ...
         def filter(self, **kwargs: object) -> models.QuerySet[_T]: ...
         def get(self, **kwargs: object) -> _T: ...

@@ -43,69 +43,102 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str):  # noqa: F401
     """Lazy import to avoid Django AppRegistryNotReady errors."""
-    if name in (
-        "verify_capsule",
-        "certify_capsule",
-        "inject_capsule",
-        "edit_capsule",
-        "archive_capsule",
-    ):
-        from services.capsule_core import (
-            archive_capsule,
-            certify_capsule,
-            edit_capsule,
-            inject_capsule,
-            verify_capsule,
-        )
+    # Capsule core operations
+    if name == "verify_capsule":
+        from services.capsule_core import verify_capsule
 
-        return locals()[name]
+        return verify_capsule
+    if name == "certify_capsule":
+        from services.capsule_core import certify_capsule
 
-    if name in ("export_capsule", "export_tenant_capsules", "verify_export_checksum"):
-        from services.capsule_export import (
-            export_capsule,
-            export_tenant_capsules,
-            verify_export_checksum,
-        )
+        return certify_capsule
+    if name == "inject_capsule":
+        from services.capsule_core import inject_capsule
 
-        return locals()[name]
+        return inject_capsule
+    if name == "edit_capsule":
+        from services.capsule_core import edit_capsule
 
-    if name in ("import_capsule", "import_tenant_capsules", "ImportResult", "TenantImportResult"):
-        from services.capsule_import import (
-            import_capsule,
-            import_tenant_capsules,
-            ImportResult,
-            TenantImportResult,
-        )
+        return edit_capsule
+    if name == "archive_capsule":
+        from services.capsule_core import archive_capsule
 
-        return locals()[name]
+        return archive_capsule
 
-    if name in (
-        "create_instance",
-        "get_instance",
-        "get_instance_by_session",
-        "list_running_instances",
-        "list_all_running_instances",
-        "count_running_instances",
-        "update_instance_state",
-        "complete_instance",
-        "terminate_instance",
-        "cleanup_stale_instances",
-    ):
-        from services.capsule_instance import (
-            cleanup_stale_instances,
-            complete_instance,
-            count_running_instances,
-            create_instance,
-            get_instance,
-            get_instance_by_session,
-            list_all_running_instances,
-            list_running_instances,
-            terminate_instance,
-            update_instance_state,
-        )
+    # Export operations
+    if name == "export_capsule":
+        from services.capsule_export import export_capsule
 
-        return locals()[name]
+        return export_capsule
+    if name == "export_tenant_capsules":
+        from services.capsule_export import export_tenant_capsules
+
+        return export_tenant_capsules
+    if name == "verify_export_checksum":
+        from services.capsule_export import verify_export_checksum
+
+        return verify_export_checksum
+
+    # Import operations
+    if name == "import_capsule":
+        from services.capsule_import import import_capsule
+
+        return import_capsule
+    if name == "import_tenant_capsules":
+        from services.capsule_import import import_tenant_capsules
+
+        return import_tenant_capsules
+    if name == "ImportResult":
+        from services.capsule_import import ImportResult
+
+        return ImportResult
+    if name == "TenantImportResult":
+        from services.capsule_import import TenantImportResult
+
+        return TenantImportResult
+
+    # Instance management
+    if name == "create_instance":
+        from services.capsule_instance import create_instance
+
+        return create_instance
+    if name == "get_instance":
+        from services.capsule_instance import get_instance
+
+        return get_instance
+    if name == "get_instance_by_session":
+        from services.capsule_instance import get_instance_by_session
+
+        return get_instance_by_session
+    if name == "list_running_instances":
+        from services.capsule_instance import list_running_instances
+
+        return list_running_instances
+    if name == "list_all_running_instances":
+        from services.capsule_instance import list_all_running_instances
+
+        return list_all_running_instances
+    if name == "count_running_instances":
+        from services.capsule_instance import count_running_instances
+
+        return count_running_instances
+    if name == "update_instance_state":
+        from services.capsule_instance import update_instance_state
+
+        return update_instance_state
+    if name == "complete_instance":
+        from services.capsule_instance import complete_instance
+
+        return complete_instance
+    if name == "terminate_instance":
+        from services.capsule_instance import terminate_instance
+
+        return terminate_instance
+    if name == "cleanup_stale_instances":
+        from services.capsule_instance import cleanup_stale_instances
+
+        return cleanup_stale_instances
 
     raise AttributeError(f"module 'services' has no attribute '{name}'")

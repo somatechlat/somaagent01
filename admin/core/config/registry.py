@@ -9,7 +9,7 @@ from __future__ import annotations
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Dict, Generator, Optional, TypeVar
 
 from .loader import ConfigLoader, get_config_loader
 from .models import Config
@@ -223,7 +223,7 @@ class ConfigRegistry:
         return config.extra.get(key, default)
 
     @contextmanager
-    def config_context(self, override_config: Optional[Config] = None) -> Config:
+    def config_context(self, override_config: Optional[Config] = None) -> Generator[Config, None, None]:
         """Context manager for configuration access.
 
         Args:
@@ -474,7 +474,7 @@ def get_extra_config(key: str, default: Optional[Any] = None) -> Optional[Any]:
 
 
 @contextmanager
-def config_context(override_config: Optional[Config] = None) -> Config:
+def config_context(override_config: Optional[Config] = None) -> Generator[Config, None, None]:
     """Context manager for global configuration access.
 
     Args:

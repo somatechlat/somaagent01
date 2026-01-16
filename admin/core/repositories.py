@@ -133,7 +133,7 @@ def get_api_key_store() -> ApiKeyStore:
     return get_repository_manager().get_api_key_store()
 
 
-def get_secret_manager() -> SecretManager:
+def get_global_secret_manager() -> UnifiedSecretManager:
     """Get global SecretManager instance."""
     return get_repository_manager().get_secret_manager()
 

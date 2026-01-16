@@ -446,8 +446,11 @@ class ChatService:
         metrics.record_turn_phase(turn_id, TurnPhase.HEALTH_CHECKED)
 
         # 6. Allocate budget via SimpleGovernor
+        from admin.core.helpers.settings_defaults import get_default_settings
+
+        agent_settings = get_default_settings(agent_id=agent_id)
         governor = get_governor()
-        max_total_tokens = int(settings.chat_model_ctx_length)
+        max_total_tokens = int(agent_settings.chat_model_ctx_length)
 
         decision: GovernorDecision
         if is_degraded:
@@ -580,7 +583,9 @@ class ChatService:
         # Stream response
         # CHAT-003: Add timeout handling for SAAS mode
         llm_timeout = (
-            settings.chat_model_kwargs.get("timeout", 30.0) if settings.chat_model_kwargs else 30.0
+            agent_settings.chat_model_kwargs.get("timeout", 30.0)
+            if agent_settings.chat_model_kwargs
+            else 30.0
         )
         if SAAS_MODE:
             llm_timeout = min(llm_timeout, 60.0)  # Cap at 60s for SAAS mode
@@ -619,7 +624,7 @@ class ChatService:
 
         # 9. Store assistant message
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-        model_id = getattr(llm, "model_name", f"{provider}/{model_name}")
+        model_id = getattr(llm, "model_name", f"{selected_model.provider}/{selected_model.name}")
 
         @sync_to_async
         def store_assistant_message():
@@ -643,7 +648,7 @@ class ChatService:
             tokens_in=turn_metrics.tokens_in,
             tokens_out=token_count_out,
             model=model_id,
-            provider=provider,
+            provider=selected_model.provider,
             error=None,
         )
 
