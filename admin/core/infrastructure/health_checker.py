@@ -216,8 +216,8 @@ class InfrastructureHealthChecker:
             from services.common.event_bus import KafkaEventBus, KafkaSettings
 
             bootstrap_servers = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-            settings = KafkaSettings(bootstrap_servers=bootstrap_servers)
-            bus = KafkaEventBus(settings)
+            kafka_settings = KafkaSettings(bootstrap_servers=bootstrap_servers)
+            bus = KafkaEventBus(kafka_settings)
 
             # Use the existing healthcheck method from KafkaEventBus
             await bus.healthcheck()

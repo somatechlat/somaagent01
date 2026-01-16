@@ -18,6 +18,7 @@ from admin.core.observability.metrics_definitions import (
     auth_requests,
     circuit_breaker_state,
     context_builder_prompt_total,
+    context_builder_snippets_total,
     context_prompt_tokens,
     context_tokens_after_budget,
     context_tokens_after_redaction,
