@@ -1,4 +1,1 @@
-"""Conversations module - Chat management.
-
-
-"""
+"""Conversations module - Chat management."""

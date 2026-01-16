@@ -3,7 +3,6 @@
 
 Usage tracking and billing integration.
 
-7-Persona Implementation:
 - PM: Usage visibility, billing transparency
 - DevOps: Lago integration, metrics
 - Security Auditor: Accurate metering

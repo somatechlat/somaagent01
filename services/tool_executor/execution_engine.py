@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
@@ -17,7 +18,6 @@ from services.tool_executor.sandbox_manager import (
     SandboxManager,
 )
 from services.tool_executor.tool_registry import ToolDefinition
-import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,11 +63,11 @@ class ExecutionEngine:
     ) -> ExecutionResult:
         """Execute execute.
 
-            Args:
-                tool: The tool.
-                args: The args.
-                limits: The limits.
-            """
+        Args:
+            tool: The tool.
+            args: The args.
+            limits: The limits.
+        """
 
         breaker = self._tool_breakers.get(tool.name)
         if breaker is None:

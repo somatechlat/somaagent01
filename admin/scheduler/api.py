@@ -3,7 +3,6 @@
 
 Cron-like job scheduling and management.
 
-7-Persona Implementation:
 - DevOps: Job scheduling, cron
 - QA: Job monitoring
 - PhD Dev: Workflow orchestration

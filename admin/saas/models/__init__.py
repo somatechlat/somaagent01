@@ -20,20 +20,20 @@ from admin.saas.models.choices import (
     TenantStatus,
 )
 from admin.saas.models.features import FeatureProvider, SaasFeature, TierFeature
+
+# Profile models
+from admin.saas.models.profiles import (
+    AdminProfile,
+    ApiKey,
+    TenantSettings,
+    UserPreferences,
+    UserSession,
+)
 from admin.saas.models.tenants import Tenant, TenantUser
 
 # Import models in dependency order
 from admin.saas.models.tiers import SubscriptionTier
 from admin.saas.models.usage import UsageRecord
-
-# Profile models
-from admin.saas.models.profiles import (
-    AdminProfile,
-    TenantSettings,
-    UserPreferences,
-    UserSession,
-    ApiKey,
-)
 
 # Django model discovery - all models must be listed here
 __all__ = [

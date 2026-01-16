@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -10,7 +11,6 @@ from typing import Any, Optional
 import httpx
 
 from services.common.tenant_config import TenantConfig
-import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,9 +56,9 @@ class PolicyClient:
     async def evaluate(self, request: PolicyRequest) -> bool:
         """Execute evaluate.
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         payload = {
             "input": {
@@ -95,17 +95,16 @@ class PolicyClient:
             return False
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         await self._client.aclose()
 
     def _cache_key(self, request: PolicyRequest) -> tuple[Any, ...]:
         """Execute cache key.
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         context_items = tuple(sorted((k, self._freeze(v)) for k, v in request.context.items()))
         return (
@@ -119,9 +118,9 @@ class PolicyClient:
     def _freeze(self, value: Any) -> Any:
         """Execute freeze.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         if isinstance(value, dict):
             return tuple(sorted((k, self._freeze(v)) for k, v in value.items()))

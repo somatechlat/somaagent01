@@ -7,8 +7,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 def generate_rsa_key():
-    """Execute generate rsa key.
-        """
+    """Execute generate rsa key."""
 
     key = rsa.generate_private_key(
         public_exponent=65537,
@@ -23,8 +22,7 @@ def generate_rsa_key():
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     print("Generating RSA Key...")
     rsa_key = generate_rsa_key()
@@ -38,8 +36,8 @@ def main():
     key_derivation = secrets.token_hex(32)
 
     env_content = f"""LAGO_RSA_PRIVATE_KEY="{rsa_key}"
-LAGO_API_URL=http://localhost:3000
-LAGO_FRONT_URL=http://localhost
+LAGO_API_URL=http://localhost:3000/api/v1
+LAGO_FRONT_URL=http://localhost:3000
 POSTGRES_USER=lago
 POSTGRES_PASSWORD=changeme
 POSTGRES_DB=lago

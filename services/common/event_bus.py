@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Optional
 
@@ -20,7 +21,6 @@ from opentelemetry import trace
 from opentelemetry.trace import SpanContext, SpanKind
 
 from services.common.trace_context import inject_trace_context, with_trace_context
-import os
 
 LOGGER = logging.getLogger(__name__)
 TRACER = trace.get_tracer(__name__)
@@ -38,8 +38,7 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls) -> "KafkaSettings":
-        """Execute from env.
-            """
+        """Execute from env."""
 
         return cls(
             bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
@@ -60,8 +59,7 @@ class KafkaEventBus:
         self._producer: Optional[AIOKafkaProducer] = None
 
     async def _ensure_producer(self) -> AIOKafkaProducer:
-        """Execute ensure producer.
-            """
+        """Execute ensure producer."""
 
         if self._producer is None:
             kwargs: dict[str, Any] = {
@@ -81,8 +79,7 @@ class KafkaEventBus:
         return self._producer
 
     async def healthcheck(self) -> None:
-        """Execute healthcheck.
-            """
+        """Execute healthcheck."""
 
         producer = await self._ensure_producer()
         await producer.client.force_metadata_update()
@@ -177,8 +174,7 @@ class KafkaEventBus:
             LOGGER.info("Stopped consumer", extra={"topic": topic, "group_id": group_id})
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         if self._producer is not None:
             await self._producer.stop()
@@ -222,9 +218,9 @@ async def iterate_topic(
     async def _handler(payload: dict[str, Any]) -> None:
         """Execute handler.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: The payload.
+        """
 
         await queue.put(payload)
 

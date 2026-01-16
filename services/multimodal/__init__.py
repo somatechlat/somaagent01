@@ -23,17 +23,17 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 """
 
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
     GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
     ProviderError,
-    ValidationError,
-    RateLimitError,
     QuotaExceededError,
+    RateLimitError,
+    ValidationError,
 )
-from services.multimodal.mermaid_provider import MermaidProvider
 from services.multimodal.dalle_provider import DalleProvider
+from services.multimodal.mermaid_provider import MermaidProvider
 from services.multimodal.playwright_provider import PlaywrightProvider
 
 __all__ = [

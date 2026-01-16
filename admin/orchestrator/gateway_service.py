@@ -44,16 +44,14 @@ class GatewayService(BaseSomaService):
 
     async def _start(self) -> None:
         # No separate process is launched – the orchestrator mounts the app.
-        """Execute start.
-            """
+        """Execute start."""
 
         LOGGER.debug("GatewayService start – nothing to initialise")
 
     async def _stop(self) -> None:
         # No resources to clean up; the Django ASGI shutdown event will be handled
         # by the orchestrator when the whole process exits.
-        """Execute stop.
-            """
+        """Execute stop."""
 
         LOGGER.debug("GatewayService stop – nothing to clean up")
 

@@ -1,6 +1,6 @@
 """Shared readiness probe helpers for SomaAgent services.
 
-100% Django - 
+100% Django -
 Uses Django database connection instead of asyncpg.
 """
 
@@ -17,8 +17,7 @@ COMPONENTS = ["postgres", "redis"]
 
 
 def _timeout_seconds() -> float:
-    """Execute timeout seconds.
-        """
+    """Execute timeout seconds."""
 
     import os
 

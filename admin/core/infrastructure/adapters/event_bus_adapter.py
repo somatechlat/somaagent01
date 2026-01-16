@@ -5,9 +5,29 @@ to the existing production KafkaEventBus implementation.
 """
 
 import asyncio
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Protocol
 
 from services.common.event_bus import KafkaEventBus, KafkaSettings
+
+
+class EventBusPort(Protocol):
+    """Port interface for event bus operations."""
+
+    async def publish(
+        self, topic: str, payload: Any, headers: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Publish event to topic."""
+        ...
+
+    async def consume(
+        self,
+        topic: str,
+        group_id: str,
+        handler: Callable[[Dict[str, Any]], Any],
+        stop_event: Optional[asyncio.Event] = None,
+    ) -> None:
+        """Consume events from topic."""
+        ...
 
 
 class KafkaEventBusAdapter(EventBusPort):
@@ -37,11 +57,11 @@ class KafkaEventBusAdapter(EventBusPort):
     ) -> None:
         """Execute publish.
 
-            Args:
-                topic: The topic.
-                payload: The payload.
-                headers: The headers.
-            """
+        Args:
+            topic: The topic.
+            payload: The payload.
+            headers: The headers.
+        """
 
         await self._bus.publish(topic, payload, headers)
 
@@ -54,23 +74,21 @@ class KafkaEventBusAdapter(EventBusPort):
     ) -> None:
         """Execute consume.
 
-            Args:
-                topic: The topic.
-                group_id: The group_id.
-                handler: The handler.
-                stop_event: The stop_event.
-            """
+        Args:
+            topic: The topic.
+            group_id: The group_id.
+            handler: The handler.
+            stop_event: The stop_event.
+        """
 
         await self._bus.consume(topic, group_id, handler, stop_event)
 
     async def healthcheck(self) -> None:
-        """Execute healthcheck.
-            """
+        """Execute healthcheck."""
 
         await self._bus.healthcheck()
 
     async def close(self) -> None:
-        """Execute close.
-            """
+        """Execute close."""
 
         await self._bus.close()

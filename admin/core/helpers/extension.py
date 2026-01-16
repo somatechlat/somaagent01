@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class Extension:
-
     """Extension class implementation."""
 
     def __init__(self, agent: "Agent|None", **kwargs):
@@ -21,21 +20,19 @@ class Extension:
 
     @abstractmethod
     async def execute(self, **kwargs) -> Any:
-        """Execute execute.
-            """
+        """Execute execute."""
 
         pass
 
 
 async def call_extensions(extension_point: str, agent: "Agent|None" = None, **kwargs) -> Any:
-
     # get default extensions
     """Execute call extensions.
 
-        Args:
-            extension_point: The extension_point.
-            agent: The agent.
-        """
+    Args:
+        extension_point: The extension_point.
+        agent: The agent.
+    """
 
     defaults = await _get_extensions("python/extensions/" + extension_point)
     classes = defaults
@@ -62,9 +59,9 @@ async def call_extensions(extension_point: str, agent: "Agent|None" = None, **kw
 def _get_file_from_module(module_name: str) -> str:
     """Execute get file from module.
 
-        Args:
-            module_name: The module_name.
-        """
+    Args:
+        module_name: The module_name.
+    """
 
     return module_name.split(".")[-1]
 
@@ -75,9 +72,9 @@ _cache: dict[str, list[type[Extension]]] = {}
 async def _get_extensions(folder: str):
     """Execute get extensions.
 
-        Args:
-            folder: The folder.
-        """
+    Args:
+        folder: The folder.
+    """
 
     global _cache
     folder = files.get_abs_path(folder)

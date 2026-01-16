@@ -3,7 +3,6 @@
 
 Conversation lifecycle and messaging.
 
-7-Persona Implementation:
 - PhD Dev: Conversation architecture, streaming
 - PM: Chat experience
 - QA: Message validation
@@ -21,10 +20,9 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
-from admin.chat.models import Conversation as ConversationModel
-from admin.chat.models import Message as MessageModel
 
 router = Router(tags=["conversations"])
 logger = logging.getLogger(__name__)
@@ -99,8 +97,7 @@ async def list_conversations(
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         qs = ConversationModel.objects.all()
         if tenant_id:
@@ -155,8 +152,9 @@ async def start_conversation(
 
     PhD Dev: Conversation initialization.
     """
-    from services.common.chat_service import get_chat_service
     from asgiref.sync import sync_to_async
+
+    from services.common.chat_service import get_chat_service
 
     user = get_current_user(request)
     effective_user_id = user.sub
@@ -200,8 +198,7 @@ async def start_conversation(
 
             @sync_to_async
             def update_title():
-                """Execute update title.
-                    """
+                """Execute update title."""
 
                 ConversationModel.objects.filter(id=conv.id).update(title=title)
 
@@ -240,8 +237,7 @@ async def get_conversation(request, conversation_id: str) -> Conversation:
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         try:
             return ConversationModel.objects.get(id=conversation_id)
@@ -283,8 +279,7 @@ async def update_conversation(
 
     @sync_to_async
     def _update():
-        """Execute update.
-            """
+        """Execute update."""
 
         return ConversationModel.objects.filter(id=conversation_id).update(title=title)
 
@@ -309,8 +304,7 @@ async def delete_conversation(request, conversation_id: str) -> dict:
 
     @sync_to_async
     def _delete():
-        """Execute delete.
-            """
+        """Execute delete."""
 
         return ConversationModel.objects.filter(id=conversation_id).update(status="deleted")
 
@@ -350,8 +344,7 @@ async def list_messages(
 
     @sync_to_async
     def _get_messages():
-        """Execute get messages.
-            """
+        """Execute get messages."""
 
         if not ConversationModel.objects.filter(id=conversation_id).exists():
             return None, 0
@@ -402,8 +395,9 @@ async def send_message(
 
     PhD Dev: Message processing.
     """
-    from services.common.chat_service import get_chat_service
     from asgiref.sync import sync_to_async
+
+    from services.common.chat_service import get_chat_service
 
     if role != "user":
         raise ServiceError("Only user messages can be sent")
@@ -411,8 +405,7 @@ async def send_message(
     # Verify conversation exists and resolve agent
     @sync_to_async
     def _get_conversation():
-        """Execute get conversation.
-            """
+        """Execute get conversation."""
 
         try:
             return ConversationModel.objects.get(id=conversation_id)
@@ -441,8 +434,7 @@ async def send_message(
     # Return assistant message snapshot
     @sync_to_async
     def _get_last_assistant():
-        """Execute get last assistant.
-            """
+        """Execute get last assistant."""
 
         return (
             MessageModel.objects.filter(
@@ -481,8 +473,7 @@ async def get_message(
 
     @sync_to_async
     def _get():
-        """Execute get.
-            """
+        """Execute get."""
 
         try:
             return MessageModel.objects.get(
@@ -526,13 +517,13 @@ async def chat(
 
     PhD Dev: Full chat cycle.
     """
-    from services.common.chat_service import get_chat_service
     from asgiref.sync import sync_to_async
+
+    from services.common.chat_service import get_chat_service
 
     @sync_to_async
     def _get_conversation():
-        """Execute get conversation.
-            """
+        """Execute get conversation."""
 
         try:
             return ConversationModel.objects.get(id=conversation_id)
@@ -565,7 +556,7 @@ async def chat(
         "conversation_id": conversation_id,
         "status": "streaming",
         "message": "Connect to WebSocket for streaming response",
-        "websocket_url": f"/ws/v2/chat",
+        "websocket_url": "/ws/v2/chat",
     }
 
 
@@ -645,8 +636,7 @@ async def get_conversation_stats(
 
     @sync_to_async
     def _get_stats():
-        """Execute get stats.
-            """
+        """Execute get stats."""
 
         if not ConversationModel.objects.filter(id=conversation_id).exists():
             return None
@@ -729,8 +719,7 @@ async def search_conversations(
 
     @sync_to_async
     def _search():
-        """Execute search.
-            """
+        """Execute search."""
 
         qs = ConversationModel.objects.all()
         if tenant_id:

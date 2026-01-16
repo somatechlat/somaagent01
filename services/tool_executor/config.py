@@ -1,7 +1,10 @@
 """Configuration helpers for tool executor service."""
 
-from services.common.event_bus import KafkaSettings
 import os
+
+from django.conf import settings
+
+from services.common.event_bus import KafkaSettings
 
 SERVICE_SETTINGS = os.environ
 
@@ -11,7 +14,7 @@ def kafka_settings() -> KafkaSettings:
     return KafkaSettings(
         bootstrap_servers=os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS",
-            os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+            getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         ),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),

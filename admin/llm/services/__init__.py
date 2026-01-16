@@ -7,9 +7,12 @@ from admin.llm.services.litellm_client import (
     ChatChunk,
     ChatGenerationResult,
     get_api_key,
-    get_rate_limiter,
     LiteLLMChatWrapper,
     turn_off_logging,
+)
+
+from admin.llm.services.litellm_helpers import (
+    get_rate_limiter,
 )
 
 __all__ = [

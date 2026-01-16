@@ -3,7 +3,6 @@
 
 Webhook management with retry and signature.
 
-7-Persona Implementation:
 - DevOps: Webhook delivery, retry logic
 - Security Auditor: Signature verification, secrets
 - PM: Event subscription management
@@ -159,9 +158,10 @@ async def create_webhook(
 )
 async def get_webhook(request, webhook_id: str) -> Webhook:
     """Get webhook details."""
-    from admin.webhooks.models import Webhook as WebhookModel
-    from admin.common.exceptions import NotFoundError
     from asgiref.sync import sync_to_async
+
+    from admin.common.exceptions import NotFoundError
+    from admin.webhooks.models import Webhook as WebhookModel
 
     try:
         db_webhook = await sync_to_async(WebhookModel.objects.get)(id=webhook_id)

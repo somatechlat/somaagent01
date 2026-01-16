@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_store():
-    """Execute get store.
-        """
+    """Execute get store."""
 
     from services.common.notifications_store import NotificationsStore
 
@@ -72,9 +71,9 @@ async def create_notification(req: CreateNotificationRequest) -> dict:
 async def mark_read(notif_id: str) -> dict:
     """Execute mark read.
 
-        Args:
-            notif_id: The notif_id.
-        """
+    Args:
+        notif_id: The notif_id.
+    """
 
     store = _get_store()
     await store.ensure_schema()
@@ -84,8 +83,7 @@ async def mark_read(notif_id: str) -> dict:
 
 @router.delete("/clear", summary="Clear notifications")
 async def clear_notifications() -> dict:
-    """Execute clear notifications.
-        """
+    """Execute clear notifications."""
 
     store = _get_store()
     await store.ensure_schema()

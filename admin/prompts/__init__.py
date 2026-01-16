@@ -1,4 +1,1 @@
-"""Prompts module - Prompt templates.
-
-
-"""
+"""Prompts module - Prompt templates."""

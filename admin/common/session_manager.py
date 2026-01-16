@@ -1,19 +1,4 @@
-"""Session Manager for Redis-backed user sessions.
-
-
-Per login-to-chat-journey design.md Section: SessionManager
-
-Implements:
-- Session creation with Redis storage (key: session:{user_id}:{session_id})
-- Session retrieval and validation
-- Activity tracking with TTL extension
-- Session deletion (single and bulk)
-
-Personas:
-- Django Architect: Async Redis integration
-- Security Auditor: Session isolation, TTL enforcement
-- Performance Engineer: Efficient Redis operations
-"""
+"""Session Manager for Redis-backed user sessions."""
 
 from __future__ import annotations
 
@@ -84,8 +69,7 @@ class Session:
     user_agent: str = ""
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if not self.created_at:
             self.created_at = datetime.now(timezone.utc).isoformat()
@@ -490,8 +474,7 @@ class SessionManager:
             spicedb_permissions = await spicedb.get_permissions(user_id, tenant_id)
             permissions.update(spicedb_permissions)
             logger.debug(
-                f"SpiceDB permissions resolved: user={user_id}, "
-                f"permissions={spicedb_permissions}"
+                f"SpiceDB permissions resolved: user={user_id}, permissions={spicedb_permissions}"
             )
         except Exception as e:
             # FAIL-OPEN for permissions (use role-based fallback)

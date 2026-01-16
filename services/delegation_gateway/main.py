@@ -13,20 +13,19 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 import uuid
 from typing import Any
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
 import django
+from django.conf import settings
 
 django.setup()
 
 from django.core.asgi import get_asgi_application
-from django.http import JsonResponse, HttpResponse
-from ninja import Router, NinjaAPI
-from pydantic import BaseModel
+from django.http import HttpResponse
+from ninja import NinjaAPI, Router
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
@@ -35,9 +34,10 @@ from prometheus_client import (
     Histogram,
     start_http_server,
 )
+from pydantic import BaseModel
+from services.common.delegation_store import DelegationStore
 
 from admin.common.exceptions import NotFoundError
-from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
 from services.common.tracing import setup_tracing
@@ -45,7 +45,7 @@ from services.common.tracing import setup_tracing
 LOGGER = logging.getLogger(__name__)
 
 # Django settings used instead
-setup_tracing("delegation-gateway", endpoint=APP_SETTINGS.external.otlp_endpoint)
+setup_tracing("delegation-gateway", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 
 REQUEST_COUNT = Counter(
@@ -69,8 +69,7 @@ _METRICS_SERVER_STARTED = False
 
 
 def ensure_metrics_server() -> None:
-    """Execute ensure metrics server.
-        """
+    """Execute ensure metrics server."""
 
     global _METRICS_SERVER_STARTED
     if _METRICS_SERVER_STARTED:
@@ -92,11 +91,10 @@ def ensure_metrics_server() -> None:
 
 
 def get_bus() -> KafkaEventBus:
-    """Retrieve bus.
-        """
+    """Retrieve bus."""
 
     kafka_settings = KafkaSettings(
-        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
@@ -106,16 +104,14 @@ def get_bus() -> KafkaEventBus:
 
 
 def get_publisher() -> DurablePublisher:
-    """Retrieve publisher.
-        """
+    """Retrieve publisher."""
 
     bus = get_bus()
     return DurablePublisher(bus=bus)
 
 
 def get_store() -> DelegationStore:
-    """Retrieve store.
-        """
+    """Retrieve store."""
 
     return DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
 
@@ -150,10 +146,10 @@ class DelegationGateway:
     ) -> None:
         """Execute handle event.
 
-            Args:
-                event: The event.
-                publisher: The publisher.
-            """
+        Args:
+            event: The event.
+            publisher: The publisher.
+        """
 
         pub = publisher or self._publisher
         dedupe = event.get("task_id") or event.get("event_id")
@@ -177,9 +173,9 @@ router = Router(tags=["delegation"])
 def metrics(request) -> HttpResponse:
     """Execute metrics.
 
-        Args:
-            request: The request.
-        """
+    Args:
+        request: The request.
+    """
 
     return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)
 
@@ -188,9 +184,9 @@ def metrics(request) -> HttpResponse:
 async def health(request) -> dict:
     """Execute health.
 
-        Args:
-            request: The request.
-        """
+    Args:
+        request: The request.
+    """
 
     return {"status": "ok"}
 
@@ -199,10 +195,10 @@ async def health(request) -> dict:
 async def create_delegation_task(request, body: DelegationRequest) -> dict:
     """Execute create delegation task.
 
-        Args:
-            request: The request.
-            body: The body.
-        """
+    Args:
+        request: The request.
+        body: The body.
+    """
 
     task_id = body.task_id or str(uuid.uuid4())
     store = get_store()
@@ -237,10 +233,10 @@ async def create_delegation_task(request, body: DelegationRequest) -> dict:
 async def get_delegation_task(request, task_id: str) -> dict:
     """Retrieve delegation task.
 
-        Args:
-            request: The request.
-            task_id: The task_id.
-        """
+    Args:
+        request: The request.
+        task_id: The task_id.
+    """
 
     store = get_store()
     record = await store.get_task(task_id)
@@ -253,11 +249,11 @@ async def get_delegation_task(request, task_id: str) -> dict:
 async def delegation_callback(request, task_id: str, body: DelegationCallback) -> dict:
     """Execute delegation callback.
 
-        Args:
-            request: The request.
-            task_id: The task_id.
-            body: The body.
-        """
+    Args:
+        request: The request.
+        task_id: The task_id.
+        body: The body.
+    """
 
     store = get_store()
     record = await store.get_task(task_id)

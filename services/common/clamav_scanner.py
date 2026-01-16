@@ -1,13 +1,13 @@
 """ClamAV Scanner Service."""
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from prometheus_client import Histogram, Counter
-import os
+from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,8 +59,7 @@ class ClamAVScanner:
         self._port = port or int(os.environ.get("SA01_CLAMAV_PORT", "3310"))
 
     def _get_clamd(self):
-        """Execute get clamd.
-            """
+        """Execute get clamd."""
 
         import pyclamd
 
@@ -92,9 +91,9 @@ class ClamAVScanner:
     def scan_bytes(self, content: bytes) -> ScanResult:
         """Execute scan bytes.
 
-            Args:
-                content: The content.
-            """
+        Args:
+            content: The content.
+        """
 
         start = time.time()
         try:
@@ -129,8 +128,7 @@ class ClamAVScanner:
             return ScanResult(status=ScanStatus.ERROR, error_message=str(exc))
 
     def ping(self) -> bool:
-        """Execute ping.
-            """
+        """Execute ping."""
 
         try:
             self._get_clamd()

@@ -62,10 +62,10 @@ def flag(key: str, tenant: Any = None) -> bool:
     # First check the feature_flags dictionary in the config
     """Execute flag.
 
-        Args:
-            key: The key.
-            tenant: The tenant.
-        """
+    Args:
+        key: The key.
+        tenant: The tenant.
+    """
 
     from .registry import get_config
 
@@ -77,15 +77,13 @@ def flag(key: str, tenant: Any = None) -> bool:
 
 
 def deployment_mode() -> str:
-    """Execute deployment mode.
-        """
+    """Execute deployment mode."""
 
     return str(env("DEPLOYMENT_MODE", "DEV"))
 
 
 def gateway_port() -> int:
-    """Execute gateway port.
-        """
+    """Execute gateway port."""
 
     return int(env("GATEWAY_PORT", 8000))
 
@@ -93,7 +91,7 @@ def gateway_port() -> int:
 def soma_base_url() -> str:
     """Get SomaBrain base URL.
 
-    
+
     No legacy SOMA_BASE_URL support.
     """
     cfg_obj = settings()
@@ -106,29 +104,25 @@ def soma_base_url() -> str:
 
 
 def postgres_dsn() -> str:
-    """Execute postgres dsn.
-        """
+    """Execute postgres dsn."""
 
     return str(env("POSTGRES_DSN", "postgresql://postgres:postgres@localhost:5432/soma"))
 
 
 def redis_url() -> str:
-    """Execute redis url.
-        """
+    """Execute redis url."""
 
     return str(env("REDIS_URL", "redis://localhost:6379/0"))
 
 
 def kafka_bootstrap_servers() -> str:
-    """Execute kafka bootstrap servers.
-        """
+    """Execute kafka bootstrap servers."""
 
     return str(env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"))
 
 
 def opa_url() -> str:
-    """Execute opa url.
-        """
+    """Execute opa url."""
 
     return str(env("OPA_URL", "http://openfga:8080"))
 
@@ -140,16 +134,15 @@ class _CfgFacade:
     def env(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper
         """Execute env.
 
-            Args:
-                name: The name.
-                default: The default.
-            """
+        Args:
+            name: The name.
+            default: The default.
+        """
 
         return env(name, default)
 
     def settings(self):
-        """Execute settings.
-            """
+        """Execute settings."""
 
         return settings()
 
@@ -169,9 +162,9 @@ class _CfgFacade:
             def __getattr__(self, name):
                 """Execute getattr  .
 
-                    Args:
-                        name: The name.
-                    """
+                Args:
+                    name: The name.
+                """
 
                 return getattr(self.settings, name)
 

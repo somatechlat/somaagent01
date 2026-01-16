@@ -1,7 +1,4 @@
-"""Dead Letter Queue helper for Kafka topics.
-
-
-"""
+"""Dead Letter Queue helper for Kafka topics."""
 
 from __future__ import annotations
 
@@ -9,9 +6,10 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
+from prometheus_client import Counter, Histogram
+
 from services.common.event_bus import KafkaEventBus
 from services.common.publisher import DurablePublisher
-from prometheus_client import Counter, Histogram
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,10 +54,10 @@ class DeadLetterQueue:
     ) -> None:
         """Execute send to dlq.
 
-            Args:
-                event: The event.
-                error: The error.
-            """
+        Args:
+            event: The event.
+            error: The error.
+        """
 
         payload = {
             "original_event": event,

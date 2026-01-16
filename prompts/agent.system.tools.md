@@ -1,3 +1,0 @@
-## Tools available:
-
-{{tools}}

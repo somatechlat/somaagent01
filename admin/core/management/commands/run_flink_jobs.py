@@ -24,9 +24,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--job",
@@ -47,8 +47,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         if options["list"]:
             self._list_jobs()

@@ -54,9 +54,9 @@ async def audit_export(
     def _serialize(evt) -> dict:
         """Execute serialize.
 
-            Args:
-                evt: The evt.
-            """
+        Args:
+            evt: The evt.
+        """
 
         return {
             "id": getattr(evt, "id", None),

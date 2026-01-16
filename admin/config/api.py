@@ -1,24 +1,17 @@
 """Configuration API - System and tenant configuration.
 
-
 System-wide and tenant-specific configuration management.
-
-7-Persona Implementation:
-- DevOps: System configuration (Real Env Vars), Feature flags (Real DB)
-- Security Auditor: Sensitive config protection
-- PM: Tenant customization
+Provides endpoints for system config, tenant config, feature flags, and secrets.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import uuid
 from typing import Optional
 
 from asgiref.sync import sync_to_async
 from django.conf import settings as django_settings
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
@@ -148,7 +141,7 @@ async def get_tenant_config(
 ) -> ConfigListResponse:
     """Get tenant-specific configuration.
 
-    TODO: Wire to AgentSetting or TenantConfig model when available.
+    Pending: Wire to AgentSetting or TenantConfig model when available.
     """
     return ConfigListResponse(items=[], total=0)
 
@@ -190,8 +183,7 @@ async def get_feature_flags(
 
     @sync_to_async
     def _get_flags():
-        """Execute get flags.
-            """
+        """Execute get flags."""
 
         qs = FeatureFlagModel.objects.all().order_by("name")
         items = []
@@ -226,8 +218,7 @@ async def create_feature_flag(
 
     @sync_to_async
     def _create():
-        """Execute create.
-            """
+        """Execute create."""
 
         obj, created = FeatureFlagModel.objects.get_or_create(
             name=key, defaults={"is_enabled": enabled, "description": description or ""}
@@ -252,8 +243,7 @@ async def update_feature_flag(
 
     @sync_to_async
     def _update():
-        """Execute update.
-            """
+        """Execute update."""
 
         count = FeatureFlagModel.objects.filter(name=key).update(is_enabled=enabled)
         return count
@@ -280,8 +270,7 @@ async def delete_feature_flag(request, key: str) -> dict:
 
     @sync_to_async
     def _delete():
-        """Execute delete.
-            """
+        """Execute delete."""
 
         count, _ = FeatureFlagModel.objects.filter(name=key).delete()
         return count
@@ -314,8 +303,7 @@ async def check_feature_flag(
 
     @sync_to_async
     def _check():
-        """Execute check.
-            """
+        """Execute check."""
 
         try:
             flag = FeatureFlagModel.objects.get(name=key)

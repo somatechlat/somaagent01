@@ -1,4 +1,1 @@
-"""SomaBrain Tests Package.
-
-
-"""
+"""SomaBrain Tests Package."""

@@ -26,27 +26,33 @@ class GatewayClientProtocol(Protocol):
 
     async def invoke_stream(
         self, url: str, payload: Dict[str, Any], headers: Dict[str, str]
-        """Execute invoke stream.
+    ) -> tuple[str, Dict[str, int]]:
+        """Stream invocation.
 
-            Args:
-                url: The url.
-                payload: The payload.
-                headers: The headers.
-            """
+        Args:
+            url: The gateway URL.
+            payload: Request payload.
+            headers: Request headers.
 
-    ) -> tuple[str, Dict[str, int]]: ...
+        Returns:
+            Tuple of response text and usage dict.
+        """
+        ...
 
     async def invoke(
         self, url: str, payload: Dict[str, Any], headers: Dict[str, str]
-        """Execute invoke.
+    ) -> Dict[str, Any]:
+        """Non-streaming invocation.
 
-            Args:
-                url: The url.
-                payload: The payload.
-                headers: The headers.
-            """
+        Args:
+            url: The gateway URL.
+            payload: Request payload.
+            headers: Request headers.
 
-    ) -> Dict[str, Any]: ...
+        Returns:
+            Response dict.
+        """
+        ...
 
 
 class PublisherProtocol(Protocol):
@@ -59,17 +65,20 @@ class PublisherProtocol(Protocol):
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
-        """Execute publish.
+    ) -> Any:
+        """Publish an event.
 
-            Args:
-                topic: The topic.
-                payload: The payload.
-                dedupe_key: The dedupe_key.
-                session_id: The session_id.
-                tenant: The tenant.
-            """
+        Args:
+            topic: Target topic.
+            payload: Event payload.
+            dedupe_key: Deduplication key.
+            session_id: Session identifier.
+            tenant: Tenant identifier.
 
-    ) -> Any: ...
+        Returns:
+            Publish result.
+        """
+        ...
 
 
 @dataclass

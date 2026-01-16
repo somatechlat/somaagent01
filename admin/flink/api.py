@@ -3,7 +3,6 @@
 
 Real-time stream processing for analytics, metering, and monitoring.
 
-7-Persona Implementation:
 - PhD Dev: Stream processing theory, windowing
 - DevOps: Flink cluster, Kafka integration
 - ML Eng: Anomaly detection patterns
@@ -15,7 +14,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Optional
@@ -36,7 +34,12 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 KAFKA_BOOTSTRAP_SERVERS = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-FLINK_REST_URL = os.environ.get("FLINK_REST_URL", "http://localhost:8081")
+FLINK_REST_URL = getattr(settings, "FLINK_REST_URL", "http://localhost:8081")
+
+# JDBC Configuration (VIBE Rule 91: Zero Hardcode)
+FLINK_JDBC_URL = getattr(settings, "FLINK_JDBC_URL", "jdbc:postgresql://postgres:5432/somaagent")
+FLINK_JDBC_USER = getattr(settings, "FLINK_JDBC_USER", "postgres")
+FLINK_JDBC_PASSWORD = getattr(settings, "FLINK_JDBC_PASSWORD", "")  # Must be set via env
 
 # Kafka Topics (source)
 KAFKA_TOPICS = {
@@ -275,11 +278,11 @@ CREATE TABLE conversation_metrics (
     PRIMARY KEY (tenant_id, window_start) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_conversation_metrics',
     'driver' = 'org.postgresql.Driver',
-    'username' = 'postgres',
-    'password' = 'somastack2024'
+    'username' = '{FLINK_JDBC_USER}',
+    'password' = '{FLINK_JDBC_PASSWORD}'
 );
 
 INSERT INTO conversation_metrics
@@ -323,7 +326,7 @@ CREATE TABLE usage_aggregates (
     PRIMARY KEY (tenant_id, resource_type, window_start) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_usage_aggregates'
 );
 
@@ -368,7 +371,7 @@ CREATE TABLE anomaly_alerts (
     PRIMARY KEY (alert_id) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_anomaly_alerts'
 );
 

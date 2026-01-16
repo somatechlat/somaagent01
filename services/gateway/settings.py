@@ -11,11 +11,11 @@ The runtime configuration is in django_setup.py for the gateway.
 """
 
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 # Import environment configuration helpers
-from services.common.env_config import get_required_env, get_optional_env
+from services.common.env_config import get_required_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -190,7 +190,33 @@ AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "false").lower() == "true"
 
 # SomaBrain (Cognitive Runtime)
 SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")
+SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
+SOMABRAIN_API_KEY = os.environ.get("SA01_SOMABRAIN_API_KEY", "")
 OPA_URL = get_required_env("SA01_OPA_URL", "Open Policy Agent for authorization policies")
+
+# Voice Services (Whisper STT + Kokoro TTS)
+WHISPER_URL = os.environ.get("SA01_WHISPER_URL", "http://localhost:9100")
+WHISPER_API_URL = os.environ.get("SA01_WHISPER_API_URL", "http://localhost:8001/transcribe")
+KOKORO_URL = os.environ.get("SA01_KOKORO_URL", "http://localhost:9200")
+KOKORO_TTS_URL = os.environ.get("SA01_KOKORO_TTS_URL", "http://localhost:8002/synthesize")
+AGENTVOICEVOX_BASE_URL = os.environ.get("SA01_VOICEVOX_URL", "http://localhost:65009")
+
+# LLM Service
+LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
+LLM_API_KEY = os.environ.get("SA01_LLM_API_KEY", "")
+DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
+
+# Multimodal Services
+MERMAID_CLI_URL = os.environ.get("SA01_MERMAID_CLI_URL", "http://localhost:9300")
+IMAGE_GEN_URL = os.environ.get("SA01_IMAGE_GEN_URL", "http://localhost:8003/generate")
+DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
+
+# Monitoring (SAAS: 63905, K8S: 32905, Local: 9090)
+PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
+
+# Lago Billing
+LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:63690/api/v1")
+LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
 
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
@@ -206,6 +232,15 @@ KEYCLOAK_PUBLIC_KEY = os.environ.get("SA01_KEYCLOAK_PUBLIC_KEY", "")
 JWT_ALGORITHM = "RS256"
 JWT_AUDIENCE = KEYCLOAK_CLIENT_ID
 JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
+
+# Unified JWT Settings (for Gateway & Admin)
+# -----------------------------------------------------------------------------
+JWT_JWKS_URL = os.environ.get("SA01_JWT_JWKS_URL", f"{JWT_ISSUER}/protocol/openid-connect/certs")
+JWT_ALGORITHMS = os.environ.get("SA01_JWT_ALGORITHMS", "RS256").split(",")
+JWT_LEEWAY = int(os.environ.get("SA01_JWT_LEEWAY", "10"))
+# Disable issuer/audience validation for Docker dev (localhost/container hostname mismatch)
+JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "false").lower() == "true"
+
 
 # =============================================================================
 # GOOGLE OAUTH SETTINGS (Secrets from ENV or Django Secret model)

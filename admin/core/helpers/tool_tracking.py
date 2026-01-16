@@ -51,8 +51,7 @@ class ToolExecutionEvent:
     timestamp: float = 0.0
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if self.timestamp == 0.0:
             self.timestamp = time.time()

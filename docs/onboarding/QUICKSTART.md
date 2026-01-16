@@ -27,28 +27,47 @@ cd somaAgent01
 cp .env.example .env
 ```
 
-### Required Environment Variables
+### SAAS Deployment (Recommended)
 
-Edit `.env` and configure:
+The SAAS deployment requires NO manual .env configuration for infrastructure.
 
+**Required:**
+1. **Vault must be running** with secrets pre-loaded
+2. **Docker Compose** with `./infra/saas/docker-compose.yml`
+
+**What's already configured:**
+- All services auto-start with correct ports
+- Vault runs at `localhost:63982`
+- PostgreSQL runs at `localhost:63932` (external), `localhost:5432` (internal)
+
+**Step-by-step:**
 ```bash
-# Database
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=somastack2024
-POSTGRES_DB=somaagent
+cd infra/saas
+docker-compose up -d somastack_vault
 
-# Redis
-REDIS_PASSWORD=somastack2024
+# Save LLM API keys to Vault
+docker exec -it somastack_vault sh -c '
+  vault kv put secret/soma/agent/api_keys \
+    openrouter_api_key="sk-or-v1-..." \
+    groq_api_key="gsk_..."'
 
-# Keycloak (Identity)
-KEYCLOAK_URL=http://localhost:20880
-KEYCLOAK_REALM=somaagent
-KEYCLOAK_CLIENT_ID=eye-of-god
+# Save memory token
+docker exec -it somastack_vault sh -c '
+  vault kv put secret/soma/agent/credentials \
+    soma_memory_api_token="memory-token-..."'
 
-# LLM Provider
-OPENAI_API_KEY=your-api-key-here
-SAAS_DEFAULT_CHAT_MODEL=gpt-4o
+# Start full stack
+docker-compose up -d
 ```
+
+**Environment Variables (Optional overrides):**
+```bash
+# Only needed if you want to override defaults
+VAULT_ADDR=http://localhost:63982  # Already default in compose
+SOMA_ALLOWED_HOSTS=localhost,127.0.0.1  # Already set
+```
+
+**No manual database setup needed!** Migrations run automatically in SAAS.
 
 ---
 
@@ -114,25 +133,49 @@ tilt up
 
 ## Port Namespace Reference
 
-**SomaAgent01 uses port 20xxx:**
+**⚠️ DEPLOYMENT-SPECIFIC PORTS - CHOOSE YOUR MODE:**
 
-| Service | Port |
-|---------|------|
-| PostgreSQL | 20432 |
-| Redis | 20379 |
-| Kafka | 20092 |
-| Milvus | 20530 |
-| SpiceDB | 20051 |
-| OPA | 20181 |
-| Keycloak | 20880 |
-| Prometheus | 20090 |
-| Grafana | 20300 |
-| Django API | 20020 |
-| Frontend | 20080 |
+### SAAS Deployment (Recommended - All-in-One)
+**Location:** `./infra/saas/`  
+**Port Range:** `639xx`
 
-**Related Services:**
-- SomaBrain: Port 30xxx (API: 30101)
-- SomaFractalMemory: Port 40xxx (API: 40000, PostgreSQL: 40001, Redis: 40002)
+| Service | Internal Port | External Port |
+|---------|---------------|---------------|
+| PostgreSQL | 5432 | 63932 |
+| Redis | 6379 | 63979 |
+| Kafka | 9092 | 63992 |
+| Vault | 8200 | 63982 |
+| Agent API | 9000 | 63900 |
+| Brain API | 9696 | 63996 |
+| Memory API | 10101 | 63901 |
+| Milvus | 19530 | 63953 |
+| OPA | 8181 | 63904 |
+| Prometheus | 9090 | 63905 |
+| Grafana | 3000 | 63906 |
+
+**Connect:** `localhost:63900` (Agent API)
+
+### Kubernetes Deployment
+**Location:** `./infra/k8s/`  
+**Port Range:** `32xxx` (NodePort)
+
+| Service | NodePort | Target |
+|---------|----------|--------|
+| PostgreSQL | 32432 | 5432 |
+| Redis | 32379 | 6379 |
+| Kafka | 32092 | 9092 |
+| Agent API | 32900 | 9000 |
+
+**Connect:** LoadBalancer IP or `kubectl port-forward`
+
+### Local Development
+**Standard ports:**
+- PostgreSQL: 5432
+- Redis: 6379
+- Kafka: 9092
+- Vault: 8200
+
+**⚠️ NOTE:** Port 20432 is DEPRECATED and never used in current codebase.
 
 ---
 
@@ -155,8 +198,8 @@ python manage.py runserver 0.0.0.0:20020
 
 ```bash
 cd webui
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ---

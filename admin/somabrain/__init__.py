@@ -1,4 +1,1 @@
-"""SomaBrain module - Cognitive memory integration.
-
-
-"""
+"""SomaBrain module - Cognitive memory integration."""

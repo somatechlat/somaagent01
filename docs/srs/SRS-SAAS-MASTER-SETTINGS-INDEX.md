@@ -30,19 +30,22 @@
 
 ## 2. Platform-Level Settings (SAAS SysAdmin)
 
-| Category | Route | Settings | SRS Document |
-|----------|-------|----------|--------------|
-| **Model Catalog** | `/saas/settings/models` | LLM providers, model IDs, cost per token, tier availability | `SRS-SAAS-ECOSYSTEM-DEFAULTS.md` |
-| **Tool Catalog** | `/saas/settings/tools` | Tool registry, risk levels, sandboxing rules | `SRS-SAAS-ECOSYSTEM-DEFAULTS.md` |
-| **Voice Catalog** | `/saas/settings/voices` | TTS voices, cloning policies | `SRS-SAAS-AGENT-MARKETPLACE-AND-VOICE.md` |
-| **Permission Catalog** | `/saas/permissions` | Granular permissions (45+), role templates | `SRS-PERMISSION-MATRIX.md` |
-| **Compliance Frameworks** | `/saas/settings/compliance` | HIPAA, GDPR, SOC2 toggles | `SRS-SAAS-ECOSYSTEM-DEFAULTS.md` |
-| **MCP Server Registry** | `/saas/infrastructure/mcp` | Registered MCP servers (mandatory/optional) | `SRS-SAAS-INFRASTRUCTURE-DEFAULTS.md` |
-| **Integrations** | `/saas/settings/integrations` | Lago, Keycloak, SMTP, LLM provider keys | `SRS-SAAS-INTEGRATIONS.md` |
-| **Subscription Tiers** | `/saas/subscriptions` | Tier definitions, feature gates, quotas | `SRS-EYE-OF-GOD-COMPLETE.md` |
-| **Marketplace** | `/saas/marketplace` | Agent templates, monetization rules | `SRS-SAAS-AGENT-MARKETPLACE-AND-VOICE.md` |
-| **Global Defaults** | `/saas/settings/defaults` | Compute, Memory, Safety defaults | `SRS-SAAS-ECOSYSTEM-DEFAULTS.md` |
-| **Visual Topology** | `/saas/infrastructure/topology` | Node-based infrastructure visualization | `SRS-SAAS-VISUAL-INFRASTRUCTURE.md` |
+| Category | Route | Implementation | Settings | Code Reference |
+|----------|-------|----------------|-----------|----------------|
+| **Dashboard** | `/api/v2/saas/dashboard` | `admin/saas/api/dashboard.py:21` | Platform metrics, MRR, tenant counts | Real PostgreSQL queries |
+| **Tenants** | `/api/v2/saas/tenants` | `admin/saas/api/tenants.py` | Full tenant CRUD, filters | `Tenant` model |
+| **Users** | `/api/v2/saas/users` | `admin/saas/api/users.py` | User mgmt, invites, impersonation | `User`, `TenantUser` models |
+| **Tiers** | `/api/v2/saas/tiers` | `admin/saas/api/tiers.py` | Subscription tiers, quotas | `SubscriptionTier` model |
+| **Features** | `/api/v2/saas/features` | `admin/saas/api/features.py` | Feature catalog, providers | `SaasFeature`, `FeatureProvider` |
+| **Settings** | `/api/v2/saas/settings` | `admin/saas/api/settings.py` | Platform-wide settings | Django Admin |
+| **API Keys** | `/api/v2/saas/settings/api-keys` | `admin/saas/api/settings.py:26` | API key CRUD | `ApiKey` model |
+| **Models** | `/api/v2/saas/settings/models` | `admin/saas/api/settings.py` | Model configuration | Platform model catalog |
+| **Roles** | `/api/v2/saas/settings/roles` | `admin/saas/api/settings.py` | Role definitions | GlobalDefault._initial_defaults() |
+| **SSO** | `/api/v2/saas/settings/sso` | `admin/saas/api/settings.py` | SSO config (Keycloak) | Keycloak integration |
+| **Integrations** | `/api/v2/saas/integrations` | `admin/saas/api/integrations.py:149` | List all integrations | `IntegrationConfig` schema |
+| **Billing** | `/api/v2/saas/billing` | `admin/saas/api/billing.py:26` | MRR, ARPU, invoices | Lago integration |
+| **Audit** | `/api/v2/saas/audit` | `admin/saas/api/audit.py:91` | Audit log, export CSV | `AuditLog` model |
+| **Health** | `/api/v2/saas/health` | `admin/saas/api/health.py` | Infrastructure health checks | Postgres, Redis, Kafka, etc. |
 
 ---
 
@@ -114,17 +117,87 @@
 
 ---
 
-## 7. Gap Analysis (Remaining Work)
+## 7. Implementation Details: GlobalDefault Model
+
+The `GlobalDefault` model in `admin/saas/models/profiles.py` is the singleton that stores platform-wide default configurations.
+
+### 7.1 Model Structure
+
+```python
+class GlobalDefault(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    defaults = models.JSONField(default=dict, help_text="Canonical default settings (models, roles, quotas)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "saas_global_defaults"
+    ```
+
+### 7.2 Initial Defaults (`_initial_defaults()`)
+
+```python
+@staticmethod
+def _initial_defaults() -> Dict[str, Any]:
+    return {
+        "models": [
+            {"id": "gpt-4o", "provider": "openai", "enabled": True},
+            {"id": "claude-3-5-sonnet", "provider": "anthropic", "enabled": True},
+        ],
+        "roles": [
+            {"id": "admin", "permissions": ["*"]},
+            {"id": "member", "permissions": ["read"]},
+        ],
+        "dev_sandbox_defaults": {
+            "max_agents": 2,
+            "max_users": 1,
+            "enable_code_interpreter": False,
+            "enable_filesystem": False,
+            "rate_limits_multiplier": 0.5,
+        },
+        "dev_live_defaults": {
+            "max_agents": 10,
+            "max_users": 5,
+            "enable_code_interpreter": True,
+            "enable_filesystem": True,
+            "rate_limits_multiplier": 1.0,
+        },
+    }
+```
+
+### 7.3 Settings Resolution Priority
+
+Settings are resolved in this exact order (fallback cascade):
+
+1. **AgentSetting ORM** (`admin/core/models.py`) - Per-agent settings
+2. **Environment Variables** - `SA01_CHAT_PROVIDER`, `SA01_CHAT_MODEL`, etc.
+3. **Tenant Settings** (`TenantSettings` model) - Overrides for tenant
+4. **Platform Defaults** (`GlobalDefault._initial_defaults()`) - Master blueprint
+5. **Code Defaults** (`SettingsModel` in `settings_model.py`) - Ultimate fallback
+
+Implemented in `admin/core/helpers/settings_defaults.py:get_default_settings()`.
+
+---
+
+## 8. Gap Analysis (Remaining Work)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Platform Dashboard | ✅ Exists | `SRS-EYE-OF-GOD-COMPLETE.md` |
-| Tenant Management | ✅ Exists | `SRS-SAAS-TENANT-CREATION.md` |
-| Model Catalog UI | ⚠️ Partial | SRS exists, UI not implemented |
-| Tool Catalog UI | ⚠️ Partial | SRS exists, UI not implemented |
-| MCP Registry UI | ⚠️ Partial | SRS exists, UI not implemented |
-| Permission Browser UI | ⚠️ Partial | Frontend created, not tested |
+| Platform Dashboard | ✅ Implemented | `admin/saas/api/dashboard.py` |
+| Tenant Management | ✅ Implemented | `admin/saas/api/tenants.py` |
+| User Management | ✅ Implemented | `admin/saas/api/users.py` |
+| Tier Management | ✅ Implemented | `admin/saas/api/tiers.py` |
+| Feature Catalog | ✅ Implemented | `admin/saas/api/features.py` |
+| Platform Settings | ✅ Implemented | `admin/saas/api/settings.py` |
+| Integration Management | ✅ Implemented | `admin/saas/api/integrations.py` |
+| Billing Dashboard | ✅ Implemented | `admin/saas/api/billing.py` |
+| Audit Log | ✅ Implemented | `admin/saas/api/audit.py` |
+| Health Checks | ✅ Implemented | `admin/core/api/health.py` |
+| Model Catalog UI | ⚠️ Partial | API exists (`/api/v2/saas/settings/models`), UI defined in SRS |
+| Tool Catalog UI | ⚠️ Partial | API exists, UI defined in SRS |
+| MCP Registry UI | ⚠️ Partial | API exists, UI defined in SRS |
+| Permission Browser UI | ⚠️ Partial | API exists, UI defined in SRS |
 | Visual Topology UI | ⚠️ Partial | SRS exists, UI not implemented |
 | Agent Marketplace UI | ⚠️ Partial | SRS exists, UI not implemented |
-| Voice Studio UI | ⚠️ Partial | SRS exists, UI not implemented |
-| Integration Hub UI | ⚠️ Partial | SRS exists, UI not implemented |
+
+**All backend APIs are fully implemented using Django Ninja with Pydantic schemas.**

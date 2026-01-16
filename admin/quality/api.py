@@ -1,12 +1,7 @@
-"""Quality Gating API - Asset Critic and Retry Logic.
+"""
+Quality Evaluation API.
 
-
-Per AGENT_TASKS.md Phase 7.4 - Quality Gating.
-
-7-Persona Implementation:
-- PhD Dev: Quality metrics, bounded retry patterns
-- ML Eng: LLM-based quality evaluation
-- QA: Automated quality assertions
+Asset quality evaluation, LLM-based critique, and bounded retry logic.
 """
 
 from __future__ import annotations
@@ -405,19 +400,16 @@ async def _evaluate_criterion(
     content: Optional[str],
     asset_type: str,
 ) -> QualityScore:
-    """Evaluate a single quality criterion using LLM.
-
-    
-    """
+    """Evaluate a single quality criterion using LLM."""
     import httpx
     from django.conf import settings
 
     try:
-        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat")
+        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
 
         prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
         
-Content: {content[:500] if content else 'No content provided'}
+Content: {content[:500] if content else "No content provided"}
 
 Respond with ONLY a JSON object in this format:
 {{"score": 0.X, "feedback": "Brief explanation"}}"""
@@ -464,10 +456,7 @@ def _generate_critique(
     content: str,
     rubric: Optional[dict],
 ) -> tuple[str, list[str], list[str], list[str]]:
-    """Generate critique for an asset using content analysis.
-
-    
-    """
+    """Generate critique for an asset using content analysis."""
     # Real content analysis based on content length and complexity
     word_count = len(content.split()) if content else 0
     char_count = len(content) if content else 0
@@ -507,10 +496,7 @@ def _generate_critique(
 
 
 async def _execute_operation(operation_type: str, input_data: dict) -> dict:
-    """Execute an operation via appropriate service.
-
-    
-    """
+    """Execute an operation via appropriate service."""
     import httpx
     from django.conf import settings
 
@@ -519,7 +505,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
         "generate_image": getattr(settings, "IMAGE_GEN_URL", "http://localhost:8003/generate"),
         "render_diagram": getattr(settings, "DIAGRAM_URL", "http://localhost:8004/render"),
         "llm_completion": getattr(
-            settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat"
+            settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat"
         ),
     }
 
@@ -540,10 +526,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 
 
 async def _quick_quality_check(output: dict) -> float:
-    """Quick quality check for retry logic.
-
-    
-    """
+    """Quick quality check for retry logic."""
     # Assess quality based on actual output characteristics
     if not output:
         return 0.0

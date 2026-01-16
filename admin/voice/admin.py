@@ -9,7 +9,6 @@ from django.utils.html import format_html
 
 from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
 
-
 # =============================================================================
 # VOICE PERSONA ADMIN
 # =============================================================================
@@ -116,10 +115,10 @@ class VoicePersonaAdmin(admin.ModelAdmin):
     def activate_personas(self, request, queryset):
         """Execute activate personas.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         updated = queryset.update(is_active=True)
         self.message_user(request, f"{updated} personas activated.")
@@ -128,10 +127,10 @@ class VoicePersonaAdmin(admin.ModelAdmin):
     def deactivate_personas(self, request, queryset):
         """Execute deactivate personas.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         updated = queryset.update(is_active=False)
         self.message_user(request, f"{updated} personas deactivated.")
@@ -140,10 +139,10 @@ class VoicePersonaAdmin(admin.ModelAdmin):
     def set_as_default(self, request, queryset):
         """Set as default.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         if queryset.exists():
             # Clear existing defaults for same tenant
@@ -303,10 +302,10 @@ class VoiceSessionAdmin(admin.ModelAdmin):
     def terminate_sessions(self, request, queryset):
         """Execute terminate sessions.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         active = queryset.filter(status__in=["created", "active"])
         count = 0
@@ -388,10 +387,10 @@ class VoiceModelAdmin(admin.ModelAdmin):
     def activate_voices(self, request, queryset):
         """Execute activate voices.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         updated = queryset.update(is_active=True)
         self.message_user(request, f"{updated} voices activated.")
@@ -400,10 +399,10 @@ class VoiceModelAdmin(admin.ModelAdmin):
     def deactivate_voices(self, request, queryset):
         """Execute deactivate voices.
 
-            Args:
-                request: The request.
-                queryset: The queryset.
-            """
+        Args:
+            request: The request.
+            queryset: The queryset.
+        """
 
         updated = queryset.update(is_active=False)
         self.message_user(request, f"{updated} voices deactivated.")

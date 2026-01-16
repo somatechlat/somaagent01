@@ -1,7 +1,7 @@
 """Real Infrastructure Health Checker.
 
 
-Per 
+Per
 
 10-Persona Implementation:
 - PhD Developer: Async health checks with proper error handling
@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
-from typing import Optional
 
 from django.conf import settings
 from django.db import connection
@@ -46,8 +44,7 @@ class HealthCheckResult:
         self.error = error
 
     def to_dict(self) -> dict:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return {
             "name": self.name,
@@ -62,7 +59,7 @@ class InfrastructureHealthChecker:
     """Real infrastructure health checker.
 
     Connects to actual services and verifies they are operational.
-    No mocks, no fake data - 
+    No mocks, no fake data -
     """
 
     def __init__(self):
@@ -137,8 +134,7 @@ class InfrastructureHealthChecker:
             # Use sync_to_async wrapper for Django ORM in async context
             @sync_to_async
             def _check_db():
-                """Execute check db.
-                    """
+                """Execute check db."""
 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT 1")
@@ -174,7 +170,7 @@ class InfrastructureHealthChecker:
         try:
             import redis.asyncio as redis
 
-            redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
+            redis_url = getattr(settings, "REDIS_URL", "redis://localhost:6379")
             client = redis.from_url(redis_url, socket_timeout=self.check_timeout)
 
             # Ping Redis
@@ -219,7 +215,7 @@ class InfrastructureHealthChecker:
         try:
             from services.common.event_bus import KafkaEventBus, KafkaSettings
 
-            bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+            bootstrap_servers = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
             settings = KafkaSettings(bootstrap_servers=bootstrap_servers)
             bus = KafkaEventBus(settings)
 
@@ -262,7 +258,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            flink_rest_url = os.environ.get("FLINK_REST_URL", "http://localhost:8081")
+            flink_rest_url = getattr(settings, "FLINK_REST_URL", "http://localhost:8081")
             url = f"{flink_rest_url}/overview"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
@@ -307,7 +303,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            temporal_host = os.environ.get("TEMPORAL_HOST", "localhost:7233")
+            temporal_host = getattr(settings, "TEMPORAL_HOST", "localhost:7233")
             # Temporal health check endpoint
             url = f"http://{temporal_host}/health"
 
@@ -345,7 +341,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            qdrant_host = os.environ.get("QDRANT_HOST", "localhost:6333")
+            qdrant_host = getattr(settings, "QDRANT_HOST", "localhost:6333")
             url = f"http://{qdrant_host}/health"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
@@ -386,7 +382,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            keycloak_url = os.environ.get("KEYCLOAK_URL", "http://localhost:8080")
+            keycloak_url = getattr(settings, "KEYCLOAK_URL", "http://localhost:8080")
             url = f"{keycloak_url}/health/ready"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
@@ -423,7 +419,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            lago_url = os.environ.get("LAGO_API_URL", "http://localhost:3000")
+            lago_url = getattr(settings, "LAGO_API_URL", "http://localhost:63690/api/v1")
             url = f"{lago_url}/health"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
@@ -460,7 +456,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            somabrain_url = os.environ.get("SOMABRAIN_URL", "http://localhost:8001")
+            somabrain_url = getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
             url = f"{somabrain_url}/health"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
@@ -501,7 +497,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            whisper_url = os.environ.get("WHISPER_URL", "http://localhost:9000")
+            whisper_url = getattr(settings, "WHISPER_URL", "http://localhost:9100")
             url = f"{whisper_url}/health"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
@@ -537,7 +533,7 @@ class InfrastructureHealthChecker:
         try:
             import httpx
 
-            kokoro_url = os.environ.get("KOKORO_URL", "http://localhost:8880")
+            kokoro_url = getattr(settings, "KOKORO_URL", "http://localhost:9200")
             url = f"{kokoro_url}/health"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:

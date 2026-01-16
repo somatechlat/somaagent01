@@ -1,4 +1,1 @@
-"""Events module - Real-time streaming.
-
-
-"""
+"""Events module - Real-time streaming."""

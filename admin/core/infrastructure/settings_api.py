@@ -8,13 +8,12 @@ Settings API - Django Ninja endpoints for service configuration
 - 10 personas in mind (especially DevOps Engineer, Security Specialist)
 """
 
-from typing import Any, Optional
-from ninja import Router
-from django.http import HttpRequest
-from django.conf import settings
-from pydantic import BaseModel
 import os
-import json
+from typing import Optional
+
+from django.http import HttpRequest
+from ninja import Router
+from pydantic import BaseModel
 
 router = Router(tags=["Settings"])
 

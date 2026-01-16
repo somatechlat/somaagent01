@@ -57,13 +57,24 @@ class Agent(models.Model):
         unique_together = ['tenant', 'slug']
 
 class SubscriptionTier(models.Model):
-    name = models.CharField(max_length=50)  # free, starter, team, enterprise
-    max_agents = models.IntegerField()
-    max_users = models.IntegerField()
-    max_tokens_per_month = models.BigIntegerField()
-    max_storage_gb = models.IntegerField()
-    price_monthly = models.DecimalField(max_digits=10, decimal_places=2)
-    lago_plan_code = models.CharField(max_length=50)
+    """Actual implementation in admin/saas/models/tiers.py:15-135"""
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    base_price_cents = models.BigIntegerField(default=0)
+    billing_interval = models.CharField(max_length=20, default='monthly')  # MONTHLY/YEARLY/WEEKLY
+    lago_plan_code = models.CharField(max_length=100, blank=True)
+    max_agents = models.IntegerField(default=1)
+    max_users_per_agent = models.IntegerField(default=5)
+    max_monthly_voice_minutes = models.IntegerField(default=60)
+    max_monthly_api_calls = models.IntegerField(default=1000)
+    max_storage_gb = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+    feature_defaults = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_public = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 ```
 
 ### 1.3 Migrations

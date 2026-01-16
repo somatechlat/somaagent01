@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any, Optional
 
 from aiokafka.errors import KafkaError
@@ -24,7 +25,6 @@ from prometheus_client import Counter
 
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers
-import os
 
 LOGGER = logging.getLogger(__name__)
 

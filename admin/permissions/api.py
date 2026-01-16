@@ -3,7 +3,6 @@
 
 Role-based access control management.
 
-7-Persona Implementation:
 - Security Auditor: Permission matrix, RBAC
 - Django Architect: SpiceDB integration
 - PM: Role management UI

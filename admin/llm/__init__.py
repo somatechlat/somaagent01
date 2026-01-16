@@ -1,6 +1,6 @@
 """LLM app - Django-compliant LLM wrappers and services.
 
-Migrated from root models.py per 
+Migrated from root models.py per
 Uses lazy imports for Django models to avoid AppRegistryNotReady errors.
 """
 
@@ -81,22 +81,19 @@ class _LazyModelAccessor:
 
     @property
     def ModelType(self):
-        """Execute ModelType.
-            """
+        """Execute ModelType."""
 
         return _get_model_type()
 
     @property
     def ModelConfig(self):
-        """Execute ModelConfig.
-            """
+        """Execute ModelConfig."""
 
         return _get_model_config()
 
     @property
     def LLMModelConfig(self):
-        """Execute LLMModelConfig.
-            """
+        """Execute LLMModelConfig."""
 
         return _get_model_config()
 

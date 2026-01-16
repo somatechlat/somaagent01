@@ -21,7 +21,7 @@ class SettingsModel(BaseModel):
 
     # Chat / util / embed model settings
     chat_model_provider: str = "openrouter"
-    chat_model_name: str = "openai/gpt-4.1"
+    chat_model_name: str = "xiaomi/mimo-v2-flash:free"
     chat_model_api_base: str = ""
     chat_model_kwargs: Dict[str, Any] = {}
     chat_model_ctx_length: int = 100000
@@ -32,7 +32,7 @@ class SettingsModel(BaseModel):
     chat_model_rl_output: int = 0
 
     util_model_provider: str = "openrouter"
-    util_model_name: str = "openai/gpt-4.1-mini"
+    util_model_name: str = "xiaomi/mimo-v2-flash:free"
     util_model_api_base: str = ""
     util_model_ctx_length: int = 100000
     util_model_ctx_input: float = 0.7
@@ -132,9 +132,9 @@ class SettingsModel(BaseModel):
     def __getitem__(self, item: str) -> Any:
         """Execute getitem  .
 
-            Args:
-                item: The item.
-            """
+        Args:
+            item: The item.
+        """
 
         return self.model_dump()[item]
 

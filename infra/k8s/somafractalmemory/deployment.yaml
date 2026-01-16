@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somafractalmemory
+  namespace: memory
+  labels:
+    app: somafractalmemory
+    tier: storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somafractalmemory
+  template:
+    metadata:
+      labels:
+        app: somafractalmemory
+    spec:
+      containers:
+        - name: somafractalmemory
+          image: somatech/soma-memory:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10101
+          env:
+            - name: SOMA_SAAS_MODE
+              value: "false"
+            - name: SFM_PORT
+              value: "10101"
+            - name: POSTGRES_HOST
+              value: "postgres.shared.svc.cluster.local"

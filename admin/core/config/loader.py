@@ -20,7 +20,7 @@ convenience, :func:`get_config` caches the most recent successful load so that
 the rest of the codebase can import ``cfg`` from ``src.core.config`` and rely on
 the same instance throughout the process lifecycle.
 
-All code follows the 
+All code follows the
 duplicate logic, and full type safety.
 """
 
@@ -102,7 +102,7 @@ def load_config() -> Config:
     2. ``config.yaml`` *or* ``config.json`` located at the repository root.
 
     If validation fails a :class:`pydantic.ValidationError` is raised – this is
-    intentional because silent handling would violate the 
+    intentional because silent handling would violate the
     """
     # 1️⃣ Load from environment via the Pydantic model – this respects the
     #    ``SA01_`` prefix automatically.
@@ -273,7 +273,7 @@ class EnvironmentMapping:
     The loader respects the ``SA01_`` prefix via the Pydantic model.
     This helper provides ``env_mapping.get_env_value`` for callers.
 
-    
+
     """
 
     sa01_prefix: str = "SA01_"
@@ -308,9 +308,9 @@ class ConfigLoader:
     def load_config(self, force_reload: bool = False) -> Config:
         """Execute load config.
 
-            Args:
-                force_reload: The force_reload.
-            """
+        Args:
+            force_reload: The force_reload.
+        """
 
         if self._config_cache is not None and not force_reload:
             return self._config_cache

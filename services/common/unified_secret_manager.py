@@ -10,6 +10,7 @@ No Redis, no .env files.
 from __future__ import annotations
 
 import logging
+import os
 from typing import List, Optional
 
 from services.common.vault_secrets import (
@@ -17,7 +18,6 @@ from services.common.vault_secrets import (
     load_kv_secret,
     save_kv_secret,
 )
-import os
 
 LOGGER = logging.getLogger(__name__)
 

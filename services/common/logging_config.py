@@ -36,9 +36,9 @@ class DjangoJSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Execute format.
 
-            Args:
-                record: The record.
-            """
+        Args:
+            record: The record.
+        """
 
         log_data: Dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),

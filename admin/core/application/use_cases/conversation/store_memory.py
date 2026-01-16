@@ -18,25 +18,31 @@ LOGGER = logging.getLogger(__name__)
 class MemoryClientProtocol(Protocol):
     """Protocol for memory operations."""
 
-        """Execute remember.
+    async def remember(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Store memory payload.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: Memory payload to store.
 
-    async def remember(self, payload: Dict[str, Any]) -> Dict[str, Any]: ...
+        Returns:
+            Storage result with coordinate.
+        """
+        ...
 
 
 class PolicyClientProtocol(Protocol):
     """Protocol for policy evaluation."""
 
-        """Execute evaluate.
+    async def evaluate(self, request: Any) -> bool:
+        """Evaluate policy request.
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: Policy evaluation request.
 
-    async def evaluate(self, request: Any) -> bool: ...
+        Returns:
+            True if allowed, False otherwise.
+        """
+        ...
 
 
 class PublisherProtocol(Protocol):
@@ -49,17 +55,20 @@ class PublisherProtocol(Protocol):
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,
-        """Execute publish.
+    ) -> Any:
+        """Publish an event.
 
-            Args:
-                topic: The topic.
-                payload: The payload.
-                dedupe_key: The dedupe_key.
-                session_id: The session_id.
-                tenant: The tenant.
-            """
+        Args:
+            topic: Target topic.
+            payload: Event payload.
+            dedupe_key: Deduplication key.
+            session_id: Session identifier.
+            tenant: Tenant identifier.
 
-    ) -> Any: ...
+        Returns:
+            Publish result.
+        """
+        ...
 
 
 @dataclass

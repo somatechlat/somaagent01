@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+
+from django.conf import settings
+
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
-import os
 
 # Compatibility attributes for test suite
 JWKS_CACHE: dict = {}
@@ -23,7 +26,7 @@ def get_event_bus() -> KafkaEventBus:
 def get_bus() -> KafkaEventBus:
     """Create a Kafka event bus using admin settings."""
     kafka_settings = KafkaSettings(
-        bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
@@ -47,9 +50,9 @@ def get_session_cache():
 
 def get_secret_manager():
     """Get the SecretManager instance."""
-    from services.common.secret_manager import SecretManager
+    from services.common.unified_secret_manager import get_secret_manager as _get_sm
 
-    return SecretManager()
+    return _get_sm()
 
 
 def get_api_key_store() -> ApiKeyStore:
@@ -62,18 +65,20 @@ def get_api_key_store() -> ApiKeyStore:
 def get_llm_adapter():
     """Get the LLM adapter instance for the gateway."""
     from services.common.llm_adapter import LLMAdapter
-    from services.common.secret_manager import SecretManager
+    from services.common.unified_secret_manager import get_secret_manager
 
     base_url = os.environ.get("SA01_LLM_BASE_URL") or None
     # Prefer per-call secret retrieval to avoid stale keys.
-    sm = SecretManager()
-    api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
+    sm = get_secret_manager()
+
+    def api_key_resolver():
+        return sm.get_provider_key("openai")
+
     return LLMAdapter(service_url=base_url, api_key_resolver=api_key_resolver)
 
 
 def get_llm_client():
-    """Retrieve llm client.
-        """
+    """Retrieve llm client."""
 
     return get_llm_adapter()
 

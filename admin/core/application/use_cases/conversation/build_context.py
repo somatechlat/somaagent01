@@ -16,29 +16,33 @@ LOGGER = logging.getLogger(__name__)
 class ContextBuilderProtocol(Protocol):
     """Protocol for context building."""
 
-    async def build_for_turn(
-        self, turn_envelope: Dict[str, Any], max_prompt_tokens: int
-        """Execute build for turn.
+    async def build_for_turn(self, turn_envelope: Dict[str, Any], max_prompt_tokens: int) -> Any:
+        """Build context for a conversation turn.
 
-            Args:
-                turn_envelope: The turn_envelope.
-                max_prompt_tokens: The max_prompt_tokens.
-            """
+        Args:
+            turn_envelope: The turn envelope with context data.
+            max_prompt_tokens: Maximum tokens for prompt.
 
-    ) -> Any: ...
+        Returns:
+            Built context object.
+        """
+        ...
 
 
 class SessionRepositoryProtocol(Protocol):
     """Protocol for session operations."""
 
-        """Execute list events.
+    async def list_events(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """List events for a session.
 
-            Args:
-                session_id: The session_id.
-                limit: The limit.
-            """
+        Args:
+            session_id: The session ID.
+            limit: Maximum number of events to return.
 
-    async def list_events(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]: ...
+        Returns:
+            List of session events.
+        """
+        ...
 
 
 @dataclass

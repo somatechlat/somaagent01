@@ -9,17 +9,21 @@
 
 ## 1. Role Comparison
 
-| Capability | 🟠 SysAdmin | 🟡 Admin |
-|------------|-------------|----------|
-| View Dashboard | ✅ | ✅ |
-| Manage ALL Users | ✅ | ⚠️ Except SysAdmins |
-| Create Agents | ✅ | ❌ |
-| Delete Agents | ✅ | ❌ |
-| Configure Agents | ✅ | ✅ |
-| View Billing | ✅ | ❌ |
-| Edit API Keys | ✅ | ❌ |
-| Tenant Settings | ✅ | ❌ |
-| View Audit Log | ✅ | ✅ |
+**Source:** `admin/saas/models/choices.py:20-26` (TenantRole enum)
+
+| Capability | 🟠 SysAdmin (OWNER) | 🟡 Admin (ADMIN) | 🟢 Member (MEMBER) | 🔵 Viewer (VIEWER) |
+|------------|---------------------|------------------|--------------------|---------------------|
+| View Dashboard | ✅ | ✅ | ✅ | ✅ |
+| Manage ALL Users | ✅ | ⚠️ Except SysAdmins | ❌ | ❌ |
+| Create Agents | ✅ | ⚠️ If permitted | ❌ | ❌ |
+| Delete Agents | ✅ | ⚠️ If permitted | ❌ | ❌ |
+| Configure Agents | ✅ | ✅ | ❌ | ❌ |
+| View Billing | ✅ | ⚠️ If permitted | ❌ | ❌ |
+| Edit API Keys | ✅ | ⚠️ If permitted | ❌ | ❌ |
+| Tenant Settings | ✅ | ❌ | ❌ | ❌ |
+| View Audit Log | ✅ | ✅ | ❌ | ❌ |
+
+**Note:** Actual role permissions enforced via SpiceDB. This table shows default behavior.
 
 ---
 
@@ -67,15 +71,17 @@ GET /api/v2/admin/activity
 | User Table | Table | Name, Email, Role, Status, Actions |
 | Invite Button | Primary | Open invite modal |
 
-**User Roles:**
-| Role | Code | Agent Access | Modes |
-|------|------|--------------|-------|
-| SysAdmin | `sysadmin` | All | ALL |
-| Admin | `admin` | Configure | STD, ADM |
-| Developer | `developer` | Dev access | STD, DEV |
-| Trainer | `trainer` | Train access | STD, TRN |
-| User | `user` | Standard | STD |
-| Viewer | `viewer` | Read-only | RO |
+**User Roles**
+**Source:** `admin/saas/models/choices.py:20-26` (TenantRole enum)
+
+| Role | Code | Description | Agent Access | Default Permissions |
+|------|------|-------------|--------------|-------------------|
+| Owner | `OWNER` | Full tenant control | All | Full control (including deletion) |
+| Admin | `ADMIN` | Administrative privileges | Most | Manage users and settings (cannot delete tenant) |
+| Member | `MEMBER` | Standard tenant user | Limited | Standard user access |
+| Viewer | `VIEWER` | Read-only access | Read-only | View-only permissions |
+
+**Note:** These are database-level roles. Fine-grained permissions enforced via SpiceDB.
 
 **Edge Cases:**
 | Scenario | System Response |

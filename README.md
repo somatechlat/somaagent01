@@ -181,7 +181,7 @@ python manage.py migrate
 python manage.py runserver 8000
 
 # UI (separate terminal)
-cd webui && npm install && npm run dev
+cd webui && bun install && bun run dev
 ```
 
 **Docker:**

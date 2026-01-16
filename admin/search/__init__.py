@@ -1,4 +1,1 @@
-"""Search module - Full-text search.
-
-
-"""
+"""Search module - Full-text search."""

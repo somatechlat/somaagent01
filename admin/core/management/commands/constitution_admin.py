@@ -15,6 +15,7 @@ Usage:
 Exit codes:
   0 on success, non-zero on error.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,9 +45,9 @@ def _dual_shape_payload(doc: Mapping[str, Any]) -> Mapping[str, Any]:
 def _read_doc(path: str) -> Mapping[str, Any]:
     """Execute read doc.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     p = path.strip()
     if not p:
@@ -73,9 +74,9 @@ def _read_doc(path: str) -> Mapping[str, Any]:
 def cmd_version(args: argparse.Namespace) -> int:
     """Execute cmd version.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     client = SomaBrainClient.get()
     try:
@@ -92,9 +93,9 @@ def cmd_version(args: argparse.Namespace) -> int:
 def cmd_validate(args: argparse.Namespace) -> int:
     """Execute cmd validate.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     try:
         doc = _read_doc(args.path)
@@ -118,9 +119,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
 def cmd_load(args: argparse.Namespace) -> int:
     """Execute cmd load.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     if not args.force:
         print("Refusing to load without --force (use validate first).", file=sys.stderr)
@@ -163,9 +164,9 @@ def cmd_load(args: argparse.Namespace) -> int:
 def cmd_status(_args: argparse.Namespace) -> int:
     """Execute cmd status.
 
-        Args:
-            _args: The _args.
-        """
+    Args:
+        _args: The _args.
+    """
 
     client = SomaBrainClient.get()
     try:
@@ -190,8 +191,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = argparse.ArgumentParser(description="SomaBrain Constitution Admin")
     sub = parser.add_subparsers(dest="cmd", required=True)

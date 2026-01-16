@@ -6,7 +6,6 @@ Processes Kafka events and persists to SomaBrain.
 Architecture:
     Kafka → Flink → PostgreSQL/SomaBrain
 
-7-Persona Implementation:
 - PhD Dev: Stream processing theory
 - DevOps: Flink job configuration
 - ML Eng: Learning signal aggregation
@@ -57,7 +56,7 @@ CREATE TABLE agent_act_metrics (
     PRIMARY KEY (tenant_id, agent_id, window_start) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_agent_act_metrics',
     'driver' = 'org.postgresql.Driver'
 );
@@ -113,7 +112,7 @@ CREATE TABLE pending_memories (
     PRIMARY KEY (event_id) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_pending_memories',
     'driver' = 'org.postgresql.Driver'
 );
@@ -166,7 +165,7 @@ CREATE TABLE neuromodulator_trends (
     PRIMARY KEY (tenant_id, agent_id, window_start) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_neuromodulator_trends',
     'driver' = 'org.postgresql.Driver'
 );
@@ -215,7 +214,7 @@ CREATE TABLE salience_aggregates (
     PRIMARY KEY (tenant_id, agent_id, window_start) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
-    'url' = 'jdbc:postgresql://postgres:5432/somaagent',
+    'url' = '{FLINK_JDBC_URL}',
     'table-name' = 'flink_salience_aggregates',
     'driver' = 'org.postgresql.Driver'
 );

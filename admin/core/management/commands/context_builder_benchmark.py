@@ -30,9 +30,9 @@ class SyntheticSomabrain:
     async def context_evaluate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Execute context evaluate.
 
-            Args:
-                payload: The payload.
-            """
+        Args:
+            payload: The payload.
+        """
 
         self.calls.append(payload)
         top_k = int(payload.get("top_k", len(self.snippet_pool)))
@@ -44,9 +44,9 @@ class SyntheticSomabrain:
 def build_snippet_pool(count: int) -> List[Dict[str, Any]]:
     """Execute build snippet pool.
 
-        Args:
-            count: The count.
-        """
+    Args:
+        count: The count.
+    """
 
     pool: List[Dict[str, Any]] = []
     for idx in range(count):
@@ -66,11 +66,11 @@ async def run_iteration(
 ) -> float:
     """Execute run iteration.
 
-        Args:
-            builder: The builder.
-            envelope: The envelope.
-            max_tokens: The max_tokens.
-        """
+    Args:
+        builder: The builder.
+        envelope: The envelope.
+        max_tokens: The max_tokens.
+    """
 
     start = time.perf_counter()
     await builder.build_for_turn(dict(envelope), max_prompt_tokens=max_tokens)
@@ -80,9 +80,9 @@ async def run_iteration(
 async def benchmark(args: argparse.Namespace) -> None:
     """Execute benchmark.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     random.seed(args.seed)
     snippet_pool = build_snippet_pool(args.snippets)
@@ -90,8 +90,7 @@ async def benchmark(args: argparse.Namespace) -> None:
     metrics = ContextBuilderMetrics()
 
     def _health() -> SomabrainHealthState:
-        """Execute health.
-            """
+        """Execute health."""
 
         return SomabrainHealthState.DEGRADED if args.degraded else SomabrainHealthState.NORMAL
 
@@ -121,15 +120,14 @@ async def benchmark(args: argparse.Namespace) -> None:
     p95 = statistics.quantiles(samples, n=20)[18] if len(samples) >= 20 else max(samples)
     print(f"Iterations: {args.iterations}")
     print(f"Somabrain state: {'degraded' if args.degraded else 'normal'}")
-    print(f"Average latency: {mean*1000:.2f} ms")
-    print(f"P95 latency: {p95*1000:.2f} ms")
+    print(f"Average latency: {mean * 1000:.2f} ms")
+    print(f"P95 latency: {p95 * 1000:.2f} ms")
     if somabrain.calls:
         print(f"Last top_k requested: {somabrain.calls[-1]['top_k']}")
 
 
 def parse_args() -> argparse.Namespace:
-    """Execute parse args.
-        """
+    """Execute parse args."""
 
     parser = argparse.ArgumentParser(description="Benchmark the ContextBuilder pipeline")
     parser.add_argument("--iterations", type=int, default=25, help="Number of prompts to build")
@@ -145,8 +143,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     args = parse_args()
     asyncio.run(benchmark(args))

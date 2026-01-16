@@ -74,8 +74,7 @@ class ProvenanceResponse(BaseModel):
 
 
 def _require_multimodal_enabled():
-    """Execute require multimodal enabled.
-        """
+    """Execute require multimodal enabled."""
 
     if not MULTIMODAL_ENABLED:
         raise ForbiddenError("Multimodal capabilities disabled")

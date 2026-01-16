@@ -12,7 +12,6 @@ Degraded Mode:
     - Agent QUEUES memories for later sync
     - Flink CAPTURES everything for later persistence
 
-7-Persona Implementation:
 - PhD Dev: Cognitive event patterns
 - DevOps: Kafka/Flink integration
 - ML Eng: Memory consolidation patterns
@@ -186,9 +185,9 @@ class SessionMemoryStore:
     def get_session_key(cls, session_id: str) -> str:
         """Retrieve session key.
 
-            Args:
-                session_id: The session_id.
-            """
+        Args:
+            session_id: The session_id.
+        """
 
         return f"{cls.CACHE_PREFIX}{session_id}"
 
@@ -196,9 +195,9 @@ class SessionMemoryStore:
     def get_queue_key(cls, tenant_id: str) -> str:
         """Retrieve queue key.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         return f"{cls.QUEUE_PREFIX}{tenant_id}"
 

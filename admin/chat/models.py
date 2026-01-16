@@ -13,7 +13,6 @@ from __future__ import annotations
 import uuid
 
 from django.db import models
-from django.utils import timezone
 
 
 class Conversation(models.Model):
@@ -72,12 +71,14 @@ class Conversation(models.Model):
 
 
 class Message(models.Model):
-    """Chat message record.
+    """Chat message record (TRACE REGISTRAR).
 
-    Per design.md Section 6.1:
-    - Stores user and assistant messages
-    - Tracks token count and latency
-    - Links to conversation
+    PostgreSQL stores message TRACES for:
+    - Degradation mode backup when SomaBrain unavailable
+    - Sync tracking for MemoryReplicator
+    - IMRS performance tracking
+
+    Full content stored in SomaBrain via Kafka WAL.
     """
 
     ROLE_CHOICES = [
@@ -86,11 +87,17 @@ class Message(models.Model):
         ("system", "System"),
     ]
 
+    FEEDBACK_TYPE_CHOICES = [
+        ("explicit", "Explicit"),
+        ("implicit", "Implicit"),
+        ("self_eval", "Self Evaluation"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation_id = models.UUIDField(db_index=True)
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, db_index=True)
-    content = models.TextField()
+    content = models.TextField()  # TODO: Encrypt/hash for security
 
     # Token tracking
     token_count = models.IntegerField(default=0)
@@ -99,8 +106,20 @@ class Message(models.Model):
     model = models.CharField(max_length=100, null=True, blank=True)
     latency_ms = models.IntegerField(null=True, blank=True)
 
+    # IMRS: Intelligent Model Routing System fields
+    rating = models.FloatField(null=True, blank=True, help_text="User feedback 0.0-1.0")
+    task_type = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+    tools_used = models.JSONField(default=list, blank=True)  # VIBE: Use mutable default (acceptable for JSONField)
+    feedback_type = models.CharField(
+        max_length=20, choices=FEEDBACK_TYPE_CHOICES, null=True, blank=True
+    )
+    feedback_at = models.DateTimeField(null=True, blank=True)
+
+    # Memory sync tracking
+    synced_to_brain = models.BooleanField(default=False, db_index=True)
+
     # Metadata for additional context (tool calls, etc.)
-    metadata = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)  # VIBE: Use mutable default (acceptable for JSONField)
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -111,6 +130,8 @@ class Message(models.Model):
         ordering = ["created_at"]
         indexes = [
             models.Index(fields=["conversation_id", "created_at"]),
+            models.Index(fields=["task_type", "rating"]),
+            models.Index(fields=["model", "task_type"]),
         ]
 
     def __str__(self):

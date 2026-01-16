@@ -11,29 +11,27 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
-from datetime import datetime
 
-
-from services.common.asset_store import AssetStore, AssetType
 from services.common.asset_critic import AssetCritic, AssetRubric
-from services.common.provenance_recorder import ProvenanceRecorder
-from services.common.soma_brain_outcomes import SomaBrainOutcomesStore, MultimodalOutcome
-from services.common.portfolio_ranker import PortfolioRanker
-from services.common.execution_tracker import ExecutionTracker, ExecutionStatus
-from services.common.job_planner import JobPlanner, JobPlan, TaskStep, JobStatus, StepType
+from services.common.asset_store import AssetStore, AssetType
+from services.common.execution_tracker import ExecutionStatus, ExecutionTracker
+from services.common.job_planner import JobPlan, JobPlanner, JobStatus, StepType, TaskStep
 from services.common.policy_graph_router import PolicyGraphRouter
+from services.common.portfolio_ranker import PortfolioRanker
+from services.common.provenance_recorder import ProvenanceRecorder
+from services.common.soma_brain_outcomes import SomaBrainOutcomesStore
 from services.multimodal.base_provider import (
-    MultimodalProvider,
     GenerationRequest,
-    GenerationResult,
+    MultimodalProvider,
     ProviderCapability,
 )
 from services.multimodal.dalle_provider import DalleProvider
 from services.multimodal.mermaid_provider import MermaidProvider
 from services.multimodal.playwright_provider import PlaywrightProvider
-import os
 
 __all__ = ["MultimodalExecutor", "ExecutorError"]
 
@@ -90,11 +88,14 @@ class MultimodalExecutor:
         # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
         from services.common.llm_adapter import LLMAdapter
-        from services.common.secret_manager import SecretManager
+        from services.common.unified_secret_manager import get_secret_manager
 
         # Prefer per-call secret retrieval to avoid stale keys.
-        sm = SecretManager()
-        api_key_resolver = lambda: sm.get("provider:openai")  # returns awaitable
+        sm = get_secret_manager()
+
+        def api_key_resolver():
+            return sm.get_provider_key("openai")
+
         self._llm_adapter = LLMAdapter(api_key_resolver=api_key_resolver)
 
         self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)
@@ -384,7 +385,6 @@ class MultimodalExecutor:
                     last_error_message = error_message
                     prompt_feedback = f"Provider error: {error_message}"
                 else:
-
                     asset_type = AssetType.IMAGE
                     if (
                         task.step_type == StepType.CAPTURE_SCREENSHOT

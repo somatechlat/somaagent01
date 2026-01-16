@@ -8,10 +8,10 @@ from inputimeout import inputimeout, TimeoutOccurred
 def timeout_input(prompt, timeout=10):
     """Execute timeout input.
 
-        Args:
-            prompt: The prompt.
-            timeout: The timeout.
-        """
+    Args:
+        prompt: The prompt.
+        timeout: The timeout.
+    """
 
     try:
         if sys.platform != "win32":

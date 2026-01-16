@@ -3,7 +3,6 @@
 
 Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
-7-Persona Implementation:
 - 🏗️ Django Architect: Channels consumer, async handlers
 - 🔒 Security Auditor: Token validation, tenant isolation
 - 📈 PM: Clear message protocol, status updates
@@ -17,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import logging
 import uuid
 from dataclasses import dataclass, field
@@ -202,8 +200,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         if not self.state:
             return
 
-        from asgiref.sync import sync_to_async
         from datetime import datetime as dt
+
+        from asgiref.sync import sync_to_async
 
         try:
             from admin.voice.models import VoiceSession
@@ -277,10 +276,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         await self._send_status("listening")
 
     async def _transcribe_audio(self, audio_data: bytes) -> str:
-        """Transcribe audio using Whisper API.
-
-        
-        """
+        """Transcribe audio using Whisper API."""
         try:
             import httpx
 
@@ -306,10 +302,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             return ""
 
     async def _generate_llm_response(self, transcript: str):
-        """Generate AI response via LLM and TTS.
-
-        
-        """
+        """Generate AI response via LLM and TTS."""
         await self._send_status("speaking")
         self.state.is_speaking = True
 
@@ -319,9 +312,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             import httpx
 
             # Get LLM response via internal API
-            llm_url = getattr(
-                settings, "LLM_API_URL", "http://localhost:20020/api/v2/core/llm/chat"
-            )
+            llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 llm_response = await client.post(
@@ -372,10 +363,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         await self._send_status("listening")
 
     async def _stream_tts_audio(self, text: str):
-        """Stream TTS audio chunks using Kokoro.
-
-        
-        """
+        """Stream TTS audio chunks using Kokoro."""
         import httpx
 
         tts_url = getattr(settings, "KOKORO_TTS_URL", "http://localhost:8002/synthesize")

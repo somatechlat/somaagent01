@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Any
+from typing import Any, Iterable
 from uuid import UUID
 
 from prometheus_client import Counter
 
-from services.common.attachments_store import AttachmentsStore
 from services.common.asset_store import AssetStore
+from services.common.attachments_store import AttachmentsStore
 
 LOG = logging.getLogger(__name__)
 
@@ -23,9 +23,9 @@ COMP_ACTIONS = Counter(
 async def _delete_attachments(ids: Iterable[Any]) -> None:
     """Execute delete attachments.
 
-        Args:
-            ids: The ids.
-        """
+    Args:
+        ids: The ids.
+    """
 
     store = AttachmentsStore()
     await store.ensure_schema()
@@ -42,9 +42,9 @@ async def _delete_attachments(ids: Iterable[Any]) -> None:
 async def _tombstone_assets(ids: Iterable[Any]) -> None:
     """Execute tombstone assets.
 
-        Args:
-            ids: The ids.
-        """
+    Args:
+        ids: The ids.
+    """
 
     store = AssetStore()
     for raw in ids:
@@ -60,9 +60,9 @@ async def _tombstone_assets(ids: Iterable[Any]) -> None:
 async def compensate_event(event: dict[str, Any]) -> None:
     """Execute compensate event.
 
-        Args:
-            event: The event.
-        """
+    Args:
+        event: The event.
+    """
 
     attachments = event.get("attachments") or []
     assets = event.get("asset_ids") or []

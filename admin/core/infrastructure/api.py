@@ -1,7 +1,7 @@
 """Rate Limit Administration API.
 
 
-Per 
+Per
 
 10-Persona Implementation:
 - PhD Developer: Clean API design with proper schemas
@@ -17,7 +17,6 @@ import logging
 from typing import Optional
 
 from asgiref.sync import sync_to_async
-from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel, Field
 
@@ -93,8 +92,7 @@ async def list_rate_limits(
 
     @sync_to_async
     def _get_limits():
-        """Execute get limits.
-            """
+        """Execute get limits."""
 
         qs = RateLimitPolicy.objects.all()
         if active_only:
@@ -123,8 +121,7 @@ async def get_rate_limit(request, key: str) -> dict:
 
     @sync_to_async
     def _get_limit():
-        """Execute get limit.
-            """
+        """Execute get limit."""
 
         try:
             policy = RateLimitPolicy.objects.get(key=key)
@@ -164,8 +161,7 @@ async def create_rate_limit(
     @sync_to_async
     def _create():
         # Check if key already exists
-        """Execute create.
-            """
+        """Execute create."""
 
         if RateLimitPolicy.objects.filter(key=payload.key).exists():
             return None, "Key already exists"
@@ -210,8 +206,7 @@ async def update_rate_limit(
 
     @sync_to_async
     def _update():
-        """Execute update.
-            """
+        """Execute update."""
 
         try:
             policy = RateLimitPolicy.objects.get(key=key)
@@ -227,7 +222,7 @@ async def update_rate_limit(
             policy.window_seconds = payload.window_seconds
         if payload.policy is not None:
             if payload.policy not in [e.value for e in EnforcementPolicy]:
-                return None, f"Invalid policy"
+                return None, "Invalid policy"
             policy.policy = payload.policy
         if payload.tier_overrides is not None:
             policy.tier_overrides = payload.tier_overrides
@@ -272,8 +267,7 @@ async def delete_rate_limit(request, key: str) -> dict:
 
     @sync_to_async
     def _delete():
-        """Execute delete.
-            """
+        """Execute delete."""
 
         try:
             policy = RateLimitPolicy.objects.get(key=key)
@@ -362,8 +356,7 @@ async def seed_rate_limits(request) -> dict:
 
     @sync_to_async
     def _seed():
-        """Execute seed.
-            """
+        """Execute seed."""
 
         created = []
         skipped = []

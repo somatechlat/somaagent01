@@ -10,7 +10,6 @@ from admin.core.application.ports import (
     ToolDefinitionDTO,
     ToolRegistryPort,
 )
-
 from services.tool_executor.tool_registry import ToolRegistry
 
 
@@ -29,8 +28,7 @@ class ToolRegistryAdapter(ToolRegistryPort):
         self._registry = registry or ToolRegistry()
 
     async def load_all_tools(self) -> None:
-        """Execute load all tools.
-            """
+        """Execute load all tools."""
 
         await self._registry.load_all_tools()
 
@@ -40,19 +38,19 @@ class ToolRegistryAdapter(ToolRegistryPort):
         # go through the underlying registry directly.
         """Execute register.
 
-            Args:
-                name: The name.
-                description: The description.
-            """
+        Args:
+            name: The name.
+            description: The description.
+        """
 
         pass  # Registration handled by load_all_tools
 
     def get(self, name: str) -> Optional[ToolDefinitionDTO]:
         """Execute get.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         tool_def = self._registry.get(name)
         if tool_def is None:
@@ -63,8 +61,7 @@ class ToolRegistryAdapter(ToolRegistryPort):
         )
 
     def list(self) -> Iterable[ToolDefinitionDTO]:
-        """Execute list.
-            """
+        """Execute list."""
 
         return [
             ToolDefinitionDTO(name=t.name, description=t.description) for t in self._registry.list()
@@ -73,10 +70,10 @@ class ToolRegistryAdapter(ToolRegistryPort):
     async def execute(self, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         """Execute execute.
 
-            Args:
-                name: The name.
-                args: The args.
-            """
+        Args:
+            name: The name.
+            args: The args.
+        """
 
         tool_def = self._registry.get(name)
         if tool_def is None:

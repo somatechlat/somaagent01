@@ -3,7 +3,6 @@
 
 Platform analytics for Eye of God dashboard.
 
-7-Persona Implementation:
 - PM: Business metrics, KPIs
 - PhD Dev: Statistical analysis
 - DevOps: Infrastructure metrics

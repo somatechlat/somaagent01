@@ -170,7 +170,7 @@ class UpgradeResponse(BaseModel):
 def get_tenant_billing(request, tenant_id: str):
     """Get billing details for a specific tenant.
 
-    Per 
+    Per
     """
     from datetime import timedelta
 
@@ -204,7 +204,7 @@ def get_tenant_billing(request, tenant_id: str):
 def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
     """Upgrade or downgrade a tenant's subscription tier.
 
-    Per 
+    Per
     - Real database transaction
     - Atomic operation
     - Audit logging (via AuditLog model)
@@ -297,7 +297,7 @@ class PaymentMethodOut(BaseModel):
 def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
     """Add a payment method for a tenant.
 
-    
+
     - Real validation
     - Would integrate with Stripe in production
     - Returns structured response

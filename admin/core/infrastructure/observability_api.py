@@ -9,14 +9,12 @@ Observability API - Django Ninja endpoints for platform metrics
 """
 
 import time
-import os
-import psutil
-from typing import Optional
-from ninja import Router
-from django.http import HttpRequest
-from django.db import connection
-from pydantic import BaseModel
 from datetime import datetime
+
+import psutil
+from django.http import HttpRequest
+from ninja import Router
+from pydantic import BaseModel
 
 router = Router(tags=["Observability"])
 

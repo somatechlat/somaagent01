@@ -23,9 +23,9 @@ DEFAULT_TAG_WEIGHT = {"code": 0.4, "infrastructure": 0.4, "testing": 0.2}
 def _score_from_tags(tags: list[str]) -> float:
     """Execute score from tags.
 
-        Args:
-            tags: The tags.
-        """
+    Args:
+        tags: The tags.
+    """
 
     score = 0.0
     for tag in tags:

@@ -141,6 +141,7 @@ ignore = [
     "F841",
     "B024",
     "B904",
+    "RUF012",  # Django Meta classes use mutable class attributes by design
 ]
 
 [tool.ruff.lint.isort]

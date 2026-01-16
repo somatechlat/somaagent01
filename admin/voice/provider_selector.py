@@ -11,7 +11,10 @@ All errors are expressed via :class:`ProviderNotSupportedError` defined in
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import AsyncGenerator, Protocol, runtime_checkable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from admin.core.helpers.config import Config
 
 from .exceptions import ProviderNotSupportedError
 
@@ -31,14 +34,15 @@ class _BaseClient(Protocol):
     """
 
     async def process(
-        self, audio_stream: "AsyncGenerator[bytes, None]"
-        """Execute process.
+        self,
+        audio_stream: "AsyncGenerator[bytes, None]",
+    ) -> "AsyncGenerator[object, None]":
+        """Process audio stream.
 
-            Args:
-                audio_stream: The audio_stream.
-            """
-
-    ) -> "AsyncGenerator[object, None]": ...
+        Args:
+            audio_stream: The audio stream to process.
+        """
+        ...
 
 
 def get_provider_client(config: Config) -> _BaseClient:

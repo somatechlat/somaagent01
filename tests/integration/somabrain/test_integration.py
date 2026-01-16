@@ -3,7 +3,6 @@
 VIBE COMPLIANT - Real infrastructure testing.
 Per AGENT_TASKS.md Phase 6.5 - Integration Tests.
 
-7-Persona Implementation:
 - QA: Comprehensive test coverage
 - DevOps: Real infrastructure verification
 - PhD Dev: Cognitive flow validation
@@ -49,22 +48,19 @@ class TestSuite:
 
     @property
     def passed(self) -> int:
-        """Execute passed.
-            """
+        """Execute passed."""
 
         return sum(1 for r in self.results if r.passed)
 
     @property
     def failed(self) -> int:
-        """Execute failed.
-            """
+        """Execute failed."""
 
         return sum(1 for r in self.results if not r.passed)
 
     @property
     def total(self) -> int:
-        """Execute total.
-            """
+        """Execute total."""
 
         return len(self.results)
 
@@ -478,6 +474,6 @@ if __name__ == "__main__":
     token = sys.argv[1] if len(sys.argv) > 1 else ""
     suite = asyncio.run(run_integration_tests(token))
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"SomaBrain Integration Tests: {suite.passed}/{suite.total} passed")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")

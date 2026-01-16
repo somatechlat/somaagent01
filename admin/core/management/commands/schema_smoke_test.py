@@ -11,8 +11,7 @@ from pathlib import Path
 
 
 def _load_validator():
-    """Execute load validator.
-        """
+    """Execute load validator."""
 
     module_path = Path("services/common/schema_validator.py").resolve()
     spec = importlib.util.spec_from_file_location("schema_validator", module_path)
@@ -23,8 +22,7 @@ def _load_validator():
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     validator = _load_validator()
 

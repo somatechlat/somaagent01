@@ -478,8 +478,8 @@ python manage.py runserver 0.0.0.0:8020
 
 # 5. Start frontend (separate terminal)
 cd webui
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ### Environment Variables
@@ -989,12 +989,13 @@ docker exec somaagent-kafka kafka-console-consumer.sh --topic audit.auth --from-
 ### 🧠 The "Cognitive Operating System"
 The 2025-01-02 audit reveals that SomaAgent01 has evolved beyond a standard chatbot into a **Self-Governing Cognitive Operating System**.
 
-#### 1. The Pre-Flight Cortex (AgentIQ Governor)
+#### 1. The Pre-Flight Cortex (SimpleGovernor)
 - **Status**: ✅ Implemented & Wired
+- **Location**: `services/common/simple_governor.py` (279 lines, production-grade)
 - **Function**: Transforms stochastic LLM calls into deterministic, budgeted transactions.
 - **Mechanism**:
-  - **Lane Allocation**: Slices strict token budgets for `system`, `history`, `memory`, `tools`.
-  - **AIQ Scoring**: Calculates "Intelligence Quotient" per turn.
+  - **Fixed Lane Allocation**: Binary ratios (Normal vs Degraded) with field-tested percentages.
+  - **No AIQ Scoring**: Removed over-engineering from deprecated AgentIQ.
   - **Rescue Path**: Automatically degrades to safe-mode if context quality drops below thresholds (Critical Health).
 
 #### 2. The Autonomic Nervous System (DegradationMonitor)

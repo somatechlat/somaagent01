@@ -22,7 +22,10 @@ modules.
 
 from __future__ import annotations
 
-from typing import Awaitable
+from typing import Awaitable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from admin.core.helpers.config import Config
 
 from .audio_capture import AudioCapture
 from .metrics import record_error, VOICE_SESSION_DURATION_SECONDS, VOICE_SESSIONS_TOTAL

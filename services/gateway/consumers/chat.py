@@ -1,24 +1,8 @@
-"""WebSocket Chat Consumer for real-time messaging.
-
-
-Per login-to-chat-journey design.md Section 7.1
-
-Implements:
-- Connection authentication (JWT from cookie)
-- Message handling per WebSocket protocol spec (Appendix B)
-- Heartbeat (ping/pong every 30 seconds)
-- Streaming response from SomaBrain
-
-Personas:
-- Django Architect: Django Channels async consumer
-- Security Auditor: JWT validation, tenant isolation
-- Performance Engineer: Streaming, connection management
-"""
+"""WebSocket Chat Consumer for real-time messaging."""
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from dataclasses import dataclass
@@ -28,32 +12,23 @@ from urllib.parse import parse_qs
 from uuid import uuid4
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
-from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# PROMETHEUS METRICS
+# UNIFIED METRICS
 # =============================================================================
+# VIBE: Use UnifiedMetrics singleton to avoid duplicate metric registration
+# VIBE: Multiple services defining same metric names causes registry conflicts
+from services.common.unified_metrics import UnifiedMetrics
 
-WS_CONNECTIONS = Gauge(
-    "websocket_connections_active",
-    "Active WebSocket connections",
-    ["agent_id"],
-)
+# Initialize metrics singleton on module load
+_metrics = UnifiedMetrics.get_instance()
 
-WS_MESSAGES = Counter(
-    "websocket_messages_total",
-    "Total WebSocket messages",
-    ["direction", "type"],
-)
-
-WS_LATENCY = Histogram(
-    "websocket_message_latency_seconds",
-    "WebSocket message processing latency",
-    ["type"],
-    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
-)
+# Metric shortcuts for backwards compatibility
+WS_CONNECTIONS = _metrics.WEBSOCKET_CONNECTIONS
+WS_MESSAGES = _metrics.WEBSOCKET_MESSAGES
+WS_LATENCY = _metrics.WEBSOCKET_MESSAGE_LATENCY
 
 
 # =============================================================================
@@ -71,8 +46,7 @@ class WSMessage:
     timestamp: str = ""
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if not self.id:
             self.id = str(uuid4())
@@ -80,8 +54,7 @@ class WSMessage:
             self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
-        """Execute to dict.
-            """
+        """Execute to dict."""
 
         return {
             "type": self.type,
@@ -158,7 +131,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.accept()
 
             # Track connection
-            WS_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").inc()
+            _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").inc()
 
             # Start heartbeat
             self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -192,7 +165,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 pass
 
         # Track disconnection
-        WS_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").dec()
+        _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").dec()
 
         logger.info(f"WebSocket disconnected: user={self.user_id}, code={close_code}")
 
@@ -206,7 +179,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         start_time = time.perf_counter()
         msg_type = content.get("type", "unknown")
 
-        WS_MESSAGES.labels(direction="inbound", type=msg_type).inc()
+        _metrics.WEBSOCKET_MESSAGES.labels(direction="inbound", type=msg_type).inc()
 
         try:
             if msg_type == MSG_PING:
@@ -224,7 +197,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         finally:
             elapsed = time.perf_counter() - start_time
-            WS_LATENCY.labels(type=msg_type).observe(elapsed)
+            _metrics.WEBSOCKET_MESSAGE_LATENCY.labels(type=msg_type).observe(elapsed)
 
     # =========================================================================
     # AUTHENTICATION
@@ -302,7 +275,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 payload={"timestamp": datetime.now(timezone.utc).isoformat()},
             ).to_dict()
         )
-        WS_MESSAGES.labels(direction="outbound", type=MSG_PONG).inc()
+        _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_PONG).inc()
 
     async def _handle_chat(self, content: dict):
         """Handle chat message.
@@ -385,7 +358,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         },
                     ).to_dict()
                 )
-                WS_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DELTA).inc()
+                _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DELTA).inc()
 
             # Send done
             full_response = "".join(response_content)
@@ -400,7 +373,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     },
                 ).to_dict()
             )
-            WS_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DONE).inc()
+            _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DONE).inc()
 
             # Generate title if first message
             await self._maybe_generate_title(conversation_id, chat_service)
@@ -423,14 +396,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         - Update conversation title
         - Send title_update message
         """
-        from admin.chat.models import Conversation, Message
-
         from asgiref.sync import sync_to_async
+
+        from admin.chat.models import Conversation, Message
 
         @sync_to_async
         def get_conversation_data():
-            """Retrieve conversation data.
-                """
+            """Retrieve conversation data."""
 
             try:
                 conv = Conversation.objects.get(id=conversation_id)
@@ -481,7 +453,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     },
                 ).to_dict()
             )
-            WS_MESSAGES.labels(direction="outbound", type=MSG_TITLE_UPDATE).inc()
+            _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_TITLE_UPDATE).inc()
 
         except Exception as e:
             logger.warning(f"Title generation failed: {e}")
@@ -501,7 +473,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 },
             ).to_dict()
         )
-        WS_MESSAGES.labels(direction="outbound", type=MSG_ERROR).inc()
+        _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_ERROR).inc()
 
     async def _heartbeat_loop(self):
         """Send periodic heartbeat pings.
@@ -522,7 +494,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                             payload={"timestamp": datetime.now(timezone.utc).isoformat()},
                         ).to_dict()
                     )
-                    WS_MESSAGES.labels(direction="outbound", type=MSG_PING).inc()
+                    _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_PING).inc()
 
             except asyncio.CancelledError:
                 break

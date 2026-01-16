@@ -3,20 +3,31 @@
 import os
 import sys
 import time
+
 from lago_python_client.client import Client
-from lago_python_client.models import Plan, Customer, BillableMetric, Charge
+from lago_python_client.models import Customer, Plan
 
 # Add project root to path
 sys.path.append(os.getcwd())
 
-# Configuration (Real configuration from env or defaults)
-LAGO_API_KEY = os.environ.get("LAGO_API_KEY", "")
-LAGO_API_URL = "http://localhost:20600/api/v1"
+# Import Django settings for centralized configuration
+try:
+    from django.conf import settings
+
+    LAGO_API_URL = settings.LAGO_API_URL
+    LAGO_API_KEY = settings.LAGO_API_KEY
+except ImportError:
+    LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL")
+    LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
 
 
 def seed_lago():
-    """Execute seed lago.
-        """
+    """Execute seed lago."""
+
+    if not LAGO_API_URL or not LAGO_API_KEY:
+        print("❌ LAGO_API_URL or LAGO_API_KEY not configured")
+        print("Set SA01_LAGO_API_URL and SA01_LAGO_API_KEY environment variables")
+        return
 
     print(f"🌱 Seeding Lago at {LAGO_API_URL}...")
 
@@ -24,7 +35,6 @@ def seed_lago():
 
     # 1. Check connectivity
     try:
-        # Simple verify by listing customers
         client.customers.find_all()
         print("✅ Connected to Lago API")
     except Exception as e:
@@ -36,15 +46,11 @@ def seed_lago():
         plan_code = "plan_pro_tier"
         plan_name = "Pro Tier"
 
-        # Check if exists (idempotency)
-        # Note: Client doesn't have simple 'exists', so we try create or ignore error in a real script,
-        # or list and filter. For simplicity in this seed script, we just try to create.
-
         plan_input = Plan(
             code=plan_code,
             name=plan_name,
             interval="monthly",
-            amount_cents=5000,  # $50.00
+            amount_cents=5000,
             amount_currency="USD",
             trial_period=0,
             pay_in_advance=True,
@@ -88,6 +94,5 @@ def seed_lago():
 
 
 if __name__ == "__main__":
-    # Wait for services to be fully fully up if run immediately after docker up
     time.sleep(2)
     seed_lago()

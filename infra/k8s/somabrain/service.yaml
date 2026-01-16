@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain
+  namespace: brain
+  labels:
+    app: somabrain
+spec:
+  selector:
+    app: somabrain
+  ports:
+    - protocol: TCP
+      port: 63996
+      targetPort: 9696
+      name: http-api
+  type: ClusterIP

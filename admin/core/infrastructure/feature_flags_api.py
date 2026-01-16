@@ -8,13 +8,13 @@ Feature Flags API - Django Ninja CRUD endpoints
 - 10 personas in mind (especially Product Manager, DevOps Engineer)
 """
 
-from typing import Optional, List
-from uuid import UUID, uuid4
 from datetime import datetime
-from ninja import Router
+from typing import List, Optional
+from uuid import uuid4
+
 from django.http import HttpRequest
+from ninja import Router
 from pydantic import BaseModel
-from django.db import models
 
 router = Router(tags=["Feature Flags"])
 

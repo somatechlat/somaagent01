@@ -3,7 +3,6 @@
 
 No mocks, no placeholders, no hardcoded URLs.
 
-7-Persona Implementation:
 - PhD Dev: Async HTTP client with retry logic
 - Security Auditor: Checksum verification, quarantine handling
 - DevOps: Health checks, circuit breaker
@@ -130,7 +129,7 @@ class FilesServiceError(Exception):
 class FilesClient:
     """HTTP client for external files-service.
 
-    
+
     - Uses FILES_SERVICE_URL from environment
     - Real HTTP calls via httpx
     - Prometheus metrics

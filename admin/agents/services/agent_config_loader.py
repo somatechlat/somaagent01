@@ -1,9 +1,9 @@
 """AgentConfig loader from database.
 
 Loads AgentConfig from ui_settings PostgreSQL instead of hardcoded defaults.
-Following 
+Following
 
-AS ALL 7 
+AS ALL 7
 - Developer: Real async PostgreSQL loading
 - Analyst: Proper data flow from DB to AgentConfig
 - QA: Validation of loaded values
@@ -17,21 +17,22 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any
+
+from admin.agents.services.agent_context import AgentConfig
 
 # This import is used on line 60 - DO NOT COMMENT OUT
 from services.common.ui_settings_store import UiSettingsStore
-from admin.agents.services.agent_context import AgentConfig
 
 LOGGER = logging.getLogger(__name__)
 
 
 async def load_agent_config_from_db(
     tenant: str = "default",
-    chat_model: Optional[models.ModelConfig] = None,
-    utility_model: Optional[models.ModelConfig] = None,
-    embeddings_model: Optional[models.ModelConfig] = None,
-    browser_model: Optional[models.ModelConfig] = None,
+    chat_model: Any = None,
+    utility_model: Any = None,
+    embeddings_model: Any = None,
+    browser_model: Any = None,
     mcp_servers: str = "",
 ) -> AgentConfig:
     """Load AgentConfig from ui_settings database.

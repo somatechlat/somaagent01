@@ -3,7 +3,6 @@
 
 Tenant lifecycle and configuration.
 
-7-Persona Implementation:
 - PM: Tenant onboarding, management
 - Security Auditor: Tenant isolation
 - DevOps: Resource allocation
