@@ -315,6 +315,29 @@ All agent settings are defined in `admin/core/helpers/settings_model.py:Settings
 | **SomaBrain** | `sleep_cycle_duration` | int | 300 | Sleep duration in seconds |
 | **SomaBrain** | `sleep_deep_consolidation` | bool | True | Use deep vector consolidation |
 | **SomaBrain** | `dream_simulation` | bool | False | Enable generative dreaming |
+| **AgentIQ** | `agentiq_weight_context` | float | 0.25 | ContextIQ scoring weight |
+| **AgentIQ** | `agentiq_weight_retrieval` | float | 0.15 | RetrievalIQ scoring weight |
+| **AgentIQ** | `agentiq_weight_tool` | float | 0.20 | ToolIQ scoring weight |
+| **AgentIQ** | `agentiq_weight_latency` | float | 0.15 | LatencyIQ scoring weight |
+| **AgentIQ** | `agentiq_weight_reliability` | float | 0.25 | ReliabilityIQ scoring weight |
+| **AgentIQ** | `agentiq_backpressure_threshold` | float | 0.75 | AIQ below this triggers Rescue Path |
+| **AgentIQ** | `agentiq_degrade_threshold` | float | 0.50 | AIQ below this escalates degradation |
+| **AgentIQ** | `agentiq_tool_top_k` | int | 5 | Max tools in Top-K selection |
+| **AgentIQ** | `agentiq_tool_disclosure_level` | int | 1 | Tool verbosity (0=names, 3=full) |
+| **AgentIQ** | `agentiq_lane_system_policy` | float | 0.15 | System+Policy lane ratio |
+| **AgentIQ** | `agentiq_lane_history` | float | 0.25 | History lane ratio |
+| **AgentIQ** | `agentiq_lane_memory` | float | 0.25 | Memory lane ratio |
+| **AgentIQ** | `agentiq_lane_tools` | float | 0.20 | Tools lane ratio |
+| **AgentIQ** | `agentiq_lane_tool_results` | float | 0.10 | ToolResults lane ratio |
+| **AgentIQ** | `agentiq_lane_buffer` | float | 0.05 | Buffer lane ratio |
+| **AgentIQ** | `agentiq_buffer_min_tokens` | int | 200 | Min buffer tokens (provider variance) |
+| **AgentIQ** | `agentiq_fast_path_latency_ms` | int | 20 | Fast Path target latency |
+| **AgentIQ** | `agentiq_rescue_path_latency_ms` | int | 100 | Rescue Path target latency |
+| **AgentIQ** | `agentiq_receipt_ttl_compact_hours` | int | 168 | Compact receipt TTL (7 days) |
+| **AgentIQ** | `agentiq_receipt_ttl_full_hours` | int | 720 | Full receipt TTL (30 days) |
+| **AgentIQ** | `agentiq_digest_faithfulness_threshold` | float | 0.8 | Min digest faithfulness |
+| **AgentIQ** | `agentiq_rlm_iteration_penalty` | float | 0.02 | AIQ penalty per RLM iteration |
+| **AgentIQ** | `agentiq_rlm_confidence_bonus` | float | 0.1 | AIQ bonus from RLM confidence |
 
 ### 5.2 Agent Status Lifecycle
 
