@@ -6,11 +6,20 @@ Split from admin/saas/admin.py for 650-line compliance.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from admin.saas.models import Agent, AgentUser, AuditLog, FeatureProvider, SaasFeature, TierFeature, UsageRecord
+from admin.saas.models import (
+    Agent,
+    AgentUser,
+    AuditLog,
+    FeatureProvider,
+    SaasFeature,
+    TierFeature,
+    UsageRecord,
+)
 
 
 class AgentUserInline(admin.TabularInline):
     """Inline for managing users assigned to an agent."""
+
     model = AgentUser
     extra = 0
     fields = ["user_id", "role"]
@@ -19,6 +28,7 @@ class AgentUserInline(admin.TabularInline):
 
 class AgentInline(admin.TabularInline):
     """Inline for managing agents within a tenant."""
+
     model = Agent
     extra = 0
     readonly_fields = ["created_at"]
@@ -31,6 +41,7 @@ class AgentInline(admin.TabularInline):
 @admin.register(Agent)
 class AgentAdmin(admin.ModelAdmin):
     """Full Django Admin for Agents."""
+
     list_display = ["name", "slug", "tenant", "status_badge", "user_count", "created_at"]
     list_filter = ["status", "tenant", "created_at"]
     search_fields = ["name", "slug", "description"]
@@ -45,16 +56,28 @@ class AgentAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Agent Information", {"fields": ("id", "name", "slug", "description")}),
         ("Tenant", {"fields": ("tenant",)}),
-        ("Configuration", {"fields": ("config", "feature_settings", "skin_id"), "classes": ("collapse",)}),
+        (
+            "Configuration",
+            {"fields": ("config", "feature_settings", "skin_id"), "classes": ("collapse",)},
+        ),
         ("Status", {"fields": ("status",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
     @admin.display(description="Status")
     def status_badge(self, obj):
-        colors = {"active": "#22c55e", "inactive": "#94a3b8", "error": "#ef4444", "maintenance": "#f59e0b"}
+        colors = {
+            "active": "#22c55e",
+            "inactive": "#94a3b8",
+            "error": "#ef4444",
+            "maintenance": "#f59e0b",
+        }
         color = colors.get(obj.status, "#94a3b8")
-        return format_html('<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>', color, obj.status.upper())
+        return format_html(
+            '<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>',
+            color,
+            obj.status.upper(),
+        )
 
     @admin.display(description="Users")
     def user_count(self, obj):
@@ -72,6 +95,7 @@ class AgentAdmin(admin.ModelAdmin):
 @admin.register(AgentUser)
 class AgentUserAdmin(admin.ModelAdmin):
     """Django Admin for Agent Users."""
+
     list_display = ["user_id_short", "agent", "role", "created_at"]
     list_filter = ["role", "created_at"]
     search_fields = ["user_id"]
@@ -87,6 +111,7 @@ class AgentUserAdmin(admin.ModelAdmin):
 @admin.register(SaasFeature)
 class SaasFeatureAdmin(admin.ModelAdmin):
     """Django Admin for SaaS Features."""
+
     list_display = ["name", "code", "category", "is_active", "sort_order", "created_at"]
     list_filter = ["category", "is_active", "created_at"]
     search_fields = ["name", "code", "description"]
@@ -104,6 +129,7 @@ class SaasFeatureAdmin(admin.ModelAdmin):
 @admin.register(TierFeature)
 class TierFeatureAdmin(admin.ModelAdmin):
     """Django Admin for Tier-Feature mappings."""
+
     list_display = ["tier", "feature", "is_enabled", "quota_limit"]
     list_filter = ["tier", "is_enabled"]
     search_fields = ["tier__name", "feature__name"]
@@ -113,6 +139,7 @@ class TierFeatureAdmin(admin.ModelAdmin):
 @admin.register(FeatureProvider)
 class FeatureProviderAdmin(admin.ModelAdmin):
     """Django Admin for Feature Providers."""
+
     list_display = ["name", "code", "feature", "is_default", "is_active", "created_at"]
     list_filter = ["is_active", "is_default", "feature"]
     search_fields = ["name", "code", "description"]
@@ -122,10 +149,24 @@ class FeatureProviderAdmin(admin.ModelAdmin):
 @admin.register(UsageRecord)
 class UsageRecordAdmin(admin.ModelAdmin):
     """Django Admin for Usage Records - read-only for billing."""
+
     list_display = ["tenant", "metric_code", "quantity", "unit", "lago_synced_badge", "recorded_at"]
     list_filter = ["metric_code", "lago_synced", "recorded_at", "tenant"]
     search_fields = ["tenant__name", "lago_event_id", "metric_code"]
-    readonly_fields = ["id", "tenant", "agent", "metric_code", "quantity", "unit", "lago_event_id", "lago_synced", "metadata", "recorded_at", "period_start", "period_end"]
+    readonly_fields = [
+        "id",
+        "tenant",
+        "agent",
+        "metric_code",
+        "quantity",
+        "unit",
+        "lago_event_id",
+        "lago_synced",
+        "metadata",
+        "recorded_at",
+        "period_start",
+        "period_end",
+    ]
     ordering = ["-recorded_at"]
     list_per_page = 100
     date_hierarchy = "recorded_at"
@@ -134,8 +175,12 @@ class UsageRecordAdmin(admin.ModelAdmin):
     @admin.display(description="Lago")
     def lago_synced_badge(self, obj):
         if obj.lago_synced:
-            return format_html('<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">✓</span>')
-        return format_html('<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Pending</span>')
+            return format_html(
+                '<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">✓</span>'
+            )
+        return format_html(
+            '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Pending</span>'
+        )
 
     def has_add_permission(self, request):
         return False
@@ -147,10 +192,33 @@ class UsageRecordAdmin(admin.ModelAdmin):
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
     """Django Admin for Audit Logs - fully read-only."""
-    list_display = ["created_at", "tenant", "actor_email", "action", "resource_type", "resource_id_short", "ip_address"]
+
+    list_display = [
+        "created_at",
+        "tenant",
+        "actor_email",
+        "action",
+        "resource_type",
+        "resource_id_short",
+        "ip_address",
+    ]
     list_filter = ["action", "resource_type", "created_at", "tenant"]
     search_fields = ["actor_email", "actor_id", "resource_id", "ip_address"]
-    readonly_fields = ["id", "tenant", "actor_id", "actor_email", "action", "resource_type", "resource_id", "old_value", "new_value", "ip_address", "user_agent", "request_id", "created_at"]
+    readonly_fields = [
+        "id",
+        "tenant",
+        "actor_id",
+        "actor_email",
+        "action",
+        "resource_type",
+        "resource_id",
+        "old_value",
+        "new_value",
+        "ip_address",
+        "user_agent",
+        "request_id",
+        "created_at",
+    ]
     ordering = ["-created_at"]
     list_per_page = 100
     date_hierarchy = "created_at"

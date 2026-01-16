@@ -51,7 +51,7 @@ class ChatGenerationResult:
 
         # Append the incoming characters to the raw buffer.
         self._raw += chunk["response_delta"]
-        
+
         # Extract any complete <think>...</think> blocks
         while True:
             open_idx = self._raw.find("<think>")

@@ -12,7 +12,6 @@ VIBE COMPLIANT:
 def test_normal_mode_budget_allocation():
     """Test NORMAL mode budget allocation."""
     from services.common.simple_governor import (
-        GovernorDecision,
         HealthStatus,
         SimpleGovernor,
     )
@@ -36,7 +35,7 @@ def test_normal_mode_budget_allocation():
     assert abs(budget.memory - 1024) < 10, f"Expected ~1024, got {budget.memory}"
     assert abs(budget.tools - 819) < 10, f"Expected ~819, got {budget.tools}"
 
-    print(f"✅ NORMAL mode: Budget allocation verified (15%/25%/25%/20%)")
+    print("✅ NORMAL mode: Budget allocation verified (15%/25%/25%/20%)")
     print(f"   System Policy: {budget.system_policy}")
     print(f"   History: {budget.history}")
     print(f"   Memory: {budget.memory}")
@@ -48,7 +47,6 @@ def test_normal_mode_budget_allocation():
 def test_degraded_mode_budget_allocation():
     """Test DEGRADED mode budget allocation."""
     from services.common.simple_governor import (
-        GovernorDecision,
         HealthStatus,
         SimpleGovernor,
     )
@@ -72,7 +70,7 @@ def test_degraded_mode_budget_allocation():
     assert abs(budget.memory - 614) < 10, f"Expected ~614, got {budget.memory}"
     assert budget.tools == 0, f"Expected 0, got {budget.tools}"
 
-    print(f"✅ DEGRADED mode: Budget allocation verified (70%/10%/15%/0%)")
+    print("✅ DEGRADED mode: Budget allocation verified (70%/10%/15%/0%)")
     print(f"   System Policy: {budget.system_policy}")
     print(f"   History: {budget.history}")
     print(f"   Memory: {budget.memory}")
@@ -100,7 +98,7 @@ def test_rescue_mode_budget_allocation():
     assert budget.tools == 0, f"Expected 0, got {budget.tools}"
     assert budget.buffer >= 200, "Buffer should be at least 200"
 
-    print(f"✅ RESCUE mode: Budget allocation verified (emergency fallback)")
+    print("✅ RESCUE mode: Budget allocation verified (emergency fallback)")
     print(f"   System Policy: {budget.system_policy}")
     print(f"   History: {budget.history}")
     print(f"   Memory: {budget.memory}")

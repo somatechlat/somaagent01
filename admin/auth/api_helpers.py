@@ -8,8 +8,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from django.utils import timezone
 from asgiref.sync import sync_to_async
+from django.utils import timezone
 
 if TYPE_CHECKING:
     from admin.common.auth import TokenPayload
@@ -135,9 +135,11 @@ async def update_last_login(payload: "TokenPayload") -> None:
     from admin.saas.models import TenantUser
 
     try:
+
         @sync_to_async
         def _update_login():
             TenantUser.objects.filter(user_id=payload.sub).update(last_login_at=timezone.now())
+
         await _update_login()
     except Exception as e:
         logger.debug(f"Could not update last_login: {e}")

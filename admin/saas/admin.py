@@ -6,23 +6,23 @@ Split into modules for 650-line compliance:
 """
 
 # Import all admin classes to register with Django admin
+from admin.saas.admin_agents import (
+    AgentAdmin,
+    AgentInline,
+    AgentUserAdmin,
+    AgentUserInline,
+    AuditLogAdmin,
+    FeatureProviderAdmin,
+    SaasFeatureAdmin,
+    TierFeatureAdmin,
+    UsageRecordAdmin,
+)
 from admin.saas.admin_tenants import (
     SubscriptionTierAdmin,
     TenantAdmin,
     TenantUserAdmin,
     TenantUserInline,
     TierFeatureInline,
-)
-from admin.saas.admin_agents import (
-    AgentAdmin,
-    AgentUserAdmin,
-    AgentInline,
-    AgentUserInline,
-    SaasFeatureAdmin,
-    TierFeatureAdmin,
-    FeatureProviderAdmin,
-    UsageRecordAdmin,
-    AuditLogAdmin,
 )
 
 __all__ = [

@@ -6,6 +6,7 @@ Extracted from admin/auth/api.py for 650-line compliance.
 from __future__ import annotations
 
 import logging
+
 from ninja import Router
 
 from admin.auth.api_schemas import SSOConfigRequest, SSOTestRequest
@@ -32,14 +33,23 @@ async def test_sso_connection(request, payload: SSOTestRequest):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(discovery_url)
                 if response.status_code == 200:
-                    return {"success": True, "message": "OIDC provider is reachable and configured correctly."}
-                return {"success": False, "detail": f"OIDC discovery failed: HTTP {response.status_code}"}
+                    return {
+                        "success": True,
+                        "message": "OIDC provider is reachable and configured correctly.",
+                    }
+                return {
+                    "success": False,
+                    "detail": f"OIDC discovery failed: HTTP {response.status_code}",
+                }
 
         elif provider == "ldap" or provider == "ad":
             server_url = config.get("server_url", "")
             if not server_url:
                 return {"success": False, "detail": "Server URL is required"}
-            return {"success": True, "message": f"LDAP server {server_url} configuration validated."}
+            return {
+                "success": True,
+                "message": f"LDAP server {server_url} configuration validated.",
+            }
 
         elif provider in ["okta", "azure", "ping", "onelogin"]:
             domain = config.get("domain") or config.get("tenant_id") or config.get("subdomain")

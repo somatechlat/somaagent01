@@ -19,6 +19,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from admin.core.observability.metrics import ContextBuilderMetrics
 from admin.core.somabrain_client import SomaBrainClient, SomaClientError
 from services.common import degradation_monitor
+
 # MIGRATION: Use new circuit_breaker instead of resilience
 try:
     from services.common.circuit_breaker import AsyncCircuitBreaker, CircuitBreakerError

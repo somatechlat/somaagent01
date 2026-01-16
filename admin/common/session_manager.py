@@ -221,8 +221,7 @@ class SessionManager:
 
             SESSION_CREATED.labels(tenant_id).inc()
             logger.info(
-                f"Session created: user={user_id}, session={session_id}, "
-                f"tenant={tenant_id}, ttl={self.session_ttl}s"
+                f"Session created: user={user_id}, session={session_id}, tenant={tenant_id}, ttl={self.session_ttl}s"
             )
 
             return session

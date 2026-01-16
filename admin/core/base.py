@@ -30,9 +30,9 @@ class TenantScopedModel(models.Model):
     """
 
     tenant = models.ForeignKey(
-        'saas.Tenant',
+        "saas.Tenant",
         on_delete=models.CASCADE,
-        related_name='%(class)ss',
+        related_name="%(class)ss",
         db_index=True,
     )
 
@@ -47,6 +47,7 @@ class UUIDPrimaryKeyModel(models.Model):
     """
 
     import uuid
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     class Meta:

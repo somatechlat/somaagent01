@@ -163,7 +163,9 @@ def backup_layer_memory(dest: Path) -> dict:
 
         subprocess.run(cmd, env=env, check=True, capture_output=True)
         result["postgres"] = str(pg_file)
-        logger.info("PostgreSQL backup: %s (%.2f MB)", pg_file, pg_file.stat().st_size / 1024 / 1024)
+        logger.info(
+            "PostgreSQL backup: %s (%.2f MB)", pg_file, pg_file.stat().st_size / 1024 / 1024
+        )
 
     except subprocess.CalledProcessError as e:
         logger.error("PostgreSQL backup failed: %s", e.stderr.decode() if e.stderr else str(e))
@@ -178,6 +180,7 @@ def backup_layer_memory(dest: Path) -> dict:
 
         store = UiSettingsStore()
         import asyncio
+
         settings = asyncio.get_event_loop().run_until_complete(store.get())
         redis_file.write_text(json.dumps(settings, indent=2))
         result["redis"] = str(redis_file)
@@ -219,7 +222,9 @@ def backup_layer_code(dest: Path, repo_path: Optional[Path] = None) -> dict:
             capture_output=True,
         )
         result["bundles"].append(str(bundle_file))
-        logger.info("Git bundle: %s (%.2f MB)", bundle_file, bundle_file.stat().st_size / 1024 / 1024)
+        logger.info(
+            "Git bundle: %s (%.2f MB)", bundle_file, bundle_file.stat().st_size / 1024 / 1024
+        )
 
     except subprocess.CalledProcessError as e:
         logger.error("Git bundle failed: %s", e.stderr.decode() if e.stderr else str(e))
@@ -273,7 +278,9 @@ def backup_layer_infra(dest: Path) -> dict:
             logger.info("Saved image %s: %.2f MB", image, tar_file.stat().st_size / 1024 / 1024)
 
         except subprocess.CalledProcessError as e:
-            logger.warning("Failed to save image %s: %s", image, e.stderr.decode() if e.stderr else str(e))
+            logger.warning(
+                "Failed to save image %s: %s", image, e.stderr.decode() if e.stderr else str(e)
+            )
         except FileNotFoundError:
             logger.warning("docker not found - skipping image backup")
             break
@@ -345,7 +352,9 @@ def restore_backup(
                     tenant_result.success_count,
                     tenant_result.failure_count,
                 )
-                result["restored"].extend([str(r.capsule) for r in tenant_result.successful_imports])
+                result["restored"].extend(
+                    [str(r.capsule) for r in tenant_result.successful_imports]
+                )
 
     # Layer 2: Restore memory (PostgreSQL)
     if "memory" in layers:

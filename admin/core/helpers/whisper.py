@@ -30,8 +30,7 @@ try:
 except ImportError as exc:  # pragma: no cover - exercised in developer builds
     if _feature_audio not in {"none", "0", "false", "off"}:
         raise ImportError(
-            "Whisper library is required for production audio transcription. "
-            "Install with: pip install openai-whisper"
+            "Whisper library is required for production audio transcription. Install with: pip install openai-whisper"
         ) from exc
     whisper = None  # type: ignore
     LOGGER.info("Skipping Whisper preload – FEATURE_AUDIO disabled or package missing")
@@ -85,9 +84,7 @@ async def _preload(model_name: str):
                 group="whisper-preload",
             )
             PrintStyle.standard(f"Loading Whisper model: {model_name}")
-            _model = whisper.load_model(
-                name=model_name, download_root=files.get_abs_path("/tmp/models/whisper")
-            )  # type: ignore
+            _model = whisper.load_model(name=model_name, download_root=files.get_abs_path("/tmp/models/whisper"))  # type: ignore
             _model_name = model_name
             NotificationManager.send_notification(
                 NotificationType.INFO,

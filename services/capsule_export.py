@@ -26,18 +26,15 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
-from django.db import transaction
-
 from admin.core.models import (
     AgentSetting,
+    Capability,
     Capsule,
     CapsuleInstance,
-    Capability,
     Constitution,
     FeatureFlag,
     Prompt,
     Session,
-    SessionEvent,
     UISetting,
 )
 from admin.llm.models import LLMModelConfig
@@ -354,11 +351,11 @@ def _export_related_data(capsule: Capsule) -> RelatedDataExport:
 
     return RelatedDataExport(
         models=list(LLMModelConfig.objects.filter(is_active=True).values()),
-        capabilities=list(
-            Capability.objects.filter(name__in=capability_names, is_enabled=True).values()
-        )
-        if capability_names
-        else [],
+        capabilities=(
+            list(Capability.objects.filter(name__in=capability_names, is_enabled=True).values())
+            if capability_names
+            else []
+        ),
         prompts=list(Prompt.objects.filter(tenant=capsule.tenant, is_active=True).values()),
         feature_flags=list(FeatureFlag.objects.values()),
         agent_settings=list(AgentSetting.objects.filter(agent_id=str(capsule.id)).values()),

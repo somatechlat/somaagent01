@@ -640,4 +640,3 @@ __all__ = [
     "SomaBrainError",
     "get_somabrain_client",
 ]
-

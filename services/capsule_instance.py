@@ -24,7 +24,7 @@ from django.db.models import QuerySet
 from prometheus_client import Counter, Gauge
 
 from admin.core.models import Capsule, CapsuleInstance
-from services.capsule_core import inject_capsule, verify_capsule
+from services.capsule_core import verify_capsule
 
 logger = logging.getLogger(__name__)
 
@@ -130,9 +130,11 @@ def get_instance_by_session(session_id: str) -> Optional[CapsuleInstance]:
     Returns:
         The running CapsuleInstance or None
     """
-    return CapsuleInstance.objects.select_related("capsule").filter(
-        session_id=session_id, status="running"
-    ).first()
+    return (
+        CapsuleInstance.objects.select_related("capsule")
+        .filter(session_id=session_id, status="running")
+        .first()
+    )
 
 
 def list_running_instances(capsule_id: UUID) -> QuerySet[CapsuleInstance]:
@@ -297,14 +299,13 @@ def cleanup_stale_instances(max_age_hours: int = 24) -> int:
     Returns:
         Number of instances terminated
     """
-    from django.utils import timezone as dj_timezone
     from datetime import timedelta
+
+    from django.utils import timezone as dj_timezone
 
     cutoff = dj_timezone.now() - timedelta(hours=max_age_hours)
 
-    stale = CapsuleInstance.objects.filter(
-        status="running", started_at__lt=cutoff
-    )
+    stale = CapsuleInstance.objects.filter(status="running", started_at__lt=cutoff)
 
     count = 0
     for instance in stale:

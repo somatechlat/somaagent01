@@ -111,6 +111,7 @@ class ChatService:
         }
 
         try:
+
             @sync_to_async
             def get_capsule_neuro():
                 capsule = Capsule.objects.filter(id=agent_id).first()
@@ -317,7 +318,6 @@ class ChatService:
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
-        from admin.core.helpers.settings_defaults import get_default_settings
         from admin.llm.services.litellm_client import get_chat_model
 
         start_time = time.perf_counter()
@@ -397,7 +397,9 @@ class ChatService:
         # System prompt from Capsule.system_prompt (the Soul)
         system_prompt = capsule.system_prompt if capsule else ""
         if not system_prompt:
-            logger.warning(f"No system_prompt in Capsule {agent_id} - agent may behave unexpectedly")
+            logger.warning(
+                f"No system_prompt in Capsule {agent_id} - agent may behave unexpectedly"
+            )
             system_prompt = ""  # Empty, NOT hardcoded fallback
 
         # 5. Detect required capabilities from content (attachments would be added here)
@@ -586,7 +588,11 @@ class ChatService:
         response_content = []
         try:
             async for chunk in llm._astream(messages=lc_messages):
-                token = str(chunk.message.content) if hasattr(chunk, "message") and hasattr(chunk.message, "content") else ""  # type: ignore[ reportAttributeAccessIssue]
+                token = (
+                    str(chunk.message.content)
+                    if hasattr(chunk, "message") and hasattr(chunk.message, "content")
+                    else ""
+                )  # type: ignore[ reportAttributeAccessIssue]
 
                 if token:
                     response_content.append(token)
@@ -679,9 +685,7 @@ class ChatService:
         # Signal long user message (indicates engagement)
         if len(content) > 200:
             asyncio.create_task(
-                signal_long_response(
-                    conversation_id, len(content), learning_config=learning_config
-                )
+                signal_long_response(conversation_id, len(content), learning_config=learning_config)
             )
 
         # Track overall metrics
@@ -788,7 +792,11 @@ class ChatService:
                     HumanMessage(content=context),
                 ]
             ):
-                token = str(chunk.message.content) if hasattr(chunk, "message") and hasattr(chunk.message, "content") else ""  # type: ignore[reportAttributeAccessIssue]
+                token = (
+                    str(chunk.message.content)
+                    if hasattr(chunk, "message") and hasattr(chunk.message, "content")
+                    else ""
+                )  # type: ignore[reportAttributeAccessIssue]
                 if token:
                     title_tokens.append(token)
 

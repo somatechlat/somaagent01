@@ -35,6 +35,7 @@ class TestSimpleContextBuilderDeploymentMode:
             import importlib
 
             import services.common.simple_context_builder as scb
+
             importlib.reload(scb)
 
             # Create builder
@@ -69,6 +70,7 @@ class TestSimpleContextBuilderDeploymentMode:
             import importlib
 
             import services.common.simple_context_builder as scb
+
             importlib.reload(scb)
 
             # Create builder
@@ -92,7 +94,9 @@ class TestSimpleContextBuilderDeploymentMode:
                 print("  ✅ STANDALONE mode: Memory retrieval completed via embedded module")
             except ImportError as e:
                 # Expected in environments without embedded modules
-                print("  ✅ STANDALONE mode: ImportError handled correctly (embedded modules not available)")
+                print(
+                    "  ✅ STANDALONE mode: ImportError handled correctly (embedded modules not available)"
+                )
                 assert "somabrain" in str(e).lower()
 
     @pytest.mark.asyncio
@@ -136,6 +140,7 @@ class TestChatServiceErrorHandling:
             import importlib
 
             import services.common.chat_service as cs
+
             importlib.reload(cs)
 
             # Create chat service with timeout
@@ -173,6 +178,7 @@ class TestChatServiceErrorHandling:
             import importlib
 
             import services.common.chat_service as cs
+
             importlib.reload(cs)
 
             # Create chat service
@@ -180,7 +186,6 @@ class TestChatServiceErrorHandling:
 
             # Mock context builder failure
             with patch("services.common.chat_service.create_context_builder") as mock_builder:
-
                 mock_builder_instance = AsyncMock()
                 mock_builder_instance.build_for_turn = AsyncMock(
                     side_effect=ImportError("Embedded SomaBrain module not found")
@@ -204,6 +209,7 @@ class TestChatServiceErrorHandling:
         import importlib
 
         import services.common.chat_service as cs
+
         importlib.reload(cs)
 
         # Create chat service
@@ -233,6 +239,7 @@ class TestHealthMonitorDeploymentMode:
             import importlib
 
             import services.common.health_monitor as hm
+
             importlib.reload(hm)
 
             monitor = hm.HealthMonitor()
@@ -267,6 +274,7 @@ class TestHealthMonitorDeploymentMode:
             import importlib
 
             import services.common.health_monitor as hm
+
             importlib.reload(hm)
 
             monitor = hm.HealthMonitor()
@@ -277,6 +285,7 @@ class TestHealthMonitorDeploymentMode:
                 try:
                     # Try importing embedded module to check availability
                     import somabrain  # noqa: F401  # Intentional side-effect import
+
                     if False:
                         pass  # type: ignore[unreachable]  # Ruff: F401 side-effect import
                     return HealthCheck(healthy=True, latency_ms=15.0)
@@ -303,6 +312,7 @@ class TestHealthMonitorDeploymentMode:
             import importlib
 
             import services.common.health_monitor as hm
+
             importlib.reload(hm)
 
             monitor = hm.HealthMonitor()
@@ -338,6 +348,7 @@ class TestUnifiedMetricsDeploymentMode:
             import importlib
 
             import services.common.unified_metrics as um
+
             importlib.reload(um)
 
             metrics = um.get_metrics()
@@ -357,6 +368,7 @@ class TestUnifiedMetricsDeploymentMode:
             import importlib
 
             import services.common.unified_metrics as um
+
             importlib.reload(um)
 
             metrics = um.get_metrics()
@@ -380,6 +392,7 @@ class TestUnifiedMetricsDeploymentMode:
             import importlib
 
             import services.common.unified_metrics as um
+
             importlib.reload(um)
 
             metrics = um.get_metrics()
@@ -394,6 +407,7 @@ class TestUnifiedMetricsDeploymentMode:
             import importlib
 
             import services.common.unified_metrics as um
+
             importlib.reload(um)
 
             metrics = um.get_metrics()
@@ -412,6 +426,7 @@ class TestUnifiedMetricsDeploymentMode:
             import importlib
 
             import services.common.unified_metrics as um
+
             importlib.reload(um)
 
             metrics = um.get_metrics()
@@ -426,6 +441,7 @@ class TestUnifiedMetricsDeploymentMode:
             import importlib
 
             import services.common.unified_metrics as um
+
             importlib.reload(um)
 
             metrics = um.get_metrics()

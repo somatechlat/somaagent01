@@ -1,0 +1,42 @@
+{
+  "include": [
+    "admin",
+    "services",
+    "webui"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/venv.bak/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.ruff_cache/**",
+    "**/.pytest_cache/**",
+    "**/.mypy_cache/**",
+    "**/*.egg-info/**",
+    "**/tmp/**",
+    "**/logs/**",
+    "**/.git/**",
+    "**/scripts/**",
+    "**/infra/**",
+    "**/policy/**",
+    "**/schemas/**",
+    "**/prompts/**"
+  ],
+  "reportMissingTypeStubs": false,
+  "reportMissingImports": "none",
+  "reportUndefinedVariable": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalCall": "none",
+  "reportOptionalIterable": "none",
+  "reportOptionalContextManager": "none",
+  "reportOptionalOperand": "none",
+  "stubPath": "typings",
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "basic"
+}

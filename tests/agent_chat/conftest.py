@@ -14,11 +14,10 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import AsyncIterator, TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from asgiref.sync import sync_to_async
 
 if TYPE_CHECKING:
     from services.common.chat_service import ChatService
@@ -55,7 +54,7 @@ def real_infrastructure():
         ("localhost", 63979, "Redis"),  # somastack_redis
         ("localhost", 63900, "Agent API"),  # somastack_saas:9000
     ]
-    
+
     for host, port, name in services:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(2)
@@ -63,23 +62,23 @@ def real_infrastructure():
         sock.close()
         if result != 0:
             pytest.skip(f"{name} not available at {host}:{port}")
-    
+
     return True
 
 
 @pytest.fixture(scope="session", autouse=True)
 def django_db_setup():
     """Configure Django for testing.
-    
+
     VIBE COMPLIANT: Uses real infrastructure (PostgreSQL on port 63932)
-    
+
     VIBE Rule 7: Uses real Docker Compose PostgreSQL - NO mocks!
-    
+
     autouse=True ensures Django is configured before any test runs.
     """
     import django
     from django.conf import settings
-    
+
     # Only configure if not already configured
     if not settings.configured:
         settings.configure(
@@ -127,7 +126,7 @@ def django_db_setup():
             },
         )
         django.setup()
-        
+
         # Tables already exist in real SAAS database
         # No need to create them - they're managed by Django migrations in the running container
         # VIBE Rule 7: Real infrastructure means real databases with real schema
@@ -172,12 +171,12 @@ def auth_token() -> str:
 @pytest.fixture
 def chat_service() -> "ChatService":
     """Get configured ChatService instance.
-    
+
     VIBE COMPLIANT: Uses real ChatService implementation with actual infrastructure
     (no mocks, no fakes, real PostgreSQL, Redis, SomaBrain).
     """
     from services.common.chat_service import ChatService
-    
+
     # ChatService only accepts somabrain_url and timeout parameters
     # Memory operations use SomaBrainClient internally
     return ChatService(
@@ -190,13 +189,13 @@ def chat_service() -> "ChatService":
 async def governor(real_infrastructure):
     """Get configured Simple Governor."""
     from services.common.simple_governor import get_governor, SimpleGovernor
-    
+
     # SimpleGovernor doesn't require complex dependencies
     # It uses binary health/degraded decision model
     gov = get_governor()
-    
+
     assert isinstance(gov, SimpleGovernor), "Should return SimpleGovernor instance"
-    
+
     yield gov
 
 
@@ -206,7 +205,7 @@ def context_builder(real_infrastructure):
     from admin.agents.services.context_builder import ContextBuilder
     from admin.core.observability.metrics import ContextBuilderMetrics
     from admin.core.somabrain_client import SomaBrainClient
-    
+
     return ContextBuilder(
         somabrain=SomaBrainClient(),
         metrics=ContextBuilderMetrics(),
@@ -215,7 +214,7 @@ def context_builder(real_infrastructure):
 
 
 # =============================================================================
-# Conversation Fixtures  
+# Conversation Fixtures
 # =============================================================================
 
 

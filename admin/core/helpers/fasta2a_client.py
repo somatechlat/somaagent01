@@ -95,9 +95,7 @@ class AgentConnection:
 
                     _PRINTER.print(f"Retrieved agent card from {self.agent_url}")
                     _PRINTER.print(f"Agent: {self._agent_card.get('name', 'Unknown')}")  # type: ignore
-                    _PRINTER.print(
-                        f"Description: {self._agent_card.get('description', 'No description')}"
-                    )  # type: ignore
+                    _PRINTER.print(f"Description: {self._agent_card.get('description', 'No description')}")  # type: ignore
 
                 except httpx.TimeoutException as e:
                     # REAL IMPLEMENTATION - Track timeout

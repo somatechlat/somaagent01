@@ -49,8 +49,7 @@ def fix_gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     """
     if ChatGoogle is None:
         raise RuntimeError(
-            "langchain-google-genai required for Gemini compatibility. "
-            "Install with: pip install langchain-google-genai"
+            "langchain-google-genai required for Gemini compatibility. Install with: pip install langchain-google-genai"
         )
 
     return ChatGoogle("")._fix_gemini_schema(schema)

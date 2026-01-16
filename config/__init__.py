@@ -12,13 +12,13 @@ Usage:
 """
 
 from config.settings_registry import (
-    SettingsRegistry,
     BaseSettings,
-    StandaloneSettings,
-    SaaSSettings,
-    get_settings,
-    get_required_env,
     get_optional_env,
+    get_required_env,
+    get_settings,
+    SaaSSettings,
+    SettingsRegistry,
+    StandaloneSettings,
 )
 
 __all__ = [

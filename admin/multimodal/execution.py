@@ -14,7 +14,6 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.conf import settings
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
@@ -30,10 +29,9 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-from admin.saas.models.profiles import PlatformConfig
 from admin.llm.models import LLMModelConfig
+from admin.saas.models.profiles import PlatformConfig
 from services.common.unified_secret_manager import get_secret_manager
-
 
 # =============================================================================
 # SCHEMAS
@@ -155,13 +153,18 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
     # 1. Resolve Model Configuration (Rule 91)
     # We look for a model with 'image_generation' capability
     # In future, this should be scoped to the Tenant/Capsule
-    model_config = await LLMModelConfig.objects.filter(
-        capabilities__contains="image_generation",
-        is_active=True
-    ).order_by("-priority").afirst()
+    model_config = (
+        await LLMModelConfig.objects.filter(
+            capabilities__contains="image_generation", is_active=True
+        )
+        .order_by("-priority")
+        .afirst()
+    )
 
     if not model_config:
-         raise ServiceUnavailableError("openai", "No image generation model configured in LLMModelConfig")
+        raise ServiceUnavailableError(
+            "openai", "No image generation model configured in LLMModelConfig"
+        )
 
     # 2. Retrieve Secret from Vault (No Env Vars)
     sm = get_secret_manager()
@@ -172,7 +175,9 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
         raise ServiceUnavailableError("openai", "Could not retrieve API key from Vault")
 
     if not api_key:
-        raise ServiceUnavailableError("openai", f"API keys not configured for provider {model_config.provider}")
+        raise ServiceUnavailableError(
+            "openai", f"API keys not configured for provider {model_config.provider}"
+        )
 
     if len(payload.prompt) > 4000:
         raise BadRequestError("Prompt exceeds maximum length of 4000 characters")
@@ -189,7 +194,7 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
                 f"{base_url}/images/generations",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": model_config.name, # Use specific model name from DB (e.g. dall-e-3)
+                    "model": model_config.name,  # Use specific model name from DB (e.g. dall-e-3)
                     "prompt": payload.prompt,
                     "size": payload.size,
                     "quality": payload.quality,

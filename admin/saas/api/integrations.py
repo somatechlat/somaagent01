@@ -19,7 +19,6 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from django.conf import settings
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
@@ -82,8 +81,8 @@ class ConnectionTestResult(BaseModel):
 # =============================================================================
 
 
-from admin.saas.models.profiles import PlatformConfig
 from admin.llm.models import LLMModelConfig
+from admin.saas.models.profiles import PlatformConfig
 
 # =============================================================================
 # HELPER FUNCTIONS (Dynamic Resolution)
@@ -102,18 +101,18 @@ async def _get_integration_config(provider: str) -> dict:
 
     # 1. LLM Provider Special Case
     if provider == "openai":
-         # Find primary model
-         model = await LLMModelConfig.objects.filter(provider="openai", is_active=True).afirst()
-         if model:
-             return {
-                 "name": "OpenAI (LLM)",
-                 "icon": "🤖",
-                 "endpoint": "https://api.openai.com/v1", # Hardcoded base or from model.api_base
-                 "api_key": "managed-by-vault", # We don't expose keys here
-                 "status": "connected",
-                 "last_check": None
-             }
-         return {"name": "OpenAI", "status": "unconfigured"}
+        # Find primary model
+        model = await LLMModelConfig.objects.filter(provider="openai", is_active=True).afirst()
+        if model:
+            return {
+                "name": "OpenAI (LLM)",
+                "icon": "🤖",
+                "endpoint": "https://api.openai.com/v1",  # Hardcoded base or from model.api_base
+                "api_key": "managed-by-vault",  # We don't expose keys here
+                "status": "connected",
+                "last_check": None,
+            }
+        return {"name": "OpenAI", "status": "unconfigured"}
 
     # 2. Platform Config Defaults
     # We map the monolithic defaults JSON to this virtual "Integration" concept
@@ -191,8 +190,10 @@ async def get_integration(request, provider: str) -> IntegrationConfig:
 
     # Filter out internal keys
     extra = {
-        k: v for k, v in config.items()
-        if k not in ["name", "icon", "endpoint", "api_key", "last_check", "status", "status_message"]
+        k: v
+        for k, v in config.items()
+        if k
+        not in ["name", "icon", "endpoint", "api_key", "last_check", "status", "status_message"]
     }
 
     return IntegrationConfig(
@@ -248,6 +249,7 @@ async def update_integration(
 async def test_connection(request, provider: str) -> ConnectionTestResult:
     """Test integration connection."""
     import time
+
     import httpx
 
     if provider not in SUPPORTED_PROVIDERS:
@@ -328,14 +330,14 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
     # For this implementation, we will try to update the PlatformConfig if it's not OpenAI
     # OpenAI status is managed by LLMModelConfig state.
     if provider != "openai":
-         platform_config = await PlatformConfig.aget_instance()
-         integrations = platform_config.defaults.get("integrations", {})
-         if provider in integrations:
-             integrations[provider]["last_check"] = timezone.now().isoformat()
-             integrations[provider]["status"] = "connected" if success else "error"
-             integrations[provider]["status_message"] = message
-             platform_config.defaults["integrations"] = integrations
-             await platform_config.asave()
+        platform_config = await PlatformConfig.aget_instance()
+        integrations = platform_config.defaults.get("integrations", {})
+        if provider in integrations:
+            integrations[provider]["last_check"] = timezone.now().isoformat()
+            integrations[provider]["status"] = "connected" if success else "error"
+            integrations[provider]["status_message"] = message
+            platform_config.defaults["integrations"] = integrations
+            await platform_config.asave()
 
     return ConnectionTestResult(
         provider=provider,
@@ -360,7 +362,6 @@ async def sync_lago_plans(request) -> dict:
     """
     import httpx
 
-    import httpx
 
     config = await _get_integration_config("lago")
     if not config.get("api_key"):
@@ -402,7 +403,9 @@ async def send_test_email(request, to_email: str) -> dict:
         send_mail(
             subject="SomaAgent Test Email",
             message="This is a test email from SomaAgent Platform.",
-            from_email=(await _get_integration_config("smtp")).get("default_from", "no-reply@soma.ai"),
+            from_email=(await _get_integration_config("smtp")).get(
+                "default_from", "no-reply@soma.ai"
+            ),
             recipient_list=[to_email],
             fail_silently=False,
         )

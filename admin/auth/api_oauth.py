@@ -11,9 +11,9 @@ from urllib.parse import urlencode
 import httpx
 from ninja import Router, Schema
 
+from admin.auth.api_helpers import determine_redirect_path, update_last_login
 from admin.common.auth import decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError
-from admin.auth.api_helpers import determine_redirect_path, update_last_login
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["OAuth"])
@@ -21,12 +21,14 @@ router = Router(tags=["OAuth"])
 
 class OAuthInitiateResponse(Schema):
     """OAuth initiation response with redirect URL."""
+
     redirect_url: str
     state: str
 
 
 class OAuthCallbackRequest(Schema):
     """OAuth callback query parameters."""
+
     code: str
     state: str
 
@@ -72,6 +74,7 @@ async def oauth_initiate(request, provider: str):
 async def oauth_callback(request, code: str, state: str):
     """Handle OAuth callback from Keycloak."""
     from django.http import HttpResponseRedirect
+
     from admin.common.pkce import get_oauth_state_store
     from admin.common.session_manager import get_session_manager
 
@@ -129,14 +132,37 @@ async def oauth_callback(request, code: str, state: str):
 
     await update_last_login(token_payload)
     redirect_path = determine_redirect_path(token_payload)
-    logger.info(f"OAuth login successful: provider={oauth_state.provider}, user_id={token_payload.sub}")
+    logger.info(
+        f"OAuth login successful: provider={oauth_state.provider}, user_id={token_payload.sub}"
+    )
 
     response = HttpResponseRedirect(redirect_path)
     max_age = token_data.get("expires_in", 900)
-    response.set_cookie("access_token", token_data["access_token"], max_age=max_age, httponly=True, secure=True, samesite="Lax")
+    response.set_cookie(
+        "access_token",
+        token_data["access_token"],
+        max_age=max_age,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+    )
     if token_data.get("refresh_token"):
-        response.set_cookie("refresh_token", token_data["refresh_token"], max_age=86400, httponly=True, secure=True, samesite="Lax")
-    response.set_cookie("session_id", session.session_id, max_age=max_age, httponly=True, secure=True, samesite="Lax")
+        response.set_cookie(
+            "refresh_token",
+            token_data["refresh_token"],
+            max_age=86400,
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+        )
+    response.set_cookie(
+        "session_id",
+        session.session_id,
+        max_age=max_age,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+    )
     return response
 
 

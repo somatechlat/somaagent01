@@ -55,9 +55,9 @@ See Also:
 
 from __future__ import annotations
 
-from functools import lru_cache
 import importlib
 import logging
+from functools import lru_cache
 
 from ninja import NinjaAPI
 

@@ -73,10 +73,10 @@ def __getattr__(name: str):
 
     if name in ("import_capsule", "import_tenant_capsules", "ImportResult", "TenantImportResult"):
         from services.capsule_import import (
-            ImportResult,
-            TenantImportResult,
             import_capsule,
             import_tenant_capsules,
+            ImportResult,
+            TenantImportResult,
         )
 
         return locals()[name]

@@ -15,14 +15,12 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from services.common.unified_secret_manager import UnifiedSecretManager, get_secret_manager
-
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
     AuditLog,
+    Capability,
     Capsule,
     CapsuleInstance,
-    Capability,
     Constitution,
     DeadLetterMessage,
     MemoryReplica,
@@ -33,6 +31,7 @@ from admin.core.models import (
 
 # --- REAL SERVICE IMPORTS (Verified on physical disk) ---
 from services.common.api_key_store import ApiKeyStore
+from services.common.unified_secret_manager import get_secret_manager, UnifiedSecretManager
 
 
 class RepositoryManager:
@@ -192,4 +191,3 @@ def get_capability_store():
 async def get_settings_repo():
     """Get UI settings store (Async compatibility wrapper)."""
     return get_ui_settings_store()
-

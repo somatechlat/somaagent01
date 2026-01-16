@@ -61,19 +61,21 @@ async def select_model(
     from admin.llm.models import LLMModelConfig
 
     # 1. Get all active models from LLMModelConfig (SINGLE SOURCE OF TRUTH)
-    models = await LLMModelConfig.objects.filter(
-        is_active=True,
-        model_type="chat",
-    ).order_by("-priority").avalues()
+    models = (
+        await LLMModelConfig.objects.filter(
+            is_active=True,
+            model_type="chat",
+        )
+        .order_by("-priority")
+        .avalues()
+    )
 
     # Convert to list for filtering
     models = [m async for m in models]
 
     # 2. Filter: has required capabilities
     capable = [
-        m
-        for m in models
-        if required_capabilities.issubset(set(m.get("capabilities") or ["text"]))
+        m for m in models if required_capabilities.issubset(set(m.get("capabilities") or ["text"]))
     ]
 
     # 3. Filter: Capsule constraints (if any)
@@ -89,9 +91,7 @@ async def select_model(
 
     # 5. Return best match (already sorted by priority)
     if not capable:
-        raise NoCapableModelError(
-            f"No model found with capabilities: {required_capabilities}"
-        )
+        raise NoCapableModelError(f"No model found with capabilities: {required_capabilities}")
 
     best = capable[0]
     logger.info(

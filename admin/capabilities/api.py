@@ -363,8 +363,6 @@ async def health_summary(request) -> dict:
         "overall_health": (
             "healthy"
             if open_circuits == 0
-            else "degraded"
-            if open_circuits < len(_circuit_breakers) / 2
-            else "critical"
+            else "degraded" if open_circuits < len(_circuit_breakers) / 2 else "critical"
         ),
     }

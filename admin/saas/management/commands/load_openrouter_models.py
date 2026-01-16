@@ -176,7 +176,14 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 200000,
                 "vision": True,
-                "capabilities": ["text", "vision", "code", "long_context", "function_calling", "structured_output"],
+                "capabilities": [
+                    "text",
+                    "vision",
+                    "code",
+                    "long_context",
+                    "function_calling",
+                    "structured_output",
+                ],
                 "priority": 95,
                 "cost_tier": "premium",
                 "domains": ["code", "legal"],
@@ -192,7 +199,15 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 128000,
                 "vision": True,
-                "capabilities": ["text", "vision", "code", "audio", "long_context", "function_calling", "structured_output"],
+                "capabilities": [
+                    "text",
+                    "vision",
+                    "code",
+                    "audio",
+                    "long_context",
+                    "function_calling",
+                    "structured_output",
+                ],
                 "priority": 90,
                 "cost_tier": "premium",
             },
@@ -207,7 +222,14 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 1000000,
                 "vision": True,
-                "capabilities": ["text", "vision", "code", "long_context", "function_calling", "structured_output"],
+                "capabilities": [
+                    "text",
+                    "vision",
+                    "code",
+                    "long_context",
+                    "function_calling",
+                    "structured_output",
+                ],
                 "priority": 92,
                 "cost_tier": "premium",
             },
@@ -222,7 +244,14 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 200000,
                 "vision": True,
-                "capabilities": ["text", "vision", "code", "long_context", "function_calling", "structured_output"],
+                "capabilities": [
+                    "text",
+                    "vision",
+                    "code",
+                    "long_context",
+                    "function_calling",
+                    "structured_output",
+                ],
                 "priority": 98,
                 "cost_tier": "premium",
                 "domains": ["scientific", "legal"],
@@ -238,7 +267,15 @@ class Command(BaseCommand):
                 "rate_limit": 100,
                 "ctx_length": 1000000,
                 "vision": True,
-                "capabilities": ["text", "vision", "video", "audio", "code", "long_context", "function_calling"],
+                "capabilities": [
+                    "text",
+                    "vision",
+                    "video",
+                    "audio",
+                    "code",
+                    "long_context",
+                    "function_calling",
+                ],
                 "priority": 88,
                 "cost_tier": "standard",
             },
@@ -269,7 +306,9 @@ class Command(BaseCommand):
         """
         from admin.llm.models import LLMModelConfig
 
-        self.stdout.write(self.style.HTTP_INFO("\n🔄 Loading OpenRouter Models into LLMModelConfig...\n"))
+        self.stdout.write(
+            self.style.HTTP_INFO("\n🔄 Loading OpenRouter Models into LLMModelConfig...\n")
+        )
 
         # Filter models by flags
         all_models = self.get_openrouter_models()
@@ -331,12 +370,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.HTTP_INFO(f"     • Total in DB: {total_count}\n"))
 
         # Show model breakdown
-        free_enabled = LLMModelConfig.objects.filter(
-            is_active=True, name__contains=":free"
-        ).count()
-        paid_enabled = LLMModelConfig.objects.filter(is_active=True).exclude(
-            name__contains=":free"
-        ).count()
+        free_enabled = LLMModelConfig.objects.filter(is_active=True, name__contains=":free").count()
+        paid_enabled = (
+            LLMModelConfig.objects.filter(is_active=True).exclude(name__contains=":free").count()
+        )
         default_chat = LLMModelConfig.objects.filter(is_active=True).order_by("-priority").first()
 
         self.stdout.write(self.style.HTTP_INFO("\n  📊 Model Summary:\n"))
@@ -344,11 +381,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.HTTP_INFO(f"     • PAID enabled: {paid_enabled}\n"))
         if default_chat:
             self.stdout.write(
-                self.style.SUCCESS(f"     • Top Priority Model: {default_chat.display_name or default_chat.name} (priority={default_chat.priority})\n")
+                self.style.SUCCESS(
+                    f"     • Top Priority Model: {default_chat.display_name or default_chat.name} (priority={default_chat.priority})\n"
+                )
             )
         else:
             self.stdout.write(self.style.WARNING("     • No active models!\n"))
 
 
 __all__ = ["Command"]
-

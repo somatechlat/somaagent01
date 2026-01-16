@@ -148,3 +148,35 @@ ignore = [
 combine-as-imports = true
 order-by-type = false
 known-first-party = ["python", "tests"]
+
+[tool.pyright]
+include = ["admin", "services", "webui"]
+exclude = [
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.ruff_cache/**",
+    "**/.pytest_cache/**",
+    "**/.mypy_cache/**",
+    "**/*.egg-info/**",
+    "**/tmp/**",
+    "**/logs/**",
+    "**/.git/**",
+    "**/scripts/**",
+    "**/infra/**",
+    "**/policy/**",
+    "**/schemas/**",
+    "**/prompts/**"
+]
+reportMissingImports = "none"
+reportUndefinedVariable = "none"
+reportOptionalMemberAccess = "none"
+reportOptionalCall = "none"
+reportMissingTypeStubs = false
+stubPath = "typings"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"

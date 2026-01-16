@@ -16,18 +16,19 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
 
 class CircuitState(str, Enum):
     """Circuit breaker states.
-    
+
     CLOSED: Normal operation, requests pass through
     HALF_OPEN: Testing if service recovered (single request allowed)
     OPEN: Circuit tripped, requests fail fast
     """
+
     CLOSED = "closed"
     HALF_OPEN = "half_open"
     OPEN = "open"
@@ -36,6 +37,7 @@ class CircuitState(str, Enum):
 @dataclass
 class CircuitBreakerConfig:
     """Circuit breaker configuration."""
+
     name: str
     failure_threshold: int = 5
     reset_timeout: float = 60.0
@@ -72,7 +74,7 @@ class CircuitBreaker:
         config: CircuitBreakerConfig,
     ) -> None:
         """Initialize circuit breaker.
-        
+
         Args:
             config: Circuit breaker configuration
         """
@@ -205,7 +207,7 @@ class CircuitBreaker:
 
     def reset(self) -> None:
         """Manually reset circuit to CLOSED state.
-        
+
         Useful for testing or manual recovery.
         """
         self._state = CircuitState.CLOSED
@@ -220,7 +222,7 @@ class CircuitBreaker:
 
     def force_open(self) -> None:
         """Force circuit to OPEN state.
-        
+
         Useful for maintenance or manual degradation.
         """
         self._state = CircuitState.OPEN
@@ -233,10 +235,7 @@ class CircuitBreaker:
 
     def __repr__(self) -> str:
         """String representation."""
-        return (
-            f"<CircuitBreaker name={self.config.name!r} "
-            f"state={self._state.value!r} failures={self._failure_count}>"
-        )
+        return f"<CircuitBreaker name={self.config.name!r} state={self._state.value!r} failures={self._failure_count}>"
 
 
 # Registry for centralized circuit breaker management
@@ -271,7 +270,7 @@ def get_circuit_breaker(
 
 def reset_all_circuit_breakers() -> None:
     """Reset all circuit breakers.
-    
+
     Useful for testing or recovery operations.
     """
     for breaker in _circuit_breakers.values():

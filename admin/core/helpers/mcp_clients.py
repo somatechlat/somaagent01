@@ -64,9 +64,7 @@ class MCPClientBase(ABC):
         self.log_file: Optional[TextIO] = None
 
     @abstractmethod
-    async def _create_stdio_transport(
-        self, current_exit_stack: AsyncExitStack
-    ) -> tuple[
+    async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
@@ -220,9 +218,7 @@ class MCPClientLocal(MCPClientBase):
                 pass
             self.log_file = None
 
-    async def _create_stdio_transport(
-        self, current_exit_stack: AsyncExitStack
-    ) -> tuple[
+    async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:
@@ -298,9 +294,7 @@ class MCPClientRemote(MCPClientBase):
         self.session_id: Optional[str] = None
         self.session_id_callback: Optional[Callable[[], Optional[str]]] = None
 
-    async def _create_stdio_transport(
-        self, current_exit_stack: AsyncExitStack
-    ) -> tuple[
+    async def _create_stdio_transport(self, current_exit_stack: AsyncExitStack) -> tuple[
         MemoryObjectReceiveStream[SessionMessage | Exception],
         MemoryObjectSendStream[SessionMessage],
     ]:

@@ -356,9 +356,7 @@ async def get_messages(
         """Execute get messages."""
 
         if not Conversation.objects.filter(
-            id=conversation_id,
-            user_id=user_id,
-            tenant_id=tenant_id
+            id=conversation_id, user_id=user_id, tenant_id=tenant_id
         ).exists():
             return None, 0
 

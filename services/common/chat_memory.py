@@ -52,6 +52,7 @@ async def recall_memories(
         List of Memory objects (empty if service unavailable)
     """
     import time
+
     from prometheus_client import Counter, Histogram
 
     try:
@@ -147,7 +148,9 @@ async def store_memory(
         # Generate memory key
         conversation_id = metadata.get("conversation_id", "unknown")
         timestamp = metadata.get("timestamp", datetime.now(timezone.utc).isoformat())
-        memory_key = f"interaction:{conversation_id}:{hashlib.sha256(content.encode()).hexdigest()[:12]}"
+        memory_key = (
+            f"interaction:{conversation_id}:{hashlib.sha256(content.encode()).hexdigest()[:12]}"
+        )
 
         await somabrain.remember(
             payload={
