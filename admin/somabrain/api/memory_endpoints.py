@@ -21,7 +21,7 @@ from django.http import HttpRequest
 from admin.common.auth import AuthBearer
 from admin.somabrain.services.memory_integration import (
     get_memory_integration,
-    MemoryPayload,
+    MemoryPayload, 
 )
 from admin.chat.models import Conversation, Message
 from services.common.unified_metrics import get_metrics

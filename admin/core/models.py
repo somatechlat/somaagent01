@@ -109,10 +109,13 @@ class Constitution(models.Model):
 
 
 class Capsule(models.Model):
-    """Capsule definition - The Atomic Unit of Agent Identity.
+    """Capsule definition - The Atomic Unit of Agent Identity (Rule 91).
 
-    Contains the 'Soul' (Persona) and 'Body' (Capabilities).
-    Must be certified by the Registry and bound to a Constitution.
+    The Capsule acts as the "Sole Unit" of exchange, containing:
+    1.  Identity (Soul)
+    2.  Body (Model Configs via FK)
+    3.  Hands (capabilities via M2M)
+    4.  Memory (MemoryConfig via FK)
 
     Lifecycle: DRAFT → ACTIVE → ARCHIVED
     """
@@ -187,11 +190,75 @@ class Capsule(models.Model):
     neuromodulator_baseline = models.JSONField(
         default=dict, help_text="Baseline chemical state (Dopamine, etc.)"
     )
+    learning_config = models.JSONField(
+        default=dict,
+        help_text="GMD Hyperparameters (eta, lambda, alpha) & Reward Thresholds",
+    )
 
-    # The Body (Capabilities)
-    schema = models.JSONField(default=dict, help_text="Legacy: Tool schemas")
-    config = models.JSONField(default=dict, help_text="Legacy: Configuration")
-    capabilities_whitelist = models.JSONField(default=list, help_text="List of allowed Tool IDs")
+    # ═══════════════════════════════════════════════════════════════════
+    # 2. BODY: MODEL SOVEREIGNTY (Foreign Keys Only - Rule 91)
+    # ═══════════════════════════════════════════════════════════════════
+
+    # 🧠 PRIMARY BRAIN
+    chat_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_chat',
+        on_delete=models.PROTECT,
+        null=True, # Allowed to be null in draft
+        help_text="The main cognitive engine (e.g. gpt-4-turbo)"
+    )
+
+    # 👁️ VISION & IMAGE
+    image_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_image',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Image generation model (e.g. dall-e-3)"
+    )
+
+    # 🗣️ VOICE (TTS/STT)
+    voice_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_voice',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Voice synthesis model (e.g. elevenlabs-v1)"
+    )
+
+    # 🌐 BROWSER
+    browser_model = models.ForeignKey(
+        'llm.LLMModelConfig',
+        related_name='capabilities_browser',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Web browsing and vision model (e.g. perplexity)"
+    )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 3. HANDS: TOOLS & CAPABILITIES
+    # ═══════════════════════════════════════════════════════════════════
+
+    capabilities = models.ManyToManyField(
+        'Capability',
+        related_name='capsules',
+        blank=True,
+        help_text="Active tools/MCP servers available to this agent"
+    )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 4. MEMORY & HISTORY
+    # ═══════════════════════════════════════════════════════════════════
+
+    memory_config = models.ForeignKey(
+        'somabrain.MemoryConfig',
+        on_delete=models.PROTECT,
+        null=True, blank=True,
+        help_text="Memory retention and retrieval strategy"
+    )
+
+    # Legacy Fields (Deprecated - Rule 91)
+    # kept for migration, do not use for new logic
+    schema = models.JSONField(default=dict, help_text="DEPRECATED: Use Capability M2M")
+    config = models.JSONField(default=dict, help_text="DEPRECATED: Use Model Configs")
+    capabilities_whitelist = models.JSONField(default=list, help_text="DEPRECATED: Use Capability M2M")
     resource_limits = models.JSONField(default=dict, help_text="Max wall clock, concurrency, etc.")
 
     is_active = models.BooleanField(default=True)

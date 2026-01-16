@@ -26,8 +26,8 @@
 │                              ↓                                       │
 │   ┌───────────────────────────────────────────────────────────────┐ │
 │   │ services/common/chat_service.py (1150 lines)                  │ │
-│   │   ├── AgentIQ Governor → LanePlan                             │ │
-│   │   ├── ContextBuilder → Built Context                          │ │
+│   │   ├── SimpleGovernor → LaneBudget                           │ │
+│   │   ├── SimpleContextBuilder → Built Context                         │ │
 │   │   └── LLM Invoke → Stream Response                            │ │
 │   └───────────────────────────────────────────────────────────────┘ │
 │                              ↓                                       │
@@ -51,12 +51,12 @@
 | Chat API | `admin/chat/api/chat.py` | ~400 | ✅ Complete |
 | Chat Models | `admin/chat/models.py` | 154 | ✅ Complete |
 | ChatService | `services/common/chat_service.py` | 1150 | ✅ Complete |
-| **AgentIQ Governor** | `admin/agents/services/agentiq_governor.py` | 878 | ✅ Complete |
-| Context Builder | `admin/agents/services/context_builder.py` | ~700 | ✅ Complete |
-| Confidence Scorer | `admin/agents/services/confidence_scorer.py` | ~350 | ✅ Complete |
-| Run Receipt | `admin/agents/services/run_receipt.py` | ~300 | ✅ Complete |
+| **SimpleGovernor** | `services/common/simple_governor.py` | 279 | ✅ Complete |
+| SimpleContextBuilder | `services/common/simple_context_builder.py` | ~400 | ✅ Complete |
+| HealthMonitor | `services/common/health_monitor.py` | ~250 | ✅ Complete |
 | LiteLLM Client | `admin/llm/services/litellm_client.py` | 1492 | ✅ Complete |
 | LLM Models | `admin/llm/models.py` | ~60 | ✅ Complete |
+| SomaBrainClient | `admin/core/somabrain_client.py` | ~600 | ✅ Complete |
 
 ---
 

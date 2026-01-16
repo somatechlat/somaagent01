@@ -306,6 +306,15 @@ All agent settings are defined in `admin/core/helpers/settings_model.py:Settings
 | **Misc** | `secrets` | str | `""` | User-defined secrets JSON |
 | **Misc** | `litellm_global_kwargs` | Dict | `{}` | Global LiteLLM args |
 | **Misc** | `USE_LLM` | bool | True | Enable LLM usage |
+| **SomaBrain** | `somabrain_enabled` | bool | True | Enable L3 Cognitive Brain |
+| **SomaBrain** | `cognitive_salience_threshold` | float | 0.6 | Min salience for action |
+| **SomaBrain** | `cognitive_learning_rate` | float | 0.01 | Adaptation rate (alpha) |
+| **SomaBrain** | `neuromodulator_baseline_dopamine` | float | 0.5 | Default creativity level |
+| **SomaBrain** | `neuromodulator_baseline_serotonin` | float | 0.5 | Default stability level |
+| **SomaBrain** | `sleep_auto_schedule` | bool | True | Auto-trigger sleep cycles |
+| **SomaBrain** | `sleep_cycle_duration` | int | 300 | Sleep duration in seconds |
+| **SomaBrain** | `sleep_deep_consolidation` | bool | True | Use deep vector consolidation |
+| **SomaBrain** | `dream_simulation` | bool | False | Enable generative dreaming |
 
 ### 5.2 Agent Status Lifecycle
 
@@ -372,15 +381,15 @@ flowchart TD
     P --> T2[Tier: Starter]
     P --> T3[Tier: Team]
     P --> T4[Tier: Enterprise]
-    
+
     T2 --> TN1[Tenant: Acme]
     T2 --> TN2[Tenant: Beta]
     T3 --> TN3[Tenant: Gamma]
-    
+
     TN1 --> A1[Agent: Support-AI]
     TN1 --> A2[Agent: Sales-Bot]
     TN3 --> A3[Agent: Internal-AI]
-    
+
     A1 --> U1[User: john@acme.com]
     A1 --> U2[User: jane@acme.com]
     A3 --> U3[User: admin@gamma.io]
@@ -582,6 +591,8 @@ raise ServiceError("Something failed", code="SOME_ERROR")
 | `/chat` | Agent | Chat interface | All Users |
 | `/memory` | Agent | Memory browser | All Users |
 | `/profile` | User | User profile | Self |
+| `/settings/brain` | Agent | Brain Tuning (Bio-params) | Agent Owner |
+| `/dashboard/brain` | Agent | Live fMRI & Chemistry | Agent Owner |
 
 ---
 
