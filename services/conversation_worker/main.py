@@ -28,11 +28,10 @@ from admin.core.application.use_cases.conversation.process_message import (
 )
 from admin.core.helpers.tokens import count_tokens
 from admin.core.observability.metrics import ContextBuilderMetrics
-# FIXED: Broken import from non-existent python.somaagent path
-# ContextBuilder: canonical from simple_context_builder
-# SomabrainHealthState: legacy from admin context_builder (TODO: consolidate)
-from admin.agents.services.context_builder import SomabrainHealthState
-from services.common.simple_context_builder import ContextBuilder
+from services.common.simple_context_builder import (
+    ContextBuilder,
+    SomabrainHealthState,
+)
 from services.common.budget_manager import BudgetManager
 from services.common.degradation_monitor import degradation_monitor, DegradationLevel
 from services.common.dlq import DeadLetterQueue

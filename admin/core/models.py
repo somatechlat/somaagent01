@@ -295,13 +295,23 @@ class Capsule(models.Model):
         return bool(self.registry_signature and self.status == self.STATUS_ACTIVE)
 
     @property
-    def soul(self) -> dict:
-        """Return Soul (identity) as dict."""
+    def core(self) -> dict:
+        """Return Core (identity) as dict.
+
+        Renamed from 'soul' per international naming conventions.
+        """
         return {
             "system_prompt": self.system_prompt,
             "personality_traits": self.personality_traits,
             "neuromodulator_baseline": self.neuromodulator_baseline,
         }
+
+    @property
+    def soul(self) -> dict:
+        """DEPRECATED: Use .core instead. Kept for backwards compatibility."""
+        import warnings
+        warnings.warn("Capsule.soul is deprecated, use Capsule.core", DeprecationWarning, stacklevel=2)
+        return self.core
 
     @property
     def body(self) -> dict:
