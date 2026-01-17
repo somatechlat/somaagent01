@@ -71,10 +71,25 @@ class NotFoundError(ApiError):
             resource: Type of resource (e.g., "tenant", "agent")
             identifier: Optional identifier of the resource
         """
-        if identifier:
-            message = f"{resource} with id '{identifier}' not found"
+        # I18N-ready message generation
+        from admin.common.messages import ErrorCode, get_message
+
+        # Try resource-specific code first, fallback to generic
+        resource_codes = {
+            "tenant": ErrorCode.TENANT_NOT_FOUND,
+            "capsule": ErrorCode.CAPSULE_NOT_FOUND,
+            "agent": ErrorCode.CAPSULE_NOT_FOUND,
+            "conversation": ErrorCode.CONVERSATION_NOT_FOUND,
+            "tool": ErrorCode.TOOL_NOT_FOUND,
+        }
+
+        if resource.lower() in resource_codes:
+            message = get_message(resource_codes[resource.lower()])
+        elif identifier:
+            message = get_message(ErrorCode.NOT_FOUND) + f": {resource} '{identifier}'"
         else:
-            message = f"{resource} not found"
+            message = get_message(ErrorCode.NOT_FOUND) + f": {resource}"
+
         super().__init__(message, **kwargs)
         self.details["resource"] = resource
         if identifier:
@@ -101,14 +116,15 @@ class ForbiddenError(ApiError):
             resource: Resource access was attempted on
             message: Custom error message (overrides auto-generated)
         """
+        from admin.common.messages import ErrorCode, get_message
+
         if message:
             final_message = message
-        elif action and resource:
-            final_message = f"Access denied: cannot {action} {resource}"
         elif action:
-            final_message = f"Access denied: cannot {action}"
+            final_message = get_message(ErrorCode.AUTH_PERMISSION_DENIED, action=action)
         else:
-            final_message = "Access denied"
+            final_message = get_message(ErrorCode.FORBIDDEN)
+
         super().__init__(final_message, **kwargs)
         if action:
             self.details["action"] = action
@@ -170,11 +186,14 @@ class UnauthorizedError(ApiError):
 
     def __init__(
         self,
-        message: str = "Authentication required",
+        message: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize unauthorized error."""
-        super().__init__(message, **kwargs)
+        from admin.common.messages import ErrorCode, get_message
+
+        final_message = message or get_message(ErrorCode.UNAUTHORIZED)
+        super().__init__(final_message, **kwargs)
 
 
 class RateLimitError(ApiError):

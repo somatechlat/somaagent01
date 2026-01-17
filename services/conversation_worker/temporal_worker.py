@@ -21,9 +21,10 @@ from temporalio.worker import Worker
 
 from admin.agents.services.somabrain_integration import SomaBrainClient
 from admin.core.helpers.tokens import count_tokens
-# FIXED: Broken import from non-existent python.somaagent path
-from admin.agents.services.context_builder import SomabrainHealthState
-from services.common.simple_context_builder import ContextBuilder
+from services.common.simple_context_builder import (
+    ContextBuilder,
+    SomabrainHealthState,
+)
 from services.common.budget_manager import BudgetManager
 from services.common.compensation import compensate_event
 from services.common.dlq import DeadLetterQueue

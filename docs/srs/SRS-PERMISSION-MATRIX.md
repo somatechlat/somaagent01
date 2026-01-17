@@ -1,8 +1,8 @@
 # SRS: Permission Matrix & Role Administration
 
-**Document ID:** SA01-SRS-PERMISSIONS-2025-12  
-**Role:** 🔴 SAAS SysAdmin (manages all)  
-**Routes:** `/saas/roles/*`, `/saas/permissions/*`  
+**Document ID:** SA01-SRS-PERMISSIONS-2025-12
+**Role:** 🔴 SAAS SysAdmin (manages all)
+**Routes:** `/saas/roles/*`, `/saas/permissions/*`
 **Status:** CANONICAL
 
 ---
@@ -121,11 +121,25 @@ Permissions flow **top-down** through a strict hierarchy:
 │ memory:read              │ Read memories                                   │
 │ memory:write             │ Create memories                                 │
 │ memory:delete            │ Delete memories                                 │
+│ memory:set_retention     │ Configure GDPR retention (NEW)                  │
 │ tools:execute            │ Run tools                                       │
+│ tools:approve_external   │ Approve egress/external tools (NEW)             │
 │ cognitive:view           │ View cognitive state                            │
 │ cognitive:edit           │ Modify neuromodulators                          │
 │ voice:use                │ Use voice features                              │
 │ voice:configure          │ Configure voice settings                        │
+│ rlm:execute              │ Execute RLM brain queries (NEW)                 │
+│ capsule:export           │ Export capsule bundle (NEW)                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LEVEL 4: SECURITY/EMERGENCY PERMISSIONS (NEW)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ platform:break_glass     │ Emergency access override                       │
+│ platform:require_2fa     │ Force 2FA on sensitive ops                      │
+│ apikey:restrict_ip       │ Set IP allowlist on API keys                    │
+│ billing:update_payment   │ Update payment method                           │
+│ billing:cancel_sub       │ Cancel subscription (separate from update)      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,22 +169,22 @@ flowchart TD
     A[API Request] --> B{Authenticated?}
     B -->|No| C[401 Unauthorized]
     B -->|Yes| D[Get User from JWT]
-    
+
     D --> E{SAAS Admin?}
     E -->|Yes| F[✅ ALLOW - God Mode]
-    
+
     E -->|No| G[Get User's Tenant]
     G --> H{Tenant Active?}
     H -->|No| I[403 Tenant Suspended]
-    
+
     H -->|Yes| J{Tier Allows Feature?}
     J -->|No| K[403 Upgrade Required]
-    
+
     J -->|Yes| L[SpiceDB Check]
     L --> M{Has Permission?}
     M -->|No| N[403 Permission Denied]
     M -->|Yes| O{Within Quota?}
-    
+
     O -->|No| P[429 Quota Exceeded]
     O -->|Yes| Q[✅ ALLOW]
 ```
@@ -475,14 +489,14 @@ definition platform {}
 
 definition saas_admin {
     relation platform: platform
-    
+
     // Core platform permissions
     permission manage = platform
     permission manage_tenants = platform
     permission view_billing = platform
     permission configure = platform
     permission impersonate = platform
-    
+
     // NEW: Role management
     permission manage_roles = platform
     permission manage_permissions = platform
@@ -500,7 +514,7 @@ definition tenant {
     relation member: user
     relation viewer: user
     relation subscription: subscription_tier
-    
+
     // Hierarchical permissions
     permission manage = sysadmin
     permission administrate = sysadmin + admin
@@ -508,13 +522,13 @@ definition tenant {
     permission delete_agent = sysadmin
     permission view_billing = sysadmin
     permission manage_api_keys = sysadmin
-    
+
     // Agent access inheritance
     permission develop = sysadmin + admin + developer
     permission train = sysadmin + admin + trainer
     permission use = sysadmin + admin + developer + trainer + member
     permission view = sysadmin + admin + developer + trainer + member + viewer
-    
+
     // NEW: Tenant-level role management
     permission manage_tenant_roles = sysadmin
 }
@@ -530,7 +544,7 @@ definition agent {
     relation trainer: user
     relation user: user
     relation viewer: user
-    
+
     // Mode activation
     permission configure = owner + admin + tenant->administrate
     permission activate_adm = owner + admin
@@ -538,7 +552,7 @@ definition agent {
     permission activate_trn = owner + admin + trainer + tenant->train
     permission activate_std = owner + admin + developer + trainer + user + tenant->use
     permission activate_ro = owner + admin + developer + trainer + user + viewer + tenant->view
-    
+
     permission view = activate_ro
 }
 
@@ -556,7 +570,7 @@ definition subscription_tier {
 definition feature {
     relation enabled_for: subscription_tier
     relation enabled_for_tenant: tenant
-    
+
     permission use = enabled_for->owner + enabled_for_tenant
 }
 ```
@@ -571,21 +585,21 @@ sequenceDiagram
     participant UI as Role Editor
     participant API as Django API
     participant SpiceDB as SpiceDB
-    
+
     Admin->>UI: Open /saas/roles/new
     UI->>Admin: Display role form
-    
+
     Admin->>UI: Enter role name "Auditor"
     Admin->>UI: Select level "Tenant"
     Admin->>UI: Check permissions
     Admin->>UI: Click Save
-    
+
     UI->>API: POST /api/v2/saas/roles
     API->>SpiceDB: Create role definition
     SpiceDB-->>API: OK
     API->>API: Save role to PostgreSQL
     API-->>UI: Role created
-    
+
     UI->>Admin: Success: "Role 'Auditor' created"
     UI->>Admin: Navigate to /saas/roles
 ```

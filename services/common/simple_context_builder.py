@@ -27,6 +27,22 @@ SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 
+from enum import Enum
+
+
+class SomabrainHealthState(str, Enum):
+    """SomaBrain health state for degradation handling.
+
+    NORMAL: Full capabilities available
+    DEGRADED: Reduced capabilities (e.g., lower Top-K, faster timeout)
+    DOWN: SomaBrain unavailable, fallback mode
+    """
+
+    NORMAL = "normal"
+    DEGRADED = "degraded"
+    DOWN = "down"
+
+
 @dataclass
 class BuiltContext:
     """Result of context building for a turn.
