@@ -68,6 +68,8 @@ services:
       - SA01_REDIS_URL=redis://somastack_redis:6379/0
       # Multi-tenancy: Default tenant ID when not in JWT
       - SAAS_DEFAULT_TENANT_ID=00000000-0000-0000-0000-000000000003
+      # API Token for E2E tests
+      - SOMA_API_TOKEN=${SOMA_API_TOKEN}
       # Keycloak OIDC Identity Provider
       - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
       # Legacy compatibility (for settings.py fallback)
