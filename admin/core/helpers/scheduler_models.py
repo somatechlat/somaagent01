@@ -1,9 +1,10 @@
 """Task models for the scheduler system.
 
 This module contains all Pydantic models for task scheduling:
-- TaskState, TaskType enums
 - TaskSchedule, TaskPlan value objects
 - BaseTask, AdHocTask, ScheduledTask, PlannedTask entities
+
+Enums and metrics are imported from scheduler_enums.py.
 """
 
 from __future__ import annotations
@@ -13,46 +14,19 @@ import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 from typing import Literal, Optional, Union
 
 import pytz
 from crontab import CronTab
-from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, Field
 
 from admin.core.helpers.localization import Localization
-
-# Prometheus metrics for task scheduling
-task_schedule_evaluations_total = Counter(
-    "sa01_task_schedule_evaluations_total",
-    "Number of schedule evaluations per task",
-    ["task"],
+from admin.core.helpers.scheduler_enums import (
+    TaskState,
+    TaskType,
+    task_schedule_evaluations_total,
+    task_schedule_latency_seconds,
 )
-
-task_schedule_latency_seconds = Histogram(
-    "sa01_task_schedule_latency_seconds",
-    "Latency of schedule evaluation per task",
-    ["task"],
-    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
-)
-
-
-class TaskState(str, Enum):
-    """Taskstate class implementation."""
-
-    IDLE = "idle"
-    RUNNING = "running"
-    DISABLED = "disabled"
-    ERROR = "error"
-
-
-class TaskType(str, Enum):
-    """Tasktype class implementation."""
-
-    AD_HOC = "adhoc"
-    SCHEDULED = "scheduled"
-    PLANNED = "planned"
 
 
 class TaskSchedule(BaseModel):
