@@ -40,6 +40,7 @@ SAAS_ENV = {
     # Mode flags
     "SOMA_SAAS_MODE": "true",
     "SA01_DEPLOYMENT_MODE": "SAAS",
+    "SOMA_API_TOKEN": "test-token-saas",
 }
 
 STANDALONE_ENV = {
