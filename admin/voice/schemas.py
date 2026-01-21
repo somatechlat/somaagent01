@@ -8,6 +8,62 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+
+# =============================================================================
+# TRANSCRIPTION SCHEMAS (STT/TTS)
+# =============================================================================
+
+
+class TranscribeRequest(BaseModel):
+    """Transcription request."""
+
+    audio_base64: str  # Base64 encoded audio
+    format: str = "wav"  # wav, mp3, webm, ogg
+    language: Optional[str] = None  # Auto-detect if not specified
+
+
+class TranscribeResponse(BaseModel):
+    """Transcription response."""
+
+    text: str
+    language: str
+    duration_seconds: float
+    confidence: Optional[float] = None
+    segments: Optional[list[dict]] = None
+
+
+class SynthesizeRequest(BaseModel):
+    """Text-to-speech request."""
+
+    text: str
+    voice: str = "default"  # Voice ID
+    speed: float = 1.0  # 0.5 - 2.0
+    format: str = "mp3"  # mp3, wav, ogg
+
+
+class SynthesizeResponse(BaseModel):
+    """TTS response."""
+
+    audio_base64: str
+    format: str
+    duration_seconds: float
+    voice_used: str
+
+
+class VoiceListResponse(BaseModel):
+    """Available voices."""
+
+    voices: list[dict]
+
+
+class VoiceStatusResponse(BaseModel):
+    """Voice service status."""
+
+    whisper_status: str
+    kokoro_status: str
+    fallback_available: bool
+
+
 # =============================================================================
 # VOICE PERSONA SCHEMAS
 # =============================================================================

@@ -52,12 +52,13 @@ class ConversationOut(BaseModel):
 
 
 class MessageOut(BaseModel):
-    """Chat message."""
+    """Chat message (metadata only - content in SomaBrain)."""
 
     id: str
     conversation_id: str
     role: str  # user, assistant, system
-    content: str
+    coordinate: str  # SomaBrain coordinate reference
+    token_count: int = 0
     metadata: Optional[dict] = None
     created_at: str
 
@@ -162,7 +163,7 @@ async def list_conversations(
                     title=conv.title or f"Conversation {str(conv.id)[:8]}...",
                     agent_id=str(conv.agent_id) if conv.agent_id else None,
                     agent_name=None,  # Would join with Agent model
-                    last_message=last_msg.content[:100] if last_msg else None,
+                    last_message=f"{conv.message_count} messages" if last_msg else None,
                     message_count=conv.message_count,
                     created_at=conv.created_at.isoformat(),
                     updated_at=conv.updated_at.isoformat(),
@@ -372,7 +373,8 @@ async def get_messages(
                     id=str(msg.id),
                     conversation_id=str(msg.conversation_id),
                     role=msg.role,
-                    content=msg.content,
+                    coordinate=msg.coordinate,  # SomaBrain reference
+                    token_count=msg.token_count,
                     metadata=msg.metadata,
                     created_at=msg.created_at.isoformat(),
                 ).model_dump()
@@ -492,29 +494,12 @@ async def send_message(
             logger.error(f"Message send failed: {e}")
             raise ServiceError(f"Failed to send message: {e}")
 
-    # For stream mode, return acknowledgment (actual streaming via WebSocket)
-    message_id = str(uuid4())
-
-    # Store user message
-    @sync_to_async
-    def store_user_message():
-        """Execute store user message."""
-
-        msg = Message.objects.create(
-            conversation_id=conversation_id,
-            role="user",
-            content=payload.content,
-            token_count=len(payload.content.split()),
-        )
-        Conversation.objects.filter(id=conversation_id).update(
-            message_count=Message.objects.filter(conversation_id=conversation_id).count()
-        )
-        return str(msg.id)
-
-    user_msg_id = await store_user_message()
+    # NOTE: For stream mode, message storage happens via WebSocket handler
+    # which uses chat_service.py (SomaBrain integration)
+    # This API endpoint just acknowledges streaming initiation
 
     return {
-        "id": user_msg_id,
+        "id": message_id,
         "conversation_id": conversation_id,
         "status": "streaming",
         "message": "Connect to WebSocket for streaming response",

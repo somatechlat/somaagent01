@@ -97,7 +97,9 @@ class Message(models.Model):
     conversation_id = models.UUIDField(db_index=True)
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, db_index=True)
-    content = models.TextField()  # TODO: Encrypt/hash for security
+
+    # SomaBrain coordinate reference (actual content stored in memory layer)
+    coordinate = models.CharField(max_length=512, db_index=True, default="")
 
     # Token tracking
     token_count = models.IntegerField(default=0)
