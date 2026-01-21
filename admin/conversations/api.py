@@ -18,54 +18,14 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from ninja import Router
-from pydantic import BaseModel
 
 from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
+from admin.conversations.schemas import Conversation, ConversationStats, Message
 
 router = Router(tags=["conversations"])
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# SCHEMAS
-# =============================================================================
-
-
-class Conversation(BaseModel):
-    """Conversation definition."""
-
-    conversation_id: str
-    agent_id: str
-    user_id: str
-    tenant_id: str
-    title: Optional[str] = None
-    status: str  # active, ended, archived
-    message_count: int
-    created_at: str
-    updated_at: str
-
-
-class Message(BaseModel):
-    """Chat message."""
-
-    message_id: str
-    conversation_id: str
-    role: str  # user, assistant, system, tool
-    content: str
-    metadata: Optional[dict] = None
-    created_at: str
-
-
-class ConversationStats(BaseModel):
-    """Conversation statistics."""
-
-    total_tokens: int
-    user_messages: int
-    assistant_messages: int
-    tool_calls: int
-    duration_seconds: int
 
 
 # =============================================================================
@@ -321,180 +281,13 @@ async def delete_conversation(request, conversation_id: str) -> dict:
 
 
 # =============================================================================
-# ENDPOINTS - Messages
+# ENDPOINTS - Messages (delegated to messages module)
 # =============================================================================
 
+# Include message endpoints from extracted module
+from admin.conversations.messages import router as messages_router
 
-@router.get(
-    "/{conversation_id}/messages",
-    summary="List messages",
-    auth=AuthBearer(),
-)
-async def list_messages(
-    request,
-    conversation_id: str,
-    limit: int = 100,
-    before: Optional[str] = None,
-) -> dict:
-    """List conversation messages.
-
-    PM: Chat history.
-    """
-    from asgiref.sync import sync_to_async
-
-    @sync_to_async
-    def _get_messages():
-        """Execute get messages."""
-
-        if not ConversationModel.objects.filter(id=conversation_id).exists():
-            return None, 0
-
-        qs = MessageModel.objects.filter(conversation_id=conversation_id)
-        if before:
-            qs = qs.filter(id__lt=before)
-        qs = qs.order_by("created_at")
-
-        items = []
-        for msg in qs[:limit]:
-            items.append(
-                Message(
-                    message_id=str(msg.id),
-                    conversation_id=str(msg.conversation_id),
-                    role=msg.role,
-                    content=msg.content,
-                    metadata=msg.metadata,
-                    created_at=msg.created_at.isoformat(),
-                ).model_dump()
-            )
-        return items, qs.count()
-
-    items, total = await _get_messages()
-    if items is None:
-        raise NotFoundError("conversation", conversation_id)
-
-    return {
-        "conversation_id": conversation_id,
-        "messages": items,
-        "total": total,
-    }
-
-
-@router.post(
-    "/{conversation_id}/messages",
-    response=Message,
-    summary="Send message",
-    auth=AuthBearer(),
-)
-async def send_message(
-    request,
-    conversation_id: str,
-    content: str,
-    role: str = "user",
-) -> Message:
-    """Send a message.
-
-    PhD Dev: Message processing.
-    """
-    from asgiref.sync import sync_to_async
-
-    from services.common.chat_service import get_chat_service
-
-    if role != "user":
-        raise ServiceError("Only user messages can be sent")
-
-    # Verify conversation exists and resolve agent
-    @sync_to_async
-    def _get_conversation():
-        """Execute get conversation."""
-
-        try:
-            return ConversationModel.objects.get(id=conversation_id)
-        except ConversationModel.DoesNotExist:
-            return None
-
-    conv = await _get_conversation()
-    if not conv:
-        raise NotFoundError("conversation", conversation_id)
-
-    user = get_current_user(request)
-
-    chat_service = await get_chat_service()
-    response_tokens = []
-
-    async for token in chat_service.send_message(
-        conversation_id=conversation_id,
-        agent_id=str(conv.agent_id),
-        content=content,
-        user_id=user.sub,
-    ):
-        response_tokens.append(token)
-
-    full_response = "".join(response_tokens)
-
-    # Return assistant message snapshot
-    @sync_to_async
-    def _get_last_assistant():
-        """Execute get last assistant."""
-
-        return (
-            MessageModel.objects.filter(
-                conversation_id=conversation_id,
-                role="assistant",
-            )
-            .order_by("-created_at")
-            .first()
-        )
-
-    msg = await _get_last_assistant()
-
-    return Message(
-        message_id=str(msg.id) if msg else str(uuid4()),
-        conversation_id=conversation_id,
-        role="assistant",
-        content=full_response,
-        metadata=msg.metadata if msg else None,
-        created_at=msg.created_at.isoformat() if msg else timezone.now().isoformat(),
-    )
-
-
-@router.get(
-    "/{conversation_id}/messages/{message_id}",
-    response=Message,
-    summary="Get message",
-    auth=AuthBearer(),
-)
-async def get_message(
-    request,
-    conversation_id: str,
-    message_id: str,
-) -> Message:
-    """Get message details."""
-    from asgiref.sync import sync_to_async
-
-    @sync_to_async
-    def _get():
-        """Execute get."""
-
-        try:
-            return MessageModel.objects.get(
-                id=message_id,
-                conversation_id=conversation_id,
-            )
-        except MessageModel.DoesNotExist:
-            return None
-
-    msg = await _get()
-    if not msg:
-        raise NotFoundError("message", message_id)
-
-    return Message(
-        message_id=str(msg.id),
-        conversation_id=str(msg.conversation_id),
-        role=msg.role,
-        content=msg.content,
-        metadata=msg.metadata,
-        created_at=msg.created_at.isoformat(),
-    )
+router.add_router("", messages_router)
 
 
 # =============================================================================

@@ -17,10 +17,17 @@ from typing import Optional
 
 from django.conf import settings
 from ninja import Router
-from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError
+from admin.voice.schemas import (
+    SynthesizeRequest,
+    SynthesizeResponse,
+    TranscribeRequest,
+    TranscribeResponse,
+    VoiceListResponse,
+    VoiceStatusResponse,
+)
 
 router = Router(tags=["voice"])
 logger = logging.getLogger(__name__)
@@ -33,61 +40,6 @@ logger = logging.getLogger(__name__)
 WHISPER_URL = getattr(settings, "WHISPER_URL", "http://localhost:9100")
 KOKORO_URL = getattr(settings, "KOKORO_URL", "http://localhost:9200")
 MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
-
-
-# =============================================================================
-# SCHEMAS
-# =============================================================================
-
-
-class TranscribeRequest(BaseModel):
-    """Transcription request."""
-
-    audio_base64: str  # Base64 encoded audio
-    format: str = "wav"  # wav, mp3, webm, ogg
-    language: Optional[str] = None  # Auto-detect if not specified
-
-
-class TranscribeResponse(BaseModel):
-    """Transcription response."""
-
-    text: str
-    language: str
-    duration_seconds: float
-    confidence: Optional[float] = None
-    segments: Optional[list[dict]] = None
-
-
-class SynthesizeRequest(BaseModel):
-    """Text-to-speech request."""
-
-    text: str
-    voice: str = "default"  # Voice ID
-    speed: float = 1.0  # 0.5 - 2.0
-    format: str = "mp3"  # mp3, wav, ogg
-
-
-class SynthesizeResponse(BaseModel):
-    """TTS response."""
-
-    audio_base64: str
-    format: str
-    duration_seconds: float
-    voice_used: str
-
-
-class VoiceListResponse(BaseModel):
-    """Available voices."""
-
-    voices: list[dict]
-
-
-class VoiceStatusResponse(BaseModel):
-    """Voice service status."""
-
-    whisper_status: str
-    kokoro_status: str
-    fallback_available: bool
 
 
 # =============================================================================

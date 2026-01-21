@@ -118,9 +118,9 @@ def create_api() -> NinjaAPI:
     safe_add_router("/agents", agents_router)
 
     # Features (Migrated to Core Features System)
-    from admin.api.features import router as features_router
-
-    safe_add_router("/features", features_router)
+    # DISABLED - admin.api.features is a single file, not a package
+    # from admin.api.features import router as features_router
+    # safe_add_router("/features", features_router)
 
     # Chat
     from admin.chat.api import router as chat_router
