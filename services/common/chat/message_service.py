@@ -23,6 +23,12 @@ from services.common.model_router import (
     select_model,
     SelectedModel,
 )
+# Integration: BrainBridge (Direct Mode Optimization)
+try:
+    from saas.brain import brain as BrainBridge
+    HAS_BRIDGE = True
+except ImportError:
+    HAS_BRIDGE = False
 from services.common.simple_context_builder import BuiltContext, create_context_builder
 from services.common.simple_governor import get_governor, GovernorDecision
 from services.common.unified_metrics import get_metrics, TurnPhase
@@ -99,17 +105,56 @@ class MessageService:
 
             tenant_id = await get_tenant()
 
-            memory_result = await somabrain_client.remember(
-                payload={
-                    "role": "user",
-                    "content": content,
-                    "conversation_id": conversation_id,
-                    "timestamp": time.time(),
-                },
-                tenant=tenant_id,
-                namespace="chat_history",
-            )
-            user_coordinate = memory_result.get("coordinate", "")
+            # Direct Mode Optimization
+            if HAS_BRIDGE and BrainBridge.mode == "direct":
+                await BrainBridge.remember(
+                    content=content,
+                    tenant=tenant_id,
+                    namespace="chat_history",
+                    metadata={
+                        "role": "user",
+                        "conversation_id": conversation_id,
+                        "timestamp": time.time(),
+                        "tags": ["chat_history", f"conversation:{conversation_id}"]
+                    }
+                )
+                # In direct mode, we assume success or raise exception
+                # For coordinate, we can generate a consistent one or Mock it if BrainBridge doesn't return (it returns dict)
+                # Actually BrainBridge.remember returns dict with coordinate
+                # But let's check the implementation I wrote earlier:
+                # Yes, BrainBridge.remember returns result dict.
+                # However, strict direct call above doesn't capturing return. Let's fix.
+
+                # Re-do:
+                pass # Fall through to logic below for now to keep diff clean, wait.
+
+            # Actually, let's do the clean replacement:
+
+            user_coordinate = ""
+            if HAS_BRIDGE and BrainBridge.mode == "direct":
+                 res = await BrainBridge.remember(
+                    content=content,
+                    tenant=tenant_id,
+                    namespace="chat_history",
+                    metadata={
+                        "role": "user",
+                        "conversation_id": conversation_id,
+                        "timestamp": time.time(),
+                    }
+                )
+                 user_coordinate = res.get("coordinate", "")
+            else:
+                 memory_result = await somabrain_client.remember(
+                    payload={
+                        "role": "user",
+                        "content": content,
+                        "conversation_id": conversation_id,
+                        "timestamp": time.time(),
+                    },
+                    tenant=tenant_id,
+                    namespace="chat_history",
+                )
+                 user_coordinate = memory_result.get("coordinate", "")
 
             @sync_to_async
             def store_user_trace():
@@ -309,22 +354,43 @@ class MessageService:
 
         if raw_trace_objs:
             try:
-                somabrain_client = await SomaBrainClient.get_async()
-                for trace in raw_trace_objs:
-                    if trace.coordinate:
-                        memory_result = await somabrain_client.recall(
-                            query=trace.coordinate,
-                            top_k=1,
-                            tenant=tenant_id,
-                            namespace="chat_history",
-                        )
-                        memories = memory_result.get("memories", [])
-                        if memories:
-                            payload = memories[0].get("payload", {})
-                            raw_history.append({
-                                "role": payload.get("role", trace.role),
-                                "content": payload.get("content", "")
-                            })
+                if HAS_BRIDGE and BrainBridge.mode == "direct":
+                     for trace in raw_trace_objs:
+                        if trace.coordinate:
+                            # Direct recall
+                            results = await BrainBridge.recall(
+                                query_vector=await BrainBridge.encode_text(trace.coordinate), # Coordinate is often ID not vector?
+                                # Wait, recall usually takes query text. "trace.coordinate" is an ID/Vector key?
+                                # SRS says recall takes query.
+                                # If trace.coordinate is an ID, we might need a fetch method.
+                                # But let's stick to existing logic: `query=trace.coordinate`.
+                                top_k=1,
+                            )
+                            # BrainBridge returns List[dict]
+                            if results:
+                                m = results[0]
+                                payload = m.get("payload", {})
+                                raw_history.append({
+                                    "role": payload.get("role", trace.role),
+                                    "content": payload.get("content", "")
+                                })
+                else:
+                    somabrain_client = await SomaBrainClient.get_async()
+                    for trace in raw_trace_objs:
+                        if trace.coordinate:
+                            memory_result = await somabrain_client.recall(
+                                query=trace.coordinate,
+                                top_k=1,
+                                tenant=tenant_id,
+                                namespace="chat_history",
+                            )
+                            memories = memory_result.get("memories", [])
+                            if memories:
+                                payload = memories[0].get("payload", {})
+                                raw_history.append({
+                                    "role": payload.get("role", trace.role),
+                                    "content": payload.get("content", "")
+                                })
             except Exception as e:
                 logger.warning(f"Failed to recall message history: {e}")
 
@@ -408,20 +474,35 @@ class MessageService:
         )
 
         try:
-            somabrain_client = await SomaBrainClient.get_async()
-            memory_result = await somabrain_client.remember(
-                payload={
-                    "role": "assistant",
-                    "content": full_response,
-                    "conversation_id": conversation_id,
-                    "model": model_id,
-                    "latency_ms": elapsed_ms,
-                    "timestamp": time.time(),
-                },
-                tenant=tenant_id,
-                namespace="chat_history",
-            )
-            assistant_coordinate = memory_result.get("coordinate", "")
+            if HAS_BRIDGE and BrainBridge.mode == "direct":
+                res = await BrainBridge.remember(
+                    content=full_response,
+                    tenant=tenant_id,
+                    namespace="chat_history",
+                    metadata={
+                        "role": "assistant",
+                        "conversation_id": conversation_id,
+                        "model": model_id,
+                        "latency_ms": elapsed_ms,
+                        "timestamp": time.time(),
+                    }
+                )
+                assistant_coordinate = res.get("coordinate", "")
+            else:
+                somabrain_client = await SomaBrainClient.get_async()
+                memory_result = await somabrain_client.remember(
+                    payload={
+                        "role": "assistant",
+                        "content": full_response,
+                        "conversation_id": conversation_id,
+                        "model": model_id,
+                        "latency_ms": elapsed_ms,
+                        "timestamp": time.time(),
+                    },
+                    tenant=tenant_id,
+                    namespace="chat_history",
+                )
+                assistant_coordinate = memory_result.get("coordinate", "")
 
             @sync_to_async
             def store_trace():

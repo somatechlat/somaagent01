@@ -21,14 +21,12 @@ from typing import Any, Dict, List, Optional
 import httpx
 from django.conf import settings
 
-# Integration: BrainMemoryFacade
+# Integration: BrainBridge (Compliant Triad Architecture)
 try:
-    from soma_core.memory_client import BrainMemoryFacade
-    from soma_core.models import MemoryReadRequest, MemoryWriteRequest
-
-    HAS_FACADE = True
+    from saas.brain import brain as BrainBridge
+    HAS_BRIDGE = True
 except ImportError:
-    HAS_FACADE = False
+    HAS_BRIDGE = False
 
 
 LOGGER = logging.getLogger(__name__)
@@ -191,37 +189,24 @@ class SomaBrainClient:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        # DIRECT MODE CHECK
-        if HAS_FACADE:
-            facade = BrainMemoryFacade.get_instance()
-            if facade.mode == "direct":
-                try:
-                    # Map to Facade Request
-                    req = MemoryWriteRequest(
-                        payload=payload,
-                        tenant_id=tenant or "default",
-                        namespace=namespace,
-                        universe=None,  # Not in args
-                        tags=[],  # Not in args
-                    )
-                    # Call Facade
-                    resp = await facade.remember(req)
-                    # Map back to expected Dict response
-                    return {
-                        "status": getattr(resp, "status", "success"),
-                        "coordinate": resp.coordinate,
-                        "memory_id": resp.memory_id,
-                    }
-                except NotImplementedError:
-                    pass  # Fallback to HTTP
-                except Exception as e:
-                    LOGGER.error(f"Direct remember failed, falling back to HTTP: {e}")
-                    # Optional: decide if we fall back or raise. SRS implies we should probably fail if direct is intended.
-                    # But for robustness during migration, we log and fall back?
-                    # SRS FR-6 says: "Reject direct call if... cannot be instantiated".
-                    # But if we failed *during* call, it might be different.
-                    # Let's fallback for now to keep strict continuity unless strictly broken.
-                    pass
+        # DIRECT MODE CHECK (Triad Compliant)
+        if HAS_BRIDGE and BrainBridge.mode == "direct":
+            try:
+                # Use compliant BrainBridge
+                resp = await BrainBridge.remember(
+                    content=payload.get("content", ""),
+                    tenant=tenant,
+                    namespace=namespace,
+                    metadata=payload.get("metadata", {})
+                )
+                return {
+                    "status": "success",
+                    "coordinate": resp.get("coordinate"),
+                    "memory_id": resp.get("id"),
+                }
+            except Exception as e:
+                LOGGER.error(f"Direct remember failed, falling back to HTTP: {e}")
+                pass
 
         return await self._request("POST", "/v1/memory/remember", json=body)
 
@@ -260,38 +245,29 @@ class SomaBrainClient:
         if tags:
             body["tags"] = tags
 
-        # DIRECT MODE CHECK
-        if HAS_FACADE:
-            facade = BrainMemoryFacade.get_instance()
-            if facade.mode == "direct":
-                try:
-                    req = MemoryReadRequest(
-                        query=query,
-                        limit=top_k,
-                        tenant_id=tenant or "default",
-                        namespace=namespace,
-                        universe=universe,
-                        tags=tags or [],
-                    )
-                    resp = await facade.recall(req)
-                    # Map back to expected Dict response structure from SomaBrain
-                    # which is usually {"memories": [...]} or list
-                    return {
-                        "memories": [
-                            {
-                                "coordinate": m.coordinate,
-                                "payload": m.payload,
-                                "score": m.score,
-                                "created_at": m.created_at.isoformat(),
-                            }
-                            for m in resp.memories
-                        ]
-                    }
-                except NotImplementedError:
-                    pass
-                except Exception as e:
-                    LOGGER.error(f"Direct recall failed, falling back to HTTP: {e}")
-                    pass
+        # DIRECT MODE CHECK (Triad Compliant)
+        if HAS_BRIDGE and BrainBridge.mode == "direct":
+            try:
+                # Use compliant BrainBridge
+                # Note: BrainBridge.recall returns list[dict]
+                results = await BrainBridge.recall(
+                    query_vector=await BrainBridge.encode_text(query),
+                    top_k=top_k
+                )
+
+                # Transform to expected response format
+                memories = []
+                for m in results:
+                    memories.append({
+                        "coordinate": m.get("coordinate", [0.0, 0.0, 0.0]),
+                        "payload": m.get("payload", {}),
+                        "score": m.get("score", 0.0),
+                        "created_at": datetime.now(timezone.utc).isoformat(), # Placeholder if missing
+                    })
+                return {"memories": memories}
+            except Exception as e:
+                LOGGER.error(f"Direct recall failed, falling back to HTTP: {e}")
+                pass
 
         return await self._request("POST", "/v1/memory/recall", json=body)
 

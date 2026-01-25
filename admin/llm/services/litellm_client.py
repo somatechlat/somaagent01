@@ -1,4 +1,4 @@
-"""LiteLLM client wrapper - migrated from root models.py to Django app.
+"""LiteLLM client wrapper.
 
 This module provides LangChain-compatible LLM wrappers using LiteLLM.
 Migrated to admin.llm.services for Django compliance.
