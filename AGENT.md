@@ -8,7 +8,7 @@
 
 ## 📋 Executive Summary
 
-**SomaAgent01** is an enterprise-grade **Multi-Agent Cognitive Platform** built on **Django 5.0 + Django Ninja**. It's a complete SaaS platform for orchestrating AI agents with:
+**SomaAgent01** is an enterprise-grade **Multi-Agent Cognitive Platform** built on **Django 5.0 + Django Ninja**. It's a complete AAAS platform for orchestrating AI agents with:
 
 - Multi-tenant architecture with strict data isolation
 - Keycloak-based authentication (OIDC)
@@ -93,9 +93,9 @@ This is the definitive "Panic Button" for local development. If the stack become
 
 **Two software modes are canonical across the three repos:**
 - **StandAlone**: each service runs independently with local auth/storage and no required cross-service calls.
-- **SomaStackClusterMode**: all three services run as one SaaS; SomaBrain + SomaFractalMemory are inseparable and must run as a paired runtime with shared tenant identity and auth.
+- **SomaStackClusterMode**: all three services run as one AAAS; SomaBrain + SomaFractalMemory are inseparable and must run as a paired runtime with shared tenant identity and auth.
 
-**Reference:** `docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md` and `docs/srs/SRS-UNIFIED-SAAS.md`.
+**Reference:** `docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md` and `docs/srs/SRS-UNIFIED-AAAS.md`.
 **Local baseline:** 15 GB total host memory budget for full-stack local dev (see `docs/deployment/DEPLOYMENT.md`).
 
 ---
@@ -120,7 +120,7 @@ somaAgent01/
 │   ├── chat/               # Chat API
 │   ├── conversations/      # Conversation management
 │   ├── sessions/           # Session management
-│   ├── saas/               # Multi-tenant SaaS features
+│   ├── aaas/               # Multi-tenant AAAS features
 │   ├── memory/             # Memory integration
 │   ├── voice/              # Voice (STT/TTS)
 │   ├── workflows/          # Temporal workflows
@@ -135,9 +135,9 @@ somaAgent01/
 ├── webui/                   # Frontend (Lit 3.x)
 │   └── src/
 │       ├── views/          # Page components
-│       │   ├── saas-login.ts    # Login page (OAuth, SSO, email/password)
-│       │   ├── saas-chat.ts     # Chat view (WebSocket, streaming)
-│       │   └── saas-mfa-setup.ts
+│       │   ├── aaas-login.ts    # Login page (OAuth, SSO, email/password)
+│       │   ├── aaas-chat.ts     # Chat view (WebSocket, streaming)
+│       │   └── aaas-mfa-setup.ts
 │       ├── services/       # Frontend services
 │       │   ├── keycloak-service.ts
 │       │   └── websocket-client.ts
@@ -209,13 +209,13 @@ User → Login Page → Django API → Keycloak → SpiceDB → Redis → Postgr
 | `admin/auth/api.py` | Auth router: `/token`, `/login`, `/refresh`, `/logout`, SSO |
 | `admin/common/auth.py` | `AuthBearer`, `RoleRequired`, `decode_token()` |
 | `services/gateway/auth.py` | JWT + OPA policy integration |
-| `webui/src/views/saas-login.ts` | Login page (888 lines, full OAuth/SSO) |
+| `webui/src/views/aaas-login.ts` | Login page (888 lines, full OAuth/SSO) |
 | `webui/src/services/keycloak-service.ts` | Keycloak OIDC client |
 | `webui/src/stores/auth-store.ts` | Auth state management |
 
 ### User Roles (Priority Order)
 
-1. `saas_admin` → `/platform`
+1. `aaas_admin` → `/platform`
 2. `tenant_sysadmin` → `/admin`
 3. `tenant_admin` → `/admin`
 4. `agent_owner` → `/chat`
@@ -258,7 +258,7 @@ User → Chat UI → WebSocket → Django → SomaBrain → LLM
 |------|---------|
 | `admin/conversations/api.py` | Conversation CRUD (placeholder) |
 | `admin/chat/api/chat.py` | Chat session API |
-| `webui/src/views/saas-chat.ts` | Chat view (1063 lines, WebSocket) |
+| `webui/src/views/aaas-chat.ts` | Chat view (1063 lines, WebSocket) |
 | `webui/src/services/websocket-client.ts` | WebSocket client |
 
 ---
@@ -291,13 +291,13 @@ IdempotencyRecord # Exactly-once
 PendingMemory    # Memory sync queue
 ```
 
-### SaaS Models (`admin/saas/models.py`)
+### AAAS Models (`admin/aaas/models.py`)
 
 ```python
 Tenant           # Organization
 TenantUser       # User-tenant membership
 Subscription     # Billing subscription
-AuditLog         # SaaS audit
+AuditLog         # AAAS audit
 ```
 
 ---
@@ -315,7 +315,7 @@ All endpoints are under `/api/v2/`:
 | `/chat` | `admin.chat.api` | Chat sessions |
 | `/conversations` | `admin.conversations.api` | Conversations |
 | `/sessions` | `admin.sessions.api` | User sessions |
-| `/saas` | `admin.saas.api` | SaaS admin |
+| `/aaas` | `admin.aaas.api` | AAAS admin |
 | `/memory` | `admin.memory.api` | Memory integration |
 | `/voice` | `admin.voice.api` | Voice (STT/TTS) |
 | `/workflows` | `admin.workflows.api` | Temporal workflows |
@@ -407,8 +407,8 @@ Use **Hypothesis** for property tests:
 |-----------|------|--------|
 | Auth Router | `admin/auth/api.py` | Full (login, OAuth, SSO, MFA) |
 | JWT Validation | `admin/common/auth.py` | Full |
-| Login Page | `webui/src/views/saas-login.ts` | Full (888 lines) |
-| Chat View | `webui/src/views/saas-chat.ts` | Full (1063 lines) |
+| Login Page | `webui/src/views/aaas-login.ts` | Full (888 lines) |
+| Chat View | `webui/src/views/aaas-chat.ts` | Full (1063 lines) |
 | Keycloak Service | `webui/src/services/keycloak-service.ts` | Full |
 | Auth Store | `webui/src/stores/auth-store.ts` | Full |
 | Core Models | `admin/core/models.py` | Full |
@@ -545,8 +545,8 @@ admin/auth/api.py               # Auth implementation
 admin/common/auth.py            # JWT utilities
 admin/core/models.py            # Django models
 services/gateway/auth.py        # Gateway auth
-webui/src/views/saas-login.ts   # Login page
-webui/src/views/saas-chat.ts    # Chat view
+webui/src/views/aaas-login.ts   # Login page
+webui/src/views/aaas-chat.ts    # Chat view
 docker-compose.yml              # Infrastructure
 ```
 
@@ -614,7 +614,7 @@ get_current_user(request)  # Get user from request
 require_roles(*roles)  # Decorator for role check
 ```
 
-#### Frontend: `webui/src/views/saas-login.ts`
+#### Frontend: `webui/src/views/aaas-login.ts`
 
 ```typescript
 // Features implemented:
@@ -656,7 +656,7 @@ getUserInfo()           # Get user profile
 
 ### Chat Components
 
-#### Frontend: `webui/src/views/saas-chat.ts`
+#### Frontend: `webui/src/views/aaas-chat.ts`
 
 ```typescript
 // Features implemented:
@@ -898,7 +898,7 @@ audit.security  # Permission denied, lockout events
   - [ ] `getDefaultRoute(roles)` function
   - [ ] Return URL validation (same-origin)
 
-- [ ] **Email Validation** (`webui/src/views/saas-login.ts`)
+- [ ] **Email Validation** (`webui/src/views/aaas-login.ts`)
   - [ ] RFC 5322 compliant validation
   - [ ] Inline error display
 

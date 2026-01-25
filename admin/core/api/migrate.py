@@ -65,7 +65,7 @@ class MigrateImportResponse(BaseModel):
     "/export",
     response=dict,
     summary="Export memory data for migration",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def admin_migrate_export(
     request: HttpRequest,
@@ -93,7 +93,7 @@ async def admin_migrate_export(
     "/import",
     response=dict,
     summary="Import memory data from migration",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def admin_migrate_import(
     request: HttpRequest,

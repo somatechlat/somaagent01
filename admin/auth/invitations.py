@@ -98,7 +98,7 @@ class AcceptInvitationResponse(BaseModel):
 async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResponse:
     """Send an invitation to a new user.
 
-    Per Phase 2.4: POST /saas/users/invite
+    Per Phase 2.4: POST /aaas/users/invite
 
 
     - Cryptographic token (secrets.token_urlsafe)

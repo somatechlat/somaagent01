@@ -150,5 +150,5 @@ graph TD
 ## 5. Applies To
 
 - **SomaAgent01** — All `admin/` modules
-- **SomaBrain** — All `api/` and `saas/` modules
+- **SomaBrain** — All `api/` and `aaas/` modules
 - **SomaFractalMemory** — Already compliant

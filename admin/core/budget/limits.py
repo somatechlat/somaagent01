@@ -110,7 +110,7 @@ def get_tenant_plan(tenant_id: str) -> str:
 
     # Fall back to database
     try:
-        from admin.saas.models import Tenant
+        from admin.aaas.models import Tenant
 
         tenant = Tenant.objects.select_related("subscription_tier").get(pk=tenant_id)
         plan_code = tenant.subscription_tier.code if tenant.subscription_tier else "free"

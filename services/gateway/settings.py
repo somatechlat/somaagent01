@@ -1,5 +1,5 @@
 """
-Django settings for SomaAgent01 SAAS Admin.
+Django settings for SomaAgent01 AAAS Admin.
 
 This module is used for Django management commands (makemigrations, migrate, etc.)
 The runtime configuration is in django_setup.py for the gateway.
@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "admin.notifications",
     "admin.orchestrator",
     "admin.permissions",
-    "admin.saas",
+    "admin.aaas",
     "admin.tools",
     "admin.ui",
     "admin.utils",
@@ -146,19 +146,19 @@ WHITENOISE_ROOT = BASE_DIR / "webui" / "dist"  # Root for SPA assets
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # =============================================================================
-# SAAS ADMIN DEFAULTS (Centralized - env overridable)
+# AAAS ADMIN DEFAULTS (Centralized - env overridable)
 # =============================================================================
 
 # Default tenant for unauthenticated requests (development only)
-SAAS_DEFAULT_TENANT_ID = os.environ.get("SAAS_DEFAULT_TENANT_ID", None)
+AAAS_DEFAULT_TENANT_ID = os.environ.get("AAAS_DEFAULT_TENANT_ID", None)
 
-SAAS_DEFAULT_CHAT_MODEL = os.environ.get("SAAS_DEFAULT_CHAT_MODEL")
+AAAS_DEFAULT_CHAT_MODEL = os.environ.get("AAAS_DEFAULT_CHAT_MODEL")
 
 # Default tier limits (can be overridden per-tier in database)
-SAAS_DEFAULT_MAX_AGENTS = int(os.environ.get("SAAS_DEFAULT_MAX_AGENTS", "10"))
-SAAS_DEFAULT_MAX_USERS = int(os.environ.get("SAAS_DEFAULT_MAX_USERS", "50"))
-SAAS_DEFAULT_MAX_TOKENS_MONTHLY = int(os.environ.get("SAAS_DEFAULT_MAX_TOKENS_MONTHLY", "10000000"))
-SAAS_DEFAULT_STORAGE_GB = float(os.environ.get("SAAS_DEFAULT_STORAGE_GB", "50.0"))
+AAAS_DEFAULT_MAX_AGENTS = int(os.environ.get("AAAS_DEFAULT_MAX_AGENTS", "10"))
+AAAS_DEFAULT_MAX_USERS = int(os.environ.get("AAAS_DEFAULT_MAX_USERS", "50"))
+AAAS_DEFAULT_MAX_TOKENS_MONTHLY = int(os.environ.get("AAAS_DEFAULT_MAX_TOKENS_MONTHLY", "10000000"))
+AAAS_DEFAULT_STORAGE_GB = float(os.environ.get("AAAS_DEFAULT_STORAGE_GB", "50.0"))
 
 # =============================================================================
 # INFRASTRUCTURE SETTINGS (for migrated Django Ninja endpoints)
@@ -211,7 +211,7 @@ MERMAID_CLI_URL = os.environ.get("SA01_MERMAID_CLI_URL", "http://localhost:9300"
 IMAGE_GEN_URL = os.environ.get("SA01_IMAGE_GEN_URL", "http://localhost:8003/generate")
 DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
 
-# Monitoring (SAAS: 63905, K8S: 32905, Local: 9090)
+# Monitoring (AAAS: 63905, K8S: 32905, Local: 9090)
 PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
 
 # Lago Billing
@@ -315,7 +315,7 @@ LOGGING = {
         },
         # Admin apps
         "admin": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
-        "admin.saas": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
+        "admin.aaas": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         "admin.core": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         "admin.agents": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         # Services

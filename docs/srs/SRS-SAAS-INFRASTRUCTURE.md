@@ -1,25 +1,25 @@
-# SRS-SAAS-INFRASTRUCTURE: SaaS Deployment Architecture
+# SRS-AAAS-INFRASTRUCTURE: AAAS Deployment Architecture
 **Version:** 2.0.0 (Standardized)
 **Date:** 2026-01-21
 
 ---
 
 ## 1. Introduction
-This specification defines the architecture for the **SOMA SaaS Infrastructure**, a completely independent deployment artifact designed to orchestrate the SOMA Triad (Agent, Brain, Memory) in a zero-dependency container environment.
+This specification defines the architecture for the **SOMA AAAS Infrastructure**, a completely independent deployment artifact designed to orchestrate the SOMA Triad (Agent, Brain, Memory) in a zero-dependency container environment.
 
 ## 2. Independence Strategy
-The SaaS infrastructure is designed as a **Standalone Deployment Unit**. It does not inherently contain application code. Instead, it defines the runtime environment, network topology, and backing services required to execute the SOMA Stack.
+The AAAS infrastructure is designed as a **Standalone Deployment Unit**. It does not inherently contain application code. Instead, it defines the runtime environment, network topology, and backing services required to execute the SOMA Stack.
 
 ### 2.1 Decoupling Principles
 - **Source Code Injection**: Application code is injected at runtime via Docker volumes (Development) or COPY directives (Production).
 - **Environment Abstraction**: All configuration variables are injected via `.env` files or HashiCorp Vault. No hardcoded configuration exists within the repository.
-- **Orchestrator Isolation**: The startup logic (`start_saas.sh`) is self-contained and versioned independently of the application logic.
+- **Orchestrator Isolation**: The startup logic (`start_aaas.sh`) is self-contained and versioned independently of the application logic.
 
 ## 3. Startup Sequence Architecture
 The system enforces a rigorous, sequential initialization process to prevent race conditions and ensure data integrity.
 
 ### 3.1 Phase 1: Hardware & Infrastructure
-1.  **Hardware Detection**: The `start_saas.sh` orchestrator detects CUDA availability and sets `SOMA_HARDWARE_MODE`.
+1.  **Hardware Detection**: The `start_aaas.sh` orchestrator detects CUDA availability and sets `SOMA_HARDWARE_MODE`.
 2.  **Infrastructure Wait-Loop**: The system polls TCP ports for backing services (Postgres:5432, Redis:6379, Kafka:9092) and blocks execution until all are confirmed ready.
 
 ### 3.2 Phase 2: Sequential Schema Migration (The "Brain-First" Strategy)
@@ -33,7 +33,7 @@ The migration order is strictly enforced to respect dependency hierarchies:
 - **Process Isolation**: Each component (Agent, Brain, Memory) runs as a distinct `uvicorn`/`gunicorn` process, configured via `supervisord.conf`.
 
 ## 4. Network Topology & Port Authority
-The SaaS environment uses a dedicated internal bridge network (`soma_stack_net`) with strict port forwarding for external access.
+The AAAS environment uses a dedicated internal bridge network (`soma_stack_net`) with strict port forwarding for external access.
 
 | Service | Host Port | Internal Port | Description |
 |---------|-----------|---------------|-------------|

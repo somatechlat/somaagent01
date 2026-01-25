@@ -35,7 +35,7 @@ This document specifies the complete backup, audit trail, and disaster recovery 
 
 ### 2.1 AuditLog Model (EXISTING)
 
-**File:** `admin/saas/models/audit.py`
+**File:** `admin/aaas/models/audit.py`
 **Table:** `audit_logs`
 
 ```python

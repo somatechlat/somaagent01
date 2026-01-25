@@ -7,7 +7,7 @@ VIBE Rule 91: Zero-Fallback Mandate - Fail-fast on missing config
 VIBE Rule 164: Vault-Mandatory - ALL secrets from Vault
 
 This module is the SINGLE SOURCE OF TRUTH for configuration dispatch
-based on SA01_DEPLOYMENT_MODE (STANDALONE | SAAS | DEV | PROD).
+based on SA01_DEPLOYMENT_MODE (STANDALONE | AAAS | DEV | PROD).
 """
 
 from __future__ import annotations
@@ -163,40 +163,40 @@ class StandaloneSettings(BaseSettings):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SAAS Settings
+# AAAS Settings
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @dataclass
-class SaaSSettings(BaseSettings):
-    """Settings for Unified Monolith SaaS deployment (Port 63xxx)."""
+class AAASSettings(BaseSettings):
+    """Settings for Unified Monolith AAAS deployment (Port 63xxx)."""
 
-    # SaaS-specific: Brain + Memory enabled
-    soma_saas_mode: bool = field(default=True)
+    # AAAS-specific: Brain + Memory enabled
+    soma_aaas_mode: bool = field(default=True)
     somabrain_enabled: bool = field(default=True)
     fractalmemory_enabled: bool = field(default=True)
 
-    # SaaS direct-mode for sub-millisecond latency
-    saas_direct_mode: bool = field(default=False)
+    # AAAS direct-mode for sub-millisecond latency
+    aaas_direct_mode: bool = field(default=False)
 
-    # Milvus (Vector DB - SaaS only)
+    # Milvus (Vector DB - AAAS only)
     milvus_host: str = field(default="")
     milvus_port: int = field(default=19530)
 
-    # Kafka (Event streaming - SaaS only)
+    # Kafka (Event streaming - AAAS only)
     kafka_bootstrap_servers: str = field(default="")
 
     @classmethod
-    def load(cls) -> "SaaSSettings":
-        """Load SaaS settings from environment."""
-        LOGGER.info("☁️ Loading SAAS configuration...")
+    def load(cls) -> "AAASSettings":
+        """Load AAAS settings from environment."""
+        LOGGER.info("☁️ Loading AAAS configuration...")
 
-        saas_mode_raw = get_optional_env("SOMA_SAAS_MODE", "true").lower()
+        aaas_mode_raw = get_optional_env("SOMA_AAAS_MODE", "true").lower()
 
         return cls(
-            deployment_mode="SAAS",
+            deployment_mode="AAAS",
             deployment_target=get_optional_env("SA01_DEPLOYMENT_TARGET", "LOCAL"),
-            # Database - SaaS namespace
+            # Database - AAAS namespace
             postgres_host=get_required_env(
                 "POSTGRES_HOST", allow_dev_default=True, dev_default="somastack_postgres"
             ),
@@ -219,9 +219,9 @@ class SaaSSettings(BaseSettings):
             debug=get_optional_env("DJANGO_DEBUG", "false").lower() == "true",
             allowed_hosts=get_optional_env("ALLOWED_HOSTS", "*"),
             log_level=get_optional_env("LOG_LEVEL", "INFO"),
-            # SaaS-specific
-            soma_saas_mode=saas_mode_raw in ("true", "direct"),
-            saas_direct_mode=saas_mode_raw == "direct",
+            # AAAS-specific
+            soma_aaas_mode=aaas_mode_raw in ("true", "direct"),
+            aaas_direct_mode=aaas_mode_raw == "direct",
             somabrain_enabled=True,
             fractalmemory_enabled=True,
             # Milvus
@@ -271,23 +271,23 @@ class SettingsRegistry:
 
         if mode == "STANDALONE":
             cls._instance = StandaloneSettings.load()
-        elif mode in ("SAAS", "SAASMODE"):
-            cls._instance = SaaSSettings.load()
+        elif mode in ("AAAS", "AAASMODE"):
+            cls._instance = AAASSettings.load()
         elif mode == "DEV":
             # DEV mode defaults to Standalone for simplicity
             LOGGER.info("📋 DEV mode detected, using Standalone config")
             cls._instance = StandaloneSettings.load()
         elif mode == "PROD":
-            # PROD mode requires explicit SAAS or STANDALONE
-            saas_mode = os.environ.get("SOMA_SAAS_MODE", "false").lower() == "true"
-            if saas_mode:
-                cls._instance = SaaSSettings.load()
+            # PROD mode requires explicit AAAS or STANDALONE
+            aaas_mode = os.environ.get("SOMA_AAAS_MODE", "false").lower() == "true"
+            if aaas_mode:
+                cls._instance = AAASSettings.load()
             else:
                 cls._instance = StandaloneSettings.load()
         else:
             raise RuntimeError(
                 f"VIBE Rule 91 VIOLATION: Unknown SA01_DEPLOYMENT_MODE={mode}. "
-                "Valid values: STANDALONE, SAAS, DEV, PROD"
+                "Valid values: STANDALONE, AAAS, DEV, PROD"
             )
 
         LOGGER.info("✅ SettingsRegistry: Configuration loaded successfully")

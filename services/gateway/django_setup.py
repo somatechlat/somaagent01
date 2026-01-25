@@ -56,7 +56,7 @@ if not settings.configured:
             "ninja",
             "somafractalmemory",  # Monolith Integration
             # Project Apps - Existing
-            "admin.saas",
+            "admin.aaas",
             # Project Apps - New (M1 Migration)
             "admin.core",
             "admin.agents",

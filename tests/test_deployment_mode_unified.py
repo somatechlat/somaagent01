@@ -26,11 +26,11 @@ class TestSimpleContextBuilderDeploymentMode:
     """CTX-002: Test SimpleContextBuilder deployment mode memory retrieval."""
 
     @pytest.mark.asyncio
-    async def test_saas_mode_memory_retrieval(self):
-        """Test SAAS mode memory retrieval via HTTP API."""
+    async def test_aaas_mode_memory_retrieval(self):
+        """Test AAAS mode memory retrieval via HTTP API."""
 
-        # Force SAAS mode for this test
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+        # Force AAAS mode for this test
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             # Reload module to pick up new deployment mode
             import importlib
 
@@ -50,7 +50,7 @@ class TestSimpleContextBuilderDeploymentMode:
             turn = {"user_message": "test"}
             budget = {"memory": 1000}
 
-            result = await builder._add_memory_saas(
+            result = await builder._add_memory_aaas(
                 messages=[{"role": "system", "content": "test"}],
                 turn=turn,
                 budget=budget,
@@ -58,7 +58,7 @@ class TestSimpleContextBuilderDeploymentMode:
 
             assert result is not None
             assert builder.memory_retrieved is False  # No snippets returned
-            print("  ✅ SAAS mode: Memory retrieval completed via HTTP API")
+            print("  ✅ AAAS mode: Memory retrieval completed via HTTP API")
 
     @pytest.mark.asyncio
     async def test_standalone_mode_memory_retrieval(self):
@@ -101,7 +101,7 @@ class TestSimpleContextBuilderDeploymentMode:
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_protection(self):
-        """Test circuit breaker protection for SAAS mode memory retrieval."""
+        """Test circuit breaker protection for AAAS mode memory retrieval."""
         from services.common.circuit_breaker import CircuitBreakerError
         from services.common.simple_context_builder import SimpleContextBuilder
 
@@ -118,7 +118,7 @@ class TestSimpleContextBuilderDeploymentMode:
         turn = {"user_message": "test"}
         budget = {"memory": 1000}
 
-        result = await builder._add_memory_saas(
+        result = await builder._add_memory_aaas(
             messages=[{"role": "system", "content": "test"}],
             turn=turn,
             budget=budget,
@@ -133,9 +133,9 @@ class TestChatServiceErrorHandling:
     """CHAT-003: Test ChatService deployment mode error handling."""
 
     @pytest.mark.asyncio
-    async def test_saas_mode_llm_timeout_handling(self, chat_service):
-        """Test SAAS mode HTTP timeout handling for LLM streaming."""
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+    async def test_aaas_mode_llm_timeout_handling(self, chat_service):
+        """Test AAAS mode HTTP timeout handling for LLM streaming."""
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             # Reload module to pick up new deployment mode
             import importlib
 
@@ -168,7 +168,7 @@ class TestChatServiceErrorHandling:
                     # Expected - timeout was caught and logged
                     pass
 
-            print("  ✅ SAAS mode: LLM timeout handled with deployment mode logging")
+            print("  ✅ AAAS mode: LLM timeout handled with deployment mode logging")
 
     @pytest.mark.asyncio
     async def test_standalone_mode_context_build_error(self, chat_service):
@@ -221,21 +221,21 @@ class TestChatServiceErrorHandling:
             mock_msg_model.objects.create.side_effect = Exception("Connection failed")
 
             # The error message should include deployment mode context
-            print("  ✅ Database errors include deployment mode prefix (SAAS/STANDALONE)")
+            print("  ✅ Database errors include deployment mode prefix (AAAS/STANDALONE)")
 
 
 class TestHealthMonitorDeploymentMode:
     """HEALTH-002: Test HealthMonitor deployment mode health checks."""
 
     @pytest.mark.asyncio
-    async def test_saas_mode_service_health_check(self):
-        """Test SAAS mode service health check via HTTP endpoint."""
+    async def test_aaas_mode_service_health_check(self):
+        """Test AAAS mode service health check via HTTP endpoint."""
         from services.common.health_monitor import (
             HealthCheck,
         )
 
-        # Create health monitor with SAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+        # Create health monitor with AAAS mode
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             import importlib
 
             import services.common.health_monitor as hm
@@ -245,14 +245,14 @@ class TestHealthMonitorDeploymentMode:
             monitor = hm.HealthMonitor()
 
             # Register health check for somabrain service
-            def saas_somabrain_check():
-                # Simulate SAAS mode HTTP health check
+            def aaas_somabrain_check():
+                # Simulate AAAS mode HTTP health check
                 return HealthCheck(healthy=True, latency_ms=45.0)
 
-            monitor.register_health_checker("somabrain", saas_somabrain_check)
+            monitor.register_health_checker("somabrain", aaas_somabrain_check)
 
             # Run health check
-            await monitor._check_service("somabrain", saas_somabrain_check)
+            await monitor._check_service("somabrain", aaas_somabrain_check)
 
             # Verify health status
             service_status = monitor.checks.get("somabrain")
@@ -260,7 +260,7 @@ class TestHealthMonitorDeploymentMode:
             assert service_status.healthy is True
             assert service_status.latency_ms == 45.0
 
-            print("  ✅ SAAS mode: Service health check completed via HTTP endpoint")
+            print("  ✅ AAAS mode: Service health check completed via HTTP endpoint")
 
     @pytest.mark.asyncio
     async def test_standalone_mode_module_health_check(self):
@@ -307,8 +307,8 @@ class TestHealthMonitorDeploymentMode:
     async def test_deployment_mode_error_logging(self):
         """Test that health check errors include deployment mode prefix."""
 
-        # Create health monitor with SAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+        # Create health monitor with AAAS mode
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             import importlib
 
             import services.common.health_monitor as hm
@@ -343,8 +343,8 @@ class TestUnifiedMetricsDeploymentMode:
     async def test_deployment_mode_latency_tracking(self):
         """Test that latency tracking differs by deployment mode."""
 
-        # Test with SAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+        # Test with AAAS mode
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             import importlib
 
             import services.common.unified_metrics as um
@@ -353,15 +353,15 @@ class TestUnifiedMetricsDeploymentMode:
 
             metrics = um.get_metrics()
 
-            # Record SAAS mode latency (higher for HTTP calls)
+            # Record AAAS mode latency (higher for HTTP calls)
             metrics.record_health_status(
                 service_name="somabrain",
                 is_healthy=True,
-                latency_ms=85.0,  # SAAS: HTTP call latency
+                latency_ms=85.0,  # AAAS: HTTP call latency
             )
 
             # Verify metrics recorded
-            print("  ✅ SAAS mode: Health status recorded with latency 85ms")
+            print("  ✅ AAAS mode: Health status recorded with latency 85ms")
 
         # Test with STANDALONE mode
         with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
@@ -387,8 +387,8 @@ class TestUnifiedMetricsDeploymentMode:
     async def test_memory_retrieval_latency_tracking(self):
         """Test memory retrieval latency tracking per deployment mode."""
 
-        # Test with SAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+        # Test with AAAS mode
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             import importlib
 
             import services.common.unified_metrics as um
@@ -397,10 +397,10 @@ class TestUnifiedMetricsDeploymentMode:
 
             metrics = um.get_metrics()
 
-            # Record SAAS mode memory retrieval (HTTP API call)
+            # Record AAAS mode memory retrieval (HTTP API call)
             metrics.record_memory_retrieval(latency_seconds=0.065, snippet_count=3)  # 65ms
 
-            print("  ✅ SAAS mode: Memory retrieval recorded at 65ms (HTTP API)")
+            print("  ✅ AAAS mode: Memory retrieval recorded at 65ms (HTTP API)")
 
         # Test with STANDALONE mode
         with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
@@ -421,8 +421,8 @@ class TestUnifiedMetricsDeploymentMode:
     async def test_circuit_breaker_logging(self):
         """Test circuit breaker logging with deployment mode context."""
 
-        # Test with SAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "saas"}):
+        # Test with AAAS mode
+        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
             import importlib
 
             import services.common.unified_metrics as um
@@ -431,10 +431,10 @@ class TestUnifiedMetricsDeploymentMode:
 
             metrics = um.get_metrics()
 
-            # Record circuit breaker open for SAAS mode (HTTP service)
+            # Record circuit breaker open for AAAS mode (HTTP service)
             metrics.record_circuit_open(service_name="somabrain")
 
-            print("  ✅ SAAS mode: Circuit open logged for HTTP service")
+            print("  ✅ AAAS mode: Circuit open logged for HTTP service")
 
         # Test with STANDALONE mode
         with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):

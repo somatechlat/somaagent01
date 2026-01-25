@@ -32,13 +32,13 @@ ROUTE_PERMISSIONS = {
     "/api/v2/infrastructure/ratelimits": ["infra:view", "infra:ratelimit"],
     "/api/v2/observability/*": ["platform:read_metrics"],
     # Tenants
-    "/api/v2/saas/tenants": ["tenant:read"],
-    "/api/v2/saas/tenants/*": ["tenant:read"],
-    "/api/v2/saas/tenants/*/suspend": ["tenant:suspend"],
+    "/api/v2/aaas/tenants": ["tenant:read"],
+    "/api/v2/aaas/tenants/*": ["tenant:read"],
+    "/api/v2/aaas/tenants/*/suspend": ["tenant:suspend"],
     # Users
-    "/api/v2/saas/users": ["user:read"],
-    "/api/v2/saas/users/*": ["user:read"],
-    "/api/v2/saas/users/*/roles": ["user:assign_roles"],
+    "/api/v2/aaas/users": ["user:read"],
+    "/api/v2/aaas/users/*": ["user:read"],
+    "/api/v2/aaas/users/*/roles": ["user:assign_roles"],
     # Agents
     "/api/v2/agents": ["agent:read"],
     "/api/v2/agents/*": ["agent:read"],
@@ -53,9 +53,9 @@ ROUTE_PERMISSIONS = {
     "/api/v2/memory/search": ["memory:search"],
     "/api/v2/memory/*": ["memory:read"],
     # Audit
-    "/api/v2/saas/audit": ["audit:read"],
+    "/api/v2/aaas/audit": ["audit:read"],
     # Billing
-    "/api/v2/saas/billing/*": ["platform:manage_billing"],
+    "/api/v2/aaas/billing/*": ["platform:manage_billing"],
 }
 
 
@@ -105,7 +105,7 @@ def _expand_roles_to_permissions(roles: List[str]) -> List[str]:
 def _get_role_permissions(role_name: str) -> List[str]:
     """Get permissions for a role per SRS Section 8."""
     ROLE_PERMISSIONS = {
-        "saas_super_admin": ["*"],
+        "aaas_super_admin": ["*"],
         "tenant_admin": [
             "tenant:read",
             "tenant:update",

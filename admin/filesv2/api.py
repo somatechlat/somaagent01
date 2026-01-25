@@ -205,7 +205,7 @@ def create_upload_url(
 
 @router.post("/upload-local/{file_id}")
 def upload_local(request, file_id: str, file: UploadedFile = File(...)):
-    """Handle local file upload (Dev/SaaS-in-a-box mode)."""
+    """Handle local file upload (Dev/AAAS-in-a-box mode)."""
     from django.core.files.storage import default_storage
     from django.core.files.base import ContentFile
     from admin.filesv2.models import File as FileModel

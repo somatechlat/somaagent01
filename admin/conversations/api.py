@@ -52,7 +52,7 @@ async def list_conversations(
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.tenant_id or settings.AAAS_DEFAULT_TENANT_ID
     effective_user_id = user_id or user.sub
 
     @sync_to_async
@@ -118,7 +118,7 @@ async def start_conversation(
 
     user = get_current_user(request)
     effective_user_id = user.sub
-    effective_tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    effective_tenant_id = user.tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
     chat_service = await get_chat_service()
 
@@ -193,7 +193,7 @@ async def get_conversation(request, conversation_id: str) -> Conversation:
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get():
@@ -508,7 +508,7 @@ async def search_conversations(
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
-    tenant_id = user.tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _search():

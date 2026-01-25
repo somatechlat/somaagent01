@@ -104,7 +104,7 @@ class TokenPayload(BaseModel):
         if self.tenant:
             # If tenant is "default", return the settings default UUID
             if self.tenant == "default":
-                return getattr(settings, "SAAS_DEFAULT_TENANT_ID", None)
+                return getattr(settings, "AAAS_DEFAULT_TENANT_ID", None)
             # Otherwise use the tenant value directly (might be a UUID)
             return self.tenant
 

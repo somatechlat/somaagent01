@@ -1,16 +1,16 @@
 # SRS-CHAT-FLOW-MASTER — Complete Agent Architecture
 
 **System:** SomaAgent01
-**Version:** 3.0 (SaaS Direct Calls + Resilience Patterns)
+**Version:** 3.0 (AAAS Direct Calls + Resilience Patterns)
 **Status:** CANONICAL
 
 **Applied Personas:** ALL 10 ✅
 
 ---
 
-## 1. SaaS Direct Call Rule + Resilience
+## 1. AAAS Direct Call Rule + Resilience
 
-> **In SaaS mode: DIRECT IMPORTS + CIRCUIT BREAKERS + FALLBACK CHAINS**
+> **In AAAS mode: DIRECT IMPORTS + CIRCUIT BREAKERS + FALLBACK CHAINS**
 
 ```python
 # Every call wrapped in resilience pattern
@@ -302,12 +302,12 @@ CRITICAL_SERVICES = {
 
 | Mode | SomaBrain | OPA | SpiceDB | LLM |
 |------|-----------|-----|---------|-----|
-| **SAAS** | Direct import + CB | In-memory | gRPC pool + CB | LiteLLM + fallback |
+| **AAAS** | Direct import + CB | In-memory | gRPC pool + CB | LiteLLM + fallback |
 | **STANDALONE** | HTTP + CB | HTTP | gRPC + CB | LiteLLM + fallback |
 
 ---
 
-## 10. Latency Budget (SaaS Mode)
+## 10. Latency Budget (AAAS Mode)
 
 | Phase | Normal | Degraded |
 |-------|--------|----------|
@@ -341,7 +341,7 @@ CRITICAL_SERVICES = {
 
 | Criterion | Verification |
 |-----------|--------------|
-| ✅ SaaS direct calls | 0ms internal latency |
+| ✅ AAAS direct calls | 0ms internal latency |
 | ✅ Circuit breakers on all externals | CLOSED/HALF_OPEN/OPEN |
 | ✅ LLM fallback chain | 3 providers per use case |
 | ✅ Memory fallback | Empty on failure |

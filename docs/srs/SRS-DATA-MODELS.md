@@ -28,7 +28,7 @@ This document is the **Single Source of Truth** for all Django ORM models in Som
 | `admin/somabrain/models.py` | 41 | 1 | Memory |
 | `admin/voice/models.py` | 363 | 3 | Voice |
 | `admin/core/infrastructure/models.py` | 353 | 3 | Infra |
-| `admin/saas/models/*.py` | ~700 | 10 | SaaS |
+| `admin/aaas/models/*.py` | ~700 | 10 | AAAS |
 
 **Total: ~3,500+ lines, 53 Django Models**
 
@@ -38,7 +38,7 @@ This document is the **Single Source of Truth** for all Django ORM models in Som
 
 ```mermaid
 erDiagram
-    %% SAAS DOMAIN
+    %% AAAS DOMAIN
     SubscriptionTier ||--o{ Tenant : "has tier"
     Tenant ||--o{ TenantUser : "has members"
     Tenant ||--o{ Agent : "owns"
@@ -112,7 +112,7 @@ class Capsule(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=255)
     version = models.CharField(max_length=50)
-    tenant = models.ForeignKey("saas.Tenant", on_delete=CASCADE)
+    tenant = models.ForeignKey("aaas.Tenant", on_delete=CASCADE)
     status = models.CharField(choices=STATUS_CHOICES)
 
     # Governance
@@ -258,7 +258,7 @@ erDiagram
 
 ---
 
-## 7. SAAS Domain (`admin/saas/models/`)
+## 7. AAAS Domain (`admin/aaas/models/`)
 
 ### 7.1 Tenant Hierarchy
 
@@ -336,10 +336,10 @@ erDiagram
 
 | Model | Table | Scope |
 |-------|-------|-------|
-| `PlatformConfig` | saas_platform_config | Global singleton |
-| `AdminProfile` | saas_admin_profile | Platform admin |
-| `TenantSettings` | saas_tenant_settings | Per-tenant |
-| `UserPreferences` | saas_user_preferences | Per-user |
+| `PlatformConfig` | aaas_platform_config | Global singleton |
+| `AdminProfile` | aaas_admin_profile | Platform admin |
+| `TenantSettings` | aaas_tenant_settings | Per-tenant |
+| `UserPreferences` | aaas_user_preferences | Per-user |
 
 ### 7.4 Billing Integration
 
@@ -494,16 +494,16 @@ erDiagram
 | 19 | conversations | Conversation | chat/models.py |
 | 20 | messages | Message | chat/models.py |
 | 21 | conversation_participants | ConversationParticipant | chat/models.py |
-| 22 | subscription_tiers | SubscriptionTier | saas/models/tiers.py |
-| 23 | tenants | Tenant | saas/models/tenants.py |
-| 24 | tenant_users | TenantUser | saas/models/tenants.py |
-| 25 | agents | Agent | saas/models/agents.py |
-| 26 | agent_users | AgentUser | saas/models/agents.py |
-| 27 | usage_records | UsageRecord | saas/models/usage.py |
-| 28 | saas_platform_config | PlatformConfig | saas/models/profiles.py |
-| 29 | saas_admin_profile | AdminProfile | saas/models/profiles.py |
-| 30 | saas_tenant_settings | TenantSettings | saas/models/profiles.py |
-| 31 | saas_user_preferences | UserPreferences | saas/models/profiles.py |
+| 22 | subscription_tiers | SubscriptionTier | aaas/models/tiers.py |
+| 23 | tenants | Tenant | aaas/models/tenants.py |
+| 24 | tenant_users | TenantUser | aaas/models/tenants.py |
+| 25 | agents | Agent | aaas/models/agents.py |
+| 26 | agent_users | AgentUser | aaas/models/agents.py |
+| 27 | usage_records | UsageRecord | aaas/models/usage.py |
+| 28 | aaas_platform_config | PlatformConfig | aaas/models/profiles.py |
+| 29 | aaas_admin_profile | AdminProfile | aaas/models/profiles.py |
+| 30 | aaas_tenant_settings | TenantSettings | aaas/models/profiles.py |
+| 31 | aaas_user_preferences | UserPreferences | aaas/models/profiles.py |
 | 32 | permissions_resource | PermissionResource | permissions/models.py |
 | 33 | permissions_action | PermissionAction | permissions/models.py |
 | 34 | permissions_granular | GranularPermission | permissions/models.py |

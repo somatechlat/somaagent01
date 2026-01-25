@@ -1,7 +1,7 @@
 {
-    "name": "saas-admin-ui",
+    "name": "aaas-admin-ui",
     "version": "1.0.0",
-    "description": "SaaS Admin UI - SomaAgent Platform Management Interface",
+    "description": "AAAS Admin UI - SomaAgent Platform Management Interface",
     "type": "module",
     "scripts": {
         "dev": "vite --host 0.0.0.0 --port 5173",

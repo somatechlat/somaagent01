@@ -27,7 +27,7 @@ async def ping() -> dict:
 @router.get(
     "/audit/export",
     summary="Export audit logs as NDJSON",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def audit_export(
     request: HttpRequest,

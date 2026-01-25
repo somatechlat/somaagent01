@@ -109,7 +109,7 @@ class UnifiedGate:
         """
         Check OPA policy from capsule governance.
 
-        This is IN-MEMORY cached. No HTTP call in SaaS mode.
+        This is IN-MEMORY cached. No HTTP call in AAAS mode.
         """
         # Cache key
         cache_key = f"{id(opa_policies)}:{action}"
@@ -137,7 +137,7 @@ class UnifiedGate:
         """
         Check SpiceDB permission.
 
-        In SaaS mode, this uses the capsule.governance as fallback
+        In AAAS mode, this uses the capsule.governance as fallback
         when SpiceDB is unavailable.
         """
         # Parse action for SpiceDB relation

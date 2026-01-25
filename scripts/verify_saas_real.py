@@ -1,4 +1,4 @@
-"""Verification Script for SaaS Real Implementation."""
+"""Verification Script for AAAS Real Implementation."""
 
 import os
 import sys
@@ -16,13 +16,13 @@ if not settings.configured:
         DATABASES={
             "default": {
                 "ENGINE": "django.db.backends.sqlite3",
-                "NAME": "verify_saas.db",
+                "NAME": "verify_aaas.db",
             }
         },
         INSTALLED_APPS=[
             "django.contrib.contenttypes",
             "django.contrib.auth",
-            "admin.saas",
+            "admin.aaas",
             "admin.core",
             "admin.capsules",  # Required for api.py
         ],
@@ -49,14 +49,14 @@ except Exception:
 # Patch migrations to be skipped (Syncdb style)
 from django.core.management import call_command
 
-from admin.saas.api.settings import list_models, ModelConfigOut
-from admin.saas.models.profiles import GlobalDefault, TenantSettings
+from admin.aaas.api.settings import list_models, ModelConfigOut
+from admin.aaas.models.profiles import GlobalDefault, TenantSettings
 
 # Patch migrations to be skipped (Syncdb style) or run migrate
 
 
-def verify_real_saas():
-    print("🔍 [QA] Starting SaaS Real Implementation Verification...")
+def verify_real_aaas():
+    print("🔍 [QA] Starting AAAS Real Implementation Verification...")
 
     # Initialize DB
     print("   [DevOps] Initializing In-Memory SQLite DB...")
@@ -158,14 +158,14 @@ def verify_real_saas():
     # Run async tests
     asyncio.run(test_extensions())
 
-    print("\n✅ [Unified] SaaS Real Implementation Verification PASSED.")
+    print("\n✅ [Unified] AAAS Real Implementation Verification PASSED.")
 
 
 if __name__ == "__main__":
     try:
-        verify_real_saas()
+        verify_real_aaas()
     finally:
         import os
 
-        if os.path.exists("verify_saas.db"):
-            os.remove("verify_saas.db")
+        if os.path.exists("verify_aaas.db"):
+            os.remove("verify_aaas.db")

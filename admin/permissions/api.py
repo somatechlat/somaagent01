@@ -88,8 +88,8 @@ async def list_roles(
     return {
         "roles": [
             Role(
-                role_id="saas_admin",
-                name="SAAS Administrator",
+                role_id="aaas_admin",
+                name="AAAS Administrator",
                 description="Platform-level admin (God Mode)",
                 permissions=["*"],
                 is_system=True,

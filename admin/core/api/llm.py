@@ -62,7 +62,7 @@ def get_default_model() -> str:
 
     Per
     """
-    model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
+    model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
     if not model:
         # Fallback to a safe string during migrations/setup if needed,
         # but do NOT block module import.
@@ -192,7 +192,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     temperature = overrides.get("temperature")
 
     if model == "unconfigured":
-        raise ServiceError("llm_not_configured: SAAS_DEFAULT_CHAT_MODEL is missing.")
+        raise ServiceError("llm_not_configured: AAAS_DEFAULT_CHAT_MODEL is missing.")
 
     # Build messages
     messages = (

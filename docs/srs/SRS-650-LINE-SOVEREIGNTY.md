@@ -47,10 +47,10 @@ somabrain/
 ├── schemas.py                # 977 lines ❌
 ├── api/
 │   └── endpoints/            # 65 files (well-organized)
-│       ├── saas_admin.py     # 796 lines ❌
+│       ├── aaas_admin.py     # 796 lines ❌
 │       ├── users.py          # 695 lines ❌
 │       └── sso.py            # 690 lines ❌
-├── saas/
+├── aaas/
 │   ├── models.py             # 1,190 lines ❌
 │   ├── admin.py              # 1,040 lines ❌
 │   └── auth.py               # 662 lines ❌
@@ -208,7 +208,7 @@ from services.common.chat_service import ChatService
 ### 5.3 E2E Verification
 ```bash
 # Start Docker infrastructure
-docker compose -f infra/saas/docker-compose.yml up -d
+docker compose -f infra/aaas/docker-compose.yml up -d
 
 # Run E2E tests
 pytest tests/e2e/ -v --tb=short

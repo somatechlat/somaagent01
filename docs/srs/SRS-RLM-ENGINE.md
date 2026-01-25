@@ -2,19 +2,19 @@
 
 **System:** SomaAgent01
 **Document ID:** SRS-RLM-ENGINE-2026-01-16
-**Version:** 5.0 (SaaS Direct Calls Enforced)
+**Version:** 5.0 (AAAS Direct Calls Enforced)
 **Status:** CANONICAL
 
 **Applied Personas:** ALL 10 ✅
 
 ---
 
-## 0. SaaS Direct Call Rule
+## 0. AAAS Direct Call Rule
 
 > **RLMEngine and SomaBrain.ask() use DIRECT IMPORTS — ZERO HTTP LATENCY**
 
 ```python
-# ✅ SAAS MODE
+# ✅ AAAS MODE
 from admin.agents.services.rlm_engine import RLMEngine
 from somabrain.cognitive import CognitiveCore
 

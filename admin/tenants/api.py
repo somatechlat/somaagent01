@@ -80,7 +80,7 @@ async def list_tenants(
     plan: Optional[str] = None,
     limit: int = 50,
 ) -> dict:
-    """List all tenants (SAAS Admin).
+    """List all tenants (AAAS Admin).
 
     PM: Platform overview.
     """

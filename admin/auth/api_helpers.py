@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Role priority for determining highest role
 ROLE_PRIORITY = [
-    "saas_admin",
+    "aaas_admin",
     "tenant_sysadmin",
     "tenant_admin",
     "agent_owner",
@@ -31,7 +31,7 @@ ROLE_PRIORITY = [
 
 # Role to permissions mapping
 ROLE_PERMISSIONS = {
-    "saas_admin": [
+    "aaas_admin": [
         "platform:manage",
         "platform:manage_tenants",
         "platform:manage_tiers",
@@ -96,12 +96,12 @@ ROLE_PERMISSIONS = {
 def determine_redirect_path(payload: "TokenPayload") -> str:
     """Determine redirect path based on user roles.
 
-    - saas_admin, tenant_sysadmin -> /select-mode (mode selection)
+    - aaas_admin, tenant_sysadmin -> /select-mode (mode selection)
     - tenant_admin, agent_owner -> /dashboard
     - user, viewer -> /chat
     """
     roles = set(payload.roles)
-    if "saas_admin" in roles:
+    if "aaas_admin" in roles:
         return "/select-mode"
     elif "tenant_sysadmin" in roles:
         return "/select-mode"
@@ -132,7 +132,7 @@ def get_permissions_for_roles(roles: list[str]) -> list[str]:
 
 async def update_last_login(payload: "TokenPayload") -> None:
     """Update user's last login timestamp if they exist in our database."""
-    from admin.saas.models import TenantUser
+    from admin.aaas.models import TenantUser
 
     try:
 

@@ -25,7 +25,7 @@ Requirements:
 
 Usage:
     DJANGO_SETTINGS_MODULE=services.gateway.settings SA01_INFRA_AVAILABLE=1 \
-        pytest tests/saas_direct/test_chat_flow_e2e.py -v
+        pytest tests/aaas_direct/test_chat_flow_e2e.py -v
 """
 
 from __future__ import annotations
@@ -197,7 +197,7 @@ class TestPhase4AgentIQDerivation:
     def test_intelligence_level_mapping(self, settings):
         """Verify intelligence level affects model selection tier."""
         # Uses centralized default model from settings if available
-        default_model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", None)
+        default_model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", None)
 
         intelligence_tiers = {
             (1, 3): "fast",
@@ -251,7 +251,7 @@ class TestPhase6ModelSelection:
     def test_model_from_settings(self, settings):
         """Model selection respects centralized settings."""
         # No hardcoded model names - uses settings
-        default_model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", None)
+        default_model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", None)
         # Model may be None in test env, that's OK
         # In production, it would be set via env var
 
@@ -415,7 +415,7 @@ class TestGoldenPathE2E:
         assert total_tokens < 128000
 
         # PHASE 6: Model Selection (from settings, not hardcoded)
-        model = getattr(settings, "SAAS_DEFAULT_CHAT_MODEL", None) or "default-model"
+        model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", None) or "default-model"
         assert model is not None  # Either from settings or fallback
 
         # PHASE 7-9: Inference, Tools, Multimodal (simulated)

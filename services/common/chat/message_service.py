@@ -25,7 +25,7 @@ from services.common.model_router import (
 )
 # Integration: BrainBridge (Direct Mode Optimization)
 try:
-    from saas.brain import brain as BrainBridge
+    from aaas.brain import brain as BrainBridge
     HAS_BRIDGE = True
 except ImportError:
     HAS_BRIDGE = False
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 # Deployment mode detection
 DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
-SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 

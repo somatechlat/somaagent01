@@ -7,7 +7,7 @@ VIBE COMPLIANT:
 
 Requirements:
 - SA01_INFRA_AVAILABLE=1 environment variable
-- Running: docker-compose -f infra/saas/docker-compose.yml up -d
+- Running: docker-compose -f infra/aaas/docker-compose.yml up -d
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def real_infrastructure():
     services = [
         ("localhost", 63932, "PostgreSQL"),  # somastack_postgres
         ("localhost", 63979, "Redis"),  # somastack_redis
-        ("localhost", 63900, "Agent API"),  # somastack_saas:9000
+        ("localhost", 63900, "Agent API"),  # somastack_aaas:9000
     ]
 
     for host, port, name in services:
@@ -88,10 +88,10 @@ def django_db_setup():
                 "default": {
                     "ENGINE": "django.db.backends.postgresql",
                     "HOST": "localhost",  # Force localhost (Docker exposed port)
-                    "PORT": 63932,  # Force SAAS docker-compose port
-                    "NAME": "somaagent",  # SAAS docker-compose database
-                    "USER": "soma",  # SAAS docker-compose user
-                    "PASSWORD": "soma",  # SAAS docker-compose password
+                    "PORT": 63932,  # Force AAAS docker-compose port
+                    "NAME": "somaagent",  # AAAS docker-compose database
+                    "USER": "soma",  # AAAS docker-compose user
+                    "PASSWORD": "soma",  # AAAS docker-compose password
                     "CONN_MAX_AGE": 60,  # Connection pooling
                     "OPTIONS": {
                         "connect_timeout": 5,
@@ -104,7 +104,7 @@ def django_db_setup():
                 "django.contrib.auth",
                 "django.contrib.postgres",
                 "admin.core",
-                "admin.saas",
+                "admin.aaas",
                 "admin.chat",
                 "admin.agents",
             ],
@@ -127,7 +127,7 @@ def django_db_setup():
         )
         django.setup()
 
-        # Tables already exist in real SAAS database
+        # Tables already exist in real AAAS database
         # No need to create them - they're managed by Django migrations in the running container
         # VIBE Rule 7: Real infrastructure means real databases with real schema
 

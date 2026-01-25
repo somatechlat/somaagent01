@@ -19,7 +19,7 @@ from __future__ import annotations
 
 GRANULAR_PERMISSIONS: dict[str, dict[str, str]] = {
     # =========================================================================
-    # PLATFORM (SAAS Admin - God Mode)
+    # PLATFORM (AAAS Admin - God Mode)
     # =========================================================================
     "platform": {
         "platform:manage": "Full platform management",
@@ -187,8 +187,8 @@ GRANULAR_PERMISSIONS: dict[str, dict[str, str]] = {
 # =============================================================================
 
 PREDEFINED_ROLES: dict[str, dict] = {
-    "saas_super_admin": {
-        "name": "SAAS Super Administrator",
+    "aaas_super_admin": {
+        "name": "AAAS Super Administrator",
         "description": "Full platform access (God Mode)",
         "permissions": ["*"],  # All permissions
         "scope": "platform",

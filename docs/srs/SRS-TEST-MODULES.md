@@ -11,14 +11,14 @@
 
 This document defines the **test suites by module**, following the 12-Phase Chat Flow architecture. Each module has:
 - **Unit Tests**: Pure logic verification
-- **SaaS Direct Tests**: Real infra (Postgres/Redis/Milvus)
+- **AAAS Direct Tests**: Real infra (Postgres/Redis/Milvus)
 - **Integration Tests**: Cross-module verification
 
 ---
 
 ## Module Test Matrix
 
-| Module | Location | Unit | SaaS | Integration |
+| Module | Location | Unit | AAAS | Integration |
 |--------|----------|------|------|-------------|
 | AgentIQ | `admin/core/agentiq/` | ✅ | ✅ | ✅ |
 | Context Builder | `admin/core/context/` | ✅ | ✅ | ✅ |
@@ -37,7 +37,7 @@ This document defines the **test suites by module**, following the 12-Phase Chat
 ## 1. AgentIQ (SimpleGovernor)
 
 ### Location
-`tests/saas_direct/agentiq/`
+`tests/aaas_direct/agentiq/`
 
 ### Test Cases
 
@@ -56,14 +56,14 @@ def test_resource_budget_calculation():
     pass
 ```
 
-#### SaaS Direct: `test_agentiq_saas.py`
+#### AAAS Direct: `test_agentiq_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_unified_gate_permission_check(real_tenant, real_capsule):
     """UnifiedGate checks permission against real SpiceDB"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_governor_budget_enforcement(real_tenant):
     """Governor denies action when budget exhausted"""
     pass
@@ -74,7 +74,7 @@ def test_governor_budget_enforcement(real_tenant):
 ## 2. Context Builder
 
 ### Location
-`tests/saas_direct/context/`
+`tests/aaas_direct/context/`
 
 ### Test Cases
 
@@ -93,19 +93,19 @@ def test_learned_preferences_override_defaults():
     pass
 ```
 
-#### SaaS Direct: `test_context_builder_saas.py`
+#### AAAS Direct: `test_context_builder_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_memory_recall_populates_lane(real_tenant, real_capsule):
     """SomaBrain.recall() results populate memory lane"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_tool_discovery_populates_lane(real_tenant):
     """Available tools populate tools lane"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_history_truncation(real_session):
     """History lane truncates oldest messages when over limit"""
     pass
@@ -116,68 +116,68 @@ def test_history_truncation(real_session):
 ## 3. Chat Orchestrator (12-Phase Flow)
 
 ### Location
-`tests/saas_direct/orchestrator/`
+`tests/aaas_direct/orchestrator/`
 
 ### Test Cases
 
-#### SaaS Direct: `test_chat_orchestrator_saas.py`
+#### AAAS Direct: `test_chat_orchestrator_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_1_tenant_resolution(real_request):
     """Phase 1: Tenant resolved from token"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_2_capsule_load(real_tenant):
     """Phase 2: Capsule loaded from DB"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_3_budget_gate(real_tenant):
     """Phase 3: Budget checked before processing"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_4_agentiq_derivation(real_capsule):
     """Phase 4: AgentIQ derives settings from knobs"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_5_context_building(real_capsule):
     """Phase 5: Context assembled from lanes"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_6_model_selection(real_capsule):
     """Phase 6: Model selected based on task complexity"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_7_llm_inference(real_context):
     """Phase 7: LLM called with built context"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_8_tool_execution(real_tool_call):
     """Phase 8: Tool executed if requested"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_9_multimodal_handling(real_image_request):
     """Phase 9: Image/Audio processed"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_10_memory_update(real_response):
     """Phase 10: SomaBrain.memorize() called"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_11_billing_event(real_tenant, real_response):
     """Phase 11: Lago event emitted"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_phase_12_response_delivery(real_session):
     """Phase 12: Response streamed to client"""
     pass
@@ -188,7 +188,7 @@ def test_phase_12_response_delivery(real_session):
 ## 4. Budget System
 
 ### Location
-`tests/saas_direct/budget/` (EXISTING: `test_budget.py`)
+`tests/aaas_direct/budget/` (EXISTING: `test_budget.py`)
 
 ### Test Cases (Already Implemented)
 - ✅ `test_get_current_usage_starts_at_zero`
@@ -202,7 +202,7 @@ def test_phase_12_response_delivery(real_session):
 ## 5. Feature Flags
 
 ### Location
-`tests/saas_direct/features/` (EXISTING: `test_features.py`)
+`tests/aaas_direct/features/` (EXISTING: `test_features.py`)
 
 ### Test Cases (Already Implemented)
 - ✅ `test_core_feature_enabled_by_default`
@@ -215,7 +215,7 @@ def test_phase_12_response_delivery(real_session):
 ## 6. Model Router
 
 ### Location
-`tests/saas_direct/model_router/`
+`tests/aaas_direct/model_router/`
 
 ### Test Cases
 
@@ -234,14 +234,14 @@ def test_model_capability_matching():
     pass
 ```
 
-#### SaaS Direct: `test_model_router_saas.py`
+#### AAAS Direct: `test_model_router_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_model_config_from_db(real_tenant):
     """LLMModelConfig loaded from real DB"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_circuit_breaker_on_model_failure():
     """Failed model triggers circuit breaker"""
     pass
@@ -252,23 +252,23 @@ def test_circuit_breaker_on_model_failure():
 ## 7. Multimodal
 
 ### Location
-`tests/saas_direct/multimodal/`
+`tests/aaas_direct/multimodal/`
 
 ### Test Cases
 
-#### SaaS Direct: `test_multimodal_saas.py`
+#### AAAS Direct: `test_multimodal_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_image_generation_budget_check(real_tenant):
     """Image generation checks budget first"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_vision_processing_model_routing():
     """Vision tasks route to vision-capable model"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_voice_synthesis_feature_gate(real_tenant):
     """TTS requires voice_synthesis feature enabled"""
     pass
@@ -279,7 +279,7 @@ def test_voice_synthesis_feature_gate(real_tenant):
 ## 8. Tool System
 
 ### Location
-`tests/saas_direct/tools/`
+`tests/aaas_direct/tools/`
 
 ### Test Cases
 
@@ -294,19 +294,19 @@ def test_tool_schema_validation():
     pass
 ```
 
-#### SaaS Direct: `test_tool_system_saas.py`
+#### AAAS Direct: `test_tool_system_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_tool_permission_check(real_tenant, real_tool):
     """SpiceDB permission check before execution"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_tool_execution_audit(real_tenant, real_tool):
     """Tool execution logged to AuditLog"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_tool_budget_increment(real_tenant):
     """Tool call increments usage counter"""
     pass
@@ -314,33 +314,33 @@ def test_tool_budget_increment(real_tenant):
 
 ---
 
-## 9. SomaBrain Client (SaaS Direct Bridge)
+## 9. SomaBrain Client (AAAS Direct Bridge)
 
 ### Location
-`tests/saas_direct/somabrain/`
+`tests/aaas_direct/somabrain/`
 
 ### Test Cases
 
-#### SaaS Direct: `test_somabrain_client_saas.py`
+#### AAAS Direct: `test_somabrain_client_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_direct_import_mode():
     """Verify SomaBrain imported directly (not HTTP)"""
     from admin.core.somabrain_client import SomaBrainClient
     client = SomaBrainClient()
     assert client.mode == "direct"
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_recall_returns_memories(real_tenant, real_capsule):
     """SomaBrain.recall() returns semantic memories"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_memorize_stores_memory(real_tenant, real_capsule, real_message):
     """SomaBrain.memorize() persists to vector store"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_learn_updates_capsule(real_tenant, real_capsule):
     """SomaBrain.learn() updates capsule.body.learned"""
     pass
@@ -351,18 +351,18 @@ def test_learn_updates_capsule(real_tenant, real_capsule):
 ## 10. Billing (Lago)
 
 ### Location
-`tests/saas_direct/billing/`
+`tests/aaas_direct/billing/`
 
 ### Test Cases
 
-#### SaaS Direct: `test_billing_saas.py`
+#### AAAS Direct: `test_billing_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_lago_event_emission(real_tenant, real_usage):
     """Billing event sent to Lago after request"""
     pass
 
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_subscription_tier_resolution(real_tenant):
     """Tenant subscription tier resolved from Lago"""
     pass
@@ -373,7 +373,7 @@ def test_subscription_tier_resolution(real_tenant):
 ## 11. Permission Matrix
 
 ### Location
-`tests/saas_direct/permissions/`
+`tests/aaas_direct/permissions/`
 
 ### Test Cases
 
@@ -388,9 +388,9 @@ def test_deny_overrides_allow():
     pass
 ```
 
-#### SaaS Direct: `test_permission_matrix_saas.py`
+#### AAAS Direct: `test_permission_matrix_aaas.py`
 ```python
-@pytest.mark.saas
+@pytest.mark.aaas
 def test_spicedb_check_permission(real_tenant, real_resource):
     """SpiceDB check_permission returns correct result"""
     pass
@@ -411,25 +411,25 @@ tests/
 │   ├── test_budget_system.py (existing)
 │   └── test_features_system.py (existing)
 │
-├── saas_direct/
+├── aaas_direct/
 │   ├── agentiq/
-│   │   └── test_agentiq_saas.py
+│   │   └── test_agentiq_aaas.py
 │   ├── context/
-│   │   └── test_context_builder_saas.py
+│   │   └── test_context_builder_aaas.py
 │   ├── orchestrator/
-│   │   └── test_chat_orchestrator_saas.py
+│   │   └── test_chat_orchestrator_aaas.py
 │   ├── model_router/
-│   │   └── test_model_router_saas.py
+│   │   └── test_model_router_aaas.py
 │   ├── multimodal/
-│   │   └── test_multimodal_saas.py
+│   │   └── test_multimodal_aaas.py
 │   ├── tools/
-│   │   └── test_tool_system_saas.py
+│   │   └── test_tool_system_aaas.py
 │   ├── somabrain/
-│   │   └── test_somabrain_client_saas.py
+│   │   └── test_somabrain_client_aaas.py
 │   ├── billing/
-│   │   └── test_billing_saas.py
+│   │   └── test_billing_aaas.py
 │   ├── permissions/
-│   │   └── test_permission_matrix_saas.py
+│   │   └── test_permission_matrix_aaas.py
 │   ├── test_budget.py (existing)
 │   └── test_features.py (existing)
 │
@@ -459,13 +459,13 @@ tests/
 
 ```bash
 # Start infrastructure
-docker compose -f infra/saas/docker-compose.yml up -d
+docker compose -f infra/aaas/docker-compose.yml up -d
 
-# Run all SaaS Direct tests
-SA01_INFRA_AVAILABLE=1 pytest tests/saas_direct/ -v --tb=short
+# Run all AAAS Direct tests
+SA01_INFRA_AVAILABLE=1 pytest tests/aaas_direct/ -v --tb=short
 
 # Run specific module
-SA01_INFRA_AVAILABLE=1 pytest tests/saas_direct/orchestrator/ -v
+SA01_INFRA_AVAILABLE=1 pytest tests/aaas_direct/orchestrator/ -v
 ```
 
 ---

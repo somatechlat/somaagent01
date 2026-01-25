@@ -12,7 +12,7 @@ Requirements:
 
 Usage:
     DJANGO_SETTINGS_MODULE=services.gateway.settings SA01_INFRA_AVAILABLE=1 \
-        pytest tests/saas_direct/test_features.py -v
+        pytest tests/aaas_direct/test_features.py -v
 """
 
 from __future__ import annotations

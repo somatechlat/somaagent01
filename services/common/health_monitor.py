@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Deployment mode detection
 DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
-SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 
@@ -207,12 +207,12 @@ class HealthMonitor:
         """Check health of all registered services.
 
         HEALTH-002: Deployment mode-specific health check strategy:
-        - SAAS mode: Check distributed services via HTTP endpoints
+        - AAAS mode: Check distributed services via HTTP endpoints
         - STANDALONE mode: Check embedded modules via direct import checks
         """
         # Log deployment mode health check strategy
-        if SAAS_MODE:
-            logger.debug("SAAS mode: Checking distributed services via HTTP endpoints")
+        if AAAS_MODE:
+            logger.debug("AAAS mode: Checking distributed services via HTTP endpoints")
         elif STANDALONE_MODE:
             logger.debug("STANDALONE mode: Checking embedded modules")
 
@@ -231,7 +231,7 @@ class HealthMonitor:
         """Check health of a single service.
 
         HEALTH-002: Deployment mode-aware error handling:
-        - SAAS mode: Log HTTP connectivity issues
+        - AAAS mode: Log HTTP connectivity issues
         - STANDALONE mode: Log embedded module import failures
         """
         start = time.monotonic()
@@ -285,7 +285,7 @@ class HealthMonitor:
 
             # HEALTH-002: Deployment mode-specific error logging
             error_prefix = f"{DEPLOYMENT_MODE} mode:"
-            if SAAS_MODE and service_name == "somabrain":
+            if AAAS_MODE and service_name == "somabrain":
                 error_msg = f"{error_prefix} Health check failed for {service_name}: {e} (HTTP endpoint likely unavailable)"
             elif STANDALONE_MODE and service_name == "somabrain":
                 error_msg = f"{error_prefix} Health check failed for {service_name}: {e} (Embedded module likely unavailable)"

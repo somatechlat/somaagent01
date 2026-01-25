@@ -51,7 +51,7 @@ async def signal_follow_up(
 
     GMD Integration: This updates SomaBrain's reward model for better recall.
     """
-    from saas.brain import brain
+    from aaas.brain import brain
 
     config = learning_config or {}
     window = config.get("follow_up_window", DEFAULTS["follow_up_window"])
@@ -86,7 +86,7 @@ async def signal_regenerate(
 
     This is a strong indicator the response was unsatisfactory.
     """
-    from saas.brain import brain
+    from aaas.brain import brain
 
     config = learning_config or {}
     value = config.get("reward_regenerate", DEFAULTS["reward_regenerate"])
@@ -114,7 +114,7 @@ async def signal_copy(
 
     Indicates the response was valuable enough to reuse.
     """
-    from saas.brain import brain
+    from aaas.brain import brain
 
     config = learning_config or {}
     value = config.get("reward_copy", DEFAULTS["reward_copy"])
@@ -143,7 +143,7 @@ async def signal_conversation_end(
 
     GMD Integration: Uses turn count as proxy for conversation quality.
     """
-    from saas.brain import brain
+    from aaas.brain import brain
 
     config = learning_config or {}
     min_turns = config.get("min_engaged_turns", DEFAULTS["min_engaged_turns"])
@@ -191,7 +191,7 @@ async def signal_tool_usage(
 
     Indicates actionable, concrete value from the response.
     """
-    from saas.brain import brain
+    from aaas.brain import brain
 
     config = learning_config or {}
     if success:
@@ -220,7 +220,7 @@ async def signal_long_response(
 
     Long messages indicate engagement and thoughtful interaction.
     """
-    from saas.brain import brain
+    from aaas.brain import brain
 
     config = learning_config or {}
     max_reward = config.get("reward_long_response", DEFAULTS["reward_long_response"])

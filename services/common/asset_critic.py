@@ -388,11 +388,11 @@ class AssetCritic:
             from django.conf import settings
 
             vision_model = getattr(
-                settings, "SAAS_VISION_MODEL", os.environ.get("SA01_VISION_MODEL")
+                settings, "AAAS_VISION_MODEL", os.environ.get("SA01_VISION_MODEL")
             )
             if not vision_model:
                 raise ValueError(
-                    "Vision model not configured - set SAAS_VISION_MODEL or SA01_VISION_MODEL"
+                    "Vision model not configured - set AAAS_VISION_MODEL or SA01_VISION_MODEL"
                 )
 
             response_text, _, _ = await self._llm_adapter.chat(

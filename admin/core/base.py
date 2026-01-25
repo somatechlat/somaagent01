@@ -30,7 +30,7 @@ class TenantScopedModel(models.Model):
     """
 
     tenant = models.ForeignKey(
-        "saas.Tenant",
+        "aaas.Tenant",
         on_delete=models.CASCADE,
         related_name="%(class)ss",
         db_index=True,

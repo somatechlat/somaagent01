@@ -2,7 +2,7 @@
 Permission Matrix - 4-Level Permission Cascade System.
 
 Implements the hierarchical permission model:
-- Level 0: Platform (SaaS Admin - God Mode)
+- Level 0: Platform (AAAS Admin - God Mode)
 - Level 1: Tenant (within tenant scope)
 - Level 2: Agent (per agent)
 - Level 3: Resource (chat, memory, tools)
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class PermissionLevel(str, Enum):
     """Permission hierarchy levels."""
 
-    PLATFORM = "platform"  # 🔴 SaaS God Mode
+    PLATFORM = "platform"  # 🔴 AAAS God Mode
     TENANT = "tenant"  # 🟠 Within tenant
     AGENT = "agent"  # 🟢 Per agent
     RESOURCE = "resource"  # 🔵 Chat, memory, tools
@@ -127,7 +127,7 @@ class PermissionChecker:
     4-Level Permission Cascade Checker.
 
     Checks permissions through hierarchy:
-    1. Platform level (SaaS Admin)
+    1. Platform level (AAAS Admin)
     2. Tenant level (within tenant)
     3. Agent level (per agent)
     4. Resource level (chat, memory, tools)
