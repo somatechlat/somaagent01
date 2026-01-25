@@ -19,7 +19,7 @@ These apps encapsulate the core business logic and domain boundaries.
 12. **`admin.multimodal`**: Vision & Audio Processing.
 13. **`admin.notifications`**: Alerting System.
 14. **`admin.orchestrator`**: Service Orchestration.
-15. **`admin.saas`**: Multi-tenancy & Billing.
+15. **`admin.aaas`**: Multi-tenancy & Billing.
 16. **`admin.tools`**: Tool Execution Engine.
 17. **`admin.voice`**: Speech-to-Text & TTS.
 

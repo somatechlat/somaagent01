@@ -1,7 +1,7 @@
 # SomaAgent01 Standalone Deployment
 
 > **Architecture**: Agent-Only (No Brain, No Memory)
-> **Port Namespace**: 20xxx (Strict Isolation from SaaS 63xxx)
+> **Port Namespace**: 20xxx (Strict Isolation from AAAS 63xxx)
 > **Mode**: `SA01_DEPLOYMENT_MODE=STANDALONE`
 
 ## Overview
@@ -41,11 +41,11 @@ docker compose logs -f somaagent_standalone
 - **Agent API**: http://localhost:20020
 - **Health Check**: http://localhost:20020/api/v1/health
 
-## Differences from SaaS Mode
+## Differences from AAAS Mode
 
-| Feature | Standalone | SaaS |
+| Feature | Standalone | AAAS |
 |---------|------------|------|
 | SomaBrain | ❌ Not included | ✅ In-process |
 | FractalMemory | ❌ Not included | ✅ In-process |
 | Port Range | 20xxx | 63xxx |
-| Mode Variable | `STANDALONE` | `SAAS` |
+| Mode Variable | `STANDALONE` | `AAAS` |

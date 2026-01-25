@@ -34,7 +34,7 @@ from admin.auth.api_schemas import (
 )
 from admin.common.auth import decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError, UnauthorizedError
-from admin.saas.models import Tenant
+from admin.aaas.models import Tenant
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -343,7 +343,7 @@ async def register_user(request, payload: RegisterRequest):
 
 
 # =============================================================================
-# IMPERSONATION - SAAS Super Admin Only
+# IMPERSONATION - AAAS Super Admin Only
 # =============================================================================
 
 
@@ -367,8 +367,8 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         raise UnauthorizedError(f"Invalid token: {e}")
 
     user_roles = current_user.realm_access.get("roles", []) if current_user.realm_access else []
-    if "super_admin" not in user_roles and "saas_admin" not in user_roles:
-        raise UnauthorizedError("Only SAAS super admins can impersonate")
+    if "super_admin" not in user_roles and "aaas_admin" not in user_roles:
+        raise UnauthorizedError("Only AAAS super admins can impersonate")
 
     @sync_to_async
     def get_tenant():
@@ -398,7 +398,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 
     @sync_to_async
     def create_audit():
-        from admin.saas.models import AuditLog
+        from admin.aaas.models import AuditLog
 
         return AuditLog.objects.create(
             actor_id=current_user.sub,

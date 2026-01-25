@@ -1,4 +1,4 @@
-# SaaS Standalone Deployment Guide
+# AAAS Standalone Deployment Guide
 
 **Deployment Pattern:** Independent Repository Orchestration
 **Status:** PRODUCTION READY
@@ -6,24 +6,24 @@
 ---
 
 ## 1. Overview
-The SOMA SaaS Deployment is a **"Repository-Agnostic"** infrastructure. It enables the deployment of the entire SOMA Triad (Agent, Brain, Memory) from a single directory, treating the application repositories as interchangeable modules.
+The SOMA AAAS Deployment is a **"Repository-Agnostic"** infrastructure. It enables the deployment of the entire SOMA Triad (Agent, Brain, Memory) from a single directory, treating the application repositories as interchangeable modules.
 
 ## 2. Deployment Structure
 
 ```
-infra/saas/
+infra/aaas/
 ├── docker-compose.yml       # Infrastructure Definition
-├── start_saas.sh            # Startup Orchestrator
+├── start_aaas.sh            # Startup Orchestrator
 ├── supervisord.conf         # Process Manager Config
-├── build_saas.sh            # Optimized Build Script
+├── build_aaas.sh            # Optimized Build Script
 └── .env                     # Configuration (Git-Ignored)
 ```
 
 ## 3. The "Brain-First" Startup Logic
-The `start_saas.sh` script is the core intelligence of the deployment. It handles the critical "Brain-First" initialization sequence required for cognitive integrity.
+The `start_aaas.sh` script is the core intelligence of the deployment. It handles the critical "Brain-First" initialization sequence required for cognitive integrity.
 
 ```bash
-# Pseudocode of start_saas.sh logic
+# Pseudocode of start_aaas.sh logic
 detect_hardware()
 wait_for_ports(postgres, redis, kafka)
 
@@ -41,7 +41,7 @@ start_supervisor()          # Launch all processes
 - **Process Isolation**: `supervisord` ensures that a crash in the Agent Runtime does not bring down the Cognitive Core (Brain) or Memory Store.
 
 ## 5. Build Optimization
-The `build_saas.sh` script creates a "Clean Context" for Docker builds. It explicitly filters out heavy artifacts:
+The `build_aaas.sh` script creates a "Clean Context" for Docker builds. It explicitly filters out heavy artifacts:
 - `.venv/`
 - `node_modules/`
 - `target/` (Rust builds)

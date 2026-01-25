@@ -1,13 +1,13 @@
 # SRS: Permission Matrix & Role Administration
 
 **Document ID:** SA01-SRS-PERMISSIONS-2025-12
-**Role:** 🔴 SAAS SysAdmin (manages all)
-**Routes:** `/saas/roles/*`, `/saas/permissions/*`
+**Role:** 🔴 AAAS SysAdmin (manages all)
+**Routes:** `/aaas/roles/*`, `/aaas/permissions/*`
 **Status:** CANONICAL
 
 ---
 
-## 0. SaaS-Wide Permission Architecture
+## 0. AAAS-Wide Permission Architecture
 
 ### 0.1 Permission Cascade Model
 
@@ -15,7 +15,7 @@ Permissions flow **top-down** through a strict hierarchy:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         🔴 SAAS PLATFORM (God Mode)                          │
+│                         🔴 AAAS PLATFORM (God Mode)                          │
 │                                                                             │
 │  • Manages ALL tenants, subscriptions, roles, permissions                   │
 │  • Can create/modify ANY role at ANY level                                  │
@@ -23,7 +23,7 @@ Permissions flow **top-down** through a strict hierarchy:
 │  • Sets GLOBAL limits and quotas                                            │
 │                                                                             │
 │  SpiceDB: definition platform {}                                            │
-│           definition saas_admin { relation platform: platform }             │
+│           definition aaas_admin { relation platform: platform }             │
 ├─────────────────────────────────────────────────────────────────────────────┤
                                     │
                                     ▼ (Tier Limits Apply)
@@ -33,7 +33,7 @@ Permissions flow **top-down** through a strict hierarchy:
 │  • Bound by subscription tier limits                                        │
 │  • Can assign roles ONLY within their tenant                                │
 │  • Can configure agents ONLY within their quota                             │
-│  • CANNOT exceed tier limits (enforced by SAAS)                             │
+│  • CANNOT exceed tier limits (enforced by AAAS)                             │
 │                                                                             │
 │  SpiceDB: definition tenant {                                               │
 │               relation subscription: subscription_tier                      │
@@ -62,15 +62,15 @@ Permissions flow **top-down** through a strict hierarchy:
 
 | Rule | Description | Example |
 |------|-------------|---------|
-| **Cascade Down** | Higher level can ALWAYS access lower | 🔴 SAAS Admin → can access ANY tenant |
+| **Cascade Down** | Higher level can ALWAYS access lower | 🔴 AAAS Admin → can access ANY tenant |
 | **Tier Gating** | Features gated by subscription | DEV mode requires Team tier |
 | **Quota Enforcement** | Operations blocked at limit | "Max 10 agents reached" |
 | **Role Scoping** | Roles only valid in scope | Tenant Admin can't manage other tenants |
-| **Impersonation** | Only 🔴 can impersonate | SAAS Admin can "become" any Tenant Admin |
+| **Impersonation** | Only 🔴 can impersonate | AAAS Admin can "become" any Tenant Admin |
 
 ---
 
-### 0.3 SaaS-Wide Permission Categories
+### 0.3 AAAS-Wide Permission Categories
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -170,7 +170,7 @@ flowchart TD
     B -->|No| C[401 Unauthorized]
     B -->|Yes| D[Get User from JWT]
 
-    D --> E{SAAS Admin?}
+    D --> E{AAAS Admin?}
     E -->|Yes| F[✅ ALLOW - God Mode]
 
     E -->|No| G[Get User's Tenant]
@@ -205,7 +205,7 @@ flowchart TD
 
 ### 1.1 User Journey Permissions
 
-| Journey | 🔴 SAAS Admin | 🟠 Tenant SysAdmin | 🟡 Tenant Admin | 🟢 Agent Owner | 🔵 Developer | 🟣 Trainer | ⚪ User | ⚫ Viewer |
+| Journey | 🔴 AAAS Admin | 🟠 Tenant SysAdmin | 🟡 Tenant Admin | 🟢 Agent Owner | 🔵 Developer | 🟣 Trainer | ⚪ User | ⚫ Viewer |
 |---------|---------------|-------------------|-----------------|----------------|--------------|------------|---------|----------|
 | **UC-01** Chat with Agent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
 | **UC-02** Create Conversation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -227,17 +227,17 @@ flowchart TD
 
 ### 1.2 Screen Access Permissions
 
-| Screen | Route | 🔴 SAAS | 🟠 TSysAdmin | 🟡 TAdmin | 🟢 Owner | 🔵 Dev | 🟣 Trn | ⚪ User | ⚫ View |
+| Screen | Route | 🔴 AAAS | 🟠 TSysAdmin | 🟡 TAdmin | 🟢 Owner | 🔵 Dev | 🟣 Trn | ⚪ User | ⚫ View |
 |--------|-------|---------|--------------|-----------|----------|--------|--------|---------|--------|
 | **PLATFORM** |
-| Platform Dashboard | `/saas` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Tenant List | `/saas/tenants` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Create Tenant | `/saas/tenants/new` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Subscription Tiers | `/saas/subscriptions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Platform Billing | `/saas/billing` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Platform Health | `/saas/health` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Role Admin** | `/saas/roles` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Permission Browser** | `/saas/permissions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Platform Dashboard | `/aaas` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Tenant List | `/aaas/tenants` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Create Tenant | `/aaas/tenants/new` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Subscription Tiers | `/aaas/subscriptions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Platform Billing | `/aaas/billing` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Platform Health | `/aaas/health` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Role Admin** | `/aaas/roles` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Permission Browser** | `/aaas/permissions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **TENANT** |
 | Tenant Dashboard | `/admin` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | User Management | `/admin/users` | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -271,16 +271,16 @@ flowchart TD
 
 ### 1.3 API Endpoint Permissions
 
-| Endpoint | Method | 🔴 SAAS | 🟠 TSys | 🟡 TAdm | 🟢 Own | 🔵 Dev | 🟣 Trn | ⚪ Usr | ⚫ View |
+| Endpoint | Method | 🔴 AAAS | 🟠 TSys | 🟡 TAdm | 🟢 Own | 🔵 Dev | 🟣 Trn | ⚪ Usr | ⚫ View |
 |----------|--------|---------|---------|---------|--------|--------|--------|--------|--------|
-| **SAAS** |
-| `/api/v2/saas/tenants` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/saas/tenants` | POST | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/saas/tenants/{id}` | DELETE | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/saas/subscriptions` | GET/PUT | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/saas/roles` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/saas/roles` | POST/PUT/DEL | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/saas/permissions` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **AAAS** |
+| `/api/v2/aaas/tenants` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/aaas/tenants` | POST | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/aaas/tenants/{id}` | DELETE | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/aaas/subscriptions` | GET/PUT | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/aaas/roles` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/aaas/roles` | POST/PUT/DEL | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/api/v2/aaas/permissions` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **TENANT ADMIN** |
 | `/api/v2/admin/users` | GET | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `/api/v2/admin/users` | POST | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -314,7 +314,7 @@ flowchart TD
 
 ## 2. Role Administration Screens (Eye of God)
 
-### 2.1 Role List (`/saas/roles`)
+### 2.1 Role List (`/aaas/roles`)
 
 **Purpose:** View and manage all system roles
 
@@ -327,7 +327,7 @@ flowchart TD
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
 │ │ Role               │ Level    │ Users │ Tenants │ Actions              │ │
 │ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ 🔴 SAAS SysAdmin   │ Platform │ 3     │ ALL     │ [View] 🔒            │ │
+│ │ 🔴 AAAS SysAdmin   │ Platform │ 3     │ ALL     │ [View] 🔒            │ │
 │ │ 🟠 Tenant SysAdmin │ Tenant   │ 156   │ 156     │ [View] [Edit]        │ │
 │ │ 🟡 Tenant Admin    │ Tenant   │ 234   │ 98      │ [View] [Edit]        │ │
 │ │ 🟢 Agent Owner     │ Agent    │ 445   │ 120     │ [View] [Edit]        │ │
@@ -344,15 +344,15 @@ flowchart TD
 
 **API:**
 ```
-GET /api/v2/saas/roles
-POST /api/v2/saas/roles
-PUT /api/v2/saas/roles/{id}
-DELETE /api/v2/saas/roles/{id}
+GET /api/v2/aaas/roles
+POST /api/v2/aaas/roles
+PUT /api/v2/aaas/roles/{id}
+DELETE /api/v2/aaas/roles/{id}
 ```
 
 ---
 
-### 2.2 Role Editor (`/saas/roles/:id`)
+### 2.2 Role Editor (`/aaas/roles/:id`)
 
 **Purpose:** Edit role permissions
 
@@ -398,7 +398,7 @@ DELETE /api/v2/saas/roles/{id}
 
 ---
 
-### 2.3 Permission Browser (`/saas/permissions`)
+### 2.3 Permission Browser (`/aaas/permissions`)
 
 **Purpose:** View all SpiceDB permissions
 
@@ -412,12 +412,12 @@ DELETE /api/v2/saas/roles/{id}
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
 │ │ Permission              │ Description                    │ Roles       │ │
 │ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ platform->manage        │ Full platform control          │ 🔴 SAAS     │ │
-│ │ platform->manage_tenants│ Create/delete tenants          │ 🔴 SAAS     │ │
-│ │ platform->view_billing  │ View platform revenue          │ 🔴 SAAS     │ │
-│ │ platform->configure     │ Platform settings              │ 🔴 SAAS     │ │
-│ │ platform->impersonate   │ Impersonate any tenant         │ 🔴 SAAS     │ │
-│ │ platform->manage_roles  │ Create/edit/delete roles       │ 🔴 SAAS     │ │
+│ │ platform->manage        │ Full platform control          │ 🔴 AAAS     │ │
+│ │ platform->manage_tenants│ Create/delete tenants          │ 🔴 AAAS     │ │
+│ │ platform->view_billing  │ View platform revenue          │ 🔴 AAAS     │ │
+│ │ platform->configure     │ Platform settings              │ 🔴 AAAS     │ │
+│ │ platform->impersonate   │ Impersonate any tenant         │ 🔴 AAAS     │ │
+│ │ platform->manage_roles  │ Create/edit/delete roles       │ 🔴 AAAS     │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │
 │ TENANT PERMISSIONS                                                          │
@@ -443,7 +443,7 @@ DELETE /api/v2/saas/roles/{id}
 
 ---
 
-### 2.4 Subscription Tier Builder (`/saas/subscriptions/builder`)
+### 2.4 Subscription Tier Builder (`/aaas/subscriptions/builder`)
 
 **Purpose:** Configure tier limits and features
 
@@ -487,7 +487,7 @@ DELETE /api/v2/saas/roles/{id}
 // ======================
 definition platform {}
 
-definition saas_admin {
+definition aaas_admin {
     relation platform: platform
 
     // Core platform permissions
@@ -581,12 +581,12 @@ definition feature {
 
 ```mermaid
 sequenceDiagram
-    participant Admin as 🔴 SAAS Admin
+    participant Admin as 🔴 AAAS Admin
     participant UI as Role Editor
     participant API as Django API
     participant SpiceDB as SpiceDB
 
-    Admin->>UI: Open /saas/roles/new
+    Admin->>UI: Open /aaas/roles/new
     UI->>Admin: Display role form
 
     Admin->>UI: Enter role name "Auditor"
@@ -594,14 +594,14 @@ sequenceDiagram
     Admin->>UI: Check permissions
     Admin->>UI: Click Save
 
-    UI->>API: POST /api/v2/saas/roles
+    UI->>API: POST /api/v2/aaas/roles
     API->>SpiceDB: Create role definition
     SpiceDB-->>API: OK
     API->>API: Save role to PostgreSQL
     API-->>UI: Role created
 
     UI->>Admin: Success: "Role 'Auditor' created"
-    UI->>Admin: Navigate to /saas/roles
+    UI->>Admin: Navigate to /aaas/roles
 ```
 
 ---
@@ -613,12 +613,12 @@ sequenceDiagram
 | Delete role with users | ⚠️ "45 users have role 'Auditor'. Reassign first." |
 | Edit system role | 🔒 "System roles cannot be modified" |
 | Create duplicate role | ❌ "Role 'Auditor' already exists" |
-| Remove last SysAdmin | ❌ "Cannot remove last SAAS SysAdmin" |
+| Remove last SysAdmin | ❌ "Cannot remove last AAAS SysAdmin" |
 | Reduce tier limits below usage | ⚠️ "12 tenants exceed new limits. Grandfather?" |
 
 ---
 
-**Next:** Update [SRS-SAAS-ADMIN.md](./SRS-SAAS-ADMIN.md) with these screens
+**Next:** Update [SRS-AAAS-ADMIN.md](./SRS-AAAS-ADMIN.md) with these screens
 
 # SRS: Permission-Gated Journey Map
 
@@ -899,7 +899,7 @@ This document ensures **every screen, API endpoint, and action** is gated by the
 
 ## 8. Role → Permission → Screen Mapping
 
-### 8.1 SAAS Super Admin
+### 8.1 AAAS Super Admin
 
 ```
 Permissions: * (ALL)

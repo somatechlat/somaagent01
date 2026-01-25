@@ -11203,7 +11203,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11219,7 +11219,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11235,7 +11235,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AuditLog]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11251,7 +11251,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11267,7 +11267,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AuditLog]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11283,7 +11283,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Argument of type \"str\" cannot be assigned to parameter \"content\" of type \"bytes\" in function \"__init__\"\n  \"str\" is not assignable to \"bytes\"",
             "range": {
@@ -11299,7 +11299,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AuditLog]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11315,7 +11315,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AuditLog]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11331,7 +11331,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11347,7 +11347,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AuditLog]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11363,7 +11363,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11379,7 +11379,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11395,7 +11395,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Arguments missing for parameters \"mrr_growth\", \"churn_rate\"",
             "range": {
@@ -11411,7 +11411,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11427,7 +11427,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11443,7 +11443,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11459,7 +11459,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[UsageRecord]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11475,7 +11475,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Arguments missing for parameters \"storage_used_gb\", \"api_calls\", \"users_active\"",
             "range": {
@@ -11491,7 +11491,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11507,7 +11507,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[UsageRecord]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11523,7 +11523,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11539,7 +11539,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11555,7 +11555,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Tenant]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -11571,7 +11571,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11587,7 +11587,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Tenant]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -11603,7 +11603,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11619,7 +11619,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[SubscriptionTier]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -11635,7 +11635,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AuditLog]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11651,7 +11651,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11667,7 +11667,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -11683,7 +11683,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11699,7 +11699,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/billing.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/billing.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Tenant]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -11715,7 +11715,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11731,7 +11731,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11747,7 +11747,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11763,7 +11763,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11779,7 +11779,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11795,7 +11795,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11811,7 +11811,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Arguments missing for parameters \"total_users\", \"mrr_growth\", \"tokens_this_month\"",
             "range": {
@@ -11827,7 +11827,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/dashboard.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/dashboard.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11843,9 +11843,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 33,
@@ -11859,9 +11859,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 53,
@@ -11875,9 +11875,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
-            "message": "Cannot access attribute \"DoesNotExist\" for class \"type[SaasFeature]\"\n  Attribute \"DoesNotExist\" is unknown",
+            "message": "Cannot access attribute \"DoesNotExist\" for class \"type[AaasFeature]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
                 "start": {
                     "line": 64,
@@ -11891,7 +11891,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Parameter \"code\" is already assigned",
             "range": {
@@ -11907,7 +11907,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[FeatureProvider]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11923,7 +11923,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -11939,9 +11939,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 127,
@@ -11955,9 +11955,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
-            "message": "Cannot access attribute \"DoesNotExist\" for class \"type[SaasFeature]\"\n  Attribute \"DoesNotExist\" is unknown",
+            "message": "Cannot access attribute \"DoesNotExist\" for class \"type[AaasFeature]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
                 "start": {
                     "line": 128,
@@ -11971,7 +11971,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Parameter \"code\" is already assigned",
             "range": {
@@ -11987,7 +11987,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12003,7 +12003,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12019,7 +12019,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Parameter \"code\" is already assigned",
             "range": {
@@ -12035,7 +12035,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Parameter \"code\" is already assigned",
             "range": {
@@ -12051,7 +12051,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12067,7 +12067,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/health.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/health.py",
             "severity": "error",
             "message": "Argument of type \"tuple[ServiceHealth, ServiceHealth, ServiceHealth, ServiceHealth, ServiceHealth]\" cannot be assigned to parameter \"services\" of type \"list[ServiceHealth]\" in function \"__init__\"\n  \"tuple[ServiceHealth, ServiceHealth, ServiceHealth, ServiceHealth, ServiceHealth]\" is not assignable to \"list[ServiceHealth]\"",
             "range": {
@@ -12083,7 +12083,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/integrations.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/integrations.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12099,7 +12099,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/integrations.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/integrations.py",
             "severity": "error",
             "message": "Cannot access attribute \"get\" for class \"JSONField\"\n  Attribute \"get\" is unknown",
             "range": {
@@ -12115,7 +12115,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/integrations.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/integrations.py",
             "severity": "error",
             "message": "Cannot access attribute \"get\" for class \"JSONField\"\n  Attribute \"get\" is unknown",
             "range": {
@@ -12131,7 +12131,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/integrations.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/integrations.py",
             "severity": "error",
             "message": "\"__setitem__\" method not defined on type \"JSONField\"",
             "range": {
@@ -12147,7 +12147,7 @@
             "rule": "reportIndexIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/integrations.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/integrations.py",
             "severity": "error",
             "message": "Cannot access attribute \"get\" for class \"JSONField\"\n  Attribute \"get\" is unknown",
             "range": {
@@ -12163,7 +12163,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/integrations.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/integrations.py",
             "severity": "error",
             "message": "\"__setitem__\" method not defined on type \"JSONField\"",
             "range": {
@@ -12179,7 +12179,7 @@
             "rule": "reportIndexIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[ApiKey]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12195,7 +12195,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[ApiKey]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12211,7 +12211,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[ApiKey]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12227,7 +12227,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[ApiKey]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12243,7 +12243,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "\"GlobalDefault\" is unknown import symbol",
             "range": {
@@ -12259,7 +12259,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "\"GlobalDefault\" is unknown import symbol",
             "range": {
@@ -12275,7 +12275,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Object of type \"None\" is not subscriptable",
             "range": {
@@ -12291,7 +12291,7 @@
             "rule": "reportOptionalSubscript"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Object of type \"None\" is not subscriptable",
             "range": {
@@ -12307,7 +12307,7 @@
             "rule": "reportOptionalSubscript"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Object of type \"None\" is not subscriptable",
             "range": {
@@ -12323,7 +12323,7 @@
             "rule": "reportOptionalSubscript"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Object of type \"None\" is not subscriptable",
             "range": {
@@ -12339,7 +12339,7 @@
             "rule": "reportOptionalSubscript"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "\"GlobalDefault\" is unknown import symbol",
             "range": {
@@ -12355,7 +12355,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "\"GlobalDefault\" is unknown import symbol",
             "range": {
@@ -12371,7 +12371,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Object of type \"None\" is not subscriptable",
             "range": {
@@ -12387,7 +12387,7 @@
             "rule": "reportOptionalSubscript"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/settings.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/settings.py",
             "severity": "error",
             "message": "Object of type \"None\" is not subscriptable",
             "range": {
@@ -12403,7 +12403,7 @@
             "rule": "reportOptionalSubscript"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Type \"None\" is not assignable to declared type \"str\"\n  \"None\" is not assignable to \"str\"",
             "range": {
@@ -12419,7 +12419,7 @@
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"name\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -12435,7 +12435,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Argument of type \"SlugField\" cannot be assigned to parameter \"slug\" of type \"str\" in function \"__init__\"\n  \"SlugField\" is not assignable to \"str\"",
             "range": {
@@ -12451,7 +12451,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"lower\" for class \"CharField\"\n  Attribute \"lower\" is unknown",
             "range": {
@@ -12467,7 +12467,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"status\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -12483,7 +12483,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"Agent\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -12499,7 +12499,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"get\" for class \"JSONField\"\n  Attribute \"get\" is unknown",
             "range": {
@@ -12515,7 +12515,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"get\" for class \"JSONField\"\n  Attribute \"get\" is unknown",
             "range": {
@@ -12531,7 +12531,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"get\" for class \"JSONField\"\n  Attribute \"get\" is unknown",
             "range": {
@@ -12547,7 +12547,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Argument of type \"DateTimeField\" cannot be assigned to parameter \"created_at\" of type \"datetime\" in function \"__init__\"\n  \"DateTimeField\" is not assignable to \"datetime\"",
             "range": {
@@ -12563,7 +12563,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12579,7 +12579,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12595,7 +12595,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12611,7 +12611,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Tenant]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12627,7 +12627,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -12643,7 +12643,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -12659,7 +12659,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12675,7 +12675,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12691,7 +12691,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Tenant]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12707,7 +12707,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12723,7 +12723,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12739,7 +12739,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Agent]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12755,7 +12755,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12771,7 +12771,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Agent]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12787,7 +12787,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12803,7 +12803,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Agent]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12819,7 +12819,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12835,7 +12835,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Agent]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12851,7 +12851,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Agent]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12867,7 +12867,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenant_agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenant_agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[Agent]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -12883,7 +12883,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12899,7 +12899,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -12915,7 +12915,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"name\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -12931,7 +12931,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Argument of type \"SlugField\" cannot be assigned to parameter \"slug\" of type \"str\" in function \"__init__\"\n  \"SlugField\" is not assignable to \"str\"",
             "range": {
@@ -12947,7 +12947,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"status\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -12963,7 +12963,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"slug\" for class \"ForeignKey\"\n  Attribute \"slug\" is unknown",
             "range": {
@@ -12979,7 +12979,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Argument of type \"DateTimeField\" cannot be assigned to parameter \"created_at\" of type \"datetime\" in function \"__init__\"\n  \"DateTimeField\" is not assignable to \"datetime\"",
             "range": {
@@ -12995,7 +12995,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"agents\" for class \"Tenant\"\n  Attribute \"agents\" is unknown",
             "range": {
@@ -13011,7 +13011,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"users\" for class \"Tenant\"\n  Attribute \"users\" is unknown",
             "range": {
@@ -13027,7 +13027,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"price_cents\" for class \"ForeignKey\"\n  Attribute \"price_cents\" is unknown",
             "range": {
@@ -13043,7 +13043,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -13059,7 +13059,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -13075,7 +13075,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13091,7 +13091,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13107,7 +13107,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13123,7 +13123,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13139,7 +13139,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13155,7 +13155,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13171,7 +13171,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13187,7 +13187,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13203,7 +13203,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13219,7 +13219,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13235,7 +13235,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"tier_features\" for class \"SubscriptionTier\"\n  Attribute \"tier_features\" is unknown",
             "range": {
@@ -13251,7 +13251,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"name\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -13267,7 +13267,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"SlugField\" cannot be assigned to parameter \"slug\" of type \"str\" in function \"__init__\"\n  \"SlugField\" is not assignable to \"str\"",
             "range": {
@@ -13283,7 +13283,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Operator \"/\" not supported for types \"BigIntegerField\" and \"float\"",
             "range": {
@@ -13299,7 +13299,7 @@
             "rule": "reportOperatorIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"billing_period\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -13315,7 +13315,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"IntegerField\" cannot be assigned to parameter \"agents\" of type \"int\" in function \"__init__\"\n  \"IntegerField\" is not assignable to \"int\"",
             "range": {
@@ -13331,7 +13331,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"IntegerField\" cannot be assigned to parameter \"users\" of type \"int\" in function \"__init__\"\n  \"IntegerField\" is not assignable to \"int\"",
             "range": {
@@ -13347,7 +13347,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"IntegerField\" cannot be assigned to parameter \"tokens_per_month\" of type \"int\" in function \"__init__\"\n  \"IntegerField\" is not assignable to \"int\"",
             "range": {
@@ -13363,7 +13363,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Argument of type \"DecimalField\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"DecimalField\" is not assignable to type \"ConvertibleToFloat\"\n    \"DecimalField\" is not assignable to \"str\"\n    \"DecimalField\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"DecimalField\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"DecimalField\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
             "range": {
@@ -13379,7 +13379,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13395,7 +13395,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13411,7 +13411,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13427,7 +13427,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13443,9 +13443,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 92,
@@ -13459,7 +13459,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13475,7 +13475,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13491,9 +13491,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 137,
@@ -13507,7 +13507,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13523,7 +13523,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13539,7 +13539,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[SubscriptionTier]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13555,7 +13555,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[Tenant]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13571,7 +13571,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Argument of type \"EmailField\" cannot be assigned to parameter \"email\" of type \"str\" in function \"__init__\"\n  \"EmailField\" is not assignable to \"str\"",
             "range": {
@@ -13587,7 +13587,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"name\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -13603,7 +13603,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Argument of type \"CharField\" cannot be assigned to parameter \"role\" of type \"str\" in function \"__init__\"\n  \"CharField\" is not assignable to \"str\"",
             "range": {
@@ -13619,7 +13619,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Argument of type \"BooleanField\" cannot be assigned to parameter \"is_active\" of type \"bool\" in function \"__init__\"\n  \"BooleanField\" is not assignable to \"bool\"",
             "range": {
@@ -13635,7 +13635,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"TenantUser\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -13651,7 +13651,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -13667,7 +13667,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -13683,7 +13683,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -13699,7 +13699,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -13715,7 +13715,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13731,7 +13731,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13747,7 +13747,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13763,7 +13763,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[TenantUser]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13779,7 +13779,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13795,7 +13795,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[TenantUser]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13811,7 +13811,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13827,7 +13827,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[TenantUser]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13843,7 +13843,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Object of type \"Annotated\" is not callable",
             "range": {
@@ -13859,7 +13859,7 @@
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13875,7 +13875,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[TenantUser]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13891,7 +13891,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "\"_get_permissions_for_roles\" is unknown import symbol",
             "range": {
@@ -13907,7 +13907,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Argument of type \"str | None\" cannot be assigned to parameter \"roleLabel\" of type \"str\" in function \"__init__\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
             "range": {
@@ -13923,7 +13923,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13939,7 +13939,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[TenantUser]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13955,7 +13955,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TenantUser]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -13971,7 +13971,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"DoesNotExist\" for class \"type[TenantUser]\"\n  Attribute \"DoesNotExist\" is unknown",
             "range": {
@@ -13987,7 +13987,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "\"_get_permissions_for_roles\" is unknown import symbol",
             "range": {
@@ -14003,7 +14003,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AdminProfile]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14019,7 +14019,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[UserSession]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14035,7 +14035,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[ApiKey]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14051,7 +14051,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/api/users.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/api/users.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[AdminProfile]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14067,7 +14067,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/apps.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/apps.py",
             "severity": "error",
             "message": "Type \"Literal['django.db.models.BigAutoField']\" is not assignable to declared type \"cached_property\"\n  \"Literal['django.db.models.BigAutoField']\" is not assignable to \"cached_property\"",
             "range": {
@@ -14083,7 +14083,7 @@
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14099,7 +14099,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"WARNING\" for class \"Style\"\n  Attribute \"WARNING\" is unknown",
             "range": {
@@ -14115,7 +14115,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"WARNING\" for class \"Style\"\n  Attribute \"WARNING\" is unknown",
             "range": {
@@ -14131,7 +14131,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14147,7 +14147,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"WARNING\" for class \"Style\"\n  Attribute \"WARNING\" is unknown",
             "range": {
@@ -14163,7 +14163,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14179,7 +14179,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14195,7 +14195,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"WARNING\" for class \"Style\"\n  Attribute \"WARNING\" is unknown",
             "range": {
@@ -14211,7 +14211,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14227,7 +14227,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14243,7 +14243,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"SUCCESS\" for class \"Style\"\n  Attribute \"SUCCESS\" is unknown",
             "range": {
@@ -14259,7 +14259,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14275,7 +14275,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14291,7 +14291,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14307,7 +14307,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14323,7 +14323,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14339,7 +14339,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[LLMModelConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14355,7 +14355,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14371,7 +14371,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14387,7 +14387,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14403,7 +14403,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"SUCCESS\" for class \"Style\"\n  Attribute \"SUCCESS\" is unknown",
             "range": {
@@ -14419,7 +14419,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/load_openrouter_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/load_openrouter_models.py",
             "severity": "error",
             "message": "Cannot access attribute \"WARNING\" for class \"Style\"\n  Attribute \"WARNING\" is unknown",
             "range": {
@@ -14435,7 +14435,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"SUCCESS\" for class \"Style\"\n  Attribute \"SUCCESS\" is unknown",
             "range": {
@@ -14451,7 +14451,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __enter__",
             "range": {
@@ -14467,7 +14467,7 @@
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __exit__",
             "range": {
@@ -14483,7 +14483,7 @@
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"SUCCESS\" for class \"Style\"\n  Attribute \"SUCCESS\" is unknown",
             "range": {
@@ -14499,7 +14499,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"ERROR\" for class \"Style\"\n  Attribute \"ERROR\" is unknown",
             "range": {
@@ -14515,9 +14515,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 80,
@@ -14531,9 +14531,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 86,
@@ -14547,7 +14547,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[FeatureProvider]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14563,7 +14563,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[FeatureProvider]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14579,9 +14579,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 98,
@@ -14595,7 +14595,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[FeatureProvider]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14611,7 +14611,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14627,7 +14627,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14643,7 +14643,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14659,9 +14659,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 142,
@@ -14675,9 +14675,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 143,
@@ -14691,7 +14691,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14707,7 +14707,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14723,7 +14723,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14739,7 +14739,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14755,7 +14755,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
             "message": "Cannot access attribute \"HTTP_INFO\" for class \"Style\"\n  Attribute \"HTTP_INFO\" is unknown",
             "range": {
@@ -14771,7 +14771,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
             "message": "Cannot access attribute \"SUCCESS\" for class \"Style\"\n  Attribute \"SUCCESS\" is unknown",
             "range": {
@@ -14787,7 +14787,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14803,9 +14803,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 218,
@@ -14819,7 +14819,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[SubscriptionTier]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14835,9 +14835,9 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
-            "message": "Cannot access attribute \"objects\" for class \"type[SaasFeature]\"\n  Attribute \"objects\" is unknown",
+            "message": "Cannot access attribute \"objects\" for class \"type[AaasFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
                 "start": {
                     "line": 259,
@@ -14851,7 +14851,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/management/commands/seed_saas_data.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/management/commands/seed_aaas_data.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[TierFeature]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -14867,7 +14867,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14883,7 +14883,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14899,7 +14899,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14915,7 +14915,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14931,7 +14931,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[0]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[0]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14947,7 +14947,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[0]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[0]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14963,7 +14963,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[1]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[1]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14979,7 +14979,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[5]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[5]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -14995,7 +14995,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[60]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[60]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15011,7 +15011,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[1000]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[1000]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15027,7 +15027,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15043,7 +15043,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15059,7 +15059,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[0]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[0]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15075,7 +15075,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15091,7 +15091,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15107,7 +15107,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15123,7 +15123,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15139,7 +15139,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0001_initial.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0001_initial.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15155,7 +15155,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0002_add_profile_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0002_add_profile_models.py",
             "severity": "error",
             "message": "Argument of type \"Literal[30]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[30]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15171,7 +15171,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0002_add_profile_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0002_add_profile_models.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15187,7 +15187,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0002_add_profile_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0002_add_profile_models.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15203,7 +15203,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0002_add_profile_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0002_add_profile_models.py",
             "severity": "error",
             "message": "Argument of type \"Literal[30]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[30]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15219,7 +15219,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/migrations/0002_add_profile_models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/migrations/0002_add_profile_models.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15235,7 +15235,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"Agent*\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -15251,7 +15251,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15267,7 +15267,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15283,7 +15283,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"agent_id\" for class \"AgentUser*\"\n  Attribute \"agent_id\" is unknown",
             "range": {
@@ -15299,7 +15299,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15315,7 +15315,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/agents.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/agents.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15331,7 +15331,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"AuditLog*\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -15347,7 +15347,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"AuditLog*\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -15363,7 +15363,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/audit.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/audit.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15379,7 +15379,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15395,7 +15395,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15411,7 +15411,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15427,7 +15427,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15443,7 +15443,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[0]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[0]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15459,7 +15459,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15475,7 +15475,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15491,7 +15491,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15507,7 +15507,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"tier_id\" for class \"TierFeature*\"\n  Attribute \"tier_id\" is unknown",
             "range": {
@@ -15523,7 +15523,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"feature_id\" for class \"TierFeature*\"\n  Attribute \"feature_id\" is unknown",
             "range": {
@@ -15539,7 +15539,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"code\" for class \"ForeignKey\"\n  Attribute \"code\" is unknown",
             "range": {
@@ -15555,7 +15555,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15571,7 +15571,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15587,7 +15587,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15603,7 +15603,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15619,7 +15619,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"code\" for class \"ForeignKey\"\n  Attribute \"code\" is unknown",
             "range": {
@@ -15635,7 +15635,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"feature_id\" for class \"FeatureProvider*\"\n  Attribute \"feature_id\" is unknown",
             "range": {
@@ -15651,7 +15651,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"code\" for class \"ForeignKey\"\n  Attribute \"code\" is unknown",
             "range": {
@@ -15667,7 +15667,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15683,7 +15683,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/features.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/features.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15699,7 +15699,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[PlatformConfig]\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -15715,7 +15715,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[PlatformConfig]*\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -15731,7 +15731,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[PlatformConfig]*\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -15747,7 +15747,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[PlatformConfig]*\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -15763,7 +15763,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Cannot access attribute \"objects\" for class \"type[PlatformConfig]*\"\n  Attribute \"objects\" is unknown",
             "range": {
@@ -15779,7 +15779,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Argument of type \"Literal[30]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[30]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15795,7 +15795,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15811,7 +15811,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Argument of type \"Literal[30]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[30]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15827,7 +15827,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15843,7 +15843,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/profiles.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/profiles.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15859,7 +15859,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"tier_id\" for class \"Tenant*\"\n  Attribute \"tier_id\" is unknown",
             "range": {
@@ -15875,7 +15875,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15891,7 +15891,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15907,7 +15907,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15923,7 +15923,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -15939,7 +15939,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"TenantUser*\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -15955,7 +15955,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15971,7 +15971,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -15987,7 +15987,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tenants.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tenants.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -16003,7 +16003,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[0]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[0]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16019,7 +16019,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[1]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[1]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16035,7 +16035,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[5]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[5]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16051,7 +16051,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[60]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[60]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16067,7 +16067,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[1000]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[1000]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16083,7 +16083,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16099,7 +16099,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[True]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[True]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16115,7 +16115,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"Literal[0]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[0]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16131,7 +16131,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Operator \"/\" not supported for types \"BigIntegerField\" and \"Literal[100]\"",
             "range": {
@@ -16147,7 +16147,7 @@
             "rule": "reportOperatorIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Argument of type \"DecimalField\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"DecimalField\" is not assignable to type \"ConvertibleToFloat\"\n    \"DecimalField\" is not assignable to \"str\"\n    \"DecimalField\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"DecimalField\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"DecimalField\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
             "range": {
@@ -16163,7 +16163,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -16179,7 +16179,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/tiers.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/tiers.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -16195,7 +16195,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Argument of type \"Literal[False]\" cannot be assigned to parameter \"default\" of type \"type[NOT_PROVIDED]\" in function \"__init__\"\n  Type \"Literal[False]\" is not assignable to type \"type[NOT_PROVIDED]\"",
             "range": {
@@ -16211,7 +16211,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Cannot access attribute \"tenant_id\" for class \"UsageRecord*\"\n  Attribute \"tenant_id\" is unknown",
             "range": {
@@ -16227,7 +16227,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Cannot access attribute \"agent_id\" for class \"UsageRecord*\"\n  Attribute \"agent_id\" is unknown",
             "range": {
@@ -16243,7 +16243,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Cannot access attribute \"agent_id\" for class \"UsageRecord*\"\n  Attribute \"agent_id\" is unknown",
             "range": {
@@ -16259,7 +16259,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Argument of type \"DecimalField\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"DecimalField\" is not assignable to type \"ConvertibleToFloat\"\n    \"DecimalField\" is not assignable to \"str\"\n    \"DecimalField\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"DecimalField\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"DecimalField\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
             "range": {
@@ -16275,7 +16275,7 @@
             "rule": "reportArgumentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -16291,7 +16291,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {
@@ -16307,7 +16307,7 @@
             "rule": "reportAttributeAccessIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/saas/models/usage.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somaAgent01/admin/aaas/models/usage.py",
             "severity": "error",
             "message": "Cannot access attribute \"isoformat\" for class \"DateTimeField\"\n  Attribute \"isoformat\" is unknown",
             "range": {

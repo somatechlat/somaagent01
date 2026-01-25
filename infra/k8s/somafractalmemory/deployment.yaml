@@ -23,7 +23,7 @@ spec:
           ports:
             - containerPort: 10101
           env:
-            - name: SOMA_SAAS_MODE
+            - name: SOMA_AAAS_MODE
               value: "false"
             - name: SFM_PORT
               value: "10101"

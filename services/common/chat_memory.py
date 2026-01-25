@@ -1,6 +1,6 @@
 """ChatService Memory Integration - Memory operations for chat.
 
-Uses SomaBrainClient for all memory operations (respects SAAS deployment modes).
+Uses SomaBrainClient for all memory operations (respects AAAS deployment modes).
 Publishes to Kafka WAL for durability - MemoryReplicator handles sync.
 
 ARCHITECTURE:
@@ -22,7 +22,7 @@ from uuid import uuid4
 from admin.core.somabrain_client import SomaBrainClient
 # Integration: BrainBridge (Direct Mode Optimization)
 try:
-    from saas.brain import brain as BrainBridge
+    from aaas.brain import brain as BrainBridge
     HAS_BRIDGE = True
 except ImportError:
     HAS_BRIDGE = False
@@ -43,7 +43,7 @@ async def recall_memories(
 ) -> list[Memory]:
     """Recall relevant memories via SomaBrain.
 
-    Uses SomaBrainClient which respects SAAS deployment modes:
+    Uses SomaBrainClient which respects AAAS deployment modes:
     - Direct mode: BrainMemoryFacade (in-process, <0.1ms)
     - HTTP mode: SomaBrain API
 
@@ -155,7 +155,7 @@ async def store_memory(
     metadata: dict,
     tenant_id: Optional[str] = None,
 ) -> None:
-    """Store memory via SomaBrain (respects SAAS deployment modes).
+    """Store memory via SomaBrain (respects AAAS deployment modes).
 
     Uses SomaBrainClient which handles:
     - Direct mode: BrainMemoryFacade (in-process)

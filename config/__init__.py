@@ -16,7 +16,7 @@ from config.settings_registry import (
     get_optional_env,
     get_required_env,
     get_settings,
-    SaaSSettings,
+    AAASSettings,
     SettingsRegistry,
     StandaloneSettings,
 )
@@ -25,7 +25,7 @@ __all__ = [
     "SettingsRegistry",
     "BaseSettings",
     "StandaloneSettings",
-    "SaaSSettings",
+    "AAASSettings",
     "get_settings",
     "get_required_env",
     "get_optional_env",

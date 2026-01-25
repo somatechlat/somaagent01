@@ -120,7 +120,7 @@ async def _get_usage_from_prometheus(request) -> list[UsageMetric]:
     import httpx
 
     prometheus_url = getattr(settings, "PROMETHEUS_URL", "http://localhost:9090")
-    # SAAS external: http://localhost:63905
+    # AAAS external: http://localhost:63905
     # K8S: http://prometheus:9090
 
     tenant_id = getattr(request, "tenant_id", None) or "default"

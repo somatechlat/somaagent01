@@ -2,7 +2,7 @@
 Degradation Mode API for SomaAgent01.
 
 
-Per SAAS_ADMIN_SRS.md - Infrastructure Administration.
+Per AAAS_ADMIN_SRS.md - Infrastructure Administration.
 
 Endpoints:
 - GET /status - Current degradation status

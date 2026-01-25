@@ -2,19 +2,19 @@
 
 **System:** SomaAgent01
 **Document ID:** SRS-AGENTIQ-2026-01-16
-**Version:** 6.0 (SaaS Direct Calls Enforced)
+**Version:** 6.0 (AAAS Direct Calls Enforced)
 **Status:** CANONICAL
 
 **Applied Personas:** ALL 10 ✅
 
 ---
 
-## 0. SaaS Direct Call Rule
+## 0. AAAS Direct Call Rule
 
 > **AgentIQ, UnifiedGate, and OPA use IN-MEMORY CACHING — ZERO HTTP LATENCY**
 
 ```python
-# ✅ SAAS MODE — OPA is compiled in-memory
+# ✅ AAAS MODE — OPA is compiled in-memory
 from admin.core.agentiq import derive_all_settings, UnifiedGate
 
 settings = derive_all_settings(capsule)  # Pure Python = 0ms

@@ -1,6 +1,6 @@
 /**
- * SaaS Sys Admin CSS Tokens (Design System)
- * Enterprise SaaS Platform Design Tokens
+ * AAAS Sys Admin CSS Tokens (Design System)
+ * Enterprise AAAS Platform Design Tokens
  *
  * VIBE COMPLIANT:
  * - Real CSS custom properties
@@ -12,105 +12,105 @@
     /* ==========================================================================
        COLORS - Background
        ========================================================================== */
-    --saas-bg-void: #0f172a;
-    --saas-bg-base: #1e293b;
-    --saas-surface: rgba(30, 41, 59, 0.85);
-    --saas-surface-hover: rgba(51, 65, 85, 0.9);
+    --aaas-bg-void: #0f172a;
+    --aaas-bg-base: #1e293b;
+    --aaas-surface: rgba(30, 41, 59, 0.85);
+    --aaas-surface-hover: rgba(51, 65, 85, 0.9);
 
     /* ==========================================================================
        COLORS - Text
        ========================================================================== */
-    --saas-text-main: #e2e8f0;
-    --saas-text-dim: #64748b;
-    --saas-text-bright: #f8fafc;
+    --aaas-text-main: #e2e8f0;
+    --aaas-text-dim: #64748b;
+    --aaas-text-bright: #f8fafc;
 
     /* ==========================================================================
        COLORS - Accent
        ========================================================================== */
-    --saas-accent: #94a3b8;
-    --saas-accent-hover: #cbd5e1;
+    --aaas-accent: #94a3b8;
+    --aaas-accent-hover: #cbd5e1;
 
     /* ==========================================================================
        COLORS - Semantic
        ========================================================================== */
-    --saas-success: #22c55e;
-    --saas-warning: #eab308;
-    --saas-danger: #ef4444;
-    --saas-info: #3b82f6;
+    --aaas-success: #22c55e;
+    --aaas-warning: #eab308;
+    --aaas-danger: #ef4444;
+    --aaas-info: #3b82f6;
 
     /* ==========================================================================
        COLORS - Borders
        ========================================================================== */
-    --saas-border-color: rgba(255, 255, 255, 0.05);
-    --saas-border-hover: rgba(255, 255, 255, 0.1);
-    --saas-glass-border: rgba(255, 255, 255, 0.08);
+    --aaas-border-color: rgba(255, 255, 255, 0.05);
+    --aaas-border-hover: rgba(255, 255, 255, 0.1);
+    --aaas-glass-border: rgba(255, 255, 255, 0.08);
 
     /* ==========================================================================
        TYPOGRAPHY
        ========================================================================== */
-    --saas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --saas-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --aaas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --aaas-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-    --saas-text-xs: 11px;
-    --saas-text-sm: 13px;
-    --saas-text-base: 14px;
-    --saas-text-lg: 16px;
-    --saas-text-xl: 18px;
-    --saas-text-2xl: 24px;
+    --aaas-text-xs: 11px;
+    --aaas-text-sm: 13px;
+    --aaas-text-base: 14px;
+    --aaas-text-lg: 16px;
+    --aaas-text-xl: 18px;
+    --aaas-text-2xl: 24px;
 
-    --saas-leading-tight: 1.25;
-    --saas-leading-normal: 1.5;
-    --saas-leading-relaxed: 1.75;
+    --aaas-leading-tight: 1.25;
+    --aaas-leading-normal: 1.5;
+    --aaas-leading-relaxed: 1.75;
 
     /* ==========================================================================
        SPACING
        ========================================================================== */
-    --saas-spacing-xs: 4px;
-    --saas-spacing-sm: 8px;
-    --saas-spacing-md: 16px;
-    --saas-spacing-lg: 24px;
-    --saas-spacing-xl: 32px;
-    --saas-spacing-2xl: 48px;
+    --aaas-spacing-xs: 4px;
+    --aaas-spacing-sm: 8px;
+    --aaas-spacing-md: 16px;
+    --aaas-spacing-lg: 24px;
+    --aaas-spacing-xl: 32px;
+    --aaas-spacing-2xl: 48px;
 
     /* ==========================================================================
        BORDERS & RADIUS
        ========================================================================== */
-    --saas-radius-sm: 4px;
-    --saas-radius-md: 8px;
-    --saas-radius-lg: 12px;
-    --saas-radius-xl: 16px;
-    --saas-radius-full: 9999px;
+    --aaas-radius-sm: 4px;
+    --aaas-radius-md: 8px;
+    --aaas-radius-lg: 12px;
+    --aaas-radius-xl: 16px;
+    --aaas-radius-full: 9999px;
 
     /* ==========================================================================
        SHADOWS
        ========================================================================== */
-    --saas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-    --saas-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-    --saas-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-    --saas-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
+    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --aaas-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --aaas-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --aaas-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
 
     /* ==========================================================================
        TRANSITIONS
        ========================================================================== */
-    --saas-transition-fast: 0.1s ease;
-    --saas-transition-normal: 0.2s ease;
-    --saas-transition-slow: 0.3s ease;
+    --aaas-transition-fast: 0.1s ease;
+    --aaas-transition-normal: 0.2s ease;
+    --aaas-transition-slow: 0.3s ease;
 
     /* ==========================================================================
        Z-INDEX
        ========================================================================== */
-    --saas-z-dropdown: 100;
-    --saas-z-modal: 200;
-    --saas-z-overlay: 300;
-    --saas-z-toast: 400;
-    --saas-z-tooltip: 500;
+    --aaas-z-dropdown: 100;
+    --aaas-z-modal: 200;
+    --aaas-z-overlay: 300;
+    --aaas-z-toast: 400;
+    --aaas-z-tooltip: 500;
 
     /* ==========================================================================
        LAYOUT
        ========================================================================== */
-    --saas-sidebar-width: 280px;
-    --saas-header-height: 56px;
-    --saas-footer-height: 48px;
+    --aaas-sidebar-width: 280px;
+    --aaas-header-height: 56px;
+    --aaas-footer-height: 48px;
 }
 
 /* ==========================================================================
@@ -133,11 +133,11 @@ html {
 }
 
 body {
-    font-family: var(--saas-font-sans);
-    font-size: var(--saas-text-base);
-    line-height: var(--saas-leading-normal);
-    color: var(--saas-text-main);
-    background: var(--saas-bg-void);
+    font-family: var(--aaas-font-sans);
+    font-size: var(--aaas-text-base);
+    line-height: var(--aaas-leading-normal);
+    color: var(--aaas-text-main);
+    background: var(--aaas-bg-void);
 }
 
 img,
@@ -183,201 +183,201 @@ h6 {
 }
 
 .glass {
-    background: var(--saas-surface);
-    border: 1px solid var(--saas-glass-border);
+    background: var(--aaas-surface);
+    border: 1px solid var(--aaas-glass-border);
     backdrop-filter: blur(12px);
 }
 
 /* ==========================================================================
-   SAAS THEME TOKENS — Light Mode Default
+   AAAS THEME TOKENS — Light Mode Default
    Minimal, clean, professional design (Crisply-style)
    ========================================================================== */
 
 :root {
     /* Backgrounds - Light Theme */
-    --saas-bg-page: #f5f5f5;
-    --saas-bg-card: #ffffff;
-    --saas-bg-sidebar: #ffffff;
-    --saas-bg-hover: #fafafa;
-    --saas-bg-active: #f0f0f0;
+    --aaas-bg-page: #f5f5f5;
+    --aaas-bg-card: #ffffff;
+    --aaas-bg-sidebar: #ffffff;
+    --aaas-bg-hover: #fafafa;
+    --aaas-bg-active: #f0f0f0;
 
     /* Text - Light Theme */
-    --saas-text-primary: #1a1a1a;
-    --saas-text-secondary: #666666;
-    --saas-text-muted: #999999;
-    --saas-text-inverse: #ffffff;
+    --aaas-text-primary: #1a1a1a;
+    --aaas-text-secondary: #666666;
+    --aaas-text-muted: #999999;
+    --aaas-text-inverse: #ffffff;
 
     /* Borders - Light Theme */
-    --saas-border-light: #e0e0e0;
-    --saas-border-medium: #cccccc;
-    --saas-border-dark: #1a1a1a;
+    --aaas-border-light: #e0e0e0;
+    --aaas-border-medium: #cccccc;
+    --aaas-border-dark: #1a1a1a;
 
     /* Status Colors */
-    --saas-status-success: #22c55e;
-    --saas-status-warning: #f59e0b;
-    --saas-status-danger: #ef4444;
-    --saas-status-info: #3b82f6;
+    --aaas-status-success: #22c55e;
+    --aaas-status-warning: #f59e0b;
+    --aaas-status-danger: #ef4444;
+    --aaas-status-info: #3b82f6;
 
     /* Accent - Primary Action */
-    --saas-accent: #1a1a1a;
-    --saas-accent-hover: #333333;
+    --aaas-accent: #1a1a1a;
+    --aaas-accent-hover: #333333;
 
     /* Glassmorphism - Light */
-    --saas-glass-bg: rgba(255, 255, 255, 0.85);
-    --saas-glass-border: rgba(0, 0, 0, 0.08);
-    --saas-glass-blur: 16px;
-    --saas-glass-backdrop: blur(var(--saas-glass-blur));
+    --aaas-glass-bg: rgba(255, 255, 255, 0.85);
+    --aaas-glass-border: rgba(0, 0, 0, 0.08);
+    --aaas-glass-blur: 16px;
+    --aaas-glass-backdrop: blur(var(--aaas-glass-blur));
 
     /* Shadows - Light */
-    --saas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --saas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
-    --saas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-    --saas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --aaas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --aaas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+    --aaas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
 
     /* Typography */
-    --saas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --saas-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
+    --aaas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --aaas-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
 
-    --saas-text-xs: 11px;
-    --saas-text-sm: 13px;
-    --saas-text-base: 14px;
-    --saas-text-md: 16px;
-    --saas-text-lg: 18px;
-    --saas-text-xl: 22px;
-    --saas-text-2xl: 28px;
+    --aaas-text-xs: 11px;
+    --aaas-text-sm: 13px;
+    --aaas-text-base: 14px;
+    --aaas-text-md: 16px;
+    --aaas-text-lg: 18px;
+    --aaas-text-xl: 22px;
+    --aaas-text-2xl: 28px;
 
-    --saas-font-normal: 400;
-    --saas-font-medium: 500;
-    --saas-font-semibold: 600;
-    --saas-font-bold: 700;
+    --aaas-font-normal: 400;
+    --aaas-font-medium: 500;
+    --aaas-font-semibold: 600;
+    --aaas-font-bold: 700;
 
     /* Spacing */
-    --saas-space-xs: 4px;
-    --saas-space-sm: 8px;
-    --saas-space-md: 16px;
-    --saas-space-lg: 24px;
-    --saas-space-xl: 32px;
-    --saas-space-2xl: 48px;
+    --aaas-space-xs: 4px;
+    --aaas-space-sm: 8px;
+    --aaas-space-md: 16px;
+    --aaas-space-lg: 24px;
+    --aaas-space-xl: 32px;
+    --aaas-space-2xl: 48px;
 
     /* Border Radius */
-    --saas-radius-sm: 4px;
-    --saas-radius-md: 8px;
-    --saas-radius-lg: 12px;
-    --saas-radius-xl: 16px;
-    --saas-radius-full: 9999px;
+    --aaas-radius-sm: 4px;
+    --aaas-radius-md: 8px;
+    --aaas-radius-lg: 12px;
+    --aaas-radius-xl: 16px;
+    --aaas-radius-full: 9999px;
 
     /* Layout */
-    --saas-sidebar-width: 240px;
-    --saas-sidebar-collapsed: 64px;
-    --saas-header-height: 56px;
+    --aaas-sidebar-width: 240px;
+    --aaas-sidebar-collapsed: 64px;
+    --aaas-header-height: 56px;
 
     /* Transitions */
-    --saas-transition-fast: 150ms ease;
-    --saas-transition-normal: 200ms ease;
-    --saas-transition-slow: 300ms ease;
+    --aaas-transition-fast: 150ms ease;
+    --aaas-transition-normal: 200ms ease;
+    --aaas-transition-slow: 300ms ease;
 }
 
 /* ==========================================================================
-   SAAS DARK THEME
+   AAAS DARK THEME
    ========================================================================== */
 
 [data-theme="dark"],
 .dark-theme {
     /* Backgrounds */
-    --saas-bg-page: #0f0f0f;
-    --saas-bg-card: #1a1a1a;
-    --saas-bg-sidebar: #141414;
-    --saas-bg-hover: #222222;
-    --saas-bg-active: #2a2a2a;
+    --aaas-bg-page: #0f0f0f;
+    --aaas-bg-card: #1a1a1a;
+    --aaas-bg-sidebar: #141414;
+    --aaas-bg-hover: #222222;
+    --aaas-bg-active: #2a2a2a;
 
     /* Text */
-    --saas-text-primary: #e2e8f0;
-    --saas-text-secondary: #94a3b8;
-    --saas-text-muted: #64748b;
-    --saas-text-inverse: #0f0f0f;
+    --aaas-text-primary: #e2e8f0;
+    --aaas-text-secondary: #94a3b8;
+    --aaas-text-muted: #64748b;
+    --aaas-text-inverse: #0f0f0f;
 
     /* Borders */
-    --saas-border-light: rgba(255, 255, 255, 0.08);
-    --saas-border-medium: rgba(255, 255, 255, 0.12);
-    --saas-border-dark: rgba(255, 255, 255, 0.2);
+    --aaas-border-light: rgba(255, 255, 255, 0.08);
+    --aaas-border-medium: rgba(255, 255, 255, 0.12);
+    --aaas-border-dark: rgba(255, 255, 255, 0.2);
 
     /* Accent for dark mode */
-    --saas-accent: #3b82f6;
-    --saas-accent-hover: #60a5fa;
+    --aaas-accent: #3b82f6;
+    --aaas-accent-hover: #60a5fa;
 
     /* Glassmorphism - Dark */
-    --saas-glass-bg: rgba(30, 41, 59, 0.9);
-    --saas-glass-border: rgba(255, 255, 255, 0.08);
+    --aaas-glass-bg: rgba(30, 41, 59, 0.9);
+    --aaas-glass-border: rgba(255, 255, 255, 0.08);
 
     /* Shadows - Dark */
-    --saas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --saas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --saas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --saas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --aaas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --aaas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --aaas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* ==========================================================================
-   SAAS UTILITY CLASSES
+   AAAS UTILITY CLASSES
    ========================================================================== */
 
-.saas-glass {
-    background: var(--saas-glass-bg);
-    border: 1px solid var(--saas-glass-border);
-    backdrop-filter: var(--saas-glass-backdrop);
-    -webkit-backdrop-filter: var(--saas-glass-backdrop);
-    border-radius: var(--saas-radius-lg);
-    box-shadow: var(--saas-shadow-glass);
+.aaas-glass {
+    background: var(--aaas-glass-bg);
+    border: 1px solid var(--aaas-glass-border);
+    backdrop-filter: var(--aaas-glass-backdrop);
+    -webkit-backdrop-filter: var(--aaas-glass-backdrop);
+    border-radius: var(--aaas-radius-lg);
+    box-shadow: var(--aaas-shadow-glass);
 }
 
-.saas-card {
-    background: var(--saas-bg-card);
-    border: 1px solid var(--saas-border-light);
-    border-radius: var(--saas-radius-lg);
-    box-shadow: var(--saas-shadow-md);
+.aaas-card {
+    background: var(--aaas-bg-card);
+    border: 1px solid var(--aaas-border-light);
+    border-radius: var(--aaas-radius-lg);
+    box-shadow: var(--aaas-shadow-md);
 }
 
 /* Status Badge Colors */
-.saas-status-success {
+.aaas-status-success {
     background: rgba(34, 197, 94, 0.15);
     color: #16a34a;
     border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
-.saas-status-warning {
+.aaas-status-warning {
     background: rgba(245, 158, 11, 0.15);
     color: #d97706;
     border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-.saas-status-danger {
+.aaas-status-danger {
     background: rgba(239, 68, 68, 0.15);
     color: #dc2626;
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.saas-status-info {
+.aaas-status-info {
     background: rgba(59, 130, 246, 0.15);
     color: #2563eb;
     border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 /* Dark mode status colors */
-[data-theme="dark"] .saas-status-success {
+[data-theme="dark"] .aaas-status-success {
     background: rgba(34, 197, 94, 0.2);
     color: #4ade80;
 }
 
-[data-theme="dark"] .saas-status-warning {
+[data-theme="dark"] .aaas-status-warning {
     background: rgba(245, 158, 11, 0.2);
     color: #fbbf24;
 }
 
-[data-theme="dark"] .saas-status-danger {
+[data-theme="dark"] .aaas-status-danger {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
 }
 
-[data-theme="dark"] .saas-status-info {
+[data-theme="dark"] .aaas-status-info {
     background: rgba(59, 130, 246, 0.2);
     color: #60a5fa;
 }

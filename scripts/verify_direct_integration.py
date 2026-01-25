@@ -26,7 +26,7 @@ if AGENT_PATH not in sys.path:
     sys.path.insert(0, AGENT_PATH)
 
 # 2. Configure Environment
-os.environ["SOMA_SAAS_MODE"] = "direct"
+os.environ["SOMA_AAAS_MODE"] = "direct"
 os.environ["DEBUG"] = "true"
 # Use SQLite for verification to avoid Postgres dependency if not running
 os.environ["SA01_DB_DSN"] = "sqlite:///verify_db.sqlite3"

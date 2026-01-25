@@ -20,8 +20,8 @@ This document audits the test infrastructure across all 3 repositories and defin
 | Directory | Tests | Purpose | Status |
 |-----------|-------|---------|--------|
 | `tests/unit/` | 2 | Pure logic | ✅ Rule 91 |
-| `tests/saas_direct/` | 3 | Real infra integration | ✅ Refactored |
-| `tests/integration/` | Legacy | Move to saas_direct | ⚠️ Deprecated |
+| `tests/aaas_direct/` | 3 | Real infra integration | ✅ Refactored |
+| `tests/integration/` | Legacy | Move to aaas_direct | ⚠️ Deprecated |
 | `tests/agent_chat/` | ? | Chat flow | 🔍 Review |
 | `tests/e2e/` | ? | HTTP testing | 🔍 Review |
 | `tests/django/` | ? | Django models | 🔍 Review |
@@ -135,19 +135,19 @@ sequenceDiagram
 | 11 | Billing | ⬜ Need test | N/A | N/A |
 | 12 | Response | ✅ `test_chat_flow_e2e` | N/A | N/A |
 
-### 3.3 SaaS Direct Bridge Tests (To Be Created)
+### 3.3 AAAS Direct Bridge Tests (To Be Created)
 
 These tests verify the **DIRECT IMPORT** pattern:
 
 ```python
-# tests/saas_direct/test_brain_bridge.py
+# tests/aaas_direct/test_brain_bridge.py
 
 def test_somabrain_direct_import():
     """Verify SomaBrain is imported directly (not via HTTP)."""
     from admin.core.somabrain_client import SomaBrainClient
 
     client = SomaBrainClient()
-    # Should use direct import in SaaS mode
+    # Should use direct import in AAAS mode
     assert hasattr(client, '_direct_brain')
 
 def test_recall_uses_direct_path(real_tenant, real_capsule):
@@ -181,8 +181,8 @@ mv tests/test_end_to_end_memory.py tests/e2e/
 ### Phase 2: Bridge Tests in SomaAgent01
 
 Create tests that verify the DIRECT import chain:
-- `tests/saas_direct/test_brain_bridge.py` - SomaBrain direct calls
-- `tests/saas_direct/test_memory_bridge.py` - SFM direct calls
+- `tests/aaas_direct/test_brain_bridge.py` - SomaBrain direct calls
+- `tests/aaas_direct/test_memory_bridge.py` - SFM direct calls
 
 ### Phase 3: Cross-Repo E2E
 
@@ -200,9 +200,9 @@ Create tests that span all 3 repos:
 # Unit (no infra needed)
 pytest tests/unit/ -v
 
-# SaaS Direct (requires infra)
+# AAAS Direct (requires infra)
 DJANGO_SETTINGS_MODULE=services.gateway.settings SA01_INFRA_AVAILABLE=1 \
-    pytest tests/saas_direct/ -v
+    pytest tests/aaas_direct/ -v
 ```
 
 ### SomaBrain
@@ -228,7 +228,7 @@ DJANGO_SETTINGS_MODULE=sfm.settings pytest tests/ -v
 |--------|--------|---------|
 | Unit Test Coverage | 80% | 🔍 Unknown |
 | Integration Test Coverage | 60% | 🔍 Unknown |
-| SaaS Direct Coverage | 100% | ⚠️ Partial |
+| AAAS Direct Coverage | 100% | ⚠️ Partial |
 | Zero Hardcoded Values | 100% | ✅ Achieved |
 | Health Check Before Test | 100% | ✅ SomaBrain |
 

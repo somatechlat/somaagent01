@@ -30,8 +30,8 @@ REQUIRED_VARS = [
     ("SA01_KEYCLOAK_URL", "Keycloak identity provider"),
     # Django
     ("SECRET_KEY", "Django secret key (from Vault)"),
-    # SaaS
-    ("SAAS_DEFAULT_CHAT_MODEL", "Default LLM model"),
+    # AAAS
+    ("AAAS_DEFAULT_CHAT_MODEL", "Default LLM model"),
 ]
 
 # Optional variables with defaults

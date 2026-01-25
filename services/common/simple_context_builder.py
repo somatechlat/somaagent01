@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Deployment mode detection
 DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
-SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 
@@ -311,7 +311,7 @@ class ContextBuilder:
         - If circuit breaker is OPEN (SomaBrain-specific failure)
 
         Deployment mode support:
-        - SAAS mode: HTTP POST to SomaBrain with circuit breaker
+        - AAAS mode: HTTP POST to SomaBrain with circuit breaker
         - STANDALONE mode: Direct PostgreSQL query via embedded module
 
         Args:
@@ -331,16 +331,16 @@ class ContextBuilder:
         if STANDALONE_MODE:
             return await self._add_memory_standalone(messages, turn, budget)
 
-        # SAAS mode: Use SomaBrain HTTP API
-        return await self._add_memory_saas(messages, turn, budget)
+        # AAAS mode: Use SomaBrain HTTP API
+        return await self._add_memory_aaas(messages, turn, budget)
 
-    async def _add_memory_saas(
+    async def _add_memory_aaas(
         self,
         messages: list[dict[str, Any]],
         turn: dict[str, Any],
         budget: int,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Add memory snippets via SomaBrain HTTP API (SAAS mode).
+        """Add memory snippets via SomaBrain HTTP API (AAAS mode).
 
         Protected by circuit breaker. Uses cached somafactalmemory client.
 
@@ -369,7 +369,7 @@ class ContextBuilder:
             results = response.get("memories") or []
 
             if not results:
-                logger.debug("SAAS mode: No memories returned from SomaBrain")
+                logger.debug("AAAS mode: No memories returned from SomaBrain")
                 return [], 0
 
             # Redact and budget snippets
@@ -401,19 +401,19 @@ class ContextBuilder:
                     }
                 )
 
-            logger.info(f"SAAS mode: Retrieved {len(added)} memory snippets")
+            logger.info(f"AAAS mode: Retrieved {len(added)} memory snippets")
             return added, used_tokens
 
         except CircuitBreakerError as e:
-            logger.warning(f"SAAS mode: SomaBrain circuit breaker open - {e}")
+            logger.warning(f"AAAS mode: SomaBrain circuit breaker open - {e}")
             return [], 0
 
         except SomaClientError as e:
-            logger.warning(f"SAAS mode: SomaBrain client error - {e}")
+            logger.warning(f"AAAS mode: SomaBrain client error - {e}")
             return [], 0
 
         except Exception as e:
-            logger.error(f"SAAS mode: Unexpected error retrieving memory - {e}", exc_info=True)
+            logger.error(f"AAAS mode: Unexpected error retrieving memory - {e}", exc_info=True)
             return [], 0
 
     async def _add_memory_standalone(

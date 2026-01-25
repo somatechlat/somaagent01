@@ -67,13 +67,13 @@ class TestTenantUserEndpoints:
 
     def test_users_router_exists(self):
         """Test users router is properly configured."""
-        from admin.saas.api.users import router
+        from admin.aaas.api.users import router
 
         assert router is not None
 
     def test_valid_tenant_roles(self):
         """Test valid tenant roles are defined (Django TenantRole choices)."""
-        from admin.saas.api.users import VALID_ROLES
+        from admin.aaas.api.users import VALID_ROLES
 
         assert "owner" in VALID_ROLES
         assert "admin" in VALID_ROLES
@@ -86,13 +86,13 @@ class TestTenantAgentEndpoints:
 
     def test_tenant_agents_router_exists(self):
         """Test tenant agents router is properly configured."""
-        from admin.saas.api.tenant_agents import router
+        from admin.aaas.api.tenant_agents import router
 
         assert router is not None
 
     def test_quota_status_schema(self):
         """Test QuotaStatus schema."""
-        from admin.saas.api.tenant_agents import QuotaStatus
+        from admin.aaas.api.tenant_agents import QuotaStatus
 
         quota = QuotaStatus(
             agents_used=5,
@@ -114,7 +114,7 @@ class TestTenantAgentEndpoints:
         """Test AgentSchema."""
         from datetime import datetime
 
-        from admin.saas.api.tenant_agents import AgentSchema
+        from admin.aaas.api.tenant_agents import AgentSchema
 
         agent = AgentSchema(
             id="test-id",
@@ -143,9 +143,9 @@ class TestApiIntegration:
         # Check router count
         assert len(api._routers) >= 7
 
-    def test_saas_router_includes_users(self):
-        """Test SAAS router includes user management."""
-        from admin.saas.api import router
+    def test_aaas_router_includes_users(self):
+        """Test AAAS router includes user management."""
+        from admin.aaas.api import router
 
         # Router should have sub-routers for users and agents
         assert router is not None
@@ -180,7 +180,7 @@ class TestSchemaValidation:
 
     def test_tenant_user_schema(self):
         """Test TenantUserOut validation."""
-        from admin.saas.api.users import TenantUserOut
+        from admin.aaas.api.users import TenantUserOut
 
         user = TenantUserOut(
             id="user-1",

@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Set Django settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
-os.environ["SOMA_API_TOKEN"] = "soma_saas_secret_token_123"
+os.environ["SOMA_API_TOKEN"] = "soma_aaas_secret_token_123"
 
 import django
 

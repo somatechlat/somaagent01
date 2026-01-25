@@ -131,7 +131,7 @@ async def list_conversations(
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_conversations():
@@ -206,7 +206,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
     user = get_current_user(request)
     user_id = user.sub
     # Defensive extraction: Use getattr with fallback pattern
-    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
     agent_id = payload.agent_id or str(uuid4())
 
     # Create conversation using ChatService
@@ -349,7 +349,7 @@ async def get_messages(
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.effective_tenant_id or settings.SAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_messages():

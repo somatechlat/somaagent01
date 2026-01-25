@@ -12,7 +12,7 @@
 
 ## 1. Purpose
 
-Lago provides usage-based billing for the SomaAgent01 SaaS platform:
+Lago provides usage-based billing for the SomaAgent01 AAAS platform:
 - **Tenant billing** (subscription management)
 - **Usage metering** (tokens, API calls, voice minutes)
 - **Invoice generation**

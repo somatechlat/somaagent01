@@ -1,0 +1,181 @@
+version: "3.8"
+
+# =============================================================================
+# SOMA AGENT-AS-A-SERVICE (AAAS) DOCKER COMPOSE
+# =============================================================================
+# Runs the unified AAAS stack with all infrastructure services.
+# Agent + Brain + Memory run as ONE container (single-process mode).
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # MAIN APPLICATION - Agent + Brain + Memory as ONE
+  # ===========================================================================
+  somastack_aaas:
+    build:
+      context: ../../..
+      dockerfile: somaAgent01/infra/aaas/Dockerfile
+    container_name: somastack_aaas
+    hostname: somastack_aaas
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SOMA_SINGLE_PROCESS=true
+      - SOMA_AAAS_MODE=true
+      - SA01_DEPLOYMENT_MODE=AAAS
+      - DJANGO_SETTINGS_MODULE=infra.aaas.unified_settings
+      - SOMA_POSTGRES_HOST=somastack_postgres
+      - SOMA_REDIS_HOST=somastack_redis
+      - SOMA_MILVUS_HOST=somastack_milvus
+    ports:
+      - "${SOMA_PORT:-63900}:9000"
+    depends_on:
+      somastack_postgres:
+        condition: service_healthy
+      somastack_redis:
+        condition: service_started
+      somastack_milvus:
+        condition: service_started
+    networks:
+      - somastack_network
+    volumes:
+      - somastack_logs:/app/logs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/api/v2/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===========================================================================
+  # INFRASTRUCTURE SERVICES
+  # ===========================================================================
+
+  # PostgreSQL - Primary database
+  somastack_postgres:
+    image: postgres:16-alpine
+    container_name: somastack_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-soma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soma}
+      POSTGRES_MULTIPLE_DATABASES: somaagent,somabrain,somamemory
+    ports:
+      - "${POSTGRES_PORT:-63932}:5432"
+    volumes:
+      - somastack_postgres_data:/var/lib/postgresql/data
+      - ./init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+    networks:
+      - somastack_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Caching and pub/sub
+  somastack_redis:
+    image: redis:7-alpine
+    container_name: somastack_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-63979}:6379"
+    volumes:
+      - somastack_redis_data:/data
+    networks:
+      - somastack_network
+    command: redis-server --appendonly yes
+
+  # Milvus - Vector database
+  somastack_milvus:
+    image: milvusdb/milvus:v2.3.3
+    container_name: somastack_milvus
+    restart: unless-stopped
+    environment:
+      ETCD_USE_EMBED: "true"
+      ETCD_DATA_DIR: /var/lib/milvus/etcd
+      COMMON_STORAGETYPE: local
+    ports:
+      - "${MILVUS_PORT:-63953}:19530"
+    volumes:
+      - somastack_milvus_data:/var/lib/milvus
+    networks:
+      - somastack_network
+
+  # Kafka - Event streaming
+  somastack_kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: somastack_kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://somastack_kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@somastack_kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: aaas-kafka-cluster
+    ports:
+      - "${KAFKA_PORT:-63992}:9092"
+    volumes:
+      - somastack_kafka_data:/var/lib/kafka/data
+    networks:
+      - somastack_network
+
+  # Keycloak - Identity and access management
+  somastack_keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: somastack_keycloak
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://somastack_postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-soma}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-soma}
+    command: start-dev
+    ports:
+      - "${KEYCLOAK_PORT:-63980}:8080"
+    depends_on:
+      - somastack_postgres
+    networks:
+      - somastack_network
+
+  # Vault - Secrets management
+  somastack_vault:
+    image: hashicorp/vault:1.15
+    container_name: somastack_vault
+    restart: unless-stopped
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-soma-dev-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "${VAULT_PORT:-63982}:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - somastack_network
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  somastack_network:
+    driver: bridge
+    name: somastack_network
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  somastack_postgres_data:
+  somastack_redis_data:
+  somastack_milvus_data:
+  somastack_kafka_data:
+  somastack_logs:

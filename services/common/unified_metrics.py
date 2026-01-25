@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Deployment mode detection (consistent across all unified components)
 DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
-SAAS_MODE = DEPLOYMENT_MODE == "SAAS"
+AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 logger.info(
@@ -303,7 +303,7 @@ class UnifiedMetrics:
         """Record health check result.
 
         METRICS-002: Enhanced with deployment mode context.
-        - SAAS mode: Track HTTP endpoint latency patterns
+        - AAAS mode: Track HTTP endpoint latency patterns
         - STANDALONE mode: Track embedded module execution patterns
 
         Args:
@@ -312,11 +312,11 @@ class UnifiedMetrics:
             latency_ms: Service ping latency in milliseconds
         """
         # Log deployment mode-specific health patterns
-        if SAAS_MODE:
+        if AAAS_MODE:
             if service_name == "somabrain" and latency_ms > 100:
-                # SAAS: SomaBrain HTTP endpoint latency warning
+                # AAAS: SomaBrain HTTP endpoint latency warning
                 logger.warning(
-                    f"SAAS mode: High latency for {service_name}: {latency_ms:.2f}ms "
+                    f"AAAS mode: High latency for {service_name}: {latency_ms:.2f}ms "
                     f"(inter-service HTTP call, expected <100ms)",
                     extra={
                         "service": service_name,
@@ -345,7 +345,7 @@ class UnifiedMetrics:
         """Record memory retrieval metrics.
 
         METRICS-002: Enhanced with deployment mode context.
-        - SAAS mode: Track HTTP API call latency (expected 25-90ms)
+        - AAAS mode: Track HTTP API call latency (expected 25-90ms)
         - STANDALONE mode: Track embedded module query latency (expected 8-35ms)
 
         Args:
@@ -355,10 +355,10 @@ class UnifiedMetrics:
         # Log deployment mode-specific retrieval patterns
         latency_ms = latency_seconds * 1000.0
 
-        if SAAS_MODE:
+        if AAAS_MODE:
             if latency_ms > 90:
                 logger.warning(
-                    f"SAAS mode: Slow memory retrieval: {latency_ms:.2f}ms, "
+                    f"AAAS mode: Slow memory retrieval: {latency_ms:.2f}ms, "
                     f"{snippet_count} snippets (expected 25-90ms, HTTP API call)",
                     extra={
                         "latency_ms": latency_ms,
@@ -384,16 +384,16 @@ class UnifiedMetrics:
         """Record circuit breaker opening.
 
         METRICS-002: Enhanced with deployment mode context.
-        - SAAS mode: HTTP service circuit breaks
+        - AAAS mode: HTTP service circuit breaks
         - STANDALONE mode: Embedded module fallbacks
 
         Args:
             service_name: Name of service whose circuit opened
         """
         # Log deployment mode-specific circuit opens
-        if SAAS_MODE:
+        if AAAS_MODE:
             logger.warning(
-                f"SAAS mode: Circuit opened for {service_name} (HTTP service unavailable, fallback to degraded mode)",
+                f"AAAS mode: Circuit opened for {service_name} (HTTP service unavailable, fallback to degraded mode)",
                 extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
             )
         elif STANDALONE_MODE:

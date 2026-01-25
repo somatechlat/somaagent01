@@ -2,7 +2,7 @@
 
 VIBE COMPLIANT:
 - Real Django Ninja endpoints
-- SAAS mode: direct to SomaBrain agent
+- AAAS mode: direct to SomaBrain agent
 - Full type safety + validation
 - Proper error handling + circuit breaker
 - Zero data loss guarantees
@@ -55,7 +55,7 @@ class MemoryInteractionResponse(BaseModel):
     success: bool = Field(..., description="Storage success")
     interaction_id: str = Field(..., description="Generated interaction ID")
     message: str = Field(..., description="Status message")
-    deployment_mode: str = Field(..., description="Deployment mode (SAAS/STANDALONE)")
+    deployment_mode: str = Field(..., description="Deployment mode (AAAS/STANDALONE)")
 
 
 class MemoryRecallRequest(BaseModel):
@@ -111,7 +111,7 @@ async def store_interaction(
 ) -> Dict[str, Any]:
     """Store conversation interaction to SomaBrain memory.
 
-    SAAS Mode: Direct to SomaBrain via HTTP API
+    AAAS Mode: Direct to SomaBrain via HTTP API
     STANDALONE Mode: Direct to embedded SomaBrain
 
     Returns:

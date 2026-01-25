@@ -100,7 +100,7 @@ def _row_to_item(row: Any) -> AdminMemoryItem:
     "/memory",
     response=AdminMemoryListResponse,
     summary="List memory replica rows",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def list_admin_memory(
     request: HttpRequest,
@@ -144,7 +144,7 @@ async def list_admin_memory(
     "/memory/{event_id}",
     response=AdminMemoryItem,
     summary="Get memory by event_id",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def get_admin_memory_item(
     request: HttpRequest,
@@ -166,7 +166,7 @@ async def get_admin_memory_item(
     "/memory/metrics",
     response=MemoryMetricsResponse,
     summary="Get memory and Kafka metrics",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def admin_memory_metrics(
     request: HttpRequest,

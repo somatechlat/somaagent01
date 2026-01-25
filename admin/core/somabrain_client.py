@@ -23,7 +23,7 @@ from django.conf import settings
 
 # Integration: BrainBridge (Compliant Triad Architecture)
 try:
-    from saas.brain import brain as BrainBridge
+    from aaas.brain import brain as BrainBridge
     HAS_BRIDGE = True
 except ImportError:
     HAS_BRIDGE = False

@@ -102,8 +102,8 @@ RESOURCE_ACTIONS = {
 
 
 PREDEFINED_ROLES = {
-    "saas_super_admin": {
-        "name": "SAAS Super Administrator",
+    "aaas_super_admin": {
+        "name": "AAAS Super Administrator",
         "description": "Full platform access (God Mode)",
         "scope": "platform",
         "permissions": ["*"],  # All permissions

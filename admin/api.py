@@ -21,7 +21,7 @@ as the central router for all SomaAgent01 API endpoints.
         - ``/sessions`` - User session management
 
     Core Platform:
-        - ``/saas`` - SaaS administration
+        - ``/aaas`` - AAAS administration
         - ``/core`` - Core infrastructure
         - ``/agents`` - Agent management
         - ``/chat`` - Chat sessions
@@ -102,10 +102,10 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/auth", auth_router)
 
-    # SAAS Admin
-    from admin.saas.api import router as saas_router
+    # AAAS Admin
+    from admin.aaas.api import router as aaas_router
 
-    safe_add_router("/saas", saas_router)
+    safe_add_router("/aaas", aaas_router)
 
     # Core Infrastructure
     from admin.core.api import router as core_router

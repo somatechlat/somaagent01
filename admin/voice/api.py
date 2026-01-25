@@ -294,7 +294,7 @@ from admin.voice.schemas import (
 def list_personas(request, page: int = 1, page_size: int = 20, active_only: bool = False):
     """List voice personas for the current tenant.
 
-    Lit UI: saas-voice-personas.ts uses this endpoint.
+    Lit UI: aaas-voice-personas.ts uses this endpoint.
     """
     # Extract tenant from request (simplified for now)
     tenant_id = getattr(request, "tenant_id", "default")
@@ -511,7 +511,7 @@ def set_persona_default(request, persona_id: UUID):
 def list_sessions(request, page: int = 1, page_size: int = 50, status: Optional[str] = None):
     """List voice sessions for the current tenant.
 
-    Lit UI: saas-voice-sessions.ts uses this endpoint.
+    Lit UI: aaas-voice-sessions.ts uses this endpoint.
     """
     tenant_id = getattr(request, "tenant_id", "default")
 

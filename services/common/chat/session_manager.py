@@ -35,7 +35,7 @@ class SessionManager:
         Uses default baseline if Capsule not found.
         """
         from admin.core.models import Capsule
-        from saas.brain import brain
+        from aaas.brain import brain
 
         # Default neuromodulators (GMD baseline)
         default_neuro = {

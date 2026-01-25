@@ -70,7 +70,7 @@ def _kafka_settings():
     "/status",
     response=KafkaStatusResponse,
     summary="Get Kafka consumer status",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def kafka_status(
     request: HttpRequest,
@@ -125,7 +125,7 @@ async def kafka_status(
     "/seek_to_end",
     response=KafkaSeekResponse,
     summary="Seek consumer group to end of topic",
-    auth=RoleRequired("admin", "saas_admin"),
+    auth=RoleRequired("admin", "aaas_admin"),
 )
 async def kafka_seek_to_end(
     request: HttpRequest,

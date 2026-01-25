@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ForbiddenError, NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
-from admin.saas.models import AgentRole, AgentUser
+from admin.aaas.models import AgentRole, AgentUser
 
 router = Router(tags=["agents"])
 logger = logging.getLogger(__name__)

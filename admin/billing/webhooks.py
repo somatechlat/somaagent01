@@ -1,7 +1,7 @@
 """Lago Webhook Receiver.
 
 
-Per SAAS_ADMIN_SRS.md - Billing Integration.
+Per AAAS_ADMIN_SRS.md - Billing Integration.
 
 Handles events from Lago:
 - invoice.created
@@ -21,7 +21,7 @@ from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
 
-from admin.saas.models import AuditLog, Tenant
+from admin.aaas.models import AuditLog, Tenant
 
 router = Router(tags=["webhooks"])
 logger = logging.getLogger(__name__)
@@ -187,7 +187,7 @@ async def handle_subscription_started(data: dict) -> None:
     def update_tenant():
         """Execute update tenant."""
 
-        from admin.saas.models import SubscriptionTier
+        from admin.aaas.models import SubscriptionTier
 
         try:
             tenant = Tenant.objects.get(id=customer_id)
@@ -213,7 +213,7 @@ async def handle_subscription_terminated(data: dict) -> None:
     def downgrade_tenant():
         """Execute downgrade tenant."""
 
-        from admin.saas.models import SubscriptionTier
+        from admin.aaas.models import SubscriptionTier
 
         try:
             tenant = Tenant.objects.get(id=customer_id)

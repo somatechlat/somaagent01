@@ -26,8 +26,8 @@
 -   **Vision Capabilities**: Image analysis, diagram interpretation, and visual QA via `admin.multimodal`.
 -   **File Intelligence**: Native parsing of PDF, DOCX, CSV, and code repositories (`admin.files`).
 
-### 🛡️ Enterprise Governance (SaaS)
--   **Multi-Tenancy**: Strict data isolation per tenant (`admin.saas`).
+### 🛡️ Enterprise Governance (AAAS)
+-   **Multi-Tenancy**: Strict data isolation per tenant (`admin.aaas`).
 -   **Capsule Security**: Policy-as-Code enforcement for agent boundaries (`admin.capsules`).
 -   **RBAC & Audit**: Granular role-based access control and immutable audit logs.
 
@@ -46,7 +46,7 @@ SomaAgent01 is engineered as a **Modular Monolith** to combine the simplicity of
 | **LLM** | `admin.llm` | Provider-agnostic AI gateway (OpenAI/Anthropic/Gemini). |
 | **Orchestrator** | `admin.orchestrator` | Task graph execution engine. |
 | **Tools** | `admin.tools` | Secure sandbox for code execution and API calls. |
-| **SaaS** | `admin.saas` | Subscription, billing, and tenant management. |
+| **AAAS** | `admin.aaas` | Subscription, billing, and tenant management. |
 | **Gateway** | `services.gateway` | High-performance Django Ninja API Gateway. |
 
 ---

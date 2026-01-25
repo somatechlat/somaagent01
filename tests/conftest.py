@@ -2,12 +2,12 @@
 
 VIBE Coding Rules Compliant:
 - Real infrastructure only (NO mocks)
-- SaaS/Standalone mode separation
+- AAAS/Standalone mode separation
 - Centralized environment configuration
 
 Test Structure:
-- tests/saas/      - SOMA_SAAS_MODE=true tests
-- tests/standalone/ - SOMA_SAAS_MODE=false tests
+- tests/aaas/      - SOMA_AAAS_MODE=true tests
+- tests/standalone/ - SOMA_AAAS_MODE=false tests
 - tests/unit/      - Pure unit tests (no infra)
 - tests/integration/ - Cross-service tests
 - tests/e2e/       - Full end-to-end flows
@@ -17,10 +17,10 @@ import os
 import pytest
 
 # ===========================================================================
-# ENVIRONMENT CONFIGURATION - SAAS INFRASTRUCTURE (Port 639xx)
+# ENVIRONMENT CONFIGURATION - AAAS INFRASTRUCTURE (Port 639xx)
 # ===========================================================================
 
-SAAS_ENV = {
+AAAS_ENV = {
     # PostgreSQL (somastack_postgres)
     "SA01_DB_HOST": "localhost",
     "SA01_DB_PORT": "63932",
@@ -38,16 +38,16 @@ SAAS_ENV = {
     # SomaBrain (internal)
     "SA01_SOMA_BASE_URL": "http://localhost:63996",
     # Mode flags
-    "SOMA_SAAS_MODE": "true",
-    "SA01_DEPLOYMENT_MODE": "SAAS",
-    "SOMA_API_TOKEN": "test-token-saas",
+    "SOMA_AAAS_MODE": "true",
+    "SA01_DEPLOYMENT_MODE": "AAAS",
+    "SOMA_API_TOKEN": "test-token-aaas",
 }
 
 STANDALONE_ENV = {
     "SA01_DB_HOST": "localhost",
     "SA01_DB_PORT": "5432",
     "MILVUS_PORT": "19530",
-    "SOMA_SAAS_MODE": "false",
+    "SOMA_AAAS_MODE": "false",
     "SA01_DEPLOYMENT_MODE": "STANDALONE",
 }
 
@@ -64,7 +64,7 @@ def _apply_env(env_dict: dict) -> None:
 
 def pytest_configure(config):
     """Register custom markers."""
-    config.addinivalue_line("markers", "saas: SaaS mode tests (requires Docker infra)")
+    config.addinivalue_line("markers", "aaas: AAAS mode tests (requires Docker infra)")
     config.addinivalue_line("markers", "standalone: Standalone mode tests")
     config.addinivalue_line("markers", "slow: Long-running tests")
     config.addinivalue_line("markers", "infra: Requires real infrastructure")
@@ -74,8 +74,8 @@ def pytest_configure(config):
 @pytest.fixture(scope="session", autouse=True)
 def configure_test_environment(request):
     """Auto-configure environment based on test markers."""
-    # Default to SaaS mode for integration tests
-    _apply_env(SAAS_ENV)
+    # Default to AAAS mode for integration tests
+    _apply_env(AAAS_ENV)
 
     # Setup Django
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -84,9 +84,9 @@ def configure_test_environment(request):
 
 
 @pytest.fixture
-def saas_mode():
-    """Fixture to ensure SaaS mode environment."""
-    _apply_env(SAAS_ENV)
+def aaas_mode():
+    """Fixture to ensure AAAS mode environment."""
+    _apply_env(AAAS_ENV)
     yield
 
 

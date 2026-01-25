@@ -6,7 +6,7 @@ VIBE CODING RULES:
 - REAL SomaBrain interaction (Direct or HTTP)
 - NO MOCKS, NO STUBS
 
-This test verifies the SaaS Direct pattern:
+This test verifies the AAAS Direct pattern:
 - SomaBrain is imported directly when available
 - HTTP fallback when direct import not available
 
@@ -16,7 +16,7 @@ Requirements:
 
 Usage:
     DJANGO_SETTINGS_MODULE=services.gateway.settings SA01_INFRA_AVAILABLE=1 \
-        pytest tests/saas_direct/test_brain_bridge.py -v
+        pytest tests/aaas_direct/test_brain_bridge.py -v
 """
 
 from __future__ import annotations
@@ -90,12 +90,12 @@ class TestSomaBrainClientConfiguration:
 
 
 class TestSomaBrainDirectImport:
-    """Test SaaS Direct import pattern."""
+    """Test AAAS Direct import pattern."""
 
     def test_direct_import_available(self):
-        """Verify SomaBrain can be imported directly (SaaS Mode)."""
+        """Verify SomaBrain can be imported directly (AAAS Mode)."""
         try:
-            # This is the SaaS Direct import
+            # This is the AAAS Direct import
             from somabrain.cognitive import CognitiveCore
             assert CognitiveCore is not None
 
@@ -195,7 +195,7 @@ class TestDirectModeVerification:
     """Verify which mode is active (Direct vs HTTP)."""
 
     def test_identify_active_mode(self):
-        """Identify if SaaS Direct mode is active."""
+        """Identify if AAAS Direct mode is active."""
         from admin.core import somabrain_client
 
         mode = "direct" if somabrain_client.HAS_FACADE else "http"

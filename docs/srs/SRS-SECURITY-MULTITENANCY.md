@@ -16,7 +16,7 @@
 ```mermaid
 flowchart TD
     subgraph PLATFORM ["🔴 Platform Level"]
-        SAAS[SAAS Admin]
+        AAAS[AAAS Admin]
         VAULT[HashiCorp Vault]
         SPICE[SpiceDB]
     end
@@ -33,9 +33,9 @@ flowchart TD
         C3[Agent 3]
     end
 
-    SAAS --> T1
-    SAAS --> T2
-    SAAS --> T3
+    AAAS --> T1
+    AAAS --> T2
+    AAAS --> T3
     T1 --> C1
     T1 --> C2
     T2 --> C3

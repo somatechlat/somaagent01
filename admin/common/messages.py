@@ -26,16 +26,16 @@ class ErrorCode(str, Enum):
     AUTH_MISSING_TOKEN = "auth_missing_token"
     AUTH_PERMISSION_DENIED = "auth_permission_denied"
 
-    # SAAS - Tiers
+    # AAAS - Tiers
     TIER_NOT_FOUND = "tier_not_found"
     TIER_ACTIVE_TENANTS = "tier_has_active_tenants"
 
-    # SAAS - Features
+    # AAAS - Features
     FEATURE_NOT_FOUND = "feature_not_found"
     FEATURE_NOT_ON_TIER = "feature_not_on_tier"
     FEATURE_DEPENDENCY_MISSING = "feature_dependency_missing"
 
-    # SAAS - Tenants
+    # AAAS - Tenants
     TENANT_NOT_FOUND = "tenant_not_found"
     TENANT_SUSPENDED = "tenant_suspended"
     TENANT_QUOTA_EXCEEDED = "tenant_quota_exceeded"
@@ -80,7 +80,7 @@ class SuccessCode(str, Enum):
     UPDATED = "updated"
     DELETED = "deleted"
 
-    # SAAS
+    # AAAS
     TIER_DEACTIVATED = "tier_deactivated"
     FEATURE_REMOVED = "feature_removed"
 
@@ -110,7 +110,7 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str] = {
     ErrorCode.AUTH_EXPIRED_TOKEN: _("Authentication token has expired"),
     ErrorCode.AUTH_MISSING_TOKEN: _("Authentication token is required"),
     ErrorCode.AUTH_PERMISSION_DENIED: _("Permission denied for action '{action}'"),
-    # SAAS
+    # AAAS
     ErrorCode.TIER_NOT_FOUND: _("Subscription tier not found"),
     ErrorCode.TIER_ACTIVE_TENANTS: _("Cannot delete tier with {count} active tenants"),
     ErrorCode.FEATURE_NOT_FOUND: _("Feature '{feature}' not found"),

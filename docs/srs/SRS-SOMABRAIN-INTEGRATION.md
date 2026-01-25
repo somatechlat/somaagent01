@@ -2,19 +2,19 @@
 
 **System:** SomaAgent01
 **Document ID:** SRS-SOMABRAIN-INTEGRATION-2026-01-16
-**Version:** 5.0 (SaaS Direct Calls Enforced)
+**Version:** 5.0 (AAAS Direct Calls Enforced)
 **Status:** CANONICAL
 
 **Applied Personas:** ALL 10 ✅
 
 ---
 
-## 0. SaaS Direct Call Rule
+## 0. AAAS Direct Call Rule
 
-> **In SaaS mode, SomaBrain is DIRECTLY IMPORTED — ZERO HTTP LATENCY**
+> **In AAAS mode, SomaBrain is DIRECTLY IMPORTED — ZERO HTTP LATENCY**
 
 ```python
-# ✅ SAAS MODE — Direct import (0ms)
+# ✅ AAAS MODE — Direct import (0ms)
 from somabrain.cognitive import CognitiveCore
 brain = CognitiveCore(db=django_db)
 await brain.recall(query, capsule)  # Direct call
@@ -209,12 +209,12 @@ async def ask(
 
 | Mode | SomaBrain | OPA | SpiceDB | Milvus |
 |------|-----------|-----|---------|--------|
-| **SAAS** | Direct import (0ms) | In-memory cache (0ms) | gRPC pool (2ms) | gRPC (5ms) |
+| **AAAS** | Direct import (0ms) | In-memory cache (0ms) | gRPC pool (2ms) | gRPC (5ms) |
 | **STANDALONE** | HTTP client (10-50ms) | HTTP server | gRPC single | gRPC |
 
 ```python
-# ✅ SAAS MODE — Direct Python import
-if settings.SA01_DEPLOYMENT_MODE == "SAAS":
+# ✅ AAAS MODE — Direct Python import
+if settings.SA01_DEPLOYMENT_MODE == "AAAS":
     from somabrain.cognitive import CognitiveCore
     brain = CognitiveCore(db=django_db)  # 0ms latency
 else:

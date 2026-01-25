@@ -1,7 +1,7 @@
 """Lago Billing API Client.
 
 
-Per SAAS_ADMIN_SRS.md Section 5.1 - Billing Dashboard.
+Per AAAS_ADMIN_SRS.md Section 5.1 - Billing Dashboard.
 
 Lago API Docs: https://doc.getlago.com/api-reference/intro
 """

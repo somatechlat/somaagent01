@@ -56,7 +56,7 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 | :--- | :--- | :--- | :--- |
 | `SA01_DEPLOYMENT_MODE` | `PROD` or `DEV` | Yes | `DEV` |
 | `SA01_DEPLOYMENT_TARGET` | `LOCAL`, `FARGATE`, `EKS`, `ECS_EC2`, `EC2`, `APP_RUNNER` | No | `LOCAL` |
-| `SOMA_SAAS_MODE` | In-process coupling: `true` or `false` | No | `false` |
+| `SOMA_AAAS_MODE` | In-process coupling: `true` or `false` | No | `false` |
 | `SOMASTACK_SOFTWARE_MODE` | `StandAlone` or `SomaStackClusterMode` | No | `StandAlone` |
 
 ### 2.2 Database Variables
@@ -82,11 +82,11 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 | `SPICEDB_API_KEY` | SpiceDB API key | Yes | - |
 | `OPA_URL` | OPA policy server URL | Yes | `http://opa:20181` |
 
-### 2.4 SaaS Integration Variables
+### 2.4 AAAS Integration Variables
 
 | Variable | Description | Required | Default |
 | :--- | :--- | :--- | :--- |
-| `SAAS_DEFAULT_CHAT_MODEL` | Default LLM Model | Yes | `openai/gpt-4.1` |
+| `AAAS_DEFAULT_CHAT_MODEL` | Default LLM Model | Yes | `openai/gpt-4.1` |
 | `SA01_CHAT_PROVIDER` | Chat model provider (openrouter/openai) | No | `openrouter` (code default) |
 | `OPENAI_API_KEY` | OpenAI API key | Yes | - |
 | `ANTHROPIC_API_KEY` | Anthropic API key | No | - |
@@ -253,7 +253,7 @@ docker-compose exec gateway python manage.py migrate
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         FRONTEND (Lit 3.x)                          │
-│       webui/src/views/saas-chat.ts (1265 lines)                     │
+│       webui/src/views/aaas-chat.ts (1265 lines)                     │
 │       ↓ WebSocket /ws/v2/chat                                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │                         WEBSOCKET LAYER                              │
@@ -290,7 +290,7 @@ docker-compose exec gateway python manage.py migrate
 
 | Component | File | Lines | Status |
 |-----------|------|-------|--------|
-| Chat UI | `webui/src/views/saas-chat.ts` | 1265 | ✅ Complete |
+| Chat UI | `webui/src/views/aaas-chat.ts` | 1265 | ✅ Complete |
 | WebSocket Client | `webui/src/services/websocket-client.ts` | 245 | ✅ Complete |
 | Chat API | `admin/chat/api/chat.py` | ~400 | ✅ Complete |
 | Chat Models | `admin/chat/models.py` | 154 | ✅ Complete |
@@ -335,7 +335,7 @@ SA01_ENABLE_AGENTIQ_GOVERNOR=true  # Default: false
 
 ## 4. Deployment Checklist
 
-### Step 1: Verify SaaS Stack Running
+### Step 1: Verify AAAS Stack Running
 ```bash
 docker ps --filter name=somastack --format "{{.Names}}: {{.Status}}"
 # Required: postgres, redis, milvus, kafka, minio - all healthy
@@ -352,7 +352,7 @@ vault kv put secret/soma/openrouter api_key="sk-or-..."
 
 ### Step 3: Update GlobalDefaults (LLM Models)
 ```python
-# admin/saas/models/profiles.py - GlobalDefault.defaults["models"]
+# admin/aaas/models/profiles.py - GlobalDefault.defaults["models"]
 # Already configured with openrouter/minimax-01
 ```
 
@@ -417,7 +417,7 @@ cd webui && npm install && npm run dev
 
 ## Executive Summary
 
-The SOMA Collective has completed a comprehensive audit of somaAgent01. This roadmap addresses the user's mandate: **ALL settings/env MUST be centralized by deployment mode** with completely isolated `infra/standalone/` and `infra/saas/` folders.
+The SOMA Collective has completed a comprehensive audit of somaAgent01. This roadmap addresses the user's mandate: **ALL settings/env MUST be centralized by deployment mode** with completely isolated `infra/standalone/` and `infra/aaas/` folders.
 
 ---
 
@@ -429,13 +429,13 @@ The SOMA Collective has completed a comprehensive audit of somaAgent01. This roa
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DEPLOYMENT MODE SELECTOR                     │
 ├────────────────────┬────────────────────────────────────────────┤
-│ SA01_DEPLOYMENT_MODE=STANDALONE │ SA01_DEPLOYMENT_MODE=SAAS    │
+│ SA01_DEPLOYMENT_MODE=STANDALONE │ SA01_DEPLOYMENT_MODE=AAAS    │
 ├────────────────────┼────────────────────────────────────────────┤
-│ infra/standalone/  │ infra/saas/                               │
+│ infra/standalone/  │ infra/aaas/                               │
 │ └── docker-compose.yml │ └── docker-compose.yml               │
 │ └── .env.example   │ └── .env.example                         │
 │ └── Dockerfile     │ └── Dockerfile                           │
-│ └── start.sh       │ └── start_saas.sh                        │
+│ └── start.sh       │ └── start_aaas.sh                        │
 │ SELF-CONTAINED     │ UNIFIED MONOLITH                         │
 │ Agent-only         │ Agent + Brain + Memory                   │
 │ Port 20xxx         │ Port 63xxx                               │
@@ -453,8 +453,8 @@ class SettingsRegistry:
     def load() -> Settings:
         mode = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE").upper()
         
-        if mode == "SAAS":
-            return SaaSSettings.from_vault()
+        if mode == "AAAS":
+            return AAASSettings.from_vault()
         elif mode == "STANDALONE":
             return StandaloneSettings.from_vault()
         else:
@@ -474,7 +474,7 @@ class SettingsRegistry:
 | `Dockerfile` | Single-service container |
 | `start.sh` | Entrypoint script |
 
-### 1.2 Verify `infra/saas/` Isolation
+### 1.2 Verify `infra/aaas/` Isolation
 
 - ✅ Already exists with Unified Monolith architecture
 - ✅ Uses port 63xxx namespace
@@ -498,7 +498,7 @@ config/
 ├── __init__.py
 ├── settings_registry.py    # Mode dispatcher
 ├── standalone_settings.py  # Standalone config class
-├── saas_settings.py        # SaaS config class (merge with saas/config.py)
+├── aaas_settings.py        # AAAS config class (merge with aaas/config.py)
 └── vault_loader.py         # Vault integration (Rule 100)
 ```
 
@@ -506,7 +506,7 @@ config/
 
 | Source (DELETE) | Target |
 |-----------------|--------|
-| `saas/config.py` | `config/saas_settings.py` |
+| `aaas/config.py` | `config/aaas_settings.py` |
 | `services/gateway/settings.py` (env vars) | `config/settings_registry.py` |
 | `admin/core/config/` | MERGE into `config/` |
 
@@ -538,10 +538,10 @@ SettingsRegistry.get().redis_host  # Fails-fast if missing
 
 | File | Secret | Action |
 |------|--------|--------|
-| `saas/memory.py` | `dev-token-*` | ✅ FIXED |
+| `aaas/memory.py` | `dev-token-*` | ✅ FIXED |
 | `services/gateway/settings.py` | `django-insecure-*` | Move to Vault |
-| `infra/saas/docker-compose.yml` | `POSTGRES_PASSWORD: soma` | Vault ref |
-| `infra/saas/docker-compose.yml` | `soma_dev_token` | Vault ref |
+| `infra/aaas/docker-compose.yml` | `POSTGRES_PASSWORD: soma` | Vault ref |
+| `infra/aaas/docker-compose.yml` | `soma_dev_token` | Vault ref |
 
 ---
 
@@ -559,7 +559,7 @@ SettingsRegistry.get().redis_host  # Fails-fast if missing
 | DELETE | Keep |
 |--------|------|
 | `services/common/secret_manager.py` | `vault_secrets.py` |
-| `saas/config.py` | `config/saas_settings.py` |
+| `aaas/config.py` | `config/aaas_settings.py` |
 | Multiple settings parsers | `config/settings_registry.py` |
 
 ### 4.3 Purge 47 TODOs
@@ -579,14 +579,14 @@ curl http://localhost:20020/api/v1/health
 # Expected: {"status": "healthy", "mode": "STANDALONE"}
 ```
 
-### 5.2 SaaS Mode Tests
+### 5.2 AAAS Mode Tests
 
 ```bash
-cd infra/saas
-./build_saas.sh
+cd infra/aaas
+./build_aaas.sh
 docker compose up -d
 curl http://localhost:63900/api/v1/health
-# Expected: {"status": "healthy", "mode": "SAAS"}
+# Expected: {"status": "healthy", "mode": "AAAS"}
 ```
 
 ### 5.3 10-Cycle Resiliency (Rule 122)
@@ -631,7 +631,7 @@ grep -rn "TODO\|FIXME" --include="*.py" . | wc -l
 | `infra/standalone/` | NEW isolated folder |
 | `config/settings_registry.py` | Centralized mode dispatcher |
 | `config/standalone_settings.py` | Standalone config |
-| `config/saas_settings.py` | SaaS config (from saas/config.py) |
+| `config/aaas_settings.py` | AAAS config (from aaas/config.py) |
 
 ## Summary: Files to DELETE
 
@@ -640,7 +640,7 @@ grep -rn "TODO\|FIXME" --include="*.py" . | wc -l
 | `services/common/secret_manager.py` | Legacy Redis/Fernet |
 | `infra/tilt/.env` | Scattered config |
 | Multiple `.env` files | Consolidate to `.env.example` |
-| `saas/config.py` | Move to config/ |
+| `aaas/config.py` | Move to config/ |
 
 ---
 

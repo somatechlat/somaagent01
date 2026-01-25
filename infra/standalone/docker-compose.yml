@@ -3,7 +3,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Agent-Only deployment without SomaBrain or FractalMemory dependencies.
 # - Naming: somaagent_*
-# - Ports: 20xxx (Strict Isolation from SaaS 63xxx)
+# - Ports: 20xxx (Strict Isolation from AAAS 63xxx)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 networks:
@@ -28,7 +28,7 @@ services:
       - .env
     environment:
       - SA01_DEPLOYMENT_MODE=STANDALONE
-      - SOMA_SAAS_MODE=false
+      - SOMA_AAAS_MODE=false
       - VAULT_ADDR=http://somaagent_vault:8200
     ports:
       - "20020:9000" # Agent API

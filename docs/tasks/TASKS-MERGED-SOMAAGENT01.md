@@ -108,16 +108,16 @@
 
 ---
 
-## 6. Multi-tenant SaaS (P1)
+## 6. Multi-tenant AAAS (P1)
 
-### 6.1 From SRS-SAAS-TENANT-CREATION.md
+### 6.1 From SRS-AAAS-TENANT-CREATION.md
 | Task | Effort | Status |
 |------|--------|--------|
 | Tenant creation wizard (5 steps) | 2d | ⚠️ Partial |
 | TenantSettings model | 0.5d | ❌ |
 | Tenant usage tracking | 1d | ❌ |
 
-### 6.2 From SRS-UNIFIED-SAAS.md
+### 6.2 From SRS-UNIFIED-AAAS.md
 | Task | Effort | Status |
 |------|--------|--------|
 | StandAlone mode toggle | 0.5d | ✅ |
@@ -224,7 +224,7 @@ class Agent(models.Model):
         unique_together = ['tenant', 'slug']
 
 class SubscriptionTier(models.Model):
-    """Actual implementation in admin/saas/models/tiers.py:15-135"""
+    """Actual implementation in admin/aaas/models/tiers.py:15-135"""
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, unique=True)
     description = models.TextField(blank=True)
@@ -272,7 +272,7 @@ class SubscriptionTier(models.Model):
 
 definition platform {}
 
-definition saas_admin {
+definition aaas_admin {
     relation platform: platform
     permission manage = platform
     permission manage_tenants = platform
@@ -384,16 +384,16 @@ definition agent {
 
 | Component | Priority | Estimated |
 |-----------|----------|-----------|
-| `saas-shell` (app shell) | P0 | 4h |
-| `saas-nav` (navigation) | P0 | 3h |
-| `saas-card` (stat card) | P0 | 2h |
-| `saas-table` (data table) | P0 | 4h |
-| `saas-modal` (dialog) | P0 | 3h |
-| `saas-form` (form wrapper) | P0 | 3h |
-| `saas-input` (form input) | P0 | 2h |
-| `saas-button` (buttons) | P0 | 1h |
-| `saas-toast` (notifications) | P0 | 2h |
-| `saas-badge` (status badges) | P0 | 1h |
+| `aaas-shell` (app shell) | P0 | 4h |
+| `aaas-nav` (navigation) | P0 | 3h |
+| `aaas-card` (stat card) | P0 | 2h |
+| `aaas-table` (data table) | P0 | 4h |
+| `aaas-modal` (dialog) | P0 | 3h |
+| `aaas-form` (form wrapper) | P0 | 3h |
+| `aaas-input` (form input) | P0 | 2h |
+| `aaas-button` (buttons) | P0 | 1h |
+| `aaas-toast` (notifications) | P0 | 2h |
+| `aaas-badge` (status badges) | P0 | 1h |
 
 ### 4.2 Design Tokens
 
@@ -404,47 +404,47 @@ definition agent {
 
 :root {
   /* Backgrounds - Light Theme */
-  --saas-bg-page: #f5f5f5;
-  --saas-bg-card: #ffffff;
-  --saas-bg-hover: #fafafa;
+  --aaas-bg-page: #f5f5f5;
+  --aaas-bg-card: #ffffff;
+  --aaas-bg-hover: #fafafa;
   
   /* Text - Light Theme */  
-  --saas-text-primary: #1a1a1a;
-  --saas-text-secondary: #666666;
-  --saas-text-muted: #999999;
+  --aaas-text-primary: #1a1a1a;
+  --aaas-text-secondary: #666666;
+  --aaas-text-muted: #999999;
   
   /* Accent - Primary Action */
-  --saas-accent: #1a1a1a;
-  --saas-accent-hover: #333333;
+  --aaas-accent: #1a1a1a;
+  --aaas-accent-hover: #333333;
   
   /* Status Colors */
-  --saas-status-success: #22c55e;
-  --saas-status-warning: #f59e0b;
-  --saas-status-danger: #ef4444;
-  --saas-status-info: #3b82f6;
+  --aaas-status-success: #22c55e;
+  --aaas-status-warning: #f59e0b;
+  --aaas-status-danger: #ef4444;
+  --aaas-status-info: #3b82f6;
   
   /* Spacing */
-  --saas-space-xs: 4px;
-  --saas-space-sm: 8px;
-  --saas-space-md: 16px;
-  --saas-space-lg: 24px;
-  --saas-space-xl: 32px;
+  --aaas-space-xs: 4px;
+  --aaas-space-sm: 8px;
+  --aaas-space-md: 16px;
+  --aaas-space-lg: 24px;
+  --aaas-space-xl: 32px;
   
   /* Typography */
-  --saas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --saas-font-mono: 'JetBrains Mono', monospace;
+  --aaas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --aaas-font-mono: 'JetBrains Mono', monospace;
   
   /* Borders */
-  --saas-radius-sm: 4px;
-  --saas-radius-md: 8px;
-  --saas-radius-lg: 12px;
-  --saas-radius-full: 9999px;
-  --saas-border-color: #e2e8f0;
+  --aaas-radius-sm: 4px;
+  --aaas-radius-md: 8px;
+  --aaas-radius-lg: 12px;
+  --aaas-radius-full: 9999px;
+  --aaas-border-color: #e2e8f0;
   
   /* Shadows */
-  --saas-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --saas-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --saas-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --aaas-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --aaas-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --aaas-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 ```
 
@@ -483,7 +483,7 @@ api = NinjaAPI(
 )
 
 # Include routers
-api.add_router("/saas/", saas_router, tags=["Platform Admin"])
+api.add_router("/aaas/", aaas_router, tags=["Platform Admin"])
 api.add_router("/admin/", admin_router, tags=["Tenant Admin"])
 api.add_router("/agent/", agent_router, tags=["Agent Config"])
 api.add_router("/chat/", chat_router, tags=["Chat"])
@@ -606,7 +606,7 @@ async def logout(request):
 
 | Task | Priority | Estimated |
 |------|----------|-----------|
-| Create `saas-login.ts` component | P0 | 4h |
+| Create `aaas-login.ts` component | P0 | 4h |
 | Implement form validation | P0 | 2h |
 | Add OAuth buttons | P0 | 2h |
 | Handle error states | P0 | 2h |
@@ -616,12 +616,12 @@ async def logout(request):
 ### 2.2 Component Structure
 
 ```typescript
-// components/saas-login.ts
+// components/aaas-login.ts
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-@customElement('saas-login')
-export class SaasLogin extends LitElement {
+@customElement('aaas-login')
+export class AaasLogin extends LitElement {
   @state() private loading = false;
   @state() private error = '';
   @property() redirectUrl = '/';
@@ -632,14 +632,14 @@ export class SaasLogin extends LitElement {
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--saas-bg-secondary);
+      background: var(--aaas-bg-secondary);
     }
     
     .login-card {
-      background: var(--saas-bg-primary);
-      border-radius: var(--saas-radius-lg);
-      box-shadow: var(--saas-shadow-lg);
-      padding: var(--saas-space-8);
+      background: var(--aaas-bg-primary);
+      border-radius: var(--aaas-radius-lg);
+      box-shadow: var(--aaas-shadow-lg);
+      padding: var(--aaas-space-8);
       width: 100%;
       max-width: 400px;
     }
@@ -648,9 +648,9 @@ export class SaasLogin extends LitElement {
       background: #fef2f2;
       border: 1px solid #fecaca;
       color: #dc2626;
-      padding: var(--saas-space-3);
-      border-radius: var(--saas-radius-md);
-      margin-bottom: var(--saas-space-4);
+      padding: var(--aaas-space-3);
+      border-radius: var(--aaas-radius-md);
+      margin-bottom: var(--aaas-space-4);
     }
   `;
   
@@ -662,39 +662,39 @@ export class SaasLogin extends LitElement {
         ${this.error ? html`<div class="error">${this.error}</div>` : ''}
         
         <form @submit=${this.handleSubmit}>
-          <saas-input
+          <aaas-input
             type="email"
             name="email"
             label="Email"
             required
-          ></saas-input>
+          ></aaas-input>
           
-          <saas-input
+          <aaas-input
             type="password"
             name="password"
             label="Password"
             required
-          ></saas-input>
+          ></aaas-input>
           
           <label>
             <input type="checkbox" name="remember">
             Remember me
           </label>
           
-          <saas-button type="submit" ?loading=${this.loading}>
+          <aaas-button type="submit" ?loading=${this.loading}>
             Sign In
-          </saas-button>
+          </aaas-button>
         </form>
         
         <div class="divider">or</div>
         
-        <saas-button variant="outline" @click=${this.handleGoogleLogin}>
+        <aaas-button variant="outline" @click=${this.handleGoogleLogin}>
           Sign in with Google
-        </saas-button>
+        </aaas-button>
         
-        <saas-button variant="outline" @click=${this.handleGithubLogin}>
+        <aaas-button variant="outline" @click=${this.handleGithubLogin}>
           Sign in with GitHub
-        </saas-button>
+        </aaas-button>
         
         <a href="/auth/forgot-password">Forgot password?</a>
       </div>
@@ -744,8 +744,8 @@ export class SaasLogin extends LitElement {
 |------|----------|-----------|
 | Create MFA setup endpoint | P0 | 3h |
 | Create MFA verify endpoint | P0 | 2h |
-| Create `saas-mfa-setup.ts` | P0 | 4h |
-| Create `saas-mfa-verify.ts` | P0 | 3h |
+| Create `aaas-mfa-setup.ts` | P0 | 4h |
+| Create `aaas-mfa-verify.ts` | P0 | 3h |
 | Generate backup codes | P0 | 2h |
 | Store backup codes (encrypted) | P0 | 2h |
 
@@ -872,8 +872,8 @@ class TokenRefreshMiddleware:
 | Create forgot password endpoint | P0 | 2h |
 | Create reset password endpoint | P0 | 2h |
 | Email template | P0 | 1h |
-| Create `saas-forgot-password.ts` | P0 | 2h |
-| Create `saas-reset-password.ts` | P0 | 2h |
+| Create `aaas-forgot-password.ts` | P0 | 2h |
+| Create `aaas-reset-password.ts` | P0 | 2h |
 
 ### 5.2 Flow
 
@@ -919,7 +919,7 @@ sequenceDiagram
 | Create invitation endpoint | P0 | 3h |
 | Create accept invitation endpoint | P0 | 3h |
 | Invitation email template | P0 | 1h |
-| Create `saas-accept-invite.ts` | P0 | 3h |
+| Create `aaas-accept-invite.ts` | P0 | 3h |
 | Handle expired invitations | P0 | 1h |
 
 ### 6.2 Flow
@@ -966,7 +966,7 @@ sequenceDiagram
 - [ ] GitHub OAuth callback
 - [ ] Logout endpoint
 - [ ] Token refresh middleware
-- [ ] `saas-login.ts` component
+- [ ] `aaas-login.ts` component
 
 ### Week 2
 - [ ] MFA setup flow
@@ -988,35 +988,35 @@ sequenceDiagram
 
 ---
 
-## 1. SAAS Platform Admin
+## 1. AAAS Platform Admin
 
 ### 1.1 Endpoints
 
 | Endpoint | Method | Task | Estimated |
 |----------|--------|------|-----------|
-| `/saas/stats` | GET | Platform statistics | 2h |
-| `/saas/tenants` | GET | List tenants | 2h |
-| `/saas/tenants` | POST | Create tenant | 4h |
-| `/saas/tenants/{id}` | GET | Get tenant | 1h |
-| `/saas/tenants/{id}` | PUT | Update tenant | 2h |
-| `/saas/tenants/{id}` | DELETE | Delete tenant | 3h |
-| `/saas/tenants/{id}/suspend` | POST | Suspend tenant | 2h |
-| `/saas/tenants/{id}/impersonate` | POST | Impersonate | 3h |
-| `/saas/subscriptions` | GET/PUT | Manage tiers | 3h |
-| `/saas/billing/revenue` | GET | Revenue report | 3h |
-| `/saas/health` | GET | System health | 2h |
+| `/aaas/stats` | GET | Platform statistics | 2h |
+| `/aaas/tenants` | GET | List tenants | 2h |
+| `/aaas/tenants` | POST | Create tenant | 4h |
+| `/aaas/tenants/{id}` | GET | Get tenant | 1h |
+| `/aaas/tenants/{id}` | PUT | Update tenant | 2h |
+| `/aaas/tenants/{id}` | DELETE | Delete tenant | 3h |
+| `/aaas/tenants/{id}/suspend` | POST | Suspend tenant | 2h |
+| `/aaas/tenants/{id}/impersonate` | POST | Impersonate | 3h |
+| `/aaas/subscriptions` | GET/PUT | Manage tiers | 3h |
+| `/aaas/billing/revenue` | GET | Revenue report | 3h |
+| `/aaas/health` | GET | System health | 2h |
 
 ### 1.2 Components
 
 | Component | Screens | Estimated |
 |-----------|---------|-----------|
-| `saas-platform-dashboard.ts` | Dashboard | 6h |
-| `saas-tenant-list.ts` | Tenant list | 4h |
-| `saas-tenant-create.ts` | Create modal | 3h |
-| `saas-tenant-detail.ts` | Tenant detail | 4h |
-| `saas-subscription-tiers.ts` | Tier config | 4h |
-| `saas-platform-health.ts` | Health dashboard | 4h |
-| `saas-revenue-dashboard.ts` | Revenue charts | 5h |
+| `aaas-platform-dashboard.ts` | Dashboard | 6h |
+| `aaas-tenant-list.ts` | Tenant list | 4h |
+| `aaas-tenant-create.ts` | Create modal | 3h |
+| `aaas-tenant-detail.ts` | Tenant detail | 4h |
+| `aaas-subscription-tiers.ts` | Tier config | 4h |
+| `aaas-platform-health.ts` | Health dashboard | 4h |
+| `aaas-revenue-dashboard.ts` | Revenue charts | 5h |
 
 ---
 
@@ -1048,18 +1048,18 @@ sequenceDiagram
 
 | Component | Screens | Estimated |
 |-----------|---------|-----------|
-| `saas-tenant-dashboard.ts` | Dashboard | 5h |
-| `saas-users.ts` | User list | 4h |
-| `saas-user-invite.ts` | Invite modal | 3h |
-| `saas-user-detail.ts` | User detail | 3h |
-| `saas-agents.ts` | Agent grid | 5h |
-| `saas-agent-create.ts` | Create modal | 4h |
-| `saas-agent-config.ts` | Config page | 6h |
-| `saas-agent-users.ts` | Agent users | 3h |
-| `saas-tenant-settings.ts` | Settings tabs | 5h |
-| `saas-tenant-audit.ts` | Audit log | 4h |
-| `saas-usage.ts` | Usage charts | 4h |
-| `saas-tenant-billing.ts` | Billing page | 5h |
+| `aaas-tenant-dashboard.ts` | Dashboard | 5h |
+| `aaas-users.ts` | User list | 4h |
+| `aaas-user-invite.ts` | Invite modal | 3h |
+| `aaas-user-detail.ts` | User detail | 3h |
+| `aaas-agents.ts` | Agent grid | 5h |
+| `aaas-agent-create.ts` | Create modal | 4h |
+| `aaas-agent-config.ts` | Config page | 6h |
+| `aaas-agent-users.ts` | Agent users | 3h |
+| `aaas-tenant-settings.ts` | Settings tabs | 5h |
+| `aaas-tenant-audit.ts` | Audit log | 4h |
+| `aaas-usage.ts` | Usage charts | 4h |
+| `aaas-tenant-billing.ts` | Billing page | 5h |
 
 ---
 
@@ -1236,7 +1236,7 @@ async def lago_webhook(request, data: dict):
 ## 6. Checklist
 
 ### Week 1
-- [ ] SAAS platform dashboard
+- [ ] AAAS platform dashboard
 - [ ] Tenant list/create/edit
 - [ ] Tenant suspend/delete
 - [ ] Impersonation flow

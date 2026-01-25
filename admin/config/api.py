@@ -89,7 +89,7 @@ async def get_system_config(
         ("TIME_ZONE", "string", "general"),
         ("AWS_REGION", "string", "infra"),
         ("AWS_S3_BUCKET", "string", "infra"),
-        ("SAAS_DEFAULT_TENANT_ID", "string", "saas"),
+        ("AAAS_DEFAULT_TENANT_ID", "string", "aaas"),
         ("LOG_LEVEL", "string", "logging"),
     ]
 
