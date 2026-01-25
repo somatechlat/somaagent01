@@ -308,13 +308,6 @@ class Capsule(models.Model):
         }
 
     @property
-    def soul(self) -> dict:
-        """DEPRECATED: Use .core instead. Kept for backwards compatibility."""
-        import warnings
-        warnings.warn("Capsule.soul is deprecated, use Capsule.core", DeprecationWarning, stacklevel=2)
-        return self.core
-
-    @property
     def body(self) -> dict:
         """Return Body (capabilities) as dict."""
         return {

@@ -20,6 +20,12 @@ from typing import Optional, TYPE_CHECKING
 from uuid import uuid4
 
 from admin.core.somabrain_client import SomaBrainClient
+# Integration: BrainBridge (Direct Mode Optimization)
+try:
+    from saas.brain import brain as BrainBridge
+    HAS_BRIDGE = True
+except ImportError:
+    HAS_BRIDGE = False
 from services.common.chat_schemas import Memory
 
 if TYPE_CHECKING:
@@ -64,6 +70,29 @@ async def recall_memories(
     start_time = time.perf_counter()
 
     try:
+        # DIRECT MODE OPITIMIZATION (Zero Latency)
+        if HAS_BRIDGE and BrainBridge.mode == "direct":
+            logger.debug(f"BrainBridge Direct Recall: {query}")
+            # Use compliant BrainBridge
+            # BrainBridge.recall returns list[dict]
+            results = await BrainBridge.recall(
+                query_vector=await BrainBridge.encode_text(query),
+                top_k=limit
+            )
+
+            memories = []
+            for m in results:
+                memories.append(
+                    Memory(
+                        id=str(m.get("coordinate") or uuid4()),
+                        content=m.get("payload", {}).get("content", ""),
+                        memory_type="episodic",
+                        relevance_score=float(m.get("score", 0.0)),
+                        created_at=datetime.now(timezone.utc), # simplified for direct
+                    )
+                )
+            return memories
+
         somabrain = await SomaBrainClient.get_async()
 
         result = await somabrain.recall(
@@ -143,6 +172,30 @@ async def store_memory(
         tenant_id: Optional tenant ID
     """
     try:
+        # DIRECT MODE OPTIMIZATION (Zero Latency)
+        if HAS_BRIDGE and BrainBridge.mode == "direct":
+            await BrainBridge.remember(
+                content=content,
+                tenant=tenant_id,
+                namespace="episodic",
+                metadata={
+                    "key": memory_key,
+                    "agent_id": agent_id,
+                    "user_id": user_id,
+                    "tags": [
+                        "conversation",
+                        "episodic",
+                        f"agent:{agent_id}",
+                        f"user:{user_id}",
+                    ],
+                    "importance": 0.7,
+                    "novelty": 0.5,
+                    **metadata
+                }
+            )
+            logger.debug(f"Memory stored via BrainBridge (Direct): agent={agent_id}, user={user_id}")
+            return
+
         somabrain = await SomaBrainClient.get_async()
 
         # Generate memory key

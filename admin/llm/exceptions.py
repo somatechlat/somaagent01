@@ -1,4 +1,4 @@
-"""LLM exceptions - migrated from models.py."""
+"""LLM exceptions."""
 
 
 class LLMNotConfiguredError(RuntimeError):

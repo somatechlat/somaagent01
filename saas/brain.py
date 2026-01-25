@@ -156,6 +156,36 @@ class BrainBridge:
             resp = await self._client.get("/health")
             return resp.json()
 
+    async def remember(self, content: str, **kwargs) -> Dict[str, Any]:
+        """Store a memory (Episodic/Semantic).
+
+        Args:
+            content: The text content to remember
+            **kwargs: Metadata (tags, importance, etc.)
+
+        Returns:
+            Dict containing memory_id and coordinate
+        """
+        if self._mode == "direct":
+            try:
+                # Import internally to avoid top-level dependency issues
+                from somabrain.agent_memory import store_memory_item
+
+                # In direct mode, we call the brain's internal store function
+                result = await store_memory_item(content, **kwargs)
+                return result
+            except ImportError:
+                logger.error("❌ Failed to import somabrain.agent_memory.store_memory_item")
+                raise
+            except Exception as e:
+                logger.error(f"❌ Direct memory store failed: {e}")
+                raise
+        else:
+            # HTTP Fallback
+            payload = {"content": content, "metadata": kwargs}
+            resp = await self._client.post("/api/remember", json=payload)
+            return resp.json()
+
     # =========================================================================
     # GMD LEARNING / RL FEEDBACK (Theorem 2)
     # =========================================================================

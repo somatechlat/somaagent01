@@ -27,7 +27,7 @@ router = Router(tags=["Files V2"])
 # SCHEMAS
 # =============================================================================
 
-from ninja import Schema
+from ninja import Schema, File, UploadedFile
 
 
 class FileOut(Schema):
@@ -201,6 +201,31 @@ def create_upload_url(
             "upload_url": f"/api/v2/filesv2/upload-local/{file_id}",
             "expires_in": 3600,
         }
+
+
+@router.post("/upload-local/{file_id}")
+def upload_local(request, file_id: str, file: UploadedFile = File(...)):
+    """Handle local file upload (Dev/SaaS-in-a-box mode)."""
+    from django.core.files.storage import default_storage
+    from django.core.files.base import ContentFile
+    from admin.filesv2.models import File as FileModel
+
+    try:
+        f = FileModel.objects.get(id=file_id, deleted_at__isnull=True)
+
+        # Security check: ensure file size doesn't exceed limit
+        if file.size > f.size_bytes + (1024 * 1024): # 1MB buffer
+            return {"error": "File size exceeds declared size"}, 400
+
+        # Save to local storage using the pre-defined key
+        path = default_storage.save(f.storage_key, ContentFile(file.read()))
+
+        return {"success": True, "path": path}
+    except FileModel.DoesNotExist:
+        return {"error": "File record not found"}, 404
+    except Exception as e:
+        logger.exception(f"Local upload failed: {e}")
+        return {"error": str(e)}, 500
 
 
 @router.delete("/{file_id}")

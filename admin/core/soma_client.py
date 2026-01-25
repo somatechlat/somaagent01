@@ -6,7 +6,7 @@ The canonical module is admin.core.somabrain_client.
 
 """
 
-# Re-export all from somabrain_client with legacy names
+# Re-export all from somabrain_client (Adapter Pattern)
 from admin.core.somabrain_client import (
     SomaBrainClient as SomaClient,
     SomaClientError,
