@@ -363,11 +363,11 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
             # Execute based on operation type
             output = {}
             if node.operation == "generate_image":
-                output = {"type": "image", "status": "placeholder"}
+                raise ServiceUnavailableError("multimodal", "Image generation not wired in Standalone mode")
             elif node.operation == "render_diagram":
-                output = {"type": "diagram", "status": "placeholder"}
+                raise ServiceUnavailableError("multimodal", "Diagram rendering not implemented")
             elif node.operation == "screenshot":
-                output = {"type": "screenshot", "status": "placeholder"}
+                raise ServiceUnavailableError("multimodal", "Screenshot capture not implemented")
             else:
                 output = {"type": "custom", "input": node.input}
 

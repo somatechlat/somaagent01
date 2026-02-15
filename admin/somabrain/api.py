@@ -13,6 +13,7 @@ from ninja import Query, Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.common.exceptions import UnauthorizedError
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
@@ -94,8 +95,10 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
     """
     from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
-    # Get tenant from auth context (placeholder)
-    tenant_id = "default"
+    # Get tenant from auth context (fail-closed if missing)
+    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
+        raise UnauthorizedError("Tenant context required for memory search")
+    tenant_id = request.auth.effective_tenant_id
 
     client = get_somabrain_client()
 
@@ -141,7 +144,9 @@ async def get_recent_memories(
     """
     from admin.core.somabrain_client import get_somabrain_client
 
-    tenant_id = "default"
+    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
+        raise UnauthorizedError("Tenant context required for recent memories")
+    tenant_id = request.auth.effective_tenant_id
     client = get_somabrain_client()
 
     try:
@@ -178,8 +183,10 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     """
     from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
-    tenant_id = "default"
-    user_id = "default"
+    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
+        raise UnauthorizedError("Tenant context required for memory creation")
+    tenant_id = request.auth.effective_tenant_id
+    user_id = request.auth.sub
 
     client = get_somabrain_client()
 
@@ -222,7 +229,9 @@ async def delete_memory(request, memory_id: str) -> dict:
     """
     from admin.core.somabrain_client import get_somabrain_client
 
-    tenant_id = "default"
+    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
+        raise UnauthorizedError("Tenant context required for delete")
+    tenant_id = request.auth.effective_tenant_id
     client = get_somabrain_client()
 
     success = await client.forget(memory_id=memory_id, tenant_id=tenant_id)
@@ -246,7 +255,9 @@ async def get_pending_count(request) -> dict:
     """
     from admin.core.somabrain_client import get_somabrain_client
 
-    tenant_id = "default"
+    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
+        raise UnauthorizedError("Tenant context required for pending count")
+    tenant_id = request.auth.effective_tenant_id
     client = get_somabrain_client()
 
     count = await client.get_pending_count(tenant_id=tenant_id)

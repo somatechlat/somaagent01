@@ -28,11 +28,14 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from litellm import acompletion
+
 from admin.core.agentiq import derive_all_settings, UnifiedGate
 from admin.core.context import build_context, BuiltContext
 from admin.core.model_router import select_model, detect_required_capabilities, SelectedModel
 from admin.core.tool_system import ToolDiscovery, ToolExecutor, DiscoveredTool
 from admin.core.permission_matrix import PermissionChecker
+from admin.common.exceptions import ServiceUnavailableError
 
 if TYPE_CHECKING:
     from admin.core.models import Capsule
@@ -202,12 +205,20 @@ class V3ChatOrchestrator:
     ) -> str:
         """
         Invoke LLM with context and tools.
-
-        Placeholder - needs actual LLM client integration.
         """
-        # This would call the actual LLM
-        # For now, return placeholder
-        return f"[LLM Response via {model.name} with {context.total_tokens} tokens and {len(tools)} tools]"
+        messages = context.to_messages()
+        model_id = f"{model.provider}/{model.name}"
+
+        try:
+            response = await acompletion(
+                model=model_id,
+                messages=messages,
+                temperature=0.2,
+            )
+            return response["choices"][0]["message"]["content"]
+        except Exception as exc:
+            logger.error("LLM invocation failed for %s: %s", model_id, exc)
+            raise ServiceUnavailableError("llm", f"Invocation failed for {model_id}: {exc}")
 
 
 async def process_chat(

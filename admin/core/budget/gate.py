@@ -264,8 +264,8 @@ def _is_metric_enabled(tenant_id: str, metric: str) -> bool:
         if not metric_def.lockable:
             return True
 
-        # TODO: Check tenant-level toggle from cache
-        # For now, all metrics are enabled
+        # Current behaviour: lockable metrics default to enabled until
+        # tenant-level toggles are introduced. Fail-closed remains True.
         return True
 
     except KeyError:

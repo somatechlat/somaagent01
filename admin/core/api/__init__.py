@@ -34,7 +34,5 @@ router.add_router("/infrastructure/degradation", degradation_router)  # Degradat
 router.add_router("/settings", settings_router)  # Service configuration
 router.add_router("/observability", observability_router)  # Platform metrics
 router.add_router("/flags", feature_flags_router)  # Feature flags
-# TODO: API keys router to be implemented in IMRS phase
-# router.add_router("/apikeys", api_keys_router)
 
 __all__ = ["router"]

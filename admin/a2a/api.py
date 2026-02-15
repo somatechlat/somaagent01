@@ -451,5 +451,9 @@ async def get_escalation_status(request, escalation_id: str) -> dict:
 
 
 async def _execute_tool(tool_name: str, tool_input: dict) -> dict:
-    """Execute a tool (placeholder)."""
-    return {"result": f"{tool_name} executed", "input": tool_input}
+    """Execute a tool.
+
+    In Standalone deployments this endpoint does not wire into the ToolSystem.
+    Fail closed with explicit error to avoid misleading placeholder output.
+    """
+    raise RuntimeError(f"Tool execution not configured for '{tool_name}' in this deployment")
