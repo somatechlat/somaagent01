@@ -279,8 +279,13 @@ class ToolExecutor:
             return f"[Tool error: {exc}]"
 
     async def _execute_mcp(self, tool_name: str, args: Dict[str, Any]) -> str:
-        """Execute MCP tool (placeholder for MCP client)."""
-        return f"[MCP execution: {tool_name}({args})]"
+        """Execute MCP tool via configured MCP client.
+
+        Standalone mode does not ship an MCP client; fail closed with guidance.
+        """
+        raise RuntimeError(
+            f"MCP provider is not available in this deployment. Tool '{tool_name}' was requested with args {args}."
+        )
 
 
 def _get_attr(obj: Any, attr: str, default: Any = None) -> Any:

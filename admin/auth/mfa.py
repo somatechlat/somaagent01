@@ -15,7 +15,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, UnauthorizedError
+from admin.common.exceptions import BadRequestError, UnauthorizedError, ServiceUnavailableError
 
 router = Router(tags=["mfa"])
 logger = logging.getLogger(__name__)
@@ -282,6 +282,5 @@ def _generate_qr_code(data: str) -> str:
         return base64.b64encode(buffer.getvalue()).decode()
 
     except ImportError:
-        # Fallback if qrcode not installed
-        logger.warning("qrcode library not installed, returning placeholder")
-        return "QR_CODE_PLACEHOLDER_BASE64"
+        # Fail-closed: QR generation is required for MFA setup
+        raise ServiceUnavailableError("mfa", "qrcode library not installed; install qrcode to enable MFA QR generation")

@@ -125,14 +125,10 @@ class MessageService:
                 # Yes, BrainBridge.remember returns result dict.
                 # However, strict direct call above doesn't capturing return. Let's fix.
 
-                # Re-do:
-                pass # Fall through to logic below for now to keep diff clean, wait.
-
-            # Actually, let's do the clean replacement:
-
+            # Store user message in the active memory path
             user_coordinate = ""
             if HAS_BRIDGE and BrainBridge.mode == "direct":
-                 res = await BrainBridge.remember(
+                res = await BrainBridge.remember(
                     content=content,
                     tenant=tenant_id,
                     namespace="chat_history",
@@ -140,11 +136,11 @@ class MessageService:
                         "role": "user",
                         "conversation_id": conversation_id,
                         "timestamp": time.time(),
-                    }
+                    },
                 )
-                 user_coordinate = res.get("coordinate", "")
+                user_coordinate = res.get("coordinate", "")
             else:
-                 memory_result = await somabrain_client.remember(
+                memory_result = await somabrain_client.remember(
                     payload={
                         "role": "user",
                         "content": content,
@@ -154,7 +150,7 @@ class MessageService:
                     tenant=tenant_id,
                     namespace="chat_history",
                 )
-                 user_coordinate = memory_result.get("coordinate", "")
+                user_coordinate = memory_result.get("coordinate", "")
 
             @sync_to_async
             def store_user_trace():
