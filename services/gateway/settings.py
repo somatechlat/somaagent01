@@ -186,7 +186,7 @@ KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.
 FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
 
 # Authentication
-AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "false").lower() == "true"
+AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "true").lower() == "true"
 
 # SomaBrain (Cognitive Runtime)
 SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")
