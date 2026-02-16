@@ -11,12 +11,14 @@ readme = "README.md"
 packages = [{include = "python", from = "."}, {include = "services", from = "."}]
 
 [tool.poetry.dependencies]
-python = "^3.11,<3.13"
+python = "^3.12"
 # Web and API - Django MANDATORY (VIBE Rule 8)
-django = ">=4.2,<5.0"
+django = ">=5.1,<6.0"
 django-ninja = "^1.3.0"
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
 httpx = "^0.28.0"
+# AAAS Integration (Direct Mode)
+somabrain = { path = "../somabrain", develop = true, optional = true }
 
 # Core config and serialization
 pydantic = "^2.11.0"
