@@ -498,8 +498,9 @@ async def send_message(
     # which uses chat_service.py (SomaBrain integration)
     # This API endpoint just acknowledges streaming initiation
 
+    stream_request_id = str(uuid4())
     return {
-        "id": message_id,
+        "id": stream_request_id,
         "conversation_id": conversation_id,
         "status": "streaming",
         "message": "Connect to WebSocket for streaming response",
