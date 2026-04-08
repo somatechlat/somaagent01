@@ -20,13 +20,44 @@ from services.common.env_config import get_required_env
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+ENVIRONMENT = os.environ.get("SA01_ENVIRONMENT", "dev").strip().lower()
+DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").strip().lower()
+IS_DEV_ENV = ENVIRONMENT in {"dev", "development", "local", "test"} or DEPLOYMENT_MODE in {
+    "dev",
+    "development",
+    "local",
+}
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-in-prod")
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+if not SECRET_KEY:
+    if IS_DEV_ENV:
+        SECRET_KEY = "django-insecure-dev-key-local-only"
+    else:
+        raise ValueError("❌ Missing required environment variable: SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
+if DEBUG and not IS_DEV_ENV:
+    raise ValueError("❌ DEBUG=true is only allowed in local/dev environments")
 
-ALLOWED_HOSTS = ["*"]
+allowed_hosts_env = os.environ.get("SA01_ALLOWED_HOSTS", "")
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
+elif IS_DEV_ENV:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
+else:
+    raise ValueError("❌ Missing required environment variable: SA01_ALLOWED_HOSTS")
+
+# Default security posture for non-debug operation
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_HSTS_SECONDS = int(os.environ.get("SA01_HSTS_SECONDS", "31536000")) if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
 
 # Application definition
 INSTALLED_APPS = [
@@ -187,6 +218,9 @@ FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
 
 # Authentication
 AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "true").lower() == "true"
+ALLOW_INSECURE_AUTH_BYPASS = (
+    os.environ.get("SA01_ALLOW_INSECURE_AUTH_BYPASS", "false").lower() == "true"
+)
 
 # SomaBrain (Cognitive Runtime)
 SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")

@@ -464,6 +464,7 @@ class SessionManager:
             List of permission strings
         """
         permissions = set()
+        fail_open = os.getenv("SA01_AUTHZ_FAIL_OPEN", "false").lower() in {"1", "true", "yes", "on"}
 
         # Try SpiceDB first
         try:
@@ -476,8 +477,16 @@ class SessionManager:
                 f"SpiceDB permissions resolved: user={user_id}, permissions={spicedb_permissions}"
             )
         except Exception as e:
-            # FAIL-OPEN for permissions (use role-based fallback)
-            logger.warning(f"SpiceDB unavailable, using role-based permissions: {e}")
+            # Fail closed by default. Role fallback requires explicit override.
+            if fail_open:
+                logger.warning(
+                    f"SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: {e}"
+                )
+            else:
+                logger.error(
+                    f"SpiceDB unavailable and fail-open disabled; returning no derived permissions: {e}"
+                )
+                return []
 
         # Add role-based permissions as fallback/supplement
         role_permissions = self._get_permissions_for_roles(roles)

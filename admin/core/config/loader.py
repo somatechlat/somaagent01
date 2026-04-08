@@ -147,11 +147,9 @@ def load_config() -> Config:
             "otlp_endpoint": None,
         },
         "auth": {
-            # Authentication is disabled by default for testing and local runs.
-            # Individual services can enable it via environment variables or a
-            # config file. Setting ``auth_required`` to ``False`` avoids the
-            # validation error when no JWT credentials are supplied.
-            "auth_required": False,
+            # Fail-safe default across standalone + AaaS: require auth unless
+            # explicitly disabled via environment/config for controlled tests.
+            "auth_required": True,
             "jwt_secret": None,
             "jwt_public_key": None,
             "jwt_jwks_url": None,

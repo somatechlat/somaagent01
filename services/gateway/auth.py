@@ -103,14 +103,21 @@ async def authorize_request(request, policy_context: dict = None):
     """
     auth_required = getattr(settings, "AUTH_REQUIRED", True)
 
-    # Dev/Test Bypass - ONLY if explicitly disabled
+    # Fail closed by default: auth-disabled mode does not imply anonymous access.
+    # Synthetic principal is allowed only for explicit local/dev testing.
     if not auth_required:
-        return {
-            "user_id": "test_user",
-            "tenant": "test_tenant",
-            "scope": "read",
-            "sub": "test-user-123",
-        }
+        allow_insecure_bypass = getattr(settings, "ALLOW_INSECURE_AUTH_BYPASS", False)
+        is_dev_env = getattr(settings, "IS_DEV_ENV", False)
+        if allow_insecure_bypass and is_dev_env:
+            return {
+                "user_id": "test_user",
+                "tenant": "test_tenant",
+                "scope": "read",
+                "sub": "test-user-123",
+            }
+        raise UnauthorizedError(
+            "Authentication is disabled but insecure bypass is not permitted in this environment"
+        )
 
     auth_header = request.headers.get("Authorization")
     if not auth_header:
