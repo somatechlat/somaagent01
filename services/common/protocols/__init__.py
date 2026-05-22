@@ -13,8 +13,7 @@ VIBE Compliance:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -30,7 +29,7 @@ class BrainServiceProtocol(Protocol):
         """Encode text to vector using quantum layer."""
         ...
 
-    def remember(
+    async def remember(
         self,
         content: str,
         *,
@@ -113,6 +112,29 @@ class MemoryServiceProtocol(Protocol):
         namespace: str = "default",
     ) -> bool:
         """Delete data at a coordinate."""
+        ...
+
+    async def store_async(
+        self,
+        coordinate: tuple[float, ...],
+        payload: dict,
+        *,
+        tenant: str = "default",
+        namespace: str = "default",
+    ) -> dict:
+        """Async store data at a coordinate."""
+        ...
+
+    async def search_async(
+        self,
+        query: str | list[float],
+        *,
+        top_k: int = 10,
+        tenant: str = "default",
+        namespace: str = "default",
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Async search for similar vectors."""
         ...
 
     def health(self) -> dict:

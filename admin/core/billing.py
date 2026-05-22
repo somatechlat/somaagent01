@@ -182,18 +182,29 @@ class LagoClient:
         self,
         tenant_id: str,
     ) -> List[Dict[str, Any]]:
-        """
-        Get invoices for tenant.
+        """Get invoices for tenant from Lago API."""
+        if not self._api_key:
+            logger.warning("Lago API key not configured — cannot list invoices")
+            return []
 
-        Args:
-            tenant_id: External tenant ID
+        import httpx
 
-        Returns:
-            List of invoice data
-        """
         try:
-            logger.info("Listing invoices for: %s", tenant_id)
-            return []  # Placeholder
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    f"{self._api_url}/api/v1/invoices",
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    params={"external_customer_id": tenant_id},
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("invoices", [])
+        except httpx.HTTPStatusError as exc:
+            logger.error("Lago list invoices HTTP error: %s", exc.response.status_code)
+            return []
         except Exception as exc:
             logger.error("Failed to list invoices: %s", exc)
             return []

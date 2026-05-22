@@ -126,18 +126,36 @@ class MultimodalExecutor:
             ImageGenerationResult with URL or error
         """
         try:
-            # Get API key from Vault
             api_key = await self._get_api_key("openai")
+            if not api_key:
+                raise RuntimeError("OpenAI API key not configured in vault")
 
-            # In production, call OpenAI API
-            # For now, placeholder
-            logger.info("Image generation: %s", request.prompt[:50])
+            import httpx
 
-            return ImageGenerationResult(
-                url=f"[IMAGE: {request.prompt[:30]}...]",
-                revised_prompt=request.prompt,
-                model=request.model,
-            )
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/images/generations",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": request.model,
+                        "prompt": request.prompt,
+                        "size": request.size,
+                        "quality": request.quality,
+                        "n": 1,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+                image_url = data["data"][0]["url"]
+                revised = data["data"][0].get("revised_prompt", request.prompt)
+                return ImageGenerationResult(
+                    url=image_url,
+                    revised_prompt=revised,
+                    model=request.model,
+                )
 
         except Exception as exc:
             logger.error("Image generation failed: %s", exc)
@@ -202,10 +220,7 @@ class MultimodalExecutor:
 
         while pending:
             # Find ready nodes (dependencies satisfied)
-            ready = [
-                n for n in pending.values()
-                if all(dep in completed for dep in n.depends_on)
-            ]
+            ready = [n for n in pending.values() if all(dep in completed for dep in n.depends_on)]
 
             if not ready:
                 logger.error("DAG deadlock: no ready nodes")

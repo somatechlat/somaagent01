@@ -13,14 +13,11 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 try:
-    import dirty_json
-    from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle
-
-    from admin.core.helpers import browser_use_monkeypatch
+    import dirty_json  # type: ignore[import]
+    from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle  # type: ignore[import]
 except ImportError:
     ChatGoogle = None  # type: ignore
     dirty_json = None  # type: ignore
-    browser_use_monkeypatch = None  # type: ignore
 
 import os
 
@@ -66,10 +63,7 @@ def clean_gemini_json_response(content: str) -> Optional[str]:
     Returns:
         Cleaned JSON string or None if cleaning not needed
     """
-    if browser_use_monkeypatch is None:
-        return None
-
-    return browser_use_monkeypatch.gemini_clean_and_conform(content)
+    return None
 
 
 def clean_invalid_json(content: str) -> str:

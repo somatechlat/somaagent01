@@ -15,12 +15,11 @@ Vibe Coding Rules:
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
 
 from django.core.cache import cache
 
 from admin.core.budget.limits import get_tenant_plan
-from admin.core.features.registry import FEATURE_REGISTRY, get_feature
+from admin.core.features.registry import get_feature
 
 logger = logging.getLogger(__name__)
 

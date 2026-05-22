@@ -11,8 +11,8 @@ set -e
 # Script is located in: somaAgent01/infra/aaas_deployment/build_aaas.sh
 # We need to get to:   workspace/ (Parent of somaAgent01, somabrain, somafractalmemory)
 
-# 1. Go to somaAgent01 root (Up 2 levels)
-cd "$(dirname "$0")/../.."
+# 1. Go to somaAgent01 root (Up 3 levels from infra/aaas/aaas)
+cd "$(dirname "$0")/../../.."
 
 # 2. Go to WORKSPACE root (Up 1 level)
 cd ..
@@ -55,7 +55,7 @@ EXCLUDES="--exclude=.git --exclude=.venv --exclude=node_modules --exclude=target
 # We are in WORKSPACE_ROOT
 # We select the 3 repos explicitly to avoid sending other workspace junk
 tar -czh $EXCLUDES somaAgent01 somabrain somafractalmemory | docker build \
-    -f somaAgent01/infra/aaas/Dockerfile \
+    -f somaAgent01/infra/aaas/aaas/Dockerfile \
     -t somatech/soma-aaas:latest \
     -t somatech/soma-aaas:$(date +%Y%m%d) \
     -

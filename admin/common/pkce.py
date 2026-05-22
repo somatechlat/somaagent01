@@ -186,6 +186,7 @@ class OAuthStateStore:
             OAuthState with generated state and code_verifier
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         state = generate_state()
         code_verifier = generate_code_verifier()
@@ -219,6 +220,7 @@ class OAuthStateStore:
             OAuthState if valid, None if not found or expired
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         key = self._make_key(state)
 
@@ -244,6 +246,7 @@ class OAuthStateStore:
             OAuthState if valid, None if not found or expired
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         key = self._make_key(state)
 

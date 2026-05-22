@@ -302,7 +302,7 @@ class SomaBrainEventPublisher:
         return cls._producer
 
     @classmethod
-    def publish(cls, topic: str, event: dict, key: str = None) -> bool:
+    def publish(cls, topic: str, event: dict, key: Optional[str] = None) -> bool:
         """Publish event to Kafka topic."""
         producer = cls.get_producer()
         if producer:
@@ -353,7 +353,7 @@ class SomaBrainEventPublisher:
 
     @classmethod
     def publish_salience(
-        cls, agent_id: str, tenant_id: str, salience: float, context: dict = None
+        cls, agent_id: str, tenant_id: str, salience: float, context: Optional[dict] = None
     ) -> bool:
         """Publish salience signal for learning."""
         event = {
@@ -408,7 +408,7 @@ class AgentEventCapture:
         agent_id: str,
         user_id: str,
         session_id: str,
-        conversation_id: str = None,
+        conversation_id: Optional[str] = None,
     ):
         """Initialize the instance."""
 
@@ -432,7 +432,7 @@ class AgentEventCapture:
             )
             SessionMemoryStore.save_session(self._session)
 
-    def start_act(self, input_text: str, context: dict = None, mode: str = "FULL") -> None:
+    def start_act(self, input_text: str, context: Optional[dict] = None, mode: str = "FULL") -> None:
         """Start capturing an agent action."""
         self._start_time = time.time()
         self._current_event = AgentActEvent(
@@ -452,8 +452,8 @@ class AgentEventCapture:
     def complete_act(
         self,
         output_text: str,
-        thoughts: list = None,
-        neuromodulators: dict = None,
+        thoughts: Optional[list] = None,
+        neuromodulators: Optional[dict] = None,
         salience: float = 0.0,
         model_used: str = "",
         degraded: bool = False,
@@ -496,7 +496,7 @@ class AgentEventCapture:
         return event
 
     def queue_memory(
-        self, content: str, memory_type: str = "episodic", metadata: dict = None
+        self, content: str, memory_type: str = "episodic", metadata: Optional[dict] = None
     ) -> None:
         """Queue memory for later sync when SomaBrain unavailable."""
         memory = MemoryEvent(

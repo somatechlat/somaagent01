@@ -57,7 +57,7 @@ def get_secret_manager():
 
 def get_api_key_store() -> ApiKeyStore:
     """Return the API key store singleton."""
-    from integrations.repositories import get_api_key_store as _repo_get
+    from integrations.repositories import get_api_key_store as _repo_get  # type: ignore[import]
 
     return _repo_get()
 

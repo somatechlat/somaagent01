@@ -15,7 +15,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, UnauthorizedError, ServiceUnavailableError
+from admin.common.exceptions import ServiceUnavailableError, UnauthorizedError
 
 router = Router(tags=["mfa"])
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ async def setup_mfa(request) -> MFASetupResponse:
     """
     import secrets
 
-    import pyotp
+    import pyotp  # type: ignore[import]
 
     # Get user from auth context
     user_email = getattr(request.auth, "email", None)
@@ -103,16 +103,12 @@ async def setup_mfa(request) -> MFASetupResponse:
     # Generate backup codes
     backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
 
-    # In production: Store secret and backup codes (encrypted) in database
-    # MFASetup.objects.create(user_id=..., secret=encrypt(secret), ...)
-
-    logger.info(f"MFA setup initiated for {user_email}")
-
-    return MFASetupResponse(
-        secret=secret,
-        qr_code_base64=qr_code_base64,
-        provisioning_uri=provisioning_uri,
-        backup_codes=backup_codes,
+    # NOTE: Real persistence not yet wired. The generated secret MUST be stored
+    # encrypted in a MFASetup or UserProfile table before this endpoint is usable.
+    # When wired, this should be: MFASetup.objects.create(user_id=user.id, encrypted_secret=encrypt(secret))
+    raise ServiceUnavailableError(
+        "mfa",
+        "MFA secret persistence (database storage) is not yet implemented. Cannot proceed with MFA setup.",
     )
 
 
@@ -132,33 +128,13 @@ async def verify_mfa(request, payload: MFAVerifyRequest) -> MFAVerifyResponse:
     2. If valid, enables MFA for the user
     3. Returns success/failure status
     """
-    import pyotp
 
-    # Get user's stored TOTP secret
-    # In production: retrieve from database
-    stored_secret = "JBSWY3DPEHPK3PXP"  # Placeholder
-
-    # Validate code
-    totp = pyotp.TOTP(stored_secret)
-    is_valid = totp.verify(payload.code, valid_window=1)
-
-    if not is_valid:
-        return MFAVerifyResponse(
-            success=False,
-            mfa_enabled=False,
-            message="Invalid code. Please try again.",
-        )
-
-    # Enable MFA for user
-    # In production: update user record
-    # User.objects.filter(id=user_id).update(mfa_enabled=True)
-
-    logger.info("MFA enabled for user")
-
-    return MFAVerifyResponse(
-        success=True,
-        mfa_enabled=True,
-        message="MFA successfully enabled",
+    # Fail-closed: MFA secret must be loaded from the user's encrypted DB record,
+    # NOT a hardcoded value. Until MFASetup model + persistence is implemented,
+    # this endpoint cannot safely operate.
+    raise ServiceUnavailableError(
+        "mfa",
+        "MFA verify: secret storage not yet implemented. MFA cannot be verified without the user's persisted TOTP secret.",
     )
 
 
@@ -171,24 +147,13 @@ async def validate_mfa_login(request, payload: MFAVerifyRequest) -> dict:
 
     Called after password verification when MFA is required.
     """
-    import pyotp
+    import pyotp  # type: ignore[import]  # noqa: F401
 
-    # Get pending MFA session (from session or temp token)
-    # In production: retrieve from session/cache
-    stored_secret = "JBSWY3DPEHPK3PXP"  # Placeholder
-
-    totp = pyotp.TOTP(stored_secret)
-    is_valid = totp.verify(payload.code, valid_window=1)
-
-    if not is_valid:
-        raise UnauthorizedError("Invalid MFA code")
-
-    # Complete login - issue full tokens
-    return {
-        "success": True,
-        "message": "MFA validated",
-        # In production: return access_token, refresh_token
-    }
+    # Fail-closed: MFA login validation requires loading the user's stored secret
+    # from the database/session. Hardcoding is a critical security violation.
+    raise ServiceUnavailableError(
+        "mfa", "MFA login validation: secret storage not yet implemented."
+    )
 
 
 @router.get(
@@ -213,27 +178,10 @@ async def get_mfa_status(request) -> MFAStatusResponse:
 )
 async def disable_mfa(request, payload: MFAVerifyRequest) -> dict:
     """Disable MFA (requires current TOTP code)."""
-    import pyotp
+    import pyotp  # type: ignore[import]  # noqa: F401
 
-    # Verify code before disabling
-    stored_secret = "JBSWY3DPEHPK3PXP"  # Placeholder
-
-    totp = pyotp.TOTP(stored_secret)
-    is_valid = totp.verify(payload.code, valid_window=1)
-
-    if not is_valid:
-        raise BadRequestError("Invalid code - MFA not disabled")
-
-    # Disable MFA
-    # User.objects.filter(id=user_id).update(mfa_enabled=False, mfa_secret=None)
-
-    logger.info("MFA disabled for user")
-
-    return {
-        "success": True,
-        "mfa_enabled": False,
-        "message": "MFA disabled",
-    }
+    # Fail-closed: disabling MFA must verify against the user's real stored secret
+    raise ServiceUnavailableError("mfa", "MFA disable: secret storage not yet implemented.")
 
 
 @router.post(
@@ -257,16 +205,17 @@ async def use_backup_code(request, code: str) -> dict:
 
 
 def _generate_qr_code(data: str) -> str:
-    """Generate QR code as base64 PNG.
+    """Generate QR code as base64 PNG using the qrcode library.
 
-    Uses qrcode library if available, otherwise returns placeholder.
+    Raises:
+        ServiceUnavailableError: If the qrcode library is not installed.
     """
     try:
-        import qrcode
+        import qrcode  # type: ignore[import]
 
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            error_correction=qrcode.ERROR_CORRECT_L,
             box_size=10,
             border=4,
         )
@@ -276,11 +225,13 @@ def _generate_qr_code(data: str) -> str:
         img = qr.make_image(fill_color="black", back_color="white")
 
         buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
+        img.save(buffer, kind="PNG")
         buffer.seek(0)
 
         return base64.b64encode(buffer.getvalue()).decode()
 
     except ImportError:
         # Fail-closed: QR generation is required for MFA setup
-        raise ServiceUnavailableError("mfa", "qrcode library not installed; install qrcode to enable MFA QR generation")
+        raise ServiceUnavailableError(
+            "mfa", "qrcode library not installed; install qrcode to enable MFA QR generation"
+        )

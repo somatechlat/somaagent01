@@ -74,6 +74,21 @@ services:
       - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
       # Legacy compatibility (for settings.py fallback)
       - SA01_DB_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somaagent
+      # Required for Django security and JWT validation
+      - SA01_ALLOWED_HOSTS=*
+      - SA01_JWT_SECRET=${SA01_JWT_SECRET:-somaagent-test-jwt-secret-do-not-use-in-production}
+      - SA01_AUTH_REQUIRED=true
+      # SomaBrain required env vars
+      - SOMABRAIN_KAFKA_URL=somastack_kafka:9092
+      - SOMABRAIN_OPA_URL=http://somastack_opa:8181
+      - SOMABRAIN_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somabrain
+      - SOMABRAIN_REDIS_URL=redis://somastack_redis:6379/0
+      - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101
+      # SomaFractalMemory required env vars
+      - SFM_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somamemory
+      - SFM_REDIS_URL=redis://somastack_redis:6379/0
+      - SFM_MILVUS_HOST=somastack_milvus
+      - SFM_MILVUS_PORT=19530
     ports:
       - "63900:9000" # Agent API
       - "63996:9696" # Brain API
@@ -90,10 +105,11 @@ services:
     restart: unless-stopped
     volumes:
       # Mount source code for live editing (optional, good for dev)
-      - ../../../somaAgent01:/app/somaAgent01
-      - ../../../somabrain:/app/somabrain
-      - ../../../somafractalmemory:/app/somafractalmemory
+      - ../../../:/app/somaAgent01
+      - ../../../../somabrain:/app/somabrain
+      - ../../../../somafractalmemory:/app/somafractalmemory
       - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+      - ../start_aaas.sh:/app/start_aaas.sh:ro
     deploy:
       resources:
         limits:
@@ -255,6 +271,86 @@ services:
           memory: 1024M
     volumes:
       - somastack_kafka_data:/var/lib/kafka/data
+    networks:
+      - soma_stack_net
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  # Temporal - Workflow orchestration
+  somastack_temporal:
+    container_name: somastack_temporal
+    image: temporalio/auto-setup:1.22
+    restart: unless-stopped
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: soma
+      POSTGRES_PWD: ${VAULT_POSTGRES_PASSWORD:-soma}
+      POSTGRES_SEEDS: somastack_postgres
+      # DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    ports:
+      - "63933:7233" # gRPC frontend
+      - "63934:8233" # Web UI
+    depends_on:
+      somastack_postgres:
+        condition: service_healthy
+    networks:
+      - soma_stack_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  # SpiceDB - Permission and authorization engine
+  somastack_spicedb:
+    container_name: somastack_spicedb
+    image: authzed/spicedb:v1.53.0
+    restart: unless-stopped
+    command:
+      - "serve"
+      - "--grpc-preshared-key=${SPICEDB_PRESHARED_KEY:-soma_dev_preshared_key_123}"
+      - "--datastore-engine=postgres"
+      - "--datastore-conn-uri=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somaagent?sslmode=disable"
+    ports:
+      - "63935:50051" # gRPC
+      - "63936:8443" # HTTP
+    depends_on:
+      somastack_postgres:
+        condition: service_healthy
+    networks:
+      - soma_stack_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # Topic provisioning — required because KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
+  somastack_kafka_init:
+    container_name: somastack_kafka_init
+    image: apache/kafka:3.7.0
+    depends_on:
+      somastack_kafka:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "Creating Kafka topics..."
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic conversation.inbound
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic conversation.outbound
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic tool.requests
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic tool.results
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic memory.wal
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic somastack.delegation
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic audit.events
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server somastack_kafka:9092 --partitions 3 --replication-factor 1 --topic degradation.events
+        echo "All topics created."
     networks:
       - soma_stack_net
 

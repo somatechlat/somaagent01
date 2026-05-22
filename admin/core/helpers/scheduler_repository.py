@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import random
-import threading
 from os.path import exists
 from typing import Annotated, Callable, ClassVar, Optional, Union
 
+from asgiref.sync import async_to_sync
 from pydantic import BaseModel, Field, PrivateAttr
 
 from admin.core.helpers.files import get_abs_path, make_dirs, read_file, write_file
@@ -43,25 +43,42 @@ class SchedulerTaskList(BaseModel):
         if cls.__instance is None:
             if not exists(path):
                 make_dirs(path)
-                cls.__instance = asyncio.run(cls(tasks=[]).save())
+                instance = cls(tasks=[])
+                cls.__instance = async_to_sync(instance.save)()
             else:
                 cls.__instance = cls.model_validate_json(read_file(path))
         else:
-            asyncio.run(cls.__instance.reload())
+            async_to_sync(cls.__instance.reload)()
+        return cls.__instance
+
+    @classmethod
+    async def aget(cls) -> "SchedulerTaskList":
+        """Async factory for scheduler task list."""
+
+        path = get_abs_path(SCHEDULER_FOLDER, "tasks.json")
+        if cls.__instance is None:
+            if not exists(path):
+                make_dirs(path)
+                instance = cls(tasks=[])
+                cls.__instance = await instance.save()
+            else:
+                cls.__instance = cls.model_validate_json(read_file(path))
+        else:
+            await cls.__instance.reload()
         return cls.__instance
 
     def __init__(self, *args, **kwargs):
         """Initialize the instance."""
 
         super().__init__(*args, **kwargs)
-        self._lock = threading.RLock()
+        self._lock = asyncio.Lock()
 
     async def reload(self) -> "SchedulerTaskList":
         """Execute reload."""
 
         path = get_abs_path(SCHEDULER_FOLDER, "tasks.json")
         if exists(path):
-            with self._lock:
+            async with self._lock:
                 data = self.__class__.model_validate_json(read_file(path))
                 self.tasks.clear()
                 self.tasks.extend(data.tasks)
@@ -74,7 +91,7 @@ class SchedulerTaskList(BaseModel):
             task: The task.
         """
 
-        with self._lock:
+        async with self._lock:
             self.tasks.append(task)
             await self.save()
         return self
@@ -82,7 +99,7 @@ class SchedulerTaskList(BaseModel):
     async def save(self) -> "SchedulerTaskList":
         """Execute save."""
 
-        with self._lock:
+        async with self._lock:
             # Validate AdHocTasks have valid tokens
             for task in self.tasks:
                 if isinstance(task, AdHocTask):
@@ -107,7 +124,7 @@ class SchedulerTaskList(BaseModel):
         verify_func: Callable[[AnyTask], bool] = lambda task: True,
     ) -> AnyTask | None:
         """Atomically update a task by UUID using the provided updater function."""
-        with self._lock:
+        async with self._lock:
             await self.reload()
             task = next(
                 (task for task in self.tasks if task.uuid == task_uuid and verify_func(task)),
@@ -122,8 +139,7 @@ class SchedulerTaskList(BaseModel):
     def get_tasks(self) -> list[AnyTask]:
         """Retrieve tasks."""
 
-        with self._lock:
-            return self.tasks
+        return self.tasks
 
     def get_tasks_by_context_id(self, context_id: str, only_running: bool = False) -> list[AnyTask]:
         """Retrieve tasks by context id.
@@ -133,24 +149,12 @@ class SchedulerTaskList(BaseModel):
             only_running: The only_running.
         """
 
-        with self._lock:
-            return [
-                task
-                for task in self.tasks
-                if task.context_id == context_id
-                and (not only_running or task.state == TaskState.RUNNING)
-            ]
-
-    async def get_due_tasks(self) -> list[AnyTask]:
-        """Retrieve due tasks."""
-
-        with self._lock:
-            await self.reload()
-            return [
-                task
-                for task in self.tasks
-                if task.check_schedule() and task.state == TaskState.IDLE
-            ]
+        return [
+            task
+            for task in self.tasks
+            if task.context_id == context_id
+            and (not only_running or task.state == TaskState.RUNNING)
+        ]
 
     def get_task_by_uuid(self, task_uuid: str) -> AnyTask | None:
         """Retrieve task by uuid.
@@ -159,8 +163,7 @@ class SchedulerTaskList(BaseModel):
             task_uuid: The task_uuid.
         """
 
-        with self._lock:
-            return next((task for task in self.tasks if task.uuid == task_uuid), None)
+        return next((task for task in self.tasks if task.uuid == task_uuid), None)
 
     def get_task_by_name(self, name: str) -> AnyTask | None:
         """Retrieve task by name.
@@ -169,8 +172,7 @@ class SchedulerTaskList(BaseModel):
             name: The name.
         """
 
-        with self._lock:
-            return next((task for task in self.tasks if task.name == name), None)
+        return next((task for task in self.tasks if task.name == name), None)
 
     def find_task_by_name(self, name: str) -> list[AnyTask]:
         """Execute find task by name.
@@ -179,8 +181,18 @@ class SchedulerTaskList(BaseModel):
             name: The name.
         """
 
-        with self._lock:
-            return [task for task in self.tasks if name.lower() in task.name.lower()]
+        return [task for task in self.tasks if name.lower() in task.name.lower()]
+
+    async def get_due_tasks(self) -> list[AnyTask]:
+        """Retrieve due tasks."""
+
+        async with self._lock:
+            await self.reload()
+            return [
+                task
+                for task in self.tasks
+                if task.check_schedule() and task.state == TaskState.IDLE
+            ]
 
     async def remove_task_by_uuid(self, task_uuid: str) -> "SchedulerTaskList":
         """Execute remove task by uuid.
@@ -189,7 +201,7 @@ class SchedulerTaskList(BaseModel):
             task_uuid: The task_uuid.
         """
 
-        with self._lock:
+        async with self._lock:
             self.tasks = [task for task in self.tasks if task.uuid != task_uuid]
             await self.save()
         return self
@@ -201,7 +213,7 @@ class SchedulerTaskList(BaseModel):
             name: The name.
         """
 
-        with self._lock:
+        async with self._lock:
             self.tasks = [task for task in self.tasks if task.name != name]
             await self.save()
         return self

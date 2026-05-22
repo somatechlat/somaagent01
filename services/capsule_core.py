@@ -74,8 +74,8 @@ class InjectedCapsule:
             name=capsule.name,
             version=capsule.version,
             tenant=capsule.tenant,
-            soul=capsule.soul,
-            body=capsule.body,
+            soul=capsule.soul,  # type: ignore[attr-defined]
+            body=capsule.body,  # type: ignore[attr-defined]
             constitution_ref=capsule.constitution_ref,
         )
 

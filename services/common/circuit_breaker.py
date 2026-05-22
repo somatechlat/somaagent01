@@ -12,11 +12,12 @@ VIBE COMPLIANT:
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class CircuitBreaker:
         logger.info(
             f"CircuitBreaker '{config.name}' initialized",
             extra={
-                "name": config.name,
+                "cb_name": config.name,
                 "failure_threshold": config.failure_threshold,
                 "reset_timeout": config.reset_timeout,
             },
@@ -102,7 +103,7 @@ class CircuitBreaker:
             if elapsed >= self.config.reset_timeout:
                 logger.info(
                     f"Circuit '{self.config.name}' transitioning to HALF_OPEN",
-                    extra={"name": self.config.name, "open_duration": elapsed},
+                    extra={"cb_name": self.config.name, "open_duration": elapsed},
                 )
                 self._state = CircuitState.HALF_OPEN
 
@@ -145,7 +146,7 @@ class CircuitBreaker:
             if current_state == CircuitState.OPEN:
                 logger.debug(
                     f"Circuit '{self.config.name}' is OPEN - fast-failing",
-                    extra={"name": self.config.name, "failures": self._failure_count},
+                    extra={"cb_name": self.config.name, "failures": self._failure_count},
                 )
                 raise CircuitBreakerError(
                     self.config.name,
@@ -164,7 +165,7 @@ class CircuitBreaker:
                     self._failure_count = 0
                     logger.info(
                         f"Circuit '{self.config.name}' CLOSED after successful probe",
-                        extra={"name": self.config.name},
+                        extra={"cb_name": self.config.name},
                     )
                 elif self._state == CircuitState.CLOSED:
                     # Success in CLOSED decreases failure count slowly
@@ -178,7 +179,7 @@ class CircuitBreaker:
             # Failure - open circuit if threshold reached
             logger.warning(
                 f"Circuit '{self.config.name}' call failed",
-                extra={"name": self.config.name, "error": type(e).__name__},
+                extra={"cb_name": self.config.name, "error": type(e).__name__},
             )
 
             async with self._lock:
@@ -190,7 +191,7 @@ class CircuitBreaker:
                     self._state = CircuitState.OPEN
                     logger.warning(
                         f"Circuit '{self.config.name}' re-OPENED after failed probe",
-                        extra={"name": self.config.name, "failures": self._failure_count},
+                        extra={"cb_name": self.config.name, "failures": self._failure_count},
                     )
                 elif self._state == CircuitState.CLOSED:
                     if self._failure_count >= self.config.failure_threshold:
@@ -198,7 +199,7 @@ class CircuitBreaker:
                         logger.error(
                             f"Circuit '{self.config.name}' OPENED",
                             extra={
-                                "name": self.config.name,
+                                "cb_name": self.config.name,
                                 "failures": self._failure_count,
                             },
                         )
@@ -217,7 +218,7 @@ class CircuitBreaker:
 
         logger.info(
             f"Circuit '{self.config.name}' manually reset to CLOSED",
-            extra={"name": self.config.name},
+            extra={"cb_name": self.config.name},
         )
 
     def force_open(self) -> None:
@@ -230,8 +231,19 @@ class CircuitBreaker:
 
         logger.warning(
             f"Circuit '{self.config.name}' forced OPEN",
-            extra={"name": self.config.name},
+            extra={"cb_name": self.config.name},
         )
+
+    def is_open(self, partition_key: Optional[str] = None) -> bool:
+        """Check if circuit is currently open.
+
+        Args:
+            partition_key: Optional partition key for partitioned breakers
+
+        Returns:
+            True if circuit is open, False otherwise
+        """
+        return self.state == CircuitState.OPEN
 
     def __repr__(self) -> str:
         """String representation."""
@@ -294,6 +306,38 @@ def get_all_circuit_breaker_states() -> dict[str, str]:
 # Re-export for backward compatibility during migration
 AsyncCircuitBreaker = CircuitBreaker  # Alias for migration from resilience.py
 
+# Legacy aliases for tool_executor compatibility
+CircuitOpenError = CircuitBreakerError
+
+
+def circuit_breaker(
+    failure_threshold: int = 5,
+    reset_timeout: float = 60.0,
+    expected_exceptions: tuple[type[Exception], ...] = (Exception,),
+) -> Callable:
+    """Legacy decorator factory for circuit breaker.
+
+    Returns a decorator that wraps a function with a new CircuitBreaker.
+    The breaker is NOT registered in the global registry.
+    """
+    def decorator(func: Callable) -> Callable:
+        cb = CircuitBreaker(
+            config=CircuitBreakerConfig(
+                name=func.__name__,
+                failure_threshold=failure_threshold,
+                reset_timeout=reset_timeout,
+                expected_exceptions=expected_exceptions,
+            )
+        )
+
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            return await cb.call(func, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
 
 __all__ = [
     "CircuitState",
@@ -303,5 +347,7 @@ __all__ = [
     "get_circuit_breaker",
     "reset_all_circuit_breakers",
     "get_all_circuit_breaker_states",
-    "AsyncCircuitBreaker",  # Legacy alias
+    "AsyncCircuitBreaker",  # Alias for migration from resilience.py
+    "CircuitOpenError",  # Alias for tool_executor compatibility
+    "circuit_breaker",  # Decorator factory for tool_executor compatibility
 ]

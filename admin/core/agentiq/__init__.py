@@ -15,8 +15,8 @@ Applied Personas:
 - Django Architect: Pydantic models
 """
 
-from admin.core.agentiq.settings import DerivedSettings
 from admin.core.agentiq.derivation import derive_all_settings
+from admin.core.agentiq.settings import DerivedSettings
 from admin.core.agentiq.unified_gate import UnifiedGate
 
 __all__ = [

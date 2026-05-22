@@ -15,7 +15,8 @@ import django
 django.setup()
 
 import uvicorn
-from orchestrator.config import CentralizedConfig
+
+from admin.orchestrator.config import CentralizedConfig
 
 from .service import MemoryReplicatorService
 
@@ -25,11 +26,11 @@ LOGGER = logging.getLogger(__name__)
 
 async def main():
     """Main entry point for the memory replicator service."""
-    config = CentralizedConfig()
+    config = CentralizedConfig()  # type: ignore[call-arg]
     service = MemoryReplicatorService(config)
 
     # Start the service using uvicorn
-    await uvicorn.run(
+    uvicorn.run(
         service.app,
         host=config.memory_replicator_host,
         port=config.memory_replicator_port,

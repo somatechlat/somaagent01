@@ -85,7 +85,7 @@ class LLMAdapter:
                 maybe = key()
                 if hasattr(maybe, "__await__"):
                     return await maybe  # type: ignore[func-returns-value]
-                return maybe
+                return maybe  # type: ignore[return-value]
         return self.api_key
 
     async def _post_json(

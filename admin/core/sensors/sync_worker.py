@@ -31,8 +31,8 @@ class SyncResult:
         self,
         event_id: str,
         success: bool,
-        brain_ref: str = None,
-        error: str = None,
+        brain_ref: str | None = None,
+        error: str | None = None,
     ):
         """Initialize the instance."""
 
@@ -55,20 +55,18 @@ async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
         if event.event_type.startswith("memory."):
             # Memory events → /api/memory/remember/remember
             result = await client.remember(
+                {"key": event.event_id, "value": event.payload},
                 tenant=event.tenant_id,
                 namespace="ltm",  # Long-term memory
-                key=event.event_id,
-                value=event.payload,
             )
             brain_ref = f"somabrain://memory/{event.event_id}"
 
         elif event.event_type.startswith("conversation."):
             # Conversation events → Store as memory
             result = await client.remember(
+                {"key": event.event_id, "value": event.payload},
                 tenant=event.tenant_id,
                 namespace="conversation",
-                key=event.event_id,
-                value=event.payload,
             )
             brain_ref = f"somabrain://conversation/{event.event_id}"
 
@@ -80,20 +78,18 @@ async def sync_event_to_somabrain(event: SensorOutbox) -> SyncResult:
         elif event.event_type.startswith("tool."):
             # Tool events → Store as memory
             result = await client.remember(
+                {"key": event.event_id, "value": event.payload},
                 tenant=event.tenant_id,
                 namespace="tool_execution",
-                key=event.event_id,
-                value=event.payload,
             )
             brain_ref = f"somabrain://tool/{event.event_id}"
 
         else:
             # Default: store as generic memory
             result = await client.remember(
+                {"key": event.event_id, "value": event.payload},
                 tenant=event.tenant_id,
                 namespace="events",
-                key=event.event_id,
-                value=event.payload,
             )
             brain_ref = f"somabrain://events/{event.event_id}"
 
@@ -139,11 +135,13 @@ async def process_outbox_batch(
 
         if result.success:
             # Mark synced and CLEAR payload
+            assert result.brain_ref is not None
             event.mark_synced(brain_ref=result.brain_ref)
             synced_count += 1
             logger.info(f"Synced {event.event_id} → {result.brain_ref}")
         else:
             # Mark failed for retry
+            assert result.error is not None
             event.mark_failed(result.error)
             failed_count += 1
 

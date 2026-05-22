@@ -16,7 +16,6 @@ import django
 django.setup()
 
 from services.common.delegation_store import DelegationStore
-
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.schema_validator import validate_event
 from services.common.tracing import setup_tracing

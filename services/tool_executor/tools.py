@@ -424,7 +424,7 @@ class IngestDocumentTool(BaseTool):
                     parts = []
                     with fitz.open(stream=_io.BytesIO(data), filetype="pdf") as doc:
                         for page in doc:
-                            parts.append(page.get_text("text"))
+                            parts.append(page.get_text("text"))  # type: ignore[attr-defined]
                     text = "\n".join(parts)
                 except Exception as exc:
                     LOGGER.warning("PyMuPDF extraction failed", extra={"error": str(exc)})

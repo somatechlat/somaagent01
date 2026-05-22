@@ -69,3 +69,11 @@ def get_session_store():
     from services.gateway import providers
 
     return providers.get_session_store()
+
+
+def _gateway_llm_client():
+    """Retrieve gateway LLM client."""
+
+    from services.gateway import providers
+
+    return providers.get_llm_client()

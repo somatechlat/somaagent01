@@ -11,6 +11,7 @@ Per AGENT_TASKS.md Phase 7.1 - Capability Registry.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
@@ -40,8 +41,8 @@ class CircuitBreakerState:
 
         self.state = "closed"  # closed, open, half_open
         self.failure_count = 0
-        self.last_failure = None
-        self.last_success = None
+        self.last_failure: datetime | None = None
+        self.last_success: datetime | None = None
         self.reset_timeout = 30  # seconds
 
 

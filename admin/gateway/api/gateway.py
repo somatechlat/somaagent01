@@ -196,7 +196,7 @@ async def update_constitution(request: HttpRequest, body: ConstitutionUpdate) ->
     tenant_id = request.headers.get("X-Tenant-Id", "default")
     store = ConstitutionStore()
     await store.ensure_schema()
-    await store.set(tenant_id=tenant_id, rules=body.rules)
+    await store.update(identifier=tenant_id, changes={"rules": body.rules})
 
     return {"status": "updated", "tenant_id": tenant_id}
 

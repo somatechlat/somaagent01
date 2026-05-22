@@ -112,8 +112,8 @@ def get_tenant_plan(tenant_id: str) -> str:
     try:
         from admin.aaas.models import Tenant
 
-        tenant = Tenant.objects.select_related("subscription_tier").get(pk=tenant_id)
-        plan_code = tenant.subscription_tier.code if tenant.subscription_tier else "free"
+        tenant = Tenant.objects.select_related("tier").get(pk=tenant_id)
+        plan_code = tenant.tier.code if tenant.tier else "free"
         cache.set(cache_key, plan_code, PLAN_CACHE_TTL)
         return plan_code
     except Exception as exc:

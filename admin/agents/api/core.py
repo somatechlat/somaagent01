@@ -461,9 +461,9 @@ async def get_multimodal_config(request, agent_id: str) -> dict:
 
     Uses GlobalDefault for persistence (Unified Policy).
     """
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = await GlobalDefault.aget_instance()
+    gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
     # Return stored config or defaults
@@ -490,9 +490,9 @@ async def update_multimodal_config(request, agent_id: str, config: MultimodalCon
 
     Persists to GlobalDefault (Unified Policy).
     """
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = await GlobalDefault.aget_instance()
+    gd = await PlatformConfig.aget_instance()
     gd.defaults["multimodal_policy"] = config.dict()
     await gd.asave()
 

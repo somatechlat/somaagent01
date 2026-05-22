@@ -57,7 +57,6 @@ User → Django API → SomaBrain → LLM
 
 ### 3. Chat Service Architecture ✅
 
-**Location**: `services/common/chat/`
 
 **Component Hierarchy:**
 ```
@@ -65,10 +64,8 @@ ChatService (facade, ~150 lines)
 ├── ConversationService - Django ORM persistence
 ├── MessageService - LLM integration via LiteLLM
 ├── SessionManager - Local session store
-├── ChatMemoryBridge - Delegation to chat_memory.py
 └── TitleGenerator - Utility model calls
 
-chat_memory.py (SomaBrain integration)
 ├── recall_memories() - Uses BrainBridge (direct) or SomaBrainClient (HTTP)
 ├── store_memory() - Same dual-mode support
 └── store_interaction() - Full interaction storage
@@ -96,7 +93,7 @@ chat_memory.py (SomaBrain integration)
 | tool_results | 10% | 0% (disabled) |
 | buffer | 5% | 35% (safety margin) |
 
-**SimpleContextBuilder** (`services/common/simple_context_builder.py`):
+**SimpleContextBuilder** (`admin/core/context/builder.py`):
 - Replaced 759-line implementation with 150-line production code
 - Multimodal support (generate_image, diagrams)
 - Presidio PII redaction (lazy loading)
@@ -197,7 +194,7 @@ somaagent01/
 │   ├── common/              # Shared services
 │   │   ├── chat/           # Chat services (conversation, message, session, memory)
 │   │   ├── simple_governor.py    # Token budget allocation
-│   │   ├── simple_context_builder.py # Context assembly
+│   │   ├── admin/core/context/builder.py # Context assembly
 │   │   ├── circuit_breaker.py     # Circuit breaker pattern
 │   │   └── degradation_monitor.py  # Health monitoring
 │   └── gateway/             # API gateway
@@ -241,7 +238,6 @@ somaagent01/
 ## 🚨 IDENTIFIED GAPS (For Future Work)
 
 ### 1. MemoryReplicator
-- **Status**: Referenced in `services/common/chat_memory.py` but not implemented
 - **Purpose**: Sync Kafka WAL → SomaBrain when it comes back online
 - **Location**: Expected in `services/common/`
 
@@ -308,10 +304,8 @@ somaagent01/
 
 **Critical Architecture Files:**
 1. `aaas/brain.py` - BrainBridge dual-mode implementation
-2. `services/common/chat/chat_service.py` - Chat facade
-3. `services/common/chat_memory.py` - SomaBrain integration
 4. `services/common/simple_governor.py` - Token budget allocation
-5. `services/common/simple_context_builder.py` - Context assembly
+5. `admin/core/context/builder.py` - Context assembly
 6. `admin/core/somabrain_client.py` - HTTP client for SomaBrain
 7. `admin/somabrain/cognitive.py` - Cognitive thread API
 8. `admin/somabrain/event_bridge.py` - Kafka event publisher

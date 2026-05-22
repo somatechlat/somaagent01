@@ -237,7 +237,7 @@ class ServiceHealth(models.Model):
         return f"{self.display_name or self.service_name}: {self.status}"
 
     def update_status(
-        self, status: str, latency_ms: float = None, details: dict = None, error: str = None
+        self, status: str, latency_ms: float | None = None, details: dict | None = None, error: str | None = None
     ):
         """Update the health status."""
         self.status = status
@@ -340,7 +340,7 @@ class InfrastructureConfig(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "service_id": str(self.service_id),
+            "service_id": str(self.service.pk),
             "key": self.key,
             "value": self.get_display_value(),
             "is_secret": self.is_secret,

@@ -305,7 +305,7 @@ class Phase4Validator:
 
     async def test_context_builder(self):
         """Test SimpleContextBuilder vs legacy."""
-        from services.common.simple_context_builder import ContextBuilder
+        from admin.core.context.builder import ContextBuilder
 
         print("\n[TEST 5] SimpleContextBuilder")
 

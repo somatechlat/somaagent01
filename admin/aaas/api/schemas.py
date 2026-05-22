@@ -174,15 +174,17 @@ class RevenueByTier(Schema):
 
 
 class InvoiceOut(Schema):
-    """Invoice response schema."""
+    """Invoice response schema — maps Lago invoice fields."""
 
     id: str
-    tenant_id: str
-    tenant_name: str
-    amount: float
+    number: str = ""
+    amount_cents: int = 0
+    currency: str = "USD"
     status: str
-    due_date: datetime
-    paid_at: Optional[datetime] = None
+    created_at: str = ""
+    customer: Optional[dict] = None
+    due_date: Optional[str] = None
+    paid_at: Optional[str] = None
 
 
 class BillingResponse(Schema):

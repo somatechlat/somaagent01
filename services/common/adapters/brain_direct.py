@@ -12,9 +12,6 @@ VIBE Compliance:
 from __future__ import annotations
 
 import logging
-from typing import Any
-
-from services.common.protocols import BrainServiceProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +29,16 @@ class DirectBrainAdapter:
         logger.info("🧠 DirectBrainAdapter: Initializing in-process brain access")
 
         # Import cognitive core
-        from somabrain.quantum import QuantumLayer, HRRConfig
+        from somabrain.quantum import HRRConfig, QuantumLayer  # type: ignore[import-not-found]
 
         self._quantum = QuantumLayer(HRRConfig())
 
         # Import memory functions
-        from somabrain.agent_memory import encode_memory, recall_memory, store_memory_item
+        from somabrain.agent_memory import (  # type: ignore[import-not-found]
+            encode_memory,
+            recall_memory,
+            store_memory_item,
+        )
 
         self._encode_memory = encode_memory
         self._recall_memory = recall_memory
@@ -45,7 +46,7 @@ class DirectBrainAdapter:
 
         # Check for Rust core
         try:
-            import somabrain_rs
+            import somabrain_rs  # noqa: F401  # type: ignore[import-not-found]
 
             self._rust_available = True
             logger.info("🦀 Rust cognitive core available")
@@ -60,7 +61,7 @@ class DirectBrainAdapter:
         vector = self._quantum.encode_text(text)
         return vector.tolist()
 
-    def remember(
+    async def remember(
         self,
         content: str,
         *,
@@ -70,36 +71,13 @@ class DirectBrainAdapter:
         metadata: dict | None = None,
     ) -> dict:
         """Store a memory in the cognitive core."""
-        import asyncio
-
-        # store_memory_item is async, run it
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If we're in an async context, create a task
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    asyncio.run,
-                    self._store_memory(
-                        content=content,
-                        tenant=tenant,
-                        session_id=session_id,
-                        agent_id=agent_id,
-                        metadata=metadata or {},
-                    ),
-                )
-                return future.result()
-        else:
-            return asyncio.run(
-                self._store_memory(
-                    content=content,
-                    tenant=tenant,
-                    session_id=session_id,
-                    agent_id=agent_id,
-                    metadata=metadata or {},
-                )
-            )
+        return await self._store_memory(
+            content=content,
+            tenant=tenant,
+            session_id=session_id,
+            agent_id=agent_id,
+            metadata=metadata or {},
+        )
 
     def recall(
         self,
@@ -120,7 +98,9 @@ class DirectBrainAdapter:
     ) -> dict:
         """Apply reinforcement signal to learning system."""
         try:
-            from somabrain.learning.feedback import apply_rl_signal
+            from somabrain.learning.feedback import (  # type: ignore[import]
+                apply_rl_signal,
+            )
 
             return apply_rl_signal(session_id, signal, value)
         except ImportError:

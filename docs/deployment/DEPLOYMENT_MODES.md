@@ -21,7 +21,7 @@ SomaAgent01 supports two deployment modes that determine how components interact
 
 ## Component Behavior by Mode
 
-### 1. ChatService (`services/common/chat_service.py`)
+### 1. Chat Orchestrator (`admin/core/chat_orchestrator.py`)
 
 | Feature | AAAS Mode | STANDALONE Mode |
 |----------|-------------|-----------------|
@@ -32,7 +32,7 @@ SomaAgent01 supports two deployment modes that determine how components interact
 
 **Code Reference**:
 ```python
-# services/common/chat_service.py
+# admin/core/chat_orchestrator.py
 
 AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
@@ -83,7 +83,7 @@ def allocate_budget(
 
 ---
 
-### 3. SimpleContextBuilder (`services/common/simple_context_builder.py`)
+### 3. Context Builder (`admin/core/context/builder.py`)
 
 | Feature | AAAS Mode | STANDALONE Mode |
 |----------|-------------|-----------------|
@@ -421,7 +421,7 @@ docker logs aaas | grep "is_degraded"
 ## References
 
 - **SimpleGovernor Implementation**: `services/common/simple_governor.py` (279 lines)
-- **SimpleContextBuilder**: `services/common/simple_context_builder.py` (~400 lines)
+- **Context Builder**: `admin/core/context/builder.py` (~400 lines)
 - **HealthMonitor**: `services/common/health_monitor.py` (~250 lines)
 - **Migration History**: `docs/srs/SRS-UNIFIED-LAYERS-PRODUCTION-READY.md`
 - **Architecture Diagram**: `docs/architecture/chat_architecture.md`

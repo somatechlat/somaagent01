@@ -14,14 +14,14 @@ import logging
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from admin.somabrain.services.memory_integration import (
-    get_memory_integration,
-)
 from django.http import HttpRequest
 from ninja import Body, Query, Router
 from pydantic import BaseModel, Field
 
 from admin.common.auth import AuthBearer
+from admin.somabrain.services.memory_integration import (
+    get_memory_integration,
+)
 from services.common.unified_metrics import get_metrics
 
 logger = logging.getLogger(__name__)

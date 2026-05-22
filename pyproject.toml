@@ -90,6 +90,9 @@ unstructured-client = {version = "^0.31.0", markers = "python_version < '3.12'"}
 websockets = "^14.0.0"
 pyclamd = "^0.4.0"
 
+[tool.poetry.extras]
+aaas = ["somabrain"]
+
 [tool.poetry.group.dev.dependencies]
 # Developer tools
 black = "^25.9.0"
@@ -97,6 +100,7 @@ ruff = "^0.13.0"
 pytest = "^8.3.0"
 pytest-asyncio = "^0.24.0"
 pytest-playwright = "^0.5.0"
+pytest-django = "^4.8.0"
 testcontainers = {extras = ["kafka", "postgres", "redis"], version = "^4.8.0"}
 
 [tool.poetry.group.ml.dependencies]

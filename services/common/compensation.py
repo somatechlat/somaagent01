@@ -8,9 +8,6 @@ from uuid import UUID
 
 from prometheus_client import Counter
 
-from services.common.asset_store import AssetStore
-from services.common.attachments_store import AttachmentsStore
-
 LOG = logging.getLogger(__name__)
 
 COMP_ACTIONS = Counter(
@@ -26,13 +23,14 @@ async def _delete_attachments(ids: Iterable[Any]) -> None:
     Args:
         ids: The ids.
     """
+    from services.common.attachments_store import AttachmentsStore
 
     store = AttachmentsStore()
     await store.ensure_schema()
     for raw in ids:
         try:
             att_id = UUID(str(raw))
-            deleted = await store.delete(att_id)
+            deleted = await store.delete(str(att_id))
             COMP_ACTIONS.labels("attachments_delete", "success" if deleted else "not_found").inc()
         except Exception as exc:
             LOG.warning("Attachment compensation failed", extra={"id": raw, "error": str(exc)})
@@ -45,6 +43,7 @@ async def _tombstone_assets(ids: Iterable[Any]) -> None:
     Args:
         ids: The ids.
     """
+    from services.common.asset_store import AssetStore
 
     store = AssetStore()
     for raw in ids:

@@ -31,9 +31,9 @@ class HealthCheckResult:
         self,
         name: str,
         status: str,
-        latency_ms: float = None,
-        details: dict = None,
-        error: str = None,
+        latency_ms: float | None = None,
+        details: dict | None = None,
+        error: str | None = None,
     ):
         """Initialize the instance."""
 
@@ -93,7 +93,7 @@ class InfrastructureHealthChecker:
         critical_down = False
 
         for check in checks:
-            if isinstance(check, Exception):
+            if isinstance(check, BaseException):
                 results.append(
                     HealthCheckResult(
                         name="unknown",

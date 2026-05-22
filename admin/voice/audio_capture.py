@@ -25,9 +25,9 @@ from dataclasses import dataclass
 from typing import AsyncGenerator, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import sounddevice
+    import sounddevice  # type: ignore[import]
 
-    from admin.voice.config import AudioConfig
+    from admin.core.config.models import AudioConfig
 
 from .exceptions import VoiceProcessingError
 
@@ -85,6 +85,7 @@ class AudioCapture:
         # little‑endian PCM layout expected by downstream components.
         raw_bytes = indata.tobytes()
         loop = asyncio.get_event_loop()
+        assert self._wrapper is not None
         loop.call_soon_threadsafe(self._wrapper.queue.put_nowait, raw_bytes)
 
     async def _start_stream(self) -> None:

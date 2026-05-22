@@ -89,9 +89,9 @@ async def get_rate_limits(request) -> dict:
 
     Security Auditor: View rate limiting rules.
     """
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = await GlobalDefault.aget_instance()
+    gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
     # Initialize if missing
@@ -154,9 +154,9 @@ async def create_rate_limit(
 
     Security Auditor: Admin only.
     """
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = await GlobalDefault.aget_instance()
+    gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
     if "ratelimits" not in defaults:
@@ -192,9 +192,9 @@ async def update_rate_limit(
     enabled: Optional[bool] = None,
 ) -> dict:
     """Update a rate limit rule."""
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = await GlobalDefault.aget_instance()
+    gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
     if "ratelimits" not in defaults:
@@ -226,9 +226,9 @@ async def update_rate_limit(
 )
 async def delete_rate_limit(request, name: str) -> dict:
     """Delete a rate limit rule."""
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = await GlobalDefault.aget_instance()
+    gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
     if "ratelimits" not in defaults:

@@ -139,8 +139,10 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
     # In production: Send email via Keycloak or SMTP
     # KeycloakAdmin.send_invitation_email(email=payload.email, token=token)
 
-    # Build invitation URL
-    base_url = "http://localhost:5173"  # Would come from settings
+    # Build invitation URL from settings
+    from django.conf import settings
+
+    base_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
     invite_url = f"{base_url}/auth/invite/{token}"
 
     return InviteUserResponse(

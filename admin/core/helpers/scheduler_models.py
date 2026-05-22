@@ -22,10 +22,10 @@ from pydantic import BaseModel, Field
 
 from admin.core.helpers.localization import Localization
 from admin.core.helpers.scheduler_enums import (
-    TaskState,
-    TaskType,
     task_schedule_evaluations_total,
     task_schedule_latency_seconds,
+    TaskState,
+    TaskType,
 )
 
 
@@ -486,13 +486,13 @@ class ScheduledTask(BaseTask):
         """
 
         with self._lock:
-            crontab = CronTab(crontab=self.schedule.to_crontab())
+            crontab = CronTab(crontab=self.schedule.to_crontab())  # type: ignore[call-arg]
             task_timezone = pytz.timezone(
                 self.schedule.timezone or Localization.get().get_timezone()
             )
             reference_time = datetime.now(timezone.utc) - timedelta(seconds=frequency_seconds)
             reference_time = reference_time.astimezone(task_timezone)
-            next_run_seconds: Optional[float] = crontab.next(
+            next_run_seconds: Optional[float] = crontab.next(  # type: ignore[operator]
                 now=reference_time, return_datetime=False
             )
             if next_run_seconds is None:
@@ -503,8 +503,8 @@ class ScheduledTask(BaseTask):
         """Retrieve next run."""
 
         with self._lock:
-            crontab = CronTab(crontab=self.schedule.to_crontab())
-            return crontab.next(now=datetime.now(timezone.utc), return_datetime=True)
+            crontab = CronTab(crontab=self.schedule.to_crontab())  # type: ignore[call-arg]
+            return crontab.next(now=datetime.now(timezone.utc), return_datetime=True)  # type: ignore[operator]
 
 
 class PlannedTask(BaseTask):

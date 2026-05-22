@@ -44,7 +44,7 @@ class ApiError(Exception):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for JSON response."""
-        result = {
+        result: dict[str, Any] = {
             "error": self.error_code,
             "message": self.message,
         }

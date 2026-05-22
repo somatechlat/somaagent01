@@ -73,7 +73,7 @@ def _get_session_events(session_id: str, limit: int):
     session = Session.objects.filter(session_id=session_id).first()
     if not session:
         return None
-    return list(session.events.all().order_by("-created_at")[:limit])
+    return list(session.events.all().order_by("-created_at")[:limit])  # type: ignore[union-attr]
 
 
 @sync_to_async
@@ -82,7 +82,7 @@ def _get_events_after(session_id: str, after_id: Optional[int], limit: int):
     session = Session.objects.filter(session_id=session_id).first()
     if not session:
         return []
-    qs = session.events.all()
+    qs = session.events.all()  # type: ignore[union-attr]
     if after_id:
         qs = qs.filter(id__gt=after_id)
     return list(qs.order_by("id")[:limit])
@@ -100,19 +100,21 @@ def _create_or_update_session(session_id: str, persona_id: Optional[str], tenant
 @sync_to_async
 def _append_event(session_id: str, event_data: dict):
     """Append event to session."""
-    session = Session.objects.filter(session_id=session_id).first()
-    if not session:
-        session = Session.objects.create(
-            session_id=session_id,
-            persona_id=event_data.get("persona_id"),
-            tenant=event_data.get("metadata", {}).get("tenant"),
+    from django.db import transaction
+    with transaction.atomic():
+        session = Session.objects.filter(session_id=session_id).first()
+        if not session:
+            session = Session.objects.create(
+                session_id=session_id,
+                persona_id=event_data.get("persona_id"),
+                tenant=event_data.get("metadata", {}).get("tenant"),
+            )
+        SessionEvent.objects.create(
+            session=session,
+            event_type="message",
+            payload=event_data,
+            role=event_data.get("role", "user"),
         )
-    SessionEvent.objects.create(
-        session=session,
-        event_type="message",
-        payload=event_data,
-        role=event_data.get("role", "user"),
-    )
 
 
 async def _sse_event_generator(session_id: str) -> AsyncGenerator[str, None]:

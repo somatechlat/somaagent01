@@ -53,11 +53,21 @@ class LockoutConfig:
     @classmethod
     def from_env(cls) -> "LockoutConfig":
         """Load configuration from environment."""
-        return cls(
-            max_attempts=int(os.getenv("AUTH_MAX_ATTEMPTS", DEFAULT_MAX_ATTEMPTS)),
-            lockout_duration=int(os.getenv("AUTH_LOCKOUT_DURATION", DEFAULT_LOCKOUT_DURATION)),
-            attempt_window=int(os.getenv("AUTH_ATTEMPT_WINDOW", DEFAULT_ATTEMPT_WINDOW)),
-        )
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            settings = SettingsRegistry.get()
+            return cls(
+                max_attempts=settings.auth_max_attempts,
+                lockout_duration=settings.auth_lockout_duration,
+                attempt_window=settings.auth_attempt_window,
+            )
+        except Exception:
+            return cls(
+                max_attempts=int(os.getenv("AUTH_MAX_ATTEMPTS", DEFAULT_MAX_ATTEMPTS)),
+                lockout_duration=int(os.getenv("AUTH_LOCKOUT_DURATION", DEFAULT_LOCKOUT_DURATION)),
+                attempt_window=int(os.getenv("AUTH_ATTEMPT_WINDOW", DEFAULT_ATTEMPT_WINDOW)),
+            )
 
 
 # =============================================================================
@@ -108,7 +118,13 @@ class AccountLockoutService:
             redis_url: Redis connection URL. Defaults to REDIS_URL env var.
             config: Lockout configuration. Defaults to env-based config.
         """
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            settings = SettingsRegistry.get()
+            self.redis_url = redis_url or settings.redis_url
+        except Exception:
+            self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.config = config or LockoutConfig.from_env()
         self._redis: Optional[redis.Redis] = None
         self._connected = False
@@ -154,6 +170,7 @@ class AccountLockoutService:
             LockoutStatus with current state
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         lockout_key = self._lockout_key(email)
         attempts_key = self._attempts_key(email)
@@ -197,6 +214,7 @@ class AccountLockoutService:
             Updated LockoutStatus
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         attempts_key = self._attempts_key(email)
         lockout_key = self._lockout_key(email)
@@ -250,6 +268,7 @@ class AccountLockoutService:
             email: User email address
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         attempts_key = self._attempts_key(email)
 
@@ -269,6 +288,7 @@ class AccountLockoutService:
             True if lockout was cleared, False if not locked
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         lockout_key = self._lockout_key(email)
         attempts_key = self._attempts_key(email)

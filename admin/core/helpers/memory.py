@@ -15,11 +15,18 @@ try:
     from simpleeval import simple_eval
 except Exception:
 
-    def simple_eval(expr: str, names: Mapping[str, Any] | None = None) -> bool:
+    def simple_eval(
+        expr: str,
+        operators: Any | None = None,
+        functions: Any | None = None,
+        names: Mapping[str, Any] | None = None,
+    ) -> bool:
         """Execute simple eval.
 
         Args:
             expr: The expr.
+            operators: The operators.
+            functions: The functions.
             names: The names.
         """
 
@@ -32,7 +39,10 @@ except Exception:
         return False
 
 
-from agent import Agent
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agent import Agent  # type: ignore[import]
 
 from admin.core.helpers import guids, knowledge_import
 from admin.core.helpers.log import LogItem

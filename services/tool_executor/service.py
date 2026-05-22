@@ -11,8 +11,9 @@ import logging
 from typing import Any, Dict
 
 from ninja import Router
-from orchestrator.base_service import BaseService
-from orchestrator.config import CentralizedConfig
+
+from admin.orchestrator.base_service import BaseService
+from admin.orchestrator.config import CentralizedConfig
 
 # LOGGER configuration
 LOGGER = logging.getLogger(__name__)
@@ -79,11 +80,19 @@ class ToolExecutorService(BaseService):
         except Exception as exc:
             LOGGER.error(f"Error during {self.service_name} service shutdown: {exc}")
 
+    async def _start(self) -> None:
+        """Orchestrator lifecycle hook — delegates to startup."""
+        await self.startup()
+
+    async def _stop(self) -> None:
+        """Orchestrator lifecycle hook — delegates to shutdown."""
+        await self.shutdown()
+
     def register_routes(self, app: Router) -> None:
         """Register health check endpoints for the tool executor service."""
 
         # Add a health check endpoint for the orchestrator
-        @app.api_route("/health")
+        @app.get("/health")
         async def health_check():
             """Execute health check."""
 
@@ -108,7 +117,7 @@ class ToolExecutorService(BaseService):
             return {"status": status, "details": details}
 
         # Add a metrics endpoint
-        @app.api_route("/metrics")
+        @app.get("/metrics")
         async def metrics():
             """Return basic metrics about the tool executor service."""
             return {

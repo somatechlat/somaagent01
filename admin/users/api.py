@@ -11,7 +11,8 @@ User lifecycle and profile management.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+import typing
+from typing import Any, Optional
 from uuid import uuid4
 
 from asgiref.sync import sync_to_async
@@ -130,7 +131,7 @@ async def get_user(request, user_id: str) -> User:
     UserModel = get_user_model()
 
     try:
-        db_user = await sync_to_async(UserModel.objects.get)(id=user_id)
+        db_user = typing.cast(Any, await sync_to_async(UserModel.objects.get)(id=user_id))
     except UserModel.DoesNotExist:
         raise NotFoundError("user", user_id)
 
@@ -243,7 +244,7 @@ async def get_profile(request, user_id: str) -> UserProfile:
     UserModel = get_user_model()
 
     try:
-        db_user = await sync_to_async(UserModel.objects.get)(id=user_id)
+        db_user = typing.cast(Any, await sync_to_async(UserModel.objects.get)(id=user_id))
     except UserModel.DoesNotExist:
         raise NotFoundError("user", user_id)
 

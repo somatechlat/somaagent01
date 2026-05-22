@@ -6,7 +6,7 @@ import json
 import os
 from typing import Any, Optional
 
-import redis.asyncio as redis
+from services.common.redis_pool import get_async_redis_pool
 
 
 class RequeueStore:
@@ -19,15 +19,27 @@ class RequeueStore:
         prefix: Optional[str] = None,
     ) -> None:
         """Create a Redis‑backed requeue store."""
-        raw_url = url or os.environ.get("SA01_REDIS_URL", "")
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            settings = SettingsRegistry.get()
+            raw_url = url or settings.sa01_redis_url
+        except Exception:
+            raw_url = url or os.environ.get("SA01_REDIS_URL", "")
         if not raw_url:
             raise ValueError("Redis URL is required for the requeue store.")
         self.url = os.path.expandvars(raw_url)
-        self.prefix = prefix or os.environ.get("POLICY_REQUEUE_PREFIX", "policy:requeue")
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            settings = SettingsRegistry.get()
+            self.prefix = prefix or settings.policy_requeue_prefix
+        except Exception:
+            self.prefix = prefix or os.environ.get("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         if not self.url.startswith(("redis://", "rediss://", "unix://")):
             raise ValueError(f"Invalid Redis URL scheme for requeue store: {self.url!r}")
-        self.client: redis.Redis = redis.from_url(self.url, decode_responses=True)
+        self.client: Any = get_async_redis_pool(self.url)
 
     def _key(self, identifier: str) -> str:
         """Execute key.
@@ -49,12 +61,24 @@ class RequeueStore:
         redis_url = getattr(settings, "redis_url", None)
         if redis_url is None and hasattr(settings, "redis"):
             redis_url = getattr(settings.redis, "url", None)
-        url = redis_url or os.environ.get("SA01_REDIS_URL", "")
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            registry = SettingsRegistry.get()
+            url = redis_url or registry.sa01_redis_url
+        except Exception:
+            url = redis_url or os.environ.get("SA01_REDIS_URL", "")
         if not url:
             raise ValueError("Redis URL is required for the requeue store.")
-        prefix = getattr(settings, "policy_requeue_prefix", None) or os.environ.get(
-            "POLICY_REQUEUE_PREFIX"
-        )
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            registry = SettingsRegistry.get()
+            prefix = getattr(settings, "policy_requeue_prefix", None) or registry.policy_requeue_prefix
+        except Exception:
+            prefix = getattr(settings, "policy_requeue_prefix", None) or os.environ.get(
+                "POLICY_REQUEUE_PREFIX"
+            )
         return cls(url=url, prefix=prefix)
 
     async def add(self, identifier: str, event: dict[str, Any]) -> None:

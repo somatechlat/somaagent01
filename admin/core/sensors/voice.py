@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from admin.core.sensors.base import BaseSensor
+from admin.core.sensors.base import BaseSensor, SensorEvent
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +40,11 @@ class VoiceSensor(BaseSensor):
         duration_ms: int = 0,
         sample_rate: int = 16000,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture voice input received."""
         return self.capture(
             event_type="voice.input",
-            data={
+            payload={
                 "session_id": session_id,
                 "audio_format": audio_format,
                 "duration_ms": duration_ms,
@@ -61,11 +61,11 @@ class VoiceSensor(BaseSensor):
         language: str = "en",
         provider: str = "whisper",
         duration_ms: int = 0,
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture transcription result."""
         return self.capture(
             event_type="voice.transcription",
-            data={
+            payload={
                 "session_id": session_id,
                 "text": text,
                 "confidence": confidence,
@@ -82,11 +82,11 @@ class VoiceSensor(BaseSensor):
         voice_id: str = "default",
         provider: str = "kokoro",
         duration_ms: int = 0,
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture TTS output generated."""
         return self.capture(
             event_type="voice.tts",
-            data={
+            payload={
                 "session_id": session_id,
                 "text": text,
                 "voice_id": voice_id,
@@ -99,12 +99,12 @@ class VoiceSensor(BaseSensor):
         self,
         session_id: str,
         speaker_id: str,
-        speaker_name: str = None,
-    ) -> str:
+        speaker_name: Optional[str] = None,
+    ) -> Optional[SensorEvent]:
         """Capture speaker change event."""
         return self.capture(
             event_type="voice.speaker_change",
-            data={
+            payload={
                 "session_id": session_id,
                 "speaker_id": speaker_id,
                 "speaker_name": speaker_name,
@@ -116,11 +116,11 @@ class VoiceSensor(BaseSensor):
         session_id: str,
         error: str,
         error_type: str = "transcription",
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture voice processing error."""
         return self.capture(
             event_type="voice.error",
-            data={
+            payload={
                 "session_id": session_id,
                 "error": error,
                 "error_type": error_type,

@@ -147,6 +147,26 @@ services:
     networks:
       - somastack_network
 
+  # OPA - Open Policy Agent
+  somastack_opa:
+    image: openpolicyagent/opa:0.60.0
+    container_name: somastack_opa
+    restart: unless-stopped
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--log-level=info"
+    ports:
+      - "${OPA_PORT:-63981}:8181"
+    networks:
+      - somastack_network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8181/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Vault - Secrets management
   somastack_vault:
     image: hashicorp/vault:1.15

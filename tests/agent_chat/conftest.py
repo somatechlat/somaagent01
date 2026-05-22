@@ -202,7 +202,7 @@ async def governor(real_infrastructure):
 @pytest.fixture
 def context_builder(real_infrastructure):
     """Get configured ContextBuilder."""
-    from services.common.simple_context_builder import ContextBuilder
+    from admin.core.context.builder import ContextBuilder
     from admin.core.somabrain_client import SomaBrainClient
 
     return ContextBuilder(

@@ -14,8 +14,9 @@ import logging
 from typing import Any, Dict
 
 from ninja import Router
-from orchestrator.base_service import BaseService
-from orchestrator.config import CentralizedConfig
+
+from admin.orchestrator.base_service import BaseService
+from admin.orchestrator.config import CentralizedConfig
 
 # The concrete worker lives in ``services.delegation_worker.main``.
 LOGGER = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ class DelegationWorkerService(BaseService):
         """
         prefix = f"/{self.service_name}"
 
-        @app.api_route(f"{prefix}/health")
+        @app.get(f"{prefix}/health")
         async def health_check() -> Dict[str, Any]:
             """Execute health check."""
 
@@ -96,7 +97,7 @@ class DelegationWorkerService(BaseService):
                 details["error"] = "Worker task not started"
             return {"status": status, "details": details}
 
-        @app.api_route(f"{prefix}/metrics")
+        @app.get(f"{prefix}/metrics")
         async def metrics() -> Dict[str, Any]:
             """Execute metrics."""
 

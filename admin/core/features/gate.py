@@ -16,7 +16,7 @@ from __future__ import annotations
 import functools
 import inspect
 import logging
-from typing import Any, Callable, TypeVar, cast
+from typing import Any, Callable, cast, TypeVar
 
 from django.http import HttpRequest
 
@@ -80,22 +80,30 @@ def _extract_tenant_id(request: HttpRequest, *args: Any, **kwargs: Any) -> str |
     4. args (if identifiable)
     """
     # 1. Middleware/State (Best practice)
-    if hasattr(request, "state") and hasattr(request.state, "tenant_id"):
-        return str(request.state.tenant_id)
+    state = getattr(request, "state", None)
+    if state is not None:
+        tenant_id = getattr(state, "tenant_id", None)
+        if tenant_id is not None:
+            return str(tenant_id)
 
     # 2. Authenticated User
-    if hasattr(request, "user") and request.user.is_authenticated:
+    user = getattr(request, "user", None)
+    if user is not None and getattr(user, "is_authenticated", False):
         # Assuming our custom user model has active_tenant_id
         # or it's attached by auth middleware
-        if hasattr(request.user, "active_tenant_id") and request.user.active_tenant_id:
-            return str(request.user.active_tenant_id)
+        active_tenant_id = getattr(user, "active_tenant_id", None)
+        if active_tenant_id is not None:
+            return str(active_tenant_id)
 
     # 3. Kwargs
     if "tenant_id" in kwargs:
         return str(kwargs["tenant_id"])
 
     # 4. Auth attribute (Ninja often puts auth result in attribute)
-    if hasattr(request, "auth") and hasattr(request.auth, "tenant_id"):
-        return str(request.auth.tenant_id)
+    auth = getattr(request, "auth", None)
+    if auth is not None:
+        tenant_id = getattr(auth, "tenant_id", None)
+        if tenant_id is not None:
+            return str(tenant_id)
 
     return None

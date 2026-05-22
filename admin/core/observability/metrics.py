@@ -6,9 +6,12 @@ Split into modules for 650-line compliance:
 """
 
 import asyncio
+import logging
 import time
 from functools import wraps
 from typing import Any, Callable, Dict
+
+logger = logging.getLogger(__name__)
 
 from prometheus_client import generate_latest
 
@@ -30,6 +33,9 @@ from admin.core.observability.metrics_definitions import (
     event_publish_failure_total,
     event_publish_latency_seconds,
     event_published_total,
+    fast_a2a_errors_total,
+    fast_a2a_latency_seconds,
+    fast_a2a_requests_total,
     feature_profile_info,
     feature_state_info,
     gateway_request_duration,
@@ -77,6 +83,65 @@ from admin.core.observability.metrics_definitions import (
     tool_calls,
     tool_duration,
 )
+
+
+def increment_counter(metric: Any, labels: Dict[str, str] | None = None) -> None:
+    """Increment a Prometheus counter with optional labels.
+
+    Args:
+        metric: The counter metric to increment
+        labels: Optional label dictionary
+    """
+    try:
+        if labels:
+            metric.labels(**labels).inc()
+        else:
+            metric.inc()
+    except Exception:
+        logger.warning("Failed to increment counter", exc_info=True)
+
+
+def set_health_status(component: str, check: str, healthy: bool) -> None:
+    """Set health status for a component.
+
+    Args:
+        component: Component name
+        check: Check name
+        healthy: Whether the check is healthy
+    """
+    try:
+        from admin.core.observability.metrics_definitions import singleton_health
+
+        singleton_health.labels(component=component, check=check).set(1.0 if healthy else 0.0)
+    except Exception:
+        logger.warning("Failed to set health status", exc_info=True)
+
+
+class MetricsTimer:
+    """Context manager for timing Prometheus histogram observations."""
+
+    def __init__(self, metric: Any, labels: Dict[str, str] | None = None):
+        """Initialize the timer.
+
+        Args:
+            metric: Histogram metric to observe
+            labels: Optional label dictionary
+        """
+        self.metric = metric
+        self.labels = labels or {}
+        self.start_time: float | None = None
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.start_time is not None:
+            duration = time.time() - self.start_time
+            try:
+                self.metric.labels(**self.labels).observe(duration)
+            except Exception:
+                logger.warning("Failed to observe metric", exc_info=True)
 
 
 def measure_duration(metric_name: str):
@@ -131,12 +196,14 @@ def get_metrics_snapshot() -> Dict[str, Any]:
         try:
             return float(sum(s.samples[0].value for s in counter.collect()))
         except Exception:
+            logger.warning("Failed to collect counter metric", exc_info=True)
             return 0.0
 
     def _safe_gauge(g) -> float:
         try:
             return float(next(iter(g.collect())).samples[0].value)
         except Exception:
+            logger.warning("Failed to collect gauge metric", exc_info=True)
             return 0.0
 
     return {
@@ -161,13 +228,13 @@ class MetricsCollector:
             loc = location or component
             errors_total.labels(error_type=error_type, location=loc).inc()
         except Exception:
-            pass
+            logger.warning("Failed to track error metric", exc_info=True)
 
     def track_singleton_health(self, name: str, healthy: bool) -> None:
         try:
             singleton_health.labels(integration_name=name).set(1 if healthy else 0)
         except Exception:
-            pass
+            logger.warning("Failed to track singleton health", exc_info=True)
 
     def update_feature_metrics(self) -> None:
         from services.common.features import build_default_registry
@@ -185,13 +252,13 @@ class MetricsCollector:
         try:
             auth_requests.labels(result=result, source=source).inc()
         except Exception:
-            pass
+            logger.warning("Failed to track auth result", exc_info=True)
 
     def track_circuit_state(self, name: str, state_value: int) -> None:
         try:
             circuit_breaker_state.labels(circuit_name=name).set(state_value)
         except Exception:
-            pass
+            logger.warning("Failed to track circuit state", exc_info=True)
 
     def __repr__(self) -> str:
         return f"<MetricsCollector initialized={self._initialized}>"
@@ -208,42 +275,42 @@ class ContextBuilderMetrics:
         try:
             context_builder_prompt_total.inc()
         except Exception:
-            pass
+            logger.warning("Failed to record prompt metric", exc_info=True)
 
     @staticmethod
     def record_tokens_before_budget(count: int) -> None:
         try:
             context_tokens_before_budget.set(count)
         except Exception:
-            pass
+            logger.warning("Failed to record tokens before budget", exc_info=True)
 
     @staticmethod
     def record_tokens_after_budget(count: int) -> None:
         try:
             context_tokens_after_budget.set(count)
         except Exception:
-            pass
+            logger.warning("Failed to record tokens after budget", exc_info=True)
 
     @staticmethod
     def record_tokens_after_redaction(count: int) -> None:
         try:
             context_tokens_after_redaction.set(count)
         except Exception:
-            pass
+            logger.warning("Failed to record tokens after redaction", exc_info=True)
 
     @staticmethod
     def record_prompt_tokens(count: int) -> None:
         try:
             context_prompt_tokens.set(count)
         except Exception:
-            pass
+            logger.warning("Failed to record prompt tokens", exc_info=True)
 
     @staticmethod
     def record_snippets(stage: str, count: int) -> None:
         try:
             context_builder_snippets_total.labels(stage=stage).inc(count)
         except Exception:
-            pass
+            logger.warning("Failed to record snippets metric", exc_info=True)
 
 
 # Re-export all for backward compatibility
@@ -315,4 +382,10 @@ __all__ = [
     "runtime_config_layer_total",
     "feature_profile_info",
     "feature_state_info",
+    "increment_counter",
+    "set_health_status",
+    "MetricsTimer",
+    "fast_a2a_errors_total",
+    "fast_a2a_latency_seconds",
+    "fast_a2a_requests_total",
 ]

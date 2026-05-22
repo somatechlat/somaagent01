@@ -15,7 +15,7 @@ Vibe Coding Rules:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,6 @@ FEATURE_REGISTRY: Dict[str, FeatureFlag] = {
         tier="free",
         is_core=True,
     ),
-
     # -------------------------------------------------------------------------
     # ADVANCED INTELLIGENCE (Tier 2/3)
     # -------------------------------------------------------------------------
@@ -96,7 +95,6 @@ FEATURE_REGISTRY: Dict[str, FeatureFlag] = {
         description="Multi-step thought process (System 2)",
         tier="team",
     ),
-
     # -------------------------------------------------------------------------
     # MULTIMODAL (Tier 2+)
     # -------------------------------------------------------------------------
@@ -128,7 +126,6 @@ FEATURE_REGISTRY: Dict[str, FeatureFlag] = {
         dependencies=["voice_synthesis"],
         beta=True,
     ),
-
     # -------------------------------------------------------------------------
     # CONNECTIVITY & TOOLS (Tier 2+)
     # -------------------------------------------------------------------------

@@ -7,6 +7,8 @@
  * - Exponential backoff reconnection
  * - Heartbeat (20s interval)
  * - Event subscription system
+ *
+ * SECURITY: Auth via httpOnly cookie (never in URL).
  */
 
 export interface WebSocketConfig {
@@ -22,7 +24,6 @@ export type EventHandler = (data: unknown) => void;
 export class WebSocketClient {
     private config: WebSocketConfig;
     private ws: WebSocket | null = null;
-    private token: string | null = null;
     private reconnectAttempts = 0;
     private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     private eventHandlers: Map<string, Set<EventHandler>> = new Map();
@@ -46,29 +47,18 @@ export class WebSocketClient {
     }
 
     /**
-     * Set authentication token.
-     */
-    setToken(token: string | null): void {
-        this.token = token;
-    }
-
-    /**
      * Connect to WebSocket server.
+     * Auth is handled automatically via httpOnly cookie — never put tokens in URL.
      */
     connect(): void {
         if (this.ws?.readyState === WebSocket.OPEN) {
             return;
         }
 
-        // Build URL with token
         let url = this.config.url;
         if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             url = `${protocol}//${window.location.host}${url}`;
-        }
-
-        if (this.token) {
-            url += `?token=${encodeURIComponent(this.token)}`;
         }
 
         this.ws = new WebSocket(url);
@@ -86,25 +76,22 @@ export class WebSocketClient {
             this.ws.close(1000, 'Client disconnect');
             this.ws = null;
         }
-
-        this._connected = false;
     }
 
     /**
-     * Send a message.
+     * Send message to server.
      */
-    send(type: string, data: unknown = {}): void {
+    send(message: unknown): void {
         if (!this.connected) {
-            console.warn('WebSocket not connected, message queued');
+            console.warn('[WebSocket] Not connected, message dropped');
             return;
         }
 
-        const message = JSON.stringify({ type, data });
-        this.ws!.send(message);
+        this.ws!.send(JSON.stringify(message));
     }
 
     /**
-     * Subscribe to an event type.
+     * Subscribe to event type.
      */
     on(event: string, handler: EventHandler): () => void {
         if (!this.eventHandlers.has(event)) {
@@ -120,122 +107,74 @@ export class WebSocketClient {
     }
 
     /**
-     * Unsubscribe from an event.
+     * Setup WebSocket event handlers.
      */
-    off(event: string, handler: EventHandler): void {
-        this.eventHandlers.get(event)?.delete(handler);
-    }
-
-    /**
-     * Subscribe to server events.
-     */
-    subscribe(events: string[]): void {
-        this.send('subscribe', { events });
-    }
-
-    /**
-     * Unsubscribe from server events.
-     */
-    unsubscribe(events: string[]): void {
-        this.send('unsubscribe', { events });
-    }
-
     private _setupEventHandlers(): void {
         if (!this.ws) return;
 
         this.ws.onopen = () => {
+            console.log('[WebSocket] Connected');
             this._connected = true;
             this.reconnectAttempts = 0;
             this._startHeartbeat();
-            this._emit('connected', {});
-            console.log('WebSocket connected');
-        };
-
-        this.ws.onclose = (event) => {
-            this._connected = false;
-            this._stopHeartbeat();
-            this._emit('disconnected', { code: event.code, reason: event.reason });
-            console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
-
-            if (this.config.reconnect && this.reconnectAttempts < this.config.maxReconnectAttempts) {
-                this._scheduleReconnect();
-            }
-        };
-
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            this._emit('error', error);
         };
 
         this.ws.onmessage = (event) => {
             try {
-                const message = JSON.parse(event.data);
-                const { type, data, payload } = message;
-
-                if (type === 'pong') {
-                    // Heartbeat response - ignore
-                    return;
-                }
-
-                this._emit(type, data ?? payload);
-            } catch (error) {
-                console.error('Failed to parse WebSocket message:', error);
+                const data = JSON.parse(event.data);
+                this._handleMessage(data);
+            } catch {
+                console.warn('[WebSocket] Invalid message format');
             }
+        };
+
+        this.ws.onclose = () => {
+            console.log('[WebSocket] Disconnected');
+            this._connected = false;
+            this._stopHeartbeat();
+
+            if (this.config.reconnect && this.reconnectAttempts < this.config.maxReconnectAttempts) {
+                this.reconnectAttempts++;
+                const delay = this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+                console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+                setTimeout(() => this.connect(), delay);
+            }
+        };
+
+        this.ws.onerror = (error) => {
+            console.error('[WebSocket] Error:', error);
         };
     }
 
+    /**
+     * Handle incoming message.
+     */
+    private _handleMessage(data: { type: string; payload: unknown }): void {
+        const handlers = this.eventHandlers.get(data.type);
+        if (handlers) {
+            handlers.forEach((handler) => handler(data.payload));
+        }
+    }
+
+    /**
+     * Start heartbeat.
+     */
     private _startHeartbeat(): void {
         this._stopHeartbeat();
-
         this.heartbeatTimer = setInterval(() => {
             if (this.connected) {
-                this.send('ping');
+                this.send({ type: 'ping' });
             }
         }, this.config.heartbeatInterval);
     }
 
+    /**
+     * Stop heartbeat.
+     */
     private _stopHeartbeat(): void {
         if (this.heartbeatTimer) {
             clearInterval(this.heartbeatTimer);
             this.heartbeatTimer = null;
-        }
-    }
-
-    private _scheduleReconnect(): void {
-        const delay = this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-        this.reconnectAttempts++;
-
-        console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-
-        setTimeout(() => {
-            if (!this._connected) {
-                this.connect();
-            }
-        }, delay);
-    }
-
-    private _emit(event: string, data: unknown): void {
-        const handlers = this.eventHandlers.get(event);
-        if (handlers) {
-            handlers.forEach(handler => {
-                try {
-                    handler(data);
-                } catch (error) {
-                    console.error(`Error in event handler for ${event}:`, error);
-                }
-            });
-        }
-
-        // Also emit to wildcard handlers
-        const wildcardHandlers = this.eventHandlers.get('*');
-        if (wildcardHandlers) {
-            wildcardHandlers.forEach(handler => {
-                try {
-                    handler({ event, data });
-                } catch (error) {
-                    console.error('Error in wildcard handler:', error);
-                }
-            });
         }
     }
 }

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from prometheus_client import Counter, Histogram
 
@@ -85,13 +85,22 @@ class SpiceDBClient:
             token: Pre-shared key. Defaults to SPICEDB_TOKEN env var.
             insecure: Use insecure connection (dev only).
         """
-        self.host = host or os.getenv("SPICEDB_HOST", "localhost")
-        self.port = port or int(os.getenv("SPICEDB_PORT", "50051"))
-        self.token = token or os.getenv("SPICEDB_TOKEN", "")
-        self.insecure = insecure or os.getenv("SPICEDB_INSECURE", "false").lower() == "true"
+        if host and port and token:
+            self.host = host
+            self.port = port
+            self.token = token
+            self.insecure = insecure or False
+        else:
+            from config.settings_registry import SettingsRegistry
 
-        self._channel = None
-        self._stub = None
+            settings = SettingsRegistry.get()
+            self.host = host or settings.spicedb_host
+            self.port = port or settings.spicedb_port
+            self.token = token or settings.spicedb_token
+            self.insecure = insecure or settings.spicedb_insecure
+
+        self._channel: Any = None
+        self._stub: Any = None
         self._connected = False
 
     async def connect(self) -> None:
@@ -100,7 +109,7 @@ class SpiceDBClient:
 
         try:
             # Import SpiceDB protobuf stubs
-            from authzed.api.v1 import (
+            from authzed.api.v1 import (  # type: ignore[import-not-found]
                 permission_service_pb2_grpc as ps_grpc,
             )
 
@@ -171,7 +180,7 @@ class SpiceDBClient:
         try:
             await self._ensure_connected()
 
-            from authzed.api.v1 import (
+            from authzed.api.v1 import (  # type: ignore[import-not-found]
                 CheckPermissionRequest,
                 ObjectReference,
                 SubjectReference,
@@ -260,7 +269,7 @@ class SpiceDBClient:
         try:
             await self._ensure_connected()
 
-            from authzed.api.v1 import (
+            from authzed.api.v1 import (  # type: ignore[import-not-found]
                 CheckPermissionRequest,
                 ObjectReference,
                 SubjectReference,
@@ -335,7 +344,7 @@ class SpiceDBClient:
         try:
             await self._ensure_connected()
 
-            from authzed.api.v1 import (
+            from authzed.api.v1 import (  # type: ignore[import-not-found]
                 LookupResourcesRequest,
                 ObjectReference,
                 SubjectReference,
@@ -383,6 +392,7 @@ class SpiceDBClient:
 # =============================================================================
 
 _spicedb_client_instance: Optional[SpiceDBClient] = None
+_spicedb_client_lock = asyncio.Lock()
 
 
 async def get_spicedb_client() -> SpiceDBClient:
@@ -393,10 +403,11 @@ async def get_spicedb_client() -> SpiceDBClient:
         has_perm = await client.check_permission(user_id, "view", "agent", agent_id)
     """
     global _spicedb_client_instance
-    if _spicedb_client_instance is None:
-        _spicedb_client_instance = SpiceDBClient()
-        await _spicedb_client_instance.connect()
-    return _spicedb_client_instance
+    async with _spicedb_client_lock:
+        if _spicedb_client_instance is None:
+            _spicedb_client_instance = SpiceDBClient()
+            await _spicedb_client_instance.connect()
+        return _spicedb_client_instance
 
 
 __all__ = [

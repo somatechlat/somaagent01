@@ -40,11 +40,9 @@
 | 3 | SRS-SECURITY-MULTITENANCY | 2 | SpiceDB + Vault + Keycloak | - | ✅ DONE |
 | 4 | SRS-AGENTIQ | 4 | `admin/core/agentiq/` | 542 | ✅ DONE |
 | 5 | SRS-PERMISSION-MATRIX | 5 | `admin/core/permission_matrix.py` | 270 | ✅ DONE |
-| 6 | SRS-TOOL-SYSTEM | 6 | `admin/core/tool_system.py` | 280 | ✅ DONE |
 | 7 | SRS-CONTEXT-BUILDING | 7 | `admin/core/context/` | 425 | ✅ DONE |
 | 8 | SRS-MODEL-ROUTING | 8 | `admin/core/model_router.py` | 220 | ✅ DONE |
 | 9 | SRS-MULTIMODAL | 8 | `admin/core/multimodal.py` | 230 | ✅ DONE |
-| 10 | SRS-RLM-ENGINE | 9 | `admin/agents/services/rlm_engine.py` | 240 | ✅ DONE |
 | 11 | SRS-CHAT-FLOW-MASTER | 9 | `admin/core/chat_orchestrator.py` | 215 | ✅ DONE |
 | 12 | SRS-LAGO-BILLING | 9 | `admin/core/billing.py` | 220 | ✅ DONE |
 | 13 | SRS-SOMABRAIN-INTEGRATION | 3 | `admin/somabrain/` | 400+ | ✅ DONE |
@@ -89,7 +87,6 @@
       ...
   ```
 
-- [ ] **TASK 10.4**: Integrate with tool_system.py
   ```python
   @budget_gate(metric="tool_calls")
   async def execute_tool(request, tool_name, args):
@@ -211,10 +208,8 @@
 | `admin/core/context/lanes.py` | CONTEXT | 120 | ✅ |
 | `admin/core/context/builder.py` | CONTEXT | 210 | ✅ |
 | `admin/core/model_router.py` | MODEL-ROUTING | 220 | ✅ |
-| `admin/core/tool_system.py` | TOOL-SYSTEM | 280 | ✅ |
 | `admin/core/permission_matrix.py` | PERMISSION | 270 | ✅ |
 | `admin/core/chat_orchestrator.py` | CHAT-FLOW | 215 | ✅ |
-| `admin/agents/services/rlm_engine.py` | RLM-ENGINE | 240 | ✅ |
 | `admin/core/multimodal.py` | MULTIMODAL | 230 | ✅ |
 | `admin/core/billing.py` | LAGO-BILLING | 220 | ✅ |
 

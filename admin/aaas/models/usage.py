@@ -83,8 +83,8 @@ class UsageRecord(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "tenant_id": str(self.tenant_id),
-            "agent_id": str(self.agent_id) if self.agent_id else None,
+            "tenant_id": str(self.tenant_id),  # type: ignore[reportAttributeAccessIssue]
+            "agent_id": str(self.agent_id) if self.agent_id else None,  # type: ignore[reportAttributeAccessIssue]
             "metric_code": self.metric_code,
             "quantity": float(self.quantity),
             "unit": self.unit,

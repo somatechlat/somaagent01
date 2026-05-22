@@ -17,7 +17,6 @@ from typing import Any, Optional
 
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
-    AuditLog,
     Capability,
     Capsule,
     CapsuleInstance,
@@ -62,6 +61,8 @@ class RepositoryManager:
 
     def get_audit_store(self):
         """Get AuditLog manager (replaces AuditStore)."""
+        from admin.aaas.models.audit import AuditLog
+
         return AuditLog.objects
 
     def get_dlq_store(self):

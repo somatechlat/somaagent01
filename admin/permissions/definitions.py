@@ -340,11 +340,7 @@ def validate_permissions(permissions: list[str]) -> list[str]:
         List of invalid permission IDs.
     """
     all_perms = get_all_permissions()
-    return [
-        p
-        for p in permissions
-        if p not in all_perms and p != "*" and not p.endswith(":*")
-    ]
+    return [p for p in permissions if p not in all_perms and p != "*" and not p.endswith(":*")]
 
 
 __all__ = [

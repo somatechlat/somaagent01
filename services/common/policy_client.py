@@ -39,7 +39,7 @@ class PolicyClient:
         config = os.environ
         default_base_url = getattr(
             getattr(config, "external", None), "opa_url", None
-        ) or os.environ.get("SA01_POLICY_URL")
+        ) or os.environ.get("SA01_POLICY_URL") or os.environ.get("SA01_OPA_URL")
         if not base_url and not default_base_url:
             raise ValueError("SA01_POLICY_URL is required. No hardcoded defaults per ")
         self.base_url = base_url or default_base_url
@@ -76,6 +76,7 @@ class PolicyClient:
         if cached and (now - cached[1]) < self.cache_ttl:
             return cached[0]
 
+        assert self.base_url is not None
         url = f"{self.base_url.rstrip('/')}{self.data_path}"
         try:
             response = await self._client.post(url, json=payload)

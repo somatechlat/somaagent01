@@ -6,6 +6,8 @@
  * - Real implementation (no stubs)
  * - Proper error handling
  * - Timeout and retry support
+ *
+ * SECURITY: Auth via httpOnly cookie. No Authorization header or localStorage token.
  */
 
 export interface ApiClientConfig {
@@ -25,7 +27,6 @@ export class ApiError extends Error {
 
 export class ApiClient {
     private config: ApiClientConfig;
-    private token: string | null = null;
 
     constructor(config: Partial<ApiClientConfig> = {}) {
         this.config = {
@@ -36,21 +37,8 @@ export class ApiClient {
     }
 
     /**
-     * Set authentication token.
-     */
-    setToken(token: string): void {
-        this.token = token;
-    }
-
-    /**
-     * Clear authentication token.
-     */
-    clearToken(): void {
-        this.token = null;
-    }
-
-    /**
      * Make an API request with retry support.
+     * Auth is handled automatically via httpOnly cookie.
      */
     async request<T>(
         method: string,
@@ -60,7 +48,6 @@ export class ApiClient {
         const url = `${this.config.baseUrl}${path}`;
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
-            ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
             ...(options.headers ?? {}),
         };
 

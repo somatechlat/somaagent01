@@ -17,7 +17,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, List
 
-from prometheus_client import make_asgi_app
+from prometheus_client import make_asgi_app  # type: ignore[attr-defined]
 
 from .base_service import BaseSomaService
 from .health_monitor import UnifiedHealthMonitor
@@ -132,6 +132,10 @@ class SomaOrchestrator:
                     "Error stopping %s: %s", getattr(svc, "name", svc.__class__.__name__), exc
                 )
         LOGGER.info("All services stopped")
+
+    async def shutdown(self) -> None:
+        """Trigger a graceful shutdown of all registered services."""
+        await self._stop_all()
 
     def attach(self) -> None:
         """Integrate the orchestrator with a Django ASGI app.

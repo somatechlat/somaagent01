@@ -6,7 +6,6 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass
@@ -41,16 +40,12 @@ class ResourceManager:
     async def can_execute(self) -> bool:
         """Execute can execute."""
 
-        try:
-            self._semaphore.acquire_nowait()
-        except ValueError:
+        if self._semaphore.locked():
             return False
-        else:
-            self._semaphore.release()
-            return True
+        return True
 
     @asynccontextmanager
-    async def reserve(self) -> Any:  # type: ignore[return]
+    async def reserve(self):
         """Execute reserve."""
 
         await self._semaphore.acquire()

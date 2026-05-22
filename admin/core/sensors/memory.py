@@ -38,7 +38,7 @@ class MemorySensor(BaseSensor):
         content: str,
         memory_type: str = "episodic",
         importance: float = 0.5,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ) -> None:
         """Capture memory creation."""
         self.capture(
@@ -57,7 +57,7 @@ class MemorySensor(BaseSensor):
         results_count: int = 0,
         top_score: float = 0.0,
         latency_ms: float = 0.0,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ) -> None:
         """Capture memory recall/search."""
         self.capture(

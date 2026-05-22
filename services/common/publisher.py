@@ -17,12 +17,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Any, Optional
 
 from aiokafka.errors import KafkaError
 from prometheus_client import Counter
 
+from config.settings_registry import SettingsRegistry
 from services.common.event_bus import KafkaEventBus
 from services.common.messaging_utils import build_headers
 
@@ -33,6 +33,36 @@ PUBLISH_EVENTS = Counter(
     "Durable publisher events",
     labelnames=("result",),
 )
+
+_durable_publisher_instance: Optional[DurablePublisher] = None
+
+
+async def get_durable_publisher() -> Optional[DurablePublisher]:
+    """Get or create the singleton DurablePublisher.
+
+    Returns None if Kafka is not configured.
+    """
+    global _durable_publisher_instance
+    if _durable_publisher_instance is None:
+        from services.common.event_bus import KafkaSettings
+
+        settings = SettingsRegistry.get()
+        bootstrap = settings.kafka_bootstrap_servers
+        if not bootstrap:
+            LOGGER.warning("KAFKA_BOOTSTRAP_SERVERS not set — DurablePublisher unavailable")
+            return None
+
+        bus = KafkaEventBus(
+            KafkaSettings(
+                bootstrap_servers=bootstrap,
+                security_protocol=settings.kafka_security_protocol,
+                sasl_mechanism=settings.kafka_sasl_mechanism or None,
+                sasl_username=settings.kafka_sasl_username or None,
+                sasl_password=settings.kafka_sasl_password or None,
+            )
+        )
+        _durable_publisher_instance = DurablePublisher(bus=bus)
+    return _durable_publisher_instance
 
 
 class DurablePublisher:
@@ -59,12 +89,8 @@ class DurablePublisher:
 
         Returns {"published": bool, "enqueued": bool, "id": Optional[int]}.
         """
-        timeout_s: float
-        raw_timeout = os.environ.get("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
-        try:
-            timeout_s = float(raw_timeout)
-        except (TypeError, ValueError):
-            timeout_s = 2.0
+        settings = SettingsRegistry.get()
+        timeout_s: float = settings.publish_kafka_timeout_seconds
         try:
             hdrs = build_headers(
                 tenant=tenant or (payload.get("metadata") or {}).get("tenant"),

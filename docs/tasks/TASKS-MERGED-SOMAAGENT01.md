@@ -156,7 +156,7 @@
 | `admin/capsules/api/capsules.py` | IMPLEMENT | REST endpoints |
 | `tests/unit/test_registry_service.py` | CREATE | Unit tests |
 | `admin/common/session_manager.py` | CREATE | Redis sessions |
-| `services/common/chat_service.py` | IMPLEMENT | SomaBrain integration |
+| `admin/core/chat_orchestrator.py` | IMPLEMENT | SomaBrain integration |
 
 ---
 
@@ -606,7 +606,7 @@ async def logout(request):
 
 | Task | Priority | Estimated |
 |------|----------|-----------|
-| Create `aaas-login.ts` component | P0 | 4h |
+| Create `saas-login.ts` component | P0 | 4h |
 | Implement form validation | P0 | 2h |
 | Add OAuth buttons | P0 | 2h |
 | Handle error states | P0 | 2h |
@@ -616,7 +616,7 @@ async def logout(request):
 ### 2.2 Component Structure
 
 ```typescript
-// components/aaas-login.ts
+// components/saas-login.ts
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -744,7 +744,7 @@ export class AaasLogin extends LitElement {
 |------|----------|-----------|
 | Create MFA setup endpoint | P0 | 3h |
 | Create MFA verify endpoint | P0 | 2h |
-| Create `aaas-mfa-setup.ts` | P0 | 4h |
+| Create `saas-mfa-setup.ts` | P0 | 4h |
 | Create `aaas-mfa-verify.ts` | P0 | 3h |
 | Generate backup codes | P0 | 2h |
 | Store backup codes (encrypted) | P0 | 2h |
@@ -966,7 +966,7 @@ sequenceDiagram
 - [ ] GitHub OAuth callback
 - [ ] Logout endpoint
 - [ ] Token refresh middleware
-- [ ] `aaas-login.ts` component
+- [ ] `saas-login.ts` component
 
 ### Week 2
 - [ ] MFA setup flow
@@ -1130,7 +1130,7 @@ class QuotaService:
 ### 4.1 Implementation
 
 ```python
-# services/audit.py
+# services/audit.py — DELETED
 
 class AuditService:
     async def log(

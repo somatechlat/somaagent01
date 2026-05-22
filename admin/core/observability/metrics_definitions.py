@@ -38,6 +38,26 @@ def Histogram(name: str, *args, **kwargs):
 
 registry = REGISTRY
 
+# Fast A2A client metrics
+fast_a2a_errors_total = Counter(
+    "fast_a2a_errors_total",
+    "Total errors from Fast A2A client operations",
+    ["operation", "error_type"],
+    registry=registry,
+)
+fast_a2a_requests_total = Counter(
+    "fast_a2a_requests_total",
+    "Total Fast A2A client requests",
+    ["agent_url", "method", "status"],
+    registry=registry,
+)
+fast_a2a_latency_seconds = Histogram(
+    "fast_a2a_latency_seconds",
+    "Fast A2A client request latency",
+    ["agent_url", "method"],
+    registry=registry,
+)
+
 # Core app info
 app_info = Info("somaagent01_app_info", "Application information", registry=registry)
 app_info.info(

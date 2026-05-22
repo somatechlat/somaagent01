@@ -18,7 +18,12 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional
 
-from ninja import Router
+try:
+    from ninja import Router
+except Exception:
+    Router = None  # type: ignore
+
+from .base_service import BaseSomaService
 
 
 class UnifiedHealthRouter:
@@ -30,9 +35,9 @@ class UnifiedHealthRouter:
 
     def __init__(
         self,
-        services: List[object] | None = None,
+        services: List[BaseSomaService] | None = None,
         registry=None,
-        services_provider: Optional[Callable[[], List[object]]] = None,
+        services_provider: Optional[Callable[[], List[BaseSomaService]]] = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -72,6 +77,7 @@ def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
     registers a ``/v1/health`` endpoint that delegates to ``router_obj``.
     """
 
+    assert Router is not None
     router = Router()
 
     @router.get("/v1/health")

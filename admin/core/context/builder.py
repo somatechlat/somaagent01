@@ -16,7 +16,7 @@ Performance: 0ms for non-brain operations.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
 
 from admin.core.agentiq import derive_all_settings
 from admin.core.context.lanes import get_lane_allocation
@@ -34,11 +34,45 @@ class BrainClientProtocol(Protocol):
     async def recall(
         self,
         query: str,
-        capsule_id: str,
-        limit: int,
-        threshold: float,
+        *,
+        top_k: int = 10,
+        tenant: str | None = None,
+        namespace: str = "wm",
+        universe: str | None = None,
+        tags: List[str] | None = None,
+        tenant_id: str | None = None,
+        limit: int | None = None,
+        memory_type: str | None = None,
     ) -> List[Dict[str, Any]]:
         """Recall memories from brain."""
+        ...
+
+
+class MemoryClientProtocol(Protocol):
+    """Protocol for SomaFractalMemory client (dependency injection)."""
+
+    def search(
+        self,
+        query: str | list[float],
+        *,
+        top_k: int = 10,
+        tenant: str = "default",
+        namespace: str = "default",
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Search for similar memories."""
+        ...
+
+    async def search_async(
+        self,
+        query: str | list[float],
+        *,
+        top_k: int = 10,
+        tenant: str = "default",
+        namespace: str = "default",
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Async search for similar memories."""
         ...
 
 
@@ -48,22 +82,34 @@ class ContextBuilder:
 
     Uses AgentIQ for token budgeting and lane allocation
     from capsule.body.learned preferences.
+
+    Memory recall hierarchy:
+    1. SomaBrain (cognitive + memory) — PRIMARY
+    2. SomaFractalMemory (pure memory) — FALLBACK when Brain down
+    3. PostgreSQL history — ALWAYS available
     """
 
-    def __init__(self, brain_client: Optional[BrainClientProtocol] = None) -> None:
+    def __init__(
+        self,
+        brain_client: Optional[BrainClientProtocol] = None,
+        memory_client: Optional[MemoryClientProtocol] = None,
+    ) -> None:
         """
         Initialize ContextBuilder.
 
         Args:
-            brain_client: Optional SomaBrain client for memory recall
+            brain_client: Optional SomaBrain client for cognitive memory recall
+            memory_client: Optional SomaFractalMemory client for pure memory fallback
         """
         self._brain_client = brain_client
+        self._memory_client = memory_client
 
     async def build(
         self,
         capsule: "Capsule",
         user_message: str,
         history: Optional[List[Dict[str, str]]] = None,
+        budget_override: Optional[Dict[str, int]] = None,
     ) -> BuiltContext:
         """
         Build context from capsule.body.
@@ -72,6 +118,7 @@ class ContextBuilder:
             capsule: Capsule with body containing persona
             user_message: Current user message
             history: Optional conversation history
+            budget_override: Optional explicit token budget per lane from SimpleGovernor
 
         Returns:
             BuiltContext with all 5 lanes assembled
@@ -83,9 +130,12 @@ class ContextBuilder:
         settings = derive_all_settings(capsule)
         max_tokens = settings.max_tokens
 
-        # 2. Get lane allocation from learned or defaults
-        lanes = get_lane_allocation(capsule)
-        token_budget = lanes.allocate(max_tokens)
+        # 2. Get lane allocation from learned, defaults, or governor override
+        if budget_override:
+            token_budget = budget_override
+        else:
+            lanes = get_lane_allocation(capsule)
+            token_budget = lanes.allocate(max_tokens)
 
         # 3. Build system lane
         system = self._build_system_lane(persona, token_budget["system"])
@@ -105,10 +155,7 @@ class ContextBuilder:
         buffer_str = user_message[: token_budget["buffer"] * 4]  # ~4 chars per token
 
         # Estimate total tokens
-        total = sum(
-            len(s) // 4
-            for s in [system, history_str, memory_str, tools_str, buffer_str]
-        )
+        total = sum(len(s) // 4 for s in [system, history_str, memory_str, tools_str, buffer_str])
 
         return BuiltContext(
             system=system,
@@ -134,9 +181,7 @@ class ContextBuilder:
         # Truncate to budget
         return system[: budget * 4]
 
-    def _build_history_lane(
-        self, history: List[Dict[str, str]], budget: int
-    ) -> str:
+    def _build_history_lane(self, history: List[Dict[str, str]], budget: int) -> str:
         """Format conversation history."""
         if not history:
             return ""
@@ -166,39 +211,69 @@ class ContextBuilder:
         persona: Dict[str, Any],
         budget: int,
     ) -> str:
-        """Build memory lane via SomaBrain recall."""
-        if not self._brain_client:
-            return "[No memory client configured]"
-
+        """Build memory lane via SomaBrain recall with SomaFractalMemory fallback."""
         memory_config = persona.get("memory", {})
         recall_limit = memory_config.get("recall_limit", 10)
         threshold = memory_config.get("similarity_threshold", 0.7)
 
-        try:
-            memories = await self._brain_client.recall(
-                query=query,
-                capsule_id=str(capsule.id),
-                limit=recall_limit,
-                threshold=threshold,
-            )
+        # Try SomaBrain first (cognitive + memory)
+        if self._brain_client:
+            try:
+                memories = await self._brain_client.recall(
+                    query=query,
+                    top_k=recall_limit,
+                    tenant=str(capsule.tenant_id) if capsule.tenant_id else None,  # type: ignore[reportAttributeAccessIssue]
+                    namespace="chat_history",
+                )
+                if memories:
+                    return self._format_memories(memories, budget)
+            except Exception as exc:
+                logger.warning("SomaBrain recall failed: %s", exc)
 
-            # Format memories
-            parts = []
-            char_limit = budget * 4
-            current_chars = 0
+        # Fallback to SomaFractalMemory (pure memory, independent from Brain)
+        if self._memory_client:
+            try:
+                if hasattr(self._memory_client, "search_async"):
+                    results = await self._memory_client.search_async(
+                        query=query,
+                        top_k=recall_limit,
+                        tenant=str(capsule.tenant_id) if capsule.tenant_id else "default",  # type: ignore[reportAttributeAccessIssue]
+                        namespace="chat_history",
+                        filters={"capsule_id": str(capsule.id)},
+                    )
+                else:
+                    results = self._memory_client.search(
+                        query=query,
+                        top_k=recall_limit,
+                        tenant=str(capsule.tenant_id) if capsule.tenant_id else "default",  # type: ignore[reportAttributeAccessIssue]
+                        namespace="chat_history",
+                        filters={"capsule_id": str(capsule.id)},
+                    )
+                if results:
+                    # SFM returns results with payload; extract content
+                    memories = [
+                        {"content": r.get("payload", {}).get("content", str(r))} for r in results
+                    ]
+                    return self._format_memories(memories, budget)
+            except Exception as exc:
+                logger.warning("SomaFractalMemory search failed: %s", exc)
 
-            for mem in memories:
-                content = mem.get("content", str(mem))
-                if current_chars + len(content) > char_limit:
-                    break
-                parts.append(f"- {content}")
-                current_chars += len(content)
+        return "[Memory recall unavailable]"
 
-            return "\n".join(parts) if parts else "[No relevant memories]"
+    def _format_memories(self, memories: list[dict], budget: int) -> str:
+        """Format memory list into context string."""
+        parts = []
+        char_limit = budget * 4
+        current_chars = 0
 
-        except Exception as exc:
-            logger.warning("Memory recall failed: %s", exc)
-            return "[Memory recall unavailable]"
+        for mem in memories:
+            content = mem.get("content", str(mem))
+            if current_chars + len(content) > char_limit:
+                break
+            parts.append(f"- {content}")
+            current_chars += len(content)
+
+        return "\n".join(parts) if parts else "[No relevant memories]"
 
     def _build_tools_lane(self, persona: Dict[str, Any], budget: int) -> str:
         """Build tools description lane."""
@@ -231,6 +306,8 @@ async def build_context(
     user_message: str,
     history: Optional[List[Dict[str, str]]] = None,
     brain_client: Optional[BrainClientProtocol] = None,
+    memory_client: Optional[MemoryClientProtocol] = None,
+    budget_override: Optional[Dict[str, int]] = None,
 ) -> BuiltContext:
     """
     Convenience function to build context.
@@ -239,10 +316,12 @@ async def build_context(
         capsule: Capsule with body
         user_message: User's message
         history: Conversation history
-        brain_client: Optional brain client
+        brain_client: Optional SomaBrain client (primary memory recall)
+        memory_client: Optional SomaFractalMemory client (fallback when Brain down)
+        budget_override: Optional explicit token budget per lane (system, history, memory, tools, buffer)
 
     Returns:
         BuiltContext
     """
-    builder = ContextBuilder(brain_client=brain_client)
-    return await builder.build(capsule, user_message, history)
+    builder = ContextBuilder(brain_client=brain_client, memory_client=memory_client)
+    return await builder.build(capsule, user_message, history, budget_override)

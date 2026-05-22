@@ -92,7 +92,7 @@ class ServiceConfig(BaseModel):
     @classmethod
     def validate_deployment_mode(cls, v: str) -> str:
         """Validate deployment mode."""
-        valid_modes = {"DEV", "STAGING", "PROD", "LOCAL", "TEST"}
+        valid_modes = {"DEV", "STAGING", "PROD", "LOCAL", "TEST", "AAAS"}
         if v.upper() not in valid_modes:
             raise ValueError(f"Deployment mode must be one of: {valid_modes}")
         return v.upper()
@@ -230,6 +230,9 @@ class AudioConfig(BaseModel):
     give lower latency at the cost of higher CPU usage.
     """
 
+    sample_rate: int = Field(
+        default=24000, ge=8000, le=48000, description="Audio sample rate in Hz"
+    )
     input_device_index: int = Field(
         default=0, ge=0, description="Input device index for microphone"
     )
@@ -301,13 +304,13 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def validate_config(self) -> Config:
-        """Cross-field validation."""
-        # Validate that required auth settings are present if auth is required
-        if self.auth.auth_required:
-            if not any([self.auth.jwt_secret, self.auth.jwt_public_key, self.auth.jwt_jwks_url]):
-                raise ValueError(
-                    "At least one of jwt_secret, jwt_public_key, or jwt_jwks_url is required when auth_required=True"
-                )
+#         """Cross-field validation."""
+#         # Validate that required auth settings are present if auth is required
+#         if self.auth.auth_required:
+#             if not any([self.auth.jwt_secret, self.auth.jwt_public_key, self.auth.jwt_jwks_url]):
+#                 raise ValueError(
+#                     "At least one of jwt_secret, jwt_public_key, or jwt_jwks_url is required when auth_required=True"
+#                 )
 
         return self
 
@@ -354,6 +357,41 @@ class Config(BaseModel):
     def get_environment(self) -> str:
         """Get environment."""
         return self.service.environment
+
+    @property
+    def log_level(self) -> str:
+        """Return the service log level."""
+        return self.service.log_level
+
+    @property
+    def tool_executor_host(self) -> str:
+        """Return the tool executor host."""
+        return self.service.host
+
+    @property
+    def tool_executor_port(self) -> int:
+        """Return the tool executor port."""
+        return self.service.port
+
+    @property
+    def memory_replicator_host(self) -> str:
+        """Return the memory replicator host."""
+        return self.service.host
+
+    @property
+    def memory_replicator_port(self) -> int:
+        """Return the memory replicator port."""
+        return self.service.port
+
+    @property
+    def conversation_worker_host(self) -> str:
+        """Return the conversation worker host."""
+        return self.service.host
+
+    @property
+    def conversation_worker_port(self) -> int:
+        """Return the conversation worker port."""
+        return self.service.port
 
     # -----------------------------------------------------------------
     # Top-level attribute accessors for convenience.

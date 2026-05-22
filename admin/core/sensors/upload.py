@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from admin.core.sensors.base import BaseSensor
+from admin.core.sensors.base import BaseSensor, SensorEvent
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +40,11 @@ class UploadSensor(BaseSensor):
         content_type: str,
         size_bytes: int,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture upload start event."""
         return self.capture(
             event_type="upload.start",
-            data={
+            payload={
                 "session_id": session_id,
                 "filename": filename,
                 "content_type": content_type,
@@ -61,11 +61,11 @@ class UploadSensor(BaseSensor):
         storage_url: str,
         size_bytes: int,
         content_type: str,
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture upload complete event."""
         return self.capture(
             event_type="upload.complete",
-            data={
+            payload={
                 "session_id": session_id,
                 "file_id": file_id,
                 "filename": filename,
@@ -81,11 +81,11 @@ class UploadSensor(BaseSensor):
         processing_type: str,  # e.g., "embedding", "ocr", "thumbnail"
         status: str,  # e.g., "started", "completed", "failed"
         result: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture upload processing event."""
         return self.capture(
             event_type="upload.processing",
-            data={
+            payload={
                 "file_id": file_id,
                 "processing_type": processing_type,
                 "status": status,
@@ -97,12 +97,12 @@ class UploadSensor(BaseSensor):
         self,
         file_id: str,
         filename: str,
-        deleted_by: str = None,
-    ) -> str:
+        deleted_by: Optional[str] = None,
+    ) -> Optional[SensorEvent]:
         """Capture upload deletion event."""
         return self.capture(
             event_type="upload.deletion",
-            data={
+            payload={
                 "file_id": file_id,
                 "filename": filename,
                 "deleted_by": deleted_by,
@@ -115,11 +115,11 @@ class UploadSensor(BaseSensor):
         filename: str,
         error: str,
         error_type: str = "upload",
-    ) -> str:
+    ) -> Optional[SensorEvent]:
         """Capture upload error event."""
         return self.capture(
             event_type="upload.error",
-            data={
+            payload={
                 "session_id": session_id,
                 "filename": filename,
                 "error": error,

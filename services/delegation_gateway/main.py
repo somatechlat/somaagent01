@@ -27,17 +27,18 @@ from django.core.asgi import get_asgi_application
 from django.http import HttpResponse
 from ninja import NinjaAPI, Router
 from prometheus_client import (
-    CONTENT_TYPE_LATEST,
     Counter,
     Gauge,
     generate_latest,
     Histogram,
     start_http_server,
 )
+
+CONTENT_TYPE_LATEST: str = "text/plain; version=0.0.4; charset=utf-8"
 from pydantic import BaseModel
-from services.common.delegation_store import DelegationStore
 
 from admin.common.exceptions import NotFoundError
+from services.common.delegation_store import DelegationStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher
 from services.common.tracing import setup_tracing

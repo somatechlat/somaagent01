@@ -12,9 +12,6 @@ VIBE Compliance:
 from __future__ import annotations
 
 import logging
-from typing import Any
-
-from services.common.protocols import MemoryServiceProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +32,7 @@ class DirectMemoryAdapter:
 
         # Import memory service
         try:
-            from somafractalmemory.services import MemoryService
+            from somafractalmemory.services import MemoryService  # type: ignore[import]
 
             self._memory_service = MemoryService(namespace=namespace)
             logger.info("✅ DirectMemoryAdapter initialized")
@@ -108,6 +105,29 @@ class DirectMemoryAdapter:
             tenant=tenant,
             namespace=ns,
         )
+
+    async def store_async(
+        self,
+        coordinate: tuple[float, ...],
+        payload: dict,
+        *,
+        tenant: str = "default",
+        namespace: str | None = None,
+    ) -> dict:
+        """Async store data at a coordinate."""
+        return self.store(coordinate=coordinate, payload=payload, tenant=tenant, namespace=namespace)
+
+    async def search_async(
+        self,
+        query: str | list[float],
+        *,
+        top_k: int = 10,
+        tenant: str = "default",
+        namespace: str | None = None,
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Async search for similar vectors."""
+        return self.search(query=query, top_k=top_k, tenant=tenant, namespace=namespace, filters=filters)
 
     def health(self) -> dict:
         """Health check."""

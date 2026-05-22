@@ -196,6 +196,7 @@ async def decode_token(token: str) -> TokenPayload:
         expected_issuer = config.issuer if strict_issuer else None
 
         # Decode and verify
+        # VIBE SECURITY: verify_aud is enabled when JWT_ISSUER_STRICT=true (default)
         payload = jwt.decode(
             token,
             rsa_key,
@@ -203,7 +204,7 @@ async def decode_token(token: str) -> TokenPayload:
             audience=config.client_id if strict_issuer else None,
             issuer=expected_issuer,
             options={
-                "verify_aud": False,  # Keycloak may have multiple audiences
+                "verify_aud": strict_issuer,
                 "verify_iss": strict_issuer,
             },
         )
@@ -223,6 +224,8 @@ async def decode_token(token: str) -> TokenPayload:
 class AuthBearer(HttpBearer):
     """Bearer token authentication for Django Ninja.
 
+    Supports both Bearer header and httpOnly cookie fallback.
+
     Usage:
         @router.get("/protected", auth=AuthBearer())
         async def protected_endpoint(request):
@@ -231,9 +234,12 @@ class AuthBearer(HttpBearer):
     """
 
     async def authenticate(self, request, token: str) -> TokenPayload | None:
-        """Authenticate the bearer token."""
+        """Authenticate the bearer token or cookie."""
         try:
-            payload = await decode_token(token)
+            effective_token = token or request.COOKIES.get("access_token", "")
+            if not effective_token:
+                return None
+            payload = await decode_token(effective_token)
             _apply_session_cookie(payload, request)
             return payload
         except UnauthorizedError:
@@ -242,6 +248,8 @@ class AuthBearer(HttpBearer):
 
 class RoleRequired(HttpBearer):
     """Bearer token authentication with role requirement.
+
+    Supports both Bearer header and httpOnly cookie fallback.
 
     Usage:
         @router.get("/admin-only", auth=RoleRequired("admin"))
@@ -258,7 +266,10 @@ class RoleRequired(HttpBearer):
     async def authenticate(self, request, token: str) -> TokenPayload | None:
         """Authenticate and check roles."""
         try:
-            payload = await decode_token(token)
+            effective_token = token or request.COOKIES.get("access_token", "")
+            if not effective_token:
+                return None
+            payload = await decode_token(effective_token)
             _apply_session_cookie(payload, request)
 
             # Check if user has at least one required role
@@ -275,7 +286,7 @@ class RoleRequired(HttpBearer):
 class TenantRequired(HttpBearer):
     """Bearer token authentication with tenant requirement.
 
-    Extracts tenant_id from token and validates access.
+    Supports both Bearer header and httpOnly cookie fallback.
 
     Usage:
         @router.get("/tenant-resource", auth=TenantRequired())
@@ -287,7 +298,10 @@ class TenantRequired(HttpBearer):
     async def authenticate(self, request, token: str) -> TokenPayload | None:
         """Authenticate and extract tenant."""
         try:
-            payload = await decode_token(token)
+            effective_token = token or request.COOKIES.get("access_token", "")
+            if not effective_token:
+                return None
+            payload = await decode_token(effective_token)
             _apply_session_cookie(payload, request)
 
             # Tenant ID must be present
@@ -373,9 +387,10 @@ def require_roles(*roles: str):
 
 
 def require_permission(permission: str):
-    """Decorator to require specific permission.
+    """Decorator to require specific permission via UnifiedGate/SpiceDB.
 
-    For use with SpiceDB integration.
+    VIBE SECURITY: This enforces real permission checks.
+    If SpiceDB/UnifiedGate is unavailable, it FAILS CLOSED (denies access).
 
     Usage:
         @router.get("/resource/{id}")
@@ -385,21 +400,28 @@ def require_permission(permission: str):
     """
 
     def decorator(func):
-        """Execute decorator.
-
-        Args:
-            func: The func.
-        """
-
         async def wrapper(request, *args, **kwargs):
-            # For now, just verify authentication
-            """Execute wrapper.
-
-            Args:
-                request: The request.
-            """
-
             user = get_current_user(request)
+
+            # FAIL-CLOSED: If no user, deny immediately
+            if not user:
+                raise ForbiddenError(f"Permission denied: {permission} — authentication required")
+
+            # Check permission via UnifiedGate
+            from admin.core.agentiq import UnifiedGate
+
+            gate = UnifiedGate()
+            # For endpoint-level permissions, we check without a capsule
+            # The gate will use the default policy (deny if no policy defined)
+            allowed = await gate.check_endpoint_permission(
+                user_id=user.sub,
+                tenant_id=user.effective_tenant_id,
+                permission=permission,
+            )
+
+            if not allowed:
+                raise ForbiddenError(f"Permission denied: {permission}")
+
             return await func(request, *args, **kwargs)
 
         return wrapper

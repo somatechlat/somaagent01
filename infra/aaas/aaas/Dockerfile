@@ -109,7 +109,7 @@ ENV PYTHONPATH=/app/somaAgent01:/app/somabrain:/app/somafractalmemory:/app:$PYTH
 # ---------------------------------------------------------------------------
 # CONFIGURATION & SCRIPTS
 # ---------------------------------------------------------------------------
-COPY somaAgent01/infra/aaas/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY somaAgent01/infra/aaas/aaas/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY somaAgent01/infra/aaas/start_aaas.sh /app/start_aaas.sh
 
 # Create Helper Management Scripts

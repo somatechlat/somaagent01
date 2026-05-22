@@ -232,7 +232,9 @@ async def get_prometheus_metrics(request) -> str:
     Returns metrics in Prometheus exposition format.
     DevOps: Scrape with Prometheus server.
     """
-    from admin.core.observability.metrics import get_all_metrics_prometheus
+    from admin.core.observability.metrics import (
+        get_all_metrics_prometheus,  # type: ignore[import-not-found]
+    )
 
     try:
         return get_all_metrics_prometheus()
@@ -260,7 +262,9 @@ async def get_metrics_json(request) -> MetricsJsonResponse:
 
     Alternative to Prometheus format for dashboard integration.
     """
-    from admin.core.observability.metrics import get_all_metrics_json
+    from admin.core.observability.metrics import (
+        get_all_metrics_json,  # type: ignore[import-not-found]
+    )
 
     try:
         metrics_data = get_all_metrics_json()

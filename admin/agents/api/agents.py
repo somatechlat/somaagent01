@@ -14,10 +14,10 @@ from uuid import uuid4
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.aaas.models import AgentRole, AgentUser
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ForbiddenError, NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
-from admin.aaas.models import AgentRole, AgentUser
 
 router = Router(tags=["agents"])
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def _agent_user_to_schema(au: AgentUser) -> AgentUserSchema:
     return AgentUserSchema(
         id=str(au.id),
         user_id=str(au.user_id),
-        agent_id=str(au.agent_id),
+        agent_id=str(au.agent_id),  # type: ignore[attr-defined]
         role=au.role,
         added_at=au.created_at,
     )

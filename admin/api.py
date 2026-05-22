@@ -177,7 +177,7 @@ def create_api() -> NinjaAPI:
     safe_add_router("/webhooks", billing_webhooks_router)
 
     # SomaBrain Memory (cognitive memory)
-    from admin.somabrain.api import router as somabrain_router
+    from admin.somabrain.api_router import router as somabrain_router
 
     safe_add_router("/somabrain", somabrain_router)
 

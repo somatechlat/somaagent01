@@ -35,7 +35,6 @@
 
 ```
 admin/agents/services/
-├── rlm_engine.py       # RLMEngine class
 ├── mind_body.py        # Mind-Body loop
 └── brain_bridge.py     # brain.ask() bridge
 ```

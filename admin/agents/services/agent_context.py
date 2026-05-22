@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agent import Agent
+    from agent import Agent  # type: ignore[import]
 
 import admin.core.helpers.log as Log
 from admin.core.helpers.defer import DeferredTask
@@ -103,7 +103,7 @@ class AgentContext:
         """Execute agent0."""
 
         if self._agent0 is None:
-            from agent import Agent
+            from agent import Agent  # type: ignore[import]
 
             self._agent0 = Agent(0, self.config, self)
         return self._agent0
@@ -244,7 +244,7 @@ class AgentContext:
 
         self.kill_process()
         self.log.reset()
-        from agent import Agent
+        from agent import Agent  # type: ignore[import]
 
         self._agent0 = Agent(0, self.config, self)
         self.streaming_agent = None
@@ -271,7 +271,7 @@ class AgentContext:
             broadcast_level: The broadcast_level.
         """
 
-        from agent import Agent
+        from agent import Agent  # type: ignore[import]
 
         self.paused = False
         current_agent = self.get_agent()
@@ -306,7 +306,7 @@ class AgentContext:
             user: The user.
         """
 
-        from agent import Agent
+        from agent import Agent  # type: ignore[import]
 
         try:
             if user:

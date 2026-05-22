@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone as dt_timezone
-from typing import Optional
+from typing import Any, Optional
 
 from django.utils import timezone
 from ninja import Router
@@ -417,17 +417,12 @@ async def terminate_by_ip(
     auth=AuthBearer(),
 )
 async def get_session_config(request) -> dict:
-    """Get session configuration.
+    """Get session configuration from Redis.
 
     DevOps: Session settings.
     """
     session_manager = await get_session_manager()
-    return {
-        "session_timeout_minutes": int(session_manager.session_ttl / 60),
-        "max_sessions_per_user": 5,
-        "require_mfa_reauthentication": True,
-        "session_cookie_secure": True,
-    }
+    return await session_manager.get_config()
 
 
 @router.patch(
@@ -440,7 +435,16 @@ async def update_session_config(
     session_timeout_minutes: Optional[int] = None,
     max_sessions_per_user: Optional[int] = None,
 ) -> dict:
-    """Update session configuration."""
+    """Update session configuration in Redis."""
+    session_manager = await get_session_manager()
+    updates: dict[str, Any] = {}
+    if session_timeout_minutes is not None:
+        updates["session_timeout_minutes"] = session_timeout_minutes
+    if max_sessions_per_user is not None:
+        updates["max_sessions_per_user"] = max_sessions_per_user
+
+    updated_config = await session_manager.update_config(updates)
     return {
         "updated": True,
+        "config": updated_config,
     }

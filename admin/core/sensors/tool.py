@@ -37,7 +37,7 @@ class ToolSensor(BaseSensor):
         self,
         tool_name: str,
         tool_input: dict,
-        execution_id: str = None,
+        execution_id: str | None = None,
     ) -> None:
         """Capture tool execution start."""
         self.capture(
@@ -53,7 +53,7 @@ class ToolSensor(BaseSensor):
         self,
         tool_name: str,
         tool_output: Any,
-        execution_id: str = None,
+        execution_id: str | None = None,
         latency_ms: float = 0.0,
         success: bool = True,
     ) -> None:
@@ -74,7 +74,7 @@ class ToolSensor(BaseSensor):
         tool_name: str,
         error_type: str,
         error_message: str,
-        execution_id: str = None,
+        execution_id: str | None = None,
     ) -> None:
         """Capture tool execution error."""
         self.capture(

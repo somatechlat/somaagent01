@@ -62,15 +62,7 @@ This document defines the **architectural patterns** enforced across all SOMA re
 
 Large services are decomposed into focused sub-modules:
 
-```
-services/common/
-├── chat_service.py         # Facade (orchestrator)
-└── chat/
-    ├── message_service.py      # Core messaging
-    ├── conversation_service.py # CRUD operations
-    ├── session_manager.py      # Agent sessions
-    └── memory_bridge.py        # Memory delegation
-```
+*(Stale chat service example removed — `services/common/chat/` modules were deleted.)*
 
 ---
 

@@ -34,9 +34,22 @@ class BaseSomaService(ABC):
     #: Human readable name – must be overridden by subclasses.
     name: str
 
-    def __init__(self) -> None:
+    #: Startup order for deterministic service initialization.
+    _startup_order: int = 0
+
+    #: Critical flag – if True, failure to start aborts orchestrator startup.
+    _critical: bool = False
+
+    #: Optional ASGI app reference for services that expose HTTP endpoints.
+    app: Any = None
+
+    #: Optional configuration reference.
+    config: Any = None
+
+    def __init__(self, config: Any = None) -> None:
         """Initialize the instance."""
 
+        self.config = config
         self._running = asyncio.Event()
 
     # ------------------------------------------------------------------
@@ -86,6 +99,13 @@ class BaseSomaService(ABC):
         return {
             "healthy": self._running.is_set(),
             "details": {"name": getattr(self, "name", self.__class__.__name__)},
+        }
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Return a serialisable representation of the service."""
+        return {
+            "name": getattr(self, "name", self.__class__.__name__),
+            "healthy": self._running.is_set(),
         }
 
     async def register_metrics(self) -> None:

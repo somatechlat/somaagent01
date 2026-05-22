@@ -91,7 +91,7 @@ async def kafka_status(
         group_id=group,
         enable_auto_commit=False,
         security_protocol=ks.security_protocol,
-        sasl_mechanism=ks.sasl_mechanism,
+        sasl_mechanism=ks.sasl_mechanism or "",
         sasl_plain_username=ks.sasl_username,
         sasl_plain_password=ks.sasl_password,
     )
@@ -149,7 +149,7 @@ async def kafka_seek_to_end(
         group_id=group,
         enable_auto_commit=False,
         security_protocol=ks.security_protocol,
-        sasl_mechanism=ks.sasl_mechanism,
+        sasl_mechanism=ks.sasl_mechanism or "",
         sasl_plain_username=ks.sasl_username,
         sasl_plain_password=ks.sasl_password,
     )

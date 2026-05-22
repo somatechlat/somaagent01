@@ -12,7 +12,7 @@ from django.contrib import admin
 from django.http import FileResponse, JsonResponse
 from django.urls import path, re_path
 
-from admin.api import api
+from services.gateway.api_router import api
 
 
 def health_check(request):

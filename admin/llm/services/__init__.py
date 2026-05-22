@@ -4,7 +4,6 @@ from admin.llm.services.litellm_client import (
     apply_rate_limiter,
     apply_rate_limiter_sync,
     BrowserCompatibleChatWrapper,
-    ChatChunk,
     ChatGenerationResult,
     get_api_key,
     LiteLLMChatWrapper,
@@ -13,6 +12,7 @@ from admin.llm.services.litellm_client import (
 from admin.llm.services.litellm_helpers import (
     get_rate_limiter,
 )
+from admin.llm.services.litellm_schemas import ChatChunk
 
 __all__ = [
     "LiteLLMChatWrapper",

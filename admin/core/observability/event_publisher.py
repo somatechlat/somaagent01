@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from .metrics import (
-    event_publish_errors_total,
+    event_publish_failure_total,
     event_publish_latency_seconds,
     event_published_total,
     increment_counter,
@@ -33,12 +33,12 @@ class EventPublisher:
     """
 
     _instance = None
-    _lock = threading.Lock()
+    _singleton_lock = threading.Lock()
 
     def __new__(cls):
         """Singleton pattern implementation."""
         if cls._instance is None:
-            with cls._lock:
+            with cls._singleton_lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
@@ -63,8 +63,8 @@ class EventPublisher:
         self.event_buffer: List[Dict] = []
         self._http_client: Optional[httpx.AsyncClient] = None
         self._flush_task: Optional[asyncio.Task] = None
-        self._stop_event = threading.Event()
-        self._lock = threading.Lock()
+        self._lock = asyncio.Lock()
+        self._started = False
 
         # REAL IMPLEMENTATION - Metrics tracking
         self._events_published = 0
@@ -73,9 +73,6 @@ class EventPublisher:
 
         self._initialized = True
         set_health_status("event_publisher", "initialized", True)
-
-        # Start background flush task
-        self._start_background_flush()
 
     @property
     def http_client(self) -> httpx.AsyncClient:
@@ -86,6 +83,20 @@ class EventPublisher:
             )
         return self._http_client
 
+    def start(self):
+        """Start the background flush task in the current event loop."""
+        if self._started:
+            return
+        self._started = True
+        self._flush_task = asyncio.create_task(self._flush_loop())
+
+    def stop(self):
+        """Stop the background flush task."""
+        if self._flush_task is not None:
+            self._flush_task.cancel()
+            self._flush_task = None
+        self._started = False
+
     async def publish(self, event_type: str, data: Dict[str, Any], metadata: Optional[Dict] = None):
         """
         REAL IMPLEMENTATION - Publish event to SomaBrain.
@@ -95,6 +106,9 @@ class EventPublisher:
             data: Event data payload
             metadata: Optional metadata for the event
         """
+        if not self._started:
+            self.start()
+
         start_time = time.time()
 
         try:
@@ -107,7 +121,7 @@ class EventPublisher:
             }
 
             # Add to buffer
-            with self._lock:
+            async with self._lock:
                 self.event_buffer.append(event)
 
                 # Flush if batch size reached
@@ -127,7 +141,7 @@ class EventPublisher:
         except Exception as e:
             # REAL IMPLEMENTATION - Track publish errors
             increment_counter(
-                event_publish_errors_total,
+                event_publish_failure_total,
                 {"event_type": event_type, "error_type": type(e).__name__},
             )
             increment_counter(event_published_total, {"event_type": event_type, "status": "failed"})
@@ -135,6 +149,26 @@ class EventPublisher:
             self._events_failed += 1
             set_health_status("event_publisher", "publishing", False)
             raise
+
+    async def _flush_loop(self):
+        """Background loop that periodically flushes the event buffer."""
+        try:
+            while True:
+                await asyncio.sleep(self.flush_interval)
+                current_time = time.time()
+                if (
+                    self.event_buffer
+                    and current_time - self._last_flush_time >= self.flush_interval
+                ):
+                    try:
+                        await self._flush_batch()
+                    except Exception as e:
+                        increment_counter(
+                            event_publish_failure_total,
+                            {"event_type": "background_flush", "error_type": type(e).__name__},
+                        )
+        except asyncio.CancelledError:
+            pass
 
     async def _flush_batch(self):
         """
@@ -144,7 +178,7 @@ class EventPublisher:
         if not self.event_buffer:
             return
 
-        with self._lock:
+        async with self._lock:
             batch = self.event_buffer.copy()
             self.event_buffer.clear()
 
@@ -175,7 +209,7 @@ class EventPublisher:
             except httpx.TimeoutException as e:
                 # REAL IMPLEMENTATION - Track timeout
                 increment_counter(
-                    event_publish_errors_total,
+                    event_publish_failure_total,
                     {"event_type": "batch_flush", "error_type": "timeout"},
                 )
 
@@ -186,7 +220,7 @@ class EventPublisher:
             except httpx.HTTPStatusError as e:
                 # REAL IMPLEMENTATION - Track HTTP errors
                 increment_counter(
-                    event_publish_errors_total,
+                    event_publish_failure_total,
                     {"event_type": "batch_flush", "error_type": f"http_{e.response.status_code}"},
                 )
 
@@ -204,7 +238,7 @@ class EventPublisher:
             except Exception as e:
                 # REAL IMPLEMENTATION - Track other errors
                 increment_counter(
-                    event_publish_errors_total,
+                    event_publish_failure_total,
                     {"event_type": "batch_flush", "error_type": type(e).__name__},
                 )
 
@@ -216,34 +250,7 @@ class EventPublisher:
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(RETRY_DELAY * (2**attempt))  # Exponential backoff
 
-    def _start_background_flush(self):
-        """Start background task for periodic flushing."""
 
-        def flush_loop():
-            """Execute flush loop."""
-
-            while not self._stop_event.is_set():
-                time.sleep(self.flush_interval)
-
-                # Check if we need to flush based on time
-                current_time = time.time()
-                if (
-                    self.event_buffer
-                    and current_time - self._last_flush_time >= self.flush_interval
-                ):
-                    # Run async flush in new event loop
-                    try:
-                        asyncio.run(self._flush_batch())
-                    except Exception as e:
-                        # Track background flush errors
-                        increment_counter(
-                            event_publish_errors_total,
-                            {"event_type": "background_flush", "error_type": type(e).__name__},
-                        )
-
-        # Start background thread
-        self._flush_thread = threading.Thread(target=flush_loop, daemon=True)
-        self._flush_thread.start()
 
     async def flush(self):
         """
@@ -269,8 +276,8 @@ class EventPublisher:
         """
         REAL IMPLEMENTATION - Close the event publisher.
         """
-        # Stop background thread
-        self._stop_event.set()
+        # Stop background task
+        self.stop()
 
         # Flush remaining events
         if self.event_buffer:

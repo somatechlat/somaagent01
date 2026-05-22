@@ -47,8 +47,8 @@ def ensure_metrics_server(settings: object) -> None:
     if _METRICS_SERVER_STARTED:
         return
 
-    default_port = int(os.environ.service.metrics_port)
-    default_host = str(os.environ.service.metrics_host)
+    default_port = int(os.environ.get("METRICS_PORT", "9090"))
+    default_host = str(os.environ.get("METRICS_HOST", "0.0.0.0"))
 
     port = int(os.environ.get("TOOL_EXECUTOR_METRICS_PORT", str(default_port)))
     if port <= 0:

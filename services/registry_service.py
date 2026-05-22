@@ -131,6 +131,7 @@ class RegistryService:
             # 5. Canonicalize (JCS - RFC 8785)
             # This produces a strictly deterministic checkable byte string.
             canonical_bytes = jcs.canonicalize(payload)
+            assert isinstance(canonical_bytes, bytes)
 
             # 6. Sign
             signed = self._signing_key.sign(canonical_bytes, encoder=Base64Encoder)
@@ -181,6 +182,7 @@ class RegistryService:
         }
 
         canonical_bytes = jcs.canonicalize(payload)
+        assert isinstance(canonical_bytes, bytes)
 
         # 2. Verify
         try:

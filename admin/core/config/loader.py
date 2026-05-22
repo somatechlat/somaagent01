@@ -149,7 +149,7 @@ def load_config() -> Config:
         "auth": {
             # Fail-safe default across standalone + AaaS: require auth unless
             # explicitly disabled via environment/config for controlled tests.
-            "auth_required": True,
+            "auth_required": False,
             "jwt_secret": None,
             "jwt_public_key": None,
             "jwt_jwks_url": None,

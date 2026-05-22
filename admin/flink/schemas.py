@@ -15,7 +15,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-
 # =============================================================================
 # FLINK JOB SCHEMAS
 # =============================================================================
@@ -100,7 +99,7 @@ class UsageMeteringEvent:
     quantity: int
     unit: str  # tokens, calls, bytes
     timestamp: str
-    metadata: dict = None
+    metadata: dict | None = None
 
 
 @dataclass

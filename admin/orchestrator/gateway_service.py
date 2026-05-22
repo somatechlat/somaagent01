@@ -37,7 +37,7 @@ class GatewayService(BaseSomaService):
 
         super().__init__()
         # Import lazily to avoid circular imports at module load time.
-        from services.gateway.main import app as gateway_app
+        from services.gateway.main import app as gateway_app  # type: ignore[attr-defined]
 
         # The gateway is a Django ASGI instance; we keep a reference for health.
         self.app: Any = gateway_app

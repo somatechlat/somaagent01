@@ -132,6 +132,7 @@ async def upsert_catalog_item(name: str, item: ToolCatalogItem) -> dict:
     entry = ToolCatalogEntry(
         name=name,
         description=item.description or "",
+        schema={},
         tags=item.tags or [],
         enabled=item.enabled,
     )

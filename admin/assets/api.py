@@ -116,7 +116,7 @@ async def upload_asset(
     Security Auditor: Size validation, content type checks.
     """
     # Read file content
-    content = await file.aread() if hasattr(file, "aread") else file.read()
+    content = await file.aread() if hasattr(file, "aread") else file.read()  # type: ignore[attr-defined]
 
     if len(content) > MAX_ASSET_SIZE:
         raise BadRequestError(f"File exceeds maximum size of {MAX_ASSET_SIZE // 1024 // 1024}MB")

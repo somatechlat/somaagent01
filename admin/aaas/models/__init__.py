@@ -19,7 +19,7 @@ from admin.aaas.models.choices import (
     TenantRole,
     TenantStatus,
 )
-from admin.aaas.models.features import FeatureProvider, AaasFeature, TierFeature
+from admin.aaas.models.features import AaasFeature, FeatureProvider, TierFeature
 
 # Profile models
 from admin.aaas.models.profiles import (

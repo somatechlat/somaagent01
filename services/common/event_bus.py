@@ -38,15 +38,26 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls) -> "KafkaSettings":
-        """Execute from env."""
+        """Load from centralized SettingsRegistry with env fallback."""
+        try:
+            from config.settings_registry import SettingsRegistry
 
-        return cls(
-            bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
-            security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
-            sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-            sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
-        )
+            settings = SettingsRegistry.get()
+            return cls(
+                bootstrap_servers=settings.kafka_bootstrap_servers or "kafka:9092",
+                security_protocol=settings.kafka_security_protocol,
+                sasl_mechanism=settings.kafka_sasl_mechanism or None,
+                sasl_username=settings.kafka_sasl_username or None,
+                sasl_password=settings.kafka_sasl_password or None,
+            )
+        except Exception:
+            return cls(
+                bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+                security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+                sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
+                sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
+                sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+            )
 
 
 class KafkaEventBus:
@@ -113,7 +124,8 @@ class KafkaEventBus:
                     else:
                         payload = json.loads(json.dumps(payload, ensure_ascii=False, default=str))
                 except Exception:
-                    payload = {"payload": str(payload)}
+                    LOGGER.error("Kafka payload serialization failed", exc_info=True)
+                    raise
             inject_trace_context(payload)
             message = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             # Convert header dict to list of (key, bytes) tuples expected by aiokafka
@@ -154,7 +166,7 @@ class KafkaEventBus:
         LOGGER.info("Started consumer", extra={"topic": topic, "group_id": group_id})
         try:
             async for message in consumer:
-                data = json.loads(message.value.decode("utf-8"))
+                data = json.loads(message.value.decode("utf-8") if message.value else "{}")
                 with with_trace_context(data):
                     with TRACER.start_as_current_span(
                         "kafka.consume",

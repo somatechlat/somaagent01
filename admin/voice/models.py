@@ -7,6 +7,7 @@ Per SRS Section 6: VoicePersona, VoiceSession, VoiceModel
 References existing LLMModelConfig - NO duplicate model creation.
 """
 
+import datetime
 import uuid
 
 from django.conf import settings
@@ -117,6 +118,9 @@ class VoicePersona(TenantScopedModel):
     is_active = models.BooleanField(default=True, db_index=True)
     is_default = models.BooleanField(default=False)
 
+    # Type-checker visible ForeignKey _id attribute
+    llm_config_id: uuid.UUID | None
+
     class Meta:
         """Meta class implementation."""
 
@@ -225,6 +229,21 @@ class VoiceSession(TenantScopedModel):
     started_at = models.DateTimeField(null=True, blank=True)
     terminated_at = models.DateTimeField(null=True, blank=True)
 
+    # Type-checker visible ForeignKey _id attribute
+    persona_id: uuid.UUID | None
+
+    @property
+    def audio_seconds(self) -> float:
+        return self.audio_input_seconds + self.audio_output_seconds
+
+    @property
+    def ended_at(self) -> datetime.datetime | None:
+        return self.terminated_at
+
+    @ended_at.setter
+    def ended_at(self, value: datetime.datetime | None) -> None:
+        self.terminated_at = value
+
     class Meta:
         """Meta class implementation."""
 
@@ -328,6 +347,14 @@ class VoiceModel(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def voice_id(self) -> str:
+        return self.id
+
+    @property
+    def is_default(self) -> bool:
+        return False
 
     class Meta:
         """Meta class implementation."""

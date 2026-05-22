@@ -9,9 +9,14 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from ninja import Router
+try:
+    from ninja import Router
 
-router = Router()
+    router = Router()
+except Exception:
+    router = None  # type: ignore
+
+from .base_service import BaseSomaService
 
 
 class UnifiedHealthMonitor:
@@ -22,7 +27,7 @@ class UnifiedHealthMonitor:
     and provides a combined view.
     """
 
-    def __init__(self, services: List[object]) -> None:
+    def __init__(self, services: List[BaseSomaService]) -> None:
         """Initialize the instance."""
 
         self._services = services
@@ -52,6 +57,8 @@ def attach_to_app(app, monitor: UnifiedHealthMonitor) -> None:
     The router defines a single ``GET /v1/health`` endpoint that delegates to
     ``monitor.health_endpoint``.
     """
+
+    assert router is not None
 
     @router.get("/v1/health")
     async def health() -> Dict:

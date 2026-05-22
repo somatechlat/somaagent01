@@ -222,7 +222,7 @@ async def get_platform_health(request) -> PlatformHealth:
 
     return PlatformHealth(
         status=overall,
-        services=checks,
+        services=list(checks),
         timestamp=timezone.now().isoformat(),
         uptime_percent=99.9,  # Would calculate from metrics in production
     )

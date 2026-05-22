@@ -13,6 +13,8 @@ from uuid import uuid4
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from admin.common.exceptions import UnauthorizedError, ValidationError
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -119,7 +121,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """
         try:
             # Extract agent_id from URL route
-            self.agent_id = self.scope["url_route"]["kwargs"].get("agent_id")
+            url_route = self.scope.get("url_route") or {}
+            self.agent_id = url_route.get("kwargs", {}).get("agent_id")
 
             # Authenticate from cookie
             auth_result = await self._authenticate()
@@ -150,8 +153,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             logger.info(f"WebSocket connected: user={self.user_id}, agent={self.agent_id}")
 
-        except Exception as e:
-            logger.error(f"WebSocket connect error: {e}")
+        except UnauthorizedError:
+            logger.warning("WebSocket auth failed: unauthorized")
+            await self.close(code=4001)
+        except (TimeoutError, ValidationError):
+            logger.exception("WebSocket connect error")
+            await self._send_error("internal_error", code="internal_error")
+            await self.close(code=4000)
+        except Exception:
+            logger.exception("WebSocket connect error: unexpected exception")
+            await self._send_error("internal_error", code="internal_error")
             await self.close(code=4000)
 
     async def disconnect(self, close_code):
@@ -191,9 +202,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             else:
                 await self._send_error(f"Unknown message type: {msg_type}")
 
-        except Exception as e:
-            logger.error(f"WebSocket message error: {e}")
-            await self._send_error(str(e))
+        except (TimeoutError, ValidationError):
+            logger.exception("WebSocket message error")
+            await self._send_error("internal_error", code="internal_error")
+            await self.close(code=4000)
+        except Exception:
+            logger.exception("WebSocket message error: unexpected exception")
+            await self._send_error("internal_error", code="internal_error")
+            await self.close(code=4000)
 
         finally:
             elapsed = time.perf_counter() - start_time
@@ -259,8 +275,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             logger.debug(f"WebSocket authenticated: user={self.user_id}")
             return True
 
-        except Exception as e:
+        except UnauthorizedError as e:
             logger.warning(f"WebSocket auth failed: {e}")
+            return False
+        except Exception:
+            logger.exception("WebSocket auth failed: unexpected exception")
             return False
 
     # =========================================================================
@@ -311,13 +330,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 ).to_dict()
             )
 
-            # Get ChatService and stream response
-            from services.common.chat_service import get_chat_service
+            # Get V3 Chat Orchestrator and stream response
+            from admin.core.chat_orchestrator import ChatTurn, get_chat_orchestrator
 
-            chat_service = await get_chat_service()
+            orchestrator = await get_chat_orchestrator()
 
             # Resolve conversation + agent
-            conversation = await chat_service.get_conversation(
+            conversation = await orchestrator.get_conversation(
                 conversation_id=conversation_id,
                 user_id=self.user_id or "",
             )
@@ -332,17 +351,20 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             self.agent_id = conversation.agent_id
 
-            # Stream tokens
+            # Stream tokens via V3 orchestrator
             response_id = str(uuid4())
             token_count = 0
             response_content: list[str] = []
 
-            async for token in chat_service.send_message(
-                conversation_id=conversation_id,
-                agent_id=self.agent_id,
-                content=message_content,
+            turn = ChatTurn(
+                capsule_id=self.agent_id,
                 user_id=self.user_id or "",
-            ):
+                tenant_id=self.tenant_id or "",
+                user_message=message_content,
+                conversation_id=conversation_id,
+            )
+
+            async for token in orchestrator.stream_turn(turn):
                 token_count += 1
                 response_content.append(token)
 
@@ -376,14 +398,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DONE).inc()
 
             # Generate title if first message
-            await self._maybe_generate_title(conversation_id, chat_service)
+            await self._maybe_generate_title(conversation_id, orchestrator)
 
         except asyncio.TimeoutError:
             await self._send_error("Response timeout", code="timeout")
 
-        except Exception as e:
-            logger.error(f"Chat message error: {e}")
-            await self._send_error(str(e))
+        except (UnauthorizedError, ValidationError):
+            logger.exception("Chat message error")
+            await self._send_error("internal_error", code="internal_error")
+            await self.close(code=4000)
+        except Exception:
+            logger.exception("Chat message error: unexpected exception")
+            await self._send_error("internal_error", code="internal_error")
+            await self.close(code=4000)
 
         finally:
             self.is_streaming = False
@@ -424,8 +451,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         try:
-            # Convert to dataclass format
-            from services.common.chat_service import Message as MessageDC
+            from services.common.chat_schemas import Message as MessageDC
 
             message_dcs = [
                 MessageDC(
@@ -455,8 +481,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
             _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_TITLE_UPDATE).inc()
 
-        except Exception as e:
-            logger.warning(f"Title generation failed: {e}")
+        except Exception:
+            logger.exception("Title generation failed")
 
     # =========================================================================
     # HELPERS
@@ -498,6 +524,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                logger.warning(f"Heartbeat error: {e}")
+            except Exception:
+                logger.exception("Heartbeat error")
                 break

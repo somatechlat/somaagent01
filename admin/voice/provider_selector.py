@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import AsyncGenerator, Protocol, runtime_checkable, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from admin.core.helpers.config import Config
+    from admin.core.config.models import Config
 
 from .exceptions import ProviderNotSupportedError
 
@@ -33,7 +33,7 @@ class _BaseClient(Protocol):
     deliberately minimal to keep the provider contract focused and stable.
     """
 
-    async def process(
+    def process(
         self,
         audio_stream: "AsyncGenerator[bytes, None]",
     ) -> "AsyncGenerator[object, None]":
@@ -63,11 +63,11 @@ def get_provider_client(config: Config) -> _BaseClient:
     provider = config.voice.provider
     if provider == "openai":
         # Local import to keep optional heavy deps out of the import path.
-        from .openai_client import OpenAIClient
+        from .openai_client import OpenAIClient  # type: ignore[import]
 
         return OpenAIClient(config.voice.openai)
     if provider == "local":
-        from .local_client import LocalClient
+        from .local_client import LocalClient  # type: ignore[import]
 
         return LocalClient(config.voice.local)
     raise ProviderNotSupportedError(provider)

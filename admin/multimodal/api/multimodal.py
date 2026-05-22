@@ -88,9 +88,8 @@ async def list_capabilities(
     include_unhealthy: bool = False,
 ) -> list[dict]:
     """List multimodal capabilities filtered by modality."""
-    from services.common.capability_registry import CapabilityRegistry
-
     from services.common.authorization import authorize
+    from services.common.capability_registry import CapabilityRegistry
 
     _require_multimodal_enabled()
     auth = await authorize(
@@ -127,9 +126,8 @@ async def list_capabilities(
 @router.post("/jobs", response=JobCreateResponse, summary="Create multimodal job")
 async def create_job(request: HttpRequest, body: JobCreateRequest) -> dict:
     """Submit a multimodal job plan (Task DSL)."""
-    from services.common.job_planner import JobPlanner, PlanValidationError
-
     from services.common.authorization import authorize
+    from services.common.job_planner import JobPlanner, PlanValidationError
 
     _require_multimodal_enabled()
     auth = await authorize(request, action="multimodal.jobs.create", resource="multimodal.jobs")
@@ -155,9 +153,8 @@ async def create_job(request: HttpRequest, body: JobCreateRequest) -> dict:
 @router.get("/jobs/{plan_id}", response=JobStatusResponse, summary="Get job status")
 async def get_job_status(request: HttpRequest, plan_id: str) -> dict:
     """Get the status of a multimodal job plan."""
-    from services.common.job_planner import JobPlanner
-
     from services.common.authorization import authorize
+    from services.common.job_planner import JobPlanner
 
     _require_multimodal_enabled()
     auth = await authorize(request, action="multimodal.jobs.read", resource="multimodal.jobs")
@@ -211,9 +208,8 @@ async def get_asset(request: HttpRequest, asset_id: str):
 @router.get("/provenance/{asset_id}", response=ProvenanceResponse, summary="Get provenance")
 async def get_provenance(request: HttpRequest, asset_id: str) -> dict:
     """Retrieve provenance record for an asset."""
-    from services.common.provenance_recorder import ProvenanceRecorder
-
     from services.common.authorization import authorize
+    from services.common.provenance_recorder import ProvenanceRecorder
 
     _require_multimodal_enabled()
     auth = await authorize(

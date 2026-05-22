@@ -19,12 +19,14 @@ from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from admin.agents.services.somabrain_integration import SomaBrainClient
-from admin.core.helpers.tokens import count_tokens
-from services.common.simple_context_builder import (
-    ContextBuilder,
-    SomabrainHealthState,
+from admin.core.application.use_cases.conversation.generate_response import (
+    GenerateResponseUseCase,
 )
+from admin.core.application.use_cases.conversation.process_message import (
+    ProcessMessageInput,
+    ProcessMessageUseCase,
+)
+from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
 from services.common.compensation import compensate_event
 from services.common.dlq import DeadLetterQueue
@@ -38,20 +40,10 @@ from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
-from services.conversation_worker.service import (
-    GenerateResponseUseCase,
-    ProcessMessageInput,
-    ProcessMessageUseCase,
-)
 
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead
 setup_tracing("conversation-temporal-worker", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
-
-
-def _somabrain_health() -> SomabrainHealthState:
-    # Minimal health probe until degradation monitor is wired into Temporal context
-    return SomabrainHealthState.NORMAL
 
 
 def _build_use_case():
@@ -77,14 +69,7 @@ def _build_use_case():
     telemetry = TelemetryPublisher(publisher=publisher, store=TelemetryStore.from_env())
     soma = SomaBrainClient.get()
     router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
-    ctx_builder = ContextBuilder(
-        somabrain=soma,
-        metrics=None,
-        token_counter=count_tokens,
-        health_provider=_somabrain_health,
-        use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower()
-        == "true",
-    )
+
     gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
     if not gateway_base:
         raise RuntimeError("SA01_WORKER_GATEWAY_BASE is required")
@@ -93,14 +78,13 @@ def _build_use_case():
         internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
         publisher=publisher,
         outbound_topic=os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
-        default_model=os.environ.get("SA01_LLM_MODEL"),  # REQUIRED - no hardcoded default per VIBE
+        default_model=os.environ.get("SA01_LLM_MODEL") or "",  # REQUIRED - no hardcoded default per VIBE
     )
     proc = ProcessMessageUseCase(
         session_repo=store,
         policy_enforcer=enforcer,
         memory_client=soma,
         publisher=publisher,
-        context_builder=ctx_builder,
         response_generator=gen,
         outbound_topic=os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
     )
@@ -114,7 +98,7 @@ async def process_message_activity(event: dict) -> dict:
         res = await proc.execute(
             ProcessMessageInput(
                 event=event,
-                session_id=event.get("session_id"),
+                session_id=event.get("session_id") or "",
                 tenant=(event.get("metadata") or {}).get("tenant", "default"),
                 persona_id=event.get("persona_id"),
                 metadata=event.get("metadata", {}),

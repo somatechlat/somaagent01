@@ -17,9 +17,9 @@ from dataclasses import dataclass
 from typing import AsyncGenerator, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import sounddevice
+    import sounddevice  # type: ignore[import]
 
-    from admin.voice.config import AudioConfig
+    from admin.core.config.models import AudioConfig
 
 from .exceptions import VoiceProcessingError
 
@@ -76,6 +76,7 @@ class Speaker:
         try:
             # ``get_nowait`` is safe because the callback is called only when
             # the stream needs data; if the queue is empty we fall back to silence.
+            assert self._wrapper is not None
             raw = self._wrapper.queue.get_nowait()
         except Exception:
             raw = b"\x00" * outdata.nbytes

@@ -122,7 +122,7 @@ async def create_cognitive_thread(
 
     try:
         # Verify SomaBrain is available
-        health = await client.health_check()
+        health = await client.health()
         if health.get("status") != "healthy":
             raise SomaBrainError("SomaBrain not healthy")
 

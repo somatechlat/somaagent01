@@ -165,7 +165,7 @@ async def health_check() -> dict:
     record_status("temporal", temporal_status, temporal_detail)
 
     # Degradation monitor
-    if degradation_monitor.is_monitoring():
+    if degradation_monitor.is_monitoring():  # type: ignore[attr-defined]
         record_status("degradation_monitor", "ok")
 
     # Static services (assume running via Docker)

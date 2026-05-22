@@ -71,8 +71,8 @@ class ExecutionEngineAdapter(ExecutionEnginePort):
         # Convert DTO to internal limits
         internal_limits = ExecutionLimits(
             timeout_seconds=limits.timeout_seconds,
-            max_memory_mb=limits.max_memory_mb,
-            max_output_bytes=limits.max_output_bytes,
+            max_memory_mb=limits.max_memory_mb,  # type: ignore[call-arg]
+            max_output_bytes=limits.max_output_bytes,  # type: ignore[call-arg]
         )
 
         # Execute via the engine
