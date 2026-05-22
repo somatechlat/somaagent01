@@ -30,10 +30,9 @@ class DeploymentMode:
     """Singleton deployment mode resolver.
 
     Priority chain (highest to lowest):
-    1. SA01_DEPLOYMENT_MODE environment variable
+    1. SA01_DEPLOYMENT_MODE environment variable (canonical)
     2. SOMA_AAAS_MODE=true → AAAS
-    3. SOMA_DEPLOY_MODE environment variable (legacy)
-    4. Default → DEV
+    3. Default → DEV
     """
 
     _mode: DeploymentModeEnum | None = None
@@ -46,12 +45,8 @@ class DeploymentMode:
 
         mode = os.environ.get("SA01_DEPLOYMENT_MODE", "").strip().upper()
         if not mode:
-            # Legacy: SOMA_AAAS_MODE
             if os.environ.get("SOMA_AAAS_MODE", "").lower() == "true":
                 mode = "AAAS"
-        if not mode:
-            # Legacy: SOMA_DEPLOY_MODE
-            mode = os.environ.get("SOMA_DEPLOY_MODE", "").strip().upper()
         if not mode:
             mode = "DEV"
 

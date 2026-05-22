@@ -123,7 +123,6 @@ class RegistryService:
                     "neuromodulator_baseline": capsule.neuromodulator_baseline,
                 },
                 "body": {
-                    "capabilities_whitelist": capsule.capabilities_whitelist,
                     "resource_limits": capsule.resource_limits,
                 },
             }
@@ -176,7 +175,6 @@ class RegistryService:
                 "neuromodulator_baseline": capsule.neuromodulator_baseline,
             },
             "body": {
-                "capabilities_whitelist": capsule.capabilities_whitelist,
                 "resource_limits": capsule.resource_limits,
             },
         }

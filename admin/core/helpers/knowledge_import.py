@@ -9,20 +9,14 @@ from typing import Any, Dict, Literal, TypedDict
 # Wrap its imports so the module can be imported even when those heavy
 # dependencies are not present. If the package is missing we'll set
 # KNOWLEDGE_AVAILABLE=False and skip knowledge loading at runtime.
+from langchain_community.document_loaders import (
+    CSVLoader,
+    PyPDFLoader,
+    TextLoader,
+    UnstructuredHTMLLoader,
+)
+
 KNOWLEDGE_AVAILABLE = True
-try:
-    from langchain_community.document_loaders import (
-        CSVLoader,
-        PyPDFLoader,
-        TextLoader,
-        UnstructuredHTMLLoader,
-    )
-except Exception:  # pragma: no cover - optional dependency
-    KNOWLEDGE_AVAILABLE = False
-    CSVLoader = None
-    PyPDFLoader = None
-    TextLoader = None
-    UnstructuredHTMLLoader = None
 
 
 from admin.core.helpers.log import LogItem

@@ -160,9 +160,14 @@ def import_capsule(
                 new_version = f"{new_version}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
                 warnings.append(f"Version conflict resolved: using {new_version}")
 
-            # Extract soul and body data
+            # Extract v2 or v1 data
+            spec_version = capsule_data.get("spec_version", "capsule-v1")
             soul = capsule_data.get("soul", {})
             body = capsule_data.get("body", {})
+            brain = capsule_data.get("brain", {})
+            hands = capsule_data.get("hands", {})
+            memory_pointer = capsule_data.get("memory_pointer", {})
+            neuromodulator_state = capsule_data.get("neuromodulator_state", {})
 
             # Create new capsule in DRAFT status
             new_capsule = Capsule.objects.create(
@@ -175,17 +180,44 @@ def import_capsule(
                 system_prompt=soul.get("system_prompt", ""),
                 personality_traits=soul.get("personality_traits", {}),
                 neuromodulator_baseline=soul.get("neuromodulator_baseline", {}),
-                # Body
-                capabilities_whitelist=body.get("capabilities_whitelist", []),
+                # Persona config (v2)
+                persona_config={
+                    "knobs": brain.get("iq_knobs", {}),
+                    "prompts": soul.get("prompts", {}),
+                    "memory": memory_pointer,
+                },
+                # Tool policy (v2)
+                tool_policy=hands.get("tool_policy", {}),
+                # Memory pointer — remap tenant
+                memory_pointer={
+                    **memory_pointer,
+                    "tenant": tenant,  # Always remap to target tenant
+                    "namespace": f"agent_imported_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_chat_history",
+                } if memory_pointer else {
+                    "tenant": tenant,
+                    "namespace": f"agent_imported_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_chat_history",
+                    "recall_limit": 10,
+                    "similarity_threshold": 0.7,
+                },
+                # Neuromodulator state
+                neuromodulator_state=neuromodulator_state or {
+                    "dopamine": 0.5,
+                    "serotonin": 0.6,
+                    "norepinephrine": 0.4,
+                    "acetylcholine": 0.5,
+                    "last_synced_at": None,
+                },
                 resource_limits=body.get("resource_limits", {}),
-                schema=body.get("schema", {}),
-                config=body.get("config", {}),
                 # Governance - cleared for re-certification
                 constitution=None,
                 constitution_ref={},
                 registry_signature=None,
                 certified_at=None,
             )
+
+            # Import tool registry as snapshot (v2)
+            if spec_version == "capsule-v2" and hands.get("tool_registry"):
+                _import_tool_registry(hands["tool_registry"], new_capsule, warnings)
 
             logger.info(
                 "Created imported capsule: %s:%s (id=%s, status=DRAFT)",
@@ -276,6 +308,42 @@ def import_tenant_capsules(
 # =============================================================================
 
 
+def _import_tool_registry(tool_registry: dict, capsule: Capsule, warnings: list) -> None:
+    """Import tool definitions from a Capsule export snapshot.
+
+    Snapshot semantics: creates NEW Capability records, does not link to existing.
+    If name conflicts, appends version suffix.
+    """
+    for name, definition in tool_registry.items():
+        try:
+            # Check for name collision
+            actual_name = name
+            suffix = 1
+            while Capability.objects.filter(name=actual_name).exists():
+                actual_name = f"{name}_v{suffix}"
+                suffix += 1
+
+            cap, created = Capability.objects.get_or_create(
+                name=actual_name,
+                defaults={
+                    "description": definition.get("description", ""),
+                    "category": definition.get("category", "general"),
+                    "schema": definition.get("schema", {}),
+                    "config": definition.get("config", {}),
+                    "policy": definition.get("policy", {}),
+                    "implementation": definition.get("implementation", {}),
+                    "is_enabled": True,
+                },
+            )
+            # Link to capsule
+            capsule.capabilities.add(cap)
+
+            if not created and actual_name != name:
+                warnings.append(f"Tool '{name}' renamed to '{actual_name}' due to conflict")
+        except Exception as e:
+            warnings.append(f"Failed to import tool {name}: {e}")
+
+
 def _import_related_data(related_data: dict, tenant: str, agent_id: str) -> list[str]:
     """Import related data entities for a single capsule.
 
@@ -293,6 +361,8 @@ def _import_related_data(related_data: dict, tenant: str, agent_id: str) -> list
                     "category": cap_data.get("category", "general"),
                     "schema": cap_data.get("schema", {}),
                     "config": cap_data.get("config", {}),
+                    "policy": cap_data.get("policy", {}),
+                    "implementation": cap_data.get("implementation", {}),
                     "is_enabled": cap_data.get("is_enabled", True),
                 },
             )

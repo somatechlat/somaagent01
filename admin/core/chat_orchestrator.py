@@ -48,20 +48,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # tiktoken — accurate token counting
 # ---------------------------------------------------------------------------
-try:
-    import tiktoken
+import tiktoken
 
-    _ENCODING = tiktoken.get_encoding("cl100k_base")
-except Exception:
-    _ENCODING = None
-    logger.warning("tiktoken unavailable — using approximate token counting")
+_ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
 def _token_count(text: str) -> int:
     """Accurate LLM token count."""
-    if _ENCODING:
-        return len(_ENCODING.encode(text))
-    return len(text) // 4
+    return len(_ENCODING.encode(text))
 
 
 # ---------------------------------------------------------------------------
@@ -71,15 +65,31 @@ def _token_count(text: str) -> int:
 
 @dataclass
 class ChatTurn:
-    """A single chat turn through the 12-phase pipeline."""
+    """A single chat turn through the 12-phase pipeline.
 
-    capsule_id: str
-    user_id: str
-    tenant_id: str
-    user_message: str
+    Phase 1-3 data (Capsule, IQ, ToolRegistry) is pre-loaded at
+    WebSocket connection time and passed directly. No DB calls
+    for static data per message.
+
+    For non-WebSocket paths (REST API), these can be omitted and
+    the orchestrator will fall back to loading from DB.
+    """
+
+    # Phase 1-3: Pre-loaded at connection time (optional for REST paths)
+    capsule: Optional[Any] = None  # Capsule model instance
+    iq_settings: Optional[Any] = None  # DerivedSettings
+    tool_registry: Optional[Any] = None  # ToolRegistry instance
+
+    # Per-message data
+    user_id: str = ""
+    tenant_id: str = ""
+    user_message: str = ""
     conversation_id: Optional[str] = None
     attachments: List[Dict[str, Any]] = field(default_factory=list)
     history: List[Dict[str, str]] = field(default_factory=list)
+
+    # Legacy: capsule_id for backward compatibility during migration
+    capsule_id: Optional[str] = None
 
 
 @dataclass
@@ -274,7 +284,8 @@ class V3ChatOrchestrator:
                 }
 
         session = await _create()
-        asyncio.create_task(self._load_neuromodulators(agent_id, user_context))
+        task = asyncio.create_task(self._load_neuromodulators(agent_id, user_context))
+        task.add_done_callback(self._on_background_task_done("_load_neuromodulators"))
         return session
 
     # =================================================================
@@ -293,19 +304,22 @@ class V3ChatOrchestrator:
         result = ChatResult(response="", model_used="", turn_id=turn_id)
 
         try:
-            # Phase 1-2: Capsule Loading
-            capsule = await self._load_capsule(turn.capsule_id)
+            # Phase 1-2: Capsule Loading — USE PRE-LOADED
+            capsule = turn.capsule
             if not capsule:
-                raise ValueError(f"Capsule {turn.capsule_id} not found")
+                raise ValueError("Capsule not provided in ChatTurn")
             result.phase_completed = 2
 
             tenant_id = str(capsule.tenant_id) if capsule.tenant_id else turn.tenant_id
             turn_metrics = self._metrics.record_turn_start(
-                turn_id=turn_id, tenant_id=tenant_id, user_id=turn.user_id, agent_id=turn.capsule_id
+                turn_id=turn_id, tenant_id=tenant_id, user_id=turn.user_id,
+                agent_id=str(capsule.id),
             )
 
-            # Phase 3: AgentIQ Settings Derivation
-            iq = derive_all_settings(capsule)
+            # Phase 3: AgentIQ Settings — USE PRE-DERIVED
+            iq = turn.iq_settings
+            if not iq:
+                iq = derive_all_settings(capsule)
             logger.info("Phase 3: AgentIQ (tier=%s, auto=%s)", iq.model_tier, iq.tool_approval)
             result.phase_completed = 3
 
@@ -325,12 +339,44 @@ class V3ChatOrchestrator:
                 return result
             result.phase_completed = 4
 
-            # Phase 4.5: Health Check + Governor Budget Allocation
+            # Phase 4.5: Health Check + Governor Budget + Brain Context Evaluation
             health = self._health.get_overall_health()
             is_degraded = health.degraded
             if is_degraded:
                 logger.warning("System degraded — using governor rescue budget")
                 self._metrics.record_turn_phase(turn_id, TurnPhase.HEALTH_CHECKED)
+
+            # NEW: SomaBrain context evaluation (cognitive co-processor)
+            brain_confidence = 0.5
+            suggested_tools: List[str] = []
+            try:
+                brain_client = await SomaBrainClient.get_async()
+                if brain_client:
+                    eval_result = cast(
+                        Dict[str, Any],
+                        await self._cb_somabrain.call(
+                            brain_client.context_evaluate,
+                            request={
+                                "query": turn.user_message,
+                                "tenant_id": tenant_id,
+                                "persona_id": str(capsule.id),
+                                "context": {
+                                    "system_prompt": capsule.system_prompt,
+                                    "history_length": len(turn.history or []),
+                                },
+                            },
+                        ),
+                    )
+                    if eval_result:
+                        brain_confidence = eval_result.get("confidence", 0.5)
+                        suggested_tools = eval_result.get("suggested_tools", [])
+                        logger.info(
+                            "Brain context eval: confidence=%.2f, suggested_tools=%s",
+                            brain_confidence,
+                            suggested_tools,
+                        )
+            except Exception as brain_exc:
+                logger.debug("Brain context evaluation skipped: %s", brain_exc)
 
             gov_decision = self._governor.allocate_budget(
                 max_tokens=iq.max_tokens,
@@ -382,9 +428,21 @@ class V3ChatOrchestrator:
             self._metrics.record_turn_phase(turn_id, TurnPhase.MODEL_SELECTED)
             result.phase_completed = 6
 
-            # Phase 7: Tool Discovery
-            # TODO: Full tool discovery when ToolDiscovery is production-ready
-            tools: List[str] = []
+            # Phase 7: Tool Discovery — from Capsule's ToolRegistry
+            tools_for_llm: List[Dict[str, Any]] = []
+            if turn.tool_registry:
+                for tool_def in turn.tool_registry.list():
+                    handler = tool_def.handler
+                    schema = handler.input_schema() if handler else None
+                    if schema:
+                        tools_for_llm.append({
+                            "type": "function",
+                            "function": {
+                                "name": tool_def.name,
+                                "description": tool_def.description or tool_def.name,
+                                "parameters": schema,
+                            }
+                        })
             result.phase_completed = 7
 
             # Phase 8: LLM Invocation (REAL — NO PLACEHOLDER)
@@ -415,8 +473,26 @@ class V3ChatOrchestrator:
             result.response = full_response
             result.phase_completed = 8
 
-            # Phase 9: Tool Execution (if requested in response)
-            # TODO: Parse tool calls from response
+            # Phase 9: Tool Execution (if LLM requested tools)
+            tools_called: List[str] = []
+            if tools_for_llm and turn.tool_registry:
+                # Simple heuristic: check if response contains tool call patterns
+                # Full implementation requires parsing LLM tool_calls
+                tool_calls = self._extract_tool_calls(full_response)
+                for tool_call in tool_calls:
+                    tool_name = tool_call.get("name", "")
+                    tool_def = turn.tool_registry.get(tool_name)
+                    if tool_def:
+                        try:
+                            import json
+                            args = json.loads(tool_call.get("arguments", "{}"))
+                            tool_result = await tool_def.run(args)
+                            tools_called.append(tool_name)
+                            logger.info("Tool executed: %s → %s", tool_name, tool_result.get("status", "ok"))
+                        except Exception as tool_exc:
+                            logger.error("Tool execution failed: %s", tool_exc)
+                            result.errors.append(f"Tool {tool_name} failed: {tool_exc}")
+            result.tools_called = tools_called
             result.phase_completed = 9
 
             # Phase 10: Response Formatting
@@ -467,15 +543,18 @@ class V3ChatOrchestrator:
         start_time = time.perf_counter()
         turn_id = str(uuid4())
 
-        capsule = await self._load_capsule(turn.capsule_id)
+        capsule = turn.capsule
         if not capsule:
             yield "[Error: Capsule not found]"
             return
 
         tenant_id = str(capsule.tenant_id) if capsule.tenant_id else turn.tenant_id
 
-        # Derive + permission check
-        iq = derive_all_settings(capsule)
+        # Use pre-derived IQ, fallback to derivation if missing
+        iq = turn.iq_settings
+        if not iq:
+            iq = derive_all_settings(capsule)
+
         perm = await self._permission_checker.check(
             user_id=turn.user_id, permission="chat:send", tenant_id=tenant_id
         )
@@ -509,6 +588,22 @@ class V3ChatOrchestrator:
             budget_override=budget_override,
         )
 
+        # Phase 7: Tool Discovery
+        tools_for_llm: List[Dict[str, Any]] = []
+        if turn.tool_registry:
+            for tool_def in turn.tool_registry.list():
+                handler = tool_def.handler
+                schema = handler.input_schema() if handler else None
+                if schema:
+                    tools_for_llm.append({
+                        "type": "function",
+                        "function": {
+                            "name": tool_def.name,
+                            "description": tool_def.description or tool_def.name,
+                            "parameters": schema,
+                        }
+                    })
+
         # Select model
         caps = detect_required_capabilities(message=turn.user_message, attachments=turn.attachments)
         try:
@@ -533,7 +628,11 @@ class V3ChatOrchestrator:
         try:
             stream = cast(
                 AsyncIterator[Any],
-                await self._cb_llm.call(llm._astream, messages=messages),
+                await self._cb_llm.call(
+                    llm._astream,
+                    messages=messages,
+                    tools=tools_for_llm if tools_for_llm else None,
+                ),
             )
             async for chunk in stream:
                 token = (
@@ -569,7 +668,11 @@ class V3ChatOrchestrator:
     # =================================================================
 
     async def _load_capsule(self, capsule_id: str) -> Optional[Any]:
-        """Load Capsule from Django ORM."""
+        """Load Capsule from Django ORM.
+
+        DEPRECATED: Capsules should be pre-loaded at WebSocket connection time.
+        This method remains for backward compatibility and non-WebSocket paths.
+        """
         from admin.core.models import Capsule
 
         @sync_to_async
@@ -577,6 +680,48 @@ class V3ChatOrchestrator:
             return Capsule.objects.filter(id=capsule_id).first()
 
         return await _get()
+
+    @staticmethod
+    def _extract_tool_calls(response_text: str) -> List[Dict[str, str]]:
+        """Extract tool calls from LLM response.
+
+        This is a simple parser for tool call patterns in the response.
+        Full implementation should use the LLM's native tool_call format
+        (e.g., OpenAI's message.tool_calls).
+
+        Supports two formats:
+        1. Markdown code block: ```tool:{name}\n{json_args}\n```
+        2. XML tag: <tool name="{name}">{json_args}</tool>
+        """
+        import json
+        import re
+
+        tool_calls: List[Dict[str, str]] = []
+
+        # Format 1: Markdown code blocks with tool: prefix
+        pattern1 = r'```tool:(\w+)\s*\n(.*?)\n```'
+        for match in re.finditer(pattern1, response_text, re.DOTALL):
+            name = match.group(1)
+            args_raw = match.group(2).strip()
+            try:
+                # Validate it's valid JSON
+                json.loads(args_raw)
+                tool_calls.append({"name": name, "arguments": args_raw})
+            except json.JSONDecodeError:
+                tool_calls.append({"name": name, "arguments": json.dumps({"raw": args_raw})})
+
+        # Format 2: XML-style tool tags
+        pattern2 = r'<tool\s+name="(\w+)">\s*(.*?)\s*</tool>'
+        for match in re.finditer(pattern2, response_text, re.DOTALL):
+            name = match.group(1)
+            args_raw = match.group(2).strip()
+            try:
+                json.loads(args_raw)
+                tool_calls.append({"name": name, "arguments": args_raw})
+            except json.JSONDecodeError:
+                tool_calls.append({"name": name, "arguments": json.dumps({"raw": args_raw})})
+
+        return tool_calls
 
     async def _recall_history(self, conversation_id: str, tenant_id: str) -> List[Dict[str, str]]:
         """Recall last 20 messages from PostgreSQL trace."""
@@ -756,7 +901,7 @@ class V3ChatOrchestrator:
         await _store_assistant()
 
         # Background: episodic memory (Brain primary → SFM fallback)
-        asyncio.create_task(
+        task = asyncio.create_task(
             self._store_episodic_bg(
                 tenant_id=tenant_id,
                 user_message=user_message,
@@ -766,6 +911,45 @@ class V3ChatOrchestrator:
                 elapsed_ms=elapsed_ms,
             )
         )
+        task.add_done_callback(self._on_background_task_done("_store_episodic_bg"))
+
+    async def trigger_sleep_cycle(self, tenant_id: str, persona_id: str) -> None:
+        """Trigger a SomaBrain sleep/consolidation cycle.
+
+        This should be called periodically (e.g., every 6 hours) by a
+        background scheduler to consolidate memories and update graph
+        relationships.
+        """
+        try:
+            brain_client = await SomaBrainClient.get_async()
+            if brain_client:
+                await self._cb_somabrain.call(
+                    brain_client.brain_sleep_mode,
+                    "deep",
+                    ttl_seconds=600,
+                )
+                logger.info("Sleep cycle triggered for persona=%s", persona_id)
+        except Exception as exc:
+            logger.debug("Sleep cycle trigger skipped: %s", exc)
+
+    @staticmethod
+    def _on_background_task_done(task_name: str):
+        """Create a callback that logs exceptions from background tasks.
+
+        Usage:
+            task = asyncio.create_task(self._store_episodic_bg(...))
+            task.add_done_callback(self._on_background_task_done("_store_episodic_bg"))
+        """
+
+        def _callback(task: asyncio.Task) -> None:
+            try:
+                task.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                logger.error("Background task %s failed: %s", task_name, exc, exc_info=True)
+
+        return _callback
 
     async def _store_episodic_bg(
         self,

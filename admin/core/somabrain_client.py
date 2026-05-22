@@ -27,11 +27,8 @@ from django.conf import settings
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 
 # Integration: BrainBridge (Compliant Triad Architecture)
-try:
-    from services.common.brain_bridge import brain as BrainBridge
-except ImportError:
-    BrainBridge = None  # type: ignore[assignment]
-HAS_BRIDGE = BrainBridge is not None
+from aaas.brain import brain as BrainBridge
+HAS_BRIDGE = True
 
 
 LOGGER = logging.getLogger(__name__)

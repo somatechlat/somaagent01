@@ -11,6 +11,7 @@ This module:
 import os
 import re
 
+from config.settings_registry import get_optional_env
 from django.conf import settings
 
 # =============================================================================
@@ -19,7 +20,7 @@ from django.conf import settings
 
 if not settings.configured:
     # Parse database DSN from environment
-    db_dsn = os.environ.get("SA01_DB_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+    db_dsn = get_optional_env("SA01_DB_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
 
     # Parse DSN components for Django DATABASE config
     db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
@@ -43,8 +44,8 @@ if not settings.configured:
         }
 
     settings.configure(
-        DEBUG=os.environ.get("DEBUG", "False").lower() == "true",
-        SECRET_KEY=os.environ.get("SECRET_KEY", "insecure-secret-key-for-dev"),
+        DEBUG=get_optional_env("DEBUG", "False").lower() == "true",
+        SECRET_KEY=get_optional_env("SECRET_KEY", "insecure-secret-key-for-dev"),
         ALLOWED_HOSTS=["*"],
         ROOT_URLCONF=__name__,
         INSTALLED_APPS=[
@@ -89,7 +90,7 @@ if not settings.configured:
             },
             "root": {
                 "handlers": ["console"],
-                "level": os.environ.get("LOG_LEVEL", "INFO"),
+                "level": get_optional_env("LOG_LEVEL", "INFO"),
             },
         },
     )

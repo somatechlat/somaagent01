@@ -10,10 +10,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-try:
-    import asyncpg  # type: ignore
-except ImportError:  # pragma: no cover
-    asyncpg = None  # type: ignore
+import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,16 +30,12 @@ class DelegationStore:
 
     async def _get_pool(self) -> Any:
         """Get or create a connection pool."""
-        if asyncpg is None:
-            raise RuntimeError("asyncpg is required for DelegationStore")
         return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
 
     async def ensure_schema(self) -> None:
         """Ensure the delegation tasks table exists."""
         if not self.dsn:
             raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DelegationStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -75,8 +68,6 @@ class DelegationStore:
         """Persist a delegation task."""
         if not self.dsn:
             raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DelegationStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -106,8 +97,6 @@ class DelegationStore:
         """Retrieve a task by ID."""
         if not self.dsn:
             raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DelegationStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -146,8 +135,6 @@ class DelegationStore:
         """Update delegation task status and result."""
         if not self.dsn:
             raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DelegationStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -174,8 +161,6 @@ class DelegationStore:
         """List delegation tasks."""
         if not self.dsn:
             raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DelegationStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:

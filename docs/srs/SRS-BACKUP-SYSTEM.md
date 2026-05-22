@@ -1,215 +1,213 @@
 # SRS-BACKUP-SYSTEM — Agent Backup & Disaster Recovery
 
-**System:** SomaAgent01
-**Document ID:** SRS-BACKUP-SYSTEM-2026-01-16
-**Version:** 3.0.0 (Reversible, Traceable, Replayable)
-**Status:** CANONICAL
-
-**Applied Personas:** PhD Developer · PhD Analyst · QA Engineer · Security Auditor · Performance Engineer · UX Consultant · ISO Documenter · Django Architect · Django Infra · Django Evangelist ✅
+| Field | Value |
+|-------|-------|
+| **System** | SomaAgent01 |
+| **Document ID** | SRS-BACKUP-SYSTEM-2026-01-16 |
+| **Version** | 3.0.0 |
+| **Date** | 2026-01-16 |
+| **Status** | CANONICAL |
+| **Author** | Platform Engineering |
+| **Owner** | Platform Team |
 
 ---
 
-## 1. Overview
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+   1.1 [Purpose](#11-purpose)
+   1.2 [Scope](#12-scope)
+   1.3 [Definitions](#13-definitions)
+   1.4 [References](#14-references)
+2. [Product Description](#2-product-description)
+   2.1 [Product Perspective](#21-product-perspective)
+   2.2 [Product Functions](#22-product-functions)
+   2.3 [User Characteristics](#23-user-characteristics)
+   2.4 [Constraints](#24-constraints)
+   2.5 [Assumptions and Dependencies](#25-assumptions-and-dependencies)
+3. [Specific Requirements](#3-specific-requirements)
+   3.1 [Functional Requirements](#31-functional-requirements)
+   3.2 [Non-Functional Requirements](#32-non-functional-requirements)
+   3.3 [External Interface Requirements](#33-external-interface-requirements)
+   3.4 [Design Constraints](#34-design-constraints)
+4. [Traceability](#4-traceability)
+5. [Revision History](#5-revision-history)
+
+---
+
+## 1. Introduction
 
 ### 1.1 Purpose
 
-This document specifies the complete backup, audit trail, and disaster recovery system for SomaAgent01. The system guarantees:
+This document specifies the backup, audit trail, and disaster recovery system for SomaAgent01. The system guarantees reversibility of changes via snapshot semantics, full traceability of actor actions, and replayability of resource history from immutable audit logs.
 
-| Principle | Guarantee |
-|-----------|-----------|
-| **REVERSIBLE** | Any change can be undone via `old_value` snapshots |
-| **TRACEABLE** | WHO did WHAT, WHEN, and WHY - full audit log |
-| **REPLAYABLE** | Complete history reconstruction from `AuditLog` |
+### 1.2 Scope
 
-### 1.2 Constitution Sovereignty
+**In scope:**
+- Immutable audit logging (`admin/aaas/models/audit.py`)
+- Capsule export with cryptographic signing
+- Capsule import with signature and constitution verification
+- Rollback to previous states using `old_value` snapshots
+- History replay from audit logs
+- Full backup bundle generation (PostgreSQL, Redis, code, Docker)
+- Disaster recovery procedures and RTO/RPO targets
 
-> **"Constitution is SERVED from SomaBrain — NEVER stored locally"**
+**Out of scope:**
+- SomaBrain Constitution storage and serving (external to SomaAgent01)
+- Real-time replication of runtime state
+- Automated failover of chat sessions
 
-### 1.3 Capsule Sovereignty
+### 1.3 Definitions
 
-> **"The Capsule IS the Backup"**
+| Term | Definition |
+|------|------------|
+| **AuditLog** | An append-only database record capturing WHO, WHAT, WHEN, and WHY for every mutable operation. |
+| **Capsule** | The complete agent identity, configuration, and signature bundle. |
+| **Constitution** | The canonical governance document served by SomaBrain L3; never stored locally. |
+| **Export Bundle** | A signed artifact containing one or more capsules plus metadata. |
+| **Rollback** | Restoring a resource to a previous state using its `old_value` from an AuditLog entry. |
+| **Replay** | Reconstructing the full history of a resource by ordered AuditLog entries. |
+| **RTO** | Recovery Time Objective: target time to restore service after disaster. |
+| **RPO** | Recovery Point Objective: maximum acceptable data loss window. |
 
----
+### 1.4 References
 
-## 2. Audit Trail Architecture
-
-### 2.1 AuditLog Model (EXISTING)
-
-**File:** `admin/aaas/models/audit.py`
-**Table:** `audit_logs`
-
-```python
-class AuditLog(models.Model):
-    """Immutable audit trail - APPEND ONLY."""
-
-    # WHO
-    actor_id = models.UUIDField()      # Keycloak user ID
-    actor_email = models.EmailField()  # Denormalized for query
-    tenant = models.ForeignKey(Tenant) # Tenant context
-
-    # WHAT
-    action = models.CharField()        # e.g., "capsule.created"
-    resource_type = models.CharField() # e.g., "capsule"
-    resource_id = models.UUIDField()   # The affected resource
-
-    # REVERSIBILITY
-    old_value = models.JSONField()     # State BEFORE change
-    new_value = models.JSONField()     # State AFTER change
-
-    # CONTEXT
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()
-    request_id = models.CharField()    # X-Request-ID
-
-    # WHEN
-    created_at = models.DateTimeField(auto_now_add=True)
-```
-
-### 2.2 Audit Event Types
-
-| Action | Resource Type | Description |
-|--------|---------------|-------------|
-| `capsule.created` | `capsule` | New capsule drafted |
-| `capsule.updated` | `capsule` | Capsule modified |
-| `capsule.certified` | `capsule` | Birth Protocol executed |
-| `capsule.archived` | `capsule` | Capsule retired |
-| `capsule.exported` | `capsule` | Backup created |
-| `capsule.imported` | `capsule` | Restored from backup |
-| `capsule.cloned` | `capsule` | Version spawned |
-| `capsule.revoked` | `capsule` | Signature invalidated |
-| `tenant.created` | `tenant` | New tenant |
-| `agent.created` | `agent` | New agent |
-| `tier.updated` | `tier` | Plan changed |
-
-### 2.3 Reversibility Flow
-
-```mermaid
-flowchart TD
-    subgraph FORWARD [Forward Operation]
-        A[User Action] --> B[Save old_value]
-        B --> C[Execute Change]
-        C --> D[Save new_value]
-        D --> E[Create AuditLog]
-    end
-
-    subgraph REVERSE [Reverse Operation]
-        F[Admin Request Rollback] --> G[Load AuditLog]
-        G --> H[Get old_value]
-        H --> I[Restore to old_value]
-        I --> J[Create new AuditLog<br/>action: reverted]
-    end
-
-    FORWARD --> REVERSE
-```
-
-### 2.4 Traceability Query Examples
-
-```python
-# WHO modified this capsule?
-AuditLog.objects.filter(
-    resource_type="capsule",
-    resource_id=capsule_id
-).order_by("-created_at")
-
-# WHAT did user X do today?
-AuditLog.objects.filter(
-    actor_id=user_id,
-    created_at__date=today
-)
-
-# WHEN was capsule certified?
-AuditLog.objects.get(
-    resource_type="capsule",
-    resource_id=capsule_id,
-    action="capsule.certified"
-)
-
-# REPLAY: Reconstruct capsule history
-history = AuditLog.objects.filter(
-    resource_type="capsule",
-    resource_id=capsule_id
-).order_by("created_at")
-
-for event in history:
-    print(f"{event.action} by {event.actor_email} at {event.created_at}")
-    print(f"  Before: {event.old_value}")
-    print(f"  After: {event.new_value}")
-```
+| ID | Document | Version | Location |
+|----|----------|---------|----------|
+| REF-001 | SomaBrain Constitution API | 1.0 | `https://somabrain.l3/constitution/version` |
+| REF-002 | PostgreSQL Documentation | 15 | https://www.postgresql.org/docs/15/ |
+| REF-003 | Ed25519 Signature Standard | RFC 8032 | https://tools.ietf.org/html/rfc8032 |
 
 ---
 
-## 3. Cryptographic Signing Chain
+## 2. Product Description
 
-### 3.1 Signature Flow
+### 2.1 Product Perspective
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ SomaBrain (L3)                                              │
-│ ┌─────────────────────────────────────────────────────┐    │
-│ │ Constitution                                          │    │
-│ │ - Ed25519 signed by SOMABRAIN_CONSTITUTION_PRIVKEY   │    │
-│ │ - Served via /constitution/version API               │    │
-│ └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              │ CHECKSUM REFERENCE
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│ SomaAgent01 (L4)                                            │
-│ ┌─────────────────────────────────────────────────────┐    │
-│ │ Capsule                                               │    │
-│ │ - Ed25519 signed by SOMA_REGISTRY_PRIVATE_KEY        │    │
-│ │ - constitution_ref.checksum binding                  │    │
-│ │ - AuditLog entry for every signature event           │    │
-│ └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│ ┌─────────────────────────────────────────────────────┐    │
-│ │ Export Bundle                                         │    │
-│ │ - Ed25519 signed by SOMA_REGISTRY_PRIVATE_KEY        │    │
-│ │ - Contains capsule + signature                        │    │
-│ │ - AuditLog entry: capsule.exported                   │    │
-│ └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-```
+The Backup System spans the SomaAgent01 data layer and file system. It relies on PostgreSQL for the append-only `audit_logs` table, Redis for ephemeral settings, and the file system for export bundles. Cryptographic signing binds capsules to the SomaBrain Constitution via Ed25519 signatures. The system is invoked by administrative operations, export/import services, and disaster recovery runbooks.
 
-### 3.2 Capsule Signature Payload
+### 2.2 Product Functions
 
-```json
-{
-    "name": "MyAgent",
-    "version": "1.0.0",
-    "tenant": "acme",
-    "constitution_ref": {
-        "checksum": "sha256:..."
-    },
-    "soul": { ... },
-    "body": { ... }
-}
-```
+| ID | Function | Description |
+|----|----------|-------------|
+| FUNC-001 | Audit Logging | Record every mutable operation with actor, action, resource, old/new values, and context. |
+| FUNC-002 | Cryptographic Export | Sign capsule export bundles with Ed25519 and log the export action. |
+| FUNC-003 | Verified Import | Validate export signatures, capsule signatures, and Constitution checksums before restoring. |
+| FUNC-004 | Rollback | Revert a resource to a prior state captured in an AuditLog `old_value`. |
+| FUNC-005 | History Replay | Reconstruct the complete timeline of a resource from ordered AuditLog entries. |
+| FUNC-006 | Full Backup | Generate a complete backup bundle including database, cache, code, and container images. |
+| FUNC-007 | Disaster Recovery | Rebuild the environment from backups within defined RTO/RPO targets. |
+
+### 2.3 User Characteristics
+
+| User Type | Role | Technical Level | Access |
+|-----------|------|-----------------|--------|
+| Platform Operator | Execute backups, imports, and disaster recovery | Advanced | Admin API / CLI |
+| Tenant Admin | Request capsule exports and view audit history | Intermediate | Agent Settings UI |
+| Security Auditor | Review audit logs and signature chains | Advanced | Read-only database access |
+
+### 2.4 Constraints
+
+| ID | Constraint | Description |
+|----|------------|-------------|
+| CON-001 | Append-Only Audit | `audit_logs` table must not allow UPDATE or DELETE operations. |
+| CON-002 | External Constitution | The Constitution must be fetched from SomaBrain at runtime; local storage is prohibited. |
+| CON-003 | Admin-Only Rollback | Rollback operations require SpiceDB admin permission. |
+| CON-004 | Re-Certification | Imported capsules must be re-certified before activation. |
+
+### 2.5 Assumptions and Dependencies
+
+| ID | Assumption / Dependency | Impact if Invalid |
+|----|------------------------|-------------------|
+| AD-001 | PostgreSQL is available and regularly backed up. | Audit history and application data are lost. |
+| AD-002 | Ed25519 private key (`SOMA_REGISTRY_PRIVATE_KEY`) is available in Vault. | Exports cannot be signed; imports cannot be verified. |
+| AD-003 | SomaBrain L3 Constitution endpoint is reachable during import. | Constitution checksum verification fails; import rejected. |
 
 ---
 
-## 4. Backup Scope
+## 3. Specific Requirements
 
-### 4.1 What Gets Backed Up
+### 3.1 Functional Requirements
 
-| Item | Backed Up? | Notes |
-|------|------------|-------|
-| Capsule | ✅ YES | Soul + Body + Signature |
-| Constitution | ❌ NO | Served from SomaBrain |
-| AuditLog | ✅ YES | Full PostgreSQL dump |
-| PostgreSQL | ✅ YES | All tables |
-| Redis | ✅ YES | UI settings |
-| Code | ✅ YES | Git bundle |
-| Docker | ✅ YES | Tarball |
+#### 3.1.1 Audit Logging
 
-### 4.2 Backup Output Structure
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-BKP-001 | The system shall maintain an append-only `AuditLog` (`admin/aaas/models/audit.py`, table `audit_logs`) recording `actor_id`, `actor_email`, `tenant`, `action`, `resource_type`, `resource_id`, `old_value`, `new_value`, `ip_address`, `user_agent`, `request_id`, and `created_at`. | Must | Inspection | Draft |
+| REQ-BKP-002 | The system shall prevent UPDATE and DELETE operations on `audit_logs` via database constraints or triggers. | Must | Inspection | Draft |
+| REQ-BKP-003 | The system shall generate audit entries for the following actions: `capsule.created`, `capsule.updated`, `capsule.certified`, `capsule.archived`, `capsule.exported`, `capsule.imported`, `capsule.cloned`, `capsule.revoked`, `tenant.created`, `agent.created`, `tier.updated`. | Must | Test | Draft |
+
+**AuditLog Model Fields**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `actor_id` | UUID | Keycloak user ID |
+| `actor_email` | Email | Denormalized for query performance |
+| `tenant` | FK | Tenant context |
+| `action` | Char | Action code (e.g., `capsule.created`) |
+| `resource_type` | Char | Entity type (e.g., `capsule`) |
+| `resource_id` | UUID | Affected resource identifier |
+| `old_value` | JSON | State before the change |
+| `new_value` | JSON | State after the change |
+| `ip_address` | GenericIPAddress | Client IP |
+| `user_agent` | Text | Client user agent |
+| `request_id` | Char | `X-Request-ID` correlation ID |
+| `created_at` | DateTime | Timestamp (auto_now_add) |
+
+**Rationale:** Immutable audit logs provide the foundation for traceability, rollback, and replay.
+
+**Dependencies:** REQ-BKP-003 depends on REQ-BKP-001.
+
+#### 3.1.2 Export & Import
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-BKP-004 | The system shall generate capsule export bundles signed with Ed25519 using `SOMA_REGISTRY_PRIVATE_KEY`. | Must | Test | Draft |
+| REQ-BKP-005 | The system shall create an `AuditLog` entry with `action=capsule.exported` on every export, capturing the export path and checksum. | Must | Test | Draft |
+| REQ-BKP-006 | On import, the system shall verify the export bundle signature, the capsule signature, and the Constitution checksum from SomaBrain. | Must | Test | Draft |
+| REQ-BKP-007 | If any verification step fails, the system shall reject the import and log a `capsule.import_failed` audit entry. | Must | Test | Draft |
+| REQ-BKP-008 | Successfully imported capsules shall be created in `draft` status and must undergo re-certification before activation. | Must | Test | Draft |
+| REQ-BKP-009 | The system shall log `capsule.imported` on successful import with source backup and original capsule IDs. | Must | Test | Draft |
+
+**Import Verification Flow**
+
+1. Load export bundle.
+2. Verify export signature (Ed25519).
+3. Verify capsule signature (Ed25519).
+4. Fetch Constitution from SomaBrain L3.
+5. Verify Constitution checksum matches `constitution_ref.checksum`.
+6. If all valid, create capsule as DRAFT and log import.
+7. If any step invalid, reject and log failure.
+
+#### 3.1.3 Rollback
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-BKP-010 | The system shall support rollback of a resource to a previous state by applying the `old_value` from a selected `AuditLog` entry. | Must | Test | Draft |
+| REQ-BKP-011 | Rollback shall require SpiceDB admin permission. | Must | Test | Draft |
+| REQ-BKP-012 | After rollback, the system shall create a new `AuditLog` entry with `action=capsule.reverted`, capturing the previous state as `old_value` and the restored state as `new_value`. | Must | Test | Draft |
+
+#### 3.1.4 Replay
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-BKP-013 | The system shall provide a replay function that returns the complete ordered history of a resource from `AuditLog` entries, including timestamp, action, actor, before/after state, and context. | Must | Test | Draft |
+
+#### 3.1.5 Disaster Recovery
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-BKP-014 | The system shall generate full backup bundles containing: signed capsule exports, PostgreSQL dump, Redis snapshot, git bundle, and Docker image tarballs. | Must | Test | Draft |
+| REQ-BKP-015 | The backup output directory shall include a `manifest.json` with metadata and a top-level signature. | Must | Inspection | Draft |
+| REQ-BKP-016 | The disaster recovery runbook shall specify a rebuild sequence: deploy infrastructure, restore PostgreSQL, restore Redis, connect to SomaBrain, verify Constitution, import capsules, verify signatures, re-certify, activate agents. | Must | Inspection | Draft |
+
+**Backup Bundle Structure**
 
 ```
-/backups/agent_backup_20260116_200000/
+/backups/agent_backup_YYYYMMDD_HHMMSS/
 ├── manifest.json           # Metadata + signature
 ├── capsules.json           # Signed capsule exports
-├── postgres_dump.sql       # ALL tables including audit_logs
+├── postgres_dump.sql       # All tables including audit_logs
 ├── redis_backup.json       # Redis settings
 ├── somaAgent01.bundle      # Git bundle
 └── *.tar                   # Docker images
@@ -217,265 +215,135 @@ for event in history:
 
 ---
 
-## 5. Export with Audit Trail
+### 3.2 Non-Functional Requirements
 
-### 5.1 Export Flow
+#### 3.2.1 Performance
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant USER as User
-    participant SVC as ExportService
-    participant DB as Database
-    participant AUDIT as AuditLog
-    participant FS as FileSystem
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-BKP-PERF-001 | AuditLog write latency | <= 20 ms | Load test |
+| NFR-BKP-PERF-002 | Export generation time for 100 capsules | <= 30 s | Load test |
 
-    USER->>SVC: export_capsule(id)
-    SVC->>DB: Load Capsule
-    SVC->>SVC: Build export bundle
-    SVC->>SVC: Sign with Ed25519
-    SVC->>FS: Write capsules.json
+#### 3.2.2 Security
 
-    rect rgb(40, 80, 40)
-        Note over AUDIT: AUDIT TRAIL
-        SVC->>AUDIT: Create AuditLog
-        AUDIT->>AUDIT: action="capsule.exported"
-        AUDIT->>AUDIT: actor_id=user.keycloak_id
-        AUDIT->>AUDIT: old_value=capsule_state
-        AUDIT->>AUDIT: new_value={export_path, checksum}
-    end
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-BKP-SEC-001 | AuditLog table shall be append-only with database-level protections against tampering. | 100% | Inspection |
+| NFR-BKP-SEC-002 | Ed25519 signing keys shall be stored in Vault, never in source code or settings. | 100% | Inspection |
+| NFR-BKP-SEC-003 | Export and import operations shall be authorized via SpiceDB permissions. | 100% | Test |
+| NFR-BKP-SEC-004 | Capsule tampering shall be detectable via signature verification on import. | 100% | Test |
 
-    SVC-->>USER: Export complete
-```
-
-### 5.2 Export Audit Entry
-
-```json
-{
-    "action": "capsule.exported",
-    "resource_type": "capsule",
-    "resource_id": "uuid",
-    "actor_id": "keycloak-user-id",
-    "actor_email": "admin@acme.com",
-    "old_value": {
-        "name": "MyAgent",
-        "version": "1.0.0",
-        "status": "active"
-    },
-    "new_value": {
-        "export_path": "/backups/capsules.json",
-        "export_checksum": "sha256:...",
-        "export_signature": "Ed25519:..."
-    },
-    "ip_address": "192.168.1.100",
-    "request_id": "req-123",
-    "created_at": "2026-01-16T20:00:00Z"
-}
-```
-
----
-
-## 6. Import with Verification
-
-### 6.1 Import Flow
-
-```mermaid
-flowchart TD
-    LOAD[Load Export Bundle] --> V1{Verify export_signature?}
-    V1 -->|INVALID| REJECT1[❌ REJECT + AUDIT]
-    V1 -->|VALID| V2{Verify capsule signature?}
-    V2 -->|INVALID| REJECT2[❌ REJECT + AUDIT]
-    V2 -->|VALID| FETCH[Fetch Constitution from SomaBrain]
-    FETCH --> CHECK{Checksum matches?}
-    CHECK -->|NO| REJECT3[❌ REJECT + AUDIT]
-    CHECK -->|YES| CREATE[Create Capsule as DRAFT]
-    CREATE --> AUDIT[Log: capsule.imported]
-    AUDIT --> RECERT[Must Re-Certify]
-
-    style REJECT1 fill:#dc143c,color:#fff
-    style REJECT2 fill:#dc143c,color:#fff
-    style REJECT3 fill:#dc143c,color:#fff
-```
-
-### 6.2 Import Audit Entry
-
-```json
-{
-    "action": "capsule.imported",
-    "resource_type": "capsule",
-    "resource_id": "new-uuid",
-    "actor_id": "keycloak-user-id",
-    "old_value": null,
-    "new_value": {
-        "source_backup": "backup_20260116.tar.gz",
-        "source_capsule_id": "original-uuid",
-        "imported_version": "1.0.0.imported",
-        "status": "draft"
-    },
-    "request_id": "req-456",
-    "created_at": "2026-01-16T21:00:00Z"
-}
-```
-
----
-
-## 7. Rollback (Reversibility)
-
-### 7.1 Rollback Flow
-
-```python
-def rollback_capsule(capsule_id: UUID, to_audit_log_id: UUID, actor: User):
-    """Rollback capsule to a previous state."""
-
-    # Get the target audit log
-    target_log = AuditLog.objects.get(id=to_audit_log_id)
-
-    if target_log.resource_id != capsule_id:
-        raise ValueError("Audit log does not match capsule")
-
-    # Get current state
-    capsule = Capsule.objects.get(id=capsule_id)
-    current_state = capsule_to_dict(capsule)
-
-    # Restore from old_value
-    previous_state = target_log.old_value
-    restore_capsule_from_dict(capsule, previous_state)
-    capsule.save()
-
-    # Log the rollback
-    AuditLog.objects.create(
-        actor_id=actor.keycloak_id,
-        actor_email=actor.email,
-        tenant=capsule.tenant,
-        action="capsule.reverted",
-        resource_type="capsule",
-        resource_id=capsule_id,
-        old_value=current_state,
-        new_value=previous_state,
-        request_id=get_current_request_id(),
-    )
-
-    return capsule
-```
-
-### 7.2 Rollback Audit Entry
-
-```json
-{
-    "action": "capsule.reverted",
-    "resource_type": "capsule",
-    "resource_id": "uuid",
-    "actor_id": "admin-user-id",
-    "old_value": {
-        "version": "2.0.0",
-        "status": "active"
-    },
-    "new_value": {
-        "version": "1.0.0",
-        "status": "draft",
-        "reverted_from_audit_log": "audit-log-uuid"
-    },
-    "created_at": "2026-01-16T22:00:00Z"
-}
-```
-
----
-
-## 8. Replay (History Reconstruction)
-
-### 8.1 Replay Query
-
-```python
-def replay_capsule_history(capsule_id: UUID) -> list[dict]:
-    """Reconstruct complete capsule history from audit logs."""
-
-    history = AuditLog.objects.filter(
-        resource_type="capsule",
-        resource_id=capsule_id
-    ).order_by("created_at")
-
-    timeline = []
-    for event in history:
-        timeline.append({
-            "timestamp": event.created_at,
-            "action": event.action,
-            "actor": event.actor_email,
-            "before": event.old_value,
-            "after": event.new_value,
-            "context": {
-                "ip": event.ip_address,
-                "request_id": event.request_id,
-            }
-        })
-
-    return timeline
-```
-
-### 8.2 Timeline Visualization
-
-```
-TIME                ACTION           ACTOR              CHANGES
-────────────────────────────────────────────────────────────────
-2026-01-15 10:00   capsule.created  admin@acme.com     Initial draft
-2026-01-15 11:00   capsule.updated  admin@acme.com     Updated prompt
-2026-01-15 12:00   capsule.certified admin@acme.com    Birth Protocol
-2026-01-16 14:00   capsule.exported admin@acme.com     Backup created
-2026-01-16 20:00   capsule.imported ops@acme.com       Restored to new-tenant
-```
-
----
-
-## 9. Disaster Recovery
-
-### 9.1 RTO/RPO
-
-| Metric | Target |
-|--------|--------|
-| **RTO** | 4 hours |
-| **RPO** | 1 hour |
-
-### 9.2 Rebuild Sequence
-
-1. Deploy Infrastructure
-2. Restore PostgreSQL (includes `audit_logs`)
-3. Restore Redis
-4. Connect to SomaBrain
-5. Verify Constitution available
-6. Import Capsules
-7. Verify Signatures
-8. Re-Certify Capsules
-9. Activate Agents
-
----
-
-## 10. Security Matrix
+**Security Matrix**
 
 | Threat | Mitigation | Audit |
 |--------|------------|-------|
-| **Capsule Tampering** | Ed25519 signature | Verified on import |
-| **Export Tampering** | Ed25519 export signature | Verified |
-| **Unauthorized Export** | SpiceDB permission | `capsule.exported` logged |
-| **Unauthorized Import** | SpiceDB permission | `capsule.imported` logged |
-| **Rollback Abuse** | Admin-only permission | `capsule.reverted` logged |
-| **Audit Log Tampering** | Append-only table | Database triggers |
+| Capsule tampering | Ed25519 signature | Verified on import |
+| Export tampering | Ed25519 export signature | Verified |
+| Unauthorized export | SpiceDB permission | `capsule.exported` logged |
+| Unauthorized import | SpiceDB permission | `capsule.imported` logged |
+| Rollback abuse | Admin-only permission | `capsule.reverted` logged |
+| Audit log tampering | Append-only table | Database triggers |
+
+#### 3.2.3 Reliability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-BKP-REL-001 | Recovery Time Objective (RTO) | <= 4 hours | DR drill |
+| NFR-BKP-REL-002 | Recovery Point Objective (RPO) | <= 1 hour | Backup monitoring |
+
+#### 3.2.4 Scalability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-BKP-SCL-001 | AuditLog shall support at least 10 million records per tenant without query degradation. | 10M+ | Load test |
+
+#### 3.2.5 Maintainability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-BKP-MNT-001 | Backup scripts shall be version-controlled and executable as standalone Python modules. | Yes | Inspection |
+| NFR-BKP-MNT-002 | Rollback and replay functions shall be covered by unit tests. | 100% | Coverage report |
 
 ---
 
-## 11. Acceptance Criteria
+### 3.3 External Interface Requirements
 
-| Criterion | Implementation |
-|-----------|----------------|
-| ✅ REVERSIBLE | `old_value` in AuditLog |
-| ✅ TRACEABLE | `actor_id`, `actor_email`, `ip_address` |
-| ✅ REPLAYABLE | Full history in `audit_logs` table |
-| ✅ Constitution from SomaBrain | API fetch only |
-| ✅ Capsule Ed25519 signed | `registry_signature` |
-| ✅ Export Ed25519 signed | `export_signature` |
-| ✅ Import logged | `capsule.imported` action |
-| ✅ Export logged | `capsule.exported` action |
+#### 3.3.1 User Interfaces
+
+Tenant administrators may request capsule exports and view audit timelines via the Agent Settings UI. Security auditors may query audit logs via read-only database access or admin reporting tools.
+
+#### 3.3.2 Software Interfaces
+
+| Interface | Protocol | Format | Authentication |
+|-----------|----------|--------|----------------|
+| PostgreSQL | TCP | SQL | PostgreSQL roles |
+| Redis | TCP | Key/value | Redis AUTH |
+| SomaBrain Constitution | HTTPS | JSON | mTLS / API key |
+| Vault | HTTPS | JSON | Vault token |
+| File System | Local | Binary/JSON | OS permissions |
+
+#### 3.3.3 Hardware Interfaces
+
+None.
 
 ---
 
-**Document End**
+### 3.4 Design Constraints
 
-*Signed off by ALL 10 PERSONAS ✅*
+| ID | Constraint | Source |
+|----|------------|--------|
+| DC-BKP-001 | Constitution must be fetched from SomaBrain L3; local storage is prohibited. | Architecture decision |
+| DC-BKP-002 | Backup directory structure shall follow the defined manifest format. | Design standard |
+| DC-BKP-003 | `audit_logs` must use append-only semantics at the database layer. | Compliance requirement |
+
+---
+
+## 4. Traceability
+
+### 4.1 Requirements Traceability Matrix
+
+| REQ ID | Description | Source | Design | Implementation | Test |
+|--------|-------------|--------|--------|----------------|------|
+| REQ-BKP-001 | Append-only AuditLog model | Product backlog | `audit.py` | `admin/aaas/models/audit.py` | `tests/unit/test_audit_log.py` |
+| REQ-BKP-002 | Prevent UPDATE/DELETE on audit_logs | Compliance | DB triggers | PostgreSQL migration | `tests/unit/test_audit_triggers.py` |
+| REQ-BKP-003 | Standard audit event types | Product backlog | `audit.py` | `admin/aaas/models/audit.py` | `tests/unit/test_audit_events.py` |
+| REQ-BKP-004 | Signed export bundles | Security req | Export service | `admin/services/export.py` | `tests/unit/test_export_signing.py` |
+| REQ-BKP-005 | Export audit entry | Security req | Export service | `admin/services/export.py` | `tests/unit/test_export_audit.py` |
+| REQ-BKP-006 | Import verification chain | Security req | Import service | `admin/services/import.py` | `tests/unit/test_import_verification.py` |
+| REQ-BKP-007 | Reject failed imports | Security req | Import service | `admin/services/import.py` | `tests/unit/test_import_rejection.py` |
+| REQ-BKP-008 | Draft status + re-certification | Product backlog | Import service | `admin/services/import.py` | `tests/unit/test_import_workflow.py` |
+| REQ-BKP-009 | Import audit entry | Security req | Import service | `admin/services/import.py` | `tests/unit/test_import_audit.py` |
+| REQ-BKP-010 | Rollback via old_value | Product backlog | Rollback service | `admin/services/rollback.py` | `tests/unit/test_rollback.py` |
+| REQ-BKP-011 | Admin-only rollback permission | Security req | SpiceDB policy | `policy/backup.rego` | `tests/unit/test_rollback_auth.py` |
+| REQ-BKP-012 | Rollback audit entry | Security req | Rollback service | `admin/services/rollback.py` | `tests/unit/test_rollback_audit.py` |
+| REQ-BKP-013 | History replay | Product backlog | Replay service | `admin/services/replay.py` | `tests/unit/test_replay.py` |
+| REQ-BKP-014 | Full backup bundle generation | DR req | Backup script | `scripts/backup_agent.py` | `tests/integration/test_backup_bundle.py` |
+| REQ-BKP-015 | Manifest with signature | DR req | Backup script | `scripts/backup_agent.py` | `tests/integration/test_backup_manifest.py` |
+| REQ-BKP-016 | DR rebuild runbook | DR req | Documentation | `docs/deployment/dr_runbook.md` | DR drill checklist |
+
+### 4.2 Requirement to Test Case Mapping
+
+| REQ ID | Test Case ID | Test Method | Expected Result |
+|--------|--------------|-------------|-----------------|
+| REQ-BKP-001 | TC-BKP-001 | Inspection | `AuditLog` model contains all required fields. |
+| REQ-BKP-002 | TC-BKP-002 | SQL test | UPDATE/DELETE on `audit_logs` rejected by trigger. |
+| REQ-BKP-004 | TC-BKP-004 | Unit test | Export bundle signature verifies with public key. |
+| REQ-BKP-006 | TC-BKP-006 | Unit test | Import succeeds only when all 3 verification steps pass. |
+| REQ-BKP-007 | TC-BKP-007 | Unit test | Invalid signature causes rejection and audit failure log. |
+| REQ-BKP-010 | TC-BKP-010 | Unit test | Rollback restores exact `old_value` state. |
+| REQ-BKP-011 | TC-BKP-011 | Auth test | Non-admin rollback request returns 403. |
+| REQ-BKP-013 | TC-BKP-013 | Unit test | Replay returns ordered timeline matching audit entries. |
+| REQ-BKP-014 | TC-BKP-014 | Integration test | Backup directory contains all 6 required artifacts. |
+| REQ-BKP-016 | TC-BKP-016 | DR drill | System restored within 4 hours with data loss <= 1 hour. |
+
+---
+
+## 5. Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 3.0.0 | 2026-01-16 | Platform Engineering | Initial ISO/IEC/IEEE 29148 conformant version. Refactored from ad-hoc SRS. Migrated to requirement tables, traceability matrix, and removed personas/emojis. |
+
+---
+
+*Document conforms to ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering.*

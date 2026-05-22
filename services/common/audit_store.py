@@ -10,10 +10,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-try:
-    import asyncpg  # type: ignore
-except ImportError:  # pragma: no cover
-    asyncpg = None  # type: ignore
+import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,16 +30,12 @@ class AuditStore:
 
     async def _get_pool(self) -> Any:
         """Get or create a connection pool."""
-        if asyncpg is None:
-            raise RuntimeError("asyncpg is required for AuditStore")
         return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
 
     async def ensure_schema(self) -> None:
         """Ensure the audit table exists."""
         if not self.dsn:
             raise RuntimeError("AuditStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("AuditStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -75,8 +68,6 @@ class AuditStore:
         """Persist an audit event."""
         if not self.dsn:
             raise RuntimeError("AuditStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("AuditStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -103,8 +94,6 @@ class AuditStore:
         """List audit events."""
         if not self.dsn:
             raise RuntimeError("AuditStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("AuditStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:

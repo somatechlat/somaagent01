@@ -7,10 +7,11 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from admin.common.exceptions import UnauthorizedError, ValidationError
@@ -79,6 +80,7 @@ MSG_PING = "ping"
 MSG_PONG = "pong"
 MSG_CONNECTED = "connected"
 MSG_TYPING = "typing"
+MSG_FEEDBACK = "feedback"
 
 
 # =============================================================================
@@ -111,6 +113,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.heartbeat_task: Optional[asyncio.Task] = None
         self.is_streaming: bool = False
 
+        # Phase 1-3: Pre-loaded at connection time (cached for entire session)
+        self.capsule: Optional[Any] = None
+        self.iq: Optional[Any] = None
+        self.tool_registry: Optional[Any] = None
+        self.perm_cache: Optional[bool] = None
+        self._cached_history: List[Dict[str, str]] = []
+        self._cached_memory: List[Dict[str, Any]] = []
+        self._context_preload_task: Optional[asyncio.Task] = None
+
     async def connect(self):
         """Handle WebSocket connection.
 
@@ -130,6 +141,68 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 await self.close(code=4001)  # Unauthorized
                 return
 
+            # Phase 2: LOAD CAPSULE (ONCE)
+            from admin.core.models import Capsule
+
+            self.capsule = await sync_to_async(
+                lambda: Capsule.objects.filter(id=self.agent_id).first(),
+                thread_sensitive=True,
+            )()
+            if not self.capsule:
+                logger.warning("Capsule not found: %s", self.agent_id)
+                await self.close(code=4004)  # Capsule not found
+                return
+
+            # Phase 3: DERIVE AGENT IQ (ONCE)
+            from admin.core.agentiq import derive_all_settings
+
+            self.iq = derive_all_settings(self.capsule)
+            logger.info(
+                "WebSocket IQ derived: tier=%s, auto=%s",
+                self.iq.model_tier,
+                self.iq.tool_approval,
+            )
+
+            # Phase 4: BUILD PER-CAPSULE TOOL REGISTRY (ONCE)
+            from services.tool_executor.tool_registry import ToolRegistry
+
+            self.tool_registry = ToolRegistry()
+            self.tool_registry.load_from_capsule(self.capsule)
+            logger.info(
+                "WebSocket tool registry built: %d tools",
+                len(list(self.tool_registry.list())),
+            )
+
+            # Phase 5: PERMISSION PRE-CHECK (ONCE, cached)
+            from admin.core.agentiq import UnifiedGate
+
+            gate = UnifiedGate()
+            self.perm_cache = await gate.check(self.capsule, action="chat:send")
+            if not self.perm_cache:
+                logger.warning("Permission denied for capsule: %s", self.capsule.id)
+                await self.close(code=4003)  # Permission denied
+                return
+
+            # Phase 6: SYNC NEUROMODULATORS WITH BRAIN
+            try:
+                from admin.core.somabrain_client import SomaBrainClient
+
+                brain_client = await SomaBrainClient.get_async()
+                if brain_client and self.capsule:
+                    await brain_client.update_neuromodulators(
+                        self.tenant_id or "default",
+                        str(self.capsule.id),
+                        self.capsule.neuromodulator_baseline or {},
+                    )
+                    logger.info("Neuromodulators synced to Brain for capsule %s", self.capsule.id)
+            except Exception as neuro_exc:
+                logger.debug("Neuromodulator sync skipped: %s", neuro_exc)
+
+            # Phase 7: PRE-WARM CONTEXT (background, non-blocking)
+            self._context_preload_task = asyncio.create_task(
+                self._preload_context()
+            )
+
             # Accept connection
             await self.accept()
 
@@ -147,6 +220,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         "user_id": self.user_id,
                         "agent_id": self.agent_id,
                         "session_id": self.session_id,
+                        "iq_tier": self.iq.model_tier if self.iq else None,
+                        "tools_available": len(list(self.tool_registry.list())) if self.tool_registry else 0,
                     },
                 ).to_dict()
             )
@@ -175,6 +250,33 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             except asyncio.CancelledError:
                 pass
 
+        # Pull adapted neuromodulator state from Brain
+        if self.capsule:
+            try:
+                from admin.core.somabrain_client import SomaBrainClient
+                from asgiref.sync import sync_to_async
+
+                brain_client = await SomaBrainClient.get_async()
+                if brain_client:
+                    neuro_state = await brain_client.get_neuromodulators(
+                        tenant_id=self.tenant_id or "default",
+                        persona_id=str(self.capsule.id),
+                    )
+                    if neuro_state:
+                        self.capsule.neuromodulator_state = {
+                            **neuro_state,
+                            "last_synced_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                        await sync_to_async(self.capsule.save, thread_sensitive=True)(
+                            update_fields=["neuromodulator_state"]
+                        )
+                        logger.info(
+                            "Neuromodulators pulled from Brain and saved for capsule %s",
+                            self.capsule.id,
+                        )
+            except Exception as neuro_exc:
+                logger.debug("Neuromodulator pull on disconnect skipped: %s", neuro_exc)
+
         # Track disconnection
         _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").dec()
 
@@ -198,6 +300,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             elif msg_type in {MSG_CHAT, MSG_CHAT_SEND, MSG_CHAT_LEGACY}:
                 await self._handle_chat(content)
+
+            elif msg_type == MSG_FEEDBACK:
+                await self._handle_feedback(content)
 
             else:
                 await self._send_error(f"Unknown message type: {msg_type}")
@@ -357,11 +462,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             response_content: list[str] = []
 
             turn = ChatTurn(
-                capsule_id=self.agent_id,
+                capsule=self.capsule,
+                iq_settings=self.iq,
+                tool_registry=self.tool_registry,
                 user_id=self.user_id or "",
                 tenant_id=self.tenant_id or "",
                 user_message=message_content,
                 conversation_id=conversation_id,
+                history=self._cached_history,
+                capsule_id=self.agent_id,
             )
 
             async for token in orchestrator.stream_turn(turn):
@@ -414,6 +523,42 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         finally:
             self.is_streaming = False
+
+    async def _handle_feedback(self, content: dict):
+        """Handle user feedback (thumbs up/down).
+
+        Publishes reward signal to SomaBrain for online learning.
+        """
+        payload = content.get("payload") or content.get("data") or {}
+        signal = payload.get("signal", "neutral")  # "positive", "negative", "neutral"
+        response_id = payload.get("response_id", "")
+
+        if not self.capsule:
+            return
+
+        try:
+            from admin.core.somabrain_client import SomaBrainClient
+
+            brain_client = await SomaBrainClient.get_async()
+            if brain_client:
+                await brain_client.publish_reward(
+                    self.session_id or "",
+                    "reward" if signal == "positive" else "punish",
+                    1.0 if signal == "positive" else -1.0,
+                    {
+                        "tenant_id": self.tenant_id or "default",
+                        "persona_id": str(self.capsule.id),
+                        "response_id": response_id,
+                        "original_signal": signal,
+                    },
+                )
+                logger.info(
+                    "Feedback published to Brain: signal=%s, capsule=%s",
+                    signal,
+                    self.capsule.id,
+                )
+        except Exception as exc:
+            logger.debug("Feedback publish skipped: %s", exc)
 
     async def _maybe_generate_title(self, conversation_id: str, chat_service):
         """Generate title after first message exchange.
@@ -487,6 +632,52 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     # =========================================================================
     # HELPERS
     # =========================================================================
+
+    async def _preload_context(self):
+        """Pre-warm context in background while user is typing.
+
+        Fetches conversation history and relevant memories so they are
+        ready when the first message arrives.
+        """
+        try:
+            if not self.conversation_id:
+                return
+
+            # Fetch last 20 messages from PostgreSQL
+            from admin.chat.models import Message as MessageModel
+            from asgiref.sync import sync_to_async
+
+            @sync_to_async
+            def _load_history():
+                qs = MessageModel.objects.filter(
+                    conversation_id=self.conversation_id
+                ).order_by("-created_at")[:20]
+                return [
+                    {"role": m.role, "content": getattr(m, "content", None) or ""}
+                    for m in reversed(list(qs))
+                ]
+
+            self._cached_history = await _load_history()
+
+            # Fetch memories from SomaBrain (best effort)
+            if self.capsule:
+                from admin.core.somabrain_client import SomaBrainClient
+
+                brain_client = await SomaBrainClient.get_async()
+                if brain_client:
+                    try:
+                        mp = self.capsule.memory_pointer or {}
+                        memories = await brain_client.recall(
+                            query="",
+                            top_k=mp.get("recall_limit", 10),
+                            tenant=mp.get("tenant", self.tenant_id or "default"),
+                            namespace=mp.get("namespace", "chat_history"),
+                        )
+                        self._cached_memory = memories or []
+                    except Exception as exc:
+                        logger.debug("Pre-warm memory recall failed: %s", exc)
+        except Exception as exc:
+            logger.debug("Context pre-warm failed: %s", exc)
 
     async def _send_error(self, message: str, code: str = "error"):
         """Send error message."""

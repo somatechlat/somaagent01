@@ -57,13 +57,39 @@ class CapsuleSoulExport:
 
 
 @dataclass
-class CapsuleBodyExport:
-    """Exported Body (capabilities) data."""
+class CapsuleBrainExport:
+    """Exported Brain (IQ + models) data."""
 
-    capabilities_whitelist: list
+    chat_model: Optional[dict]
+    image_model: Optional[dict]
+    voice_model: Optional[dict]
+    browser_model: Optional[dict]
+    iq_knobs: dict
+
+
+@dataclass
+class CapsuleHandsExport:
+    """Exported Hands (tools) data."""
+
+    tool_registry: dict
+    tool_policy: dict
+
+
+@dataclass
+class CapsuleMemoryPointerExport:
+    """Exported Memory pointer (reference, not payload)."""
+
+    tenant: str
+    namespace: str
+    recall_limit: int
+    similarity_threshold: float
+
+
+@dataclass
+class CapsuleBodyExport:
+    """Exported Body (resource limits only — capabilities are in hands)."""
+
     resource_limits: dict
-    schema: dict
-    config: dict
 
 
 @dataclass
@@ -77,8 +103,9 @@ class CapsuleGovernanceExport:
 
 @dataclass
 class CapsuleExport:
-    """Complete Capsule export structure."""
+    """Complete Capsule export structure (v2)."""
 
+    spec_version: str
     id: str
     name: str
     version: str
@@ -87,8 +114,12 @@ class CapsuleExport:
     status: str
     parent_id: Optional[str]
     soul: CapsuleSoulExport
+    brain: CapsuleBrainExport
+    hands: CapsuleHandsExport
+    memory_pointer: CapsuleMemoryPointerExport
     body: CapsuleBodyExport
     governance: CapsuleGovernanceExport
+    neuromodulator_state: dict
     created_at: str
     updated_at: str
 
@@ -283,13 +314,29 @@ def export_tenant_capsules(
 # =============================================================================
 
 
+def _serialize_model(model) -> Optional[dict]:
+    """Serialize an LLMModelConfig to dict."""
+    if not model:
+        return None
+    return {
+        "id": str(model.id) if hasattr(model, "id") else None,
+        "name": getattr(model, "name", ""),
+        "provider": getattr(model, "provider", ""),
+        "display_name": getattr(model, "display_name", ""),
+    }
+
+
 def _export_capsule_core(capsule: Capsule) -> CapsuleExport:
-    """Export core Capsule data."""
+    """Export core Capsule data (v2 format)."""
+    capabilities = capsule.capabilities.filter(is_enabled=True)
+    mp = capsule.memory_pointer or {}
+
     return CapsuleExport(
+        spec_version="capsule-v2",
         id=str(capsule.id),
         name=capsule.name,
         version=capsule.version,
-        tenant=capsule.tenant,
+        tenant=str(capsule.tenant) if capsule.tenant else "",
         description=capsule.description,
         status=capsule.status,
         parent_id=str(capsule.parent.id) if capsule.parent else None,
@@ -298,17 +345,42 @@ def _export_capsule_core(capsule: Capsule) -> CapsuleExport:
             personality_traits=capsule.personality_traits,
             neuromodulator_baseline=capsule.neuromodulator_baseline,
         ),
+        brain=CapsuleBrainExport(
+            chat_model=_serialize_model(capsule.chat_model),
+            image_model=_serialize_model(capsule.image_model),
+            voice_model=_serialize_model(capsule.voice_model),
+            browser_model=_serialize_model(capsule.browser_model),
+            iq_knobs=capsule.persona_config.get("knobs", {}),
+        ),
+        hands=CapsuleHandsExport(
+            tool_registry={
+                c.name: {
+                    "name": c.name,
+                    "description": c.description,
+                    "schema": c.schema,
+                    "config": c.config,
+                    "policy": getattr(c, "policy", {}),
+                    "implementation": getattr(c, "implementation", {}),
+                }
+                for c in capabilities
+            },
+            tool_policy=capsule.tool_policy,
+        ),
+        memory_pointer=CapsuleMemoryPointerExport(
+            tenant=mp.get("tenant", str(capsule.tenant) if capsule.tenant else "default"),
+            namespace=mp.get("namespace", f"agent_{str(capsule.id)[:8]}_chat_history"),
+            recall_limit=mp.get("recall_limit", 10),
+            similarity_threshold=mp.get("similarity_threshold", 0.7),
+        ),
         body=CapsuleBodyExport(
-            capabilities_whitelist=capsule.capabilities_whitelist,
             resource_limits=capsule.resource_limits,
-            schema=capsule.schema,
-            config=capsule.config,
         ),
         governance=CapsuleGovernanceExport(
             constitution_ref=capsule.constitution_ref,
             registry_signature=capsule.registry_signature,
             certified_at=capsule.certified_at.isoformat() if capsule.certified_at else None,
         ),
+        neuromodulator_state=capsule.neuromodulator_state,
         created_at=capsule.created_at.isoformat(),
         updated_at=capsule.updated_at.isoformat(),
     )
@@ -346,16 +418,12 @@ def _export_instances(capsule: Capsule) -> list:
 
 def _export_related_data(capsule: Capsule) -> RelatedDataExport:
     """Export related data entities."""
-    # Get capabilities referenced by this capsule
-    capability_names = capsule.capabilities_whitelist or []
+    # Get capabilities from M2M (canonical) — snapshot at export time
+    capabilities = list(capsule.capabilities.filter(is_enabled=True).values())
 
     return RelatedDataExport(
         models=list(LLMModelConfig.objects.filter(is_active=True).values()),
-        capabilities=(
-            list(Capability.objects.filter(name__in=capability_names, is_enabled=True).values())
-            if capability_names
-            else []
-        ),
+        capabilities=capabilities,
         prompts=list(Prompt.objects.filter(tenant=capsule.tenant, is_active=True).values()),
         feature_flags=list(FeatureFlag.objects.values()),
         agent_settings=list(AgentSetting.objects.filter(agent_id=str(capsule.id)).values()),
@@ -435,9 +503,81 @@ def verify_export_checksum(export_data: dict) -> bool:
     return stored_checksum == computed_checksum
 
 
+# =============================================================================
+# PARTIAL EXPORTS
+# =============================================================================
+
+
+def export_capsule_tools(capsule_id: UUID) -> dict:
+    """Export just the tools from a Capsule.
+
+    Returns a .tools.capsule fragment that can be imported into another Capsule.
+    """
+    capsule = Capsule.objects.prefetch_related("capabilities").get(id=capsule_id)
+    capabilities = capsule.capabilities.filter(is_enabled=True)
+
+    return {
+        "spec_version": "tools-v1",
+        "source_capsule": str(capsule.id),
+        "tool_registry": {
+            c.name: {
+                "name": c.name,
+                "description": c.description,
+                "schema": c.schema,
+                "config": c.config,
+                "policy": getattr(c, "policy", {}),
+                "implementation": getattr(c, "implementation", {}),
+            }
+            for c in capabilities
+        },
+        "tool_policy": capsule.tool_policy,
+    }
+
+
+def export_capsule_persona(capsule_id: UUID) -> dict:
+    """Export just the persona from a Capsule.
+
+    Returns a .persona.capsule fragment that can be imported into another Capsule.
+    """
+    capsule = Capsule.objects.get(id=capsule_id)
+
+    return {
+        "spec_version": "persona-v1",
+        "source_capsule": str(capsule.id),
+        "soul": {
+            "system_prompt": capsule.system_prompt,
+            "personality_traits": capsule.personality_traits,
+            "neuromodulator_baseline": capsule.neuromodulator_baseline,
+        },
+        "brain": {
+            "iq_knobs": capsule.persona_config.get("knobs", {}),
+        },
+        "memory_pointer": capsule.memory_pointer,
+    }
+
+
+def export_capsule_governance(capsule_id: UUID) -> dict:
+    """Export just the governance from a Capsule.
+
+    Returns a .gov.capsule fragment that can be imported into another Capsule.
+    """
+    capsule = Capsule.objects.get(id=capsule_id)
+
+    return {
+        "spec_version": "governance-v1",
+        "source_capsule": str(capsule.id),
+        "constitution_ref": capsule.constitution_ref,
+        "opa_policies": capsule.body.get("governance", {}).get("opa_policies", {}),
+        "spicedb_relations": capsule.body.get("governance", {}).get("spicedb_relations", {}),
+    }
+
+
 __all__ = [
     "export_capsule",
     "export_tenant_capsules",
+    "export_capsule_tools",
+    "export_capsule_persona",
+    "export_capsule_governance",
     "verify_export_checksum",
     "CapsuleBundleExport",
     "CapsuleExport",

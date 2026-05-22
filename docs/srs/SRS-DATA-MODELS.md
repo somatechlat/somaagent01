@@ -1,575 +1,382 @@
-# SRS-DATA-MODELS — Complete ORM Schema Reference
+# SRS-DATA-MODELS — Data Models and ORM Schema
 
-**System:** SomaAgent01
-**Document ID:** SRS-DATA-MODELS-2026-01-16
-**Version:** 5.0 (Complete 50+ Model Inventory)
-**Status:** CANONICAL
-
-**Applied Personas:** PhD Developer · PhD Analyst · QA Engineer · Security Auditor · Performance Engineer · UX Consultant · ISO Documenter · Django Architect · Django Infra · Django Evangelist ✅
-
----
-
-## 1. Overview
-
-This document is the **Single Source of Truth** for all Django ORM models in SomaAgent01. All 50+ models are inventoried with their tables, relationships, and purposes.
+| Field | Value |
+|-------|-------|
+| **System** | SomaAgent01 |
+| **Document ID** | SRS-DATA-MODELS-2026-01-16 |
+| **Version** | 5.1 |
+| **Date** | 2026-01-16 |
+| **Status** | Approved |
+| **Author** | Soma Engineering |
+| **Owner** | Data Architecture Team |
 
 ---
 
-## 2. Model File Inventory
+## Table of Contents
 
-| File | Lines | Models | Domain |
-|------|-------|--------|--------|
-| `admin/core/models.py` | 907 | 17 | Core |
-| `admin/llm/models.py` | 123 | 1 | LLM |
-| `admin/chat/models.py` | 180 | 3 | Chat |
-| `admin/flink/models.py` | 363 | 6 | Analytics |
-| `admin/filesv2/models.py` | 61 | 1 | Files |
-| `admin/permissions/models.py` | 448 | 8 | Permissions |
-| `admin/somabrain/models.py` | 41 | 1 | Memory |
-| `admin/voice/models.py` | 363 | 3 | Voice |
-| `admin/core/infrastructure/models.py` | 353 | 3 | Infra |
-| `admin/aaas/models/*.py` | ~700 | 10 | AAAS |
-
-**Total: ~3,500+ lines, 53 Django Models**
-
----
-
-## 3. Master Entity-Relationship Diagram
-
-```mermaid
-erDiagram
-    %% AAAS DOMAIN
-    SubscriptionTier ||--o{ Tenant : "has tier"
-    Tenant ||--o{ TenantUser : "has members"
-    Tenant ||--o{ Agent : "owns"
-    Tenant ||--o{ Capsule : "owns"
-    Tenant ||--o{ UsageRecord : "tracks"
-
-    %% AGENT DOMAIN
-    Agent ||--o{ AgentUser : "has users"
-    Agent }|--|{ Capsule : "uses (M2M)"
-    Agent ||--o| Capsule : "primary"
-
-    %% CAPSULE DOMAIN
-    Capsule ||--o| Constitution : "references"
-    Capsule }|--|{ Capability : "enables (M2M)"
-    Capsule ||--o| LLMModelConfig : "chat_model"
-    Capsule ||--o| LLMModelConfig : "image_model"
-    Capsule ||--o| LLMModelConfig : "voice_model"
-    Capsule ||--o| MemoryConfig : "memory"
-
-    %% CHAT DOMAIN
-    Conversation ||--o{ Message : "contains"
-    Conversation ||--o{ ConversationParticipant : "has"
-
-    %% VOICE DOMAIN
-    VoicePersona ||--o| LLMModelConfig : "stt"
-    VoicePersona ||--o| LLMModelConfig : "tts"
-    VoiceSession ||--o| VoicePersona : "uses"
-```
+1. [Introduction](#1-introduction)
+   1.1 [Purpose](#11-purpose)
+   1.2 [Scope](#12-scope)
+   1.3 [Definitions](#13-definitions)
+   1.4 [References](#14-references)
+2. [Product Description](#2-product-description)
+   2.1 [Product Perspective](#21-product-perspective)
+   2.2 [Product Functions](#22-product-functions)
+   2.3 [User Characteristics](#23-user-characteristics)
+   2.4 [Constraints](#24-constraints)
+   2.5 [Assumptions and Dependencies](#25-assumptions-and-dependencies)
+3. [Specific Requirements](#3-specific-requirements)
+   3.1 [Functional Requirements](#31-functional-requirements)
+   3.2 [Non-Functional Requirements](#32-non-functional-requirements)
+   3.3 [External Interface Requirements](#33-external-interface-requirements)
+   3.4 [Design Constraints](#34-design-constraints)
+4. [Traceability](#4-traceability)
 
 ---
 
-## 4. CORE Domain (`admin/core/models.py`)
+## 1. Introduction
 
-### 4.1 Session Management
+### 1.1 Purpose
 
-```mermaid
-erDiagram
-    Session ||--o{ SessionEvent : "has events"
+This document specifies the data model requirements for the SomaAgent01 platform. It defines the Django ORM model inventory, domain boundaries, relationships, and constraints that govern how data is structured, stored, and accessed across the platform.
 
-    Session {
-        uuid id PK
-        string session_id UK
-        string persona_id
-        string tenant
-        json metadata
-        timestamp created_at
-    }
+### 1.2 Scope
 
-    SessionEvent {
-        bigint id PK
-        uuid session_id FK
-        string event_type
-        json payload
-        string role
-        timestamp created_at
-    }
-```
+**In scope:**
+- Complete inventory of Django ORM models across all domains
+- Entity-relationship definitions and foreign key constraints
+- Tenant-scoped data isolation at the model layer
+- Zero Data Loss (ZDL) infrastructure models
+- LLM model configuration and routing data structures
+- Domain model segregation by bounded context
 
-### 4.2 Capsule Architecture
+**Out of scope:**
+- Database physical schema tuning (indexes, partitioning)
+- Migration generation scripts (covered by Django's built-in migration framework)
+- Raw SQL queries and stored procedures
 
-| Model | Table | Purpose |
-|-------|-------|---------|
-| `Constitution` | constitutions | Immutable governance document |
-| `Capsule` | capsules | Agent identity unit |
-| `CapsuleInstance` | capsule_instances | Running instance |
-| `Capability` | capabilities | Tool/MCP registry |
+### 1.3 Definitions
 
-```python
-class Capsule(models.Model):
-    # Identity
-    id = models.UUIDField(primary_key=True)
-    name = models.CharField(max_length=255)
-    version = models.CharField(max_length=50)
-    tenant = models.ForeignKey("aaas.Tenant", on_delete=CASCADE)
-    status = models.CharField(choices=STATUS_CHOICES)
+| Term | Definition |
+|------|------------|
+| Capsule | Agent identity unit containing governance, models, and capabilities |
+| Constitution | Immutable governance document referenced by a capsule |
+| Django ORM | Object-Relational Mapper provided by Django framework |
+| Domain Model | Group of related models representing a bounded business context |
+| FK | Foreign Key, a database constraint enforcing referential integrity |
+| LLMModelConfig | Single source of truth for all Large Language Model configurations |
+| M2M | Many-to-Many relationship between two entities |
+| OutboxMessage | Transactional outbox pattern message for reliable event publishing |
+| Tenant | Isolated organizational boundary within the platform |
+| ZDL | Zero Data Loss, a set of infrastructure models ensuring message durability |
 
-    # Governance
-    constitution = models.ForeignKey(Constitution, PROTECT)
-    registry_signature = models.TextField()
+### 1.4 References
 
-    # Soul (Identity)
-    system_prompt = models.TextField()
-    personality_traits = models.JSONField()
-    neuromodulator_baseline = models.JSONField()
-    learning_config = models.JSONField()
-
-    # Body (Models) - FK only, NO hardcoding
-    chat_model = models.ForeignKey("llm.LLMModelConfig", PROTECT)
-    image_model = models.ForeignKey("llm.LLMModelConfig", SET_NULL)
-    voice_model = models.ForeignKey("llm.LLMModelConfig", SET_NULL)
-    browser_model = models.ForeignKey("llm.LLMModelConfig", SET_NULL)
-
-    # Hands (Capabilities)
-    capabilities = models.ManyToManyField("Capability")
-
-    # Memory
-    memory_config = models.ForeignKey("somabrain.MemoryConfig", PROTECT)
-```
-
-### 4.3 Infrastructure Models
-
-| Model | Table | Purpose |
-|-------|-------|---------|
-| `UISetting` | ui_settings | UI preferences |
-| `Job` | jobs | Scheduled jobs |
-| `Notification` | notifications | User alerts |
-| `Prompt` | prompts | Prompt templates |
-| `FeatureFlag` | feature_flags | Feature toggles |
-| `AgentSetting` | agent_settings | Agent config |
-
-### 4.4 Zero Data Loss (ZDL) Models
-
-| Model | Table | Purpose |
-|-------|-------|---------|
-| `OutboxMessage` | outbox_messages | Transactional outbox |
-| `DeadLetterMessage` | dead_letter_messages | DLQ storage |
-| `IdempotencyRecord` | idempotency_records | Deduplication |
-| `MemoryReplica` | memory_replica | WAL events |
-| `PendingMemory` | pending_memories | Brain sync queue |
+| ID | Document | Version | Location |
+|----|----------|---------|----------|
+| REF-001 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/srs/SRS-SECURITY-MULTITENANCY.md` |
+| REF-002 | SRS-PERMISSION-MATRIX | 1.1 | `docs/srs/SRS-PERMISSION-MATRIX.md` |
+| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/srs/SRS-ARCHITECTURAL-PATTERNS.md` |
+| REF-004 | Django Documentation | 5.0 | https://docs.djangoproject.com |
 
 ---
 
-## 5. LLM Domain (`admin/llm/models.py`)
+## 2. Product Description
 
-### 5.1 LLMModelConfig (Critical)
+### 2.1 Product Perspective
 
-```python
-class LLMModelConfig(models.Model):
-    """Single source of truth for ALL model configurations."""
+The data model layer is the persistence foundation of SomaAgent01. All business logic, API responses, and background jobs interact with the database through Django ORM models. The model layer enforces tenant isolation, referential integrity, and capability-based LLM routing. It is organized into bounded contexts (domains) to minimize coupling.
 
-    # Core
-    name = models.CharField(max_length=255, unique=True)
-    display_name = models.CharField(max_length=255)
-    model_type = models.CharField(choices=MODEL_TYPE_CHOICES)
-    provider = models.CharField(max_length=100)
-    api_base = models.URLField(blank=True)
+### 2.2 Product Functions
 
-    # Capability-based routing
-    capabilities = models.JSONField(default=list)
-    # Values: "text", "vision", "audio", "code", "long_context",
-    #         "image_generation", "audio_transcription", "text_to_speech"
+| ID | Function | Description |
+|----|----------|-------------|
+| FUNC-001 | Tenant Isolation | Enforce tenant-scoped data access via `tenant_id` foreign keys and querysets |
+| FUNC-002 | Model Routing | Select appropriate LLM model configurations based on required capabilities and cost tier |
+| FUNC-003 | Message Durability | Ensure events are reliably published via OutboxMessage and DeadLetterMessage patterns |
+| FUNC-004 | Identity Management | Store capsules, constitutions, and agent configurations with versioned governance |
+| FUNC-005 | Conversation Persistence | Store conversations, messages, and participant metadata |
+| FUNC-006 | Permission Storage | Store roles, granular permissions, resources, and actions for RBAC |
+| FUNC-007 | Analytics Storage | Store time-windowed aggregates for usage and anomaly detection |
+| FUNC-008 | Billing Metering | Store usage records for external billing system integration |
 
-    priority = models.IntegerField(default=50)
-    cost_tier = models.CharField(choices=COST_TIER_CHOICES)
-    # Values: "free", "low", "standard", "premium"
+### 2.3 User Characteristics
 
-    domains = models.JSONField(default=list)
-    # Values: "medical", "legal", "code", "scientific"
+| User Type | Role | Technical Level | Access |
+|-----------|------|-----------------|--------|
+| Backend Developer | Implements business logic | High | Full ORM access within domain boundaries |
+| Data Engineer | Manages analytics pipelines | High | Read access to Flink and audit tables |
+| Platform Admin | Operates infrastructure | High | Read access to health and infrastructure tables |
+| API Consumer | External integrator | Medium | Read/write via API layer only |
 
-    # Limits
-    ctx_length = models.IntegerField()
-    limit_requests = models.IntegerField()
-    limit_input = models.IntegerField()
-    limit_output = models.IntegerField()
+### 2.4 Constraints
 
-    # Status
-    is_active = models.BooleanField(default=True)
+| ID | Constraint | Description |
+|----|------------|-------------|
+| CON-001 | Django ORM Only | All database access must use Django ORM; raw SQL is prohibited except in migrations |
+| CON-002 | No Hardcoded Models | LLM model references must use foreign keys to `LLMModelConfig`; no hardcoded model names in business logic |
+| CON-003 | Tenant Scoping | Every model in the AAAS, Core, Chat, and Voice domains must have a `tenant_id` or tenant foreign key |
+| CON-004 | Migration Safety | All schema changes must be applied via Django migrations; manual DDL is prohibited in production |
 
-    class Meta:
-        db_table = "llm_model_configs"
-        ordering = ["-priority", "provider", "name"]
-```
+### 2.5 Assumptions and Dependencies
 
-### 5.2 Model Routing Algorithm
-
-```
-Required Capability → filter(capabilities__contains=X)
-                    → filter(cost_tier IN allowed_tiers)
-                    → filter(name IN Capsule.allowed_models)
-                    → order_by(-priority)
-                    → first()
-```
+| ID | Assumption / Dependency | Impact if Invalid |
+|----|------------------------|-------------------|
+| AD-001 | PostgreSQL is the primary transactional database | All ORM models require redesign if changing database |
+| AD-002 | Milvus is the vector database | Vector search and memory features fail if unavailable |
+| AD-003 | Redis is available for caching and rate limiting | Performance degrades; rate limiting may fail |
+| AD-004 | Django migrations are applied in order | Schema inconsistency and application errors |
 
 ---
 
-## 6. CHAT Domain (`admin/chat/models.py`)
+## 3. Specific Requirements
 
-### 6.1 Conversation Flow
+### 3.1 Functional Requirements
 
-```mermaid
-erDiagram
-    Conversation ||--o{ Message : "contains"
-    Conversation ||--o{ ConversationParticipant : "has"
+#### 3.1.1 Model Inventory
 
-    Conversation {
-        uuid id PK
-        uuid agent_id FK
-        uuid user_id FK
-        uuid tenant_id FK
-        string title
-        string status
-        int message_count
-        string memory_mode
-    }
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-001 | The system shall maintain Django ORM models across the following domains: Core, LLM, Chat, AAAS, Permissions, Voice, Flink, Files, Memory, and Infrastructure. | Must | Inspection | Approved |
+| REQ-DM-002 | The system shall define all models in the following files or packages: `admin/core/models/core.py`, `admin/core/models/zdl.py`, `admin/llm/models.py`, `admin/chat/models.py`, `admin/aaas/models/`, `admin/permissions/models.py`, `admin/voice/models.py`, `admin/flink/models.py`, `admin/filesv2/models.py`, `admin/somabrain/models.py`, `admin/core/infrastructure/models.py`. | Must | Inspection | Approved |
+| REQ-DM-003 | The system shall maintain at minimum 47 mapped database tables derived from Django models. | Must | Inspection | Approved |
 
-    Message {
-        uuid id PK
-        uuid conversation_id FK
-        string role
-        text content
-        int token_count
-        string model
-        int latency_ms
-        float rating
-        string task_type
-        json tools_used
-        bool synced_to_brain
-    }
+#### 3.1.2 Core Domain
 
-    ConversationParticipant {
-        uuid id PK
-        uuid conversation_id FK
-        uuid user_id FK
-        string role
-    }
-```
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-004 | The system shall define a `Session` model with fields: `id` (UUID, PK), `session_id` (string, unique), `persona_id` (string), `tenant` (string), `metadata` (JSON), `created_at` (timestamp). | Must | Inspection | Approved |
+| REQ-DM-005 | The system shall define a `SessionEvent` model with fields: `id` (bigint, PK), `session_id` (UUID, FK to Session), `event_type` (string), `payload` (JSON), `role` (string), `created_at` (timestamp). | Must | Inspection | Approved |
+| REQ-DM-006 | The system shall define a `Constitution` model as an immutable governance document referenced by capsules. | Must | Inspection | Approved |
+| REQ-DM-007 | The system shall define a `Capsule` model with identity fields (`id`, `name`, `version`), a `tenant` foreign key, a `constitution` foreign key (PROTECT), model foreign keys (`chat_model`, `image_model`, `voice_model`, `browser_model`), a `capabilities` many-to-many relationship, and a `memory_config` foreign key. | Must | Inspection | Approved |
+| REQ-DM-008 | The system shall define a `CapsuleInstance` model representing a running instance of a capsule. | Must | Inspection | Approved |
+| REQ-DM-009 | The system shall define a `Capability` model for tool and MCP registry entries. | Must | Inspection | Approved |
+| REQ-DM-010 | The system shall define infrastructure models: `UISetting`, `Job`, `Notification`, `Prompt`, `FeatureFlag`, `AgentSetting`. | Must | Inspection | Approved |
 
----
+#### 3.1.3 Zero Data Loss Models
 
-## 7. AAAS Domain (`admin/aaas/models/`)
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-011 | The system shall define an `OutboxMessage` model for the transactional outbox pattern. | Must | Inspection | Approved |
+| REQ-DM-012 | The system shall define a `DeadLetterMessage` model for dead-letter queue storage. | Must | Inspection | Approved |
+| REQ-DM-013 | The system shall define an `IdempotencyRecord` model for request deduplication. | Must | Inspection | Approved |
+| REQ-DM-014 | The system shall define a `MemoryReplica` model for write-ahead log events. | Must | Inspection | Approved |
+| REQ-DM-015 | The system shall define a `PendingMemory` model for brain synchronization queue entries. | Must | Inspection | Approved |
 
-### 7.1 Tenant Hierarchy
+#### 3.1.4 LLM Domain
 
-```mermaid
-erDiagram
-    SubscriptionTier ||--o{ Tenant : "subscribed to"
-    Tenant ||--o{ TenantUser : "has members"
-    Tenant ||--o{ Agent : "owns"
-    Tenant ||--|{ TenantSettings : "has settings"
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-016 | The system shall define an `LLMModelConfig` model as the single source of truth for all model configurations with fields: `name` (unique), `display_name`, `model_type`, `provider`, `api_base`, `capabilities` (JSON), `priority`, `cost_tier`, `domains` (JSON), `ctx_length`, `limit_requests`, `limit_input`, `limit_output`, `is_active`. | Must | Inspection | Approved |
+| REQ-DM-017 | The system shall route model selection by filtering on required capabilities, allowed cost tiers, capsule-allowed models, and priority, selecting the highest-priority match. | Must | Test | Approved |
 
-    SubscriptionTier {
-        uuid id PK
-        string name
-        string slug UK
-        bigint base_price_cents
-        string lago_plan_code
-        int max_agents
-        int max_users_per_agent
-        int max_monthly_voice_minutes
-        int max_monthly_api_calls
-        json feature_defaults
-    }
+#### 3.1.5 Chat Domain
 
-    Tenant {
-        uuid id PK
-        string name
-        string slug UK
-        uuid tier_id FK
-        string status
-        string keycloak_realm
-        string lago_customer_id
-        string lago_subscription_id
-        json feature_overrides
-    }
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-018 | The system shall define a `Conversation` model with fields: `id` (UUID, PK), `agent_id` (UUID, FK), `user_id` (UUID, FK), `tenant_id` (UUID, FK), `title`, `status`, `message_count`, `memory_mode`. | Must | Inspection | Approved |
+| REQ-DM-019 | The system shall define a `Message` model with fields: `id` (UUID, PK), `conversation_id` (UUID, FK), `role`, `content`, `token_count`, `model`, `latency_ms`, `rating`, `task_type`, `tools_used` (JSON), `synced_to_brain` (boolean). | Must | Inspection | Approved |
+| REQ-DM-020 | The system shall define a `ConversationParticipant` model linking users to conversations with a role field. | Must | Inspection | Approved |
 
-    TenantUser {
-        uuid id PK
-        uuid tenant_id FK
-        uuid user_id
-        string email
-        string role
-        bool is_active
-    }
-```
+#### 3.1.6 AAAS Domain
 
-### 7.2 Agent Configuration
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-021 | The system shall define a `SubscriptionTier` model with fields: `id` (UUID, PK), `name`, `slug` (unique), `base_price_cents`, `lago_plan_code`, `max_agents`, `max_users_per_agent`, `max_monthly_voice_minutes`, `max_monthly_api_calls`, `feature_defaults` (JSON). | Must | Inspection | Approved |
+| REQ-DM-022 | The system shall define a `Tenant` model with fields: `id` (UUID, PK), `name`, `slug` (unique), `tier` (FK to SubscriptionTier), `status`, `keycloak_realm`, `lago_customer_id`, `lago_subscription_id`, `feature_overrides` (JSON). | Must | Inspection | Approved |
+| REQ-DM-023 | The system shall define a `TenantUser` model with fields: `id` (UUID, PK), `tenant` (FK), `user_id` (UUID), `email`, `role`, `is_active`. | Must | Inspection | Approved |
+| REQ-DM-024 | The system shall define an `Agent` model with fields: `id` (UUID, PK), `tenant` (FK), `name`, `slug`, `status`, `config` (JSON), `feature_settings` (JSON), `primary_capsule` (FK), `skin_id`. | Must | Inspection | Approved |
+| REQ-DM-025 | The system shall define an `AgentUser` model linking users to agents with a role field. | Must | Inspection | Approved |
+| REQ-DM-026 | The system shall define a `UsageRecord` model for metering data sent to the external billing system. | Must | Inspection | Approved |
+| REQ-DM-027 | The system shall define settings models: `PlatformConfig` (global singleton), `AdminProfile`, `TenantSettings`, `UserPreferences`. | Must | Inspection | Approved |
 
-```mermaid
-erDiagram
-    Agent }|--|{ Capsule : "uses (M2M)"
-    Agent ||--o| Capsule : "primary_capsule"
-    Agent ||--o{ AgentUser : "has users"
+#### 3.1.7 Permissions Domain
 
-    Agent {
-        uuid id PK
-        uuid tenant_id FK
-        string name
-        string slug
-        string status
-        json config
-        json feature_settings
-        uuid primary_capsule_id FK
-        uuid skin_id
-    }
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-028 | The system shall define a `Role` model with fields: `id` (UUID, PK), `tenant_id`, `name`, `slug`, `scope`, `is_system`, `is_default`. | Must | Inspection | Approved |
+| REQ-DM-029 | The system shall define a `PermissionResource` model with fields: `id` (UUID, PK), `name` (unique), `display_name`, `category`. | Must | Inspection | Approved |
+| REQ-DM-030 | The system shall define a `PermissionAction` model with fields: `id` (UUID, PK), `name`, `is_destructive`. | Must | Inspection | Approved |
+| REQ-DM-031 | The system shall define a `GranularPermission` model with fields: `id` (UUID, PK), `resource` (FK), `action` (FK), `codename` (unique), and a many-to-many relationship to `Role`. | Must | Inspection | Approved |
 
-    AgentUser {
-        uuid id PK
-        uuid agent_id FK
-        uuid user_id
-        string role
-    }
-```
+#### 3.1.8 Voice Domain
 
-### 7.3 Settings Hierarchy
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-032 | The system shall define a `VoicePersona` model with fields: `id` (UUID, PK), `tenant` (FK), `name`, `stt_model` (FK to LLMModelConfig), `tts_llm_model` (FK to LLMModelConfig), `tts_voice_model_id`, `tts_speed`, `personality_config` (JSON). | Must | Inspection | Approved |
+| REQ-DM-033 | The system shall define a `VoiceSession` model with fields: `id` (UUID, PK), `tenant` (FK), `persona` (FK), `status`, `duration_seconds`, `bytes_sent`, `bytes_received`. | Must | Inspection | Approved |
+| REQ-DM-034 | The system shall define a `VoiceModel` model with fields: `id` (string, PK), `name`, `provider`, `language`, `gender`, `is_active`. | Must | Inspection | Approved |
 
-| Model | Table | Scope |
-|-------|-------|-------|
-| `PlatformConfig` | aaas_platform_config | Global singleton |
-| `AdminProfile` | aaas_admin_profile | Platform admin |
-| `TenantSettings` | aaas_tenant_settings | Per-tenant |
-| `UserPreferences` | aaas_user_preferences | Per-user |
+#### 3.1.9 Flink Domain
 
-### 7.4 Billing Integration
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-035 | The system shall define a `FlinkConversationMetrics` model for 1-minute windowed conversation aggregates. | Must | Inspection | Approved |
+| REQ-DM-036 | The system shall define a `FlinkUsageAggregate` model for 1-hour windowed usage aggregates. | Must | Inspection | Approved |
+| REQ-DM-037 | The system shall define a `FlinkAnomalyAlert` model for 5-minute windowed anomaly alerts. | Must | Inspection | Approved |
+| REQ-DM-038 | The system shall define a `FlinkAgentMetrics` model for 1-minute windowed agent aggregates. | Must | Inspection | Approved |
 
-| Model | Table | Purpose |
-|-------|-------|---------|
-| `UsageRecord` | usage_records | Metering for Lago |
+#### 3.1.10 Infrastructure and Other Domains
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-039 | The system shall define infrastructure models: `RateLimitPolicy`, `ServiceHealth`, `InfrastructureConfig`. | Must | Inspection | Approved |
+| REQ-DM-040 | The system shall define a `File` model for S3 or local storage metadata. | Must | Inspection | Approved |
+| REQ-DM-041 | The system shall define a `MemoryConfig` model for retention policy configuration. | Must | Inspection | Approved |
+
+#### 3.1.11 Relationship Integrity
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-DM-042 | The system shall enforce a foreign key from `Capsule.tenant` to `Tenant` with `on_delete=CASCADE`. | Must | Inspection | Approved |
+| REQ-DM-043 | The system shall enforce a foreign key from `Capsule.constitution` to `Constitution` with `on_delete=PROTECT`. | Must | Inspection | Approved |
+| REQ-DM-044 | The system shall enforce foreign keys from `Capsule` to `LLMModelConfig` for `chat_model` (PROTECT), `image_model` (SET_NULL), `voice_model` (SET_NULL), and `browser_model` (SET_NULL). | Must | Inspection | Approved |
+| REQ-DM-045 | The system shall enforce a many-to-many relationship from `Capsule` to `Capability`. | Must | Inspection | Approved |
+| REQ-DM-046 | The system shall enforce a foreign key from `Agent.tenant` to `Tenant` with `on_delete=CASCADE`. | Must | Inspection | Approved |
+| REQ-DM-047 | The system shall enforce a many-to-many relationship from `Agent` to `Capsule`, plus a `primary_capsule` foreign key (SET_NULL). | Must | Inspection | Approved |
+| REQ-DM-048 | The system shall enforce a foreign key from `Conversation.agent` to `Agent` and from `Conversation.tenant` to `Tenant`. | Must | Inspection | Approved |
+| REQ-DM-049 | The system shall enforce a foreign key from `Message.conversation` to `Conversation` with `on_delete=CASCADE`. | Must | Inspection | Approved |
+| REQ-DM-050 | The system shall enforce a foreign key from `Tenant.tier` to `SubscriptionTier` with `on_delete=PROTECT`. | Must | Inspection | Approved |
 
 ---
 
-## 8. PERMISSIONS Domain (`admin/permissions/models.py`)
+### 3.2 Non-Functional Requirements
 
-### 8.1 RBAC Architecture
+#### 3.2.1 Performance
 
-```mermaid
-erDiagram
-    Role }|--|{ GranularPermission : "has (M2M)"
-    GranularPermission ||--|| PermissionResource : "on"
-    GranularPermission ||--|| PermissionAction : "allows"
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-PERF-001 | Model query response time for single-record lookups shall be less than or equal to 10 ms. | 10 ms | Test |
+| NFR-PERF-002 | LLM model routing query shall complete within 20 ms at p99. | 20 ms | Test |
 
-    Role {
-        uuid id PK
-        string tenant_id
-        string name
-        string slug
-        string scope
-        bool is_system
-        bool is_default
-    }
+#### 3.2.2 Security
 
-    GranularPermission {
-        uuid id PK
-        uuid resource_id FK
-        uuid action_id FK
-        string codename UK
-    }
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SEC-001 | All models with tenant scope shall enforce tenant filtering at the queryset level. | 100% coverage | Inspection |
+| NFR-SEC-002 | No model shall store plaintext secrets or API keys. | 0 violations | Inspection |
 
-    PermissionResource {
-        uuid id PK
-        string name UK
-        string display_name
-        string category
-    }
+#### 3.2.3 Reliability
 
-    PermissionAction {
-        uuid id PK
-        string name
-        bool is_destructive
-    }
-```
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-REL-001 | OutboxMessage processing shall guarantee at-least-once delivery to Kafka. | 99.99% | Test |
+| NFR-REL-002 | Foreign key constraints shall prevent orphaned records in normal operation. | 0 orphans | Test |
+
+#### 3.2.4 Scalability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SCL-001 | The Conversation model shall support 10 million rows per tenant with query performance degradation less than or equal to 20% at maximum scale. | 10M rows | Analysis |
+
+#### 3.2.5 Maintainability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-MNT-001 | Each model file shall not exceed 650 lines; files exceeding this limit shall be split by subdomain. | 650 lines | Inspection |
+| NFR-MNT-002 | Model changes shall include corresponding Django migration files committed to version control. | 100% coverage | Inspection |
 
 ---
 
-## 9. VOICE Domain (`admin/voice/models.py`)
+### 3.3 External Interface Requirements
 
-### 9.1 Voice Architecture
+#### 3.3.1 User Interfaces
 
-```mermaid
-erDiagram
-    VoicePersona ||--o| LLMModelConfig : "stt_model"
-    VoicePersona ||--o| LLMModelConfig : "tts_llm_model"
-    VoiceSession ||--o| VoicePersona : "uses"
+No direct user interface requirements are specified in this document.
 
-    VoicePersona {
-        uuid id PK
-        uuid tenant_id FK
-        string name
-        uuid stt_model_id FK
-        uuid tts_llm_model_id FK
-        string tts_voice_model_id
-        float tts_speed
-        json personality_config
-    }
+#### 3.3.2 Software Interfaces
 
-    VoiceSession {
-        uuid id PK
-        uuid tenant_id FK
-        uuid persona_id FK
-        string status
-        float duration_seconds
-        int bytes_sent
-        int bytes_received
-    }
+| Interface | Protocol | Format | Authentication |
+|-----------|----------|--------|----------------|
+| PostgreSQL | TCP / SSL | SQL / Django ORM | Username / password + SSL |
+| Milvus | gRPC / REST | Protobuf / JSON | Token |
+| Kafka | TCP / SASL_SSL | Avro / JSON | SASL/SCRAM |
+| Billing API (Lago) | HTTPS / REST | JSON | API key |
 
-    VoiceModel {
-        string id PK
-        string name
-        string provider
-        string language
-        string gender
-        bool is_active
-    }
-```
+#### 3.3.3 Hardware Interfaces
+
+No hardware interface requirements are specified in this document.
 
 ---
 
-## 10. FLINK Domain (`admin/flink/models.py`)
+### 3.4 Design Constraints
 
-### 10.1 Analytics Sinks
-
-| Model | Table | Window | Source Topic |
-|-------|-------|--------|--------------|
-| `FlinkConversationMetrics` | flink_conversation_metrics | 1 min | soma.conversations.events |
-| `FlinkUsageAggregate` | flink_usage_aggregates | 1 hour | soma.usage.metering |
-| `FlinkAnomalyAlert` | flink_anomaly_alerts | 5 min | soma.permissions.audit |
-| `FlinkAgentMetrics` | flink_agent_metrics | 1 min | soma.agents.events |
+| ID | Constraint | Source |
+|----|------------|--------|
+| DC-001 | All persistence must use Django ORM; SQLAlchemy is prohibited. | SRS-ARCHITECTURAL-PATTERNS |
+| DC-002 | Migrations must use Django's built-in migration framework; Alembic is prohibited. | SRS-ARCHITECTURAL-PATTERNS |
+| DC-003 | Models must be organized by bounded context in `admin/<domain>/models/`. | SRS-ARCHITECTURAL-PATTERNS |
+| DC-004 | No hardcoded model names or provider strings in business logic; all references must use foreign keys. | Platform standard |
 
 ---
 
-## 11. INFRASTRUCTURE Domain
+## 4. Traceability
 
-### 11.1 Rate Limiting & Health
+### 4.1 Requirements Traceability Matrix
 
-| Model | Table | Purpose |
-|-------|-------|---------|
-| `RateLimitPolicy` | rate_limit_policies | Rate limit config |
-| `ServiceHealth` | service_health | Health status |
-| `InfrastructureConfig` | infrastructure_configs | Service config |
+| REQ ID | Description | Source | Design | Implementation | Test |
+|--------|-------------|--------|--------|----------------|------|
+| REQ-DM-001 | Model domain inventory | SRS-DATA-MODELS | `admin/*/models/` | `admin/core/models/`, `admin/llm/models.py`, `admin/chat/models.py`, `admin/aaas/models/`, `admin/permissions/models.py`, `admin/voice/models.py`, `admin/flink/models.py`, `admin/filesv2/models.py`, `admin/somabrain/models.py`, `admin/core/infrastructure/models.py` | `tests/django/` |
+| REQ-DM-004 | Session model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-005 | SessionEvent model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-006 | Constitution model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-007 | Capsule model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-011 | OutboxMessage model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
+| REQ-DM-012 | DeadLetterMessage model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
+| REQ-DM-013 | IdempotencyRecord model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
+| REQ-DM-014 | MemoryReplica model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
+| REQ-DM-015 | PendingMemory model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
+| REQ-DM-016 | LLMModelConfig model | SRS-DATA-MODELS | `admin/llm/models.py` | `admin/llm/models.py` | `tests/django/` |
+| REQ-DM-017 | Model routing algorithm | SRS-DATA-MODELS | `admin/core/model_router.py` | `admin/core/model_router.py` | `tests/unit/` |
+| REQ-DM-018 | Conversation model | SRS-DATA-MODELS | `admin/chat/models.py` | `admin/chat/models.py` | `tests/django/` |
+| REQ-DM-019 | Message model | SRS-DATA-MODELS | `admin/chat/models.py` | `admin/chat/models.py` | `tests/django/` |
+| REQ-DM-020 | ConversationParticipant model | SRS-DATA-MODELS | `admin/chat/models.py` | `admin/chat/models.py` | `tests/django/` |
+| REQ-DM-021 | SubscriptionTier model | SRS-DATA-MODELS | `admin/aaas/models/tiers.py` | `admin/aaas/models/tiers.py` | `tests/django/` |
+| REQ-DM-022 | Tenant model | SRS-DATA-MODELS | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py` | `tests/django/` |
+| REQ-DM-023 | TenantUser model | SRS-DATA-MODELS | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py` | `tests/django/` |
+| REQ-DM-024 | Agent model | SRS-DATA-MODELS | `admin/aaas/models/agents.py` | `admin/aaas/models/agents.py` | `tests/django/` |
+| REQ-DM-025 | AgentUser model | SRS-DATA-MODELS | `admin/aaas/models/agents.py` | `admin/aaas/models/agents.py` | `tests/django/` |
+| REQ-DM-026 | UsageRecord model | SRS-DATA-MODELS | `admin/aaas/models/usage.py` | `admin/aaas/models/usage.py` | `tests/django/` |
+| REQ-DM-027 | Settings models | SRS-DATA-MODELS | `admin/aaas/models/profiles.py` | `admin/aaas/models/profiles.py` | `tests/django/` |
+| REQ-DM-028 | Role model | SRS-DATA-MODELS | `admin/permissions/models.py` | `admin/permissions/models.py` | `tests/django/` |
+| REQ-DM-029 | PermissionResource model | SRS-DATA-MODELS | `admin/permissions/models.py` | `admin/permissions/models.py` | `tests/django/` |
+| REQ-DM-030 | PermissionAction model | SRS-DATA-MODELS | `admin/permissions/models.py` | `admin/permissions/models.py` | `tests/django/` |
+| REQ-DM-031 | GranularPermission model | SRS-DATA-MODELS | `admin/permissions/models.py` | `admin/permissions/models.py` | `tests/django/` |
+| REQ-DM-032 | VoicePersona model | SRS-DATA-MODELS | `admin/voice/models.py` | `admin/voice/models.py` | `tests/django/` |
+| REQ-DM-033 | VoiceSession model | SRS-DATA-MODELS | `admin/voice/models.py` | `admin/voice/models.py` | `tests/django/` |
+| REQ-DM-034 | VoiceModel model | SRS-DATA-MODELS | `admin/voice/models.py` | `admin/voice/models.py` | `tests/django/` |
+| REQ-DM-035 | FlinkConversationMetrics model | SRS-DATA-MODELS | `admin/flink/models.py` | `admin/flink/models.py` | `tests/django/` |
+| REQ-DM-036 | FlinkUsageAggregate model | SRS-DATA-MODELS | `admin/flink/models.py` | `admin/flink/models.py` | `tests/django/` |
+| REQ-DM-037 | FlinkAnomalyAlert model | SRS-DATA-MODELS | `admin/flink/models.py` | `admin/flink/models.py` | `tests/django/` |
+| REQ-DM-038 | FlinkAgentMetrics model | SRS-DATA-MODELS | `admin/flink/models.py` | `admin/flink/models.py` | `tests/django/` |
+| REQ-DM-039 | Infrastructure models | SRS-DATA-MODELS | `admin/core/infrastructure/models.py` | `admin/core/infrastructure/models.py` | `tests/django/` |
+| REQ-DM-040 | File model | SRS-DATA-MODELS | `admin/filesv2/models.py` | `admin/filesv2/models.py` | `tests/django/` |
+| REQ-DM-041 | MemoryConfig model | SRS-DATA-MODELS | `admin/somabrain/models.py` | `admin/somabrain/models.py` | `tests/django/` |
+| REQ-DM-043 | Constitution PROTECT FK | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-044 | Capsule model FKs | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-045 | Capsule-Capability M2M | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
+| REQ-DM-047 | Agent-Capsule M2M + primary | SRS-DATA-MODELS | `admin/aaas/models/agents.py` | `admin/aaas/models/agents.py` | `tests/django/` |
+| REQ-DM-050 | Tenant-SubscriptionTier FK | SRS-DATA-MODELS | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py` | `tests/django/` |
 
----
+### 4.2 Requirement to Test Case Mapping
 
-## 12. OTHER Domains
-
-| Domain | Model | Table | Purpose |
-|--------|-------|-------|---------|
-| Files | `File` | files_v2 | S3/local storage |
-| Memory | `MemoryConfig` | somabrain_memory_config | Retention policy |
-
----
-
-## 13. Complete Table Index
-
-| # | Table Name | Model | File |
-|---|------------|-------|------|
-| 1 | sessions | Session | core/models.py |
-| 2 | session_events | SessionEvent | core/models.py |
-| 3 | constitutions | Constitution | core/models.py |
-| 4 | capsules | Capsule | core/models.py |
-| 5 | capsule_instances | CapsuleInstance | core/models.py |
-| 6 | capabilities | Capability | core/models.py |
-| 7 | ui_settings | UISetting | core/models.py |
-| 8 | jobs | Job | core/models.py |
-| 9 | notifications | Notification | core/models.py |
-| 10 | prompts | Prompt | core/models.py |
-| 11 | feature_flags | FeatureFlag | core/models.py |
-| 12 | memory_replica | MemoryReplica | core/models.py |
-| 13 | agent_settings | AgentSetting | core/models.py |
-| 14 | outbox_messages | OutboxMessage | core/models.py |
-| 15 | dead_letter_messages | DeadLetterMessage | core/models.py |
-| 16 | idempotency_records | IdempotencyRecord | core/models.py |
-| 17 | pending_memories | PendingMemory | core/models.py |
-| 18 | llm_model_configs | LLMModelConfig | llm/models.py |
-| 19 | conversations | Conversation | chat/models.py |
-| 20 | messages | Message | chat/models.py |
-| 21 | conversation_participants | ConversationParticipant | chat/models.py |
-| 22 | subscription_tiers | SubscriptionTier | aaas/models/tiers.py |
-| 23 | tenants | Tenant | aaas/models/tenants.py |
-| 24 | tenant_users | TenantUser | aaas/models/tenants.py |
-| 25 | agents | Agent | aaas/models/agents.py |
-| 26 | agent_users | AgentUser | aaas/models/agents.py |
-| 27 | usage_records | UsageRecord | aaas/models/usage.py |
-| 28 | aaas_platform_config | PlatformConfig | aaas/models/profiles.py |
-| 29 | aaas_admin_profile | AdminProfile | aaas/models/profiles.py |
-| 30 | aaas_tenant_settings | TenantSettings | aaas/models/profiles.py |
-| 31 | aaas_user_preferences | UserPreferences | aaas/models/profiles.py |
-| 32 | permissions_resource | PermissionResource | permissions/models.py |
-| 33 | permissions_action | PermissionAction | permissions/models.py |
-| 34 | permissions_granular | GranularPermission | permissions/models.py |
-| 35 | permissions_role | Role | permissions/models.py |
-| 36 | voice_personas | VoicePersona | voice/models.py |
-| 37 | voice_sessions | VoiceSession | voice/models.py |
-| 38 | voice_models | VoiceModel | voice/models.py |
-| 39 | rate_limit_policies | RateLimitPolicy | core/infrastructure/models.py |
-| 40 | service_health | ServiceHealth | core/infrastructure/models.py |
-| 41 | infrastructure_configs | InfrastructureConfig | core/infrastructure/models.py |
-| 42 | files_v2 | File | filesv2/models.py |
-| 43 | somabrain_memory_config | MemoryConfig | somabrain/models.py |
-| 44 | flink_conversation_metrics | FlinkConversationMetrics | flink/models.py |
-| 45 | flink_usage_aggregates | FlinkUsageAggregate | flink/models.py |
-| 46 | flink_anomaly_alerts | FlinkAnomalyAlert | flink/models.py |
-| 47 | flink_agent_metrics | FlinkAgentMetrics | flink/models.py |
+| REQ ID | Test Case ID | Test Method | Expected Result |
+|--------|--------------|-------------|-----------------|
+| REQ-DM-017 | TC-DM-001 | Unit test | Model routing returns highest-priority allowed model |
+| REQ-DM-043 | TC-DM-002 | Integration test | Deleting a referenced Constitution raises ProtectedError |
+| REQ-DM-050 | TC-DM-003 | Integration test | Deleting a SubscriptionTier referenced by a Tenant raises ProtectedError |
+| REQ-DM-011 | TC-DM-004 | Unit test | OutboxMessage is created and marked processed after successful publish |
 
 ---
 
-## 14. Key Relationships Summary
+## 5. Revision History
 
-### 14.1 Tenant → Everything
-
-```
-Tenant
-├── TenantUser (members)
-├── TenantSettings (config)
-├── Agent (AI agents)
-│   ├── AgentUser (access)
-│   └── Capsule (identity)
-│       ├── LLMModelConfig (models)
-│       ├── Capability (tools)
-│       └── MemoryConfig (memory)
-├── Conversation (chats)
-│   └── Message (messages)
-├── UsageRecord (billing)
-└── Files (storage)
-```
-
-### 14.2 Capsule → Models (NO HARDCODING)
-
-```
-Capsule
-├── chat_model → LLMModelConfig (FK)
-├── image_model → LLMModelConfig (FK)
-├── voice_model → LLMModelConfig (FK)
-├── browser_model → LLMModelConfig (FK)
-└── memory_config → MemoryConfig (FK)
-```
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0-4.0 | 2025 | Soma Engineering | Incremental model additions |
+| 5.0 | 2026-01-16 | Soma Engineering | Complete 50+ model inventory with ERD diagrams and table index |
+| 5.1 | 2026-05-21 | Soma Engineering | Refactored to ISO/IEC/IEEE 29148:2018 template; removed personas, emojis, and excessive code blocks; added REQ-XXX numbering and traceability matrix |
 
 ---
 
-## 15. Acceptance Criteria
-
-| Criterion | Status |
-|-----------|--------|
-| ✅ All 50+ models documented | Complete |
-| ✅ All tables indexed | 47 tables |
-| ✅ ERD diagrams for each domain | 7 diagrams |
-| ✅ FK relationships documented | Complete |
-| ✅ M2M relationships documented | Complete |
-| ✅ No hardcoded models | Verified |
-| ✅ Synced with actual code | Verified |
-
----
-
-**Document End**
-
-*Signed off by ALL 10 PERSONAS ✅*
+*Document conforms to ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering.*

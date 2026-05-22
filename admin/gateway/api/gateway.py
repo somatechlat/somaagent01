@@ -106,6 +106,7 @@ async def describe_workflow(request: HttpRequest, workflow_id: str) -> dict:
 
 
 # === API Keys Management ===
+# Canonical source: admin.aaas.models.profiles.ApiKey (Django ORM)
 
 
 class KeyCreateRequest(BaseModel):
@@ -121,13 +122,16 @@ async def list_keys(request: HttpRequest) -> dict:
 
     🔒 Security: Tenant-scoped access
     """
-    from services.common.api_keys_store import ApiKeysStore
+    from asgiref.sync import sync_to_async
 
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
-    store = ApiKeysStore()
-    await store.ensure_schema()
-    keys = await store.list(tenant_id=tenant_id)
+    from admin.aaas.models.profiles import ApiKey
 
+    tenant_id = request.headers.get("X-Tenant-Id", "")
+    keys = await sync_to_async(list)(
+        ApiKey.objects.filter(tenant_id=tenant_id, is_active=True).values(
+            "id", "name", "key_prefix", "scopes", "created_at", "last_used_at"
+        )
+    )
     return {"keys": keys}
 
 
@@ -137,27 +141,43 @@ async def create_key(request: HttpRequest, body: KeyCreateRequest) -> dict:
 
     🔒 Security: Key is hashed before storage
     """
-    from services.common.api_keys_store import ApiKeysStore
+    import hashlib
+    import secrets
 
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
-    store = ApiKeysStore()
-    await store.ensure_schema()
-    key_data = await store.create(tenant_id=tenant_id, name=body.name, scope=body.scope)
+    from asgiref.sync import sync_to_async
 
-    return {"key": key_data}
+    from admin.aaas.models.profiles import ApiKey
+
+    tenant_id = request.headers.get("X-Tenant-Id", "")
+    raw_key = f"sk_{secrets.token_urlsafe(32)}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_prefix = raw_key[:12]
+
+    key = await sync_to_async(ApiKey.objects.create)(
+        key_type="tenant",
+        tenant_id=tenant_id,
+        name=body.name,
+        key_prefix=key_prefix,
+        key_hash=key_hash,
+        scopes=[body.scope] if body.scope else [],
+    )
+
+    return {"key": {"id": str(key.id), "name": key.name, "prefix": key_prefix, "value": raw_key}}
 
 
 @router.delete("/keys/{key_id}", summary="Revoke API key")
 async def revoke_key(request: HttpRequest, key_id: str) -> dict:
     """Revoke an API key."""
-    from services.common.api_keys_store import ApiKeysStore
+    from asgiref.sync import sync_to_async
 
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
-    store = ApiKeysStore()
-    await store.ensure_schema()
-    success = await store.revoke(tenant_id=tenant_id, key_id=key_id)
+    from admin.aaas.models.profiles import ApiKey
 
-    if not success:
+    tenant_id = request.headers.get("X-Tenant-Id", "")
+    updated = await sync_to_async(
+        ApiKey.objects.filter(id=key_id, tenant_id=tenant_id).update
+    )(is_active=False)
+
+    if not updated:
         raise NotFoundError("key", key_id)
 
     return {"revoked": key_id}

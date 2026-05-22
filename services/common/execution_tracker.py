@@ -12,10 +12,7 @@ from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-try:
-    import asyncpg  # type: ignore
-except ImportError:
-    asyncpg = None  # type: ignore
+import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 

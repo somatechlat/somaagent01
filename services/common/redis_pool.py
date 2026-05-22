@@ -20,15 +20,8 @@ if TYPE_CHECKING:
     from redis import Redis as SyncRedis
     from redis.asyncio import Redis as AsyncRedis
 
-try:
-    import redis.asyncio as aioredis
-except ImportError:  # pragma: no cover
-    aioredis = None  # type: ignore
-
-try:
-    import redis
-except ImportError:  # pragma: no cover
-    redis = None  # type: ignore
+import redis
+import redis.asyncio as aioredis
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +72,6 @@ def get_async_redis_pool(
     Raises:
         RuntimeError: If redis.asyncio is not installed.
     """
-    if aioredis is None:
-        raise RuntimeError("redis.asyncio is required. Install: pip install redis")
 
     resolved_url = url or get_redis_url()
     cache_key = f"{resolved_url}:{decode_responses}:{max_connections}"
@@ -125,8 +116,6 @@ def get_sync_redis_pool(
     Raises:
         RuntimeError: If redis is not installed.
     """
-    if redis is None:
-        raise RuntimeError("redis is required. Install: pip install redis")
 
     resolved_url = url or get_redis_url()
     cache_key = f"{resolved_url}:{decode_responses}:{max_connections}"

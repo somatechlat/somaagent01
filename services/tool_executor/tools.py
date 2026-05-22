@@ -13,16 +13,9 @@ from typing import Any, Dict
 
 import httpx
 
-try:
-    import fitz  # PyMuPDF
-except Exception:  # pragma: no cover
-    fitz = None  # type: ignore
-try:
-    import pytesseract  # type: ignore
-    from PIL import Image  # type: ignore
-except Exception:  # pragma: no cover
-    Image = None  # type: ignore
-    pytesseract = None  # type: ignore
+import fitz  # PyMuPDF
+import pytesseract
+from PIL import Image
 
 LOGGER = logging.getLogger(__name__)
 

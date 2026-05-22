@@ -10,10 +10,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-try:
-    import asyncpg  # type: ignore
-except ImportError:
-    asyncpg = None  # type: ignore
+import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,8 +38,6 @@ class SomaBrainOutcomesStore:
         self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
 
     async def _get_pool(self) -> Any:
-        if asyncpg is None:
-            raise RuntimeError("asyncpg is required")
         return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
 
     async def fetch_outcomes(

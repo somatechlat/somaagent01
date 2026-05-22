@@ -18,10 +18,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional
 
-try:
-    from ninja import Router
-except Exception:
-    Router = None  # type: ignore
+from ninja import Router
 
 from .base_service import BaseSomaService
 

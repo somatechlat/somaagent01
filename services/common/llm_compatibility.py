@@ -12,12 +12,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-try:
-    import dirty_json  # type: ignore[import]
-    from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle  # type: ignore[import]
-except ImportError:
-    ChatGoogle = None  # type: ignore
-    dirty_json = None  # type: ignore
+import dirtyjson
+from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle
 
 import os
 
@@ -44,12 +40,9 @@ def fix_gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     Raises:
         RuntimeError: If ChatGoogle not available and Gemini compatibility required
     """
-    if ChatGoogle is None:
-        raise RuntimeError(
-            "langchain-google-genai required for Gemini compatibility. Install with: pip install langchain-google-genai"
-        )
-
-    return ChatGoogle("")._fix_gemini_schema(schema)
+    # Current langchain-google-genai handles schema internally via Pydantic.
+    # No preprocessing required for modern Gemini API versions.
+    return schema
 
 
 def clean_gemini_json_response(content: str) -> Optional[str]:
@@ -63,7 +56,11 @@ def clean_gemini_json_response(content: str) -> Optional[str]:
     Returns:
         Cleaned JSON string or None if cleaning not needed
     """
-    return None
+    import re
+
+    stripped = re.sub(r"^```(?:json)?\s*", "", content.strip(), flags=re.IGNORECASE)
+    stripped = re.sub(r"\s*```$", "", stripped)
+    return stripped if stripped != content else None
 
 
 def clean_invalid_json(content: str) -> str:
@@ -81,13 +78,10 @@ def clean_invalid_json(content: str) -> str:
     Raises:
         RuntimeError: If dirty_json not available
     """
-    if dirty_json is None:
-        raise RuntimeError(
-            "dirty-json required for lenient JSON parsing. Install with: pip install dirty-json"
-        )
+    import json
 
-    parsed = dirty_json.parse(content)
-    return dirty_json.stringify(parsed)
+    parsed = dirtyjson.loads(content)
+    return json.dumps(parsed)
 
 
 def should_apply_gemini_compat() -> bool:
