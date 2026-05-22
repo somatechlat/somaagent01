@@ -53,9 +53,6 @@ def _get_model_config():
 
     return ModelConfig
 
-
-ModelConfig = None  # Will be imported lazily when needed
-
 # Dedicated logger for LLM call tracing
 llm_logger = logging.getLogger("somaagent01.llm")
 if not llm_logger.handlers:
@@ -424,14 +421,13 @@ class LocalSentenceTransformerWrapper(Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
-        embeddings = self.model.encode(texts, convert_to_tensor=False)
-        return embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
+        embeddings: Any = self.model.encode(texts, convert_to_tensor=False)
+        return embeddings.tolist()
 
     def embed_query(self, text: str) -> List[float]:
         apply_rate_limiter_sync(self.a0_model_conf, text)
-        embedding = self.model.encode([text], convert_to_tensor=False)
-        result = embedding[0].tolist() if hasattr(embedding[0], "tolist") else embedding[0]
-        return result
+        embedding: Any = self.model.encode([text], convert_to_tensor=False)
+        return embedding[0].tolist()
 
 
 # Factory Functions

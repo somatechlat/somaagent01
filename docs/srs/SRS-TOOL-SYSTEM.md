@@ -1,299 +1,282 @@
-# SRS-TOOL-SYSTEM — Tool Discovery & Execution
+# SRS-TOOL-SYSTEM — Tool Discovery and Execution
 
-**System:** SomaAgent01
-**Document ID:** SRS-TOOL-SYSTEM-2026-01-16
-**Version:** 1.0
-**Status:** FINAL
-**Parent SRS:** [SRS-CHAT-FLOW-V0.3.md](./SRS-CHAT-FLOW-V0.3.md)
-
-**Applied Personas:** PhD Software Developer · PhD Software Analyst · PhD QA Engineer · Security Auditor · Performance Engineer · UX Consultant · ISO-style Documenter · Django Architect · Django Infra Expert · Django Evangelist
-
----
-
-## 1. Purpose
-
-The Tool System handles discovery, authorization, and execution of agent tools. It spans **Phase 5** (Discovery) and **Phase 7** (Execution) of the [12-Phase Chat Flow](./SRS-CHAT-FLOW-V0.3.md).
-
-### 1.1 Chat Flow Integration
-
-```
-PHASE 4: Model Selection
-    ↓
-┌──────────────────────────────────────────────────────────┐
-│  PHASE 5: TOOL DISCOVERY (This SRS)                      │
-│  ├── Registry: Global enabled check                      │
-│  ├── Capsule: M2M capability filter                      │
-│  ├── SpiceDB: Permission check                           │
-│  └── OPA: Policy check                                   │
-└──────────────────────────────────────────────────────────┘
-    ↓
-PHASE 6: LLM Invocation
-    ↓
-┌──────────────────────────────────────────────────────────┐
-│  PHASE 7: TOOL EXECUTION (This SRS)                      │
-│  ├── Parse tool calls from LLM                           │
-│  ├── Validate against discovered tools                   │
-│  ├── Execute via MCP or native                           │
-│  └── Return results to context                           │
-└──────────────────────────────────────────────────────────┘
-```
+| Field | Value |
+|-------|-------|
+| **System** | SomaAgent01 |
+| **Document ID** | SRS-TOOL-SYSTEM-2026-01-16 |
+| **Version** | 1.1 |
+| **Date** | 2026-01-16 |
+| **Status** | Approved |
+| **Author** | SomaAgent01 Engineering |
+| **Owner** | Core Platform Team |
 
 ---
 
-## 2. 4-Phase Tool Gate
+## Table of Contents
 
-### 2.1 Discovery Pipeline
-
-```mermaid
-flowchart TD
-    A[All Capabilities] --> B{Phase 1: Global Registry}
-    B -->|is_enabled=true| C{Phase 2: Capsule Filter}
-    B -->|is_enabled=false| X[Excluded]
-    C -->|In Capsule.capabilities| D{Phase 3: SpiceDB}
-    C -->|Not in Capsule| X
-    D -->|user has tool:execute| E{Phase 4: OPA Policy}
-    D -->|No permission| X
-    E -->|Policy allows| F[Discoverable]
-    E -->|Policy denies| X
-```
-
-### 2.2 Gate Details
-
-| Phase | Check | Module | Failure Action |
-|-------|-------|--------|----------------|
-| 1 | Global enabled | `Capability.is_enabled` | Tool hidden |
-| 2 | Capsule M2M | `Capsule.capabilities` | Tool hidden |
-| 3 | User permission | SpiceDB `tool:execute` | Tool hidden |
-| 4 | Policy rules | OPA policy | Tool hidden |
+1. [Introduction](#1-introduction)
+   1.1 [Purpose](#11-purpose)
+   1.2 [Scope](#12-scope)
+   1.3 [Definitions](#13-definitions)
+   1.4 [References](#14-references)
+2. [Product Description](#2-product-description)
+   2.1 [Product Perspective](#21-product-perspective)
+   2.2 [Product Functions](#22-product-functions)
+   2.3 [User Characteristics](#23-user-characteristics)
+   2.4 [Constraints](#24-constraints)
+   2.5 [Assumptions and Dependencies](#25-assumptions-and-dependencies)
+3. [Specific Requirements](#3-specific-requirements)
+   3.1 [Functional Requirements](#31-functional-requirements)
+   3.2 [Non-Functional Requirements](#32-non-functional-requirements)
+   3.3 [External Interface Requirements](#33-external-interface-requirements)
+   3.4 [Design Constraints](#34-design-constraints)
+4. [Traceability](#4-traceability)
+5. [Revision History](#5-revision-history)
 
 ---
 
-## 3. Canonical Implementation
+## 1. Introduction
 
-### 3.1 Tool Discovery
+### 1.1 Purpose
 
-```
-File: services/common/spicedb_client.py (permissions)
-File: services/common/opa_policy_adapter.py (policies)
-Model: admin/core/models.py:Capability
-```
+This document specifies the requirements for the Tool Discovery and Execution subsystem of SomaAgent01. The subsystem governs which tools are available to an agent during a chat turn, validates tool calls from the LLM, executes tools via the Model Context Protocol (MCP) or native handlers, and records all executions for audit and billing.
 
-### 3.2 Tool Execution
+### 1.2 Scope
 
-```
-File: admin/core/mcp/* (MCP protocol)
-File: admin/tools/services/tool_executor.py
-```
+**In Scope:**
+- 4-phase tool discovery gate (registry, capsule, SpiceDB, OPA)
+- Tool parameter validation against JSON Schema
+- Tool execution via MCP and native providers
+- Error handling for permission denial, execution failure, and timeout
+- Execution metrics and audit logging
+- Budget gate integration for tool calls
 
----
+**Out of Scope:**
+- Tool UI marketplace
+- Real-time tool streaming responses
+- Third-party tool marketplace certification
 
-## 4. Capability Model
+### 1.3 Definitions
 
-**Django ORM:** `admin.core.models.Capability`
+| Term | Definition |
+|------|------------|
+| Capability | A registered tool or function exposed to the agent, defined in the Capability model |
+| 4-Phase Gate | The discovery pipeline comprising registry enabled check, capsule M2M filter, SpiceDB permission check, and OPA policy check |
+| MCP | Model Context Protocol for standardized tool server communication |
+| SpiceDB | Fine-grained authorization system storing tool:execute permissions |
+| OPA | Open Policy Agent for dynamic policy evaluation on tool execution |
+| Native Provider | Tool implementation executing directly within the SomaAgent01 codebase |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID | Primary key |
-| `name` | str | Tool identifier |
-| `display_name` | str | User-facing name |
-| `description` | text | Tool description |
-| `category` | str | Grouping category |
-| `schema` | JSONField | JSON Schema for parameters |
-| `config` | JSONField | Tool configuration |
-| `is_enabled` | bool | Global enable flag |
-| `provider` | str | mcp, native, external |
+### 1.4 References
 
----
-
-## 5. SpiceDB Integration
-
-### 5.1 Permission Check
-
-```python
-from services.common.spicedb_client import SpiceDBClient
-
-client = SpiceDBClient()
-has_permission = await client.check_permission(
-    subject=f"user:{user_id}",
-    permission="tool:execute",
-    resource=f"tool:{tool_name}",
-)
-```
-
-### 5.2 Schema
-
-```
-definition user {}
-
-definition tool {
-    relation owner: user
-    relation executor: user
-    permission execute = owner + executor
-}
-```
+| ID | Document | Version | Location |
+|----|----------|---------|----------|
+| REF-001 | SRS-CHAT-FLOW-V0.3.md | 0.3 | docs/srs/SRS-CHAT-FLOW-V0.3.md |
+| REF-002 | SRS-BUDGET-SYSTEM.md | 1.0 | docs/srs/SRS-BUDGET-SYSTEM.md |
+| REF-003 | Capability Model | Current | admin/core/models/core.py |
+| REF-004 | SpiceDB Schema | Current | policy/tool_policy.rego |
+| REF-005 | OPA Policy | Current | policy/soma_development.rego |
 
 ---
 
-## 6. OPA Integration
+## 2. Product Description
 
-### 6.1 Policy Check
+### 2.1 Product Perspective
 
-```python
-from services.common.opa_policy_adapter import OPAClient
+The Tool System spans Phase 5 (Tool Discovery) and Phase 7 (Tool Execution) of the 12-phase chat flow. During discovery, the system progressively filters the global capability registry against the capsule, user permissions, and runtime policies. During execution, parsed tool calls are validated, routed to the appropriate provider, and results are returned to the LLM context.
 
-client = OPAClient()
-allowed = await client.check_policy(
-    input={
-        "user_id": user_id,
-        "tool_name": tool_name,
-        "action": "execute",
-        "context": {"tenant_id": tenant_id},
-    }
-)
-```
+### 2.2 Product Functions
 
-### 6.2 Policy Example
+| ID | Function | Description |
+|----|----------|-------------|
+| FUNC-001 | Tool Discovery | Filter global capabilities through the 4-phase gate to produce the discoverable tool set |
+| FUNC-002 | Tool Validation | Validate LLM-emitted tool call parameters against the capability JSON Schema |
+| FUNC-003 | Tool Execution | Route validated tool calls to MCP or native providers and collect results |
+| FUNC-004 | Audit Recording | Log every tool execution with tool_name, user_id, tenant_id, and outcome |
+| FUNC-005 | Budget Enforcement | Apply @budget_gate(metric="tool_calls") to each execution |
 
-```rego
-package soma.tools
+### 2.3 User Characteristics
 
-default allow = false
+| User Type | Role | Technical Level | Access |
+|-----------|------|-----------------|--------|
+| End User | Chat participant | Low | Uses tools indirectly via agent |
+| Agent Operator | Tenant administrator | Medium | Configures capsule capabilities and MCP servers |
+| Security Admin | Compliance officer | High | Defines OPA policies and SpiceDB relations |
+| Platform Engineer | DevOps / SRE | High | Configures MCP server endpoints and timeouts |
 
-allow {
-    input.action == "execute"
-    tool_enabled[input.tool_name]
-    user_has_role[input.user_id]["tool_user"]
-}
+### 2.4 Constraints
 
-tool_enabled[name] {
-    data.tools[name].enabled == true
-}
-```
+| ID | Constraint | Description |
+|----|------------|-------------|
+| CON-001 | Schema Compliance | All tool parameters must validate against the JSON Schema stored in Capability.schema |
+| CON-002 | Permission Denial | Tools failing SpiceDB or OPA checks must be hidden from the LLM, not exposed with errors |
+| CON-003 | Budget Limit | Tool executions exceeding the tenant budget limit must be rejected before provider invocation |
 
----
+### 2.5 Assumptions and Dependencies
 
-## 7. MCP Protocol
-
-Model Context Protocol for tool execution:
-
-| Method | Description |
-|--------|-------------|
-| `initialize` | Handshake with MCP server |
-| `tools/list` | List available tools |
-| `tools/call` | Execute tool with parameters |
-| `resources/read` | Read tool resources |
-
-### 7.1 Configuration
-
-```python
-MCP_SERVERS = {
-    "filesystem": {
-        "command": ["uvx", "mcp-server-filesystem"],
-        "args": ["--root", "/data"],
-        "timeout": 120,
-    },
-    "brave_search": {
-        "command": ["npx", "@anthropic/mcp-server-brave-search"],
-        "env": {"BRAVE_API_KEY": "..."},
-    },
-}
-```
+| ID | Assumption / Dependency | Impact if Invalid |
+|----|------------------------|-------------------|
+| AD-001 | Capability registry contains accurate is_enabled flags and schemas | LLM receives incorrect or broken tools |
+| AD-002 | SpiceDB is reachable for permission checks | All tools hidden; chat degrades to text-only |
+| AD-003 | OPA is reachable for policy checks | Policy violations not blocked; security risk |
+| AD-004 | MCP servers are configured with valid commands and environment | Native tools fail to initialize |
+| AD-005 | Budget cache is reachable | Budget enforcement disabled; potential overuse |
 
 ---
 
-## 8. Execution Flow
+## 3. Specific Requirements
 
-```python
-async def execute_tool(
-    tool_name: str,
-    parameters: dict,
-    user_id: str,
-    tenant_id: str,
-) -> dict:
-    # 1. Validate tool exists and is discovered
-    tool = await get_discovered_tool(tool_name, user_id)
-    if not tool:
-        raise ToolNotFoundError(tool_name)
+### 3.1 Functional Requirements
 
-    # 2. Validate parameters against schema
-    validate_parameters(parameters, tool.schema)
+#### 3.1.1 Tool Discovery
 
-    # 3. Execute based on provider
-    if tool.provider == "mcp":
-        result = await mcp_client.call_tool(tool_name, parameters)
-    elif tool.provider == "native":
-        result = await native_executor.execute(tool_name, parameters)
-    else:
-        raise UnsupportedProviderError(tool.provider)
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-TS-001 | The system shall perform a 4-phase discovery gate before exposing tools to the LLM. | Must | Test | Approved |
+| REQ-TS-002 | Phase 1 shall filter capabilities where Capability.is_enabled equals true. | Must | Test | Approved |
+| REQ-TS-003 | Phase 2 shall filter capabilities to those present in the capsule's capability M2M relationship. | Must | Test | Approved |
+| REQ-TS-004 | Phase 3 shall query SpiceDB to verify the user has tool:execute permission on the tool resource. | Must | Test | Approved |
+| REQ-TS-005 | Phase 4 shall query OPA to evaluate dynamic policy rules for the tool execution context. | Must | Test | Approved |
+| REQ-TS-006 | Tools failing any phase shall be excluded from the discoverable set without error exposure to the LLM. | Must | Test | Approved |
 
-    # 4. Record execution for audit
-    await audit.record_tool_execution(tool_name, user_id, tenant_id)
-
-    return result
-```
+**Rationale:** Progressive filtering ensures only authorized, enabled, and policy-compliant tools are exposed.
 
 ---
 
-## 9. Error Handling
+#### 3.1.2 Tool Execution
 
-| Error | Condition | Recovery |
-|-------|-----------|----------|
-| `ToolNotFoundError` | Tool not in discovered set | Return error to LLM |
-| `ToolPermissionDenied` | SpiceDB/OPA denies | Return error to LLM |
-| `ToolExecutionError` | Execution failed | Circuit breaker + retry |
-| `ToolTimeoutError` | Execution timeout | Record + return partial |
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-TS-007 | The system shall parse tool calls from the LLM response and validate parameters against Capability.schema. | Must | Test | Approved |
+| REQ-TS-008 | The system shall route tool calls with provider="mcp" to the MCP client for remote execution. | Must | Test | Approved |
+| REQ-TS-009 | The system shall route tool calls with provider="native" to the native executor for in-process execution. | Must | Test | Approved |
+| REQ-TS-010 | The system shall record every tool execution to the audit log including tool_name, user_id, tenant_id, timestamp, and outcome. | Must | Test | Approved |
+| REQ-TS-011 | The system shall enforce the @budget_gate(metric="tool_calls") decorator on every tool execution entrypoint. | Must | Test | Approved |
 
----
+**Rationale:** Parameter validation prevents malformed tool calls; provider routing enables both external and internal tool ecosystems.
 
-## 10. Metrics
-
-| Metric | Type | Labels |
-|--------|------|--------|
-| `tool_discovery_count` | Gauge | agent_id |
-| `tool_execution_total` | Counter | tool_name, status |
-| `tool_execution_duration` | Histogram | tool_name |
-| `tool_permission_denied` | Counter | tool_name, user_id |
+**Dependencies:** REQ-TS-007 depends on REQ-TS-001 (discoverable set defines valid tools).
 
 ---
 
-## 11. Acceptance Criteria
+#### 3.1.3 Error Handling
 
-| Criterion | Verification |
-|-----------|--------------|
-| ✅ 4-Phase Gate works | Tools pass all 4 phases |
-| ✅ SpiceDB enforced | Unauthorized tools hidden |
-| ✅ OPA enforced | Policy violations blocked |
-| ✅ MCP execution | Tools execute via protocol |
-| ✅ Audit recorded | All executions logged |
-| ✅ **Budget enforced** | `@budget_gate(metric="tool_calls")` |
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-TS-012 | The system shall raise ToolNotFoundError when the LLM requests a tool not in the discoverable set. | Must | Test | Approved |
+| REQ-TS-013 | The system shall raise ToolPermissionDenied when SpiceDB or OPA denies execution at runtime. | Must | Test | Approved |
+| REQ-TS-014 | The system shall raise ToolExecutionError when provider execution fails, triggering circuit breaker logic. | Must | Test | Approved |
+| REQ-TS-015 | The system shall raise ToolTimeoutError when execution exceeds the configured timeout, returning a partial result if available. | Should | Test | Approved |
 
----
-
-## 12. Budget Integration
-
-> **See [SRS-BUDGET-SYSTEM.md](./SRS-BUDGET-SYSTEM.md) for complete specification.**
-
-### 12.1 Tool Execution Gate
-
-```python
-# Each tool execution checks budget
-@budget_gate(metric="tool_calls")
-async def execute_tool(request, tool_name, args):
-    ...
-```
-
-### 12.2 Plan Limits
-
-| Plan | Tool Calls Limit |
-|------|-----------------|
-| Free | 100/month |
-| Starter | 1,000/month |
-| Team | 10,000/month |
-| Enterprise | Unlimited |
+**Rationale:** Structured error types enable the chat flow to return meaningful failure messages to the LLM and user.
 
 ---
 
-**Document End**
+### 3.2 Non-Functional Requirements
 
-*Signed off by ALL 10 PERSONAS ✅*
+#### 3.2.1 Performance
 
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-PERF-001 | Tool discovery latency shall not exceed 50ms for a capsule with up to 50 capabilities. | 50 ms | Load Test |
+| NFR-PERF-002 | Tool execution latency (excluding provider round-trip) shall not exceed 20ms. | 20 ms | Load Test |
+
+#### 3.2.2 Security
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SEC-001 | Unauthorized tools shall not be discoverable or executable by any user lacking SpiceDB permission. | 100% | Pen Test |
+| NFR-SEC-002 | OPA policies shall deny execution for contexts violating tenant-scoped rules. | 100% | Policy Test |
+
+#### 3.2.3 Reliability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-REL-001 | MCP server failures shall not crash the tool executor; the system shall degrade to remaining tools. | 100% | Fault Injection |
+| NFR-REL-002 | Circuit breaker shall open after 5 consecutive failures and close after 30 seconds. | Configurable | Chaos Test |
+
+#### 3.2.4 Observability
+
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-OBS-001 | The system shall emit metrics for tool_discovery_count, tool_execution_total, tool_execution_duration, and tool_permission_denied. | 100% | Inspection |
+
+---
+
+### 3.3 External Interface Requirements
+
+#### 3.3.1 Software Interfaces
+
+| Interface | Protocol | Format | Authentication |
+|-----------|----------|--------|----------------|
+| SpiceDB CheckPermission | gRPC/HTTP | JSON | Preshared key |
+| OPA Policy Evaluation | HTTP/JSON | JSON | None (local) |
+| MCP Server | stdio / SSE | JSON-RPC | None (local process) |
+| Native Executor | Python function call | Python dict | N/A (in-process) |
+| Audit Log | Async message queue | JSON | Internal |
+| Budget Cache | RESP | Key-value | Redis AUTH |
+
+#### 3.3.2 Hardware Interfaces
+
+None.
+
+---
+
+### 3.4 Design Constraints
+
+| ID | Constraint | Source |
+|----|------------|--------|
+| DC-001 | Capability schema must be valid JSON Schema (Draft 7 or later). | Platform Standard |
+| DC-002 | MCP server configuration must specify command, args, and timeout. | MCP Protocol v1.0 |
+| DC-003 | Tool discovery must complete before LLM invocation (Phase 5 before Phase 6). | Chat Flow Architecture |
+| DC-004 | Audit records must be emitted asynchronously to avoid blocking execution. | Performance Standard |
+
+---
+
+## 4. Traceability
+
+### 4.1 Requirements Traceability Matrix
+
+| REQ ID | Description | Source | Design | Implementation | Test |
+|--------|-------------|--------|--------|----------------|------|
+| REQ-TS-001 | 4-phase discovery gate | Chat Flow Phase 5 | admin/core/models/core.py | services/tool_executor/tools.py | tests/unit/test_tool_discovery.py |
+| REQ-TS-002 | Registry enabled filter | Capability Model | admin/core/models/core.py | services/tool_executor/tools.py | tests/unit/test_tool_registry_filter.py |
+| REQ-TS-003 | Capsule M2M filter | Capsule Config | admin/core/models/core.py | services/tool_executor/tools.py | tests/unit/test_capsule_tool_filter.py |
+| REQ-TS-004 | SpiceDB permission check | Authorization | services/common/spicedb_client.py | services/common/spicedb_client.py | tests/integration/test_spicedb_tools.py |
+| REQ-TS-005 | OPA policy check | Policy | policy/tool_policy.rego | services/common/opa_policy_adapter.py | tests/integration/test_opa_tools.py |
+| REQ-TS-006 | Silent exclusion on failure | Security | services/tool_executor/tools.py | services/tool_executor/tools.py | tests/unit/test_tool_silent_exclude.py |
+| REQ-TS-007 | Parameter validation | Execution | admin/core/models/core.py | services/tool_executor/validation.py | tests/unit/test_tool_validation.py |
+| REQ-TS-008 | MCP provider routing | MCP Protocol | admin/core/helpers/mcp_clients.py | admin/core/helpers/mcp_clients.py | tests/integration/test_mcp_execution.py |
+| REQ-TS-009 | Native provider routing | Native Execution | services/tool_executor/execution_engine.py | services/tool_executor/execution_engine.py | tests/unit/test_native_execution.py |
+| REQ-TS-010 | Audit recording | Audit | services/tool_executor/audit.py | services/tool_executor/audit.py | tests/unit/test_tool_audit.py |
+| REQ-TS-011 | Budget gate enforcement | Budget | services/common/budget_cache.py | services/tool_executor/tools.py | tests/unit/test_tool_budget.py |
+| REQ-TS-012 | ToolNotFoundError | Error Handling | services/tool_executor/tools.py | services/tool_executor/tools.py | tests/unit/test_tool_errors.py |
+| REQ-TS-013 | ToolPermissionDenied | Error Handling | services/tool_executor/tools.py | services/tool_executor/tools.py | tests/unit/test_tool_errors.py |
+| REQ-TS-014 | ToolExecutionError | Error Handling | services/common/circuit_breaker.py | services/tool_executor/tools.py | tests/unit/test_tool_errors.py |
+| REQ-TS-015 | ToolTimeoutError | Error Handling | services/tool_executor/tools.py | services/tool_executor/tools.py | tests/unit/test_tool_timeout.py |
+
+### 4.2 Requirement to Test Case Mapping
+
+| REQ ID | Test Case ID | Test Method | Expected Result |
+|--------|--------------|-------------|-----------------|
+| REQ-TS-001 | TC-TS-001 | Unit Test | 4-phase gate returns subset of capabilities |
+| REQ-TS-004 | TC-TS-002 | Integration Test | SpiceDB denies unauthorized tool; tool excluded |
+| REQ-TS-005 | TC-TS-003 | Integration Test | OPA denies policy violation; tool excluded |
+| REQ-TS-007 | TC-TS-004 | Unit Test | Invalid parameters rejected with schema error |
+| REQ-TS-008 | TC-TS-005 | Integration Test | MCP tool call returns provider result |
+| REQ-TS-010 | TC-TS-006 | Unit Test | Audit log contains tool_name and user_id |
+| REQ-TS-011 | TC-TS-007 | Unit Test | Budget exhausted returns 402 before execution |
+| NFR-OBS-001 | TC-TS-008 | Inspection | Prometheus metrics contain tool labels |
+
+---
+
+## 5. Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-01-16 | Engineering | Initial final version |
+| 1.1 | 2026-05-21 | Engineering | Refactored to ISO/IEC/IEEE 29148:2018 template; removed personas, emojis, excessive code; added REQ numbering and traceability matrix |
+
+---
+
+*Document conforms to ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering.*

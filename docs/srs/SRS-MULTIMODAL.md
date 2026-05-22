@@ -1,699 +1,296 @@
-# SRS-MULTIMODAL — Image, Audio, Diagram Generation
+# SRS-MULTIMODAL — Image, Audio, and Diagram Generation
 
-**System:** SomaAgent01
-**Document ID:** SRS-MULTIMODAL-2026-01-16
-**Version:** 2.0 (Model Routing Integrated)
-**Status:** CANONICAL
-**Parent SRS:** [SRS-CHAT-FLOW-MASTER.md](./SRS-CHAT-FLOW-MASTER.md)
-
-**Applied Personas:** PhD Software Developer · PhD Software Analyst · PhD QA Engineer · Security Auditor · Performance Engineer · UX Consultant · ISO-style Documenter · Django Architect · Django Infra Expert · Django Evangelist
-
----
-
-## 1. Purpose
-
-Multimodal execution enables AI agents to generate and process rich media content:
-- **Images** (DALL-E, Midjourney, Stable Diffusion)
-- **Diagrams** (Mermaid)
-- **Vision** (GPT-4V, Claude Vision)
-- **Voice** (Whisper, TTS)
-- **Screenshots** (Playwright)
-
-> **NO HARDCODED MODELS. All models come from LLMModelConfig + AgentIQ.**
+| Field | Value |
+|-------|-------|
+| **System** | SomaAgent01 |
+| **Document ID** | SRS-MULTIMODAL-2026-01-16 |
+| **Version** | 2.1 |
+| **Date** | 2026-01-16 |
+| **Status** | Approved |
+| **Author** | SomaAgent01 Engineering |
+| **Owner** | Core Platform Team |
 
 ---
 
-## 2. Chat Flow Integration
+## Table of Contents
 
-### 2.1 Where Multimodal Fits
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          13-PHASE CHAT FLOW                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  Phase 1: Auth            │  Phase 8: LLM Call                              │
-│  Phase 2: Budget Gate     │  Phase 9: TOOLS + MULTIMODAL ◄──── HERE!        │
-│  Phase 3: Load Capsule    │  Phase 10: RLM                                  │
-│  Phase 4: Governance      │  Phase 11: Memorize                             │
-│  Phase 5: AgentIQ Derive  │  Phase 12: Learn                                │
-│  Phase 6: Context Build   │  Phase 13: Observe + Billing                    │
-│  Phase 7: Model Selection │                                                  │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 2.2 Multimodal in Phase 9
-
-```mermaid
-flowchart TD
-    subgraph PHASE9 ["PHASE 9: TOOLS + MULTIMODAL"]
-        LLM[LLM Response] --> PARSE[Parse Tool Calls]
-        PARSE --> CHECK{Is Multimodal?}
-
-        CHECK -->|generate_image| IMG[Image Generation]
-        CHECK -->|analyze_image| VIS[Vision Analysis]
-        CHECK -->|transcribe| STT[Speech-to-Text]
-        CHECK -->|speak| TTS[Text-to-Speech]
-        CHECK -->|render_diagram| DIAG[Mermaid Render]
-        CHECK -->|other| TOOL[Standard Tool]
-
-        IMG --> ROUTE[Route to Model]
-        VIS --> ROUTE
-        STT --> ROUTE
-        TTS --> ROUTE
-
-        ROUTE --> AGENTIQ[AgentIQ cost_tier]
-        AGENTIQ --> CAPS[Capsule.allowed_models]
-        CAPS --> SELECT[Select Best Model]
-        SELECT --> EXEC[Execute via Provider]
-
-        TOOL --> EXEC2[Tool Executor]
-        DIAG --> MERMAID[Mermaid Service]
-    end
-```
+1. [Introduction](#1-introduction)
+   1.1 [Purpose](#11-purpose)
+   1.2 [Scope](#12-scope)
+   1.3 [Definitions](#13-definitions)
+   1.4 [References](#14-references)
+2. [Product Description](#2-product-description)
+   2.1 [Product Perspective](#21-product-perspective)
+   2.2 [Product Functions](#22-product-functions)
+   2.3 [User Characteristics](#23-user-characteristics)
+   2.4 [Constraints](#24-constraints)
+   2.5 [Assumptions and Dependencies](#25-assumptions-and-dependencies)
+3. [Specific Requirements](#3-specific-requirements)
+   3.1 [Functional Requirements](#31-functional-requirements)
+   3.2 [Non-Functional Requirements](#32-non-functional-requirements)
+   3.3 [External Interface Requirements](#33-external-interface-requirements)
+   3.4 [Design Constraints](#34-design-constraints)
+4. [Traceability](#4-traceability)
+5. [Revision History](#5-revision-history)
 
 ---
 
-## 3. Complete Model Selection Flow
+## 1. Introduction
 
-### 3.1 Flowchart
+### 1.1 Purpose
 
-```mermaid
-flowchart TD
-    A[Multimodal Request] --> B[Detect Capability Required]
+This document specifies the requirements for the multimodal execution subsystem of SomaAgent01. The subsystem enables AI agents to generate and process rich media content including images, diagrams, vision analysis, speech-to-text, and text-to-speech, with dynamic model selection driven by configuration rather than hardcoded values.
 
-    B --> C{Capability Type?}
-    C -->|image_generation| CAP1["cap=image_generation"]
-    C -->|vision| CAP2["cap=vision"]
-    C -->|audio_transcription| CAP3["cap=audio_transcription"]
-    C -->|text_to_speech| CAP4["cap=text_to_speech"]
+### 1.2 Scope
 
-    CAP1 --> D[Query LLMModelConfig]
-    CAP2 --> D
-    CAP3 --> D
-    CAP4 --> D
+**In Scope:**
+- Image generation (DALL-E, Midjourney, Stable Diffusion)
+- Diagram rendering (Mermaid)
+- Vision analysis (GPT-4o, Claude Vision)
+- Speech-to-text (Whisper)
+- Text-to-speech (TTS)
+- Model selection routing via LLMModelConfig and AgentIQ
+- Tenant-scoped execution, secrets, budget, and billing
+- Feature flag gating per multimodal capability
 
-    D --> E["filter(capability=X, is_active=True)"]
+**Out of Scope:**
+- Video generation (reserved for future release)
+- Real-time streaming audio
+- Custom model training or fine-tuning
 
-    E --> F{Capsule has allowed_models?}
-    F -->|Yes| G["filter(name IN allowed_models)"]
-    F -->|No| H[Continue]
+### 1.3 Definitions
 
-    G --> I[Get AgentIQ cost_tier]
-    H --> I
+| Term | Definition |
+|------|------------|
+| Multimodal | The generation or processing of non-text media (image, audio, diagram, vision) |
+| LLMModelConfig | Database model storing provider model metadata, capabilities, cost tiers, and priorities |
+| AgentIQ | Cost-tier and capability derivation system based on capsule knobs and budget |
+| Capability | A named multimodal function such as image_generation, vision, audio_transcription, text_to_speech |
+| Cost Tier | Classification (free, low, standard, premium, flagship) restricting model selection based on budget |
+| Vault | Secret management system for tenant-scoped provider API keys |
 
-    I --> J{cost_tier?}
-    J -->|budget| K["filter(cost_tier IN [free, low])"]
-    J -->|standard| L["filter(cost_tier IN [free, low, standard])"]
-    J -->|premium| M["filter(cost_tier = any)"]
-    J -->|flagship| N["filter(cost_tier = any)"]
+### 1.4 References
 
-    K --> O[Sort by priority DESC]
-    L --> O
-    M --> O
-    N --> O
-
-    O --> P{Models found?}
-    P -->|Yes| Q[Return best model]
-    P -->|No| R[NoCapableModelError]
-
-    Q --> S[Get API key from Vault]
-    S --> T[Execute Request]
-```
-
-### 3.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant LLM as LLM Response
-    participant TOOL as ToolExecutor
-    participant MM as MultimodalAPI
-    participant AIQ as AgentIQ
-    participant CAP as Capsule
-    participant DB as LLMModelConfig
-    participant VAULT as Vault
-    participant PROV as Provider (OpenAI/etc)
-
-    LLM->>TOOL: tool_call(generate_image, prompt="...")
-    TOOL->>MM: POST /images/generate
-
-    Note over MM: Detect capability = image_generation
-
-    MM->>AIQ: Get cost_tier from capsule.knobs
-    AIQ-->>MM: cost_tier = "standard"
-
-    MM->>CAP: Get allowed_models
-    CAP-->>MM: ["dall-e-3", "midjourney-v6", "sdxl"]
-
-    MM->>DB: Query LLMModelConfig
-    Note over DB: filter(cap=image_generation, is_active=True)
-    Note over DB: filter(name IN allowed_models)
-    Note over DB: filter(cost_tier <= standard)
-    Note over DB: order_by(-priority)
-    DB-->>MM: SelectedModel(name="dall-e-3", provider="openai")
-
-    MM->>VAULT: get_provider_key("openai")
-    VAULT-->>MM: API key
-
-    MM->>PROV: POST /images/generations
-    Note over PROV: model="dall-e-3", prompt="..."
-    PROV-->>MM: Image URL
-
-    MM-->>TOOL: ImageGenerationResponse(url, model)
-    TOOL-->>LLM: tool_result(url)
-```
+| ID | Document | Version | Location |
+|----|----------|---------|----------|
+| REF-001 | SRS-CHAT-FLOW-MASTER.md | 3.0 | docs/srs/SRS-CHAT-FLOW-MASTER.md |
+| REF-002 | SRS-CAPSULE-PORTABILITY.md | 3.0 | docs/srs/SRS-CAPSULE-PORTABILITY.md |
+| REF-003 | SRS-BUDGET-SYSTEM.md | 1.0 | docs/srs/SRS-BUDGET-SYSTEM.md |
+| REF-004 | SRS-FEATURE-FLAGS.md | 1.0 | docs/srs/SRS-FEATURE-FLAGS.md |
+| REF-005 | LLM Model Configuration | Current | admin/core/models/core.py |
 
 ---
 
-## 4. Capability to Model Mapping
+## 2. Product Description
 
-### 4.1 Multimodal Capabilities
+### 2.1 Product Perspective
 
-| Capability | Description | Example Models |
-|------------|-------------|----------------|
-| `image_generation` | Create images from text | dall-e-3, midjourney-v6, sdxl |
-| `vision` | Analyze images | gpt-4o, claude-3-opus |
-| `audio_transcription` | Speech to text | whisper-1, whisper-large-v3 |
-| `text_to_speech` | Text to speech | tts-1, tts-1-hd, eleven-labs |
-| `video_generation` | Create videos | sora, runway-gen3 |
-| `diagram_render` | Mermaid diagrams | (internal service) |
+The multimodal subsystem executes during Phase 9 (Tools + Multimodal) of the 13-phase chat flow. After the LLM emits tool calls, the ToolExecutor parses the call and routes multimodal requests to the MultimodalAPI. The subsystem selects the best provider model dynamically based on required capability, AgentIQ-derived cost tier, capsule allowed_models, and model priority.
 
-### 4.2 LLMModelConfig Examples
+### 2.2 Product Functions
 
-```python
-# Image Generation Models in DB
-{
-    "name": "dall-e-3",
-    "display_name": "DALL-E 3",
-    "provider": "openai",
-    "capabilities": ["image_generation"],
-    "cost_tier": "standard",
-    "priority": 100,
-    "is_active": True,
-    "api_base": "https://api.openai.com/v1",
-}
+| ID | Function | Description |
+|----|----------|-------------|
+| FUNC-001 | Image Generation | Create images from text prompts using configured provider models |
+| FUNC-002 | Vision Analysis | Analyze uploaded images using vision-capable models |
+| FUNC-003 | Speech-to-Text | Transcribe audio input to text using configured transcription models |
+| FUNC-004 | Text-to-Speech | Synthesize speech from text using configured TTS models |
+| FUNC-005 | Diagram Rendering | Render Mermaid diagrams to images via internal service |
+| FUNC-006 | Model Routing | Select the best provider model based on capability, cost tier, allowed models, and priority |
 
-{
-    "name": "midjourney-v6",
-    "display_name": "Midjourney V6",
-    "provider": "midjourney",
-    "capabilities": ["image_generation"],
-    "cost_tier": "premium",
-    "priority": 90,
-    "is_active": True,
-}
+### 2.3 User Characteristics
 
-# Vision Models in DB
-{
-    "name": "gpt-4o",
-    "display_name": "GPT-4o Vision",
-    "provider": "openai",
-    "capabilities": ["text", "vision", "audio"],
-    "cost_tier": "premium",
-    "priority": 100,
-    "is_active": True,
-}
+| User Type | Role | Technical Level | Access |
+|-----------|------|-----------------|--------|
+| End User | Agent consumer | Low | Indirect via chat interface |
+| Capsule Designer | Agent configurator | Medium | Configures allowed_models and default models in capsule |
+| Platform Admin | Operations | High | Manages LLMModelConfig entries and provider keys in Vault |
 
-# Audio Models in DB
-{
-    "name": "whisper-1",
-    "display_name": "Whisper",
-    "provider": "openai",
-    "capabilities": ["audio_transcription"],
-    "cost_tier": "low",
-    "priority": 100,
-    "is_active": True,
-}
-```
+### 2.4 Constraints
+
+| ID | Constraint | Description |
+|----|------------|-------------|
+| CON-001 | No Hardcoded Models | All model names, providers, and API endpoints must originate from LLMModelConfig |
+| CON-002 | No Environment Variables for Secrets | Provider API keys must be retrieved from Vault, not os.environ |
+| CON-003 | Tenant Isolation | Every multimodal request must be scoped to the authenticated tenant |
+
+### 2.5 Assumptions and Dependencies
+
+| ID | Assumption / Dependency | Impact if Invalid |
+|----|------------------------|-------------------|
+| AD-001 | LLMModelConfig database contains at least one active model per supported capability | NoCapableModelError raised; request fails |
+| AD-002 | Vault contains valid API keys for each provider under tenant-scoped paths | Provider call fails with authentication error |
+| AD-003 | Capsule.body.allowed_models is either empty (allow all) or contains valid model names | Empty result if filter excludes all models |
+| AD-004 | Feature flags are registered in the feature flag system | Requests bypass gating or return 403 |
+| AD-005 | Budget cache (Redis) is reachable for per-metric enforcement | Budget enforcement disabled; potential overuse |
 
 ---
 
-## 5. AgentIQ Integration
+## 3. Specific Requirements
 
-### 5.1 Cost Tier Derivation
+### 3.1 Functional Requirements
 
-```
-resource_budget ($/turn)  →  cost_tier  →  Allowed Models
-─────────────────────────────────────────────────────────
-$0.01 - $0.10             →  budget     →  free, low only
-$0.10 - $0.50             →  standard   →  free, low, standard
-$0.50 - $2.00             →  premium    →  all
-$2.00+                    →  flagship   →  all
-```
+#### 3.1.1 Capability Detection and Routing
 
-### 5.2 Model Selection Function
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-MM-001 | The system shall detect the required multimodal capability from the tool call name (e.g., generate_image, analyze_image, transcribe, speak, render_diagram). | Must | Test | Approved |
+| REQ-MM-002 | The system shall query LLMModelConfig for active models matching the required capability. | Must | Test | Approved |
+| REQ-MM-003 | The system shall filter models by capsule.body.allowed_models when the list is non-empty. | Must | Test | Approved |
+| REQ-MM-004 | The system shall derive the cost_tier from AgentIQ based on the capsule resource_budget and apply it to model selection. | Must | Test | Approved |
+| REQ-MM-005 | The system shall sort matching models by priority descending and select the highest-priority model. | Must | Test | Approved |
+| REQ-MM-006 | The system shall raise NoCapableModelError when no model satisfies all filters. | Must | Test | Approved |
 
-```python
-# admin/core/multimodal/routing.py
+**Rationale:** Dynamic model routing ensures agents use the best available model within budget and policy constraints.
 
-async def select_multimodal_model(
-    capability: str,
-    capsule: Capsule,
-) -> LLMModelConfig:
-    """
-    Select best multimodal model based on:
-    1. Required capability
-    2. AgentIQ cost_tier
-    3. Capsule.allowed_models
-    4. Model priority
-    """
-    # 1. Get AgentIQ settings
-    settings = derive_all_settings(capsule)
-
-    # 2. Base query
-    queryset = LLMModelConfig.objects.filter(
-        capabilities__contains=capability,
-        is_active=True,
-    )
-
-    # 3. Apply Capsule constraint
-    allowed = capsule.body.get("allowed_models", [])
-    if allowed:
-        queryset = queryset.filter(name__in=allowed)
-
-    # 4. Apply cost tier constraint
-    if settings.cost_tier == "budget":
-        queryset = queryset.filter(cost_tier__in=["free", "low"])
-    elif settings.cost_tier == "standard":
-        queryset = queryset.filter(cost_tier__in=["free", "low", "standard"])
-    # premium/flagship = no filter
-
-    # 5. Get best by priority
-    model = await queryset.order_by("-priority").afirst()
-
-    if not model:
-        raise NoCapableModelError(capability)
-
-    return model
-```
+**Dependencies:** REQ-MM-004 depends on SRS-CAPSULE-PORTABILITY REQ-CP-006 (Knobs schema).
 
 ---
 
-## 6. Capsule.allowed_models
+#### 3.1.2 Tenant Isolation
 
-### 6.1 Configuration
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-MM-007 | The system shall extract tenant_id from the authenticated request context before executing any multimodal operation. | Must | Test | Approved |
+| REQ-MM-008 | The system shall load the tenant's capsule using tenant_id to retrieve allowed_models and AgentIQ settings. | Must | Test | Approved |
+| REQ-MM-009 | The system shall retrieve provider API keys from Vault using a tenant-scoped path (secret/tenant/{tenant_id}/api_keys). | Must | Test | Approved |
+| REQ-MM-010 | The system shall check budget limits using a tenant-scoped cache key (budget:{tenant_id}:{metric}:{period}). | Must | Test | Approved |
+| REQ-MM-011 | The system shall record billing events to Lago with the tenant_id in the external_subscription_id field. | Must | Test | Approved |
 
-```json
-{
-  "body": {
-    "allowed_models": [
-      "dall-e-3",
-      "gpt-4o",
-      "whisper-1",
-      "tts-1"
-    ],
-    "default_image_model": "dall-e-3",
-    "default_vision_model": "gpt-4o",
-    "default_audio_model": "whisper-1"
-  }
-}
-```
+**Rationale:** Tenant isolation prevents cross-tenant data leakage and ensures proper per-tenant billing and quota enforcement.
 
-### 6.2 No Hardcoding Rule
-
-| ❌ WRONG | ✅ CORRECT |
-|----------|-----------|
-| `model: str = "dall-e-3"` | `model = await select_multimodal_model("image_generation", capsule)` |
-| `provider = "openai"` | `provider = model.provider` |
-| `api_key = os.getenv(...)` | `api_key = vault.get_provider_key(model.provider)` |
+**Dependencies:** REQ-MM-008 depends on REQ-MM-007.
 
 ---
 
-## 7. Budget Gate for Multimodal
+#### 3.1.3 Execution and Gating
 
-Each multimodal operation uses `@budget_gate`:
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-MM-012 | The system shall enforce feature flags via @require_feature decorator before executing multimodal operations. | Must | Test | Approved |
+| REQ-MM-013 | The system shall enforce budget gates via @budget_gate decorator with the appropriate metric per capability. | Must | Test | Approved |
+| REQ-MM-014 | The system shall execute the selected model via the corresponding provider adapter and return a structured response containing the result URL and model name. | Must | Test | Approved |
 
-```python
-@budget_gate(metric="images")
-async def generate_image(request, payload):
-    ...
-
-@budget_gate(metric="voice_minutes")
-async def transcribe_audio(request, payload):
-    ...
-
-@budget_gate(metric="tokens")  # Vision uses tokens
-async def analyze_image(request, payload):
-    ...
-```
+**Rationale:** Feature flags and budget gates prevent unauthorized or over-budget usage.
 
 ---
 
-## 8. Feature Flags
+#### 3.1.4 Provider Integration
 
-Controlled by [SRS-FEATURE-FLAGS.md](./SRS-FEATURE-FLAGS.md):
-
-```python
-@require_feature("images")
-@budget_gate(metric="images")
-async def generate_image(...):
-    ...
-
-@require_feature("voice")
-@budget_gate(metric="voice_minutes")
-async def transcribe_audio(...):
-    ...
-```
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-MM-015 | The system shall support OpenAI provider for image generation, vision, transcription, and TTS. | Must | Test | Approved |
+| REQ-MM-016 | The system shall support internal Mermaid service for diagram rendering. | Must | Test | Approved |
+| REQ-MM-017 | The system shall support additional providers (Anthropic, Midjourney, ElevenLabs) via pluggable provider adapters. | Should | Inspection | Approved |
 
 ---
 
-## 9. Canonical File Structure
+### 3.2 Non-Functional Requirements
 
-```
-admin/multimodal/
-├── __init__.py
-├── routing.py           # select_multimodal_model()
-├── execution.py         # API endpoints
-├── providers/
-│   ├── openai.py        # DALL-E, Whisper, TTS
-│   ├── anthropic.py     # Claude Vision
-│   ├── midjourney.py    # Image generation
-│   └── elevenlabs.py    # TTS
-└── mermaid.py           # Diagram rendering
-```
+#### 3.2.1 Performance
 
----
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-PERF-001 | Model selection (routing) latency shall not exceed 20ms excluding database query time. | 20 ms | Load Test |
+| NFR-PERF-002 | Image generation end-to-end latency shall not exceed 15 seconds for standard-resolution images. | 15 s | Load Test |
 
-## 10. Acceptance Criteria
+#### 3.2.2 Security
 
-| Criterion | Verification |
-|-----------|--------------|
-| ✅ NO hardcoded models | All from LLMModelConfig |
-| ✅ AgentIQ integration | cost_tier respected |
-| ✅ Capsule.allowed_models | Filter applied |
-| ✅ Vault for secrets | No env vars |
-| ✅ Budget gate | Per-metric enforcement |
-| ✅ Feature flags | @require_feature |
-| ✅ Model priority | Highest priority selected |
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SEC-001 | API keys shall never be logged or returned in responses. | 100% | Audit / Pen Test |
+| NFR-SEC-002 | All tenant-scoped assets shall be stored with Asset.tenant_id for isolation. | 100% | Inspection |
 
----
+#### 3.2.3 Reliability
 
-## 11. Summary Diagram
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-REL-001 | Provider failures shall trigger circuit breaker logic with exponential backoff. | 3 retries | Chaos Test |
 
-```mermaid
-flowchart LR
-    subgraph INPUT
-        REQ[Multimodal Request]
-    end
+#### 3.2.4 Scalability
 
-    subgraph ROUTING ["MODEL ROUTING"]
-        CAP[Detect Capability]
-        DB[(LLMModelConfig)]
-        AIQ[AgentIQ cost_tier]
-        CAPS[Capsule.allowed_models]
-    end
-
-    subgraph EXECUTION
-        VAULT[Vault API Key]
-        PROV[Provider API]
-    end
-
-    subgraph OUTPUT
-        RES[Result]
-    end
-
-    REQ --> CAP
-    CAP --> DB
-    DB --> AIQ
-    AIQ --> CAPS
-    CAPS --> VAULT
-    VAULT --> PROV
-    PROV --> RES
-```
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SCL-001 | The system shall support concurrent multimodal requests per tenant without cross-tenant interference. | 100 req/s per tenant | Load Test |
 
 ---
 
-## 12. Multitenancy (CRITICAL)
+### 3.3 External Interface Requirements
 
-> **EVERY multimodal request MUST be tenant-isolated.**
+#### 3.3.1 Software Interfaces
 
-### 12.1 Tenant Isolation Flow
+| Interface | Protocol | Format | Authentication |
+|-----------|----------|--------|----------------|
+| OpenAI Images API | HTTPS/JSON | JSON | Bearer (API key from Vault) |
+| OpenAI Audio API | HTTPS/JSON | JSON / binary | Bearer (API key from Vault) |
+| Anthropic Messages API | HTTPS/JSON | JSON | Bearer (API key from Vault) |
+| Vault KV Secrets | HTTPS/JSON | JSON | Vault token |
+| Lago Events API | HTTPS/JSON | JSON | Lago API key |
+| Redis Budget Cache | RESP | Key-value | Redis AUTH |
+| Internal Mermaid Service | HTTP/JSON | SVG/PNG | None (internal) |
 
-```mermaid
-flowchart TD
-    subgraph REQUEST ["1. REQUEST INGRESS"]
-        REQ[Multimodal Request]
-        AUTH[AuthBearer]
-        TID[Extract tenant_id]
-    end
+#### 3.3.2 Hardware Interfaces
 
-    subgraph TENANT_CONTEXT ["2. TENANT CONTEXT"]
-        CAP_LOAD[Load Capsule by tenant_id]
-        ALLOWED[Get allowed_models from Capsule]
-        AIQ[Derive AgentIQ settings]
-    end
-
-    subgraph TENANT_ROUTING ["3. TENANT-SCOPED ROUTING"]
-        MODEL_Q[Query LLMModelConfig]
-        FILTER1["filter(capability)"]
-        FILTER2["filter(name IN allowed_models)"]
-        FILTER3["filter(cost_tier <= derived.cost_tier)"]
-    end
-
-    subgraph TENANT_SECRETS ["4. TENANT SECRETS"]
-        VAULT["Vault: secret/tenant/{tenant_id}/api_keys"]
-        API_KEY[Get provider-specific key]
-    end
-
-    subgraph TENANT_BUDGET ["5. TENANT BUDGET"]
-        BUDGET["Check budget:{tenant_id}:images:monthly"]
-        LAGO["Record to Lago with tenant_id"]
-    end
-
-    subgraph EXECUTION ["6. EXECUTE"]
-        PROV[Call Provider API]
-        RESULT[Return Result]
-    end
-
-    REQ --> AUTH
-    AUTH --> TID
-    TID --> CAP_LOAD
-    CAP_LOAD --> ALLOWED
-    CAP_LOAD --> AIQ
-    ALLOWED --> MODEL_Q
-    AIQ --> MODEL_Q
-    MODEL_Q --> FILTER1 --> FILTER2 --> FILTER3
-    FILTER3 --> VAULT
-    VAULT --> API_KEY
-    API_KEY --> BUDGET
-    BUDGET --> PROV
-    PROV --> RESULT
-    RESULT --> LAGO
-```
-
-### 12.2 Tenant Data Isolation
-
-| Component | Tenant Scoping | Implementation |
-|-----------|----------------|----------------|
-| **Capsule** | `Capsule.tenant_id` | Load by tenant |
-| **AgentIQ** | Via Capsule | `derive_all_settings(capsule)` |
-| **Model Filter** | `allowed_models` | From Capsule.body |
-| **Secrets** | Vault path | `secret/tenant/{tenant_id}/` |
-| **Budget** | Cache key | `budget:{tenant_id}:` |
-| **Billing** | Lago events | `external_subscription_id=tenant_id` |
-| **Assets** | Asset.tenant_id | Stored with tenant |
-
-### 12.3 Sequence Diagram with Multitenancy
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as User
-    participant GW as Gateway
-    participant AUTH as AuthBearer
-    participant CAP as Capsule
-    participant AIQ as AgentIQ
-    participant MM as Multimodal API
-    participant DB as LLMModelConfig
-    participant VAULT as Vault
-    participant BUDGET as Budget Cache
-    participant PROV as Provider
-    participant LAGO as Lago
-
-    U->>GW: POST /images/generate
-    GW->>AUTH: Validate JWT
-
-    rect rgb(60, 60, 100)
-        Note over AUTH,CAP: TENANT EXTRACTION
-        AUTH-->>GW: tenant_id = "tenant-123"
-        GW->>CAP: Load Capsule(tenant_id="tenant-123")
-        CAP-->>GW: capsule.body.allowed_models
-    end
-
-    rect rgb(100, 60, 60)
-        Note over GW,AIQ: AGENT IQ DERIVATION
-        GW->>AIQ: derive_all_settings(capsule)
-        AIQ-->>GW: cost_tier="standard"
-    end
-
-    rect rgb(60, 100, 60)
-        Note over MM,DB: TENANT-SCOPED MODEL SELECTION
-        GW->>MM: generate_image(tenant_id, capsule)
-        MM->>DB: Query with tenant filters
-        Note over DB: cap=image_generation<br/>name IN allowed_models<br/>cost_tier <= standard
-        DB-->>MM: model=dall-e-3, provider=openai
-    end
-
-    rect rgb(100, 100, 60)
-        Note over MM,VAULT: TENANT SECRETS
-        MM->>VAULT: secret/tenant/tenant-123/openai
-        VAULT-->>MM: API key for tenant
-    end
-
-    rect rgb(60, 100, 100)
-        Note over MM,BUDGET: TENANT BUDGET CHECK
-        MM->>BUDGET: GET budget:tenant-123:images:monthly
-        BUDGET-->>MM: usage=45, limit=100
-        Note over MM: 45 < 100, allowed
-    end
-
-    rect rgb(100, 60, 100)
-        Note over MM,PROV: EXECUTE
-        MM->>PROV: POST /images/generations
-        PROV-->>MM: Image URL
-    end
-
-    rect rgb(80, 80, 80)
-        Note over MM,LAGO: BILLING
-        MM->>BUDGET: INCR budget:tenant-123:images:monthly
-        MM->>LAGO: POST /events (tenant_id, image_generations, 1)
-    end
-
-    MM-->>U: ImageGenerationResponse
-```
-
-### 12.4 Required Code Changes
-
-```python
-# CURRENT (NO MULTITENANCY)
-async def generate_image(request, payload):
-    model = await LLMModelConfig.objects.filter(
-        capabilities__contains="image_generation"
-    ).afirst()
-
-# REQUIRED (WITH MULTITENANCY)
-@require_feature("images")
-@budget_gate(metric="images")
-async def generate_image(request, payload):
-    # 1. Tenant from auth
-    tenant_id = request.auth.tenant_id
-
-    # 2. Load tenant capsule
-    capsule = await Capsule.objects.get(
-        tenant_id=tenant_id,
-        is_default=True
-    )
-
-    # 3. Tenant-scoped model selection
-    model = await select_multimodal_model(
-        capability="image_generation",
-        capsule=capsule,
-    )
-
-    # 4. Tenant-scoped secrets
-    api_key = await get_tenant_secret(tenant_id, model.provider)
-
-    # 5. Execute
-    ...
-```
+None.
 
 ---
 
-## 13. Complete Multimodal Flow (All Layers)
+### 3.4 Design Constraints
 
-```mermaid
-flowchart TD
-    subgraph LAYER1 ["LAYER 1: INGRESS"]
-        REQ[Multimodal Request]
-        JWT[JWT Token]
-        TENANT[tenant_id extraction]
-    end
-
-    subgraph LAYER2 ["LAYER 2: FEATURE CHECK"]
-        FF{Feature Enabled?}
-        FF_YES[Continue]
-        FF_NO[403 Feature Disabled]
-    end
-
-    subgraph LAYER3 ["LAYER 3: BUDGET CHECK"]
-        BG{Budget Available?}
-        BG_YES[Continue]
-        BG_NO[402 Budget Exhausted]
-    end
-
-    subgraph LAYER4 ["LAYER 4: CAPSULE"]
-        CAP_LOAD[Load Capsule]
-        AIQ[AgentIQ Derive]
-        ALLOWED[allowed_models]
-    end
-
-    subgraph LAYER5 ["LAYER 5: MODEL ROUTING"]
-        CAP_DETECT[Detect Capability]
-        DB_QUERY[Query LLMModelConfig]
-        FILTER[Apply Filters]
-        SELECT[Select Best Model]
-    end
-
-    subgraph LAYER6 ["LAYER 6: SECRETS"]
-        VAULT[Vault Lookup]
-        API_KEY[API Key]
-    end
-
-    subgraph LAYER7 ["LAYER 7: EXECUTION"]
-        PROVIDER[Call Provider]
-        RESULT[Get Result]
-    end
-
-    subgraph LAYER8 ["LAYER 8: BILLING"]
-        CACHE_INCR[Increment Budget Cache]
-        LAGO_EVENT[Async Lago Event]
-    end
-
-    subgraph LAYER9 ["LAYER 9: RESPONSE"]
-        RESP[Return Response]
-    end
-
-    REQ --> JWT --> TENANT
-    TENANT --> FF
-    FF -->|No| FF_NO
-    FF -->|Yes| FF_YES --> BG
-    BG -->|No| BG_NO
-    BG -->|Yes| BG_YES --> CAP_LOAD
-    CAP_LOAD --> AIQ
-    CAP_LOAD --> ALLOWED
-    AIQ --> CAP_DETECT
-    ALLOWED --> DB_QUERY
-    CAP_DETECT --> DB_QUERY
-    DB_QUERY --> FILTER --> SELECT
-    SELECT --> VAULT --> API_KEY
-    API_KEY --> PROVIDER --> RESULT
-    RESULT --> CACHE_INCR --> LAGO_EVENT
-    LAGO_EVENT --> RESP
-```
+| ID | Constraint | Source |
+|----|------------|--------|
+| DC-001 | No hardcoded model names, providers, or API endpoints. | Platform Architecture |
+| DC-002 | API keys must be retrieved from Vault at runtime, not from environment variables. | Security Policy |
+| DC-003 | Feature flags must be checked before budget gates. | Control Flow Standard |
+| DC-004 | Provider adapters must inherit from base_provider.BaseProvider. | services/multimodal/base_provider.py |
 
 ---
 
-## 14. Acceptance Criteria (Updated)
+## 4. Traceability
 
-| Criterion | Verification |
-|-----------|--------------|
-| ✅ NO hardcoded models | All from LLMModelConfig |
-| ✅ AgentIQ integration | cost_tier respected |
-| ✅ Capsule.allowed_models | Filter applied |
-| ✅ Vault for secrets | No env vars |
-| ✅ Budget gate | Per-metric enforcement |
-| ✅ Feature flags | @require_feature |
-| ✅ Model priority | Highest priority selected |
-| ✅ **Tenant isolation** | All queries scoped by tenant_id |
-| ✅ **Tenant secrets** | Vault path includes tenant_id |
-| ✅ **Tenant budget** | Cache key includes tenant_id |
-| ✅ **Tenant billing** | Lago events include tenant_id |
+### 4.1 Requirements Traceability Matrix
+
+| REQ ID | Description | Source | Design | Implementation | Test |
+|--------|-------------|--------|--------|----------------|------|
+| REQ-MM-001 | Capability detection | Chat Flow Phase 9 | services/tool_executor/tools.py | services/tool_executor/multimodal_executor.py | tests/unit/test_multimodal_routing.py |
+| REQ-MM-002 | Query LLMModelConfig | Model Routing | admin/core/models/core.py | services/gateway/providers.py | tests/unit/test_model_config_query.py |
+| REQ-MM-003 | Filter by allowed_models | Capsule Config | admin/core/models/core.py | services/gateway/providers.py | tests/unit/test_allowed_models_filter.py |
+| REQ-MM-004 | AgentIQ cost_tier derivation | Budget System | admin/core/models/core.py | services/common/agent_config_loader.py | tests/unit/test_agentiq_derive.py |
+| REQ-MM-005 | Priority-based selection | Model Routing | admin/core/models/core.py | services/gateway/providers.py | tests/unit/test_model_priority.py |
+| REQ-MM-006 | NoCapableModelError | Error Handling | admin/core/models/core.py | services/gateway/providers.py | tests/unit/test_no_capable_model.py |
+| REQ-MM-007 | tenant_id extraction | Auth Layer | services/gateway/main.py | services/gateway/main.py | tests/integration/test_tenant_auth.py |
+| REQ-MM-008 | Tenant capsule load | Multitenancy | admin/core/models/core.py | services/gateway/main.py | tests/integration/test_tenant_capsule.py |
+| REQ-MM-009 | Tenant-scoped Vault secrets | Security | services/common/adapters/vault.py | services/common/adapters/vault.py | tests/integration/test_vault_tenant.py |
+| REQ-MM-010 | Tenant-scoped budget check | Budget System | services/common/budget_cache.py | services/common/budget_cache.py | tests/unit/test_budget_tenant.py |
+| REQ-MM-011 | Lago billing with tenant_id | Billing | services/common/billing.py | services/common/billing.py | tests/integration/test_lago_events.py |
+| REQ-MM-012 | Feature flag enforcement | Feature Flags | admin/api/features.py | services/tool_executor/multimodal_executor.py | tests/unit/test_feature_flags.py |
+| REQ-MM-013 | Budget gate enforcement | Budget System | services/common/budget_cache.py | services/tool_executor/multimodal_executor.py | tests/unit/test_budget_gate.py |
+| REQ-MM-014 | Provider execution | Execution | services/multimodal/base_provider.py | services/multimodal/dalle_provider.py | tests/integration/test_image_generate.py |
+| REQ-MM-015 | OpenAI provider support | Provider Adapter | services/multimodal/base_provider.py | services/multimodal/dalle_provider.py | tests/integration/test_openai_provider.py |
+| REQ-MM-016 | Mermaid diagram rendering | Diagrams | services/multimodal/mermaid_provider.py | services/multimodal/mermaid_provider.py | tests/unit/test_mermaid_render.py |
+
+### 4.2 Requirement to Test Case Mapping
+
+| REQ ID | Test Case ID | Test Method | Expected Result |
+|--------|--------------|-------------|-----------------|
+| REQ-MM-001 | TC-MM-001 | Unit Test | generate_image resolves capability to image_generation |
+| REQ-MM-003 | TC-MM-002 | Unit Test | Query filtered to allowed_models list |
+| REQ-MM-006 | TC-MM-003 | Unit Test | NoCapableModelError raised when no models match |
+| REQ-MM-007 | TC-MM-004 | Integration Test | tenant_id present in execution context |
+| REQ-MM-009 | TC-MM-005 | Integration Test | Vault path contains tenant_id |
+| REQ-MM-012 | TC-MM-006 | Unit Test | 403 returned when feature flag disabled |
+| REQ-MM-013 | TC-MM-007 | Unit Test | 402 returned when budget exhausted |
+| NFR-SEC-001 | TC-MM-008 | Penetration Test | API keys absent from all logs and responses |
 
 ---
 
-**Document End**
+## 5. Revision History
 
-*Signed off by ALL 10 PERSONAS ✅*
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 2.0 | 2026-01-16 | Engineering | Initial canonical version with multitenancy |
+| 2.1 | 2026-05-21 | Engineering | Refactored to ISO/IEC/IEEE 29148:2018 template; removed personas, emojis, excessive code and diagrams; added REQ numbering and traceability matrix |
 
+---
+
+*Document conforms to ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering.*

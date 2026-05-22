@@ -10,19 +10,15 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Any, Callable, Generator
 
-try:
-    from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
-    # Initialise a global tracer provider only once.
-    _provider = TracerProvider()
-    _provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
-    trace.set_tracer_provider(_provider)
-    _tracer = trace.get_tracer(__name__)
-except Exception:  # pragma: no cover – OpenTelemetry may be missing in CI
-    trace = None  # type: ignore
-    _tracer = None  # type: ignore
+# Initialise a global tracer provider only once.
+_provider = TracerProvider()
+_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(_provider)
+_tracer = trace.get_tracer(__name__)
 
 
 def get_tracer():

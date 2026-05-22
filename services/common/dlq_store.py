@@ -10,10 +10,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-try:
-    import asyncpg  # type: ignore
-except ImportError:  # pragma: no cover
-    asyncpg = None  # type: ignore
+import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,16 +30,12 @@ class DLQStore:
 
     async def _get_pool(self) -> Any:
         """Get or create a connection pool."""
-        if asyncpg is None:
-            raise RuntimeError("asyncpg is required for DLQStore")
         return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
 
     async def ensure_schema(self) -> None:
         """Ensure the DLQ table exists."""
         if not self.dsn:
             raise RuntimeError("DLQStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DLQStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -77,8 +70,6 @@ class DLQStore:
         """
         if not self.dsn:
             raise RuntimeError("DLQStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DLQStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -110,8 +101,6 @@ class DLQStore:
         """
         if not self.dsn:
             raise RuntimeError("DLQStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("DLQStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:

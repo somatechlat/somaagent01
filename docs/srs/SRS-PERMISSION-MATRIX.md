@@ -1,1076 +1,407 @@
-# SRS: Permission Matrix & Role Administration
+# SRS-PERMISSION-MATRIX — Permission Matrix and Role Administration
 
-**Document ID:** SA01-SRS-PERMISSIONS-2025-12
-**Role:** 🔴 AAAS SysAdmin (manages all)
-**Routes:** `/aaas/roles/*`, `/aaas/permissions/*`
-**Status:** CANONICAL
-
----
-
-## 0. AAAS-Wide Permission Architecture
-
-### 0.1 Permission Cascade Model
-
-Permissions flow **top-down** through a strict hierarchy:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         🔴 AAAS PLATFORM (God Mode)                          │
-│                                                                             │
-│  • Manages ALL tenants, subscriptions, roles, permissions                   │
-│  • Can create/modify ANY role at ANY level                                  │
-│  • Defines TIER features (what tenants can access)                          │
-│  • Sets GLOBAL limits and quotas                                            │
-│                                                                             │
-│  SpiceDB: definition platform {}                                            │
-│           definition aaas_admin { relation platform: platform }             │
-├─────────────────────────────────────────────────────────────────────────────┤
-                                    │
-                                    ▼ (Tier Limits Apply)
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         🟠 TENANT LEVEL                                      │
-│                                                                             │
-│  • Bound by subscription tier limits                                        │
-│  • Can assign roles ONLY within their tenant                                │
-│  • Can configure agents ONLY within their quota                             │
-│  • CANNOT exceed tier limits (enforced by AAAS)                             │
-│                                                                             │
-│  SpiceDB: definition tenant {                                               │
-│               relation subscription: subscription_tier                      │
-│               relation sysadmin: user                                       │
-│           }                                                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-                                    │
-                                    ▼ (Agent Limits Apply)
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         🟢 AGENT LEVEL                                       │
-│                                                                             │
-│  • Bound by tenant's agent quota                                            │
-│  • Mode access depends on user's tenant role                                │
-│  • Features depend on tier (e.g., DEV mode = Team+ only)                    │
-│                                                                             │
-│  SpiceDB: definition agent {                                                │
-│               relation tenant: tenant                                       │
-│               permission configure = owner + tenant->administrate           │
-│           }                                                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| Field | Value |
+|-------|-------|
+| **System** | SomaAgent01 |
+| **Document ID** | SRS-PERMISSION-MATRIX-2025-12 |
+| **Version** | 1.1 |
+| **Date** | 2025-12 |
+| **Status** | Approved |
+| **Author** | Soma Engineering |
+| **Owner** | Security Team |
 
 ---
 
-### 0.2 Permission Inheritance Rules
+## Table of Contents
 
-| Rule | Description | Example |
-|------|-------------|---------|
-| **Cascade Down** | Higher level can ALWAYS access lower | 🔴 AAAS Admin → can access ANY tenant |
-| **Tier Gating** | Features gated by subscription | DEV mode requires Team tier |
-| **Quota Enforcement** | Operations blocked at limit | "Max 10 agents reached" |
-| **Role Scoping** | Roles only valid in scope | Tenant Admin can't manage other tenants |
-| **Impersonation** | Only 🔴 can impersonate | AAAS Admin can "become" any Tenant Admin |
-
----
-
-### 0.3 AAAS-Wide Permission Categories
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 0: PLATFORM PERMISSIONS (🔴 Only)                                      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ platform:manage          │ Full platform control                            │
-│ platform:manage_tenants  │ Create/suspend/delete tenants                   │
-│ platform:manage_tiers    │ Create/edit subscription tiers                  │
-│ platform:manage_roles    │ Create/edit/delete roles at ANY level           │
-│ platform:view_billing    │ View ALL billing across platform                │
-│ platform:impersonate     │ Become any tenant user                          │
-│ platform:configure       │ Platform-wide settings                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 1: TENANT PERMISSIONS (🟠🟡 within their tenant)                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ tenant:manage            │ Full tenant control (SysAdmin only)             │
-│ tenant:administrate      │ User/agent management                           │
-│ tenant:create_agent      │ Create agents (within quota)                    │
-│ tenant:delete_agent      │ Delete agents                                   │
-│ tenant:view_billing      │ View tenant billing                             │
-│ tenant:manage_api_keys   │ Create/revoke API keys                          │
-│ tenant:assign_roles      │ Assign roles to users (within tenant)           │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 2: AGENT PERMISSIONS (🟢🔵🟣⚪⚫ per agent)                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ agent:configure          │ Agent settings, models, features                │
-│ agent:activate_adm       │ Enable ADM mode (Owner/Admin only)              │
-│ agent:activate_dev       │ Enable DEV mode (requires tier)                 │
-│ agent:activate_trn       │ Enable TRN mode (requires tier)                 │
-│ agent:activate_std       │ Enable STD mode (default)                       │
-│ agent:activate_ro        │ Enable RO mode (view only)                      │
-│ agent:manage_users       │ Add/remove users from agent                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 3: RESOURCE PERMISSIONS (within agent context)                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ chat:send                │ Send messages                                   │
-│ chat:view                │ View chat history                               │
-│ chat:delete              │ Delete conversations                            │
-│ memory:read              │ Read memories                                   │
-│ memory:write             │ Create memories                                 │
-│ memory:delete            │ Delete memories                                 │
-│ memory:set_retention     │ Configure GDPR retention (NEW)                  │
-│ tools:execute            │ Run tools                                       │
-│ tools:approve_external   │ Approve egress/external tools (NEW)             │
-│ cognitive:view           │ View cognitive state                            │
-│ cognitive:edit           │ Modify neuromodulators                          │
-│ voice:use                │ Use voice features                              │
-│ voice:configure          │ Configure voice settings                        │
-│ rlm:execute              │ Execute RLM brain queries (NEW)                 │
-│ capsule:export           │ Export capsule bundle (NEW)                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LEVEL 4: SECURITY/EMERGENCY PERMISSIONS (NEW)                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ platform:break_glass     │ Emergency access override                       │
-│ platform:require_2fa     │ Force 2FA on sensitive ops                      │
-│ apikey:restrict_ip       │ Set IP allowlist on API keys                    │
-│ billing:update_payment   │ Update payment method                           │
-│ billing:cancel_sub       │ Cancel subscription (separate from update)      │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+1. [Introduction](#1-introduction)
+   1.1 [Purpose](#11-purpose)
+   1.2 [Scope](#12-scope)
+   1.3 [Definitions](#13-definitions)
+   1.4 [References](#14-references)
+2. [Product Description](#2-product-description)
+   2.1 [Product Perspective](#21-product-perspective)
+   2.2 [Product Functions](#22-product-functions)
+   2.3 [User Characteristics](#23-user-characteristics)
+   2.4 [Constraints](#24-constraints)
+   2.5 [Assumptions and Dependencies](#25-assumptions-and-dependencies)
+3. [Specific Requirements](#3-specific-requirements)
+   3.1 [Functional Requirements](#31-functional-requirements)
+   3.2 [Non-Functional Requirements](#32-non-functional-requirements)
+   3.3 [External Interface Requirements](#33-external-interface-requirements)
+   3.4 [Design Constraints](#34-design-constraints)
+4. [Traceability](#4-traceability)
 
 ---
 
-### 0.4 Tier-Gated Features
+## 1. Introduction
 
-| Feature | Free | Starter | Team | Enterprise |
-|---------|------|---------|------|------------|
-| STD Mode | ✅ | ✅ | ✅ | ✅ |
-| RO Mode | ✅ | ✅ | ✅ | ✅ |
-| **DEV Mode** | ❌ | ❌ | ✅ | ✅ |
-| **TRN Mode** | ❌ | ❌ | ✅ | ✅ |
-| **ADM Mode** | ❌ | ✅ | ✅ | ✅ |
-| Voice | ❌ | ✅ | ✅ | ✅ |
-| API Access | ❌ | ✅ | ✅ | ✅ |
-| Custom LLM | ❌ | ❌ | ❌ | ✅ |
-| SSO | ❌ | ❌ | ❌ | ✅ |
-| SLA | ❌ | ❌ | ❌ | ✅ |
+### 1.1 Purpose
 
----
+This document specifies the role-based access control (RBAC), permission matrix, and role administration requirements for the SomaAgent01 platform. It defines the permission hierarchy, tier-gated features, screen and API access rules, and the SpiceDB authorization schema.
 
-### 0.5 Permission Check Flow
+### 1.2 Scope
 
-```mermaid
-flowchart TD
-    A[API Request] --> B{Authenticated?}
-    B -->|No| C[401 Unauthorized]
-    B -->|Yes| D[Get User from JWT]
+**In scope:**
+- Permission cascade model across Platform, Tenant, Agent, and Resource levels
+- Complete permission matrix for all user journeys, screens, and API endpoints
+- Subscription tier gating for features and modes
+- Role administration interfaces and workflows
+- SpiceDB schema definitions for authorization
+- Frontend and backend permission enforcement mechanisms
 
-    D --> E{AAAS Admin?}
-    E -->|Yes| F[✅ ALLOW - God Mode]
+**Out of scope:**
+- User interface visual design and styling
+- Billing logic for tier pricing
+- Keycloak identity provider configuration
 
-    E -->|No| G[Get User's Tenant]
-    G --> H{Tenant Active?}
-    H -->|No| I[403 Tenant Suspended]
+### 1.3 Definitions
 
-    H -->|Yes| J{Tier Allows Feature?}
-    J -->|No| K[403 Upgrade Required]
+| Term | Definition |
+|------|------------|
+| AAAS Admin | Platform super administrator with full system access |
+| Agent Owner | User who owns and configures a specific agent |
+| Capsule | Agent identity unit containing configuration and capabilities |
+| DEV Mode | Developer debugging mode for agent inspection |
+| GranularPermission | Fine-grained permission combining a resource and an action |
+| PermissionResource | Entity type that can be acted upon (e.g., tenant, agent, conversation) |
+| PermissionAction | Operation that can be performed on a resource (e.g., read, delete) |
+| Role | Named collection of permissions assignable to users |
+| SpiceDB | Open-source fine-grained authorization database |
+| STD Mode | Standard chat mode for end users |
+| TRN Mode | Trainer mode for cognitive and memory tuning |
+| Tier Gating | Feature availability controlled by subscription level |
+| Tenant Admin | Administrator within a single tenant |
+| Tenant SysAdmin | Super administrator within a single tenant |
 
-    J -->|Yes| L[SpiceDB Check]
-    L --> M{Has Permission?}
-    M -->|No| N[403 Permission Denied]
-    M -->|Yes| O{Within Quota?}
+### 1.4 References
 
-    O -->|No| P[429 Quota Exceeded]
-    O -->|Yes| Q[✅ ALLOW]
-```
-
----
-
-## 1. Complete Permission Matrix — By User Journey
-
-### Legend
-| Symbol | Meaning |
-|--------|---------|
-| ✅ | Full access |
-| 👁️ | View only |
-| ⚠️ | Conditional (quota/ownership) |
-| ❌ | No access |
+| ID | Document | Version | Location |
+|----|----------|---------|----------|
+| REF-001 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/srs/SRS-SECURITY-MULTITENANCY.md` |
+| REF-002 | SRS-DATA-MODELS | 5.0 | `docs/srs/SRS-DATA-MODELS.md` |
+| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/srs/SRS-ARCHITECTURAL-PATTERNS.md` |
+| REF-004 | SpiceDB Schema Language (Zed) | 1.35 | https://authzed.com/docs |
 
 ---
 
-### 1.1 User Journey Permissions
+## 2. Product Description
 
-| Journey | 🔴 AAAS Admin | 🟠 Tenant SysAdmin | 🟡 Tenant Admin | 🟢 Agent Owner | 🔵 Developer | 🟣 Trainer | ⚪ User | ⚫ Viewer |
-|---------|---------------|-------------------|-----------------|----------------|--------------|------------|---------|----------|
-| **UC-01** Chat with Agent | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
-| **UC-02** Create Conversation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **UC-03** Upload File | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| **UC-04** Voice Chat | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| **UC-05** View Memories | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ | 👁️ |
-| **UC-06** Configure Agent | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **UC-07** Manage Users | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **UC-08** View Billing | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **UC-09** Create Tenant | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **UC-10** Suspend Tenant | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **UC-11** Manage Subscriptions | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **UC-12** Platform Metrics | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **UC-13** Tool Execution | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| **UC-14** Store Memory | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| **UC-15** API Integration | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
+### 2.1 Product Perspective
 
----
+The permission matrix subsystem sits between the authentication layer (Keycloak) and all platform features. It determines whether an authenticated user may access a screen, execute an API call, or perform an action on a resource. The subsystem is implemented via SpiceDB for fine-grained checks, with Django backend decorators and frontend route guards enforcing the matrix.
 
-### 1.2 Screen Access Permissions
+### 2.2 Product Functions
 
-| Screen | Route | 🔴 AAAS | 🟠 TSysAdmin | 🟡 TAdmin | 🟢 Owner | 🔵 Dev | 🟣 Trn | ⚪ User | ⚫ View |
-|--------|-------|---------|--------------|-----------|----------|--------|--------|---------|--------|
-| **PLATFORM** |
-| Platform Dashboard | `/aaas` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Tenant List | `/aaas/tenants` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Create Tenant | `/aaas/tenants/new` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Subscription Tiers | `/aaas/subscriptions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Platform Billing | `/aaas/billing` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Platform Health | `/aaas/health` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Role Admin** | `/aaas/roles` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Permission Browser** | `/aaas/permissions` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **TENANT** |
-| Tenant Dashboard | `/admin` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| User Management | `/admin/users` | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Agent List | `/admin/agents` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Create Agent | `/admin/agents/new` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Tenant Settings | `/admin/settings` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Tenant Billing | `/admin/billing` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| API Keys | `/admin/api-keys` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Audit Log | `/admin/audit` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Tenant Roles | `/admin/roles` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **AGENT** |
-| Agent Overview | `/agent/:id` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Agent Config | `/agent/:id/config` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Agent Users | `/agent/:id/users` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **DEV MODE** |
-| Debug Console | `/dev/console` | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| API Logs | `/dev/logs` | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| MCP Inspector | `/dev/mcp` | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **TRN MODE** |
-| Cognitive Panel | `/trn/cognitive` | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Neuromodulators | `/trn/neuro` | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Sleep Control | `/trn/sleep` | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **STD MODE** |
-| Chat View | `/chat` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
-| Memory Browser | `/memory` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ | 👁️ |
-| Tools | `/tools` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| Profile | `/profile` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Settings | `/settings` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ |
+| ID | Function | Description |
+|----|----------|-------------|
+| FUNC-001 | Permission Cascade | Enforce top-down permission inheritance from Platform to Tenant to Agent to Resource |
+| FUNC-002 | Tier Gating | Restrict features based on subscription tier (Free, Starter, Team, Enterprise) |
+| FUNC-003 | Quota Enforcement | Block operations when tenant or agent quotas are exceeded |
+| FUNC-004 | Role Scoping | Restrict role management to the scope in which the role is defined |
+| FUNC-005 | Screen Access Control | Gate frontend routes based on user permissions |
+| FUNC-006 | API Access Control | Gate REST endpoints based on user permissions |
+| FUNC-007 | Role Administration | Create, edit, and delete custom roles with granular permissions |
+| FUNC-008 | Permission Inheritance | Derive effective permissions from role assignments and hierarchy |
+
+### 2.3 User Characteristics
+
+| User Type | Role | Technical Level | Access |
+|-----------|------|-----------------|--------|
+| AAAS Admin | Platform administrator | High | All tenants, roles, permissions, billing |
+| Tenant SysAdmin | Tenant super administrator | Medium | Single tenant, full control |
+| Tenant Admin | Tenant administrator | Medium | Single tenant, users and agents, no billing |
+| Agent Owner | Agent owner | Medium | Agent configuration, users, chat |
+| Developer | Agent developer | High | DEV mode, logs, API inspection |
+| Trainer | Agent trainer | Medium | TRN mode, cognitive tuning |
+| Standard User | End user | Low | Chat, memory read, file upload |
+| Viewer | Read-only user | Low | Chat view, memory view |
+
+### 2.4 Constraints
+
+| ID | Constraint | Description |
+|----|------------|-------------|
+| CON-001 | Role Immutability | System roles (AAAS SysAdmin, Tenant SysAdmin, etc.) shall not be modifiable or deletable |
+| CON-002 | Last SysAdmin Protection | The system shall prevent removal of the last AAAS SysAdmin |
+| CON-003 | Tier Ceiling | A tenant cannot exceed the maximum limits defined by its subscription tier |
+| CON-004 | Cross-Tenant Isolation | A user with a role in Tenant A shall have no permissions in Tenant B |
+
+### 2.5 Assumptions and Dependencies
+
+| ID | Assumption / Dependency | Impact if Invalid |
+|----|------------------------|-------------------|
+| AD-001 | SpiceDB schema is deployed and synced with application code | Authorization checks fail or return incorrect results |
+| AD-002 | Subscription tier data is accurate in PostgreSQL | Tier gating allows or blocks features incorrectly |
+| AD-003 | Role changes are propagated to SpiceDB within seconds | Recently assigned permissions may not take effect immediately |
+| AD-004 | Frontend route guards and backend decorators enforce the same rules | Users may bypass frontend restrictions via direct API calls |
 
 ---
 
-### 1.3 API Endpoint Permissions
+## 3. Specific Requirements
 
-| Endpoint | Method | 🔴 AAAS | 🟠 TSys | 🟡 TAdm | 🟢 Own | 🔵 Dev | 🟣 Trn | ⚪ Usr | ⚫ View |
-|----------|--------|---------|---------|---------|--------|--------|--------|--------|--------|
-| **AAAS** |
-| `/api/v2/aaas/tenants` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/aaas/tenants` | POST | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/aaas/tenants/{id}` | DELETE | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/aaas/subscriptions` | GET/PUT | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/aaas/roles` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/aaas/roles` | POST/PUT/DEL | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/aaas/permissions` | GET | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **TENANT ADMIN** |
-| `/api/v2/admin/users` | GET | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/users` | POST | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/users/{id}` | PUT | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/users/{id}` | DELETE | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/agents` | GET | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/agents` | POST | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/agents/{id}` | DELETE | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/billing` | GET | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/admin/roles` | GET/POST/PUT | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **AGENT** |
-| `/api/v2/agent/{id}/config` | GET | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/agent/{id}/config` | PUT | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `/api/v2/agent/{id}/users` | GET/POST | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **CHAT** |
-| `/api/v2/chat/conversations` | GET | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `/api/v2/chat/conversations` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `/api/v2/chat/messages` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **MEMORY** |
-| `/api/v2/memory` | GET | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `/api/v2/memory` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| `/api/v2/memory/{id}` | DELETE | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **COGNITIVE** |
-| `/api/v2/cognitive/*` | GET | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| `/api/v2/cognitive/*` | PUT | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **VOICE** |
-| `/api/v2/voice/transcribe` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| `/api/v2/voice/synthesize` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+### 3.1 Functional Requirements
 
----
+#### 3.1.1 Permission Architecture
 
-## 2. Role Administration Screens (Eye of God)
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-001 | The system shall enforce a permission cascade from Platform to Tenant to Agent to Resource. | Must | Test | Approved |
+| REQ-PM-002 | The system shall allow higher-level roles to always access lower-level resources within their scope. | Must | Test | Approved |
+| REQ-PM-003 | The system shall gate features by subscription tier: Free, Starter, Team, Enterprise. | Must | Test | Approved |
+| REQ-PM-004 | The system shall enforce quota limits (agents, users, tokens, storage) based on tier. | Must | Test | Approved |
+| REQ-PM-005 | The system shall scope roles such that a role is only valid within the tenant or agent for which it was created. | Must | Test | Approved |
+| REQ-PM-006 | The system shall allow only AAAS Admin users to impersonate other users. | Must | Test | Approved |
 
-### 2.1 Role List (`/aaas/roles`)
+**Rationale:** Hierarchical permission model ensures least privilege while enabling administrative override where necessary.
 
-**Purpose:** View and manage all system roles
+#### 3.1.2 Permission Categories
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔴 Role Management                                         [+ Create Role]  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ [System Roles]  [Custom Roles]  [Role Templates]                            │
-│                                                                             │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ Role               │ Level    │ Users │ Tenants │ Actions              │ │
-│ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ 🔴 AAAS SysAdmin   │ Platform │ 3     │ ALL     │ [View] 🔒            │ │
-│ │ 🟠 Tenant SysAdmin │ Tenant   │ 156   │ 156     │ [View] [Edit]        │ │
-│ │ 🟡 Tenant Admin    │ Tenant   │ 234   │ 98      │ [View] [Edit]        │ │
-│ │ 🟢 Agent Owner     │ Agent    │ 445   │ 120     │ [View] [Edit]        │ │
-│ │ 🔵 Developer       │ Agent    │ 892   │ 87      │ [View] [Edit]        │ │
-│ │ 🟣 Trainer         │ Agent    │ 234   │ 45      │ [View] [Edit]        │ │
-│ │ ⚪ User            │ Agent    │ 4,567 │ 145     │ [View] [Edit]        │ │
-│ │ ⚫ Viewer          │ Agent    │ 1,234 │ 78      │ [View] [Edit]        │ │
-│ │ 🟤 Auditor (Custom)│ Tenant   │ 45    │ 12      │ [View] [Edit] [Del]  │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-│ 📊 Total: 9 roles | 7,810 users assigned                                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-007 | The system shall support Level 0 Platform permissions: `platform:manage`, `platform:manage_tenants`, `platform:manage_tiers`, `platform:manage_roles`, `platform:view_billing`, `platform:impersonate`, `platform:configure`. | Must | Test | Approved |
+| REQ-PM-008 | The system shall support Level 1 Tenant permissions: `tenant:manage`, `tenant:administrate`, `tenant:create_agent`, `tenant:delete_agent`, `tenant:view_billing`, `tenant:manage_api_keys`, `tenant:assign_roles`. | Must | Test | Approved |
+| REQ-PM-009 | The system shall support Level 2 Agent permissions: `agent:configure`, `agent:activate_adm`, `agent:activate_dev`, `agent:activate_trn`, `agent:activate_std`, `agent:activate_ro`, `agent:manage_users`. | Must | Test | Approved |
+| REQ-PM-010 | The system shall support Level 3 Resource permissions: `chat:send`, `chat:view`, `chat:delete`, `memory:read`, `memory:write`, `memory:delete`, `memory:set_retention`, `tools:execute`, `tools:approve_external`, `cognitive:view`, `cognitive:edit`, `voice:use`, `voice:configure`, `rlm:execute`, `capsule:export`. | Must | Test | Approved |
+| REQ-PM-011 | The system shall support Level 4 Security/Emergency permissions: `platform:break_glass`, `platform:require_2fa`, `apikey:restrict_ip`, `billing:update_payment`, `billing:cancel_sub`. | Must | Test | Approved |
 
-**API:**
-```
-GET /api/v2/aaas/roles
-POST /api/v2/aaas/roles
-PUT /api/v2/aaas/roles/{id}
-DELETE /api/v2/aaas/roles/{id}
-```
+#### 3.1.3 Tier-Gated Features
 
----
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-012 | The system shall make STD and RO modes available on all tiers. | Must | Test | Approved |
+| REQ-PM-013 | The system shall make DEV and TRN modes available only on Team and Enterprise tiers. | Must | Test | Approved |
+| REQ-PM-014 | The system shall make ADM mode available on Starter, Team, and Enterprise tiers. | Must | Test | Approved |
+| REQ-PM-015 | The system shall make Voice, API Access available on Starter, Team, and Enterprise tiers. | Must | Test | Approved |
+| REQ-PM-016 | The system shall make Custom LLM, SSO, and SLA available only on Enterprise tier. | Must | Test | Approved |
 
-### 2.2 Role Editor (`/aaas/roles/:id`)
+#### 3.1.4 Permission Check Flow
 
-**Purpose:** Edit role permissions
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-017 | The system shall reject unauthenticated requests with HTTP 401. | Must | Test | Approved |
+| REQ-PM-018 | The system shall allow AAAS Admin requests to bypass tenant and tier checks (god mode). | Must | Test | Approved |
+| REQ-PM-019 | The system shall reject requests for suspended tenants with HTTP 403. | Must | Test | Approved |
+| REQ-PM-020 | The system shall reject requests for features not allowed by the tenant's tier with HTTP 403. | Must | Test | Approved |
+| REQ-PM-021 | The system shall check SpiceDB for explicit permission grants after authentication and tier validation. | Must | Test | Approved |
+| REQ-PM-022 | The system shall reject requests that exceed tenant or agent quotas with HTTP 429. | Must | Test | Approved |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔴 Edit Role: Tenant Admin                                    [Cancel] [Save]│
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ Role Name: [Tenant Admin_________]    Level: [Tenant ▼]                     │
-│ Description: [Manages tenant users and agents without billing access]       │
-│                                                                             │
-│ ─────────────────────────────────────────────────────────────────────────── │
-│                                                                             │
-│ PERMISSIONS                                                    [Expand All] │
-│                                                                             │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ 📁 TENANT MANAGEMENT                                                    │ │
-│ │    ☑ tenant:view           View tenant dashboard                       │ │
-│ │    ☑ tenant:administrate   Manage users and agents                     │ │
-│ │    ☐ tenant:manage         Full tenant control (billing, settings)     │ │
-│ │    ☐ tenant:delete         Delete tenant                               │ │
-│ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ 📁 USER MANAGEMENT                                                      │ │
-│ │    ☑ user:view             View user list                              │ │
-│ │    ☑ user:invite           Invite new users                            │ │
-│ │    ☑ user:edit             Edit user roles (except SysAdmin)           │ │
-│ │    ☐ user:delete_sysadmin  Remove SysAdmin users                       │ │
-│ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ 📁 AGENT MANAGEMENT                                                     │ │
-│ │    ☑ agent:view            View agent list                             │ │
-│ │    ☑ agent:configure       Configure agent settings                    │ │
-│ │    ☐ agent:create          Create new agents                           │ │
-│ │    ☐ agent:delete          Delete agents                               │ │
-│ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ 📁 BILLING (All disabled for this role)                                │ │
-│ │    ☐ billing:view          View billing dashboard                      │ │
-│ │    ☐ billing:manage        Manage subscriptions                        │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-│ ⚠️ Changes affect 234 users across 98 tenants                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+#### 3.1.5 User Journey Permissions
 
----
+The system shall enforce the following access levels for user journeys:
 
-### 2.3 Permission Browser (`/aaas/permissions`)
+| Journey | AAAS Admin | Tenant SysAdmin | Tenant Admin | Agent Owner | Developer | Trainer | User | Viewer |
+|---------|------------|-----------------|--------------|-------------|-----------|---------|------|--------|
+| UC-01 Chat with Agent | Full | Full | Full | Full | Full | Full | Full | View |
+| UC-02 Create Conversation | Full | Full | Full | Full | Full | Full | Full | None |
+| UC-03 Upload File | Full | Full | Full | Full | Full | Full | Conditional | None |
+| UC-04 Voice Chat | Full | Full | Full | Full | Full | Full | Conditional | None |
+| UC-05 View Memories | Full | Full | Full | Full | Full | Full | View | View |
+| UC-06 Configure Agent | Full | Full | Full | Full | None | None | None | None |
+| UC-07 Manage Users | Full | Full | Conditional | None | None | None | None | None |
+| UC-08 View Billing | Full | Full | None | None | None | None | None | None |
+| UC-09 Create Tenant | Full | None | None | None | None | None | None | None |
+| UC-10 Suspend Tenant | Full | None | None | None | None | None | None | None |
+| UC-11 Manage Subscriptions | Full | None | None | None | None | None | None | None |
+| UC-12 Platform Metrics | Full | None | None | None | None | None | None | None |
+| UC-13 Tool Execution | Full | Full | Full | Full | Full | Full | Conditional | None |
+| UC-14 Store Memory | Full | Full | Full | Full | Full | Full | Conditional | None |
+| UC-15 API Integration | Full | Full | Conditional | Conditional | Conditional | None | None | None |
 
-**Purpose:** View all SpiceDB permissions
+**Legend:** Full = unrestricted access; View = read-only; Conditional = quota or ownership dependent; None = no access.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔴 Permission Browser                              [Search permissions...]   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ [Platform] [Tenant] [Agent] [Chat] [Memory] [Cognitive] [Voice]             │
-│                                                                             │
-│ PLATFORM PERMISSIONS                                                        │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ Permission              │ Description                    │ Roles       │ │
-│ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ platform->manage        │ Full platform control          │ 🔴 AAAS     │ │
-│ │ platform->manage_tenants│ Create/delete tenants          │ 🔴 AAAS     │ │
-│ │ platform->view_billing  │ View platform revenue          │ 🔴 AAAS     │ │
-│ │ platform->configure     │ Platform settings              │ 🔴 AAAS     │ │
-│ │ platform->impersonate   │ Impersonate any tenant         │ 🔴 AAAS     │ │
-│ │ platform->manage_roles  │ Create/edit/delete roles       │ 🔴 AAAS     │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-│ TENANT PERMISSIONS                                                          │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ Permission              │ Description                    │ Roles       │ │
-│ ├─────────────────────────────────────────────────────────────────────────┤ │
-│ │ tenant->manage          │ Full tenant control            │ 🟠 TSys     │ │
-│ │ tenant->administrate    │ User/agent management          │ 🟠🟡       │ │
-│ │ tenant->create_agent    │ Create new agents              │ 🟠          │ │
-│ │ tenant->view_billing    │ View tenant billing            │ 🟠          │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-│ AGENT PERMISSIONS                                                           │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ agent->configure        │ Configure agent                │ 🟢🟠🟡     │ │
-│ │ agent->activate_dev     │ Enable DEV mode                │ 🔵🟢🟠     │ │
-│ │ agent->activate_trn     │ Enable TRN mode                │ 🟣🟢🟠     │ │
-│ │ agent->activate_std     │ Enable STD mode                │ ⚪🟣🔵🟢🟠🟡│ │
-│ │ agent->activate_ro      │ Enable RO mode                 │ ⚫ +all    │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+#### 3.1.6 Screen Access Permissions
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-023 | The system shall restrict Platform Dashboard (`/aaas`) and Tenant List (`/aaas/tenants`) to AAAS Admin. | Must | Test | Approved |
+| REQ-PM-024 | The system shall restrict Tenant Dashboard (`/admin`) to Tenant SysAdmin and Tenant Admin. | Must | Test | Approved |
+| REQ-PM-025 | The system shall restrict Agent Overview (`/agent/:id`) and Agent Config (`/agent/:id/config`) to Agent Owner, Tenant Admin, and Tenant SysAdmin. | Must | Test | Approved |
+| REQ-PM-026 | The system shall restrict DEV Mode screens (`/dev/*`) to Developer and Agent Owner with DEV mode enabled. | Must | Test | Approved |
+| REQ-PM-027 | The system shall restrict TRN Mode screens (`/trn/*`) to Trainer and Agent Owner with TRN mode enabled. | Must | Test | Approved |
+| REQ-PM-028 | The system shall restrict Chat View (`/chat`) to all authenticated users, with Viewer limited to read-only. | Must | Test | Approved |
+
+#### 3.1.7 API Endpoint Permissions
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-029 | The system shall restrict AAAS tenant endpoints (`/api/v2/aaas/tenants`) to AAAS Admin. | Must | Test | Approved |
+| REQ-PM-030 | The system shall restrict admin user endpoints (`/api/v2/admin/users`) to Tenant SysAdmin and Tenant Admin. | Must | Test | Approved |
+| REQ-PM-031 | The system shall restrict agent configuration endpoints (`/api/v2/agent/{id}/config`) to Agent Owner, Tenant Admin, and Tenant SysAdmin. | Must | Test | Approved |
+| REQ-PM-032 | The system shall restrict chat message endpoints (`/api/v2/chat/messages`) to all authenticated users except Viewer. | Must | Test | Approved |
+| REQ-PM-033 | The system shall restrict memory deletion (`/api/v2/memory/{id}` DELETE) to Agent Owner, Developer, Trainer, and Tenant Admin. | Must | Test | Approved |
+| REQ-PM-034 | The system shall restrict cognitive endpoints (`/api/v2/cognitive/*`) to Developer and Trainer with appropriate mode enabled. | Must | Test | Approved |
+
+#### 3.1.8 Role Administration
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-035 | The system shall provide an API to list all roles at `/api/v2/aaas/roles`. | Must | Test | Approved |
+| REQ-PM-036 | The system shall provide an API to create, update, and delete custom roles at `/api/v2/aaas/roles`. | Must | Test | Approved |
+| REQ-PM-037 | The system shall prevent deletion of a role that has assigned users. | Must | Test | Approved |
+| REQ-PM-038 | The system shall prevent modification of system roles. | Must | Test | Approved |
+| REQ-PM-039 | The system shall prevent creation of duplicate role names within the same scope. | Must | Test | Approved |
+| REQ-PM-040 | The system shall provide a permission browser API at `/api/v2/aaas/permissions`. | Must | Test | Approved |
+
+#### 3.1.9 Edge Cases
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-041 | The system shall warn and block deletion of a role that has assigned users, requiring reassignment first. | Must | Test | Approved |
+| REQ-PM-042 | The system shall reject edits to system roles with an error indicating system roles are immutable. | Must | Test | Approved |
+| REQ-PM-043 | The system shall reject duplicate role creation with an error naming the existing role. | Must | Test | Approved |
+| REQ-PM-044 | The system shall prevent removal of the last AAAS SysAdmin. | Must | Test | Approved |
+| REQ-PM-045 | The system shall warn when reducing tier limits below current tenant usage. | Should | Test | Approved |
+
+#### 3.1.10 SpiceDB Schema Requirements
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-046 | The system shall define a `platform` resource in SpiceDB for top-level platform permissions. | Must | Inspection | Approved |
+| REQ-PM-047 | The system shall define a `tenant` resource with relations for `sysadmin`, `admin`, `developer`, `trainer`, `member`, `viewer`, and `subscription`. | Must | Inspection | Approved |
+| REQ-PM-048 | The system shall define an `agent` resource with relations for `tenant`, `owner`, `admin`, `developer`, `trainer`, `user`, and `viewer`. | Must | Inspection | Approved |
+| REQ-PM-049 | The system shall define a `subscription_tier` resource to support tier-based permission derivation. | Must | Inspection | Approved |
+| REQ-PM-050 | The system shall define a `feature` resource with relations to `subscription_tier` and `tenant` for feature flagging. | Must | Inspection | Approved |
+
+#### 3.1.11 Frontend Enforcement
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-051 | The system shall implement frontend route guards that check required permissions before rendering a screen. | Must | Test | Approved |
+| REQ-PM-052 | The system shall hide or disable UI actions (buttons, links) when the user lacks the required permission. | Must | Test | Approved |
+
+#### 3.1.12 Backend Enforcement
+
+| ID | Requirement | Priority | Verification | Status |
+|----|-------------|----------|--------------|--------|
+| REQ-PM-053 | The system shall implement Django Ninja decorators (`require_permission`) that enforce permissions on API endpoints. | Must | Test | Approved |
+| REQ-PM-054 | The system shall cache user permissions in Redis to reduce SpiceDB query load. | Should | Test | Approved |
+| REQ-PM-055 | The system shall log all permission denials for audit and security monitoring. | Must | Test | Approved |
 
 ---
 
-### 2.4 Subscription Tier Builder (`/aaas/subscriptions/builder`)
+### 3.2 Non-Functional Requirements
 
-**Purpose:** Configure tier limits and features
+#### 3.2.1 Performance
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔴 Subscription Tier Builder                                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐    │
-│ │     FREE      │ │    STARTER    │ │     TEAM      │ │  ENTERPRISE   │    │
-│ │     $0/mo     │ │    $49/mo     │ │   $199/mo     │ │   Custom      │    │
-│ ├───────────────┤ ├───────────────┤ ├───────────────┤ ├───────────────┤    │
-│ │ Agents: 1     │ │ Agents: 3     │ │ Agents: 10    │ │ Agents: ∞     │    │
-│ │ Users: 3      │ │ Users: 10     │ │ Users: 50     │ │ Users: ∞      │    │
-│ │ Tokens: 100K  │ │ Tokens: 1M    │ │ Tokens: 10M   │ │ Tokens: ∞     │    │
-│ │ Storage: 1GB  │ │ Storage: 10GB │ │ Storage: 100GB│ │ Storage: ∞    │    │
-│ ├───────────────┤ ├───────────────┤ ├───────────────┤ ├───────────────┤    │
-│ │ FEATURES:     │ │ FEATURES:     │ │ FEATURES:     │ │ FEATURES:     │    │
-│ │ ☐ Voice       │ │ ☑ Voice       │ │ ☑ Voice       │ │ ☑ Voice       │    │
-│ │ ☐ DEV Mode    │ │ ☐ DEV Mode    │ │ ☑ DEV Mode    │ │ ☑ DEV Mode    │    │
-│ │ ☐ TRN Mode    │ │ ☐ TRN Mode    │ │ ☑ TRN Mode    │ │ ☑ TRN Mode    │    │
-│ │ ☐ Custom LLM  │ │ ☐ Custom LLM  │ │ ☐ Custom LLM  │ │ ☑ Custom LLM  │    │
-│ │ ☐ API Access  │ │ ☑ API Access  │ │ ☑ API Access  │ │ ☑ API Access  │    │
-│ │ ☐ SSO         │ │ ☐ SSO         │ │ ☐ SSO         │ │ ☑ SSO         │    │
-│ │ ☐ SLA         │ │ ☐ SLA         │ │ ☐ SLA         │ │ ☑ SLA         │    │
-│ └───────────────┘ └───────────────┘ └───────────────┘ └───────────────┘    │
-│                                                                             │
-│ [Edit Free] [Edit Starter] [Edit Team] [Edit Enterprise] [+ New Tier]       │
-│                                                                             │
-│ Active Tenants: Free(32) Starter(67) Team(45) Enterprise(12)                │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-PERF-001 | Permission check response time shall be less than or equal to 20 ms at p99. | 20 ms | Test |
+| NFR-PERF-002 | Frontend route guard evaluation shall complete synchronously without network round-trips. | 0 ms network | Inspection |
 
----
+#### 3.2.2 Security
 
-## 3. SpiceDB Schema — Complete
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SEC-001 | Frontend permission checks shall be duplicated on the backend; frontend enforcement is for UX only. | 100% backend coverage | Test |
+| NFR-SEC-002 | Permission changes shall propagate to SpiceDB within 5 seconds. | 5 s | Test |
 
-```zed
-// ======================
-// PLATFORM LEVEL (GOD MODE)
-// ======================
-definition platform {}
+#### 3.2.3 Reliability
 
-definition aaas_admin {
-    relation platform: platform
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-REL-001 | Permission caching shall have a TTL of 60 seconds to balance performance and consistency. | 60 s | Inspection |
 
-    // Core platform permissions
-    permission manage = platform
-    permission manage_tenants = platform
-    permission view_billing = platform
-    permission configure = platform
-    permission impersonate = platform
+#### 3.2.4 Scalability
 
-    // NEW: Role management
-    permission manage_roles = platform
-    permission manage_permissions = platform
-    permission manage_tiers = platform
-}
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-SCL-001 | The permission system shall support at least 10,000 custom roles across the platform. | 10,000 roles | Analysis |
 
-// ======================
-// TENANT LEVEL
-// ======================
-definition tenant {
-    relation sysadmin: user
-    relation admin: user
-    relation developer: user
-    relation trainer: user
-    relation member: user
-    relation viewer: user
-    relation subscription: subscription_tier
+#### 3.2.5 Maintainability
 
-    // Hierarchical permissions
-    permission manage = sysadmin
-    permission administrate = sysadmin + admin
-    permission create_agent = sysadmin
-    permission delete_agent = sysadmin
-    permission view_billing = sysadmin
-    permission manage_api_keys = sysadmin
-
-    // Agent access inheritance
-    permission develop = sysadmin + admin + developer
-    permission train = sysadmin + admin + trainer
-    permission use = sysadmin + admin + developer + trainer + member
-    permission view = sysadmin + admin + developer + trainer + member + viewer
-
-    // NEW: Tenant-level role management
-    permission manage_tenant_roles = sysadmin
-}
-
-// ======================
-// AGENT LEVEL
-// ======================
-definition agent {
-    relation tenant: tenant
-    relation owner: user
-    relation admin: user
-    relation developer: user
-    relation trainer: user
-    relation user: user
-    relation viewer: user
-
-    // Mode activation
-    permission configure = owner + admin + tenant->administrate
-    permission activate_adm = owner + admin
-    permission activate_dev = owner + admin + developer + tenant->develop
-    permission activate_trn = owner + admin + trainer + tenant->train
-    permission activate_std = owner + admin + developer + trainer + user + tenant->use
-    permission activate_ro = owner + admin + developer + trainer + user + viewer + tenant->view
-
-    permission view = activate_ro
-}
-
-// ======================
-// SUBSCRIPTION TIER
-// ======================
-definition subscription_tier {
-    relation owner: tenant
-    // Limit enforcement handled in Django
-}
-
-// ======================
-// FEATURE FLAGS
-// ======================
-definition feature {
-    relation enabled_for: subscription_tier
-    relation enabled_for_tenant: tenant
-
-    permission use = enabled_for->owner + enabled_for_tenant
-}
-```
+| ID | Requirement | Target | Verification |
+|----|-------------|--------|--------------|
+| NFR-MNT-001 | Permission definitions shall be centralized in `admin/permissions/definitions.py`. | Single source | Inspection |
 
 ---
 
-## 4. User Journey: Create Custom Role
+### 3.3 External Interface Requirements
 
-```mermaid
-sequenceDiagram
-    participant Admin as 🔴 AAAS Admin
-    participant UI as Role Editor
-    participant API as Django API
-    participant SpiceDB as SpiceDB
+#### 3.3.1 User Interfaces
 
-    Admin->>UI: Open /aaas/roles/new
-    UI->>Admin: Display role form
+Role administration is exposed through the AAAS admin web UI at routes `/aaas/roles/*` and `/aaas/permissions/*`.
 
-    Admin->>UI: Enter role name "Auditor"
-    Admin->>UI: Select level "Tenant"
-    Admin->>UI: Check permissions
-    Admin->>UI: Click Save
+#### 3.3.2 Software Interfaces
 
-    UI->>API: POST /api/v2/aaas/roles
-    API->>SpiceDB: Create role definition
-    SpiceDB-->>API: OK
-    API->>API: Save role to PostgreSQL
-    API-->>UI: Role created
+| Interface | Protocol | Format | Authentication |
+|-----------|----------|--------|----------------|
+| SpiceDB | gRPC | Protobuf | Bearer token (preshared key) |
+| Role Admin API | HTTPS / REST | JSON | JWT (Keycloak) |
+| Permission Browser API | HTTPS / REST | JSON | JWT (Keycloak) |
 
-    UI->>Admin: Success: "Role 'Auditor' created"
-    UI->>Admin: Navigate to /aaas/roles
-```
+#### 3.3.3 Hardware Interfaces
+
+No hardware interface requirements are specified in this document.
 
 ---
 
-## 5. Edge Cases
+### 3.4 Design Constraints
 
-| Scenario | System Response |
-|----------|-----------------|
-| Delete role with users | ⚠️ "45 users have role 'Auditor'. Reassign first." |
-| Edit system role | 🔒 "System roles cannot be modified" |
-| Create duplicate role | ❌ "Role 'Auditor' already exists" |
-| Remove last SysAdmin | ❌ "Cannot remove last AAAS SysAdmin" |
-| Reduce tier limits below usage | ⚠️ "12 tenants exceed new limits. Grandfather?" |
+| ID | Constraint | Source |
+|----|------------|--------|
+| DC-001 | All API implementations must use Django Ninja. | SRS-ARCHITECTURAL-PATTERNS |
+| DC-002 | SpiceDB schema changes must be versioned and backward-compatible. | Platform standard |
+| DC-003 | Permission decorators must be reusable across all API modules. | Platform standard |
 
 ---
 
-**Next:** Update [SRS-AAAS-ADMIN.md](./SRS-AAAS-ADMIN.md) with these screens
+## 4. Traceability
 
-# SRS: Permission-Gated Journey Map
+### 4.1 Requirements Traceability Matrix
 
-**Document ID:** SA01-SRS-PERMISSION-JOURNEYS-2025-12
-**Purpose:** Connect EVERY screen and action to required permissions
-**Status:** CANONICAL REFERENCE
+| REQ ID | Description | Source | Design | Implementation | Test |
+|--------|-------------|--------|--------|----------------|------|
+| REQ-PM-001 | Permission cascade | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/api.py`, `admin/core/permission_matrix.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-003 | Tier gating | SRS-PERMISSION-MATRIX | `admin/aaas/models/tiers.py` | `admin/aaas/models/tiers.py`, `admin/aaas/models/features.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-007 | Platform permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-008 | Tenant permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-009 | Agent permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-010 | Resource permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/granular.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-012 | STD/RO mode availability | SRS-PERMISSION-MATRIX | `admin/aaas/models/tiers.py` | `admin/aaas/models/features.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-013 | DEV/TRN mode tier restriction | SRS-PERMISSION-MATRIX | `admin/aaas/models/tiers.py` | `admin/aaas/models/features.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-017 | Unauthenticated 401 | SRS-PERMISSION-MATRIX | `admin/common/auth.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-019 | Suspended tenant 403 | SRS-PERMISSION-MATRIX | `admin/aaas/models/tenants.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-021 | SpiceDB permission check | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `services/common/spicedb_client.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-022 | Quota exceeded 429 | SRS-PERMISSION-MATRIX | `admin/common/rate_limit.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
+| REQ-PM-023 | Platform screen restriction | SRS-PERMISSION-MATRIX | `webui/src/guards/permission-guard.ts` | `webui/src/guards/permission-guard.ts` | E2E test |
+| REQ-PM-025 | Agent config screen restriction | SRS-PERMISSION-MATRIX | `webui/src/guards/permission-guard.ts` | `webui/src/guards/permission-guard.ts` | E2E test |
+| REQ-PM-029 | AAAS API restriction | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-030 | Admin user API restriction | SRS-PERMISSION-MATRIX | `admin/aaas/api/users.py` | `admin/aaas/api/users.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-031 | Agent config API restriction | SRS-PERMISSION-MATRIX | `admin/agents/api/agents.py` | `admin/agents/api/agents.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-035 | Role list API | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-036 | Role CRUD API | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-037 | Role deletion protection | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-038 | System role immutability | SRS-PERMISSION-MATRIX | `admin/permissions/models.py` | `admin/permissions/models.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-046 | SpiceDB platform resource | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | Inspection |
+| REQ-PM-047 | SpiceDB tenant resource | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | Inspection |
+| REQ-PM-048 | SpiceDB agent resource | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | Inspection |
+| REQ-PM-051 | Frontend route guards | SRS-PERMISSION-MATRIX | `webui/src/guards/permission-guard.ts` | `webui/src/guards/permission-guard.ts` | E2E test |
+| REQ-PM-052 | Action guard UI | SRS-PERMISSION-MATRIX | `webui/src/guards/action-guard.ts` | `webui/src/guards/action-guard.ts` | E2E test |
+| REQ-PM-053 | Backend permission decorators | SRS-PERMISSION-MATRIX | `admin/core/permissions.py` | `admin/core/permissions.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-054 | Permission Redis cache | SRS-PERMISSION-MATRIX | `admin/common/auth.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-055 | Permission denial logging | SRS-PERMISSION-MATRIX | `admin/audit/api.py` | `admin/audit/api.py` | `tests/django/test_auth_integration.py` |
 
----
+### 4.2 Requirement to Test Case Mapping
 
-## 1. Permission Matrix Integration
-
-This document ensures **every screen, API endpoint, and action** is gated by the correct permission from our 78-permission matrix.
-
----
-
-## 2. Platform Admin Screens — Permission Requirements
-
-### 2.1 Dashboard & Overview
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/platform` | `platform:read_metrics` | Redirect to login |
-| `/platform/tenants` | `tenant:read` | 403 Forbidden |
-| `/platform/tenants/:id` | `tenant:read` | 403 Forbidden |
-| `/platform/tenants/create` | `tenant:create` | Button hidden |
-| `/platform/subscriptions` | `platform:manage_billing` | 403 Forbidden |
-| `/platform/subscriptions/:id` | `platform:manage_billing` | 403 Forbidden |
-| `/platform/subscriptions/:id/quotas` | `platform:manage_billing` | 403 Forbidden |
-
-### 2.2 Permissions & Roles
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/platform/permissions` | `platform:manage` | 403 Forbidden |
-| `/platform/roles` | `platform:manage` | 403 Forbidden |
-| `/platform/roles/create` | `platform:manage` | Button hidden |
-
-### 2.3 Infrastructure
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/platform/infrastructure` | `infra:view` | 403 Forbidden |
-| `/platform/infrastructure/*` (view) | `infra:view` | 403 Forbidden |
-| `/platform/infrastructure/*` (edit) | `infra:configure` | Edit disabled |
-| `/platform/infrastructure/redis/ratelimits` | `infra:ratelimit` | 403 Forbidden |
-
-### 2.4 Metrics & Observability
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/platform/metrics` | `platform:read_metrics` | 403 Forbidden |
-| `/platform/metrics/llm` | `platform:read_metrics` | 403 Forbidden |
-| `/platform/metrics/tools` | `platform:read_metrics` | 403 Forbidden |
-| `/platform/metrics/memory` | `platform:read_metrics` | 403 Forbidden |
-| `/platform/metrics/sla` | `platform:read_metrics` | 403 Forbidden |
-
-### 2.5 Features & Models
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/platform/features` | `platform:manage_features` | 403 Forbidden |
-| `/platform/models` | `platform:manage` | 403 Forbidden |
-
-### 2.6 Audit
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/platform/audit` | `audit:read` | 403 Forbidden |
+| REQ ID | Test Case ID | Test Method | Expected Result |
+|--------|--------------|-------------|-----------------|
+| REQ-PM-017 | TC-PERM-001 | Unit test | Unauthenticated request returns 401 |
+| REQ-PM-019 | TC-PERM-002 | Unit test | Request for suspended tenant returns 403 |
+| REQ-PM-021 | TC-PERM-003 | Integration test | Unauthorized action returns 403 |
+| REQ-PM-037 | TC-PERM-004 | Unit test | Delete role with users returns error |
+| REQ-PM-038 | TC-PERM-005 | Unit test | Edit system role returns error |
+| REQ-PM-044 | TC-PERM-006 | Unit test | Remove last SysAdmin returns error |
+| REQ-PM-053 | TC-PERM-007 | Unit test | Decorator raises 403 for missing permission |
 
 ---
 
-## 3. Tenant Admin Screens — Permission Requirements
+## 5. Revision History
 
-### 3.1 Dashboard & Users
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/admin` | `tenant:read` | Redirect to login |
-| `/admin/users` | `user:read` | 403 Forbidden |
-| `/admin/users/:id` | `user:read` | 403 Forbidden |
-| `/admin/users/invite` | `user:create` | Button hidden |
-| Edit user | `user:update` | Edit disabled |
-| Delete user | `user:delete` | Button hidden |
-| Assign role | `user:assign_roles` | Action hidden |
-
-### 3.2 Agents
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/admin/agents` | `agent:read` | 403 Forbidden |
-| `/admin/agents/:id` | `agent:read` | 403 Forbidden |
-| `/admin/agents/create` | `agent:create` | Button hidden |
-| Start agent | `agent:start` | Button hidden |
-| Stop agent | `agent:stop` | Button hidden |
-| Delete agent | `agent:delete` | Button hidden |
-
-### 3.3 Usage & Billing
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/admin/usage` | `billing:view_usage` | 403 Forbidden |
-| `/admin/billing` | `billing:view_invoices` | 403 Forbidden |
-| Change plan | `billing:change_plan` | Button hidden |
-| Manage payment | `billing:manage_payment` | Button hidden |
-
-### 3.4 Settings
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/admin/settings` | `tenant:update` | 403 Forbidden |
-| `/admin/settings/api-keys` | `apikey:read` | 403 Forbidden |
-| Create API key | `apikey:create` | Button hidden |
-| Revoke API key | `apikey:revoke` | Button hidden |
-| `/admin/settings/integrations` | `integration:read` | 403 Forbidden |
-
-### 3.5 Audit
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/admin/audit` | `audit:read` | 403 Forbidden |
-
-### 3.6 Metrics
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/admin/metrics` | `tenant:read` | 403 Forbidden |
-| `/admin/metrics/agents` | `agent:read` | 403 Forbidden |
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2025-12 | Soma Engineering | Initial version with full permission matrix, screen access, API access, and SpiceDB schema |
+| 1.1 | 2026-05-21 | Soma Engineering | Refactored to ISO/IEC/IEEE 29148:2018 template; removed UI mockups, personas, and emojis; added traceability matrix and REQ-XXX numbering |
 
 ---
 
-## 4. Agent User Screens — Permission Requirements
-
-### 4.1 Chat
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/chat` | `conversation:read` | 403 Forbidden |
-| `/chat/:conversationId` | `conversation:read` | 403 Forbidden |
-| Send message | `conversation:send_message` | Input disabled |
-| Create conversation | `conversation:create` | Button hidden |
-| Delete conversation | `conversation:delete` | Button hidden |
-| Export conversation | `conversation:export` | Button hidden |
-
-### 4.2 Memory
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/memory` | `memory:read` | 403 Forbidden |
-| `/memory/:id` | `memory:read` | 403 Forbidden |
-| Search memory | `memory:search` | Search hidden |
-| Delete memory | `memory:delete` | Button hidden |
-| Export memory | `memory:export` | Button hidden |
-
-### 4.3 Settings
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/settings` | `agent:read` | 403 Forbidden |
-| `/settings/models` | `agent:configure_*` OR `agent:update` | 403 Forbidden |
-| `/settings/memory` | `agent:configure_*` OR `agent:update` | 403 Forbidden |
-| `/settings/voice` | `agent:configure_*` OR `agent:update` | 403 Forbidden |
-| `/settings/tools` | `agent:configure_tools` | 403 Forbidden |
-| `/settings/multimodal` | `agent:update` | 403 Forbidden |
-| Save settings | `agent:update` | Save disabled |
-
-### 4.4 Profile
-
-| Route | Required Permissions | Fallback |
-|-------|---------------------|----------|
-| `/profile` | `user:read` (self) | 403 Forbidden |
-| Update profile | `user:update` (self) | Save disabled |
-
----
-
-## 5. Developer Mode — Permission Requirements
-
-| Route | Required Permissions | Additional |
-|-------|---------------------|------------|
-| `/dev/console` | `agent:view_logs` | DEV mode enabled |
-| `/dev/mcp` | `tool:read` | DEV mode enabled |
-| `/dev/logs` | `agent:view_logs` | DEV mode enabled |
-| `/dev/metrics` | `agent:read` | DEV mode enabled |
-
----
-
-## 6. Trainer Mode — Permission Requirements
-
-| Route | Required Permissions | Additional |
-|-------|---------------------|------------|
-| `/trn/cognitive` | `agent:configure_personality` | TRN mode enabled |
-| `/trn/memory` | `memory:update` | TRN mode enabled |
-
----
-
-## 7. API Endpoint Permission Matrix
-
-### 7.1 Infrastructure APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/infrastructure/health` | GET | `infra:view` |
-| `/api/v2/infrastructure/{service}/config` | GET | `infra:view` |
-| `/api/v2/infrastructure/{service}/config` | PUT | `infra:configure` |
-| `/api/v2/infrastructure/ratelimits` | GET | `infra:view` |
-| `/api/v2/infrastructure/ratelimits` | POST | `infra:ratelimit` |
-| `/api/v2/infrastructure/ratelimits/{key}` | PUT | `infra:ratelimit` |
-| `/api/v2/infrastructure/ratelimits/{key}` | DELETE | `infra:ratelimit` |
-
-### 7.2 Tenant APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/tenants` | GET | `tenant:read` |
-| `/api/v2/tenants` | POST | `tenant:create` |
-| `/api/v2/tenants/{id}` | GET | `tenant:read` |
-| `/api/v2/tenants/{id}` | PUT | `tenant:update` |
-| `/api/v2/tenants/{id}` | DELETE | `tenant:delete` |
-| `/api/v2/tenants/{id}/suspend` | POST | `tenant:suspend` |
-| `/api/v2/tenants/{id}/usage` | GET | `billing:view_usage` |
-
-### 7.3 User APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/users` | GET | `user:read` |
-| `/api/v2/users` | POST | `user:create` |
-| `/api/v2/users/{id}` | GET | `user:read` |
-| `/api/v2/users/{id}` | PUT | `user:update` |
-| `/api/v2/users/{id}` | DELETE | `user:delete` |
-| `/api/v2/users/{id}/roles` | PUT | `user:assign_roles` |
-
-### 7.4 Agent APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/agents` | GET | `agent:read` |
-| `/api/v2/agents` | POST | `agent:create` |
-| `/api/v2/agents/{id}` | GET | `agent:read` |
-| `/api/v2/agents/{id}` | PUT | `agent:update` |
-| `/api/v2/agents/{id}` | DELETE | `agent:delete` |
-| `/api/v2/agents/{id}/start` | POST | `agent:start` |
-| `/api/v2/agents/{id}/stop` | POST | `agent:stop` |
-| `/api/v2/agents/{id}/config` | GET | `agent:read` |
-| `/api/v2/agents/{id}/config` | PUT | `agent:update` |
-| `/api/v2/agents/{id}/config/models` | PUT | `agent:configure_*` |
-| `/api/v2/agents/{id}/multimodal` | PUT | `agent:update` |
-
-### 7.5 Conversation APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/conversations` | GET | `conversation:read` |
-| `/api/v2/conversations` | POST | `conversation:create` |
-| `/api/v2/conversations/{id}` | GET | `conversation:read` |
-| `/api/v2/conversations/{id}` | DELETE | `conversation:delete` |
-| `/api/v2/conversations/{id}/messages` | POST | `conversation:send_message` |
-| `/api/v2/conversations/{id}/export` | GET | `conversation:export` |
-
-### 7.6 Memory APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/memory` | GET | `memory:read` |
-| `/api/v2/memory/search` | POST | `memory:search` |
-| `/api/v2/memory/{id}` | GET | `memory:read` |
-| `/api/v2/memory/{id}` | DELETE | `memory:delete` |
-| `/api/v2/memory/export` | GET | `memory:export` |
-
-### 7.7 Observability APIs
-
-| Endpoint | Method | Permission |
-|----------|--------|------------|
-| `/api/v2/observability/health` | GET | `platform:read_metrics` |
-| `/api/v2/observability/metrics/*` | GET | `platform:read_metrics` |
-| `/api/v2/observability/sla` | GET | `platform:read_metrics` |
-
----
-
-## 8. Role → Permission → Screen Mapping
-
-### 8.1 AAAS Super Admin
-
-```
-Permissions: * (ALL)
-Screens: ALL 66 screens accessible
-```
-
-### 8.2 Tenant Admin
-
-```
-Permissions:
-  - tenant:read, tenant:update
-  - user:*, agent:*, conversation:*, memory:*
-  - tool:*, file:*, apikey:*, integration:*
-  - audit:read, backup:read, billing:view_*
-
-Screens:
-  ✅ /admin/* (all)
-  ✅ /chat, /memory, /settings (all)
-  ❌ /platform/* (none)
-```
-
-### 8.3 Agent Owner
-
-```
-Permissions:
-  - agent:read, agent:update, agent:start, agent:stop
-  - agent:configure_*, agent:view_logs, agent:export
-  - conversation:*, memory:*
-  - tool:read, tool:execute
-  - file:upload, file:read
-
-Screens:
-  ✅ /chat, /memory (all)
-  ✅ /settings (all, edit enabled)
-  ❌ /admin/* (none)
-  ❌ /platform/* (none)
-```
-
-### 8.4 Agent Operator
-
-```
-Permissions:
-  - agent:read, agent:start, agent:stop, agent:view_logs
-  - conversation:*, memory:read, memory:search
-  - tool:read, tool:execute
-  - file:upload, file:read
-
-Screens:
-  ✅ /chat (full)
-  ✅ /memory (read-only)
-  ⚠️ /settings (read-only)
-  ❌ /admin/*
-  ❌ /platform/*
-```
-
-### 8.5 Standard User
-
-```
-Permissions:
-  - agent:read
-  - conversation:create, conversation:read, conversation:send_message, conversation:view_history
-  - memory:read
-  - file:upload, file:read
-
-Screens:
-  ✅ /chat (limited)
-  ⚠️ /memory (read-only)
-  ❌ /settings
-  ❌ /admin/*
-  ❌ /platform/*
-```
-
-### 8.6 Viewer
-
-```
-Permissions:
-  - agent:read
-  - conversation:read
-  - memory:read
-  - file:read
-
-Screens:
-  ⚠️ /chat (read-only, no send)
-  ⚠️ /memory (read-only)
-  ❌ /settings
-  ❌ /admin/*
-  ❌ /platform/*
-```
-
----
-
-## 9. Frontend Permission Enforcement
-
-### 9.1 Route Guard
-
-```typescript
-// webui/src/guards/permission-guard.ts
-
-const ROUTE_PERMISSIONS = {
-  '/platform': ['platform:read_metrics'],
-  '/platform/infrastructure': ['infra:view'],
-  '/platform/infrastructure/redis/ratelimits': ['infra:ratelimit'],
-  '/admin': ['tenant:read'],
-  '/admin/users': ['user:read'],
-  '/settings': ['agent:read'],
-  // ... all routes
-};
-
-function checkRoute(route: string, userPermissions: string[]): boolean {
-  const required = ROUTE_PERMISSIONS[route];
-  return required.some(p => userPermissions.includes(p) || userPermissions.includes('*'));
-}
-```
-
-### 9.2 Action Guard
-
-```typescript
-// webui/src/guards/action-guard.ts
-
-function canPerformAction(action: string, userPermissions: string[]): boolean {
-  const actionPermissions = {
-    'create_tenant': 'tenant:create',
-    'delete_user': 'user:delete',
-    'configure_ratelimits': 'infra:ratelimit',
-    // ... all actions
-  };
-  const required = actionPermissions[action];
-  return userPermissions.includes(required) || userPermissions.includes('*');
-}
-```
-
----
-
-## 10. Backend Permission Enforcement
-
-### 10.1 Django Ninja Auth
-
-```python
-# admin/core/permissions.py
-
-from functools import wraps
-from ninja import Router
-from ninja.errors import HttpError
-
-def require_permission(*permissions):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(request, *args, **kwargs):
-            user_perms = get_user_permissions(request.auth)
-            if '*' in user_perms:
-                return await func(request, *args, **kwargs)
-            if not any(p in user_perms for p in permissions):
-                raise HttpError(403, "Permission denied")
-            return await func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-# Usage:
-@router.get("/infrastructure/health")
-@require_permission("infra:view")
-async def get_health(request):
-    ...
-```
-
----
-
-## 11. Implementation Checklist
-
-- [ ] Frontend route guards with permission checks
-- [ ] Backend API permission decorators
-- [ ] Permission caching (Redis)
-- [ ] Permission inheritance (role → permissions)
-- [ ] Permission UI (conditionally show/hide buttons)
-- [ ] Permission audit logging
+*Document conforms to ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering.*

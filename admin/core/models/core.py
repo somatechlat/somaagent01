@@ -248,7 +248,61 @@ class Capsule(models.Model):
     )
 
     # ═══════════════════════════════════════════════════════════════════
-    # 4. MEMORY & HISTORY
+    # 4. PERSONA & RUNTIME CONFIG (The Agent's Control Panel)
+    # ═══════════════════════════════════════════════════════════════════
+
+    persona_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="""
+        Agent persona configuration: {
+            "knobs": {"intelligence_level": 5, "autonomy_level": 5, "resource_budget": 0.10},
+            "prompts": {"injection_prompts": [...], "tool_prompts": {...}},
+            "memory": {"recall_limit": 10, "similarity_threshold": 0.7},
+            "learned": {"lane_preferences": {...}}
+        }
+        """,
+    )
+
+    tool_policy = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="""
+        Tool execution policy: {
+            "auto_execute": ["echo", "timestamp"],
+            "approval_required": ["code_execute"],
+            "denied": ["file_delete"]
+        }
+        """,
+    )
+
+    memory_pointer = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="""
+        Memory namespace pointer: {
+            "tenant": "acme_corp",
+            "namespace": "agent_xxx_chat_history",
+            "recall_limit": 10,
+            "similarity_threshold": 0.7
+        }
+        """,
+    )
+
+    neuromodulator_state = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="""
+        Last-synced neuromodulator state from SomaBrain: {
+            "dopamine": 0.5, "serotonin": 0.6,
+            "norepinephrine": 0.4, "acetylcholine": 0.5,
+            "last_synced_at": "2026-05-21T13:00:00Z"
+        }
+        """,
+    )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 5. MEMORY & HISTORY
     # ═══════════════════════════════════════════════════════════════════
 
     # DISABLED: somabrain app not installed in this deployment
@@ -260,13 +314,6 @@ class Capsule(models.Model):
     #     help_text="Memory retention and retrieval strategy",
     # )
 
-    # Legacy Fields (Deprecated - Rule 91)
-    # kept for migration, do not use for new logic
-    schema = models.JSONField(default=dict, help_text="DEPRECATED: Use Capability M2M")
-    config = models.JSONField(default=dict, help_text="DEPRECATED: Use Model Configs")
-    capabilities_whitelist = models.JSONField(
-        default=list, help_text="DEPRECATED: Use Capability M2M"
-    )
     resource_limits = models.JSONField(default=dict, help_text="Max wall clock, concurrency, etc.")
 
     is_active = models.BooleanField(default=True)
@@ -307,10 +354,50 @@ class Capsule(models.Model):
 
     @property
     def body(self) -> dict:
-        """Return Body (capabilities) as dict."""
+        """Return complete agent body as dict.
+
+        This is the canonical structured view consumed by:
+        - ContextBuilder (5-lane prompt assembly)
+        - AgentIQ derivation (3-knob → 12 settings)
+        - UnifiedGate (permission scope checks)
+        - Export/Import (portable agent DNA)
+        """
+        capabilities = self.capabilities.filter(is_enabled=True)
         return {
-            "capabilities_whitelist": self.capabilities_whitelist,
+            "persona": {
+                "core": {
+                    "system_prompt": self.system_prompt,
+                    "personality_traits": self.personality_traits,
+                    "neuromodulator_baseline": self.neuromodulator_baseline,
+                },
+                "knobs": self.persona_config.get("knobs", {}),
+                "prompts": self.persona_config.get("prompts", {}),
+                "tools": {
+                    "enabled_capabilities": [c.name for c in capabilities],
+                    "tool_registry": {
+                        c.name: {
+                            "name": c.name,
+                            "description": c.description,
+                            "schema": c.schema,
+                            "config": c.config,
+                            "policy": getattr(c, "policy", {}),
+                            "implementation": getattr(c, "implementation", {}),
+                        }
+                        for c in capabilities
+                    },
+                    "tool_policy": self.tool_policy,
+                },
+                "memory": self.persona_config.get("memory", {}),
+                "learned": self.persona_config.get("learned", {}),
+            },
+            "governance": {
+                "constitution_ref": self.constitution_ref,
+                "opa_policies": {},
+                "spicedb_relations": {},
+            },
             "resource_limits": self.resource_limits,
+            "memory_pointer": self.memory_pointer,
+            "neuromodulator_state": self.neuromodulator_state,
         }
 
 
@@ -345,6 +432,28 @@ class Capability(models.Model):
     category = models.CharField(max_length=100, db_index=True)
     schema = models.JSONField(default=dict)
     config = models.JSONField(default=dict)
+    policy = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="""
+        Tool execution policy: {
+            "requires_approval": false,
+            "timeout_seconds": 30,
+            "max_retries": 3
+        }
+        """,
+    )
+    implementation = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="""
+        Tool implementation mapping: {
+            "type": "python",
+            "module": "tools.echo",
+            "class": "EchoTool"
+        }
+        """,
+    )
     is_enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

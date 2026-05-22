@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from services.tool_executor.tools import AVAILABLE_TOOLS, BaseTool
 
@@ -39,6 +39,32 @@ class ToolRegistry:
 
         for name, tool in AVAILABLE_TOOLS.items():
             self.register(tool)
+
+    def load_from_capsule(self, capsule: Any) -> None:
+        """Load tool definitions from a Capsule's tool registry snapshot.
+
+        Each Capsule carries its own tool schemas and policies.
+        This creates a per-capsule ToolRegistry that snapshots the
+        capabilities at certification time.
+        """
+        from admin.core.models import Capsule
+
+        if not isinstance(capsule, Capsule):
+            return
+
+        body = capsule.body or {}
+        persona = body.get("persona", {})
+        tools_config = persona.get("tools", {})
+        tool_registry = tools_config.get("tool_registry", {})
+
+        for name, definition in tool_registry.items():
+            # Look up the system tool implementation
+            handler = AVAILABLE_TOOLS.get(name)
+            if handler:
+                self.register(
+                    handler,
+                    description=definition.get("description", name),
+                )
 
     def register(self, tool: BaseTool, *, description: Optional[str] = None) -> None:
         """Execute register.

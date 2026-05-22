@@ -10,10 +10,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-try:
-    import asyncpg  # type: ignore
-except ImportError:  # pragma: no cover
-    asyncpg = None  # type: ignore
+import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,15 +24,11 @@ class MemoryReplicaStore:
         self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
 
     async def _get_pool(self) -> Any:
-        if asyncpg is None:
-            raise RuntimeError("asyncpg is required for MemoryReplicaStore")
         return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
 
     async def ensure_schema(self) -> None:
         if not self.dsn:
             raise RuntimeError("MemoryReplicaStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("MemoryReplicaStore: asyncpg is required")
         try:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
@@ -68,8 +61,6 @@ class MemoryReplicaStore:
         """
         if not self.dsn:
             raise RuntimeError("MemoryReplicaStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("MemoryReplicaStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:
@@ -95,8 +86,6 @@ class MemoryReplicaStore:
     async def latest_wal_timestamp(self) -> Optional[float]:
         if not self.dsn:
             raise RuntimeError("MemoryReplicaStore: SA01_DB_DSN not configured")
-        if asyncpg is None:
-            raise RuntimeError("MemoryReplicaStore: asyncpg is required")
         pool = await self._get_pool()
         try:
             async with pool.acquire() as conn:

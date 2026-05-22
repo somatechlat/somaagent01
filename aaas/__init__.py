@@ -33,19 +33,10 @@ from __future__ import annotations
 import logging
 
 # VIBE Rule 100: Use centralized config
-try:
-    from config import get_settings
+from config import get_settings
 
-    _settings = get_settings()
-    AAAS_MODE = getattr(_settings, "soma_aaas_mode", False)
-except ImportError:
-    # Fallback for standalone imports
-    import os
-
-    AAAS_MODE = os.getenv("SOMA_AAAS_MODE", "false").lower() == "true"
-    logging.getLogger(__name__).warning(
-        "⚠️ Could not import config.settings_registry. Using environment fallback."
-    )
+_settings = get_settings()
+AAAS_MODE = getattr(_settings, "soma_aaas_mode", False)
 
 __version__ = "2.0.0"
 __all__ = ["brain", "memory", "AAAS_MODE"]

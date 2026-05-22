@@ -214,9 +214,6 @@ def edit_capsule(capsule: Capsule, updates: dict) -> Capsule:
                     "neuromodulator_baseline", capsule.neuromodulator_baseline
                 ),
                 # Copy body
-                capabilities_whitelist=updates.get(
-                    "capabilities_whitelist", capsule.capabilities_whitelist
-                ),
                 resource_limits=updates.get("resource_limits", capsule.resource_limits),
             )
 

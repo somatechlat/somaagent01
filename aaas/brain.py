@@ -14,8 +14,10 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Detect aaas mode
-AAAS_MODE = os.getenv("SOMA_AAAS_MODE", "false").lower() == "true"
+# Detect aaas mode via canonical DeploymentMode
+from services.common.deployment_mode import DeploymentMode
+
+AAAS_MODE = DeploymentMode.is_aaas()
 
 
 class BrainBridge:
@@ -83,18 +85,12 @@ class BrainBridge:
 
         import httpx
 
-        # VIBE Rule 100: Use centralized config instead of os.getenv
-        try:
-            from config import get_settings
+        # VIBE Rule 100: Use centralized config
+        from config import get_settings
 
-            _settings = get_settings()
-            # Use somabrain internal host/port from centralized config
-            self._base_url = f"http://{getattr(_settings, 'somabrain_host', 'somastack_aaas')}:9696"
-            logger.info("📦 Using centralized config for SomaBrain URL")
-        except ImportError:
-            # Fallback for non-AAAS environments
-            self._base_url = os.getenv("SOMABRAIN_URL", "http://somastack_aaas:9696")
-            logger.warning("⚠️ Centralized config not available, using environment")
+        _settings = get_settings()
+        self._base_url = f"http://{getattr(_settings, 'somabrain_host', 'somastack_aaas')}:9696"
+        logger.info("📦 Using centralized config for SomaBrain URL")
 
         self._client = httpx.AsyncClient(base_url=self._base_url, timeout=30.0)
         self._mode = "http"
@@ -133,15 +129,35 @@ class BrainBridge:
             resp = await self._client.post("/api/similarity", json={"a": a, "b": b})
             return resp.json()["similarity"]
 
-    async def recall(self, query_vector: list[float], top_k: int = 5) -> list[dict]:
-        """Recall memories similar to query vector."""
+    async def recall(
+        self,
+        query: str | list[float],
+        *,
+        top_k: int = 5,
+        tenant: str = "default",
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Recall memories similar to query vector or text.
+
+        Args:
+            query: Text string or pre-encoded vector.
+            top_k: Maximum results to return.
+            tenant: Tenant filter.
+            filters: Optional metadata filters.
+        """
         if self._mode == "direct":
+            # Encode text to vector if needed
+            if isinstance(query, str):
+                query_vector = self._quantum.encode_text(query).tolist()
+            else:
+                query_vector = query
             memories = self._recall(query_vector, top_k=top_k)
             return [m.dict() for m in memories]
         else:
-            resp = await self._client.post(
-                "/api/recall", json={"vector": query_vector, "top_k": top_k}
-            )
+            payload: dict[str, Any] = {"query": query, "top_k": top_k, "tenant": tenant}
+            if filters:
+                payload["filters"] = filters
+            resp = await self._client.post("/api/recall", json=payload)
             return resp.json()["results"]
 
     async def health(self) -> Dict[str, Any]:

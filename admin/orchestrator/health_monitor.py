@@ -9,12 +9,9 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-try:
-    from ninja import Router
+from ninja import Router
 
-    router = Router()
-except Exception:
-    router = None  # type: ignore
+router = Router()
 
 from .base_service import BaseSomaService
 

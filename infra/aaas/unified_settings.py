@@ -14,7 +14,6 @@ VIBE Compliance:
 
 Usage:
     export DJANGO_SETTINGS_MODULE=infra.aaas.unified_settings
-    export SOMA_SINGLE_PROCESS=true
     gunicorn infra.aaas.unified_wsgi:application
 """
 
@@ -41,10 +40,7 @@ BASE_DIR = AGENT_ROOT
 # ENVIRONMENT SETUP
 # =============================================================================
 
-# Single-process mode flag - when True, all services run in one Django process
-SOMA_SINGLE_PROCESS = os.environ.get("SOMA_SINGLE_PROCESS", "true").lower() == "true"
-
-# Mode detection
+# Mode detection (canonical: SA01_DEPLOYMENT_MODE)
 SA01_DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "AAAS").upper()
 SOMA_AAAS_MODE = os.environ.get("SOMA_AAAS_MODE", "true").lower() == "true"
 
@@ -358,11 +354,4 @@ LOGGING = {
     },
 }
 
-# =============================================================================
-# SINGLE-PROCESS MODE INDICATOR
-# =============================================================================
-
-# This flag tells the adapters to use direct Python imports instead of HTTP
-UNIFIED_SINGLE_PROCESS = SOMA_SINGLE_PROCESS
-
-print(f"✅ AAAS Unified Settings Loaded: SINGLE_PROCESS={SOMA_SINGLE_PROCESS}, MODE={SA01_DEPLOYMENT_MODE}")
+print(f"✅ AAAS Unified Settings Loaded: MODE={SA01_DEPLOYMENT_MODE}")
