@@ -14,19 +14,24 @@ Production-grade HTTP client for SomaBrain memory service.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
+import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, cast, Dict, List, Mapping, Optional
 
 import httpx
 from django.conf import settings
 
+from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
+
 # Integration: BrainBridge (Compliant Triad Architecture)
 try:
-    from aaas.brain import brain as BrainBridge
-    HAS_BRIDGE = True
+    from services.common.brain_bridge import brain as BrainBridge
 except ImportError:
-    HAS_BRIDGE = False
+    BrainBridge = None  # type: ignore[assignment]
+HAS_BRIDGE = BrainBridge is not None
 
 
 LOGGER = logging.getLogger(__name__)
@@ -40,6 +45,26 @@ class SomaClientError(Exception):
 
         super().__init__(message)
         self.status_code = status_code
+
+
+class SomaMemoryRecord:
+    """Lightweight record for SomaBrain memory retrieval results."""
+
+    def __init__(
+        self,
+        identifier: str,
+        payload: Dict[str, Any],
+        score: Optional[float] = None,
+        coordinate: Optional[List[float]] = None,
+        retriever: Optional[str] = None,
+    ) -> None:
+        """Initialize the instance."""
+
+        self.identifier = identifier
+        self.payload = payload
+        self.score = score
+        self.coordinate = coordinate
+        self.retriever = retriever
 
 
 class SomaBrainClient:
@@ -79,8 +104,8 @@ class SomaBrainClient:
         if hasattr(settings, "SOMABRAIN_URL"):
             return str(settings.SOMABRAIN_URL)
 
-        # Fallback to environment variable
-        return getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
+        # Fallback to environment variable or Docker default
+        return os.environ.get("SOMABRAIN_URL", "http://host.docker.internal:30101")
 
     @classmethod
     def get(cls) -> "SomaBrainClient":
@@ -123,6 +148,7 @@ class SomaBrainClient:
         *,
         json: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Make HTTP request to SomaBrain.
 
@@ -131,23 +157,31 @@ class SomaBrainClient:
             path: API path (e.g., "/v1/memory/recall")
             json: JSON body for POST/PUT
             params: Query parameters
+            headers: Additional HTTP headers
 
         Returns:
             Response JSON as dict
 
         Raises:
             SomaClientError: On HTTP or connection errors
+            CircuitBreakerError: If circuit breaker is OPEN
         """
-        client = await self._ensure_client()
-        try:
-            response = await client.request(
-                method,
-                path,
-                json=json,
-                params=params,
-            )
+        breaker = get_circuit_breaker("somabrain_http", failure_threshold=5, reset_timeout=30)
+
+        async def _do_request() -> Dict[str, Any]:
+            client = await self._ensure_client()
+            request_headers = headers or {}
+            response = await client.request(method, path, json=json, params=params, headers=request_headers)
             response.raise_for_status()
             return response.json()
+
+        try:
+            return cast(Dict[str, Any], await breaker.call(_do_request))
+        except CircuitBreakerError as e:
+            LOGGER.error("SomaBrain circuit breaker OPEN", extra={"path": path, "error": str(e)})
+            raise SomaClientError(
+                f"SomaBrain unavailable (circuit open): {e}", status_code=503
+            ) from e
         except httpx.HTTPStatusError as e:
             LOGGER.error(
                 "SomaBrain HTTP error",
@@ -167,10 +201,17 @@ class SomaBrainClient:
 
     async def remember(
         self,
-        payload: Dict[str, Any],
+        payload: Optional[Dict[str, Any]] = None,
         *,
         tenant: Optional[str] = None,
         namespace: str = "wm",
+        content: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        memory_type: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        coord: Optional[str] = None,
+        universe: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Store memory in SomaBrain.
 
@@ -181,23 +222,37 @@ class SomaBrainClient:
 
         Returns:
             Response with coordinate of stored memory
+
+        VIBE Rule 1: NO BULLSHIT - Real API call to somabrain /memory/remember
         """
+        effective_tenant = tenant_id or tenant or "default"
+        payload = payload or {}
+        if content is not None:
+            payload = {
+                **payload,
+                "content": content,
+                "user_id": user_id,
+                "memory_type": memory_type,
+                "metadata": metadata,
+            }
+        # Format for SomaBrain API: key, value (not payload)
         body = {
-            "payload": payload,
-            "tenant": tenant,
+            "key": payload.get("key")
+            or f"mem_{hashlib.md5(str(payload).encode()).hexdigest()[:16]}",
+            "value": payload,
+            "tenant": effective_tenant,
             "namespace": namespace,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # DIRECT MODE CHECK (Triad Compliant)
-        if HAS_BRIDGE and BrainBridge.mode == "direct":
+        if HAS_BRIDGE and BrainBridge is not None and BrainBridge.mode == "direct":
             try:
                 # Use compliant BrainBridge
                 resp = await BrainBridge.remember(
                     content=payload.get("content", ""),
-                    tenant=tenant,
+                    tenant=tenant or "default",
                     namespace=namespace,
-                    metadata=payload.get("metadata", {})
+                    metadata=payload.get("metadata", {}),
                 )
                 return {
                     "status": "success",
@@ -208,7 +263,50 @@ class SomaBrainClient:
                 LOGGER.error(f"Direct remember failed, falling back to HTTP: {e}")
                 pass
 
-        return await self._request("POST", "/v1/memory/remember", json=body)
+        if coord is not None:
+            body["coord"] = coord
+        if universe is not None:
+            body["universe"] = universe
+        return await self._request("POST", "/memory/remember", json=body)
+
+    async def delete(
+        self,
+        coordinate: Any,
+        *,
+        tenant: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Delete memory by coordinate (alias for forget)."""
+        coord_str = coordinate if isinstance(coordinate, str) else json.dumps(coordinate)
+        return await self.forget(coordinate=coord_str, tenant=tenant, tenant_id=tenant_id)
+
+    async def migrate_export(
+        self,
+        include_wm: bool = False,
+        wm_limit: int = 128,
+    ) -> Dict[str, Any]:
+        """Export memories for migration."""
+        return await self._request(
+            "GET",
+            "/admin/migrate/export",
+            params={"include_wm": str(include_wm), "wm_limit": wm_limit},
+        )
+
+    async def migrate_import(
+        self,
+        manifest: Dict[str, Any],
+        memories: List[Dict[str, Any]],
+        wm: Optional[List[Dict[str, Any]]] = None,
+        replace: bool = False,
+    ) -> Dict[str, Any]:
+        """Import memories from migration."""
+        body = {
+            "manifest": manifest,
+            "memories": memories,
+            "wm": wm or [],
+            "replace": replace,
+        }
+        return await self._request("POST", "/admin/migrate/import", json=body)
 
     async def recall(
         self,
@@ -219,7 +317,10 @@ class SomaBrainClient:
         namespace: str = "wm",
         universe: Optional[str] = None,
         tags: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        tenant_id: Optional[str] = None,
+        limit: Optional[int] = None,
+        memory_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Recall memories from SomaBrain.
 
         Args:
@@ -233,49 +334,58 @@ class SomaBrainClient:
         Returns:
             Response with memory results
         """
+        effective_tenant = tenant_id or tenant
+        effective_limit = limit or top_k
         body: Dict[str, Any] = {
             "query": query,
-            "top_k": top_k,
+            "top_k": effective_limit,
             "namespace": namespace,
         }
-        if tenant:
-            body["tenant"] = tenant
+        if effective_tenant:
+            body["tenant"] = effective_tenant
         if universe:
             body["universe"] = universe
         if tags:
             body["tags"] = tags
+        if memory_type:
+            body["memory_type"] = memory_type
 
         # DIRECT MODE CHECK (Triad Compliant)
-        if HAS_BRIDGE and BrainBridge.mode == "direct":
+        if HAS_BRIDGE and BrainBridge is not None and getattr(BrainBridge, "mode", None) == "direct":
             try:
                 # Use compliant BrainBridge
-                # Note: BrainBridge.recall returns list[dict]
-                results = await BrainBridge.recall(
-                    query_vector=await BrainBridge.encode_text(query),
-                    top_k=top_k
-                )
+                results = await BrainBridge.recall(query=query, top_k=top_k)
 
                 # Transform to expected response format
-                memories = []
+                memories: List[Dict[str, Any]] = []
                 for m in results:
-                    memories.append({
-                        "coordinate": m.get("coordinate", [0.0, 0.0, 0.0]),
-                        "payload": m.get("payload", {}),
-                        "score": m.get("score", 0.0),
-                        "created_at": datetime.now(timezone.utc).isoformat(), # Placeholder if missing
-                    })
-                return {"memories": memories}
+                    memories.append(
+                        {
+                            "coordinate": m.get("coordinate", [0.0, 0.0, 0.0]),
+                            "payload": m.get("payload", {}),
+                            "score": m.get("score", 0.0),
+                            "created_at": datetime.now(
+                                timezone.utc
+                            ).isoformat(),  # Placeholder if missing
+                        }
+                    )
+                return memories
             except Exception as e:
                 LOGGER.error(f"Direct recall failed, falling back to HTTP: {e}")
                 pass
 
-        return await self._request("POST", "/v1/memory/recall", json=body)
+        result = await self._request("POST", "/memory/recall", json=body)
+        if isinstance(result, list):
+            return result
+        return result.get("memories", [])
 
     async def forget(
         self,
-        coordinate: str,
+        coordinate: Optional[str] = None,
         *,
         tenant: Optional[str] = None,
+        memory_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Delete memory by coordinate.
 
@@ -286,10 +396,12 @@ class SomaBrainClient:
         Returns:
             Deletion confirmation
         """
-        body = {"coordinate": coordinate}
-        if tenant:
-            body["tenant"] = tenant
-        return await self._request("DELETE", "/v1/memory/forget", json=body)
+        effective_coordinate = coordinate if coordinate else memory_id
+        effective_tenant = tenant_id or tenant
+        body = {"coordinate": effective_coordinate}
+        if effective_tenant:
+            body["tenant"] = effective_tenant
+        return await self._request("DELETE", "/memory/forget", json=body)
 
     # =========================================================================
     # CONTEXT OPERATIONS
@@ -326,7 +438,7 @@ class SomaBrainClient:
         params: Dict[str, Any] = {"tenant": tenant_id}
         if persona_id:
             params["persona"] = persona_id
-        return await self._request("GET", "/v1/context/adaptation/state", params=params)
+        return await self._request("GET", "/context/adaptation/state", params=params)
 
     async def adaptation_reset(
         self,
@@ -348,7 +460,7 @@ class SomaBrainClient:
         body: Dict[str, Any] = {"tenant": tenant_id, "reset_history": reset_history}
         if base_lr is not None:
             body["base_lr"] = base_lr
-        return await self._request("POST", "/v1/context/adaptation/reset", json=body)
+        return await self._request("POST", "/context/adaptation/reset", json=body)
 
     # =========================================================================
     # NEUROMODULATOR OPERATIONS
@@ -371,7 +483,7 @@ class SomaBrainClient:
         params: Dict[str, Any] = {"tenant": tenant_id}
         if persona_id:
             params["persona"] = persona_id
-        return await self._request("GET", "/v1/neuromodulators", params=params)
+        return await self._request("GET", "/neuromodulators", params=params)
 
     async def update_neuromodulators(
         self,
@@ -394,7 +506,7 @@ class SomaBrainClient:
             "persona": persona_id,
             "neuromodulators": neuromodulators,
         }
-        return await self._request("PUT", "/v1/neuromodulators", json=body)
+        return await self._request("PUT", "/neuromodulators", json=body)
 
     # =========================================================================
     # PERSONA OPERATIONS
@@ -409,23 +521,37 @@ class SomaBrainClient:
         Returns:
             Persona data
         """
-        return await self._request("GET", f"/v1/personas/{persona_id}")
+        return await self._request("GET", f"/personas/{persona_id}")
+
+    async def delete_persona(self, persona_id: str) -> Dict[str, Any]:
+        """Delete persona by ID.
+
+        Args:
+            persona_id: Persona ID
+
+        Returns:
+            Deletion confirmation
+        """
+        return await self._request("DELETE", f"/personas/{persona_id}")
 
     async def put_persona(
         self,
         persona_id: str,
         persona_data: Dict[str, Any],
+        etag: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create or update persona.
 
         Args:
             persona_id: Persona ID
             persona_data: Persona data
+            etag: Optional ETag for optimistic concurrency
 
         Returns:
             Created/updated persona
         """
-        return await self._request("PUT", f"/v1/personas/{persona_id}", json=persona_data)
+        req_headers = {"If-Match": etag} if etag else None
+        return await self._request("PUT", f"/personas/{persona_id}", json=persona_data, headers=req_headers)
 
     # =========================================================================
     # COGNITIVE OPERATIONS
@@ -433,8 +559,12 @@ class SomaBrainClient:
 
     async def act(
         self,
-        task: str,
+        task: Optional[str] = None,
         *,
+        agent_id: Optional[str] = None,
+        input_text: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+        mode: Optional[str] = None,
         universe: Optional[str] = None,
         session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -442,18 +572,32 @@ class SomaBrainClient:
 
         Args:
             task: Task description
+            agent_id: Agent identifier
+            input_text: Input text for the action
+            context: Additional context
+            mode: Execution mode (FULL, MINIMAL, LITE, ADMIN)
             universe: Universe scope
             session_id: Session ID
 
         Returns:
             Action response with results and salience
         """
-        body: Dict[str, Any] = {"task": task}
+        body: Dict[str, Any] = {}
+        if task is not None:
+            body["task"] = task
+        if agent_id is not None:
+            body["agent_id"] = agent_id
+        if input_text is not None:
+            body["input_text"] = input_text
+        if context is not None:
+            body["context"] = context
+        if mode is not None:
+            body["mode"] = mode
         if universe:
             body["universe"] = universe
         if session_id:
             body["session_id"] = session_id
-        return await self._request("POST", "/v1/cognitive/act", json=body)
+        return await self._request("POST", "/cognitive/act", json=body)
 
     # =========================================================================
     # SLEEP/LIFECYCLE OPERATIONS
@@ -485,7 +629,7 @@ class SomaBrainClient:
             body["ttl_seconds"] = ttl_seconds
         if trace_id:
             body["trace_id"] = trace_id
-        return await self._request("POST", "/v1/brain/sleep", json=body)
+        return await self._request("POST", "/brain/sleep", json=body)
 
     async def sleep_status(self) -> Dict[str, Any]:
         """Get current sleep status.
@@ -493,7 +637,7 @@ class SomaBrainClient:
         Returns:
             Sleep status with current state and metrics
         """
-        return await self._request("GET", "/v1/brain/sleep/status")
+        return await self._request("GET", "/brain/sleep/status")
 
     async def micro_diag(self) -> Dict[str, Any]:
         """Get microcircuit diagnostics (admin mode).
@@ -501,11 +645,47 @@ class SomaBrainClient:
         Returns:
             Diagnostic information
         """
-        return await self._request("GET", "/v1/admin/micro/diag")
+        return await self._request("GET", "/admin/micro/diag")
 
     # =========================================================================
     # HEALTH CHECK
     # =========================================================================
+
+    async def get_cognitive_state(self, agent_id: str) -> Dict[str, Any]:
+        """Get cognitive state for an agent.
+
+        Args:
+            agent_id: Agent identifier
+
+        Returns:
+            Cognitive state dict
+        """
+        return await self.get_adaptation_state(tenant_id=agent_id)
+
+    async def update_cognitive_params(
+        self, agent_id: str, params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update cognitive parameters for an agent.
+
+        Args:
+            agent_id: Agent identifier
+            params: Parameters to update
+
+        Returns:
+            Update confirmation
+        """
+        return await self._request("POST", f"/cognitive/params/{agent_id}", json=params)
+
+    async def trigger_sleep_cycle(self, agent_id: str) -> Dict[str, Any]:
+        """Trigger sleep cycle for an agent.
+
+        Args:
+            agent_id: Agent identifier
+
+        Returns:
+            Sleep cycle confirmation
+        """
+        return await self.brain_sleep_mode("deep", trace_id=agent_id)
 
     async def health_check(self) -> bool:
         """Check if SomaBrain is healthy.
@@ -518,6 +698,48 @@ class SomaBrainClient:
             return result.get("status") == "ok" or result.get("ready", False)
         except SomaClientError:
             return False
+
+    async def get_recent(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Get recent memories.
+
+        Args:
+            tenant_id: Tenant ID filter
+            limit: Maximum results to return
+
+        Returns:
+            List of recent memory records
+        """
+        params: Dict[str, Any] = {"limit": limit}
+        if tenant_id:
+            params["tenant"] = tenant_id
+        result = await self._request("GET", "/memory/recent", params=params)
+        if isinstance(result, list):
+            return result
+        return result.get("memories", [])
+
+    async def get_pending_count(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+    ) -> int:
+        """Get count of pending memories.
+
+        Args:
+            tenant_id: Tenant ID filter
+
+        Returns:
+            Number of pending memories
+        """
+        params: Dict[str, Any] = {}
+        if tenant_id:
+            params["tenant"] = tenant_id
+        result = await self._request("GET", "/memory/pending", params=params)
+        return result.get("count", 0)
 
     async def health(self) -> Dict[str, Any]:
         """Get health status from SomaBrain.
@@ -547,7 +769,7 @@ class SomaBrainClient:
             Weight configuration
         """
         params = {"persona": persona_id} if persona_id else None
-        return await self._request("GET", "/v1/weights", params=params)
+        return await self._request("GET", "/weights", params=params)
 
     async def build_context(
         self,
@@ -564,10 +786,49 @@ class SomaBrainClient:
             Additional context messages to prepend/append
         """
         body = {"session_id": session_id, "messages": messages[-10:]}
-        result = await self._request("POST", "/v1/context/build", json=body)
+        result = await self._request("POST", "/context/build", json=body)
         if isinstance(result, list):
             return result
         return result.get("messages", [])
+
+    # =========================================================================
+    # CONSTITUTION / OPA OPERATIONS
+    # =========================================================================
+
+    def _get_loop(self) -> asyncio.AbstractEventLoop:
+        """Get or create an event loop for sync contexts."""
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.new_event_loop()
+
+    async def constitution_version(self) -> Dict[str, Any]:
+        """Get current constitution version."""
+        return await self._request("GET", "/constitution/version")
+
+    async def constitution_validate(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+        """Validate a constitution document."""
+        return await self._request("POST", "/constitution/validate", json=dict(payload))
+
+    async def constitution_load(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+        """Load a constitution document."""
+        return await self._request("POST", "/constitution/load", json=dict(payload))
+
+    async def update_opa_policy(self) -> Dict[str, Any]:
+        """Regenerate OPA policy from current constitution."""
+        return await self._request("POST", "/opa/policy/update")
+
+    async def opa_policy(self) -> Dict[str, Any]:
+        """Get current OPA policy."""
+        return await self._request("GET", "/opa/policy")
+
+    async def context_feedback(self, **kwargs: Any) -> Dict[str, Any]:
+        """Send contextual feedback to SomaBrain for learning.
+
+        Returns:
+            Feedback response dict.
+        """
+        return await self._request("POST", "/context/feedback", json=dict(kwargs))
 
     async def publish_reward(
         self,
@@ -593,7 +854,7 @@ class SomaBrainClient:
             "value": value,
             "meta": meta or {},
         }
-        result = await self._request("POST", "/v1/learning/reward", json=body)
+        result = await self._request("POST", "/learning/reward", json=body)
         return result.get("ok", False)
 
 
@@ -613,6 +874,6 @@ def get_somabrain_client() -> SomaBrainClient:
 __all__ = [
     "SomaBrainClient",
     "SomaClientError",
-    "SomaBrainError",
+    "SomaMemoryRecord",
     "get_somabrain_client",
 ]

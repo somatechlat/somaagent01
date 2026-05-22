@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass
@@ -140,8 +140,9 @@ async def select_model(
     # 3. Filter by capabilities
     capable_models = []
     for model in models:
+        m: Any = model
         model_caps = set(
-            model.capabilities if hasattr(model, "capabilities") else model.get("capabilities", [])
+            m.capabilities if hasattr(m, "capabilities") else m.get("capabilities", [])
         )
         if required_capabilities.issubset(model_caps):
             capable_models.append(model)
@@ -155,9 +156,7 @@ async def select_model(
     if capsule_body:
         allowed = capsule_body.get("allowed_models")
         if allowed:
-            capable_models = [
-                m for m in capable_models if _get_name(m) in allowed
-            ]
+            capable_models = [m for m in capable_models if _get_name(m) in allowed]
 
             if not capable_models:
                 raise NoCapableModelError(

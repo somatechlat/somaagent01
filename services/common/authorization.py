@@ -30,7 +30,7 @@ try:
         labelnames=("action", "result"),
     )
 except ValueError:
-    AUTH_DECISIONS = REGISTRY._names_to_collectors.get("auth_decisions_total")
+    AUTH_DECISIONS = REGISTRY._names_to_collectors.get("auth_decisions_total")  # type: ignore[reportAttributeAccessIssue]
 
 try:
     AUTH_DURATION = Histogram(
@@ -39,7 +39,7 @@ try:
         labelnames=("source",),
     )
 except ValueError:
-    AUTH_DURATION = REGISTRY._names_to_collectors.get("auth_duration_seconds")
+    AUTH_DURATION = REGISTRY._names_to_collectors.get("auth_duration_seconds")  # type: ignore[reportAttributeAccessIssue]
 
 
 def get_policy_client() -> PolicyClient:

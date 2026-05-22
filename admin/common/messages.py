@@ -5,6 +5,7 @@ This module is the SINGLE SOURCE OF TRUTH for all messages.
 """
 
 from enum import Enum
+from typing import Any
 
 from django.utils.translation import gettext_lazy as _
 
@@ -97,7 +98,7 @@ class SuccessCode(str, Enum):
 
 
 # I18N-Ready Messages using Django gettext_lazy
-MESSAGES: dict[str | ErrorCode | SuccessCode, str] = {
+MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     # Generic
     ErrorCode.INTERNAL_ERROR: _("An unexpected error occurred"),
     ErrorCode.INVALID_REQUEST: _("The request payload is invalid"),
@@ -152,7 +153,7 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str] = {
     SuccessCode.UPDATED: _("Successfully updated"),
     SuccessCode.DELETED: _("Successfully deleted"),
     SuccessCode.TIER_DEACTIVATED: _("Tier '{name}' deactivated"),
-    SuccessCode.FEATURE_REMOVED: _("Feature '{code}' removed from tier"),
+    SuccessCode.FEATURE_REMOVED: _("Feature '{feature_code}' removed from tier"),
     SuccessCode.CAPSULE_CREATED: _("Agent created successfully"),
     SuccessCode.CAPSULE_EXPORTED: _("Agent exported successfully"),
     SuccessCode.CAPSULE_IMPORTED: _("Agent imported successfully"),
@@ -180,4 +181,3 @@ def get_message(code: ErrorCode | SuccessCode | str, **kwargs: object) -> str:
         # Force evaluation of lazy string for formatting
         return str(msg).format(**kwargs)
     return str(msg)
-

@@ -91,7 +91,7 @@ class AuditLog(models.Model):
             "id": str(self.id),
             "actor_id": str(self.actor_id),
             "actor_email": self.actor_email,
-            "tenant_id": str(self.tenant_id) if self.tenant_id else None,
+            "tenant_id": str(self.tenant_id) if self.tenant_id else None,  # type: ignore[reportAttributeAccessIssue]
             "action": self.action,
             "resource_type": self.resource_type,
             "resource_id": str(self.resource_id) if self.resource_id else None,

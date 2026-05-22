@@ -32,8 +32,8 @@ async def download_attachment(request: HttpRequest, attachment_id: str):
     """Download an attachment by ID."""
     store = _get_store()
     att_uuid = uuid.UUID(str(attachment_id))
-    meta = await store.get_metadata(att_uuid)
-    content = await store.get_content(att_uuid)
+    meta = await store.get_metadata(att_uuid)  # type: ignore[union-attr]
+    content = await store.get_content(att_uuid)  # type: ignore[union-attr]
 
     if not meta or content is None:
         raise NotFoundError("attachment", attachment_id)

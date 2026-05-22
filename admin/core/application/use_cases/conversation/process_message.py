@@ -33,6 +33,7 @@ PolicyEnforcerProtocol = Any
 MemoryClientProtocol = Any
 PublisherProtocol = Any
 ContextBuilderProtocol = Any
+
 ResponseGeneratorProtocol = Any
 
 
@@ -133,9 +134,9 @@ class ProcessMessageUseCase:
         policy_enforcer: PolicyEnforcerProtocol,
         memory_client: MemoryClientProtocol,
         publisher: PublisherProtocol,
-        context_builder: ContextBuilderProtocol,
-        response_generator: ResponseGeneratorProtocol,
-        outbound_topic: str,
+        context_builder: ContextBuilderProtocol | None = None,
+        response_generator: ResponseGeneratorProtocol | None = None,
+        outbound_topic: str = "",
         analyzer: Optional[MessageAnalyzer] = None,
     ):
         """Initialize the instance."""
@@ -144,7 +145,6 @@ class ProcessMessageUseCase:
         self._policy_enforcer = policy_enforcer
         self._memory_client = memory_client
         self._publisher = publisher
-        self._context_builder = context_builder
         self._response_generator = response_generator
         self._outbound_topic = outbound_topic
         self._analyzer = analyzer or MessageAnalyzer()
@@ -356,32 +356,44 @@ class ProcessMessageUseCase:
         metadata: Dict[str, Any],
         analysis_dict: Dict[str, Any],
     ) -> tuple[str, Dict[str, int], str, Optional[float]]:
-        """Generate LLM response."""
+        """Generate LLM response.
+
+        V3: Inline context building — no separate ContextBuilder class.
+        Memory recall is done directly via SomaBrainClient if available.
+        """
         # Get history
         history = await self._session_repo.list_events(session_id, limit=20)
         history_messages = self._history_to_messages(history)
 
-        # Build context
-        turn_envelope = {
-            "tenant_id": tenant,
-            "session_id": session_id,
-            "system_prompt": self._build_system_prompt(analysis_dict),
-            "user_message": event.get("message", ""),
-            "history": history_messages,
-        }
+        # Build messages inline
+        system_prompt = self._build_system_prompt(analysis_dict)
+        messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
-        built_context = await self._context_builder.build_for_turn(
-            turn_envelope, max_prompt_tokens=4096
-        )
+        # Recall memory snippets via memory_client (SomaBrainClient) if available
+        try:
+            memory_results = await self._memory_client.recall(
+                query=event.get("message", ""),
+                top_k=3,
+                tenant=tenant,
+                namespace="chat_history",
+            )
+            memories = memory_results.get("memories", [])
+            for mem in memories[:3]:
+                payload = mem.get("payload", {})
+                content = payload.get("content", "")
+                if content:
+                    messages.append({"role": "system", "content": f"[Memory] {content}"})
+        except Exception:
+            LOGGER.debug("Memory recall skipped in conversation worker", exc_info=True)
 
-        # Convert to ChatMessage format
-        messages = [
-            {"role": msg.get("role", "user"), "content": str(msg.get("content", ""))}
-            for msg in built_context.messages
-        ]
+        # Add history
+        messages.extend(history_messages)
+
+        # Add user message
+        messages.append({"role": "user", "content": event.get("message", "")})
 
         # Generate response using GenerateResponseUseCase
-        from src.core.application.use_cases.conversation.generate_response import (
+        from admin.core.application.use_cases.conversation.generate_response import (
             GenerateResponseInput,
         )
 
@@ -393,6 +405,7 @@ class ProcessMessageUseCase:
             analysis_metadata=analysis_dict,
             base_metadata=metadata,
         )
+        assert self._response_generator is not None
         result = await self._response_generator.execute(gen_input)
 
         return result.text, result.usage, "llm", result.confidence

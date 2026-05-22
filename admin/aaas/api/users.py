@@ -15,10 +15,10 @@ from django.db.models import Q
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.aaas.models import TenantRole, TenantUser
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
-from admin.aaas.models import TenantRole, TenantUser
 
 router = Router(tags=["tenant-users"])
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def _user_to_out(user: TenantUser) -> TenantUserOut:
         name=user.display_name or "",
         role=user.role,
         is_active=user.is_active,
-        tenant_id=str(user.tenant_id),
+        tenant_id=str(user.tenant.id),
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
     )
@@ -274,7 +274,7 @@ class UserDetailOut(BaseModel):
     summary="Get detailed user info",
     auth=AuthBearer(),
 )
-def get_user_detail(
+async def get_user_detail(
     request,
     user_id: str,
 ) -> dict:
@@ -285,41 +285,59 @@ def get_user_detail(
         raise NotFoundError("user", user_id)
 
     # Build role permissions
-    from admin.auth.api import _get_permissions_for_roles
+    from admin.auth.api import get_permissions_for_roles
 
-    permissions = _get_permissions_for_roles([user.role])
+    permissions = get_permissions_for_roles([user.role])
 
-    # Mock agent access (would query AgentUser model)
+    # Real agent access from AgentUser model
+    from admin.aaas.models.agents import AgentUser
+
+    agent_user_links = AgentUser.objects.filter(user_id=user.user_id).select_related("agent")[:20]
     agent_access = [
         {
-            "agentId": "agent-001",
-            "agentName": "Support Bot",
-            "modes": ["chat", "dev"],
-            "isOwner": True,
-        },
+            "agentId": str(au.agent.id),
+            "agentName": getattr(au.agent, "name", str(au.agent.id)),
+            "modes": [au.role.lower()] if au.role else ["chat"],
+            "isOwner": au.role == "OWNER",
+        }
+        for au in agent_user_links
     ]
 
-    # Mock activity log (would query AuditLog)
+    # Real activity log from AuditLog
+    from admin.aaas.models.audit import AuditLog
+
+    audit_entries = AuditLog.objects.filter(actor_id=user.user_id).order_by("-created_at")[:10]
     activity_log = [
         {
-            "id": "act-001",
-            "action": "Logged in",
-            "target": "Session",
-            "timestamp": "2025-12-25T10:00:00Z",
-            "ip": "192.168.1.1",
-        },
+            "id": str(entry.id),
+            "action": entry.action,
+            "target": entry.resource_type,
+            "timestamp": entry.created_at.isoformat() if entry.created_at else "",
+            "ip": entry.ip_address or "",
+        }
+        for entry in audit_entries
     ]
 
-    # Mock sessions
-    sessions = [
-        {
-            "id": "sess-001",
-            "device": "Chrome on macOS",
-            "location": "New York, US",
-            "lastActive": "2025-12-25T16:00:00Z",
-            "current": True,
-        },
-    ]
+    # Real sessions from Redis SessionManager
+
+    from admin.common.session_manager import get_session_manager
+
+    sessions = []
+    try:
+        session_manager = await get_session_manager()
+        user_sessions = await session_manager.list_sessions(str(user.user_id))
+        sessions = [
+            {
+                "id": s.session_id,
+                "device": s.user_agent[:50] if s.user_agent else "Unknown",
+                "location": s.ip_address or "Unknown",
+                "lastActive": s.last_activity or s.created_at,
+                "current": False,
+            }
+            for s in user_sessions[:5]
+        ]
+    except Exception as exc:
+        logger.warning("Could not load sessions for user detail: %s", exc)
 
     role_labels = {
         "sysadmin": "System Administrator",
@@ -336,7 +354,7 @@ def get_user_detail(
             email=user.email,
             displayName=user.display_name or "",
             role=user.role,
-            roleLabel=role_labels.get(user.role, user.role),
+            roleLabel=role_labels.get(user.role, user.role) or "",
             status="active" if user.is_active else "suspended",
             lastSeen=user.last_login_at.isoformat() if user.last_login_at else None,
             mfaEnabled=True,  # Would check actual MFA status
@@ -447,8 +465,8 @@ class ProfileOut(BaseModel):
 )
 def get_profile(request) -> dict:
     """Get current authenticated user's profile."""
-    from admin.auth.api import _get_permissions_for_roles
     from admin.aaas.models import AdminProfile, ApiKey, UserSession
+    from admin.auth.api import get_permissions_for_roles
 
     user_id = getattr(request.auth, "sub", None)
     email = getattr(request.auth, "email", None)
@@ -460,7 +478,7 @@ def get_profile(request) -> dict:
 
     roles = getattr(request.auth, "roles", ["aaas_admin"])
 
-    permissions = _get_permissions_for_roles(roles)
+    permissions = get_permissions_for_roles(roles)
 
     # Get or create profile from database
     profile, created = AdminProfile.objects.get_or_create(

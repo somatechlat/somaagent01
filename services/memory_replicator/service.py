@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict
 
 from ninja import Router
-from orchestrator.base_service import BaseService
-from orchestrator.config import CentralizedConfig
 
-# LOGGER configuration
+from admin.orchestrator.base_service import BaseService
+from admin.orchestrator.config import CentralizedConfig
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -77,55 +76,18 @@ class MemoryReplicatorService(BaseService):
         except Exception as exc:
             LOGGER.error(f"Error during {self.service_name} service shutdown: {exc}")
 
+    async def _start(self) -> None:
+        """Orchestrator lifecycle hook — delegates to startup."""
+        await self.startup()
+
+    async def _stop(self) -> None:
+        """Orchestrator lifecycle hook — delegates to shutdown."""
+        await self.shutdown()
+
     def register_routes(self, app: Router) -> None:
-        """Register health check endpoints for the memory replicator service."""
+        """Register API routes for the memory replicator service.
 
-        # Add a health check endpoint for the orchestrator
-        @app.api_route("/health")
-        async def health_check():
-            """Execute health check."""
-
-            status = "healthy"
-            details = {"service": self.service_name}
-
-            # Check if worker task is running
-            if self.worker_task:
-                if self.worker_task.done():
-                    status = "unhealthy"
-                    details["error"] = "Worker task has stopped"
-                    try:
-                        # Check if there was an exception
-                        result = self.worker_task.result()
-                        details["result"] = str(result)
-                    except Exception as e:
-                        details["exception"] = str(e)
-            else:
-                status = "unhealthy"
-                details["error"] = "Worker task not started"
-
-            return {"status": status, "details": details}
-
-        # Add a metrics endpoint
-        @app.api_route("/metrics")
-        async def metrics():
-            """Return basic metrics about the memory replicator."""
-            return {
-                "service": self.service_name,
-                "worker_running": self.worker_task is not None and not self.worker_task.done(),
-                "worker_task_cancelled": (
-                    self.worker_task.cancelled() if self.worker_task else False
-                ),
-            }
-
-        LOGGER.info(f"Registered health endpoints for {self.service_name} service")
-
-    def as_dict(self) -> Dict[str, Any]:
-        """Return a serialisable representation of the memory replicator service."""
-        base_info = super().as_dict()
-        base_info.update(
-            {
-                "port": self.config.memory_replicator_port,
-                "worker_running": self.worker_task is not None and not self.worker_task.done(),
-            }
-        )
-        return base_info
+        Args:
+            app: The Ninja Router to register routes with.
+        """
+        pass

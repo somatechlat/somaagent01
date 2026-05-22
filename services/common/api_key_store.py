@@ -14,7 +14,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, List, Optional
 
-import redis.asyncio as redis
+from services.common.redis_pool import get_async_redis_pool
 
 __all__ = [
     "ApiKeyMetadata",
@@ -251,10 +251,8 @@ class RedisApiKeyStore(ApiKeyStore):
         """Initialize the instance."""
 
         raw_url = url or os.environ.get("SA01_REDIS_URL") or os.environ.get("REDIS_URL")
-        self.url = os.path.expandvars(raw_url)
-        self._client: Optional[redis.Redis] = (
-            redis.from_url(self.url, decode_responses=True) if raw_url else None
-        )
+        self.url = os.path.expandvars(raw_url) if raw_url is not None else ""
+        self._client = get_async_redis_pool(self.url) if raw_url else None
         self._namespace = "gateway:api_keys"
 
     async def create_key(self, label: str, *, created_by: str | None = None) -> ApiKeySecret:
@@ -280,7 +278,7 @@ class RedisApiKeyStore(ApiKeyStore):
             "hash": _hash_secret(api_key),
         }
         payload = json.dumps(record, ensure_ascii=False)
-        await self._client.hset(self._namespace, key_id, payload)
+        await self._client.hset(self._namespace, key_id, payload)  # type: ignore[reportGeneralTypeIssues]
         return ApiKeySecret(secret=api_key, **{k: record[k] for k in record if k != "hash"})
 
     async def list_keys(self) -> List[ApiKeyMetadata]:
@@ -288,7 +286,7 @@ class RedisApiKeyStore(ApiKeyStore):
 
         if not self._client:
             return []
-        raw = await self._client.hvals(self._namespace)
+        raw = await self._client.hvals(self._namespace)  # type: ignore[reportGeneralTypeIssues]
         return [_metadata_from_record(json.loads(item)) for item in raw]
 
     async def revoke_key(self, key_id: str) -> None:
@@ -300,12 +298,12 @@ class RedisApiKeyStore(ApiKeyStore):
 
         if not self._client:
             return
-        record = await self._client.hget(self._namespace, key_id)
+        record = await self._client.hget(self._namespace, key_id)  # type: ignore[reportGeneralTypeIssues]
         if not record:
             return
         payload = json.loads(record)
         payload["revoked"] = True
-        await self._client.hset(self._namespace, key_id, json.dumps(payload, ensure_ascii=False))
+        await self._client.hset(self._namespace, key_id, json.dumps(payload, ensure_ascii=False))  # type: ignore[reportGeneralTypeIssues]
 
     async def verify_key(self, api_key: str) -> Optional[ApiKeyMetadata]:
         """Execute verify key.
@@ -317,7 +315,9 @@ class RedisApiKeyStore(ApiKeyStore):
         key_id = _key_id_from_value(api_key)
         if not key_id:
             return None
-        record = await self._client.hget(self._namespace, key_id)
+        if not self._client:
+            return None
+        record = await self._client.hget(self._namespace, key_id)  # type: ignore[reportGeneralTypeIssues]
         if not record:
             return None
         payload = json.loads(record)
@@ -334,12 +334,14 @@ class RedisApiKeyStore(ApiKeyStore):
             key_id: The key_id.
         """
 
-        record = await self._client.hget(self._namespace, key_id)
+        if not self._client:
+            return
+        record = await self._client.hget(self._namespace, key_id)  # type: ignore[reportGeneralTypeIssues]
         if not record:
             return
         payload = json.loads(record)
         payload["last_used_at"] = time.time()
-        await self._client.hset(self._namespace, key_id, json.dumps(payload, ensure_ascii=False))
+        await self._client.hset(self._namespace, key_id, json.dumps(payload, ensure_ascii=False))  # type: ignore[reportGeneralTypeIssues]
 
 
 def _metadata_from_record(record: dict[str, Any]) -> ApiKeyMetadata:

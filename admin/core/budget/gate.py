@@ -194,11 +194,15 @@ def _extract_tenant_id(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Optiona
 
     if request:
         # Django Ninja adds tenant_id to request
-        if hasattr(request, "tenant_id"):
-            return str(request.tenant_id)
+        tenant = getattr(request, "tenant_id", None)
+        if tenant is not None:
+            return str(tenant)
         # Or on user
-        if hasattr(request, "user") and hasattr(request.user, "tenant_id"):
-            return str(request.user.tenant_id)
+        user = getattr(request, "user", None)
+        if user is not None:
+            tenant = getattr(user, "tenant_id", None)
+            if tenant is not None:
+                return str(tenant)
 
     # From capsule
     capsule = kwargs.get("capsule")
@@ -291,16 +295,15 @@ async def _record_lago_event(
         True if recorded, False on error
     """
     try:
-        from admin.billing.lago_client import get_lago_client, UsageEvent
+        from admin.billing.lago_client import get_lago_client
 
         client = get_lago_client()
-        event = UsageEvent(
+        await client.create_event(
             transaction_id=f"{lago_code}-{uuid.uuid4().hex[:8]}",
             customer_external_id=tenant_id,
             code=lago_code,
             properties={"units": units},
         )
-        await client.create_event(event)
         return True
 
     except ImportError:

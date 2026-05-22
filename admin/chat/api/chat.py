@@ -201,27 +201,25 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
     from asgiref.sync import sync_to_async
     from django.conf import settings
 
-    from services.common.chat_service import get_chat_service
+    from admin.core.chat_orchestrator import get_chat_orchestrator
 
     user = get_current_user(request)
     user_id = user.sub
-    # Defensive extraction: Use getattr with fallback pattern
     tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
     agent_id = payload.agent_id or str(uuid4())
 
-    # Create conversation using ChatService
-    chat_service = await get_chat_service()
+    orchestrator = await get_chat_orchestrator()
 
     try:
-        conversation = await chat_service.create_conversation(
+        conversation = await orchestrator.create_conversation(
             agent_id=agent_id,
             user_id=user_id,
             tenant_id=tenant_id,
+            title=payload.title,
         )
 
-        # Initialize agent session (local session store)
         try:
-            await chat_service.initialize_agent_session(
+            await orchestrator.initialize_session(
                 agent_id=agent_id,
                 conversation_id=conversation.id,
                 user_context={
@@ -230,21 +228,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
                 },
             )
         except Exception as e:
-            # Non-critical - log and continue
             logger.warning(f"Agent session init failed (non-critical): {e}")
-
-        # Recall memories for context
-        try:
-            memories = await chat_service.recall_memories(
-                agent_id=agent_id,
-                user_id=user_id,
-                query="user context",
-                limit=5,
-                tenant_id=tenant_id,
-            )
-            logger.debug(f"Recalled {len(memories)} memories for conversation")
-        except Exception as e:
-            logger.warning(f"Memory recall failed (non-critical): {e}")
 
         title = payload.title or f"Conversation {conversation.id[:8]}"
 
@@ -254,14 +238,15 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
             @sync_to_async
             def update_title():
                 """Execute update title."""
-
-                Conversation.objects.filter(id=conversation.id).update(title=payload.title)
+                from django.db import transaction
+                with transaction.atomic():
+                    Conversation.objects.filter(id=conversation.id).update(title=payload.title)
 
             await update_title()
 
         return ConversationDetailOut(
             id=conversation.id,
-            title=title,
+            title=conversation.title,
             agent_id=agent_id,
             agent_name=None,
             memory_mode=payload.memory_mode,
@@ -421,83 +406,54 @@ async def send_message(
     - ZDL via OutboxMessage
     """
     from asgiref.sync import sync_to_async
+    from django.conf import settings
 
-    from services.common.chat_service import get_chat_service
+    from admin.core.chat_orchestrator import ChatTurn, get_chat_orchestrator
 
     user = get_current_user(request)
     user_id = user.sub
 
-    # Verify conversation exists and get agent_id
     @sync_to_async
     def _get_conversation():
-        """Execute get conversation."""
-
         try:
-            conv = Conversation.objects.get(id=conversation_id)
-            return conv
+            return Conversation.objects.get(id=conversation_id)
         except Conversation.DoesNotExist:
             return None
 
     conv = await _get_conversation()
-
     if not conv:
         raise NotFoundError("conversation", conversation_id)
 
     agent_id = str(conv.agent_id)
+    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
-    # For sync mode, collect full response
+    orchestrator = await get_chat_orchestrator()
+
+    # Sync mode: run full 12-phase pipeline and return complete response
     if not payload.stream:
-        chat_service = await get_chat_service()
+        turn = ChatTurn(
+            capsule_id=agent_id,
+            user_id=user_id,
+            tenant_id=tenant_id or "",
+            user_message=payload.content,
+            conversation_id=conversation_id,
+        )
+        result = await orchestrator.process_turn(turn)
 
-        response_content = []
-        token_count = 0
+        if result.errors:
+            raise ServiceError(f"Chat failed: {result.errors[0]}")
 
-        try:
-            async for token in chat_service.send_message(
-                conversation_id=conversation_id,
-                agent_id=agent_id,
-                content=payload.content,
-                user_id=user_id,
-            ):
-                response_content.append(token)
-                token_count += 1
+        return SendMessageResponse(
+            id=str(uuid4()),
+            conversation_id=conversation_id,
+            role="assistant",
+            content=result.response,
+            tokens_used=result.context_tokens,
+            model=result.model_used,
+            created_at=timezone.now().isoformat(),
+        ).model_dump()
 
-            full_response = "".join(response_content)
-
-            # Get the created message
-            @sync_to_async
-            def get_last_message():
-                """Retrieve last message."""
-
-                return (
-                    Message.objects.filter(
-                        conversation_id=conversation_id,
-                        role="assistant",
-                    )
-                    .order_by("-created_at")
-                    .first()
-                )
-
-            msg = await get_last_message()
-
-            return SendMessageResponse(
-                id=str(msg.id) if msg else str(uuid4()),
-                conversation_id=conversation_id,
-                role="assistant",
-                content=full_response,
-                tokens_used=token_count,
-                model=msg.model if msg else "",
-                created_at=msg.created_at.isoformat() if msg else timezone.now().isoformat(),
-            ).model_dump()
-
-        except Exception as e:
-            logger.error(f"Message send failed: {e}")
-            raise ServiceError(f"Failed to send message: {e}")
-
-    # NOTE: For stream mode, message storage happens via WebSocket handler
-    # which uses chat_service.py (SomaBrain integration)
-    # This API endpoint just acknowledges streaming initiation
-
+    # Stream mode: return WebSocket endpoint for true streaming
     stream_request_id = str(uuid4())
     return {
         "id": stream_request_id,

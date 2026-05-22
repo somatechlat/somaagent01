@@ -68,9 +68,7 @@ class DerivedSettings(BaseModel):
 
     # --- From RESOURCE ($/turn) ---
     token_limit: int = Field(ge=1000, le=200000, description="Total token budget")
-    cost_tier: Literal["budget", "standard", "premium", "flagship"] = Field(
-        description="Cost tier"
-    )
+    cost_tier: Literal["budget", "standard", "premium", "flagship"] = Field(description="Cost tier")
     thinking_budget: int = Field(ge=0, le=8192, description="Thinking tokens budget")
 
     model_config = {"frozen": True}

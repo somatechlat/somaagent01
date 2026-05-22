@@ -11,7 +11,7 @@ PhD Developer: Clean functional design.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any, cast, Dict, Literal, TYPE_CHECKING
 
 from admin.core.agentiq.settings import DerivedSettings
 from admin.core.agentiq.tables import (
@@ -70,7 +70,7 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
         egress_allowed=auto.egress_allowed,
         # From RESOURCE
         token_limit=resource.token_limit,
-        cost_tier=resource.cost_tier,
+        cost_tier=cast(Literal["budget", "standard", "premium", "flagship"], resource.cost_tier),
         thinking_budget=resource.thinking_budget,
     )
 
@@ -106,6 +106,6 @@ def derive_from_knobs(
         tool_approval=auto.tool_approval,
         egress_allowed=auto.egress_allowed,
         token_limit=resource.token_limit,
-        cost_tier=resource.cost_tier,
+        cost_tier=cast(Literal["budget", "standard", "premium", "flagship"], resource.cost_tier),
         thinking_budget=resource.thinking_budget,
     )

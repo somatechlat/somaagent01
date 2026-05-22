@@ -53,6 +53,8 @@ class RequestHandler:
 
         session_id = validation.session_id
         tool_name = validation.tool_name
+        assert session_id is not None
+        assert tool_name is not None
         tenant = validation.tenant
         persona_id = validation.persona_id
         trace_id_hex = get_trace_id()

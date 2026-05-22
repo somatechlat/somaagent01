@@ -292,7 +292,7 @@ def _export_capsule_core(capsule: Capsule) -> CapsuleExport:
         tenant=capsule.tenant,
         description=capsule.description,
         status=capsule.status,
-        parent_id=str(capsule.parent_id) if capsule.parent_id else None,
+        parent_id=str(capsule.parent.id) if capsule.parent else None,
         soul=CapsuleSoulExport(
             system_prompt=capsule.system_prompt,
             personality_traits=capsule.personality_traits,
@@ -391,7 +391,7 @@ def _export_sessions(capsule: Capsule) -> list:
                     "role": event.role,
                     "created_at": event.created_at.isoformat(),
                 }
-                for event in session.events.all()
+                for event in session.events.all()  # type: ignore[attr-defined]
             ],
         }
         for session in sessions

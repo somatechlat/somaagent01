@@ -20,12 +20,12 @@ from django.conf import settings
 django.setup()
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
-from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 
 from services.common.dlq import DeadLetterQueue
+from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.tracing import setup_tracing
-from services.memory_replicator.service import (
+from services.memory_replicator.store import (
     ensure_schema as ensure_replica_schema,
     MemoryReplicaStore,
 )
@@ -60,8 +60,8 @@ def ensure_metrics_server(settings: object) -> None:
     if _METRICS_STARTED:
         return
     # Prefer admin-wide metrics configuration; fall back to provided defaults.
-    default_port = int(getattr(os.environ.service, "metrics_port", 9403))
-    default_host = str(getattr(os.environ.service, "metrics_host", "0.0.0.0"))
+    default_port = int(os.environ.get("REPLICATOR_METRICS_PORT", "9403"))
+    default_host = str(os.environ.get("REPLICATOR_METRICS_HOST", "0.0.0.0"))
     port = int(os.environ.get("REPLICATOR_METRICS_PORT", str(default_port)))
     if port > 0:
         start_http_server(port, addr=os.environ.get("REPLICATOR_METRICS_HOST", default_host))

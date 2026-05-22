@@ -24,9 +24,9 @@ def _ensure_django() -> None:
 
     The entry point must handle initialization.
     """
-    import django
+    from django.apps import apps
 
-    if not django.apps.apps.ready:
+    if not apps.ready:
         raise RuntimeError(
             "Django apps not populated. Ensure django.setup() is called at entry point."
         )

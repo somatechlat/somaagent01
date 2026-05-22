@@ -17,8 +17,7 @@ from django.http import HttpRequest
 from ninja import Router, Schema
 
 from admin.core.features.check import is_feature_enabled
-from admin.core.features.exceptions import FeatureDisabledError
-from admin.core.features.registry import FEATURE_REGISTRY, list_features
+from admin.core.features.registry import list_features
 
 router = Router(tags=["features"])
 
@@ -61,7 +60,7 @@ def get_my_features(request: HttpRequest):
     Resolves: Plan, Dependencies, Overrides.
     """
     # Extract tenant_id from request (Ninja/Middleware)
-    tenant_id = getattr(request.state, "tenant_id", None)
+    tenant_id = getattr(request.state, "tenant_id", None)  # type: ignore[attr-defined]
 
     if not tenant_id and request.user.is_authenticated:
         # Fallback to user's active tenant
@@ -79,9 +78,9 @@ def get_my_features(request: HttpRequest):
 
     # Assuming auth is enforced by global router or decorator on parent
     if not tenant_id:
-         # Empty list or error?
-         # Let's return features but all disabled if unknown tenant
-         effective_tenant = "anonymous"
+        # Empty list or error?
+        # Let's return features but all disabled if unknown tenant
+        effective_tenant = "anonymous"
     else:
         effective_tenant = str(tenant_id)
 

@@ -90,7 +90,13 @@ def build_default_registry() -> FeatureRegistry:
     # Use the central runtime_config.env helper for consistency.
     """Execute build default registry."""
 
-    profile = os.environ.get("SA01_FEATURE_PROFILE", "enhanced").lower()
+    try:
+        from config.settings_registry import SettingsRegistry
+
+        settings = SettingsRegistry.get()
+        profile = settings.sa01_feature_profile.lower()
+    except Exception:
+        profile = os.environ.get("SA01_FEATURE_PROFILE", "enhanced").lower()
     if profile not in {"minimal", "standard", "enhanced", "max"}:
         profile = "enhanced"
 
@@ -275,4 +281,4 @@ def build_default_registry() -> FeatureRegistry:
         ),
     ]
 
-    return FeatureRegistry(descriptors=descriptors, profile=profile)
+    return FeatureRegistry(descriptors=descriptors, profile=profile)  # type: ignore[arg-type]

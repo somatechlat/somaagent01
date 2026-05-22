@@ -236,7 +236,7 @@ somaagent01/
 │   ├── tool_executor/       # Tool execution engine
 │   ├── soma_client/         # SomaBrain integration
 │   └── [other services]     # Enterprise services
-├── webui/                   # React frontend
+├── webui/                   # Lit 3.x Web Components frontend
 ├── schemas/                 # API schemas
 └── infra/                   # Infrastructure
 
@@ -245,7 +245,7 @@ somaagent01/
 ├── requirements.txt         # Python dependencies
 ├── manage.py               # Django management
 ├── Makefile               # Build automation
-└── docker-compose.yml     # Container orchestration
+└── infra/standalone/docker-compose.yml  # Container orchestration
 ```
 
 ---

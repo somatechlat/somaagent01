@@ -11,14 +11,14 @@ from typing import Any, Optional
 from django.db import transaction
 from ninja import Router
 
-from admin.common.messages import ErrorCode, get_message, SuccessCode
 from admin.aaas.api.schemas import (
     FeatureFlagOut,
     FeatureFlagUpdate,
     FeatureOut,
     MessageResponse,
 )
-from admin.aaas.models import FeatureProvider, AaasFeature, TierFeature
+from admin.aaas.models import AaasFeature, FeatureProvider, TierFeature
+from admin.common.messages import ErrorCode, get_message, SuccessCode
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def get_feature(request, feature_id: str):
         # For strict schema (FeatureOut), raising 404 is cleaner than returning ErrorResponse
         from django.http import Http404
 
-        raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, code=feature_id))
+        raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, feature=feature_id))
 
 
 @router.get("/{feature_code}/providers", response=list[dict])
@@ -84,8 +84,8 @@ def list_feature_providers(request, feature_code: str):
             "code": p.code,
             "name": p.name,
             "description": p.description,
-            "icon": p.icon,
-            "feature_id": str(p.feature_id),
+            "icon": getattr(p, "icon", ""),
+            "feature_id": str(p.feature.id),
             "config_schema": p.config_schema or {},
             "is_default": p.is_default,
         }
@@ -104,10 +104,10 @@ def list_tier_features(request, tier_id: str):
     return [
         {
             "id": str(tf.id),
-            "feature_id": str(tf.feature_id),
+            "feature_id": str(tf.feature.id),
             "feature_code": tf.feature.code,
             "feature_name": tf.feature.name,
-            "enabled": tf.enabled,
+            "enabled": tf.is_enabled,
             "quota_limit": tf.quota_limit,
             "settings_override": tf.settings_override or {},
         }
@@ -129,7 +129,7 @@ def assign_feature_to_tier(
     except AaasFeature.DoesNotExist:
         from django.http import Http404
 
-        raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, code=feature_code))
+        raise Http404(get_message(ErrorCode.FEATURE_NOT_FOUND, feature=feature_code))
 
     tf, created = TierFeature.objects.update_or_create(
         tier_id=tier_id,
@@ -162,10 +162,10 @@ def remove_feature_from_tier(request, tier_id: str, feature_code: str):
 
     if deleted:
         logger.info(f"Feature {feature_code} removed from tier {tier_id}")
-        return MessageResponse(message=get_message(SuccessCode.FEATURE_REMOVED, code=feature_code))
+        return MessageResponse(message=get_message(SuccessCode.FEATURE_REMOVED, feature_code=feature_code))
 
     return MessageResponse(
-        message=get_message(ErrorCode.FEATURE_NOT_ON_TIER, code=feature_code),
+        message=get_message(ErrorCode.FEATURE_NOT_ON_TIER, feature=feature_code),
         success=False,
     )
 

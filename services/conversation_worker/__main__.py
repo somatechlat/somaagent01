@@ -15,7 +15,8 @@ import django
 django.setup()
 
 import uvicorn
-from orchestrator.config import CentralizedConfig
+
+from admin.orchestrator.config import CentralizedConfig
 
 from .service import ConversationWorkerService
 
@@ -25,11 +26,11 @@ LOGGER = logging.getLogger(__name__)
 
 async def main():
     """Main entry point for the conversation worker service."""
-    config = CentralizedConfig()
+    config = CentralizedConfig()  # type: ignore[call-arg]
     service = ConversationWorkerService(config)
 
     # Start the service using uvicorn
-    await uvicorn.run(
+    uvicorn.run(
         service.app,
         host=config.conversation_worker_host,
         port=config.conversation_worker_port,

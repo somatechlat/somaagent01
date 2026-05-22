@@ -140,7 +140,7 @@ def _get_cached_api_key(provider: str) -> Optional[str]:
 async def _invoke_llm(
     messages: list,
     model: str,
-    base_url: str,
+    base_url: Optional[str],
     temperature: Optional[float],
     overrides: dict,
     request_logprobs: bool,
@@ -155,7 +155,7 @@ async def _invoke_llm(
     # Check cache first
     api_key = _get_cached_api_key(provider)
     if not api_key:
-        api_key = await creds_store.get_provider_key(provider)
+        api_key = creds_store.get_provider_key(provider)
         if api_key:
             # Cache API key for 5 minutes
             cache.set(f"llm_api_key:{provider}", api_key, 300)
@@ -232,7 +232,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
 
     # Also log via audit store
     try:
-        from integrations.repositories import get_audit_store
+        from integrations.repositories import get_audit_store  # type: ignore[import]
 
         await get_audit_store().log(
             request_id=None,

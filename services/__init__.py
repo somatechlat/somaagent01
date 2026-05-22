@@ -1,3 +1,4 @@
+# pyright: reportUnsupportedDunderAll=false
 """Service implementations for SomaAgent01.
 
 Capsule Management:
@@ -13,7 +14,7 @@ Use: from services.capsule_export import export_capsule
 # Lazy imports - do NOT import Django models at module level
 # This avoids AppRegistryNotReady errors during Django bootstrap
 
-__all__ = [
+__all__ = [  # type: ignore
     # Core operations (from capsule_core)
     "verify_capsule",
     "certify_capsule",

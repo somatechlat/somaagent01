@@ -190,8 +190,8 @@ class TierFeature(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "tier_id": str(self.tier_id),
-            "feature_id": str(self.feature_id),
+            "tier_id": str(self.tier_id),  # type: ignore[reportAttributeAccessIssue]
+            "feature_id": str(self.feature_id),  # type: ignore[reportAttributeAccessIssue]  # type: ignore[reportAttributeAccessIssue]  # type: ignore[reportAttributeAccessIssue]
             "feature_code": self.feature.code if self.feature else None,
             "feature_name": self.feature.name if self.feature else None,
             "is_enabled": self.is_enabled,
@@ -264,7 +264,7 @@ class FeatureProvider(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "feature_id": str(self.feature_id),
+            "feature_id": str(self.feature_id),  # type: ignore[reportAttributeAccessIssue]
             "feature_code": self.feature.code if self.feature else None,
             "code": self.code,
             "name": self.name,

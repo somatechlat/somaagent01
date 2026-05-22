@@ -27,7 +27,7 @@ router = Router(tags=["Files V2"])
 # SCHEMAS
 # =============================================================================
 
-from ninja import Schema, File, UploadedFile
+from ninja import File, Schema, UploadedFile
 
 
 class FileOut(Schema):
@@ -145,8 +145,8 @@ def create_upload_url(
     user_id: str,
 ):
     """Create presigned upload URL."""
-    import boto3
-    from botocore.config import Config
+    import boto3  # type: ignore[import]
+    from botocore.config import Config  # type: ignore[import]
 
     file_id = str(uuid.uuid4())
     storage_key = f"uploads/{tenant_id}/{file_id}/{filename}"
@@ -206,15 +206,16 @@ def create_upload_url(
 @router.post("/upload-local/{file_id}")
 def upload_local(request, file_id: str, file: UploadedFile = File(...)):
     """Handle local file upload (Dev/AAAS-in-a-box mode)."""
-    from django.core.files.storage import default_storage
     from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
     from admin.filesv2.models import File as FileModel
 
     try:
         f = FileModel.objects.get(id=file_id, deleted_at__isnull=True)
 
         # Security check: ensure file size doesn't exceed limit
-        if file.size > f.size_bytes + (1024 * 1024): # 1MB buffer
+        if file.size > f.size_bytes + (1024 * 1024):  # 1MB buffer
             return {"error": "File size exceeds declared size"}, 400
 
         # Save to local storage using the pre-defined key
@@ -247,8 +248,8 @@ def delete_file(request, file_id: str):
 @router.get("/{file_id}/download-url")
 def get_download_url(request, file_id: str):
     """Get presigned download URL."""
-    import boto3
-    from botocore.config import Config
+    import boto3  # type: ignore[import]
+    from botocore.config import Config  # type: ignore[import]
 
     from admin.filesv2.models import File
 

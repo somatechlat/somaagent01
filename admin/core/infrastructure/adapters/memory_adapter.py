@@ -5,7 +5,7 @@ to the existing production SomaBrainClient async functions.
 """
 
 import os
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -14,20 +14,7 @@ from admin.agents.services.somabrain_integration import (
     get_weights_async,
     publish_reward_async,
 )
-
-
-class MemoryAdapterPort(Protocol):
-    """Port interface for memory operations."""
-
-    async def store_memory(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Store memory payload."""
-        ...
-
-    async def recall_memory(
-        self, query: str, *, session_id: Optional[str] = None, limit: int = 10
-    ) -> List[Dict[str, Any]]:
-        """Recall memories matching query."""
-        ...
+from admin.core.domain.ports.adapters import MemoryAdapterPort
 
 
 def get_somabrain_url() -> str:
@@ -79,7 +66,7 @@ class SomaBrainMemoryAdapter(MemoryAdapterPort):
     async def publish_reward(
         self,
         payload: Dict[str, Any],
-    ) -> Dict[str, Any]:
+    ) -> bool:
         """Execute publish reward.
 
         Args:

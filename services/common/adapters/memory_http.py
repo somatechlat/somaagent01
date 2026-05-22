@@ -13,11 +13,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
 
 import httpx
-
-from services.common.protocols import MemoryServiceProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +49,7 @@ class HTTPMemoryAdapter:
         if self._api_token:
             headers["Authorization"] = f"Bearer {self._api_token}"
 
-        self._client = httpx.Client(
-            base_url=self._base_url, timeout=timeout, headers=headers
-        )
+        self._client = httpx.Client(base_url=self._base_url, timeout=timeout, headers=headers)
         self._async_client: httpx.AsyncClient | None = None
 
         logger.info(f"✅ HTTPMemoryAdapter initialized: {self._base_url}")

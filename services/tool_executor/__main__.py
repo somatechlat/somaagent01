@@ -15,7 +15,8 @@ import django
 django.setup()
 
 import uvicorn
-from orchestrator.config import CentralizedConfig
+
+from admin.orchestrator.config import CentralizedConfig
 
 from .service import ToolExecutorService
 
@@ -25,11 +26,11 @@ LOGGER = logging.getLogger(__name__)
 
 async def main():
     """Main entry point for the tool executor service."""
-    config = CentralizedConfig()
+    config = CentralizedConfig()  # type: ignore[call-arg]
     service = ToolExecutorService(config)
 
     # Start the service using uvicorn
-    await uvicorn.run(
+    uvicorn.run(
         service.app,
         host=config.tool_executor_host,
         port=config.tool_executor_port,

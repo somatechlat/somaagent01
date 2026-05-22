@@ -37,7 +37,8 @@ from services.tool_executor.config import (
 )
 from services.tool_executor.execution_engine import ExecutionEngine
 from services.tool_executor.metrics import ensure_metrics_server
-from services.tool_executor.multimodal_executor import MultimodalExecutor
+
+# MultimodalExecutor imported lazily below to avoid import crashes when dependencies are missing
 from services.tool_executor.request_handler import RequestHandler
 from services.tool_executor.resource_manager import ResourceManager
 from services.tool_executor.result_publisher import ResultPublisher
@@ -79,7 +80,7 @@ class ToolExecutor:
         self.streams = get_stream_config()
         self._audit_store: _AuditStore | None = None
         self._multimodal_task: asyncio.Task | None = None
-        self._multimodal_executor: MultimodalExecutor | None = None
+        self._multimodal_executor: Any | None = None
 
         # Initialize handlers
         self._request_handler = RequestHandler(self)
@@ -92,6 +93,10 @@ class ToolExecutor:
             return self._audit_store
         self._audit_store = audit_store_from_env()
         return self._audit_store
+
+    async def handle_event(self, event: dict[str, Any]) -> None:
+        """Delegate event handling to RequestHandler."""
+        await self._request_handler.handle(event)
 
     async def publish_result(
         self,
@@ -123,6 +128,8 @@ class ToolExecutor:
         # Multimodal job executor (polling pending plans)
         if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
             try:
+                from services.tool_executor.multimodal_executor import MultimodalExecutor
+
                 self._multimodal_executor = MultimodalExecutor(
                     dsn=os.environ.get("SA01_DB_DSN", "")
                 )

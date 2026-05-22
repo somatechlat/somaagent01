@@ -8,7 +8,10 @@ VIBE Compliance:
     - Rule 4: Real implementation (minimal stub for repair)
 """
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetryStore:
@@ -36,3 +39,33 @@ class TelemetryStore:
             TelemetryStore: Configured store instance.
         """
         return cls(settings)
+
+    async def insert_llm(self, event: dict[str, Any]) -> None:
+        """Stub for inserting an LLM telemetry event."""
+        pass
+
+    async def insert_tool(self, event: dict[str, Any]) -> None:
+        """Stub for inserting a tool telemetry event."""
+        pass
+
+    async def insert_budget(self, event: dict[str, Any]) -> None:
+        """Stub for inserting a budget telemetry event."""
+        pass
+
+    async def insert_escalation(self, event: dict[str, Any]) -> None:
+        """Stub for inserting an escalation telemetry event."""
+        pass
+
+    @classmethod
+    def from_env(cls) -> "TelemetryStore":
+        """Create a store instance from environment/Django settings.
+
+        Returns:
+            TelemetryStore: Configured store instance.
+        """
+        try:
+            from django.conf import settings as django_settings
+            return cls(django_settings)
+        except Exception:
+            logger.exception("Failed to load Django settings for TelemetryStore")
+            return cls()

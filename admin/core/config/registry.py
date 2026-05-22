@@ -12,7 +12,15 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Generator, Optional, TypeVar
 
 from .loader import ConfigLoader, get_config_loader
-from .models import Config
+from .models import (
+    AuthConfig,
+    Config,
+    DatabaseConfig,
+    ExternalServiceConfig,
+    KafkaConfig,
+    RedisConfig,
+    ServiceConfig,
+)
 
 T = TypeVar("T")
 
@@ -70,6 +78,7 @@ class ConfigRegistry:
         with self._lock:
             if not self._initialized:
                 self.initialize()
+            assert self._current_config is not None
             return self._current_config
 
     def refresh_config(self) -> None:
@@ -142,56 +151,56 @@ class ConfigRegistry:
                     f"Error in config subscription {subscription.name} from {subscription.owner}: {e}"
                 )
 
-    def get_service_config(self) -> Config.ServiceConfig:
+    def get_service_config(self) -> ServiceConfig:
         """Get service configuration.
 
         Returns:
-            Config.ServiceConfig: Service configuration
+            ServiceConfig: Service configuration
         """
         config = self.get_config()
         return config.service
 
-    def get_database_config(self) -> Config.DatabaseConfig:
+    def get_database_config(self) -> DatabaseConfig:
         """Get database configuration.
 
         Returns:
-            Config.DatabaseConfig: Database configuration
+            DatabaseConfig: Database configuration
         """
         config = self.get_config()
         return config.database
 
-    def get_kafka_config(self) -> Config.KafkaConfig:
+    def get_kafka_config(self) -> KafkaConfig:
         """Get Kafka configuration.
 
         Returns:
-            Config.KafkaConfig: Kafka configuration
+            KafkaConfig: Kafka configuration
         """
         config = self.get_config()
         return config.kafka
 
-    def get_redis_config(self) -> Config.RedisConfig:
+    def get_redis_config(self) -> RedisConfig:
         """Get Redis configuration.
 
         Returns:
-            Config.RedisConfig: Redis configuration
+            RedisConfig: Redis configuration
         """
         config = self.get_config()
         return config.redis
 
-    def get_external_config(self) -> Config.ExternalServiceConfig:
+    def get_external_config(self) -> ExternalServiceConfig:
         """Get external service configuration.
 
         Returns:
-            Config.ExternalServiceConfig: External service configuration
+            ExternalServiceConfig: External service configuration
         """
         config = self.get_config()
         return config.external
 
-    def get_auth_config(self) -> Config.AuthConfig:
+    def get_auth_config(self) -> AuthConfig:
         """Get authentication configuration.
 
         Returns:
-            Config.AuthConfig: Authentication configuration
+            AuthConfig: Authentication configuration
         """
         config = self.get_config()
         return config.auth
@@ -223,7 +232,9 @@ class ConfigRegistry:
         return config.extra.get(key, default)
 
     @contextmanager
-    def config_context(self, override_config: Optional[Config] = None) -> Generator[Config, None, None]:
+    def config_context(
+        self, override_config: Optional[Config] = None
+    ) -> Generator[Config, None, None]:
         """Context manager for configuration access.
 
         Args:
@@ -239,6 +250,7 @@ class ConfigRegistry:
                 self._current_config = override_config
 
             try:
+                assert self._current_config is not None
                 yield self._current_config
             finally:
                 if override_config is not None:
@@ -385,61 +397,61 @@ def unsubscribe_from_config(name: str, owner: str) -> None:
     registry.unsubscribe(name, owner)
 
 
-def get_service_config() -> Config.ServiceConfig:
+def get_service_config() -> ServiceConfig:
     """Get global service configuration.
 
     Returns:
-        Config.ServiceConfig: Service configuration
+        ServiceConfig: Service configuration
     """
     registry = get_config_registry()
     return registry.get_service_config()
 
 
-def get_database_config() -> Config.DatabaseConfig:
+def get_database_config() -> DatabaseConfig:
     """Get global database configuration.
 
     Returns:
-        Config.DatabaseConfig: Database configuration
+        DatabaseConfig: Database configuration
     """
     registry = get_config_registry()
     return registry.get_database_config()
 
 
-def get_kafka_config() -> Config.KafkaConfig:
+def get_kafka_config() -> KafkaConfig:
     """Get global Kafka configuration.
 
     Returns:
-        Config.KafkaConfig: Kafka configuration
+        KafkaConfig: Kafka configuration
     """
     registry = get_config_registry()
     return registry.get_kafka_config()
 
 
-def get_redis_config() -> Config.RedisConfig:
+def get_redis_config() -> RedisConfig:
     """Get global Redis configuration.
 
     Returns:
-        Config.RedisConfig: Redis configuration
+        RedisConfig: Redis configuration
     """
     registry = get_config_registry()
     return registry.get_redis_config()
 
 
-def get_external_config() -> Config.ExternalServiceConfig:
+def get_external_config() -> ExternalServiceConfig:
     """Get global external service configuration.
 
     Returns:
-        Config.ExternalServiceConfig: External service configuration
+        ExternalServiceConfig: External service configuration
     """
     registry = get_config_registry()
     return registry.get_external_config()
 
 
-def get_auth_config() -> Config.AuthConfig:
+def get_auth_config() -> AuthConfig:
     """Get global authentication configuration.
 
     Returns:
-        Config.AuthConfig: Authentication configuration
+        AuthConfig: Authentication configuration
     """
     registry = get_config_registry()
     return registry.get_auth_config()

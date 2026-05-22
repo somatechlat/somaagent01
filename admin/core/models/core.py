@@ -7,10 +7,8 @@ Replaces raw SQL stores with Django models.
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from django.db import models
-from django.utils import timezone
 
 # =============================================================================
 # SESSION MODELS (replaces session_repository.py)
@@ -633,4 +631,3 @@ class AgentSetting(models.Model):
 
 # Import SensorOutbox so Django detects it for migrations
 from admin.core.sensors.outbox import SensorOutbox  # noqa: E402, F401
-

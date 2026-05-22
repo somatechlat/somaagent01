@@ -62,6 +62,7 @@ class PublisherProtocol(Protocol):
         self,
         topic: str,
         payload: Any,
+        *,
         dedupe_key: Optional[str] = None,
         session_id: Optional[str] = None,
         tenant: Optional[str] = None,

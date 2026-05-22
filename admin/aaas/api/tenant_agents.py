@@ -15,10 +15,10 @@ from django.conf import settings
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.aaas.models import Agent, AgentStatus, Tenant, TenantUser
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
-from admin.aaas.models import Agent, AgentStatus, Tenant, TenantUser
 
 router = Router(tags=["tenant-agents"])
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class AgentCreateRequest(BaseModel):
 
     name: str
     slug: Optional[str] = None
-    chat_model: str = None  # Uses settings.AAAS_DEFAULT_CHAT_MODEL if not provided
+    chat_model: str | None = None  # Uses settings.AAAS_DEFAULT_CHAT_MODEL if not provided
     memory_enabled: bool = True
     voice_enabled: bool = False
 
@@ -87,7 +87,7 @@ def _agent_to_schema(agent: Agent) -> AgentSchema:
         name=agent.name,
         slug=agent.slug or agent.name.lower().replace(" ", "-"),
         status=agent.status,
-        tenant_id=str(agent.tenant_id),
+        tenant_id=str(agent.tenant_id),  # type: ignore[reportAttributeAccessIssue]
         chat_model=config.get("chat_model", settings.AAAS_DEFAULT_CHAT_MODEL),
         memory_enabled=config.get("memory_enabled", True),
         voice_enabled=config.get("voice_enabled", False),

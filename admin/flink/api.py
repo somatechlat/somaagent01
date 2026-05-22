@@ -98,7 +98,7 @@ class KafkaEventPublisher:
         return cls._producer
 
     @classmethod
-    def publish(cls, topic: str, event: dict, key: str = None):
+    def publish(cls, topic: str, event: dict, key: str | None = None):
         """Publish event to Kafka topic."""
         producer = cls.get_producer()
         if producer:

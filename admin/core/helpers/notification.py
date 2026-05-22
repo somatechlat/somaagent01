@@ -110,7 +110,7 @@ class NotificationManager:
             group: The group.
         """
 
-        from agent import AgentContext
+        from agent import AgentContext  # type: ignore[import]
 
         return AgentContext.get_notification_manager().add_notification(
             type, priority, message, title, detail, display_time, group

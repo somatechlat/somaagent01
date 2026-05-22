@@ -47,9 +47,12 @@ def get_dashboard(request):
         trial_tenants=trial_tenants,
         total_agents=total_agents,
         active_agents=active_agents,
+        total_users=0,
         mrr=mrr,
+        mrr_growth=0.0,
         uptime=99.95,
         active_alerts=0,
+        tokens_this_month=0,
         storage_used_gb=0.0,
     )
 

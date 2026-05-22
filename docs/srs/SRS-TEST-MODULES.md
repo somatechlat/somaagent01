@@ -27,7 +27,6 @@ This document defines the **test suites by module**, following the 12-Phase Chat
 | Feature Flags | `admin/core/features/` | ✅ | ✅ | ⬜ |
 | Model Router | `admin/core/model_router.py` | ✅ | ✅ | ⬜ |
 | Multimodal | `admin/core/multimodal.py` | ⬜ | ✅ | ✅ |
-| Tool System | `admin/core/tool_system.py` | ✅ | ✅ | ✅ |
 | SomaBrain Client | `admin/core/somabrain_client.py` | ⬜ | ✅ | ✅ |
 | Billing (Lago) | `admin/core/billing.py` | ⬜ | ✅ | ⬜ |
 | Permission Matrix | `admin/core/permission_matrix.py` | ✅ | ✅ | ⬜ |

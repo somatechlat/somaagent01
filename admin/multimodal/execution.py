@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-from admin.llm.models import LLMModelConfig
 from admin.aaas.models.profiles import PlatformConfig
+from admin.llm.models import LLMModelConfig
 from services.common.unified_secret_manager import get_secret_manager
 
 # =============================================================================
@@ -363,7 +363,9 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
             # Execute based on operation type
             output = {}
             if node.operation == "generate_image":
-                raise ServiceUnavailableError("multimodal", "Image generation not wired in Standalone mode")
+                raise ServiceUnavailableError(
+                    "multimodal", "Image generation not wired in Standalone mode"
+                )
             elif node.operation == "render_diagram":
                 raise ServiceUnavailableError("multimodal", "Diagram rendering not implemented")
             elif node.operation == "screenshot":

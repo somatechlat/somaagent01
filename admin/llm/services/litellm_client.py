@@ -12,7 +12,7 @@ Split into modules for 650-line compliance:
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncIterator, Awaitable, Callable, Iterator, List, Optional, Tuple
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterator, List, Optional, Tuple, cast
 
 # Core dependencies
 import litellm
@@ -27,7 +27,7 @@ from langchain_core.messages import AIMessageChunk, BaseMessage, HumanMessage, S
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
 from litellm import acompletion, completion, embedding
 
-from admin.core.helpers import browser_use_monkeypatch
+from admin.core.helpers import browser_use_monkeypatch  # type: ignore
 from admin.core.helpers.tokens import approximate_tokens
 from admin.llm.exceptions import LLMNotConfiguredError
 from admin.llm.services.litellm_helpers import (
@@ -94,7 +94,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
     ):
         """Initialize the instance."""
         model_value = f"{provider}/{model}"
-        super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)
+        super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
         self.a0_model_conf = model_config
 
     @property
@@ -194,7 +194,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
             stop=stop,
             **{**self.kwargs, **kwargs},
         )
-        async for chunk in response:
+        async for chunk in response:  # type: ignore
             parsed = _parse_chunk(chunk)
             output = result.add_chunk(parsed)
             if output["response_delta"]:
@@ -236,7 +236,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 _completion = await acompletion(
                     model=self.model_name, messages=msgs_conv, stream=True, **call_kwargs
                 )
-                async for chunk in _completion:
+                async for chunk in _completion:  # type: ignore
                     got_any_chunk = True
                     parsed = _parse_chunk(chunk)
                     output = result.add_chunk(parsed)
@@ -317,7 +317,7 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
         **kwargs: Any,
     ):
         """Async call with Gemini compatibility."""
-        apply_rate_limiter_sync(self._wrapper.a0_model_conf, str(messages))
+        await apply_rate_limiter(self._wrapper.a0_model_conf, str(messages))
         try:
             model = kwargs.pop("model", None)
             kwrgs = {**self._wrapper.kwargs, **kwargs}
@@ -342,9 +342,10 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
             from services.common.llm_compatibility import clean_gemini_json_response
 
             try:
-                msg = resp.choices[0].message
-                if self.provider == "gemini" and isinstance(getattr(msg, "content", None), str):
-                    cleaned = clean_gemini_json_response(msg.content)
+                msg = resp.choices[0].message  # type: ignore
+                content = getattr(msg, "content", None)
+                if self.provider == "gemini" and isinstance(content, str):
+                    cleaned = clean_gemini_json_response(content)
                     if cleaned:
                         msg.content = cleaned
             except Exception:
@@ -356,9 +357,9 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
         if should_apply_json_cleaning():
             try:
                 if "response_format" in kwrgs:
-                    content = resp.choices[0].message.content
+                    content = resp.choices[0].message.content  # type: ignore
                     if content is not None and not content.startswith("{"):
-                        resp.choices[0].message.content = clean_invalid_json(content)
+                        resp.choices[0].message.content = clean_invalid_json(content)  # type: ignore
             except Exception:
                 pass
         return resp
@@ -381,16 +382,16 @@ class LiteLLMEmbeddingWrapper(Embeddings):
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
         resp = embedding(model=self.model_name, input=texts, **self.kwargs)
-        return [
+        return cast(List[List[float]], [
             item.get("embedding") if isinstance(item, dict) else item.embedding
             for item in resp.data
-        ]
+        ])
 
     def embed_query(self, text: str) -> List[float]:
         apply_rate_limiter_sync(self.a0_model_conf, text)
         resp = embedding(model=self.model_name, input=[text], **self.kwargs)
         item = resp.data[0]
-        return item.get("embedding") if isinstance(item, dict) else item.embedding
+        return cast(List[float], item.get("embedding") if isinstance(item, dict) else item.embedding)
 
 
 class LocalSentenceTransformerWrapper(Embeddings):
@@ -412,7 +413,7 @@ class LocalSentenceTransformerWrapper(Embeddings):
         }
         st_kwargs = {k: v for k, v in (kwargs or {}).items() if k in st_allowed_keys}
         try:
-            from sentence_transformers import SentenceTransformer
+            from sentence_transformers import SentenceTransformer  # type: ignore
         except Exception as e:
             raise ImportError(
                 "sentence-transformers is required for LocalSentenceTransformerWrapper."

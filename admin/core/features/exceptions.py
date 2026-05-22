@@ -3,13 +3,14 @@
 SRS Source: SRS-FEATURE-FLAGS-2026-01-16
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from admin.common.messages import ErrorCode, get_message
 
 
 class FeatureError(Exception):
     """Base class for feature exceptions."""
+
     pass
 
 

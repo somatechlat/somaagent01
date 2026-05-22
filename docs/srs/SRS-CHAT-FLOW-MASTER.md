@@ -112,7 +112,12 @@ flowchart TD
         subgraph BRAIN ["🧠 SOMABRAIN"]
             BRAIN_CB[Circuit Breaker]
             REC[recall]
-            FALL_MEM[Fallback: empty]
+            FALL_MEM[Fallback: SomaFractalMemory]
+        end
+
+        subgraph SFM ["💾 SOMAFRACTALMEMORY"]
+            SFM_CB[Circuit Breaker]
+            SFM_SEARCH[search]
         end
 
         subgraph LLM_LAYER ["🤖 LLM"]
@@ -137,7 +142,9 @@ flowchart TD
     UG --> CTX
     CTX --> BRAIN_CB
     BRAIN_CB --> REC
-    BRAIN_CB --> |Milvus down?| FALL_MEM
+    BRAIN_CB --> |Brain down?| SFM_CB
+    SFM_CB --> SFM_SEARCH
+    SFM_CB --> |SFM down?| FALL_MEM
 
     CTX --> LLM_CB
     LLM_CB --> LLM_DEG

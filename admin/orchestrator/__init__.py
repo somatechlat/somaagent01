@@ -24,9 +24,6 @@ from .orchestrator import SomaOrchestrator
 from .service_registry import ServiceDefinition, ServiceRegistry
 
 __all__ = [
-    "run_orchestrator",
-    "main",
-    "app",
     "SomaOrchestrator",
     "ServiceRegistry",
     "ServiceDefinition",

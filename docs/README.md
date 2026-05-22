@@ -17,9 +17,10 @@
 -   **Self-Healing Workflows**: Intelligent error recovery and task retry mechanisms.
 
 ### 🧠 Advanced Cognitive Architecture
--   **SomaBrain™ Integration**: Long-term semantic memory and experience retention (`admin.memory`).
--   **RAG & Vector Search**: High-performance knowledge retrieval using ChromaDB/Milvus.
--   **Context Management**: Dynamic context window handling for infinite-turn conversations.
+-   **SomaBrain™ Integration**: Primary cognitive memory with recall/memorize/learn (`admin.memory`).
+-   **SomaFractalMemory™ Fallback**: Independent vector memory that operates WITHOUT SomaBrain. When Brain is down, the agent saves/recalls memories directly from SFM (`services.common.adapters.memory_http`).
+-   **RAG & Vector Search**: High-performance knowledge retrieval using Milvus (ONLY — ChromaDB is not used per VIBE Rule 9).
+-   **Context Management**: Dynamic context window handling with 5-lane token budgeting. Brain recall primary → SFM search fallback → PostgreSQL history always available.
 
 ### 👁️👂 Multimodal Perception
 -   **Voice Native**: Real-time Speech-to-Text (STT) and Text-to-Speech (TTS) via `admin.voice`.
@@ -64,17 +65,17 @@ git clone https://github.com/somatechlat/somaagent01.git
 cp .env.example .env
 
 # 3. Launch Stack
-docker-compose up -d --build
+docker compose -f infra/standalone/docker-compose.yml up -d --build
 
 # 4. Access
-# API Docs: http://localhost:8010/api/v2/docs
-# Dashboard: http://localhost:8010/dashboard
+# API Docs: http://localhost:20020/api/v2/docs
+# Dashboard: http://localhost:20080/dashboard (frontend)
 ```
 
 ### Production Requirements
 -   **Database**: PostgreSQL 16+
 -   **Cache**: Redis 7+
--   **Vector Store**: Milvus or ChromaDB
+-   **Vector Store**: Milvus 2.3+ (port 20530 in SomaStack cluster)
 -   **Runtime**: Python 3.12+
 
 ---

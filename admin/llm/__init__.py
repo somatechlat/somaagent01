@@ -45,7 +45,7 @@ def get_chat_generation_result():
 
 def get_chat_chunk():
     """Lazy import ChatChunk."""
-    from admin.llm.services.litellm_client import ChatChunk
+    from admin.llm.services.litellm_schemas import ChatChunk
 
     return ChatChunk
 
@@ -59,7 +59,7 @@ def get_api_key(service: str) -> str:
 
 def get_rate_limiter(provider: str, name: str, requests: int, input: int, output: int):
     """Lazy import and call get_rate_limiter."""
-    from admin.llm.services.litellm_client import get_rate_limiter as _get_rate_limiter
+    from admin.llm.services.litellm_helpers import get_rate_limiter as _get_rate_limiter
 
     return _get_rate_limiter(provider, name, requests, input, output)
 

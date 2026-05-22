@@ -13,11 +13,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
 
 import httpx
-
-from services.common.protocols import BrainServiceProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +44,7 @@ class HTTPBrainAdapter:
     def _get_async_client(self) -> httpx.AsyncClient:
         """Lazy initialize async client."""
         if self._async_client is None:
-            self._async_client = httpx.AsyncClient(
-                base_url=self._base_url, timeout=self._timeout
-            )
+            self._async_client = httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout)
         return self._async_client
 
     def encode(self, text: str) -> list[float]:
@@ -66,7 +61,7 @@ class HTTPBrainAdapter:
             logger.error(f"Brain encode failed: {e}")
             raise RuntimeError(f"SomaBrain encode failed: {e}") from e
 
-    def remember(
+    async def remember(
         self,
         content: str,
         *,
@@ -201,9 +196,7 @@ class HTTPBrainAdapter:
 _http_brain_adapter: HTTPBrainAdapter | None = None
 
 
-def get_http_brain_adapter(
-    base_url: str | None = None, timeout: float = 30.0
-) -> HTTPBrainAdapter:
+def get_http_brain_adapter(base_url: str | None = None, timeout: float = 30.0) -> HTTPBrainAdapter:
     """Get or create the singleton HTTPBrainAdapter."""
     global _http_brain_adapter
     if _http_brain_adapter is None:

@@ -111,6 +111,13 @@ class SessionManager:
 
     SESSION_TTL = 900  # 15 minutes per design.md
     SESSION_PREFIX = "session:"
+    CONFIG_KEY = "session:config:global"
+    DEFAULT_CONFIG = {
+        "session_timeout_minutes": 15,
+        "max_sessions_per_user": 5,
+        "require_mfa_reauthentication": True,
+        "session_cookie_secure": True,
+    }
 
     def __init__(
         self,
@@ -123,7 +130,13 @@ class SessionManager:
             redis_url: Redis connection URL. Defaults to REDIS_URL env var.
             session_ttl: Session TTL in seconds. Defaults to 900 (15 min).
         """
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            settings = SettingsRegistry.get()
+            self.redis_url = redis_url or settings.redis_url
+        except Exception:
+            self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.session_ttl = session_ttl
         self._redis: Optional[redis.Redis] = None
         self._connected = False
@@ -196,6 +209,7 @@ class SessionManager:
             Created Session object
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         with SESSION_OPERATION_DURATION.labels("create").time():
             session_id = str(uuid.uuid4())
@@ -237,6 +251,7 @@ class SessionManager:
             Session if found and valid, None otherwise
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         with SESSION_OPERATION_DURATION.labels("get").time():
             key = self._make_key(user_id, session_id)
@@ -269,6 +284,7 @@ class SessionManager:
             Session if found, None otherwise
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         with SESSION_OPERATION_DURATION.labels("get_by_id").time():
             # Scan for matching session
@@ -303,6 +319,7 @@ class SessionManager:
             True if session was updated, False if not found
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         with SESSION_OPERATION_DURATION.labels("update_activity").time():
             key = self._make_key(user_id, session_id)
@@ -338,6 +355,7 @@ class SessionManager:
             True if session was deleted, False if not found
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         with SESSION_OPERATION_DURATION.labels("delete").time():
             key = self._make_key(user_id, session_id)
@@ -366,6 +384,7 @@ class SessionManager:
             Number of sessions deleted
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         with SESSION_OPERATION_DURATION.labels("delete_all").time():
             pattern = self._make_user_pattern(user_id)
@@ -393,6 +412,7 @@ class SessionManager:
             Number of active sessions
         """
         await self._ensure_connected()
+        assert self._redis is not None
 
         pattern = self._make_user_pattern(user_id)
         count = 0
@@ -405,6 +425,7 @@ class SessionManager:
     async def list_sessions(self, user_id: str) -> list[Session]:
         """List all active sessions for a user."""
         await self._ensure_connected()
+        assert self._redis is not None
 
         sessions: list[Session] = []
         pattern = self._make_user_pattern(user_id)
@@ -424,6 +445,7 @@ class SessionManager:
     async def list_all_sessions(self, limit: int = 100) -> list[Session]:
         """List active sessions across all users (admin use)."""
         await self._ensure_connected()
+        assert self._redis is not None
 
         sessions: list[Session] = []
         pattern = f"{self.SESSION_PREFIX}*"
@@ -441,6 +463,60 @@ class SessionManager:
                 continue
 
         return sessions
+
+    async def get_config(self) -> dict:
+        """Read session configuration from Redis.
+
+        Returns:
+            Dict with session configuration. Falls back to DEFAULT_CONFIG.
+        """
+        await self._ensure_connected()
+        assert self._redis is not None
+        data = await self._redis.get(self.CONFIG_KEY)
+        if data:
+            try:
+                stored = json.loads(data)
+                # Merge with defaults to ensure all keys present
+                config = dict(self.DEFAULT_CONFIG)
+                config.update(stored)
+                return config
+            except json.JSONDecodeError:
+                logger.warning("Invalid session config in Redis, using defaults")
+        return dict(self.DEFAULT_CONFIG)
+
+    async def update_config(self, updates: dict) -> dict:
+        """Update session configuration in Redis.
+
+        Applies valid updates and persists to Redis.
+        Also updates live session_ttl if timeout changes.
+
+        Args:
+            updates: Dict of configuration changes.
+
+        Returns:
+            Updated configuration dict.
+        """
+        await self._ensure_connected()
+        assert self._redis is not None
+        current = await self.get_config()
+
+        # Only allow known keys
+        allowed = set(self.DEFAULT_CONFIG.keys())
+        for key, value in updates.items():
+            if key in allowed:
+                current[key] = value
+            else:
+                logger.warning("Ignoring unknown session config key: %s", key)
+
+        # Apply live session_ttl change immediately
+        if "session_timeout_minutes" in updates:
+            new_ttl = int(updates["session_timeout_minutes"]) * 60
+            self.session_ttl = new_ttl
+            logger.info("Session TTL updated to %s seconds", new_ttl)
+
+        await self._redis.set(self.CONFIG_KEY, json.dumps(current))
+        logger.info("Session config updated: %s", current)
+        return current
 
     async def resolve_permissions(
         self,
@@ -464,7 +540,13 @@ class SessionManager:
             List of permission strings
         """
         permissions = set()
-        fail_open = os.getenv("SA01_AUTHZ_FAIL_OPEN", "false").lower() in {"1", "true", "yes", "on"}
+        try:
+            from config.settings_registry import SettingsRegistry
+
+            settings = SettingsRegistry.get()
+            fail_open = settings.sa01_authz_fail_open
+        except Exception:
+            fail_open = os.getenv("SA01_AUTHZ_FAIL_OPEN", "false").lower() in {"1", "true", "yes", "on"}
 
         # Try SpiceDB first
         try:

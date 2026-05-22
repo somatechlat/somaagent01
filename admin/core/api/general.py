@@ -41,7 +41,7 @@ async def audit_export(
     Returns:
         Newline-delimited JSON response of audit records
     """
-    from integrations.repositories import get_audit_store
+    from integrations.repositories import get_audit_store  # type: ignore[import-not-found]
 
     store = get_audit_store()
     try:
@@ -57,10 +57,10 @@ async def audit_export(
         Args:
             evt: The evt.
         """
-
+        ts = getattr(evt, "ts", None)
         return {
             "id": getattr(evt, "id", None),
-            "timestamp": getattr(evt, "ts", None).isoformat() if getattr(evt, "ts", None) else None,
+            "timestamp": ts.isoformat() if ts is not None else None,
             "action": getattr(evt, "action", None),
             "resource": getattr(evt, "resource", None),
             "session_id": getattr(evt, "session_id", None),

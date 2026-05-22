@@ -16,9 +16,9 @@ from django.utils import timezone
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.aaas.models import AuditLog
 from admin.common.auth import AuthBearer
 from admin.common.responses import paginated_response
-from admin.aaas.models import AuditLog
 
 router = Router(tags=["audit"])
 
@@ -110,7 +110,7 @@ def list_audit_logs(
                 id=str(log.id),
                 actor_id=str(log.actor_id),
                 actor_email=log.actor_email or "",
-                tenant_id=str(log.tenant_id) if log.tenant_id else None,
+                tenant_id=str(log.tenant_id) if log.tenant_id else None,  # type: ignore[reportAttributeAccessIssue]
                 action=log.action,
                 resource_type=log.resource_type,
                 resource_id=str(log.resource_id) if log.resource_id else None,
@@ -192,7 +192,7 @@ def export_audit_logs(
                 log.action,
                 log.resource_type,
                 str(log.resource_id) if log.resource_id else "",
-                str(log.tenant_id) if log.tenant_id else "",
+                str(log.tenant_id) if log.tenant_id else "",  # type: ignore[reportAttributeAccessIssue]
                 log.ip_address or "",
             ]
         )

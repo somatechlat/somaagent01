@@ -13,7 +13,7 @@ import yaml
 class TenantSettings:
     """Tenantsettings class implementation."""
 
-    fail_open: bool = True
+    fail_open: bool = False
     budgets: Dict[str, int] = field(default_factory=dict)
     routing_allow: list[str] = field(default_factory=list)
     routing_deny: list[str] = field(default_factory=list)
@@ -91,7 +91,7 @@ class TenantConfig:
             if not isinstance(values, dict):
                 continue
             settings = TenantSettings()
-            settings.fail_open = bool(values.get("fail_open", True))
+            settings.fail_open = bool(values.get("fail_open", False))
             budgets = values.get("budgets", {})
             if isinstance(budgets, dict):
                 settings.budgets = {

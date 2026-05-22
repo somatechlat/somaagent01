@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, List
 
 from admin.llm.models import ModelConfig, ModelType  # Migrated from root models.py
-from python.somaagent.agent_context import AgentConfig, AgentContext
+from python.somaagent.agent_context import AgentConfig, AgentContext  # type: ignore[import]
 from services.common.ui_settings_store import UiSettingsStore
 
 LOGGER = logging.getLogger(__name__)

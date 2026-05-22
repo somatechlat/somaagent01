@@ -16,7 +16,7 @@ try:
 
     LAGO_API_URL = settings.LAGO_API_URL
     LAGO_API_KEY = settings.LAGO_API_KEY
-except ImportError:
+except Exception:
     LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL")
     LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
 

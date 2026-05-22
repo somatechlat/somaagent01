@@ -12,7 +12,6 @@ from django.db import transaction
 from django.utils.text import slugify
 from ninja import Router
 
-from admin.common.messages import ErrorCode, get_message, SuccessCode
 from admin.aaas.api.schemas import (
     MessageResponse,
     SubscriptionTierOut,
@@ -21,6 +20,7 @@ from admin.aaas.api.schemas import (
     TierUpdate,
 )
 from admin.aaas.models import SubscriptionTier, Tenant
+from admin.common.messages import ErrorCode, get_message, SuccessCode
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def _tier_to_out(tier: SubscriptionTier) -> SubscriptionTierOut:
     """Convert SubscriptionTier model to output schema."""
     # Get feature codes from tier_features
     features = list(
-        tier.tier_features.filter(is_enabled=True).values_list("feature__code", flat=True)
+        tier.tier_features.filter(is_enabled=True).values_list("feature__code", flat=True)  # type: ignore[reportAttributeAccessIssue]
     )
 
     return SubscriptionTierOut(
@@ -129,10 +129,10 @@ def update_tier(request, tier_id: str, payload: TierUpdate):
         from admin.aaas.models import AaasFeature, TierFeature
 
         # Remove existing features not in new list
-        tier.tier_features.exclude(feature__code__in=payload.features).delete()
+        tier.tier_features.exclude(feature__code__in=payload.features).delete()  # type: ignore[reportAttributeAccessIssue]
 
         # Add new features
-        existing_codes = set(tier.tier_features.values_list("feature__code", flat=True))
+        existing_codes = set(tier.tier_features.values_list("feature__code", flat=True))  # type: ignore[reportAttributeAccessIssue]
         for feature_code in payload.features:
             if feature_code not in existing_codes:
                 feature = AaasFeature.objects.filter(code=feature_code).first()

@@ -117,7 +117,9 @@ async def list_admin_memory(
     limit: int = Query(50, ge=1, le=200, description="Items per page"),
 ) -> AdminMemoryListResponse:
     """List memory replica rows with filtering and pagination."""
-    from src.core.infrastructure.repositories import MemoryReplicaStore
+    from src.core.infrastructure.repositories import (  # type: ignore[import]
+        MemoryReplicaStore,
+    )
 
     store = MemoryReplicaStore()
     rows = await store.list_memories(
@@ -151,7 +153,9 @@ async def get_admin_memory_item(
     event_id: str,
 ) -> AdminMemoryItem:
     """Get a specific memory item by event_id."""
-    from src.core.infrastructure.repositories import MemoryReplicaStore
+    from src.core.infrastructure.repositories import (  # type: ignore[import]
+        MemoryReplicaStore,
+    )
 
     store = MemoryReplicaStore()
     row = await store.get_by_event_id(event_id)
@@ -180,4 +184,4 @@ async def admin_memory_metrics(
     result = await client.healthcheck()
     await client.close()
 
-    return MemoryMetricsResponse(kafka=result)
+    return MemoryMetricsResponse(kafka=result or {})

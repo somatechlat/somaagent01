@@ -115,9 +115,9 @@ def revoke_api_key(request, key_id: str):
 @router.get("/models", response=list[ModelConfigOut])
 def list_models(request):
     """Get all configured LLM models from Global Defaults."""
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    defaults = GlobalDefault.get_instance().defaults
+    defaults = PlatformConfig.get_instance().defaults
     models_data = defaults.get("models", [])
 
     # Transform dicts to Pydantic models
@@ -140,14 +140,13 @@ def list_models(request):
 @transaction.atomic
 def update_model(request, model_id: str, payload: ModelConfigUpdate):
     """Update model configuration in Global Defaults."""
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = GlobalDefault.get_instance()
+    gd = PlatformConfig.get_instance()
     defaults = gd.defaults
     models_data = defaults.get("models", [])
 
-    model_found = False
-    updated_model = None
+    updated_model: dict | None = None
 
     for m in models_data:
         if m["id"] == model_id:
@@ -157,13 +156,12 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
             if payload.rate_limit is not None:
                 m["rate_limit"] = payload.rate_limit
             # ... update other fields as needed
-            model_found = True
             updated_model = m
             break
 
-    if not model_found:
-        # Return error or create? Standard allows update only.
-        pass
+    if updated_model is None:
+        from django.http import Http404
+        raise Http404(f"Model {model_id} not found")
 
     gd.defaults = defaults
     gd.save()
@@ -184,9 +182,9 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 @router.get("/roles", response=list[RoleOut])
 def list_roles(request):
     """Get all platform roles from Global Defaults."""
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    defaults = GlobalDefault.get_instance().defaults
+    defaults = PlatformConfig.get_instance().defaults
     roles_data = defaults.get("roles", [])
 
     return [
@@ -205,13 +203,13 @@ def list_roles(request):
 @transaction.atomic
 def update_role(request, role_id: str, payload: RoleUpdate):
     """Update role permissions."""
-    from admin.aaas.models.profiles import GlobalDefault
+    from admin.aaas.models.profiles import PlatformConfig
 
-    gd = GlobalDefault.get_instance()
+    gd = PlatformConfig.get_instance()
     defaults = gd.defaults
     roles_data = defaults.get("roles", [])
 
-    updated_role = None
+    updated_role: dict | None = None
 
     for r in roles_data:
         if r["id"] == role_id:
@@ -219,6 +217,10 @@ def update_role(request, role_id: str, payload: RoleUpdate):
                 r["permissions"] = payload.permissions
             updated_role = r
             break
+
+    if updated_role is None:
+        from django.http import Http404
+        raise Http404(f"Role {role_id} not found")
 
     gd.save()
 

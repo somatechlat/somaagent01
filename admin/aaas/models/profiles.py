@@ -158,9 +158,7 @@ class AdminProfile(models.Model):
         }
 
     def save(self, *args, **kwargs):
-        # Initialize default notification prefs if empty
-        """Execute save."""
-
+        """Seed default notification preferences on first save, then persist."""
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
         super().save(*args, **kwargs)
@@ -225,9 +223,43 @@ class TenantSettings(models.Model):
 
         return f"Settings for {self.tenant.name}"
 
-    def merge_defaults(self):
-        """Merge global defaults into local settings (Placeholder)."""
-        pass
+    def merge_defaults(self) -> None:
+        """Merge global PlatformConfig defaults into this tenant's settings.
+
+        Reads the singleton ``PlatformConfig.defaults`` JSON and applies any
+        top-level keys that are not already explicitly set on this instance.
+        Tenant values always take precedence — this is a one-way fill, never
+        an overwrite.
+
+        Affected JSONB pillars: ``feature_overrides``, ``compliance``,
+        ``compute``, ``auth``.
+
+        Call this after creating a new ``TenantSettings`` to seed defaults,
+        or on demand when global defaults change.
+        """
+        platform = PlatformConfig.get_instance()
+        global_defaults = platform.defaults
+
+        # Map platform config keys to local JSONB fields.
+        # Tenant-set values win: we only fill keys the tenant has not set.
+        pillars = {
+            "feature_overrides": self.feature_overrides,
+            "compliance": self.compliance,
+            "compute": self.compute,
+            "auth": self.auth,
+        }
+        changed = False
+        for pillar_name, local_data in pillars.items():
+            global_pillar = global_defaults.get(pillar_name, {})
+            if not isinstance(global_pillar, dict):
+                continue
+            merged = {**global_pillar, **local_data}  # local wins on conflict
+            if merged != local_data:
+                setattr(self, pillar_name, merged)
+                changed = True
+
+        if changed:
+            self.save(update_fields=list(pillars.keys()) + ["updated_at"])
 
 
 class UserPreferences(models.Model):
@@ -287,8 +319,7 @@ class UserPreferences(models.Model):
         }
 
     def save(self, *args, **kwargs):
-        """Execute save."""
-
+        """Seed default notification preferences on first save, then persist."""
         if not self.notification_prefs:
             self.notification_prefs = self.get_default_notification_prefs()
         super().save(*args, **kwargs)

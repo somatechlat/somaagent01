@@ -114,7 +114,7 @@ class SensorOutbox(models.Model):
 
         return f"{self.event_type} ({self.event_id[:8]}...)"
 
-    def mark_synced(self, brain_ref: str = None) -> None:
+    def mark_synced(self, brain_ref: str | None = None) -> None:
         """Mark event as successfully synced.
 
         CRITICAL: Clears payload after sync.

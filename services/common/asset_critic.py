@@ -13,7 +13,6 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from uuid import UUID
 
 from services.common.asset_store import AssetRecord, AssetType
 from services.common.llm_adapter import LLMAdapter
@@ -107,7 +106,7 @@ class AssetEvaluation:
         failed_criteria: List of criteria that failed
     """
 
-    asset_id: UUID
+    asset_id: str
     status: evaluation_status
     score: float
     feedback: List[str] = field(default_factory=list)
@@ -383,7 +382,7 @@ class AssetCritic:
             os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
             import django
 
-            if not django.apps.apps.ready:
+            if not django.apps.apps.ready:  # type: ignore[attr-defined]
                 django.setup()
             from django.conf import settings
 

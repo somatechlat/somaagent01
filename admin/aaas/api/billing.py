@@ -5,9 +5,12 @@ Billing metrics and invoice management via Lago.
 Per SRS Section 5.1 - Billing Dashboard.
 """
 
+import logging
 from typing import Optional
 
 from ninja import Query, Router
+
+logger = logging.getLogger(__name__)
 
 from admin.aaas.api.schemas import (
     BillingMetrics,
@@ -24,14 +27,14 @@ router = Router()
 @router.get("", response=BillingResponse)
 def get_billing_dashboard(request):
     """Get complete billing dashboard data from Lago."""
-    from django.db.models import Count, Sum
+    from django.db.models import Count, Q, Sum
 
     # Calculate MRR
-    paid_tenants = Tenant.objects.filter(status="active").exclude(tier__price_cents=0)
+    paid_tenants = Tenant.objects.filter(status="active").exclude(tier__base_price_cents=0)
     paid_count = paid_tenants.count()
     total_count = Tenant.objects.filter(status="active").count()
 
-    mrr_result = paid_tenants.aggregate(total_mrr=Sum("tier__price_cents"))
+    mrr_result = paid_tenants.aggregate(total_mrr=Sum("tier__base_price_cents"))
     mrr = (mrr_result.get("total_mrr") or 0) / 100.0
 
     # Calculate ARPU
@@ -39,25 +42,29 @@ def get_billing_dashboard(request):
 
     metrics = BillingMetrics(
         mrr=mrr,
+        mrr_growth=0.0,
         arpu=arpu,
+        churn_rate=0.0,
         paid_tenants=paid_count,
         total_tenants=total_count,
     )
 
     # Revenue by tier breakdown
-    tier_revenue = (
+    from typing import Any
+
+    tier_revenue: Any = (
         SubscriptionTier.objects.filter(is_active=True)
-        .annotate(tenant_count=Count("tenants", filter={"tenants__status": "active"}))
-        .order_by("-price_cents")
+        .annotate(tenant_count=Count("tenants", filter=Q(tenants__status="active")))
+        .order_by("-base_price_cents")
     )
 
     total_mrr = mrr if mrr > 0 else 1  # Avoid division by zero
     revenue_by_tier = [
         RevenueByTier(
             tier=t.name,
-            mrr=(t.price_cents / 100.0) * t.tenant_count,
+            mrr=(t.base_price_cents / 100.0) * t.tenant_count,
             count=t.tenant_count,
-            percentage=((t.price_cents / 100.0) * t.tenant_count / total_mrr) * 100,
+            percentage=((t.base_price_cents / 100.0) * t.tenant_count / total_mrr) * 100,
         )
         for t in tier_revenue
         if t.tenant_count > 0
@@ -73,15 +80,33 @@ def get_billing_dashboard(request):
 
 
 @router.get("/invoices", response=list[InvoiceOut])
-def list_invoices(
+async def list_invoices(
     request,
     status: Optional[str] = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
     """List all invoices from Lago."""
-    # lago_client.invoices.find_all(per_page=per_page, page=page)
-    return []
+    from admin.billing.lago_client import get_lago_client
+
+    try:
+        client = get_lago_client()
+        result = await client.list_invoices(page=page, per_page=per_page, status=status)
+        invoices = result.get("invoices", [])
+        return [
+            InvoiceOut(
+                id=inv.get("lago_id", ""),
+                number=inv.get("number", ""),
+                amount_cents=inv.get("total_amount_cents", 0),
+                currency=inv.get("currency", "USD"),
+                status=inv.get("status", "pending"),
+                created_at=inv.get("created_at", ""),
+            )
+            for inv in invoices
+        ]
+    except Exception as exc:
+        logger.error("Failed to list invoices from Lago: %s", exc)
+        return []
 
 
 @router.get("/usage", response=UsageMetrics)
@@ -100,7 +125,10 @@ def get_platform_usage(request, period: str = "month"):
         tenant_id=None,
         period=period,
         tokens_used=usage.get("total_tokens") or 0,
+        storage_used_gb=0.0,
+        api_calls=0,
         agents_active=Agent.objects.filter(status="active").count(),
+        users_active=0,
     )
 
 
@@ -183,7 +211,7 @@ def get_tenant_billing(request, tenant_id: str):
 
     # Calculate next billing date (30 days from created or last billed)
     next_billing = None
-    if tenant.tier and tenant.tier.price_cents > 0:
+    if tenant.tier and tenant.tier.base_price_cents > 0:
         # Simple: 30 days from creation (real impl would use Stripe/Lago)
         next_billing = (tenant.created_at + timedelta(days=30)).isoformat()
 
@@ -191,7 +219,7 @@ def get_tenant_billing(request, tenant_id: str):
         tenant_id=str(tenant.id),
         tenant_name=tenant.name,
         current_tier=tenant.tier.name if tenant.tier else "Free",
-        price_cents=tenant.tier.price_cents if tenant.tier else 0,
+        price_cents=tenant.tier.base_price_cents if tenant.tier else 0,
         billing_cycle="monthly",
         next_billing_date=next_billing,
         payment_method=None,  # Would come from Stripe
@@ -222,13 +250,13 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
         raise HttpError(404, f"Tier {payload.new_tier_id} not found")
 
     old_tier_name = tenant.tier.name if tenant.tier else "None"
-    old_price = tenant.tier.price_cents if tenant.tier else 0
+    old_price = tenant.tier.base_price_cents if tenant.tier else 0
 
     # Calculate proration (simplified - real impl uses Stripe)
     prorated = 0
     if payload.prorate and old_price > 0:
         # Simple: half-month proration estimate
-        prorated = (new_tier.price_cents - old_price) // 2
+        prorated = (new_tier.base_price_cents - old_price) // 2
 
     # Update tenant tier
     tenant.tier = new_tier
@@ -247,7 +275,7 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
         resource_type="tenant",
         resource_id=tenant.id,
         old_value={"tier": old_tier_name, "price_cents": old_price},
-        new_value={"tier": new_tier.name, "price_cents": new_tier.price_cents},
+        new_value={"tier": new_tier.name, "price_cents": new_tier.base_price_cents},
     )
 
     return UpgradeResponse(
@@ -260,18 +288,47 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
 
 
 @router.get("/tenant/{tenant_id}/invoices", response=list[InvoiceOut])
-def get_tenant_invoices(
+async def get_tenant_invoices(
     request,
     tenant_id: str,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    """Get invoice history for a specific tenant.
+    """Get invoice history for a specific tenant from Lago."""
+    from admin.billing.lago_client import get_lago_client
 
-    Would integrate with Stripe/Lago in production.
-    """
-    # In production: stripe.Invoice.list(customer=tenant.stripe_id)
-    return []
+    try:
+        tenant = Tenant.objects.get(id=tenant_id)
+    except Tenant.DoesNotExist:
+        from ninja.errors import HttpError
+
+        raise HttpError(404, f"Tenant {tenant_id} not found")
+
+    if not tenant.lago_customer_id:
+        return []
+
+    try:
+        client = get_lago_client()
+        result = await client.list_invoices(
+            page=page,
+            per_page=per_page,
+            customer_external_id=tenant.lago_customer_id,
+        )
+        invoices = result.get("invoices", [])
+        return [
+            InvoiceOut(
+                id=inv.get("lago_id", ""),
+                number=inv.get("number", ""),
+                amount_cents=inv.get("total_amount_cents", 0),
+                currency=inv.get("currency", "USD"),
+                status=inv.get("status", "pending"),
+                created_at=inv.get("created_at", ""),
+            )
+            for inv in invoices
+        ]
+    except Exception as exc:
+        logger.error("Failed to list tenant invoices from Lago: %s", exc)
+        return []
 
 
 class PaymentMethodCreate(BaseModel):
@@ -294,13 +351,11 @@ class PaymentMethodOut(BaseModel):
 
 @router.post("/tenant/{tenant_id}/payment-methods")
 @transaction.atomic
-def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
+async def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
     """Add a payment method for a tenant.
 
-
-    - Real validation
-    - Would integrate with Stripe in production
-    - Returns structured response
+    Stores the payment provider token reference in tenant metadata.
+    Does NOT fabricate card details — only persists the token reference.
     """
     from ninja.errors import HttpError
 
@@ -309,15 +364,34 @@ def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
     except Tenant.DoesNotExist:
         raise HttpError(404, f"Tenant {tenant_id} not found")
 
-    # In production: stripe.PaymentMethod.attach(payload.token, customer=tenant.stripe_id)
-    # For now, return mock confirmation
+    # Store token reference in tenant metadata (Stripe library not installed)
+    # In production with Stripe: stripe.PaymentMethod.attach(payload.token, customer=tenant.stripe_id)
+    metadata = tenant.metadata or {}
+    payment_methods = metadata.get("payment_methods", [])
+
+    pm_ref = {
+        "id": f"pm_ref_{payload.token[:12]}",
+        "token": payload.token,
+        "type": "card",  # Type unknown until verified by payment provider
+        "last4": None,  # Not available without Stripe verification
+        "is_default": payload.set_default,
+        "created_at": __import__("datetime")
+        .datetime.now(__import__("datetime").timezone.utc)
+        .isoformat(),
+    }
+
+    # If setting as default, unset others
+    if payload.set_default:
+        for pm in payment_methods:
+            pm["is_default"] = False
+
+    payment_methods.append(pm_ref)
+    metadata["payment_methods"] = payment_methods
+    tenant.metadata = metadata
+    tenant.save(update_fields=["metadata", "updated_at"])
+
     return {
         "success": True,
-        "message": "Payment method added successfully",
-        "payment_method": {
-            "id": f"pm_{tenant_id[:8]}",
-            "type": "card",
-            "last4": "4242",  # Would come from Stripe
-            "is_default": payload.set_default,
-        },
+        "message": "Payment method reference stored. Stripe verification required for full card details.",
+        "payment_method": pm_ref,
     }

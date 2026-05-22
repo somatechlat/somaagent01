@@ -247,19 +247,27 @@ async def get_voice_status(request) -> VoiceStatusResponse:
 
 @router.post(
     "/transcribe/stream",
-    summary="Stream transcription (WebSocket placeholder)",
+    summary="Stream real-time audio transcription",
     auth=AuthBearer(),
 )
 async def transcribe_stream(request) -> dict:
-    """Placeholder for streaming transcription.
+    """Stream real-time audio transcription via WebSocket.
 
-    Real-time transcription would use WebSockets.
-    See: /ws/voice for WebSocket endpoint.
+    This endpoint is the REST-side declaration of the streaming transcription
+    capability. Real-time audio streaming requires a Django Channels WebSocket
+    consumer, which is not yet implemented.
+
+    Raises:
+        ServiceUnavailableError: Always — streaming transcription requires
+            a WebSocket consumer (Django Channels) that is not yet wired.
+            Do not implement this endpoint as a REST redirect; callers
+            must be told the truth.
     """
-    return {
-        "message": "Use WebSocket at /ws/voice for streaming transcription",
-        "websocket_url": f"ws://{request.get_host()}/ws/voice",
-    }
+    raise ServiceUnavailableError(
+        "voice_stream",
+        "Real-time streaming transcription requires Django Channels WebSocket support, "
+        "which is not yet implemented. Use POST /voice/transcribe for single-shot transcription.",
+    )
 
 
 # =============================================================================

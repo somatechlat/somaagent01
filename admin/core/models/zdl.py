@@ -13,6 +13,7 @@ Models:
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 from typing import Optional
 
 from django.db import models
@@ -97,7 +98,7 @@ class OutboxMessage(models.Model):
             self.status = self.Status.FAILED
             # Exponential backoff: 2^attempts seconds
             backoff = 2**self.attempts
-            self.next_retry_at = timezone.now() + timezone.timedelta(seconds=backoff)
+            self.next_retry_at = timezone.now() + timedelta(seconds=backoff)
 
         self.save()
 
@@ -205,7 +206,7 @@ class IdempotencyRecord(models.Model):
             - is_new: True if new operation, False if duplicate.
             - record: The IdempotencyRecord instance.
         """
-        expires_at = timezone.now() + timezone.timedelta(seconds=ttl_seconds)
+        expires_at = timezone.now() + timedelta(seconds=ttl_seconds)
 
         record, created = cls.objects.get_or_create(
             idempotency_key=key,

@@ -54,7 +54,6 @@ if not settings.configured:
             "django.contrib.messages",
             # Django Ninja
             "ninja",
-            "somafractalmemory",  # Monolith Integration
             # Project Apps - Existing
             "admin.aaas",
             # Project Apps - New (M1 Migration)
@@ -106,7 +105,7 @@ if not settings.configured:
 
 from django.urls import path
 
-from admin.api import api
+from services.gateway.api_router import api
 
 urlpatterns = [
     path("", api.urls),

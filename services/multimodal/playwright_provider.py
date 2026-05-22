@@ -158,6 +158,7 @@ class PlaywrightProvider(MultimodalProvider):
         page = None
         try:
             await self._ensure_browser()
+            assert self._browser is not None
 
             # Create new context with viewport
             context = await self._browser.new_context(

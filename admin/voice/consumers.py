@@ -248,6 +248,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         if not self.audio_buffer:
             return
 
+        assert self.state is not None
         await self._send_status("processing")
 
         # Combine audio chunks
@@ -303,6 +304,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
     async def _generate_llm_response(self, transcript: str):
         """Generate AI response via LLM and TTS."""
+        assert self.state is not None
         await self._send_status("speaking")
         self.state.is_speaking = True
 
@@ -364,6 +366,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
     async def _stream_tts_audio(self, text: str):
         """Stream TTS audio chunks using Kokoro."""
+        assert self.state is not None
         import httpx
 
         tts_url = getattr(settings, "KOKORO_TTS_URL", "http://localhost:8002/synthesize")

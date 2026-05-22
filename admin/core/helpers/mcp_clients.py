@@ -96,9 +96,11 @@ class MCPClientBase(ABC):
                     excs = getattr(e, "exceptions", None)
                     original_exception = excs[0] if excs else e
                     raise RuntimeError("Dummy exception to break out of async block")
-        except Exception:
+        except Exception as _exc:
             if original_exception is not None:
                 e = original_exception
+            else:
+                e = _exc
             PrintStyle(background_color="#AA4455", font_color="white", padding=False).print(
                 f"MCPClientBase ({self.server.name} - {operation_name}): Error: {type(e).__name__}: {e}"
             )

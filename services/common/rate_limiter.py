@@ -11,14 +11,16 @@ Per CANONICAL_REQUIREMENTS.md REQ-SEC-006
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
-import redis.asyncio as redis
 from prometheus_client import Counter, Gauge
+
+from services.common.redis_pool import get_async_redis_pool
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,27 +69,25 @@ class RedisRateLimiter:
         self.default_window_seconds = default_window_seconds
         self.key_prefix = key_prefix
 
-        self._redis: Optional[redis.Redis] = None
+        self._redis: Any = None
         self._connected = False
 
     async def connect(self) -> None:
         """Connect to Redis."""
         if not self._connected:
-            self._redis = redis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-            )
+            self._redis = get_async_redis_pool(self.redis_url)
             # Test connection
             await self._redis.ping()
             self._connected = True
             LOGGER.info(f"Redis rate limiter connected: {self.redis_url}")
 
     async def close(self) -> None:
-        """Close Redis connection."""
-        if self._redis:
-            await self._redis.close()
-            self._connected = False
+        """Close Redis connection.
+
+        NOTE: Does NOT close the underlying shared pool — consumers must
+        never close singleton pools obtained from get_async_redis_pool().
+        """
+        self._connected = False
 
     async def check(
         self,
@@ -185,12 +185,24 @@ class RedisRateLimiter:
 
         except Exception as e:
             LOGGER.error(f"Rate limit check failed: {e}")
-            # Fail open for rate limiting to avoid blocking on Redis issues
+            # VIBE SECURITY: Fail-closed on Redis errors.
+            # Only fail-open if explicitly configured via env var.
             RATE_LIMIT_REQUESTS.labels(tenant_id, "error").inc()
+
+            fail_open = os.environ.get("RATE_LIMIT_FAIL_OPEN", "false").lower() == "true"
+            if fail_open:
+                LOGGER.warning("RATE_LIMIT_FAIL_OPEN is set — allowing request despite Redis error")
+                return RateLimitResult(
+                    allowed=True,
+                    remaining=limit,
+                    reset_at=now + window,
+                )
+
             return RateLimitResult(
-                allowed=True,
-                remaining=limit,
+                allowed=False,
+                remaining=0,
                 reset_at=now + window,
+                retry_after=int(window),
             )
 
     async def reset(self, tenant_id: str, endpoint: Optional[str] = None) -> None:
@@ -232,15 +244,17 @@ def get_limit_for_endpoint(endpoint: str) -> Tuple[int, int]:
 
 # Singleton instance
 _limiter_instance: Optional[RedisRateLimiter] = None
+_limiter_lock = asyncio.Lock()
 
 
 async def get_rate_limiter() -> RedisRateLimiter:
     """Get or create the singleton rate limiter."""
     global _limiter_instance
-    if _limiter_instance is None:
-        _limiter_instance = RedisRateLimiter()
-        await _limiter_instance.connect()
-    return _limiter_instance
+    async with _limiter_lock:
+        if _limiter_instance is None:
+            _limiter_instance = RedisRateLimiter()
+            await _limiter_instance.connect()
+        return _limiter_instance
 
 
 __all__ = [

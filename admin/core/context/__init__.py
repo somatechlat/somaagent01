@@ -17,7 +17,7 @@ Applied Personas:
 - Django Architect: Direct brain integration
 """
 
-from admin.core.context.builder import ContextBuilder, build_context
+from admin.core.context.builder import build_context, ContextBuilder
 from admin.core.context.lanes import get_lane_allocation, LaneAllocation
 from admin.core.context.models import BuiltContext
 

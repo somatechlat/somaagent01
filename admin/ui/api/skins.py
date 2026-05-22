@@ -30,14 +30,13 @@ def _get_store():
     return SkinsStore()
 
 
-def _validate_no_xss(variables: dict) -> dict:
+def _validate_no_xss(variables: dict[str, str]) -> dict[str, str]:
     """Validate no XSS patterns in CSS variables."""
     from services.common.skins_store import validate_no_xss
 
-    try:
-        validate_no_xss(variables)
-    except ValueError as e:
-        raise ValidationError(str(e))
+    for key, value in variables.items():
+        if not validate_no_xss(value):
+            raise ValidationError(f"XSS pattern detected in variable '{key}'")
     return variables
 
 
@@ -205,9 +204,8 @@ async def get_skin(request: HttpRequest, skin_id: str) -> dict:
 @router.post("", response=SkinResponse, summary="Create skin")
 async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
     """Upload a new skin (admin only)."""
-    from services.common.skins_store import SkinRecord
-
     from services.common.authorization import authorize
+    from services.common.skins_store import SkinRecord
 
     store = _get_store()
     await store.ensure_schema()

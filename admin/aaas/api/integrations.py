@@ -81,8 +81,8 @@ class ConnectionTestResult(BaseModel):
 # =============================================================================
 
 
-from admin.llm.models import LLMModelConfig
 from admin.aaas.models.profiles import PlatformConfig
+from admin.llm.models import LLMModelConfig
 
 # =============================================================================
 # HELPER FUNCTIONS (Dynamic Resolution)
@@ -97,7 +97,11 @@ async def _get_integration_config(provider: str) -> dict:
     - LLMModelConfig (for 'openai'/'llm')
     """
     defaults = await PlatformConfig.aget_instance()
-    # TODO: In future, this should merge with TenantSettings if we allow overrides
+    # NOTE: This reads only global defaults from PlatformConfig. Per-tenant overrides
+    # (TenantSettings) are intentionally NOT merged here until a dedicated Integration
+    # model replaces the JSONB blob pattern. TenantSettings.merge_defaults() is the
+    # future hook point. Architectural decision: keep this simple until Integration
+    # model exists (see SRS-AAAS-INTEGRATIONS.md).
 
     # 1. LLM Provider Special Case
     if provider == "openai":
@@ -183,8 +187,12 @@ async def get_integration(request, provider: str) -> IntegrationConfig:
     Permission: platform:view_settings
     """
     if provider not in SUPPORTED_PROVIDERS:
-        # Fallback for dynamic providers if we ever support them
-        pass
+        from ninja.errors import HttpError
+
+        raise HttpError(
+            400,
+            f"Unknown integration provider '{provider}'. Supported: {', '.join(SUPPORTED_PROVIDERS)}",
+        )
 
     config = await _get_integration_config(provider)
 
@@ -338,13 +346,6 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
             integrations[provider]["status_message"] = message
             platform_config.defaults["integrations"] = integrations
             await platform_config.asave()
-
-    return ConnectionTestResult(
-        provider=provider,
-        success=success,
-        message=message,
-        latency_ms=round(latency, 2),
-    )
 
     return ConnectionTestResult(
         provider=provider,

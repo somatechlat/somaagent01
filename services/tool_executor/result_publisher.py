@@ -57,7 +57,7 @@ class ResultPublisher:
         if not validate_tool_result(result_event):
             return
 
-        await self._executor.store.append_event(
+        await self._executor.store.append_event(  # type: ignore[attr-defined]
             event.get("session_id", "unknown"), {"type": "tool", **result_event}
         )
         await self._executor.publisher.publish(
@@ -138,7 +138,7 @@ class ResultPublisher:
             "tags": ["tool_executor"],
         }
         try:
-            await self._executor.soma.context_feedback(feedback)
+            await self._executor.soma.context_feedback(feedback)  # type: ignore[attr-defined]
             TOOL_FEEDBACK_TOTAL.labels("delivered").inc()
         except Exception as exc:
             try:

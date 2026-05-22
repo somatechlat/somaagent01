@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import re
-import threading
 from typing import Any, ClassVar, Dict, List, Literal, Optional
 
+from asgiref.sync import async_to_sync
 from mcp.types import CallToolResult
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -34,8 +34,8 @@ class MCPServerRemote(BaseModel):
     verify: bool = Field(default=True, description="Verify SSL certificates")
     disabled: bool = Field(default=False)
 
-    __lock: ClassVar[threading.Lock] = PrivateAttr(default=threading.Lock())
-    __client: Optional[Any] = PrivateAttr(default=None)
+    __lock: ClassVar[asyncio.Lock] = PrivateAttr(default=asyncio.Lock())
+    __client: Any = PrivateAttr(default=None)
 
     def __init__(self, config: dict[str, Any]):
         """Initialize the instance."""
@@ -44,25 +44,22 @@ class MCPServerRemote(BaseModel):
         from admin.core.helpers.mcp_clients import MCPClientRemote
 
         self.__client = MCPClientRemote(self)
-        self.update(config)
+        self.update_sync(config)
 
     def get_error(self) -> str:
         """Retrieve error."""
 
-        with self.__lock:
-            return self.__client.error
+        return self.__client.error
 
     def get_log(self) -> str:
         """Retrieve log."""
 
-        with self.__lock:
-            return self.__client.get_log()
+        return self.__client.get_log()
 
     def get_tools(self) -> List[dict[str, Any]]:
         """Retrieve tools."""
 
-        with self.__lock:
-            return self.__client.tools
+        return self.__client.tools
 
     def has_tool(self, tool_name: str) -> bool:
         """Check if tool.
@@ -71,8 +68,7 @@ class MCPServerRemote(BaseModel):
             tool_name: The tool_name.
         """
 
-        with self.__lock:
-            return self.__client.has_tool(tool_name)
+        return self.__client.has_tool(tool_name)
 
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         """Execute call tool.
@@ -82,17 +78,17 @@ class MCPServerRemote(BaseModel):
             input_data: The input_data.
         """
 
-        with self.__lock:
+        async with self.__lock:
             return await self.__client.call_tool(tool_name, input_data)
 
-    def update(self, config: dict[str, Any]) -> "MCPServerRemote":
+    async def update(self, config: dict[str, Any]) -> "MCPServerRemote":
         """Execute update.
 
         Args:
             config: The config.
         """
 
-        with self.__lock:
+        async with self.__lock:
             for key, value in config.items():
                 if key in [
                     "name",
@@ -111,7 +107,12 @@ class MCPServerRemote(BaseModel):
                     if key == "serverUrl":
                         key = "url"
                     setattr(self, key, value)
-            return asyncio.run(self.__on_update())
+            return await self.__on_update()
+
+    def update_sync(self, config: dict[str, Any]) -> "MCPServerRemote":
+        """Synchronous wrapper for update — safe for __init__ and sync callers."""
+
+        return async_to_sync(self.update)(config)
 
     async def __on_update(self) -> "MCPServerRemote":
         """Execute on update."""
@@ -136,8 +137,8 @@ class MCPServerLocal(BaseModel):
     verify: bool = Field(default=True, description="Verify SSL certificates")
     disabled: bool = Field(default=False)
 
-    __lock: ClassVar[threading.Lock] = PrivateAttr(default=threading.Lock())
-    __client: Optional[Any] = PrivateAttr(default=None)
+    __lock: ClassVar[asyncio.Lock] = PrivateAttr(default=asyncio.Lock())
+    __client: Any = PrivateAttr(default=None)
 
     def __init__(self, config: dict[str, Any]):
         """Initialize the instance."""
@@ -146,25 +147,22 @@ class MCPServerLocal(BaseModel):
         from admin.core.helpers.mcp_clients import MCPClientLocal
 
         self.__client = MCPClientLocal(self)
-        self.update(config)
+        self.update_sync(config)
 
     def get_error(self) -> str:
         """Retrieve error."""
 
-        with self.__lock:
-            return self.__client.error
+        return self.__client.error
 
     def get_log(self) -> str:
         """Retrieve log."""
 
-        with self.__lock:
-            return self.__client.get_log()
+        return self.__client.get_log()
 
     def get_tools(self) -> List[dict[str, Any]]:
         """Retrieve tools."""
 
-        with self.__lock:
-            return self.__client.tools
+        return self.__client.tools
 
     def has_tool(self, tool_name: str) -> bool:
         """Check if tool.
@@ -173,8 +171,7 @@ class MCPServerLocal(BaseModel):
             tool_name: The tool_name.
         """
 
-        with self.__lock:
-            return self.__client.has_tool(tool_name)
+        return self.__client.has_tool(tool_name)
 
     async def call_tool(self, tool_name: str, input_data: Dict[str, Any]) -> CallToolResult:
         """Execute call tool.
@@ -184,17 +181,17 @@ class MCPServerLocal(BaseModel):
             input_data: The input_data.
         """
 
-        with self.__lock:
+        async with self.__lock:
             return await self.__client.call_tool(tool_name, input_data)
 
-    def update(self, config: dict[str, Any]) -> "MCPServerLocal":
+    async def update(self, config: dict[str, Any]) -> "MCPServerLocal":
         """Execute update.
 
         Args:
             config: The config.
         """
 
-        with self.__lock:
+        async with self.__lock:
             for key, value in config.items():
                 if key in [
                     "name",
@@ -212,7 +209,12 @@ class MCPServerLocal(BaseModel):
                     if key == "name":
                         value = normalize_name(value)
                     setattr(self, key, value)
-            return asyncio.run(self.__on_update())
+            return await self.__on_update()
+
+    def update_sync(self, config: dict[str, Any]) -> "MCPServerLocal":
+        """Synchronous wrapper for update — safe for __init__ and sync callers."""
+
+        return async_to_sync(self.update)(config)
 
     async def __on_update(self) -> "MCPServerLocal":
         """Execute on update."""

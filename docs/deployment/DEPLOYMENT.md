@@ -126,9 +126,9 @@ docker build -t somaagent:latest -f Dockerfile .
 ```
 
 ### Run (Docker Compose)
-Use the included `docker-compose.yml` for production-aligned orchestration.
+Use `infra/standalone/docker-compose.yml` for standalone or `infra/aaas/docker-compose.yml` for SaaS mode.
 ```bash
-docker-compose up -d
+docker compose -f infra/standalone/docker-compose.yml up -d
 ```
 
 **Local Resource Target (Testing like Production)**:
@@ -253,7 +253,7 @@ docker-compose exec gateway python manage.py migrate
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         FRONTEND (Lit 3.x)                          │
-│       webui/src/views/aaas-chat.ts (1265 lines)                     │
+│       webui/src/views/saas-chat.ts                     │
 │       ↓ WebSocket /ws/v2/chat                                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │                         WEBSOCKET LAYER                              │
@@ -269,7 +269,7 @@ docker-compose exec gateway python manage.py migrate
 │   └───────────────────────────────────────────────────────────────┘ │
 │                              ↓                                       │
 │   ┌───────────────────────────────────────────────────────────────┐ │
-│   │ services/common/chat_service.py (1150 lines)                  │ │
+│   │ admin/core/chat_orchestrator.py (V3 12-phase pipeline)        │ │
 │   │   ├── SimpleGovernor → LaneBudget                           │ │
 │   │   ├── SimpleContextBuilder → Built Context                         │ │
 │   │   └── LLM Invoke → Stream Response                            │ │
@@ -290,13 +290,13 @@ docker-compose exec gateway python manage.py migrate
 
 | Component | File | Lines | Status |
 |-----------|------|-------|--------|
-| Chat UI | `webui/src/views/aaas-chat.ts` | 1265 | ✅ Complete |
+| Chat UI | `webui/src/views/saas-chat.ts` | ~1200 | ✅ Complete |
 | WebSocket Client | `webui/src/services/websocket-client.ts` | 245 | ✅ Complete |
 | Chat API | `admin/chat/api/chat.py` | ~400 | ✅ Complete |
 | Chat Models | `admin/chat/models.py` | 154 | ✅ Complete |
-| ChatService | `services/common/chat_service.py` | 1150 | ✅ Complete |
+| Chat Orchestrator | `admin/core/chat_orchestrator.py` | ~800 | ✅ Complete |
 | **SimpleGovernor** | `services/common/simple_governor.py` | 279 | ✅ Complete |
-| SimpleContextBuilder | `services/common/simple_context_builder.py` | ~400 | ✅ Complete |
+| Context Builder | `admin/core/context/builder.py` | ~400 | ✅ Complete |
 | HealthMonitor | `services/common/health_monitor.py` | ~250 | ✅ Complete |
 | LiteLLM Client | `admin/llm/services/litellm_client.py` | 1492 | ✅ Complete |
 | LLM Models | `admin/llm/models.py` | ~60 | ✅ Complete |
@@ -396,7 +396,7 @@ cd webui && npm install && npm run dev
 | WebSocket endpoint missing | N/A | Implement Django Channels consumer |
 | Chat API auth | `chat.py` | Verify bearer token handling |
 | LLM key loading | `litellm_client.py` | Verify Vault integration |
-| Streaming not wired | `chat_service.py` | Returns iterator, needs WS relay |
+| Streaming not wired | `admin/core/chat_orchestrator.py` | Returns iterator, needs WS relay |
 
 ---
 
@@ -432,7 +432,7 @@ The SOMA Collective has completed a comprehensive audit of somaAgent01. This roa
 │ SA01_DEPLOYMENT_MODE=STANDALONE │ SA01_DEPLOYMENT_MODE=AAAS    │
 ├────────────────────┼────────────────────────────────────────────┤
 │ infra/standalone/  │ infra/aaas/                               │
-│ └── docker-compose.yml │ └── docker-compose.yml               │
+│ └── infra/standalone/docker-compose.yml │ └── infra/aaas/docker-compose.yml │
 │ └── .env.example   │ └── .env.example                         │
 │ └── Dockerfile     │ └── Dockerfile                           │
 │ └── start.sh       │ └── start_aaas.sh                        │
@@ -469,7 +469,7 @@ class SettingsRegistry:
 
 | File | Purpose |
 |------|---------|
-| `docker-compose.yml` | Agent-only deployment, port 20xxx |
+| `infra/standalone/docker-compose.yml` | Agent-only deployment, port 20xxx |
 | `.env.example` | Standalone configuration template |
 | `Dockerfile` | Single-service container |
 | `start.sh` | Entrypoint script |
@@ -551,7 +551,6 @@ SettingsRegistry.get().redis_host  # Fails-fast if missing
 
 | Module 1 | Module 2 | Keep Both |
 |----------|----------|-----------|
-| `services/common/rate_limiter.py` | `admin/core/helpers/rate_limiter.py` | ✅ Redis vs asyncio |
 | `services/common/circuit_breakers.py` | `admin/core/helpers/circuit_breaker.py` | ✅ Class vs Decorator |
 
 ### 4.2 DELETE Legacy Duplicates

@@ -82,7 +82,7 @@ somaAgent01/
 │       └── api.py            # 666 lines ❌
 └── services/
     └── common/
-        └── chat_service.py   # 897 lines ❌
+        └── chat_service.py   # DELETED
 ```
 
 ---
@@ -96,7 +96,6 @@ somaAgent01/
 | Component | Lines | Target Module |
 |-----------|-------|---------------|
 | SimpleOPAEngine | 65-88 | `app/opa.py` |
-| CognitiveErrorHandler | 586-655 | `app/error_handler.py` |
 | CognitiveMiddleware | 658-725 | `app/middleware.py` |
 | CognitiveInputValidator | 728-804 | `app/validators.py` |
 | SecurityMiddleware | 807-867 | `app/middleware.py` |
@@ -131,17 +130,13 @@ somaAgent01/
 
 ---
 
-### FR-003: SomaAgent01 chat_service.py Decomposition
+### FR-003: SomaAgent01 chat_service.py Decomposition (DELETED)
 
 **Current State:** 897 lines, single ChatService class
 
 | Method Group | Lines | Target Module |
 |--------------|-------|---------------|
-| `create_conversation`, `get_conversation`, `list_conversations` | 145-246 | `chat/conversation_service.py` |
-| `send_message` (core flow) | 304-761 | `chat/message_service.py` |
-| `recall_memories`, `store_memory`, `store_interaction` | 767-813 | `chat/memory_bridge.py` |
-| `generate_title` | 819-882 | `chat/title_generator.py` |
-| Orchestrator | - | `chat/chat_service.py` (facade) |
+*Module was deleted; decomposition no longer applicable.*
 
 **Acceptance Criteria:**
 - [ ] `ChatService.send_message()` produces identical output
@@ -157,7 +152,6 @@ somaAgent01/
 | Model Group | Target Module |
 |-------------|---------------|
 | Session, SessionEvent | `models/session.py` |
-| Constitution, Capsule, CapsuleInstance | `models/capsule.py` |
 | Capability | `models/capability.py` |
 | UISetting, FeatureFlag | `models/settings.py` |
 | Job, SystemTask | `models/jobs.py` |
@@ -242,7 +236,7 @@ pytest tests/e2e/ -v --tb=short
 ## 8. Implementation Schedule
 
 ### Phase 1: SomaAgent01 Critical Path (Day 1)
-- [ ] `chat_service.py` → 4 modules
+- [ ] `chat_service.py` → DELETED
 - [ ] `core/models.py` → 9 modules
 - [ ] Verify E2E chat flow
 

@@ -5,11 +5,17 @@ Per AAAS_ADMIN_SRS.md Section 4.2, 4.4
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from django.db import models
 
 from admin.aaas.models.choices import TenantRole, TenantStatus
 from admin.aaas.models.tiers import SubscriptionTier
+
+if TYPE_CHECKING:
+    from django.db.models import Manager
+
+    from admin.aaas.models.agents import Agent
 
 
 class Tenant(models.Model):
@@ -68,6 +74,10 @@ class Tenant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True, help_text="When trial period ends")
 
+    if TYPE_CHECKING:
+        agents: Manager["Agent"]
+        users: Manager["TenantUser"]
+
     class Meta:
         """Meta class implementation."""
 
@@ -93,7 +103,7 @@ class Tenant(models.Model):
             "id": str(self.id),
             "name": self.name,
             "slug": self.slug,
-            "tier_id": str(self.tier_id),
+            "tier_id": str(self.tier_id),  # type: ignore[reportAttributeAccessIssue]
             "tier_name": self.tier.name if self.tier else None,
             "status": self.status,
             "keycloak_realm": self.keycloak_realm,
@@ -157,7 +167,7 @@ class TenantUser(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "tenant_id": str(self.tenant_id),
+            "tenant_id": str(self.tenant_id),  # type: ignore[reportAttributeAccessIssue]
             "user_id": str(self.user_id),
             "email": self.email,
             "display_name": self.display_name,

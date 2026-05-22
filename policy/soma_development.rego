@@ -1,21 +1,26 @@
 package soma.policy.integrator
 
-# Development policy - allow all for local testing
-# VIBE Rule 34: Real infrastructure with permissive dev policy
+# ⚠️  DEVELOPMENT POLICY — NEVER LOAD IN PRODUCTION
+# This policy is explicitly gated behind DEBUG mode in the application layer.
+# If loaded in production, it allows ALL requests.
+# The application MUST check DeploymentMode.is_dev() before using this policy.
 
-default allow = true
+# This file is kept ONLY for local development convenience.
+# Production systems must use policy/tool_policy.rego, policy/confidence.rego,
+# policy/multimodal.rego, and policy/skins.rego which enforce real authorization.
 
-# Allow all health checks
+default allow = false
+
+# Only allow in development — the application layer MUST verify DEBUG mode
+allow if {
+    input.deployment_mode == "dev"
+    input.debug == true
+}
+
 allow if {
     input.request_path == "/health"
 }
 
-# Allow all API endpoints in development
 allow if {
-    startswith(input.request_path, "/api/")
-}
-
-# Allow all admin endpoints
-allow if {
-    startswith(input.request_path, "/admin/")
+    input.request_path == "/api/v2/health"
 }

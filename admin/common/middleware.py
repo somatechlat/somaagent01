@@ -6,7 +6,7 @@ import logging
 from typing import Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from admin.core.models import Session
+    from admin.common.session_manager import Session
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
@@ -158,14 +158,14 @@ class SessionMiddleware:
             await session_manager.update_activity(claims.sub, session_id)
 
             # Attach session to request
-            request.session_data = session
+            request.session_data = session  # type: ignore[attr-defined]
         else:
             # No session_id in token - stateless mode (Redis unavailable fallback)
-            request.session_data = None
+            request.session_data = None  # type: ignore[attr-defined]
             logger.debug("Operating in stateless mode (no session_id in token)")
 
         # Attach claims to request
-        request.user_claims = claims
+        request.user_claims = claims  # type: ignore[attr-defined]
 
         # Continue to view
         return await self.get_response(request)
@@ -188,14 +188,14 @@ async def get_session_from_request(request: HttpRequest) -> Optional["Session"]:
             ...
     """
     # Check if middleware already attached session
-    if hasattr(request, "session_data") and request.session_data:
-        return request.session_data
+    if hasattr(request, "session_data") and request.session_data:  # type: ignore[attr-defined]
+        return request.session_data  # type: ignore[attr-defined]
 
     # Try to get from token
-    if not hasattr(request, "auth") or request.auth is None:
+    if not hasattr(request, "auth") or request.auth is None:  # type: ignore[attr-defined]
         return None
 
-    claims = request.auth
+    claims = request.auth  # type: ignore[attr-defined]
     session_id = getattr(claims, "session_id", None)
 
     if not session_id:

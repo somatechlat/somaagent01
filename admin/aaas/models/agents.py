@@ -89,7 +89,7 @@ class Agent(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "tenant_id": str(self.tenant_id),
+            "tenant_id": str(self.tenant_id),  # type: ignore[reportAttributeAccessIssue]
             "name": self.name,
             "slug": self.slug,
             "description": self.description,
@@ -139,7 +139,7 @@ class AgentUser(models.Model):
         """Serialize for API response."""
         return {
             "id": str(self.id),
-            "agent_id": str(self.agent_id),
+            "agent_id": str(self.agent_id),  # type: ignore[reportAttributeAccessIssue]
             "user_id": str(self.user_id),
             "role": self.role,
             "created_at": self.created_at.isoformat() if self.created_at else None,

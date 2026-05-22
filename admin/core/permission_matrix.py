@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Set
+from typing import Dict, List, Optional, Protocol, Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass
@@ -102,10 +102,7 @@ RESOURCE_PERMISSIONS: Set[str] = {
 }
 
 ALL_PERMISSIONS: Set[str] = (
-    PLATFORM_PERMISSIONS
-    | TENANT_PERMISSIONS
-    | AGENT_PERMISSIONS
-    | RESOURCE_PERMISSIONS
+    PLATFORM_PERMISSIONS | TENANT_PERMISSIONS | AGENT_PERMISSIONS | RESOURCE_PERMISSIONS
 )
 
 
@@ -188,9 +185,7 @@ class PermissionChecker:
             )
 
         # Check via SpiceDB
-        allowed = await self._check_spicedb(
-            user_id, permission, tenant_id, agent_id, resource_id
-        )
+        allowed = await self._check_spicedb(user_id, permission, tenant_id, agent_id, resource_id)
 
         # Cache result
         self._cache[cache_key] = allowed

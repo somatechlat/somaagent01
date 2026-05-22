@@ -15,8 +15,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.common.capability_registry import (
+    CapabilityCandidate,
     CapabilityHealth,
-    CapabilityRecord,
     CapabilityRegistry,
     CostTier,
 )
@@ -44,7 +44,7 @@ class RoutingDecision:
         policy_context: Context passed to OPA for this decision
     """
 
-    capability: Optional[CapabilityRecord] = None
+    capability: Optional[CapabilityCandidate] = None
     tool_id: Optional[str] = None
     provider: Optional[str] = None
     success: bool = False
@@ -206,7 +206,7 @@ class PolicyGraphRouter:
 
     def _check_budget(
         self,
-        capability: CapabilityRecord,
+        capability: CapabilityCandidate,
         budget_limit_cents: Optional[int],
         budget_used_cents: int,
     ) -> Tuple[bool, str]:
@@ -222,7 +222,7 @@ class PolicyGraphRouter:
 
         return True, ""
 
-    def _estimate_cost(self, capability: CapabilityRecord) -> int:
+    def _estimate_cost(self, capability: CapabilityCandidate) -> int:
         """Estimate cost in cents based on cost tier."""
         cost_estimates = {
             CostTier.FREE: 0,

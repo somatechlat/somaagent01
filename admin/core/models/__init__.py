@@ -8,32 +8,32 @@ Import paths like `from admin.core.models import Capsule` still work.
 
 # Domain models (original file, now reduced)
 from admin.core.models.core import (
-    # Session
-    Session,
-    SessionEvent,
-    # Constitution & Capsule
-    Constitution,
-    Capsule,
-    CapsuleInstance,
+    AgentSetting,
     # Capability
     Capability,
-    # Settings
-    UISetting,
-    AgentSetting,
+    Capsule,
+    CapsuleInstance,
+    # Constitution & Capsule
+    Constitution,
     FeatureFlag,
     # Jobs & Prompts
     Job,
-    Notification,
-    Prompt,
     # Memory
     MemoryReplica,
+    Notification,
+    Prompt,
+    # Session
+    Session,
+    SessionEvent,
+    # Settings
+    UISetting,
 )
 
 # Zero Data Loss Infrastructure
 from admin.core.models.zdl import (
-    OutboxMessage,
     DeadLetterMessage,
     IdempotencyRecord,
+    OutboxMessage,
     PendingMemory,
 )
 

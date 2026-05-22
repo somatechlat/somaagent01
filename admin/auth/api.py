@@ -16,6 +16,7 @@ import httpx
 from jose import jwt, JWTError
 from ninja import Router
 
+from admin.aaas.models import Tenant
 from admin.auth.api_helpers import (
     determine_redirect_path,
     get_highest_role,
@@ -34,7 +35,6 @@ from admin.auth.api_schemas import (
 )
 from admin.common.auth import decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError, UnauthorizedError
-from admin.aaas.models import Tenant
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -220,9 +220,9 @@ async def get_current_user(request):
 
 
 @router.post("/logout")
-async def logout(request):
+async def logout(request, response):
     """Logout and revoke tokens."""
-    refresh_token = request.POST.get("refresh_token")
+    refresh_token = request.POST.get("refresh_token") or request.COOKIES.get("refresh_token")
     config = get_keycloak_config()
     logout_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/logout"
     try:
@@ -233,6 +233,12 @@ async def logout(request):
                 )
     except httpx.HTTPError:
         pass
+
+    # Clear auth cookies
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    response.delete_cookie("session_id")
+
     return {"success": True}
 
 
@@ -260,7 +266,7 @@ async def login_with_email(request, payload: LoginRequest, response):
         raise ForbiddenError(
             action="login",
             resource="account",
-            message=f"Account locked. Try again in {lockout_status.retry_after // 60} minutes.",
+            message=f"Account locked. Try again in {(lockout_status.retry_after or 0) // 60} minutes.",
             details={"retry_after": lockout_status.retry_after},
         )
 
@@ -326,7 +332,7 @@ async def login_with_email(request, payload: LoginRequest, response):
                 raise ForbiddenError(
                     action="login",
                     resource="account",
-                    message=f"Account locked. Try again in {new_status.retry_after // 60} minutes.",
+                    message=f"Account locked. Try again in {(new_status.retry_after or 0) // 60} minutes.",
                     details={"retry_after": new_status.retry_after},
                 )
             raise UnauthorizedError(message="Invalid email or password")
@@ -350,7 +356,6 @@ async def register_user(request, payload: RegisterRequest):
 @router.post("/impersonate", response=ImpersonationResponse)
 async def impersonate_tenant(request, payload: ImpersonationRequest):
     """Generate impersonation token to act as tenant admin."""
-    import secrets
     import time
     from uuid import uuid4
 
@@ -362,7 +367,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 
     token = auth_header.split(" ")[1]
     try:
-        current_user = decode_token(token)
+        current_user = await decode_token(token)
     except JWTError as e:
         raise UnauthorizedError(f"Invalid token: {e}")
 
@@ -381,6 +386,14 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
     if not tenant:
         raise BadRequestError(f"Tenant {payload.tenant_id} not found or inactive")
 
+    from django.conf import settings
+
+    # VIBE SECURITY: Use persistent Django SECRET_KEY for impersonation JWT signing.
+    # NEVER use ephemeral secrets — tokens must be verifiable by downstream services.
+    impersonation_secret = getattr(settings, "IMPERSONATION_JWT_SECRET", settings.SECRET_KEY)
+    if not impersonation_secret:
+        raise UnauthorizedError("Impersonation disabled: no signing secret configured")
+
     impersonation_claims = {
         "sub": current_user.sub,
         "impersonating_tenant": str(tenant.id),
@@ -393,7 +406,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         "jti": str(uuid4()),
     }
     impersonation_token = jwt.encode(
-        impersonation_claims, secrets.token_urlsafe(32), algorithm="HS256"
+        impersonation_claims, impersonation_secret, algorithm="HS256"
     )
 
     @sync_to_async

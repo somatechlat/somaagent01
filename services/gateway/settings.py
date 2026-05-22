@@ -78,11 +78,13 @@ INSTALLED_APPS = [
     "admin.core",
     "admin.features",
     "admin.files",
+    "admin.filesv2",
     "admin.flink",
     "admin.gateway",
     "admin.llm",
     "admin.memory",
     "admin.multimodal",
+    "admin.somabrain",
     "admin.notifications",
     "admin.orchestrator",
     "admin.permissions",
@@ -132,27 +134,32 @@ db_dsn = get_required_env(
 )
 
 # Parse DSN components for Django DATABASE config
+# VIBE RULE: PostgreSQL ONLY. NO SQLite fallback under any condition.
 db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
-if db_match:
-    db_user, db_password, db_host, db_port, db_name = db_match.groups()
-    db_port = db_port or "5432"
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": db_name,
-            "USER": db_user,
-            "PASSWORD": db_password,
-            "HOST": db_host,
-            "PORT": db_port,
-        }
+if not db_match:
+    raise ValueError(
+        f"❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
+        f"Expected format: postgresql://user:pass@host:port/dbname. "
+        f"Received: {db_dsn[:50]}..."
+    )
+
+db_user, db_password, db_host, db_port, db_name = db_match.groups()
+db_port = db_port or "5432"
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": db_name,
+        "USER": db_user,
+        "PASSWORD": db_password,
+        "HOST": db_host,
+        "PORT": db_port,
+        "CONN_MAX_AGE": int(os.environ.get("SA01_DB_CONN_MAX_AGE", "60")),
+        "OPTIONS": {
+            "connect_timeout": int(os.environ.get("SA01_DB_CONNECT_TIMEOUT", "10")),
+        },
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
 # Internationalization
 LANGUAGE_CODE = "en-us"
@@ -216,11 +223,15 @@ KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.
 # Feature Flags
 FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
 
+# Endpoint-level permission mapping for UnifiedGate @require_permission decorator.
+# Format: {"permission_name": ["user_id_1", "user_id_2"]} or {"permission_name": "*"}
+# "*" allows all authenticated users. Empty/missing = DENY (secure-by-default).
+ENDPOINT_PERMISSIONS = {}
+
 # Authentication
 AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "true").lower() == "true"
-ALLOW_INSECURE_AUTH_BYPASS = (
-    os.environ.get("SA01_ALLOW_INSECURE_AUTH_BYPASS", "false").lower() == "true"
-)
+# VIBE SECURITY: No backdoor flags in production code. Period.
+# Dev auth bypass is handled via DEBUG=True + policy/soma_development.rego gated to environment=="dev".
 
 # SomaBrain (Cognitive Runtime)
 SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")
@@ -273,7 +284,7 @@ JWT_JWKS_URL = os.environ.get("SA01_JWT_JWKS_URL", f"{JWT_ISSUER}/protocol/openi
 JWT_ALGORITHMS = os.environ.get("SA01_JWT_ALGORITHMS", "RS256").split(",")
 JWT_LEEWAY = int(os.environ.get("SA01_JWT_LEEWAY", "10"))
 # Disable issuer/audience validation for Docker dev (localhost/container hostname mismatch)
-JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "false").lower() == "true"
+JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "true").lower() == "true"
 
 
 # =============================================================================

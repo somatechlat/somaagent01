@@ -5,10 +5,15 @@
  *
  * VIBE COMPLIANT:
  * - Real Lit Context implementation
- * - JWT token management
+ * - Cookie-based auth (no localStorage JWT — XSS-safe)
  * - Permission caching
  * - Token refresh deduplication (Promise-based lock)
  * - Role-based redirect routing
+ *
+ * SECURITY:
+ * - Access token stored in httpOnly cookie only (never localStorage)
+ * - User info stored in sessionStorage (cleared when tab closes)
+ * - WebSocket auth via cookie (never in URL)
  */
 
 import { createContext } from '@lit/context';
@@ -30,7 +35,6 @@ export interface User {
 export interface AuthStateData {
     isAuthenticated: boolean;
     user: User | null;
-    token: string | null;
     expiresAt: number | null;
     isLoading: boolean;
     error: string | null;
@@ -38,24 +42,12 @@ export interface AuthStateData {
 
 export const authContext = createContext<AuthStateData>('auth-context');
 
-const AUTH_STORAGE_KEY = 'saas_auth_token';
 const USER_STORAGE_KEY = 'saas_user';
 
 /**
  * Role priority for redirect routing.
  * Per design.md Section 6.1 - Role-Based Redirect
  */
-const ROLE_REDIRECT_MAP: Record<string, string> = {
-    'saas_admin': '/select-mode',
-    'tenant_sysadmin': '/select-mode',
-    'tenant_admin': '/dashboard',
-    'agent_owner': '/dashboard',
-    'developer': '/chat',
-    'trainer': '/chat',
-    'user': '/chat',
-    'viewer': '/chat',
-};
-
 const ROLE_PRIORITY = [
     'saas_admin',
     'tenant_sysadmin',
@@ -67,6 +59,16 @@ const ROLE_PRIORITY = [
     'viewer',
 ];
 
+/**
+ * Default route mapping for roles.
+ */
+const ROLE_REDIRECT_MAP: Record<string, string> = {
+    saas_admin: '/select-mode',
+    tenant_sysadmin: '/select-mode',
+    tenant_admin: '/dashboard',
+    agent_owner: '/dashboard',
+};
+
 @customElement('saas-auth-provider')
 export class SaasAuthProvider extends LitElement {
     @provide({ context: authContext })
@@ -74,21 +76,27 @@ export class SaasAuthProvider extends LitElement {
     authState: AuthStateData = {
         isAuthenticated: false,
         user: null,
-        token: null,
         expiresAt: null,
         isLoading: true,
         error: null,
     };
 
-    /**
-     * Token refresh deduplication lock.
-     * Per design.md Section 10.5 - Only one refresh request at a time.
-     */
+    @property({ type: Array })
+    allowedRoles: string[] = [];
+
     private _refreshPromise: Promise<boolean> | null = null;
+    private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     connectedCallback() {
         super.connectedCallback();
         this._initializeAuth();
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this._refreshTimer) {
+            clearTimeout(this._refreshTimer);
+        }
     }
 
     render() {
@@ -96,48 +104,40 @@ export class SaasAuthProvider extends LitElement {
     }
 
     /**
-     * Initialize auth state from storage
+     * Initialize auth state from sessionStorage and validate cookie.
      */
     private async _initializeAuth() {
         try {
-            const token = localStorage.getItem(AUTH_STORAGE_KEY);
-            const userJson = localStorage.getItem(USER_STORAGE_KEY);
+            // Try to validate existing cookie auth by fetching current user
+            const user = await apiClient.get<User>('/auth/me');
+            const userJson = sessionStorage.getItem(USER_STORAGE_KEY);
+            const storedUser = userJson ? (JSON.parse(userJson) as User) : null;
 
-            if (token && userJson) {
-                const user = JSON.parse(userJson) as User;
-                const payload = this._decodeToken(token);
-
-                if (payload && payload.exp * 1000 > Date.now()) {
-                    this.authState = {
-                        isAuthenticated: true,
-                        user,
-                        token,
-                        expiresAt: payload.exp * 1000,
-                        isLoading: false,
-                        error: null,
-                    };
-
-                    apiClient.setToken(token);
-                    wsClient.setToken(token);
-
-                    // Schedule token refresh
-                    this._scheduleRefresh(payload.exp * 1000);
-                    return;
-                }
+            if (user) {
+                this.authState = {
+                    isAuthenticated: true,
+                    user: storedUser ?? user,
+                    expiresAt: null,
+                    isLoading: false,
+                    error: null,
+                };
+                // Schedule proactive refresh every 10 minutes
+                this._scheduleRefresh(600000);
+                return;
             }
-
-            this.authState = {
-                ...this.authState,
-                isLoading: false,
-            };
-        } catch (error) {
-            console.error('Auth initialization failed:', error);
-            this.authState = {
-                ...this.authState,
-                isLoading: false,
-                error: 'Failed to initialize authentication',
-            };
+        } catch {
+            // Cookie auth invalid or expired
         }
+
+        // No valid cookie auth — clear any stale sessionStorage
+        sessionStorage.removeItem(USER_STORAGE_KEY);
+        this.authState = {
+            isAuthenticated: false,
+            user: null,
+            expiresAt: null,
+            isLoading: false,
+            error: null,
+        };
     }
 
     /**
@@ -161,39 +161,28 @@ export class SaasAuthProvider extends LitElement {
             }
 
             const data = await response.json();
-            const payload = this._decodeToken(data.access_token);
 
-            // Fetch user info
-            const userResponse = await fetch('/api/v2/auth/me', {
-                headers: { 'Authorization': `Bearer ${data.access_token}` },
-            });
+            // Fetch user info (cookie is now set automatically)
+            const user = await apiClient.get<User>('/auth/me');
 
-            const user = await userResponse.json() as User;
-
-            if (!payload) {
-                throw new Error('Invalid token');
+            if (!user) {
+                throw new Error('Failed to fetch user info');
             }
 
-            // Store in localStorage
-            localStorage.setItem(AUTH_STORAGE_KEY, data.access_token);
-            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-
-            apiClient.setToken(data.access_token);
-            wsClient.setToken(data.access_token);
+            sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
 
             this.authState = {
                 isAuthenticated: true,
                 user,
-                token: data.access_token,
-                expiresAt: payload.exp * 1000,
+                expiresAt: data.expires_in ? Date.now() + data.expires_in * 1000 : null,
                 isLoading: false,
                 error: null,
             };
 
-            this._scheduleRefresh(payload.exp * 1000);
+            if (data.expires_in) {
+                this._scheduleRefresh(data.expires_in * 1000);
+            }
 
-            // Determine redirect path from API response or compute from roles
-            // Per design.md Section 6.1 - Role-Based Redirect
             const redirectPath = data.redirect_path || this.getDefaultRoute(user.permissions);
 
             return {
@@ -215,7 +204,7 @@ export class SaasAuthProvider extends LitElement {
     /**
      * Get default route based on user roles.
      * Per design.md Section 6.1 - Role-Based Redirect
-     * 
+     *
      * Priority order:
      * 1. saas_admin, tenant_sysadmin -> /select-mode
      * 2. tenant_admin, agent_owner -> /dashboard
@@ -233,12 +222,12 @@ export class SaasAuthProvider extends LitElement {
     /**
      * Validate return URL is same-origin.
      * Per design.md Section 6.2 - Return URL Same-Origin Validation
-     * 
+     *
      * Security: Only allow redirects to same-origin URLs to prevent open redirect attacks.
      */
     validateReturnUrl(returnUrl: string | null): string | null {
         if (!returnUrl) return null;
-        
+
         try {
             const url = new URL(returnUrl, window.location.origin);
             // Only allow same-origin URLs
@@ -257,21 +246,27 @@ export class SaasAuthProvider extends LitElement {
     /**
      * Logout and clear state
      */
-    logout() {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        localStorage.removeItem(USER_STORAGE_KEY);
+    async logout() {
+        try {
+            await apiClient.post('/auth/logout', {});
+        } catch {
+            // Best-effort logout
+        }
+
+        sessionStorage.removeItem(USER_STORAGE_KEY);
+        if (this._refreshTimer) {
+            clearTimeout(this._refreshTimer);
+            this._refreshTimer = null;
+        }
 
         this.authState = {
             isAuthenticated: false,
             user: null,
-            token: null,
             expiresAt: null,
             isLoading: false,
             error: null,
         };
 
-        apiClient.clearToken();
-        wsClient.setToken(null);
         wsClient.disconnect();
 
         // Redirect to login
@@ -294,85 +289,59 @@ export class SaasAuthProvider extends LitElement {
     }
 
     /**
-     * Decode JWT payload (without verification - server does that)
-     */
-    private _decodeToken(token: string): { sub: string; exp: number;[key: string]: unknown } | null {
-        try {
-            const base64Payload = token.split('.')[1];
-            return JSON.parse(atob(base64Payload));
-        } catch {
-            return null;
-        }
-    }
-
-    /**
      * Schedule token refresh before expiration
      */
-    private _scheduleRefresh(expiresAt: number) {
-        const refreshBuffer = 60000; // 1 minute before expiry
-        const refreshIn = expiresAt - Date.now() - refreshBuffer;
-
-        if (refreshIn > 0) {
-            setTimeout(() => this._refreshToken(), refreshIn);
+    private _scheduleRefresh(expiresInMs: number) {
+        if (this._refreshTimer) {
+            clearTimeout(this._refreshTimer);
         }
+        const refreshBuffer = 60000; // 1 minute before expiry
+        const refreshIn = Math.max(expiresInMs - refreshBuffer, 30000); // At least 30s
+
+        this._refreshTimer = setTimeout(() => this._refreshToken(), refreshIn);
     }
 
     /**
      * Refresh the access token with deduplication.
      * Per design.md Section 10.5 - Token Refresh Deduplication
-     * 
+     *
      * Uses Promise-based lock to ensure only one refresh request at a time.
      * Concurrent callers will await the same Promise.
      */
     private async _refreshToken(): Promise<boolean> {
-        // If refresh already in progress, return existing promise
         if (this._refreshPromise) {
             console.log('[Auth] Token refresh already in progress, waiting...');
             return this._refreshPromise;
         }
 
-        // Create new refresh promise
         this._refreshPromise = this._doRefreshToken();
-        
+
         try {
             return await this._refreshPromise;
         } finally {
-            // Clear the lock after completion
             this._refreshPromise = null;
         }
     }
 
     /**
      * Internal token refresh implementation.
+     * Cookie-based: refresh_token is read from httpOnly cookie by backend.
      */
     private async _doRefreshToken(): Promise<boolean> {
         try {
             const response = await fetch('/api/v2/auth/refresh', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.authState.token}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
             });
 
             if (response.ok) {
                 const data = await response.json();
-                const payload = this._decodeToken(data.access_token);
 
-                localStorage.setItem(AUTH_STORAGE_KEY, data.access_token);
-
-                apiClient.setToken(data.access_token);
-                wsClient.setToken(data.access_token);
-
-                this.authState = {
-                    ...this.authState,
-                    token: data.access_token,
-                    expiresAt: payload?.exp ? payload.exp * 1000 : null,
-                };
-
-                if (payload?.exp) {
-                    this._scheduleRefresh(payload.exp * 1000);
+                if (data.expires_in) {
+                    this._scheduleRefresh(data.expires_in * 1000);
                 }
-                
+
                 console.log('[Auth] Token refreshed successfully');
                 return true;
             } else {

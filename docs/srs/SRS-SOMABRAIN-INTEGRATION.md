@@ -9,19 +9,26 @@
 
 ---
 
-## 0. AAAS Direct Call Rule
+## 0. Memory Architecture: Three-Tier Hierarchy
 
-> **In AAAS mode, SomaBrain is DIRECTLY IMPORTED — ZERO HTTP LATENCY**
+> **SomaBrain and SomaFractalMemory are INDEPENDENT services.**
+> SomaFractalMemory can run WITHOUT SomaBrain. The agent uses SFM as memory fallback when Brain is unavailable.
 
 ```python
-# ✅ AAAS MODE — Direct import (0ms)
+# Memory storage hierarchy (V3ChatOrchestrator):
+# 1. PostgreSQL — ALWAYS (persistence layer, Zero Data Loss)
+# 2. SomaBrain — PRIMARY (cognitive + memory)
+# 3. SomaFractalMemory — FALLBACK (pure memory, independent from Brain)
+
+# AAAS MODE — Direct imports (0ms)
 from somabrain.cognitive import CognitiveCore
 brain = CognitiveCore(db=django_db)
-await brain.recall(query, capsule)  # Direct call
+await brain.recall(query, capsule)
 
-# ❌ STANDALONE MODE — HTTP client
-brain = SomaBrainHTTPClient(settings.SOMABRAIN_URL)
-await brain.recall(query, capsule)  # HTTP overhead
+# STANDALONE MODE — HTTP clients
+brain = SomaBrainClient(settings.SOMABRAIN_URL)      # Port 30101
+memory = HTTPMemoryAdapter(settings.SOMAFRACTALMEMORY_URL)  # Port 10101
+await memory.search(query=query, top_k=10)  # Works even if Brain is down
 ```
 
 ---

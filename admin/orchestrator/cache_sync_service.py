@@ -28,7 +28,7 @@ class CacheSyncService(BaseSomaService):
 
         super().__init__()
         # Import lazily to avoid circular imports.
-        from services.cache_sync.main import app as cache_app
+        from services.cache_sync.main import app as cache_app  # type: ignore[import]
 
         self.app: Any = cache_app
 

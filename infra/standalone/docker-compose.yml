@@ -34,6 +34,8 @@ services:
       - "20020:9000" # Agent API
     networks:
       - somaagent_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       somaagent_vault:
         condition: service_healthy
@@ -61,6 +63,7 @@ services:
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: somaagent_dev_token
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: "http://127.0.0.1:8200"
     cap_add:
       - IPC_LOCK
     networks:

@@ -37,7 +37,7 @@ class ConversationSensor(BaseSensor):
         self,
         message: str,
         conversation_id: str,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ) -> None:
         """Capture incoming user message."""
         self.capture(
@@ -54,9 +54,9 @@ class ConversationSensor(BaseSensor):
         self,
         message: str,
         conversation_id: str,
-        thoughts: list = None,
+        thoughts: list | None = None,
         latency_ms: float = 0.0,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ) -> None:
         """Capture outgoing agent message."""
         self.capture(
@@ -74,7 +74,7 @@ class ConversationSensor(BaseSensor):
     def conversation_start(
         self,
         conversation_id: str,
-        context: dict = None,
+        context: dict | None = None,
     ) -> None:
         """Capture conversation start."""
         self.capture(

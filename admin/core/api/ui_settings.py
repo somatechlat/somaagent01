@@ -111,15 +111,14 @@ async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
 
     Persists settings, updates feature flags, and triggers agent reload.
     """
-    from services.common.feature_flags_store import FeatureFlagsStore
-
     from services.common.agent_config_loader import reload_agent_config
+    from services.common.feature_flags_store import FeatureFlagsStore
 
     store = _get_store()
     await store.ensure_schema()
 
     # 1. Persist settings
-    await store.set(body.data)
+    await store.set(body.data)  # type: ignore[union-attr]
 
     # 2. Persist feature flags
     tenant = _get_tenant(request)
@@ -200,5 +199,5 @@ async def put_setting_field(key: str, body: dict) -> dict:
     await store.ensure_schema()
     current = await store.get()
     current[key] = body.get("value")
-    await store.set(current)
+    await store.set(current)  # type: ignore[union-attr]
     return {"status": "ok"}

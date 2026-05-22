@@ -43,7 +43,7 @@ class LLMSensor(BaseSensor):
         total_tokens: int = 0,
         latency_ms: float = 0.0,
         cost: float = 0.0,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ) -> None:
         """Capture LLM completion."""
         self.capture(
@@ -86,7 +86,7 @@ class LLMSensor(BaseSensor):
         model: str,
         error_type: str,
         error_message: str,
-        fallback_model: str = None,
+        fallback_model: str | None = None,
     ) -> None:
         """Capture LLM error and fallback."""
         self.capture(

@@ -140,6 +140,11 @@ class Message(models.Model):
             models.Index(fields=["model", "task_type"]),
         ]
 
+    @property
+    def content(self) -> str:
+        """Return coordinate as content reference."""
+        return self.coordinate
+
     def __str__(self):
         """Return string representation."""
 

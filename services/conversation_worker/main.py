@@ -8,7 +8,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import uuid
 from typing import Any, Dict
 
 # Django setup for logging and ORM
@@ -20,20 +19,14 @@ django.setup()
 from django.conf import settings as django_settings
 from prometheus_client import start_http_server
 
-from admin.agents.services.somabrain_integration import SomaBrainClient
 from admin.core.application.use_cases.conversation.generate_response import GenerateResponseUseCase
 from admin.core.application.use_cases.conversation.process_message import (
     ProcessMessageInput,
     ProcessMessageUseCase,
 )
-from admin.core.helpers.tokens import count_tokens
-from admin.core.observability.metrics import ContextBuilderMetrics
-from services.common.simple_context_builder import (
-    ContextBuilder,
-    SomabrainHealthState,
-)
+from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
-from services.common.degradation_monitor import degradation_monitor, DegradationLevel
+from services.common.degradation_monitor import degradation_monitor
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.model_profiles import ModelProfileStore
@@ -57,7 +50,7 @@ def _start_metrics() -> None:
     global _metrics_started
     if _metrics_started:
         return
-    port = int(os.environ.get("CONVERSATION_METRICS_PORT", "9090"))
+    port = int(os.environ.get("CONVERSATION_METRICS_PORT", "9091"))
     if port > 0:
         start_http_server(port, addr=os.environ.get("CONVERSATION_METRICS_HOST", "0.0.0.0"))
     _metrics_started = True
@@ -104,41 +97,15 @@ class ConversationWorkerImpl:
         )
         self.soma = SomaBrainClient.get()
         self.router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
-        # Context builder
-        self.ctx_builder = ContextBuilder(
-            somabrain=self.soma,
-            metrics=ContextBuilderMetrics(),
-            token_counter=count_tokens,
-            health_provider=self._get_somabrain_health,
-            use_optimal_budget=os.environ.get("CONTEXT_BUILDER_OPTIMAL_BUDGET", "false").lower()
-            == "true",
-        )
         # Initialize use cases
         self._init_use_cases()
-
-    def _get_somabrain_health(self) -> SomabrainHealthState:
-        """Get current SomaBrain health from degradation monitor."""
-        if not degradation_monitor.is_monitoring():
-            return SomabrainHealthState.NORMAL
-
-        comp = degradation_monitor.components.get("somabrain")
-        if not comp:
-            return SomabrainHealthState.NORMAL
-
-        if not comp.healthy:
-            return SomabrainHealthState.DOWN
-
-        if comp.degradation_level != DegradationLevel.NONE:
-            return SomabrainHealthState.DEGRADED
-
-        return SomabrainHealthState.NORMAL
 
     def _init_use_cases(self) -> None:
         """Initialize use cases.
 
         All config from env, no hardcoded defaults per VIBE rules.
         """
-        gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
+        gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE") or "http://localhost:9000"
         if not gateway_base:
             raise ValueError(
                 "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
@@ -148,16 +115,13 @@ class ConversationWorkerImpl:
             internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=os.environ.get(
-                "SA01_LLM_MODEL"
-            ),  # REQUIRED - no hardcoded default per VIBE
+            default_model=os.environ.get("SA01_LLM_MODEL") or "",  # REQUIRED - no hardcoded default per VIBE
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,
             policy_enforcer=self.enforcer,
             memory_client=self.soma,
             publisher=self.publisher,
-            context_builder=self.ctx_builder,
             response_generator=self._gen,
             outbound_topic=self.topics["out"],
         )
@@ -169,9 +133,9 @@ class ConversationWorkerImpl:
         await degradation_monitor.start_monitoring()
         # ensure_schema not needed - Django migrations handle this
         await self.profiles.ensure_schema()
-        await self.store.append_event(
-            "system", {"type": "worker_start", "event_id": str(uuid.uuid4()), "message": "online"}
-        )
+        #         await self.store.append_event(
+        #             "system", {"type": "worker_start", "event_id": str(uuid.uuid4()), "message": "online"}
+        #         )
         LOGGER.info("Starting", extra={"topic": self.topics["in"], "group": self.topics["group"]})
         await self.bus.consume(self.topics["in"], self.topics["group"], self._handle)
 
@@ -268,6 +232,8 @@ async def main() -> None:
         await w.policy.close()
         await degradation_monitor.stop_monitoring()
 
+
+ConversationWorker = ConversationWorkerImpl
 
 if __name__ == "__main__":
     try:

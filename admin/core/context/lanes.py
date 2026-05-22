@@ -11,7 +11,7 @@ PhD Analyst: Mathematical allocation with normalization.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from admin.core.models import Capsule
@@ -57,17 +57,11 @@ class LaneAllocation:
 
 
 # Default allocations by intelligence level
-DEFAULT_LANES_LOW = LaneAllocation(
-    system=0.20, history=0.20, memory=0.20, tools=0.20, buffer=0.20
-)
+DEFAULT_LANES_LOW = LaneAllocation(system=0.20, history=0.20, memory=0.20, tools=0.20, buffer=0.20)
 
-DEFAULT_LANES_MID = LaneAllocation(
-    system=0.15, history=0.30, memory=0.25, tools=0.20, buffer=0.10
-)
+DEFAULT_LANES_MID = LaneAllocation(system=0.15, history=0.30, memory=0.25, tools=0.20, buffer=0.10)
 
-DEFAULT_LANES_HIGH = LaneAllocation(
-    system=0.10, history=0.35, memory=0.30, tools=0.15, buffer=0.10
-)
+DEFAULT_LANES_HIGH = LaneAllocation(system=0.10, history=0.35, memory=0.30, tools=0.15, buffer=0.10)
 
 
 def get_lane_allocation(capsule: "Capsule") -> LaneAllocation:

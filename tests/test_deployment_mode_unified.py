@@ -12,216 +12,169 @@ VIBE COMPLIANT:
 from __future__ import annotations
 
 import asyncio
+import importlib
 import os
-from unittest.mock import AsyncMock, Mock, patch
+from types import SimpleNamespace
 
 import pytest
 
-# Configure deployment mode for testing
-os.environ.setdefault("SA01_DEPLOYMENT_MODE", "standalone")
+# Ensure Django is configured before any imports that need it
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 
-class TestSimpleContextBuilderDeploymentMode:
-    """CTX-002: Test SimpleContextBuilder deployment mode memory retrieval."""
+def _set_deployment_mode(mode: str) -> str:
+    """Set deployment mode and return the original value."""
+    original = os.environ.get("SA01_DEPLOYMENT_MODE", "")
+    os.environ["SA01_DEPLOYMENT_MODE"] = mode
+    # Reset cached DeploymentMode state if the module has already been loaded
+    try:
+        import services.common.deployment_mode as dm
+
+        dm.DeploymentMode._resolved = False
+        dm.DeploymentMode._mode = None
+    except Exception:
+        pass
+    return original
+
+
+def _restore_deployment_mode(original: str) -> None:
+    """Restore the original deployment mode value."""
+    if original:
+        os.environ["SA01_DEPLOYMENT_MODE"] = original
+    else:
+        os.environ.pop("SA01_DEPLOYMENT_MODE", None)
+    try:
+        import services.common.deployment_mode as dm
+
+        dm.DeploymentMode._resolved = False
+        dm.DeploymentMode._mode = None
+    except Exception:
+        pass
+
+
+class TestContextBuilderDeploymentMode:
+    """CTX-002: Test ContextBuilder deployment mode memory retrieval."""
 
     @pytest.mark.asyncio
-    async def test_aaas_mode_memory_retrieval(self):
-        """Test AAAS mode memory retrieval via HTTP API."""
+    async def test_aaas_mode_memory_retrieval_graceful_failure(self):
+        """Test AAAS mode memory retrieval fails gracefully with no server."""
+        original = _set_deployment_mode("aaas")
+        try:
+            import admin.core.context.builder as cb_module
 
-        # Force AAAS mode for this test
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            # Reload module to pick up new deployment mode
-            import importlib
+            importlib.reload(cb_module)
 
-            import services.common.simple_context_builder as scb
+            from admin.core.somabrain_client import SomaBrainClient
 
-            importlib.reload(scb)
+            # Real client pointing to a non-existent server
+            client = SomaBrainClient(base_url="http://localhost:9999")
+            builder = cb_module.ContextBuilder(brain_client=client)
 
-            # Create builder
-            somabrain_mock = AsyncMock()
-            somabrain_mock.call = AsyncMock(return_value={"snippets": []})
-            builder = scb.SimpleContextBuilder(
-                somabrain=somabrain_mock,
-                token_counter=lambda x: len(x.split()),
+            capsule = SimpleNamespace(
+                tenant_id="test-tenant",
+                id="test-capsule",
+                body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
             )
 
-            # Test memory retrieval
-            turn = {"user_message": "test"}
-            budget = {"memory": 1000}
-
-            result = await builder._add_memory_aaas(
-                messages=[{"role": "system", "content": "test"}],
-                turn=turn,
-                budget=budget,
+            result = await builder._build_memory_lane(
+                capsule=capsule,
+                query="test query",
+                persona=capsule.body["persona"],
+                budget=100,
             )
-
-            assert result is not None
-            assert builder.memory_retrieved is False  # No snippets returned
-            print("  ✅ AAAS mode: Memory retrieval completed via HTTP API")
+            # Should fall back gracefully when SomaBrain is unreachable
+            assert result == "[Memory recall unavailable]"
+            print("  ✅ AAAS mode: Memory retrieval graceful failure handled")
+        finally:
+            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
-    async def test_standalone_mode_memory_retrieval(self):
-        """Test STANDALONE mode memory retrieval via embedded module."""
+    async def test_standalone_mode_memory_retrieval_graceful_failure(self):
+        """Test STANDALONE mode memory retrieval fails gracefully."""
+        original = _set_deployment_mode("standalone")
+        try:
+            import admin.core.context.builder as cb_module
 
-        # Force STANDALONE mode for this test
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
-            # Reload module to pick up new deployment mode
-            import importlib
+            importlib.reload(cb_module)
 
-            import services.common.simple_context_builder as scb
+            from admin.core.somabrain_client import SomaBrainClient
 
-            importlib.reload(scb)
+            client = SomaBrainClient(base_url="http://localhost:9999")
+            builder = cb_module.ContextBuilder(brain_client=client)
 
-            # Create builder
-            builder = scb.SimpleContextBuilder(
-                somabrain=Mock(),
-                token_counter=lambda x: len(x.split()),
+            capsule = SimpleNamespace(
+                tenant_id="test-tenant",
+                id="test-capsule",
+                body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
             )
 
-            # Test memory retrieval (will use embedded module)
-            turn = {"user_message": "test"}
-            budget = {"memory": 1000}
-
-            try:
-                result = await builder._add_memory_standalone(
-                    messages=[{"role": "system", "content": "test"}],
-                    turn=turn,
-                    budget=budget,
-                )
-                # If we get here, embedded modules were available
-                assert result is not None
-                print("  ✅ STANDALONE mode: Memory retrieval completed via embedded module")
-            except ImportError as e:
-                # Expected in environments without embedded modules
-                print(
-                    "  ✅ STANDALONE mode: ImportError handled correctly (embedded modules not available)"
-                )
-                assert "somabrain" in str(e).lower()
+            result = await builder._build_memory_lane(
+                capsule=capsule,
+                query="test query",
+                persona=capsule.body["persona"],
+                budget=100,
+            )
+            assert result == "[Memory recall unavailable]"
+            print("  ✅ STANDALONE mode: Memory retrieval graceful failure handled")
+        finally:
+            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_protection(self):
-        """Test circuit breaker protection for AAAS mode memory retrieval."""
-        from services.common.circuit_breaker import CircuitBreakerError
-        from services.common.simple_context_builder import SimpleContextBuilder
-
-        # Create builder with circuit breaker error simulation
-        somabrain_mock = AsyncMock()
-        somabrain_mock.call = AsyncMock(side_effect=CircuitBreakerError("Circuit open"))
-
-        builder = SimpleContextBuilder(
-            somabrain=somabrain_mock,
-            token_counter=lambda x: len(x.split()),
+    async def test_circuit_breaker_opens_after_failure(self):
+        """Test real CircuitBreaker opens after 1 failure and fast-fails."""
+        from services.common.circuit_breaker import (
+            CircuitBreaker,
+            CircuitBreakerConfig,
+            CircuitBreakerError,
         )
 
-        # Test memory retrieval with circuit open
-        turn = {"user_message": "test"}
-        budget = {"memory": 1000}
-
-        result = await builder._add_memory_aaas(
-            messages=[{"role": "system", "content": "test"}],
-            turn=turn,
-            budget=budget,
+        config = CircuitBreakerConfig(
+            name="test_somabrain",
+            failure_threshold=1,
+            reset_timeout=60.0,
         )
+        cb = CircuitBreaker(config=config)
 
-        # Should gracefully handle circuit breaker error
-        assert result is not None
-        print("  ✅ Circuit breaker error handled gracefully")
+        async def failing_func():
+            raise ConnectionError("Simulated connection failure")
+
+        # First call should raise ConnectionError and open the circuit
+        with pytest.raises(ConnectionError):
+            await cb.call(failing_func)
+
+        assert cb.is_open() is True
+
+        # Subsequent calls should fast-fail with CircuitBreakerError
+        with pytest.raises(CircuitBreakerError):
+            await cb.call(failing_func)
+
+        print("  ✅ Circuit breaker opens after 1 failure and fast-fails")
 
 
-class TestChatServiceErrorHandling:
-    """CHAT-003: Test ChatService deployment mode error handling."""
+class TestChatOrchestratorErrorHandling:
+    """CHAT-003: Test chat error handling with real LiteLLM client config."""
 
-    @pytest.mark.asyncio
-    async def test_aaas_mode_llm_timeout_handling(self, chat_service):
-        """Test AAAS mode HTTP timeout handling for LLM streaming."""
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            # Reload module to pick up new deployment mode
-            import importlib
+    def test_litellm_client_fails_fast_without_api_key(self):
+        """Test that get_chat_model raises LLMNotConfiguredError with invalid config."""
+        from admin.llm.exceptions import LLMNotConfiguredError
+        from admin.llm.services.litellm_client import get_chat_model
 
-            import services.common.chat_service as cs
+        with pytest.raises(LLMNotConfiguredError):
+            get_chat_model(provider="openai", name="gpt-4o-mini", api_key="None")
 
-            importlib.reload(cs)
-
-            # Create chat service with timeout
-            service = cs.ChatService(timeout=1.0)
-
-            # Mock LLM client
-            with patch("services.common.chat_service.get_chat_model") as mock_llm:
-                mock_llm_instance = AsyncMock()
-                # Simulate asyncio.TimeoutError (HTTP timeout)
-                mock_llm_instance._astream = AsyncMock(
-                    side_effect=asyncio.TimeoutError("HTTP timeout")
-                )
-                mock_llm.return_value = mock_llm_instance
-
-                # Test that timeout is handled (won't crash)
-                try:
-                    async for _ in service.send_message(
-                        conversation_id="test_conv_id",
-                        agent_id="test_agent",
-                        content="test message",
-                        user_id="test_user",
-                    ):
-                        break  # First token only
-                except asyncio.TimeoutError:
-                    # Expected - timeout was caught and logged
-                    pass
-
-            print("  ✅ AAAS mode: LLM timeout handled with deployment mode logging")
+        print("  ✅ LiteLLM client fails fast without valid API key")
 
     @pytest.mark.asyncio
-    async def test_standalone_mode_context_build_error(self, chat_service):
-        """Test STANDALONE mode context build error handling."""
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
-            # Reload module to pick up new deployment mode
-            import importlib
+    async def test_litellm_invalid_provider_fails_fast(self):
+        """Test that an invalid provider configuration fails fast without network calls."""
+        from admin.llm.exceptions import LLMNotConfiguredError
+        from admin.llm.services.litellm_client import get_chat_model
 
-            import services.common.chat_service as cs
+        # A missing/invalid provider should fail during configuration, not at runtime
+        with pytest.raises((LLMNotConfiguredError, RuntimeError)):
+            get_chat_model(provider="nonexistent_provider", name="fake-model")
 
-            importlib.reload(cs)
-
-            # Create chat service
-            service = cs.ChatService()
-
-            # Mock context builder failure
-            with patch("services.common.chat_service.create_context_builder") as mock_builder:
-                mock_builder_instance = AsyncMock()
-                mock_builder_instance.build_for_turn = AsyncMock(
-                    side_effect=ImportError("Embedded SomaBrain module not found")
-                )
-                mock_builder.return_value = mock_builder_instance
-
-                # Test that error is handled with deployment mode context
-                try:
-                    # This should trigger the context build error handler
-                    pass  # In real test would call send_message
-                except ImportError as e:
-                    # Expected - error was logged with deployment mode prefix
-                    assert "STANDALONE mode" in str(e) or "STANDALONE" in str(e)
-
-            print("  ✅ STANDALONE mode: Context build error handled with deployment mode context")
-
-    @pytest.mark.asyncio
-    async def test_db_error_with_deployment_mode(self, chat_service):
-        """Test database error handling with deployment mode context."""
-        # Reload chat_service module
-        import importlib
-
-        import services.common.chat_service as cs
-
-        importlib.reload(cs)
-
-        # Create chat service
-        service = cs.ChatService()
-
-        # Test that database errors include deployment mode prefix
-        with patch("services.common.chat_service.MessageModel") as mock_msg_model:
-            # Simulate database error
-            mock_msg_model.objects.create.side_effect = Exception("Connection failed")
-
-            # The error message should include deployment mode context
-            print("  ✅ Database errors include deployment mode prefix (AAAS/STANDALONE)")
+        print("  ✅ Chat orchestrator error handling verified with real config")
 
 
 class TestHealthMonitorDeploymentMode:
@@ -229,111 +182,90 @@ class TestHealthMonitorDeploymentMode:
 
     @pytest.mark.asyncio
     async def test_aaas_mode_service_health_check(self):
-        """Test AAAS mode service health check via HTTP endpoint."""
-        from services.common.health_monitor import (
-            HealthCheck,
-        )
+        """Test AAAS mode service health check via real checker."""
+        original = _set_deployment_mode("aaas")
+        try:
+            import services.common.health_monitor as hm_module
 
-        # Create health monitor with AAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            import importlib
+            importlib.reload(hm_module)
 
-            import services.common.health_monitor as hm
+            from services.common.health_monitor import HealthCheck, HealthMonitor
 
-            importlib.reload(hm)
+            monitor = HealthMonitor()
 
-            monitor = hm.HealthMonitor()
-
-            # Register health check for somabrain service
-            def aaas_somabrain_check():
-                # Simulate AAAS mode HTTP health check
+            def aaas_check():
                 return HealthCheck(healthy=True, latency_ms=45.0)
 
-            monitor.register_health_checker("somabrain", aaas_somabrain_check)
+            monitor.register_health_checker("somabrain", aaas_check)
+            await monitor._check_service("somabrain", aaas_check)
 
-            # Run health check
-            await monitor._check_service("somabrain", aaas_somabrain_check)
-
-            # Verify health status
-            service_status = monitor.checks.get("somabrain")
-            assert service_status is not None
-            assert service_status.healthy is True
-            assert service_status.latency_ms == 45.0
-
-            print("  ✅ AAAS mode: Service health check completed via HTTP endpoint")
+            status = monitor.checks.get("somabrain")
+            assert status is not None
+            assert status.healthy is True
+            # Real implementation measures actual execution latency, not the returned value
+            assert status.latency_ms >= 0.0
+            print("  ✅ AAAS mode: Service health check completed")
+        finally:
+            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
     async def test_standalone_mode_module_health_check(self):
         """Test STANDALONE mode health check via embedded module import."""
-        from services.common.health_monitor import (
-            HealthCheck,
-        )
+        original = _set_deployment_mode("standalone")
+        try:
+            import services.common.health_monitor as hm_module
 
-        # Create health monitor with STANDALONE mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
-            import importlib
+            importlib.reload(hm_module)
 
-            import services.common.health_monitor as hm
+            from services.common.health_monitor import HealthCheck, HealthMonitor
 
-            importlib.reload(hm)
+            monitor = HealthMonitor()
 
-            monitor = hm.HealthMonitor()
-
-            # Register health check for embedded module
-            def standalone_module_check():
-                # Simulate STANDALONE mode embedded module health check
+            def standalone_check():
                 try:
-                    # Try importing embedded module to check availability
-                    import somabrain  # noqa: F401  # Intentional side-effect import
-
-                    if False:
-                        pass  # type: ignore[unreachable]  # Ruff: F401 side-effect import
+                    import somabrain  # noqa: F401
                     return HealthCheck(healthy=True, latency_ms=15.0)
                 except ImportError:
-                    return HealthCheck(healthy=False, latency_ms=0.0, error="Module not found")
+                    return HealthCheck(
+                        healthy=False, latency_ms=0.0, error="Module not found"
+                    )
 
-            monitor.register_health_checker("somabrain", standalone_module_check)
+            monitor.register_health_checker("somabrain", standalone_check)
+            await monitor._check_service("somabrain", standalone_check)
 
-            # Run health check
-            await monitor._check_service("somabrain", standalone_module_check)
-
-            # Verify health status (may be unhealthy if module not available)
-            service_status = monitor.checks.get("somabrain")
-            assert service_status is not None
-            # Either healthy (module available) or unhealthy (module not available)
+            status = monitor.checks.get("somabrain")
+            assert status is not None
             print("  ✅ STANDALONE mode: Module health check completed")
+        finally:
+            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
     async def test_deployment_mode_error_logging(self):
-        """Test that health check errors include deployment mode prefix."""
+        """Test that health check errors include deployment mode context."""
+        original = _set_deployment_mode("aaas")
+        try:
+            import services.common.health_monitor as hm_module
 
-        # Create health monitor with AAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            import importlib
+            importlib.reload(hm_module)
 
-            import services.common.health_monitor as hm
+            from services.common.health_monitor import HealthMonitor
 
-            importlib.reload(hm)
+            monitor = HealthMonitor()
 
-            monitor = hm.HealthMonitor()
-
-            # Register failing health check
             def failing_check():
                 raise Exception("HTTP endpoint unavailable")
 
             monitor.register_health_checker("somabrain", failing_check)
-
-            # Run health check - should catch error and log with deployment mode prefix
             await monitor._check_service("somabrain", failing_check)
 
-            # Verify service marked as unhealthy
-            service_status = monitor.checks.get("somabrain")
-            assert service_status is not None
-            assert service_status.healthy is False
-            assert service_status.error is not None
-            assert "HTTP endpoint unavailable" in service_status.error
-
-            print("  ✅ Health check errors include deployment mode prefix")
+            status = monitor.checks.get("somabrain")
+            assert status is not None
+            assert status.healthy is False
+            assert status.error is not None
+            assert "HTTP endpoint unavailable" in status.error
+            print("  ✅ Health check errors include deployment mode context")
+        finally:
+            _restore_deployment_mode(original)
 
 
 class TestUnifiedMetricsDeploymentMode:
@@ -341,198 +273,140 @@ class TestUnifiedMetricsDeploymentMode:
 
     @pytest.mark.asyncio
     async def test_deployment_mode_latency_tracking(self):
-        """Test that latency tracking differs by deployment mode."""
+        """Test that latency tracking works in both deployment modes."""
+        from services.common.unified_metrics import get_metrics
 
-        # Test with AAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            import importlib
+        metrics = get_metrics()
 
-            import services.common.unified_metrics as um
-
-            importlib.reload(um)
-
-            metrics = um.get_metrics()
-
-            # Record AAAS mode latency (higher for HTTP calls)
+        # AAAS mode
+        original = _set_deployment_mode("aaas")
+        try:
             metrics.record_health_status(
                 service_name="somabrain",
                 is_healthy=True,
-                latency_ms=85.0,  # AAAS: HTTP call latency
+                latency_ms=85.0,
             )
-
-            # Verify metrics recorded
             print("  ✅ AAAS mode: Health status recorded with latency 85ms")
+        finally:
+            _restore_deployment_mode(original)
 
-        # Test with STANDALONE mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
-            import importlib
-
-            import services.common.unified_metrics as um
-
-            importlib.reload(um)
-
-            metrics = um.get_metrics()
-
-            # Record STANDALONE mode latency (lower for embedded modules)
+        # STANDALONE mode
+        original = _set_deployment_mode("standalone")
+        try:
             metrics.record_health_status(
                 service_name="somabrain",
                 is_healthy=True,
-                latency_ms=25.0,  # STANDALONE: Embedded module latency
+                latency_ms=25.0,
             )
-
-            # Verify metrics recorded
             print("  ✅ STANDALONE mode: Health status recorded with latency 25ms")
+        finally:
+            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
     async def test_memory_retrieval_latency_tracking(self):
         """Test memory retrieval latency tracking per deployment mode."""
+        from services.common.unified_metrics import get_metrics
 
-        # Test with AAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            import importlib
+        metrics = get_metrics()
 
-            import services.common.unified_metrics as um
+        original = _set_deployment_mode("aaas")
+        try:
+            metrics.record_memory_retrieval(latency_seconds=0.065, snippet_count=3)
+            print("  ✅ AAAS mode: Memory retrieval recorded at 65ms")
+        finally:
+            _restore_deployment_mode(original)
 
-            importlib.reload(um)
-
-            metrics = um.get_metrics()
-
-            # Record AAAS mode memory retrieval (HTTP API call)
-            metrics.record_memory_retrieval(latency_seconds=0.065, snippet_count=3)  # 65ms
-
-            print("  ✅ AAAS mode: Memory retrieval recorded at 65ms (HTTP API)")
-
-        # Test with STANDALONE mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
-            import importlib
-
-            import services.common.unified_metrics as um
-
-            importlib.reload(um)
-
-            metrics = um.get_metrics()
-
-            # Record STANDALONE mode memory retrieval (embedded query)
-            metrics.record_memory_retrieval(latency_seconds=0.018, snippet_count=3)  # 18ms
-
-            print("  ✅ STANDALONE mode: Memory retrieval recorded at 18ms (embedded)")
+        original = _set_deployment_mode("standalone")
+        try:
+            metrics.record_memory_retrieval(latency_seconds=0.018, snippet_count=3)
+            print("  ✅ STANDALONE mode: Memory retrieval recorded at 18ms")
+        finally:
+            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_logging(self):
         """Test circuit breaker logging with deployment mode context."""
+        from services.common.unified_metrics import get_metrics
 
-        # Test with AAAS mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "aaas"}):
-            import importlib
+        metrics = get_metrics()
 
-            import services.common.unified_metrics as um
-
-            importlib.reload(um)
-
-            metrics = um.get_metrics()
-
-            # Record circuit breaker open for AAAS mode (HTTP service)
+        original = _set_deployment_mode("aaas")
+        try:
             metrics.record_circuit_open(service_name="somabrain")
+            print("  ✅ AAAS mode: Circuit open logged")
+        finally:
+            _restore_deployment_mode(original)
 
-            print("  ✅ AAAS mode: Circuit open logged for HTTP service")
-
-        # Test with STANDALONE mode
-        with patch.dict("os.environ", {"SA01_DEPLOYMENT_MODE": "standalone"}):
-            import importlib
-
-            import services.common.unified_metrics as um
-
-            importlib.reload(um)
-
-            metrics = um.get_metrics()
-
-            # Record circuit breaker open for STANDALONE mode (embedded module)
+        original = _set_deployment_mode("standalone")
+        try:
             metrics.record_circuit_open(service_name="somabrain")
-
-            print("  ✅ STANDALONE mode: Circuit open logged for embedded module")
+            print("  ✅ STANDALONE mode: Circuit open logged")
+        finally:
+            _restore_deployment_mode(original)
 
 
 class TestSimpleGovernorDeploymentMode:
     """GOV-002: Test SimpleGovernor budget allocation."""
 
     def test_normal_mode_budget_allocation(self):
-        """Test Normal mode budget allocation (same for both deployment modes)."""
-        from services.common.simple_governor import (
-            get_governor,
-            HealthStatus,
-        )
+        """Test Normal mode budget allocation."""
+        from services.common.simple_governor import get_governor, HealthStatus
 
         governor = get_governor()
 
-        # Test NORMAL mode allocation
-        decision = governor.allocate_budget(
-            max_tokens=4096,
-            is_degraded=False,
-        )
+        decision = governor.allocate_budget(max_tokens=4096, is_degraded=False)
 
         assert decision.health_status == HealthStatus.HEALTHY
         assert decision.mode == "normal"
         assert decision.tools_enabled is True
 
-        # Verify ratios (NORMAL: 15% system, 25% history, 25% memory, 20% tools)
         budget = decision.lane_budget
-        assert abs(budget.system_policy - 614) < 10  # 15% of 4096
-        assert abs(budget.history - 1024) < 10  # 25% of 4096
-        assert abs(budget.memory - 1024) < 10  # 25% of 4096
-        assert abs(budget.tools - 819) < 10  # 20% of 4096
+        assert abs(budget.system_policy - 614) < 10
+        assert abs(budget.history - 1024) < 10
+        assert abs(budget.memory - 1024) < 10
+        assert abs(budget.tools - 819) < 10
 
-        print("  ✅ NORMAL mode: Budget allocation verified (15%/25%/25%/20%)")
+        print("  ✅ NORMAL mode: Budget allocation verified")
 
     def test_degraded_mode_budget_allocation(self):
-        """Test Degraded mode budget allocation (same for both deployment modes)."""
-        from services.common.simple_governor import (
-            get_governor,
-            HealthStatus,
-        )
+        """Test Degraded mode budget allocation."""
+        from services.common.simple_governor import get_governor, HealthStatus
 
         governor = get_governor()
 
-        # Test DEGRADED mode allocation
-        decision = governor.allocate_budget(
-            max_tokens=4096,
-            is_degraded=True,
-        )
+        decision = governor.allocate_budget(max_tokens=4096, is_degraded=True)
 
         assert decision.health_status == HealthStatus.DEGRADED
         assert decision.mode == "degraded"
-        assert decision.tools_enabled is False  # Tools disabled in degraded mode
+        assert decision.tools_enabled is False
 
-        # Verify ratios (DEGRADED: 70% system, 10% history, 15% memory, 0% tools)
         budget = decision.lane_budget
-        assert abs(budget.system_policy - 1638) < 10  # 70% of 4096
-        assert abs(budget.history - 409) < 10  # 10% of 4096
-        assert abs(budget.memory - 614) < 10  # 15% of 4096
-        assert budget.tools == 0  # Disabled in degraded mode
+        assert abs(budget.system_policy - 1638) < 10
+        assert abs(budget.history - 409) < 10
+        assert abs(budget.memory - 614) < 10
+        assert budget.tools == 0
 
-        print("  ✅ DEGRADED mode: Budget allocation verified (70%/10%/15%/0%)")
+        print("  ✅ DEGRADED mode: Budget allocation verified")
 
     def test_rescue_mode_budget_allocation(self):
-        """Test Rescue mode budget allocation (emergency fallback)."""
+        """Test Rescue mode budget allocation."""
         from services.common.simple_governor import GovernorDecision, HealthStatus
 
-        # Test rescue path
         decision = GovernorDecision.rescue_path(reason="Emergency fallback")
 
         assert decision.health_status == HealthStatus.DEGRADED
         assert decision.mode == "degraded"
         assert decision.tools_enabled is False
 
-        # Verify rescue path allocation (100% system_policy)
         budget = decision.lane_budget
-        assert budget.system_policy == 400  # Fixed rescue allocation
+        assert budget.system_policy == 400
         assert budget.history == 0
         assert budget.memory == 100
         assert budget.tools == 0
-        assert budget.buffer >= 200  # Large safety margin
+        assert budget.buffer >= 200
 
-        print("  ✅ RESCUE mode: Budget allocation verified (emergency fallback)")
+        print("  ✅ RESCUE mode: Budget allocation verified")
 
 
 if __name__ == "__main__":
-    # Run tests manually for quick validation
     pytest.main([__file__, "-v", "-s", "--tb=short"])

@@ -7,12 +7,10 @@ import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
-from admin.core.helpers.circuit_breaker import (
+from services.common.circuit_breaker import (
     circuit_breaker,
     CircuitOpenError,
-    ensure_metrics_exporter,
 )
-
 from services.tool_executor.resource_manager import ExecutionLimits, ResourceManager
 from services.tool_executor.sandbox_manager import (
     SandboxExecutionResult,
@@ -41,7 +39,6 @@ class ExecutionEngine:
 
         self._sandbox = sandbox
         self._resources = resources
-        ensure_metrics_exporter()
         try:
             self._circuit_failure_threshold = int(
                 os.environ.get("TOOL_EXECUTOR_CIRCUIT_FAILURE_THRESHOLD", "5")

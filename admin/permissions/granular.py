@@ -24,7 +24,6 @@ from admin.common.auth import AuthBearer
 from admin.permissions.definitions import (
     GRANULAR_PERMISSIONS,
     PREDEFINED_ROLES,
-    validate_permissions,
 )
 
 router = Router(tags=["granular-permissions"])

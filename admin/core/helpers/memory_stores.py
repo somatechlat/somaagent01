@@ -14,13 +14,13 @@ from weakref import WeakKeyDictionary
 
 from langchain_core.documents import Document
 
-from admin.agents.services.somabrain_integration import (
+from admin.core.helpers import guids
+from admin.core.helpers.print_style import PrintStyle
+from admin.core.somabrain_client import (
     SomaBrainClient,
     SomaClientError,
     SomaMemoryRecord,
 )
-from admin.core.helpers import guids
-from admin.core.helpers.print_style import PrintStyle
 
 
 class SomaMemory:
@@ -598,7 +598,7 @@ class _SomaDocStore:
         if not isinstance(raw, Mapping):
             return None
         payload = raw.get("payload")
-        if not isinstance(payload, Mapping):
+        if not isinstance(payload, dict):
             payload = {}
         identifier = (
             str(payload.get("id"))

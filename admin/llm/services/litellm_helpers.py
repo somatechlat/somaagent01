@@ -5,18 +5,80 @@ Extracted from litellm_client.py for 650-line compliance.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import time
 from typing import Any, Awaitable, Callable, TYPE_CHECKING
 
 import litellm
 import openai
 
-from admin.core.helpers.rate_limiter import RateLimiter
 from admin.core.helpers.tokens import approximate_tokens
+
+
+# In-memory rate limiter for per-API-key LLM call throttling.
+# This is NOT the API endpoint rate limiter (see services.common.rate_limiter).
+class _RateLimiter:
+    """In-memory rate limiter for LLM API call throttling."""
+
+    def __init__(self, seconds: int = 60, **limits: int):
+        self.timeframe = seconds
+        self.limits = {
+            key: value if isinstance(value, (int, float)) else 0
+            for key, value in (limits or {}).items()
+        }
+        self.values = {key: [] for key in self.limits.keys()}
+        self._lock = asyncio.Lock()
+
+    def add(self, **kwargs: int):
+        now = time.time()
+        for key, value in kwargs.items():
+            if key not in self.values:
+                self.values[key] = []
+            self.values[key].append((now, value))
+
+    async def cleanup(self):
+        async with self._lock:
+            now = time.time()
+            cutoff = now - self.timeframe
+            for key in self.values:
+                self.values[key] = [(t, v) for t, v in self.values[key] if t > cutoff]
+
+    async def get_total(self, key: str) -> int:
+        async with self._lock:
+            if key not in self.values:
+                return 0
+            return sum(value for _, value in self.values[key])
+
+    async def wait(
+        self,
+        callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
+    ):
+        while True:
+            await self.cleanup()
+            should_wait = False
+            for key, limit in self.limits.items():
+                if limit <= 0:
+                    continue
+                total = await self.get_total(key)
+                if total > limit:
+                    if callback:
+                        msg = f"Rate limit exceeded for {key} ({total}/{limit}), waiting..."
+                        should_wait = not await callback(msg, key, total, limit)
+                    else:
+                        should_wait = True
+                    break
+            if not should_wait:
+                break
+            await asyncio.sleep(1)
+
+
+RateLimiter = _RateLimiter
 
 if TYPE_CHECKING:
     from admin.llm.models import ModelConfig
+    from admin.llm.services.litellm_schemas import ChatChunk
 
 # Module-level state
 rate_limiters: dict[str, RateLimiter] = {}
@@ -126,7 +188,7 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
         )
         if hasattr(litellm_exceptions, name)
     )
-    return isinstance(exc, transient_types + litellm_transient)
+    return isinstance(exc, transient_types + litellm_transient)  # type: ignore[arg-type]
 
 
 async def apply_rate_limiter(
@@ -155,20 +217,24 @@ def apply_rate_limiter_sync(
     input_text: str,
     rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
 ):
-    """Apply rate limiting for sync calls."""
+    """Apply rate limiting for sync calls.
+
+    Offloads to a dedicated thread with its own fresh event loop to avoid
+    nest_asyncio patching and event-loop corruption in production.
+    """
     if not model_config:
         return
-    import asyncio
+    import concurrent.futures
 
-    import nest_asyncio
+    def _run_in_fresh_loop():
+        return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
 
-    nest_asyncio.apply()
-    return asyncio.run(apply_rate_limiter(model_config, input_text, rate_limiter_callback))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(_run_in_fresh_loop).result()
 
 
-def _parse_chunk(chunk: Any) -> dict:
+def _parse_chunk(chunk: Any) -> "ChatChunk":
     """Parse LLM response chunk into standardized format."""
-    from admin.llm.services.litellm_schemas import ChatChunk
 
     delta = chunk["choices"][0].get("delta", {})
     message = chunk["choices"][0].get("message", {}) or chunk["choices"][0].get(

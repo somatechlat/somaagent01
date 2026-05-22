@@ -135,9 +135,9 @@ somaAgent01/
 ├── webui/                   # Frontend (Lit 3.x)
 │   └── src/
 │       ├── views/          # Page components
-│       │   ├── aaas-login.ts    # Login page (OAuth, SSO, email/password)
-│       │   ├── aaas-chat.ts     # Chat view (WebSocket, streaming)
-│       │   └── aaas-mfa-setup.ts
+│       │   ├── saas-login.ts    # Login page (OAuth, SSO, email/password)
+│       │   ├── saas-chat.ts     # Chat view (WebSocket, streaming)
+│       │   └── saas-mfa-setup.ts
 │       ├── services/       # Frontend services
 │       │   ├── keycloak-service.ts
 │       │   └── websocket-client.ts
@@ -164,7 +164,8 @@ somaAgent01/
 ├── tests/                   # Test suite
 │   ├── unit/               # Unit tests
 │   └── integration/        # Integration tests
-├── docker-compose.yml       # Full stack deployment
+├── infra/aaas/docker-compose.yml       # SaaS mode stack
+├── infra/standalone/docker-compose.yml # Standalone mode stack
 ├── manage.py               # Django management
 ├── pyproject.toml          # Python dependencies
 └── docs/development/VIBE_CODING_RULES.md    # CRITICAL: Read this first!
@@ -208,8 +209,7 @@ User → Login Page → Django API → Keycloak → SpiceDB → Redis → Postgr
 |------|---------|
 | `admin/auth/api.py` | Auth router: `/token`, `/login`, `/refresh`, `/logout`, SSO |
 | `admin/common/auth.py` | `AuthBearer`, `RoleRequired`, `decode_token()` |
-| `services/gateway/auth.py` | JWT + OPA policy integration |
-| `webui/src/views/aaas-login.ts` | Login page (888 lines, full OAuth/SSO) |
+| `webui/src/views/saas-login.ts` | Login page (888 lines, full OAuth/SSO) |
 | `webui/src/services/keycloak-service.ts` | Keycloak OIDC client |
 | `webui/src/stores/auth-store.ts` | Auth state management |
 
@@ -256,9 +256,9 @@ User → Chat UI → WebSocket → Django → SomaBrain → LLM
 
 | File | Purpose |
 |------|---------|
-| `admin/conversations/api.py` | Conversation CRUD (placeholder) |
+| `admin/chat/api/chat.py` | Chat + Conversation CRUD (V3 orchestrator) |
 | `admin/chat/api/chat.py` | Chat session API |
-| `webui/src/views/aaas-chat.ts` | Chat view (1063 lines, WebSocket) |
+| `webui/src/views/saas-chat.ts` | Chat view (1063 lines, WebSocket) |
 | `webui/src/services/websocket-client.ts` | WebSocket client |
 
 ---
@@ -407,34 +407,45 @@ Use **Hypothesis** for property tests:
 |-----------|------|--------|
 | Auth Router | `admin/auth/api.py` | Full (login, OAuth, SSO, MFA) |
 | JWT Validation | `admin/common/auth.py` | Full |
-| Login Page | `webui/src/views/aaas-login.ts` | Full (888 lines) |
-| Chat View | `webui/src/views/aaas-chat.ts` | Full (1063 lines) |
+| Login Page | `webui/src/views/saas-login.ts` | Full (888 lines) |
+| Chat View | `webui/src/views/saas-chat.ts` | Full (1063 lines) |
 | Keycloak Service | `webui/src/services/keycloak-service.ts` | Full |
 | Auth Store | `webui/src/stores/auth-store.ts` | Full |
 | Core Models | `admin/core/models.py` | Full |
 | Rate Limiter | `services/common/rate_limiter.py` | Full |
-| Audit Publisher | `services/common/audit.py` | Full |
+| Audit Publisher | `services/common/audit.py` | **Deleted** — outbox pattern in `admin/core/models.py` |
+
+### ✅ Recently Fixed (2026-05-20)
+
+| Component | File | Status |
+|-----------|------|--------|
+| Sessions API | `admin/sessions/api.py` | **Fixed** — Redis-backed with real config persistence |
+| SessionManager | `admin/common/session_manager.py` | **Fixed** — Redis session storage with TTL, config in Redis |
+| Chat Orchestrator | `admin/core/chat_orchestrator.py` | **Fixed** — V3ChatOrchestrator is the ONE TRUE 12-phase pipeline |
+| WebSocket Consumer | `services/gateway/consumers/chat.py` | **Fixed** — Django Channels consumer wired to V3 |
+| BrainBridge.recall() | `services/common/brain_bridge.py` | **Fixed** — delegates to recall_text(), no NotImplementedError |
+| SomaBrainClient | `admin/core/somabrain_client.py` | **Fixed** — circuit breaker on HTTP requests |
+| Multimodal Image Gen | `admin/core/multimodal.py` | **Fixed** — real OpenAI DALL-E API call |
+| Billing Invoices | `admin/aaas/api/billing.py` | **Fixed** — real Lago API integration |
+| Quality Scores | `admin/quality/api.py` | **Fixed** — scores derived from content analysis |
+| User Detail | `admin/aaas/api/users.py` | **Fixed** — real AgentUser, AuditLog, SessionManager queries |
 
 ### ⚠️ Placeholder/Incomplete
 
 | Component | File | Status |
 |-----------|------|--------|
-| Sessions API | `admin/sessions/api.py` | Placeholder (returns static data) |
-| Conversations API | `admin/conversations/api.py` | Placeholder (returns static data) |
-| SessionManager | N/A | Missing (no Redis session storage) |
-| SpiceDB Client | N/A | Missing (no fine-grained permissions) |
-| ChatService | N/A | Missing (no SomaBrain integration) |
-| WebSocket Consumer | N/A | Missing (no Django Channels) |
+| Conversations API | `admin/chat/api/chat.py` | **Fixed** — Wired to V3ChatOrchestrator |
+| SpiceDB Client | `services/common/spicedb_client.py` | Client exists, API endpoints are stubs |
 
 ### 🔴 Gaps to Implement
 
-1. **SessionManager** - Redis session storage with TTL
-2. **Account Lockout** - Track failed attempts, lock after 5 failures
-3. **PKCE for OAuth** - Secure OAuth code exchange
-4. **SpiceDB Integration** - Fine-grained permission checks
-5. **ChatService** - Real SomaBrain/SomaFractalMemory integration
-6. **WebSocket Consumer** - Django Channels for streaming
-7. **Audit Logging** - Structured events to Kafka
+1. **Account Lockout** - Track failed attempts, lock after 5 failures
+2. **PKCE for OAuth** - Secure OAuth code exchange
+3. **SpiceDB Integration** - Full API endpoint wiring
+4. **Audit Logging** - Structured events to Kafka (publisher exists, not wired to all endpoints)
+5. **Chat System Degradation** - Wire HealthMonitor + SimpleGovernor into V3ChatOrchestrator
+6. **Kafka Workers in Production** - Add to supervisord.conf
+7. **Redis Connection Pooling** - Shared factory needed
 
 ---
 
@@ -506,6 +517,16 @@ SOMABRAIN_URL=http://localhost:30101
 SOMAFRACTALMEMORY_URL=http://localhost:9595
 ```
 
+### Canonical Patterns (DO NOT REINVENT)
+
+| Pattern | Canonical File | Rule |
+|---------|----------------|------|
+| **Configuration** | `config.settings_registry.SettingsRegistry` | ONE source of truth for env vars |
+| **Redis Pool** | `services.common.redis_pool.get_async_redis_pool()` | NEVER call `redis.from_url()` directly |
+| **Store Base** | `services.common.store_base.BaseStore` | ALL new stores inherit from this |
+| **Rate Limiting** | `services.common.rate_limiter.RedisRateLimiter` | ONLY rate limiter |
+| **Auth** | `admin.common.auth.AuthBearer` | ONLY auth dependency for Ninja APIs |
+
 ---
 
 ## 📚 Key Documentation
@@ -544,10 +565,11 @@ admin/api.py                    # Master API router
 admin/auth/api.py               # Auth implementation
 admin/common/auth.py            # JWT utilities
 admin/core/models.py            # Django models
-services/gateway/auth.py        # Gateway auth
-webui/src/views/aaas-login.ts   # Login page
-webui/src/views/aaas-chat.ts    # Chat view
-docker-compose.yml              # Infrastructure
+admin/common/auth.py            # Canonical auth (JWT/Keycloak)
+webui/src/views/saas-login.ts   # Login page
+webui/src/views/saas-chat.ts    # Chat view
+infra/aaas/docker-compose.yml   # Infrastructure (AAAS)
+infra/standalone/docker-compose.yml # Infrastructure (Standalone)
 ```
 
 ### Common Tasks
@@ -614,7 +636,7 @@ get_current_user(request)  # Get user from request
 require_roles(*roles)  # Decorator for role check
 ```
 
-#### Frontend: `webui/src/views/aaas-login.ts`
+#### Frontend: `webui/src/views/saas-login.ts`
 
 ```typescript
 // Features implemented:
@@ -656,7 +678,7 @@ getUserInfo()           # Get user profile
 
 ### Chat Components
 
-#### Frontend: `webui/src/views/aaas-chat.ts`
+#### Frontend: `webui/src/views/saas-chat.ts`
 
 ```typescript
 // Features implemented:
@@ -681,17 +703,11 @@ switchAgent(agentId)        # Switch to different agent
 
 ### Session Components
 
-#### Backend: `admin/sessions/api.py` (PLACEHOLDER)
+#### Backend: `admin/sessions/api.py`
 
 ```python
-# Current status: Returns static/placeholder data
-# Needs implementation:
-- Real Redis session storage
-- Session CRUD operations
-- Session statistics
-- Security actions (terminate, force logout)
-
-# Endpoints defined but not implemented:
+# Current status: **Fixed** — Redis-backed with real config persistence
+# Endpoints implemented:
 GET  /sessions/current       # Get current session
 POST /sessions/current/refresh  # Refresh session
 POST /sessions/current/logout   # Logout
@@ -705,30 +721,16 @@ POST /sessions/security/terminate-all  # Emergency logout
 
 ### Conversation Components
 
-#### Backend: `admin/conversations/api.py` (PLACEHOLDER)
+#### Backend: `admin/chat/api/chat.py`
 
 ```python
-# Current status: Returns static/placeholder data
-# Needs implementation:
-- Real PostgreSQL storage
-- SomaBrain integration
-- Message streaming
-
-# Endpoints defined but not implemented:
-GET  /conversations           # List conversations
-POST /conversations           # Start conversation
-GET  /conversations/{id}      # Get conversation
-PATCH /conversations/{id}     # Update conversation
-DELETE /conversations/{id}    # Delete conversation
-GET  /conversations/{id}/messages  # List messages
-POST /conversations/{id}/messages  # Send message
-POST /conversations/{id}/chat      # Chat with agent
-GET  /conversations/{id}/stream    # Stream info
-POST /conversations/{id}/end       # End conversation
-POST /conversations/{id}/archive   # Archive conversation
-GET  /conversations/{id}/stats     # Conversation stats
-POST /conversations/{id}/export    # Export conversation
-POST /conversations/search         # Search conversations
+# Current status: **Fixed** — Full CRUD wired to V3ChatOrchestrator
+# Endpoints implemented:
+GET  /chat/conversations           # List conversations
+POST /chat/conversations           # Start conversation
+GET  /chat/conversations/{id}      # Get conversation
+GET  /chat/conversations/{id}/messages  # List messages
+POST /chat/conversations/{id}/messages  # Send message
 ```
 
 ---
@@ -832,7 +834,7 @@ audit.security  # Permission denied, lockout events
 
 ### Phase 1: Authentication Hardening
 
-- [ ] **SessionManager** (`services/common/session_manager.py`)
+- [x] **SessionManager** (`admin/common/session_manager.py`)
   - [ ] `create_session()` - Redis storage with TTL
   - [ ] `get_session()` - Session retrieval
   - [ ] `update_activity()` - TTL extension
@@ -864,7 +866,7 @@ audit.security  # Permission denied, lockout events
 
 ### Phase 3: Chat Integration
 
-- [ ] **ChatService** (`services/common/chat_service.py`)
+- [x] **Chat Orchestrator** (`admin/core/chat_orchestrator.py`) — V3 12-phase pipeline
   - [ ] `create_conversation()` - PostgreSQL insert
   - [ ] `initialize_agent_session()` - SomaBrain call
   - [ ] `recall_memories()` - SomaFractalMemory call
@@ -881,7 +883,7 @@ audit.security  # Permission denied, lockout events
 
 ### Phase 4: Audit & Observability
 
-- [ ] **Audit Logging** (enhance `services/common/audit.py`)
+- [ ] **Audit Logging** — wire outbox publisher (`admin/core/models.py` OutboxMessage)
   - [ ] Login events (success/failure)
   - [ ] Logout events
   - [ ] Session events
@@ -898,7 +900,7 @@ audit.security  # Permission denied, lockout events
   - [ ] `getDefaultRoute(roles)` function
   - [ ] Return URL validation (same-origin)
 
-- [ ] **Email Validation** (`webui/src/views/aaas-login.ts`)
+- [ ] **Email Validation** (`webui/src/views/saas-login.ts`)
   - [ ] RFC 5322 compliant validation
   - [ ] Inline error display
 
@@ -1010,7 +1012,6 @@ The 2025-01-02 audit reveals that SomaAgent01 has evolved beyond a standard chat
 
 #### 1. **Complete the "Real Auth" Loop (VIBE Rule 47)**
 - **Current Gap**: The UI works for humans (Login Page), but Automation (QA Bots) lacks a "Real Auth" mechanism.
-- **Solution**: Implement the `tests/e2e/helpers/auth.py` helper to perform a programmatic OIDC login against Keycloak (Port 49010) to obtain a verified JWT for Playwright.
 - **Impact**: Enables 100% End-to-End verification of the *secured* chat flow.
 
 #### 2. **Activate "Self-Healing" Protocols**

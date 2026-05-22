@@ -115,7 +115,7 @@ async def update_system_config(
     request,
     key: str,
     value: str,
-) -> dict:
+) -> tuple[dict, int]:
     """Update system configuration.
 
     VIBE: Runtime updates not supported for Env Vars.
@@ -156,7 +156,7 @@ async def update_tenant_config(
     tenant_id: str,
     key: str,
     value: str,
-) -> dict:
+) -> tuple[dict, int]:
     """Update tenant configuration."""
     return {"error": "Tenant config model pending"}, 501
 

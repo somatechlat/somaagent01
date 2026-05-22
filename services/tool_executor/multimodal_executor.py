@@ -159,6 +159,7 @@ class MultimodalExecutor:
                     await asyncio.sleep(poll_interval)
                     continue
 
+                assert plan.id is not None
                 await self.execute_plan(plan.id)
             except asyncio.CancelledError:
                 raise

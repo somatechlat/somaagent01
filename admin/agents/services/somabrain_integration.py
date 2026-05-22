@@ -6,10 +6,60 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agent import Agent
+    from agent import Agent  # type: ignore[import]
 
 from admin.core.helpers.print_style import PrintStyle
-from admin.core.somabrain_client import SomaClientError
+from admin.core.somabrain_client import SomaBrainClient, SomaClientError
+
+# Re-export for backward compatibility
+__all__ = [
+    "SomaBrainClient",
+    "SomaClientError",
+    "clamp_neuromodulator",
+    "store_memory",
+    "build_context_async",
+    "get_weights_async",
+    "publish_reward_async",
+]
+
+
+async def build_context_async(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Build context via SomaBrain.
+
+    Args:
+        payload: Context building payload with ``session_id`` and ``messages`` keys
+
+    Returns:
+        List of context items
+    """
+    client = SomaBrainClient.get()
+    return await client.build_context(payload["session_id"], payload["messages"])
+
+
+async def get_weights_async() -> Dict[str, Any]:
+    """Retrieve model weights from SomaBrain.
+
+    Returns:
+        Weight configuration dictionary
+    """
+    client = SomaBrainClient.get()
+    return await client.get_weights()
+
+
+async def publish_reward_async(payload: Dict[str, Any]) -> bool:
+    """Publish reward signal to SomaBrain.
+
+    Args:
+        payload: Reward payload with ``session_id``, ``signal`` and ``value`` keys
+
+    Returns:
+        Reward acknowledgment
+    """
+    client = SomaBrainClient.get()
+    return await client.publish_reward(
+        payload["session_id"], payload["signal"], payload["value"], payload.get("meta")
+    )
+
 
 # Neuromodulator clamping ranges (from SomaBrain neuromod.py)
 # These are the physiological ranges enforced by SomaBrain

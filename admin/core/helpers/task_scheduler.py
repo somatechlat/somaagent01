@@ -16,10 +16,12 @@ import nest_asyncio
 
 nest_asyncio.apply()
 
-from agent import AgentContext, UserMessage
-from initialize import initialize_agent
+from typing import TYPE_CHECKING
 
 from admin.core.helpers.defer import DeferredTask
+
+if TYPE_CHECKING:
+    from agent import AgentContext  # type: ignore[import]
 from admin.core.helpers.print_style import PrintStyle
 
 # Re-export models for backward compatibility
@@ -224,12 +226,14 @@ class TaskScheduler:
 
         return await self.update_task_checked(task_uuid, lambda task: True, **update_params)
 
-    async def __new_context(self, task: AnyTask) -> AgentContext:
+    async def __new_context(self, task: AnyTask) -> "AgentContext":
         """Execute new context.
 
         Args:
             task: The task.
         """
+        from agent import AgentContext  # type: ignore[import]
+        from initialize import initialize_agent  # type: ignore[import]
 
         if not task.context_id:
             raise ValueError(f"Task {task.name} has no context ID")
@@ -238,12 +242,14 @@ class TaskScheduler:
         await save_context(context, reason="scheduler:new_context")
         return context
 
-    async def _get_chat_context(self, task: AnyTask) -> AgentContext:
+    async def _get_chat_context(self, task: AnyTask) -> "AgentContext":
         """Execute get chat context.
 
         Args:
             task: The task.
         """
+
+        from agent import AgentContext  # type: ignore[import]
 
         context = AgentContext.get(task.context_id) if task.context_id else None
         if context:
@@ -255,7 +261,7 @@ class TaskScheduler:
             self._printer.print(f"Scheduler Task {task.name} context not found, creating new")
             return await self.__new_context(task)
 
-    async def _checkpoint_session(self, task: AnyTask, context: AgentContext):
+    async def _checkpoint_session(self, task: AnyTask, context: "AgentContext"):
         """Execute checkpoint session.
 
         Args:
@@ -338,6 +344,8 @@ class TaskScheduler:
                     kvps={"attachments": attachment_filenames},
                     id=str(uuid.uuid4()),
                 )
+
+                from agent import UserMessage  # type: ignore[import]
 
                 agent.hist_add_user_message(
                     UserMessage(
