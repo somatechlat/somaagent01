@@ -14,8 +14,9 @@ Usage:
     provider = MermaidProvider()
     result = await provider.generate(request)
 
-    # Image generation
-    provider = DalleProvider(api_key="...")
+    # Image generation (API key from Vault/env — NEVER hardcode)
+    import os
+    provider = DalleProvider(api_key=os.environ["DALLE_API_KEY"])
     result = await provider.generate(request)
 
 SRS Reference: Section 16.6 (Execution Engine)

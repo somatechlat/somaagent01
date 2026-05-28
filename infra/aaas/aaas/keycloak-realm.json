@@ -18,7 +18,7 @@
             "enabled": true,
             "protocol": "openid-connect",
             "publicClient": false,
-            "secret": "soma-api-secret",
+            "secret": "${env.SOMA_API_CLIENT_SECRET}",
             "directAccessGrantsEnabled": true,
             "standardFlowEnabled": true,
             "implicitFlowEnabled": false,
@@ -97,7 +97,7 @@
             "credentials": [
                 {
                     "type": "password",
-                    "value": "testpass",
+                    "value": "${env.TEST_USER_PASSWORD}",
                     "temporary": false
                 }
             ],
@@ -116,7 +116,7 @@
             "credentials": [
                 {
                     "type": "password",
-                    "value": "adminpass",
+                    "value": "${env.ADMIN_USER_PASSWORD}",
                     "temporary": false
                 }
             ],

@@ -259,11 +259,6 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/scheduling", scheduling_router)
 
-    # Templates (Agent + Prompt templates)
-    from admin.templates.api import router as templates_router
-
-    safe_add_router("/templates", templates_router)
-
     # Events (Real-time SSE streaming)
     from admin.events.api import router as events_router
 

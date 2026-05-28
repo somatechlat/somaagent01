@@ -10,6 +10,7 @@ This module:
 
 import os
 import re
+import secrets
 
 from config.settings_registry import get_optional_env
 from django.conf import settings
@@ -19,33 +20,38 @@ from django.conf import settings
 # =============================================================================
 
 if not settings.configured:
-    # Parse database DSN from environment
-    db_dsn = get_optional_env("SA01_DB_DSN", "postgresql://soma:soma@localhost:5432/somaagent01")
+    # Parse database DSN from environment (REQUIRED - zero hardcoded credentials)
+    db_dsn = get_optional_env("SA01_DB_DSN", "")
+    if not db_dsn:
+        raise ValueError(
+            "❌ Missing required environment variable: SA01_DB_DSN\n"
+            "   Format: postgresql://user:pass@host:port/dbname\n"
+            "   Required for: PostgreSQL database connection"
+        )
 
     # Parse DSN components for Django DATABASE config
     db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
+    if not db_match:
+        raise ValueError(
+            f"❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
+            f"Expected format: postgresql://user:pass@host:port/dbname. "
+            f"Received: {db_dsn[:50]}..."
+        )
 
-    if db_match:
-        db_user, db_password, db_host, db_port, db_name = db_match.groups()
-        db_port = db_port or "5432"
-        db_config = {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": db_name,
-            "USER": db_user,
-            "PASSWORD": db_password,
-            "HOST": db_host,
-            "PORT": db_port,
-        }
-    else:
-        # Fallback to SQLite for testing
-        db_config = {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": ":memory:",
-        }
+    db_user, db_password, db_host, db_port, db_name = db_match.groups()
+    db_port = db_port or "5432"
+    db_config = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": db_name,
+        "USER": db_user,
+        "PASSWORD": db_password,
+        "HOST": db_host,
+        "PORT": db_port,
+    }
 
     settings.configure(
         DEBUG=get_optional_env("DEBUG", "False").lower() == "true",
-        SECRET_KEY=get_optional_env("SECRET_KEY", "insecure-secret-key-for-dev"),
+        SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_urlsafe(50),
         ALLOWED_HOSTS=["*"],
         ROOT_URLCONF=__name__,
         INSTALLED_APPS=[
@@ -64,6 +70,18 @@ if not settings.configured:
             "admin.files",
             "admin.features",
             "admin.utils",
+            "admin.llm",
+            "admin.capsules",
+            "admin.gateway",
+            "admin.memory",
+            "admin.multimodal",
+            "admin.notifications",
+            "admin.orchestrator",
+            "admin.permissions",
+            "admin.somabrain",
+            "admin.tools",
+            "admin.ui",
+            "admin.voice",
         ],
         MIDDLEWARE=[
             "django.middleware.common.CommonMiddleware",

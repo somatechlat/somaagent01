@@ -106,7 +106,13 @@ def soma_base_url() -> str:
 def postgres_dsn() -> str:
     """Execute postgres dsn."""
 
-    return str(env("POSTGRES_DSN", "postgresql://postgres:postgres@localhost:5432/soma"))
+    dsn = env("POSTGRES_DSN", "")
+    if not dsn:
+        raise RuntimeError(
+            "VIBE Rule 91 VIOLATION: POSTGRES_DSN is REQUIRED. "
+            "Set POSTGRES_DSN in your environment or Vault."
+        )
+    return str(dsn)
 
 
 def redis_url() -> str:

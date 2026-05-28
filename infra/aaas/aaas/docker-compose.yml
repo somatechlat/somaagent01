@@ -47,7 +47,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=somaagent
       - POSTGRES_USER=soma
-      - POSTGRES_PASSWORD=${VAULT_POSTGRES_PASSWORD:-soma}
+      - POSTGRES_PASSWORD=${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}
       # Redis
       - REDIS_HOST=somastack_redis
       - REDIS_PORT=6379
@@ -73,19 +73,19 @@ services:
       # Keycloak OIDC Identity Provider
       - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
       # Legacy compatibility (for settings.py fallback)
-      - SA01_DB_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somaagent
+      - SA01_DB_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somaagent
       # Required for Django security and JWT validation
       - SA01_ALLOWED_HOSTS=*
-      - SA01_JWT_SECRET=${SA01_JWT_SECRET:-somaagent-test-jwt-secret-do-not-use-in-production}
+      - SA01_JWT_SECRET=${SA01_JWT_SECRET:?SA01_JWT_SECRET is required}
       - SA01_AUTH_REQUIRED=true
       # SomaBrain required env vars
       - SOMABRAIN_KAFKA_URL=somastack_kafka:9092
       - SOMABRAIN_OPA_URL=http://somastack_opa:8181
-      - SOMABRAIN_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somabrain
+      - SOMABRAIN_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somabrain
       - SOMABRAIN_REDIS_URL=redis://somastack_redis:6379/0
       - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101
       # SomaFractalMemory required env vars
-      - SFM_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somamemory
+      - SFM_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somamemory
       - SFM_REDIS_URL=redis://somastack_redis:6379/0
       - SFM_MILVUS_HOST=somastack_milvus
       - SFM_MILVUS_PORT=19530
@@ -128,7 +128,7 @@ services:
     ports:
       - "63982:8200"
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-soma_dev_token}
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:?VAULT_DEV_ROOT_TOKEN_ID is required}
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
     cap_add:
       - IPC_LOCK
@@ -166,8 +166,8 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     command: start-dev --import-realm
     environment:
-      KEYCLOAK_ADMIN: ${VAULT_KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${VAULT_KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KEYCLOAK_ADMIN: ${VAULT_KEYCLOAK_ADMIN:?VAULT_KEYCLOAK_ADMIN is required}
+      KEYCLOAK_ADMIN_PASSWORD: ${VAULT_KEYCLOAK_ADMIN_PASSWORD:?VAULT_KEYCLOAK_ADMIN_PASSWORD is required}
       KC_HTTP_PORT: 8080
       KC_HEALTH_ENABLED: true
       KC_METRICS_ENABLED: true
@@ -200,7 +200,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: soma
-      POSTGRES_PASSWORD: ${VAULT_POSTGRES_PASSWORD:-soma}
+      POSTGRES_PASSWORD: ${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}
       POSTGRES_DB: soma # Initial DB, others created by init-db.sh
     command:
       - "postgres"
@@ -289,7 +289,7 @@ services:
       DB: postgres12
       DB_PORT: 5432
       POSTGRES_USER: soma
-      POSTGRES_PWD: ${VAULT_POSTGRES_PASSWORD:-soma}
+      POSTGRES_PWD: ${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}
       POSTGRES_SEEDS: somastack_postgres
       # DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
     ports:
@@ -313,9 +313,9 @@ services:
     restart: unless-stopped
     command:
       - "serve"
-      - "--grpc-preshared-key=${SPICEDB_PRESHARED_KEY:-soma_dev_preshared_key_123}"
+      - "--grpc-preshared-key=${SPICEDB_PRESHARED_KEY:?SPICEDB_PRESHARED_KEY is required}"
       - "--datastore-engine=postgres"
-      - "--datastore-conn-uri=postgresql://soma:${VAULT_POSTGRES_PASSWORD:-soma}@somastack_postgres:5432/somaagent?sslmode=disable"
+      - "--datastore-conn-uri=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somaagent?sslmode=disable"
     ports:
       - "63935:50051" # gRPC
       - "63936:8443" # HTTP
@@ -386,8 +386,8 @@ services:
     container_name: somastack_minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
-      MINIO_ACCESS_KEY: ${VAULT_MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${VAULT_MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ACCESS_KEY: ${VAULT_MINIO_ACCESS_KEY:?VAULT_MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${VAULT_MINIO_SECRET_KEY:?VAULT_MINIO_SECRET_KEY is required}
     ports:
       - "63902:9000"
       - "63911:9001"

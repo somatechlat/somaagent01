@@ -59,7 +59,7 @@ EXPOSE 9000
 
 # Health Check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:9000/api/v1/health || exit 1
+    CMD curl -f http://localhost:9000/api/health/ || exit 1
 
 # Entrypoint
 ENTRYPOINT ["/app/start.sh"]

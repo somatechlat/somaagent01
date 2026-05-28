@@ -12,10 +12,11 @@ The runtime configuration is in django_setup.py for the gateway.
 
 import os
 import re
+import secrets
 from pathlib import Path
 
 # Import environment configuration helpers
-from services.common.env_config import get_required_env
+from services.common.env_config import get_optional_env, get_required_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -29,10 +30,11 @@ IS_DEV_ENV = ENVIRONMENT in {"dev", "development", "local", "test"} or DEPLOYMEN
 }
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
     if IS_DEV_ENV:
-        SECRET_KEY = "django-insecure-dev-key-local-only"
+        # VIBE: No hardcoded secrets — generate ephemeral dev key
+        SECRET_KEY = secrets.token_urlsafe(50)
     else:
         raise ValueError("❌ Missing required environment variable: SECRET_KEY")
 
@@ -45,7 +47,7 @@ allowed_hosts_env = os.environ.get("SA01_ALLOWED_HOSTS", "")
 if allowed_hosts_env:
     ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
 elif IS_DEV_ENV:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 else:
     raise ValueError("❌ Missing required environment variable: SA01_ALLOWED_HOSTS")
 
@@ -215,8 +217,8 @@ TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE",
 TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
 
 # Kafka
-KAFKA_BOOTSTRAP_SERVERS = get_required_env(
-    "SA01_KAFKA_BOOTSTRAP_SERVERS", "Kafka broker for event streaming"
+KAFKA_BOOTSTRAP_SERVERS = get_optional_env(
+    "SA01_KAFKA_BOOTSTRAP_SERVERS", "", "Kafka broker for event streaming"
 )
 KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.inbound")
 
@@ -234,10 +236,10 @@ AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "true").lower() == "true"
 # Dev auth bypass is handled via DEBUG=True + policy/soma_development.rego gated to environment=="dev".
 
 # SomaBrain (Cognitive Runtime)
-SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain cognitive runtime HTTP endpoint")
+SOMABRAIN_URL = get_optional_env("SA01_SOMA_BASE_URL", "", "SomaBrain cognitive runtime HTTP endpoint")
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
-SOMABRAIN_API_KEY = os.environ.get("SA01_SOMABRAIN_API_KEY", os.environ.get("SOMA_API_TOKEN", ""))
-OPA_URL = get_required_env("SA01_OPA_URL", "Open Policy Agent for authorization policies")
+SOMABRAIN_API_KEY = os.environ.get("SA01_SOMABRAIN_API_KEY") or os.environ.get("SOMA_API_TOKEN") or None
+OPA_URL = get_optional_env("SA01_OPA_URL", "", "Open Policy Agent for authorization policies")
 
 # Voice Services (Whisper STT + Kokoro TTS)
 WHISPER_URL = os.environ.get("SA01_WHISPER_URL", "http://localhost:9100")
@@ -261,7 +263,7 @@ PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
 
 # Lago Billing
 LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:63690/api/v1")
-LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
+LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY") or None
 
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
@@ -270,7 +272,7 @@ LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY", "")
 KEYCLOAK_URL = get_required_env("SA01_KEYCLOAK_URL", "Keycloak OIDC identity provider base URL")
 KEYCLOAK_REALM = os.environ.get("SA01_KEYCLOAK_REALM", "somaagent")
 KEYCLOAK_CLIENT_ID = os.environ.get("SA01_KEYCLOAK_CLIENT_ID", "somaagent-api")
-KEYCLOAK_CLIENT_SECRET = os.environ.get("SA01_KEYCLOAK_CLIENT_SECRET", "")
+KEYCLOAK_CLIENT_SECRET = os.environ.get("SA01_KEYCLOAK_CLIENT_SECRET") or None
 KEYCLOAK_PUBLIC_KEY = os.environ.get("SA01_KEYCLOAK_PUBLIC_KEY", "")
 
 # JWT Settings for Keycloak
@@ -292,7 +294,7 @@ JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "true").lower() == 
 # =============================================================================
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")  # From Vault/Secret model
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET") or None  # From Vault/Secret model
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:5173/auth/callback")
 GOOGLE_JAVASCRIPT_ORIGIN = os.environ.get("GOOGLE_JAVASCRIPT_ORIGIN", "http://localhost:5173")
 
@@ -331,7 +333,8 @@ LOGGING = {
             "style": "{",
         },
         "json": {
-            "()": "services.common.logging_config.DjangoJSONFormatter",
+            "format": "%(levelname)s %(asctime)s %(module)s %(message)s",
+            "style": "%",
         },
     },
     "handlers": {

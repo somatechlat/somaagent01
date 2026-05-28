@@ -394,6 +394,12 @@ if (app) {
             return;
         }
 
+        if (path === '/workspace') {
+            await import('./views/saas-workspace.js');
+            app.appendChild(document.createElement('saas-workspace'));
+            return;
+        }
+
         if (path === '/memory') {
             try {
                 await import('./views/saas-memory-view.js');

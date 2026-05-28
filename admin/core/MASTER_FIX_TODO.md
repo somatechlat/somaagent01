@@ -29,7 +29,7 @@
 | 2.3 | Wire HealthMonitor into V3ChatOrchestrator | `admin/core/chat_orchestrator.py` | 🔲 | Check `is_degraded()` at start of turn |
 | 2.4 | Wire SimpleGovernor token budgets | `admin/core/chat_orchestrator.py` | 🔲 | Replace hardcoded budgets with governor |
 | 2.5 | SomaBrain memory → PendingMemory queue | `admin/core/chat_orchestrator.py` | 🔲 | Queue to `PendingMemory` when Brain down |
-| 2.6 | EventPublisher persist failed events | `admin/core/observability/event_publisher.py` | 🔲 | In-memory buffer loses events |
+| 2.6 | EventPublisher persist failed events | `admin/core/observability/event_publisher.py` | 🔲 | File deleted from working tree — needs restore or alternative implementation |
 
 ## PHASE 3: INFRASTRUCTURE HARDENING
 
@@ -61,8 +61,17 @@
 ## PROGRESS TRACKER
 
 **Phase 1**: 0/10  
-**Phase 2**: 0/6  
+**Phase 2**: 2/6  
 **Phase 3**: 0/8  
 **Phase 4**: 0/8  
 
-**Total**: 0/32
+**Total**: 2/32
+
+### Code Verification Status (2026-05-28)
+- **Pyright:** 1 error (`services/gateway/django_setup.py:53` — missing `import secrets`)
+- **Tests:** 13 failed, 43 passed, 63 skipped, 5 errors
+  - 8 Django tests fail: `admin.llm.models.LLMModelConfig` missing `app_label`/not in `INSTALLED_APPS`
+  - 3 deployment tests fail: missing `browser_use_monkeypatch` export from `admin.core.helpers`
+  - 2 Docker proof tests fail: containers not running (expected)
+  - 5 SomaBrain integration errors: `somabrain` module not installed
+- **Working tree:** 76 files changed (43 deleted, 33 modified) — significant drift from HEAD

@@ -58,8 +58,8 @@ services:
     container_name: somastack_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-soma}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soma}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_MULTIPLE_DATABASES: somaagent,somabrain,somamemory
     ports:
       - "${POSTGRES_PORT:-63932}:5432"
@@ -133,12 +133,12 @@ services:
     container_name: somastack_keycloak
     restart: unless-stopped
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:?KEYCLOAK_ADMIN is required}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://somastack_postgres:5432/keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER:-soma}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-soma}
+      KC_DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     command: start-dev
     ports:
       - "${KEYCLOAK_PORT:-63980}:8080"
@@ -173,7 +173,7 @@ services:
     container_name: somastack_vault
     restart: unless-stopped
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-soma-dev-token}
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:?VAULT_TOKEN is required}
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
     ports:
       - "${VAULT_PORT:-63982}:8200"

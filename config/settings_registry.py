@@ -185,7 +185,7 @@ class StandaloneSettings(BaseSettings):
             # SpiceDB
             spicedb_host=get_optional_env("SPICEDB_HOST", "localhost"),
             spicedb_port=int(get_optional_env("SPICEDB_PORT", "50051")),
-            spicedb_token=get_optional_env("SPICEDB_TOKEN", ""),
+            spicedb_token=get_optional_env("SPICEDB_TOKEN", "") or None,
             spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
             # Vault
             vault_addr=get_required_env(
@@ -202,7 +202,7 @@ class StandaloneSettings(BaseSettings):
             kafka_security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
             kafka_sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM", ""),
             kafka_sasl_username=get_optional_env("KAFKA_SASL_USERNAME", ""),
-            kafka_sasl_password=get_optional_env("KAFKA_SASL_PASSWORD", ""),
+            kafka_sasl_password=get_optional_env("KAFKA_SASL_PASSWORD", "") or None,
             publish_kafka_timeout_seconds=float(
                 get_optional_env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
             ),
@@ -276,7 +276,7 @@ class AAASSettings(BaseSettings):
             # SpiceDB
             spicedb_host=get_optional_env("SPICEDB_HOST", "localhost"),
             spicedb_port=int(get_optional_env("SPICEDB_PORT", "50051")),
-            spicedb_token=get_optional_env("SPICEDB_TOKEN", ""),
+            spicedb_token=get_optional_env("SPICEDB_TOKEN", "") or None,
             spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
             # Vault
             vault_addr=get_required_env(
@@ -305,7 +305,7 @@ class AAASSettings(BaseSettings):
             kafka_security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
             kafka_sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM", ""),
             kafka_sasl_username=get_optional_env("KAFKA_SASL_USERNAME", ""),
-            kafka_sasl_password=get_optional_env("KAFKA_SASL_PASSWORD", ""),
+            kafka_sasl_password=get_optional_env("KAFKA_SASL_PASSWORD", "") or None,
             publish_kafka_timeout_seconds=float(
                 get_optional_env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
             ),

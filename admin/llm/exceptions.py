@@ -1,7 +1,6 @@
-"""LLM exceptions."""
+"""LLM-specific exceptions."""
 
 
-class LLMNotConfiguredError(RuntimeError):
-    """Raised when LLM is not properly configured for production use."""
-
+class LLMNotConfiguredError(Exception):
+    """Raised when LLM is not configured."""
     pass

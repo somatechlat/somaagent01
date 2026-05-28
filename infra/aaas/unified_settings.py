@@ -47,14 +47,18 @@ SOMA_AAAS_MODE = os.environ.get("SOMA_AAAS_MODE", "true").lower() == "true"
 # Debug mode
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# Secret keys - load from Vault in production
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY",
-    os.environ.get(
-        "DJANGO_SECRET_KEY",
-        "unified-dev-secret-key-change-in-production",
-    ),
-)
+# VIBE SECURITY: Secret keys MUST come from environment/Vault. No hardcoded fallbacks.
+import secrets as _secrets
+
+SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if SA01_DEPLOYMENT_MODE in ("DEV", "LOCAL", "TEST"):
+        SECRET_KEY = _secrets.token_urlsafe(50)
+    else:
+        raise RuntimeError(
+            "VIBE Rule 164 VIOLATION: SECRET_KEY is REQUIRED in production. "
+            "Set SECRET_KEY or DJANGO_SECRET_KEY in your environment or Vault."
+        )
 
 # Allowed hosts
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
@@ -67,7 +71,18 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 POSTGRES_HOST = os.environ.get("SOMA_POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "localhost"))
 POSTGRES_PORT = os.environ.get("SOMA_DB_PORT", os.environ.get("POSTGRES_PORT", "5432"))
 POSTGRES_USER = os.environ.get("SOMA_DB_USER", os.environ.get("POSTGRES_USER", "soma"))
-POSTGRES_PASSWORD = os.environ.get("SOMA_DB_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "soma"))
+POSTGRES_PASSWORD = os.environ.get("SOMA_DB_PASSWORD") or os.environ.get("POSTGRES_PASSWORD")
+if not POSTGRES_PASSWORD:
+    if SA01_DEPLOYMENT_MODE in ("DEV", "LOCAL", "TEST"):
+        raise RuntimeError(
+            "VIBE Rule 164 VIOLATION: POSTGRES_PASSWORD is REQUIRED. "
+            "Set SOMA_DB_PASSWORD or POSTGRES_PASSWORD in your environment or Vault."
+        )
+    else:
+        raise RuntimeError(
+            "VIBE Rule 164 VIOLATION: POSTGRES_PASSWORD is REQUIRED in production. "
+            "Set SOMA_DB_PASSWORD or POSTGRES_PASSWORD in your environment or Vault."
+        )
 
 DATABASES = {
     # Agent database

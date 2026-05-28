@@ -168,12 +168,34 @@ async def handle_rfc(rfc_call: rfc.RFCCall):
 
 
 def _get_rfc_password() -> str:
-    """Execute get rfc password."""
+    """Execute get rfc password.
 
+    VIBE SECURITY: Passwords MUST come from Vault. .env fallback is deprecated.
+    """
+    # Try Vault first (VIBE Rule 164)
+    try:
+        from services.common.unified_secret_manager import get_secret_manager
+        sm = get_secret_manager()
+        vault_password = sm.get_credential("rfc_password")
+        if vault_password:
+            return vault_password
+    except Exception:
+        pass  # Vault not available, fall through
+
+    # Deprecated: .env fallback with security warning
     password = dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD)
-    if not password:
-        raise Exception("No RFC password, cannot handle RFC calls.")
-    return password
+    if password:
+        import logging
+        logging.getLogger(__name__).warning(
+            "SECURITY WARNING: RFC password loaded from .env file. "
+            "Migrate to Vault per VIBE Rule 164."
+        )
+        return password
+
+    raise RuntimeError(
+        "VIBE Rule 164 VIOLATION: No RFC password configured. "
+        "Set it in Vault (credential:rfc_password) or .env (RFC_PASSWORD)."
+    )
 
 
 def _get_rfc_url() -> str:

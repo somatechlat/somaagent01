@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import secrets as _secrets
 from typing import AsyncIterator, TYPE_CHECKING
 from uuid import uuid4
 
@@ -83,7 +84,7 @@ def django_db_setup():
     if not settings.configured:
         settings.configure(
             DEBUG=True,
-            SECRET_KEY="test-secret-key-for-e2e-tests-vibe-compliant",
+            SECRET_KEY=_secrets.token_urlsafe(50),
             DATABASES={
                 "default": {
                     "ENGINE": "django.db.backends.postgresql",
@@ -91,7 +92,7 @@ def django_db_setup():
                     "PORT": 63932,  # Force AAAS docker-compose port
                     "NAME": "somaagent",  # AAAS docker-compose database
                     "USER": "soma",  # AAAS docker-compose user
-                    "PASSWORD": "soma",  # AAAS docker-compose password
+                    "PASSWORD": os.environ.get("TEST_DB_PASSWORD", ""),  # From env/Vault
                     "CONN_MAX_AGE": 60,  # Connection pooling
                     "OPTIONS": {
                         "connect_timeout": 5,

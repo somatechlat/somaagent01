@@ -34,7 +34,17 @@ class UnifiedSecretManager:
 
         self._vault_addr = os.environ.get("VAULT_ADDR")
         if not self._vault_addr:
-            LOGGER.warning("VAULT_ADDR not configured - secrets will not be available")
+            deployment_mode = os.environ.get("SA01_DEPLOYMENT_MODE", "DEV").upper()
+            if deployment_mode in ("PROD", "PRODUCTION", "STANDALONE"):
+                raise RuntimeError(
+                    "VIBE Rule 164 VIOLATION: VAULT_ADDR is REQUIRED in production/STANDALONE mode. "
+                    "ALL system secrets (API keys, tokens, credentials) MUST be stored in Vault. "
+                    "Set VAULT_ADDR in your environment."
+                )
+            LOGGER.warning(
+                "VAULT_ADDR not configured - secrets will not be available. "
+                "In production, this is a FATAL error."
+            )
 
     def _is_available(self) -> bool:
         """Check if Vault is configured."""

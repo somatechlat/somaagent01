@@ -65,7 +65,7 @@ class TestLoginFlow:
             "/auth/login",
             json={
                 "email": os.environ.get("TEST_USER_EMAIL", "test@example.com"),
-                "password": os.environ.get("TEST_USER_PASSWORD", "testpassword123"),
+                "password": os.environ.get("TEST_USER_PASSWORD", ""),
                 "remember_me": False,
             },
         )
@@ -105,7 +105,7 @@ class TestLoginFlow:
             "/auth/login",
             json={
                 "email": os.environ.get("TEST_USER_EMAIL", "test@example.com"),
-                "password": os.environ.get("TEST_USER_PASSWORD", "testpassword123"),
+                "password": os.environ.get("TEST_USER_PASSWORD", ""),
                 "remember_me": False,
             },
         )
@@ -137,7 +137,7 @@ class TestLoginFlow:
             "/auth/login",
             json={
                 "email": os.environ.get("TEST_USER_EMAIL", "test@example.com"),
-                "password": os.environ.get("TEST_USER_PASSWORD", "testpassword123"),
+                "password": os.environ.get("TEST_USER_PASSWORD", ""),
                 "remember_me": False,
             },
         )
@@ -390,7 +390,7 @@ class TestTokenRefresh:
             "/auth/login",
             json={
                 "email": os.environ.get("TEST_USER_EMAIL", "test@example.com"),
-                "password": os.environ.get("TEST_USER_PASSWORD", "testpassword123"),
+                "password": os.environ.get("TEST_USER_PASSWORD", ""),
                 "remember_me": False,
             },
         )
@@ -455,7 +455,7 @@ class TestUserInfo:
             "/auth/login",
             json={
                 "email": os.environ.get("TEST_USER_EMAIL", "test@example.com"),
-                "password": os.environ.get("TEST_USER_PASSWORD", "testpassword123"),
+                "password": os.environ.get("TEST_USER_PASSWORD", ""),
                 "remember_me": False,
             },
         )

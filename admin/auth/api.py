@@ -388,11 +388,15 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 
     from django.conf import settings
 
-    # VIBE SECURITY: Use persistent Django SECRET_KEY for impersonation JWT signing.
-    # NEVER use ephemeral secrets — tokens must be verifiable by downstream services.
-    impersonation_secret = getattr(settings, "IMPERSONATION_JWT_SECRET", settings.SECRET_KEY)
+    # VIBE SECURITY: Impersonation JWT MUST use a dedicated secret.
+    # NEVER fall back to Django SECRET_KEY — if impersonation secret is compromised,
+    # it must NOT compromise session cookies / CSRF tokens.
+    impersonation_secret = getattr(settings, "IMPERSONATION_JWT_SECRET", None)
     if not impersonation_secret:
-        raise UnauthorizedError("Impersonation disabled: no signing secret configured")
+        raise UnauthorizedError(
+            "Impersonation disabled: IMPERSONATION_JWT_SECRET not configured. "
+            "Set it in your environment or Vault."
+        )
 
     impersonation_claims = {
         "sub": current_user.sub,

@@ -32,7 +32,7 @@ def setup_django_settings():
     if not settings.configured:
         settings.configure(
             DEBUG=True,
-            SECRET_KEY="unit-test",
+            SECRET_KEY=__import__("secrets").token_urlsafe(50),
             CACHES={
                 "default": {
                     "BACKEND": "django.core.cache.backends.locmem.LocMemCache",

@@ -122,7 +122,7 @@ def load_config() -> Config:
             "log_level": "INFO",
         },
         "database": {
-            "dsn": "postgresql://soma:soma@localhost:5432/somaagent01",
+            "dsn": os.environ.get("SA01_DB_DSN", ""),
             "pool_size": 20,
             "max_overflow": 10,
             "pool_timeout": 30,

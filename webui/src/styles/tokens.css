@@ -278,42 +278,109 @@ h6 {
 }
 
 /* ==========================================================================
-   AAAS DARK THEME
+   SOMATECH DARK THEME — Primary Brand Theme
+   Ecuadorian AI. Enterprise. Dark-first.
    ========================================================================== */
 
 [data-theme="dark"],
-.dark-theme {
-    /* Backgrounds */
-    --aaas-bg-page: #0f0f0f;
-    --aaas-bg-card: #1a1a1a;
-    --aaas-bg-sidebar: #141414;
-    --aaas-bg-hover: #222222;
-    --aaas-bg-active: #2a2a2a;
+.dark-theme,
+:root {
+    /* Backgrounds — Deep void palette */
+    --aaas-bg-void: #0a0a0a;
+    --aaas-bg-page: #0a0a0a;
+    --aaas-bg-card: #1e1e1e;
+    --aaas-bg-sidebar: #0a0a0a;
+    --aaas-bg-hover: #141414;
+    --aaas-bg-active: #1a1a1a;
+    --aaas-surface: #141414;
+    --aaas-surface-hover: #1a1a1a;
 
-    /* Text */
-    --aaas-text-primary: #e2e8f0;
-    --aaas-text-secondary: #94a3b8;
-    --aaas-text-muted: #64748b;
-    --aaas-text-inverse: #0f0f0f;
+    /* Text — Crisp hierarchy */
+    --aaas-text-primary: #ffffff;
+    --aaas-text-secondary: #a1a1a1;
+    --aaas-text-muted: #6b6b6b;
+    --aaas-text-inverse: #0a0a0a;
+    --aaas-text-main: #ffffff;
+    --aaas-text-dim: #6b6b6b;
+    --aaas-text-bright: #ffffff;
 
-    /* Borders */
-    --aaas-border-light: rgba(255, 255, 255, 0.08);
-    --aaas-border-medium: rgba(255, 255, 255, 0.12);
-    --aaas-border-dark: rgba(255, 255, 255, 0.2);
-
-    /* Accent for dark mode */
-    --aaas-accent: #3b82f6;
-    --aaas-accent-hover: #60a5fa;
-
-    /* Glassmorphism - Dark */
-    --aaas-glass-bg: rgba(30, 41, 59, 0.9);
+    /* Borders — Whisper thin */
+    --aaas-border-light: rgba(255, 255, 255, 0.06);
+    --aaas-border-medium: rgba(255, 255, 255, 0.1);
+    --aaas-border-dark: rgba(255, 255, 255, 0.16);
+    --aaas-border-color: rgba(255, 255, 255, 0.06);
+    --aaas-border-hover: rgba(255, 255, 255, 0.12);
     --aaas-glass-border: rgba(255, 255, 255, 0.08);
 
-    /* Shadows - Dark */
-    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --aaas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --aaas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --aaas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+    /* Accent — Warm off-white / bone */
+    --aaas-accent: #e8e4dc;
+    --aaas-accent-hover: #ffffff;
+    --aaas-accent-glow: rgba(232, 228, 220, 0.15);
+
+    /* Semantic — IQ gradient support */
+    --aaas-success: #22c55e;
+    --aaas-warning: #f59e0b;
+    --aaas-danger: #ef4444;
+    --aaas-info: #3b82f6;
+    --aaas-iq-low: #22c55e;
+    --aaas-iq-med: #eab308;
+    --aaas-iq-high: #ef4444;
+    --aaas-brain-glow: rgba(59, 130, 246, 0.2);
+
+    /* Glassmorphism — Dark */
+    --aaas-glass-bg: rgba(20, 20, 20, 0.9);
+    --aaas-glass-blur: 16px;
+    --aaas-glass-backdrop: blur(var(--aaas-glass-blur));
+
+    /* Shadows — Deep, subtle */
+    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --aaas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --aaas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --aaas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --aaas-shadow-glow: 0 0 20px rgba(232, 228, 220, 0.1);
+
+    /* Typography */
+    --aaas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --aaas-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+    /* Spacing */
+    --aaas-space-xs: 4px;
+    --aaas-space-sm: 8px;
+    --aaas-space-md: 16px;
+    --aaas-space-lg: 24px;
+    --aaas-space-xl: 32px;
+    --aaas-space-2xl: 48px;
+    --aaas-spacing-xs: 4px;
+    --aaas-spacing-sm: 8px;
+    --aaas-spacing-md: 16px;
+    --aaas-spacing-lg: 24px;
+    --aaas-spacing-xl: 32px;
+    --aaas-spacing-2xl: 48px;
+
+    /* Border Radius */
+    --aaas-radius-sm: 4px;
+    --aaas-radius-md: 8px;
+    --aaas-radius-lg: 12px;
+    --aaas-radius-xl: 16px;
+    --aaas-radius-full: 9999px;
+
+    /* Layout */
+    --aaas-sidebar-width: 260px;
+    --aaas-sidebar-collapsed: 64px;
+    --aaas-header-height: 56px;
+    --aaas-footer-height: 48px;
+
+    /* Transitions */
+    --aaas-transition-fast: 150ms ease;
+    --aaas-transition-normal: 200ms ease;
+    --aaas-transition-slow: 300ms ease;
+
+    /* Z-Index */
+    --aaas-z-dropdown: 100;
+    --aaas-z-modal: 200;
+    --aaas-z-overlay: 300;
+    --aaas-z-toast: 400;
+    --aaas-z-tooltip: 500;
 }
 
 /* ==========================================================================

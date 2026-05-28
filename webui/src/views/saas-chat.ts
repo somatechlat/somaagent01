@@ -1142,7 +1142,8 @@ export class SaasChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
 
         try {
-            wsClient.send('chat.message', {
+            wsClient.send({
+                type: 'chat.message',
                 conversation_id: conversationId,
                 agent_id: this._selectedAgentId || undefined,
                 content,

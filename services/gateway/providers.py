@@ -12,7 +12,11 @@ from services.common.publisher import DurablePublisher
 # Compatibility attributes for test suite
 JWKS_CACHE: dict = {}
 APP_SETTINGS: dict = {}
-JWT_SECRET = get_optional_env("SA01_JWT_SECRET", "")
+# VIBE SECURITY: JWT secret MUST be explicitly configured. No empty fallback.
+_jwt_secret = get_optional_env("SA01_JWT_SECRET", "")
+if not _jwt_secret:
+    _jwt_secret = None  # Will cause JWT operations to fail-fast if used without config
+JWT_SECRET = _jwt_secret
 _TEMPORAL_CLIENT = None
 _TEMPORAL_LOCK = None
 

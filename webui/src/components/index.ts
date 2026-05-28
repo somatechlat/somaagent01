@@ -23,6 +23,17 @@ export { SaasUserInviteModal } from './saas-user-invite-modal.js';
 export { SaasUserProfileCard } from './saas-user-profile-card.js';
 export { SettingsForm } from './settings-form.js';
 
+// Workspace Components (Agent Zero inspired)
+export { SaasAgentHeader } from './saas-agent-header.js';
+export { SaasComposer } from './saas-composer.js';
+export { SaasComposerMenu } from './saas-composer-menu.js';
+export { SaasChatWorkspace } from './saas-chat-workspace.js';
+export { SaasWelcomeDashboard } from './saas-welcome-dashboard.js';
+export { SaasRightPanel } from './saas-right-panel.js';
+export { SaasSidebarWorkspace } from './saas-sidebar-workspace.js';
+export { SaasCapsuleEditor } from './saas-capsule-editor.js';
+export { SaasBrainPanel } from './saas-brain-panel.js';
+
 // Types
 export type { SelectOption } from './saas-select.js';
 export type { Tab } from './saas-tabs.js';

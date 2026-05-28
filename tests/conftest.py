@@ -14,6 +14,7 @@ Test Structure:
 """
 
 import os
+import secrets as _secrets
 import pytest
 
 # ===========================================================================
@@ -25,9 +26,11 @@ AAAS_ENV = {
     "SA01_DB_HOST": "localhost",
     "SA01_DB_PORT": "63932",
     "SA01_DB_USER": "soma",
-    "SA01_DB_PASSWORD": "soma",
+    "SA01_DB_PASSWORD": os.environ.get("TEST_DB_PASSWORD", ""),
     "SA01_DB_NAME": "somaagent",
-    "SA01_DB_DSN": "postgresql://soma:soma@localhost:63932/somaagent",
+    "SA01_DB_DSN": os.environ.get(
+        "TEST_DB_DSN", "postgresql://soma@localhost:63932/somaagent"
+    ),
     # Redis (somastack_redis)
     "SA01_REDIS_URL": "redis://localhost:63979/0",
     # Milvus (somastack_milvus)
@@ -40,7 +43,7 @@ AAAS_ENV = {
     # Mode flags
     "SOMA_AAAS_MODE": "true",
     "SA01_DEPLOYMENT_MODE": "AAAS",
-    "SOMA_API_TOKEN": "test-token-aaas",
+    "SOMA_API_TOKEN": os.environ.get("TEST_SOMA_API_TOKEN", _secrets.token_urlsafe(32)),
 }
 
 STANDALONE_ENV = {
@@ -77,8 +80,7 @@ def configure_test_environment(request):
     # Default to AAAS mode for integration tests
     _apply_env(AAAS_ENV)
 
-    # Setup Django
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    # Setup Django (settings module configured via pytest.ini)
     import django
     django.setup()
 
