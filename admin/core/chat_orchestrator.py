@@ -826,6 +826,41 @@ class V3ChatOrchestrator:
         except Exception as exc:
             logger.warning("SFM store failed: %s", exc)
 
+    async def _queue_pending_memory(
+        self,
+        tenant_id: str,
+        namespace: str,
+        payload: Dict[str, Any],
+    ) -> None:
+        """Queue memory to PendingMemory for sync when SomaBrain recovers.
+
+        Best-effort: logs on failure, never blocks the chat turn.
+        """
+        from uuid import uuid4
+
+        from admin.core.models import PendingMemory
+        from asgiref.sync import sync_to_async
+        from django.db import transaction
+
+        idempotency_key = f"chat:{tenant_id}:{payload.get('conversation_id', '')}:{str(uuid4())[:8]}"
+
+        @sync_to_async
+        def _create() -> None:
+            try:
+                with transaction.atomic():
+                    PendingMemory.objects.get_or_create(
+                        idempotency_key=idempotency_key,
+                        defaults={
+                            "tenant_id": tenant_id,
+                            "namespace": namespace,
+                            "payload": payload,
+                        },
+                    )
+            except Exception as exc:
+                logger.warning("PendingMemory queue failed: %s", exc)
+
+        await _create()
+
     async def _store_turn(
         self,
         conversation_id: str,
@@ -877,9 +912,9 @@ class V3ChatOrchestrator:
             )
             brain_stored = True
         except CircuitBreakerError:
-            logger.warning("SomaBrain circuit OPEN — falling back to SomaFractalMemory")
+            logger.warning("SomaBrain circuit OPEN — falling back to SomaFractalMemory + PendingMemory")
         except Exception as e:
-            logger.warning("SomaBrain store failed: %s — falling back to SomaFractalMemory", e)
+            logger.warning("SomaBrain store failed: %s — falling back to SomaFractalMemory + PendingMemory", e)
 
         # SomaFractalMemory fallback (independent from Brain)
         if not brain_stored:
@@ -889,6 +924,18 @@ class V3ChatOrchestrator:
                 tenant_id=tenant_id,
                 namespace="chat_history",
                 metadata={"role": "assistant", "model": model_id, "latency_ms": elapsed_ms},
+            )
+            # Queue to PendingMemory for later sync when Brain recovers
+            await self._queue_pending_memory(
+                tenant_id=tenant_id,
+                namespace="chat_history",
+                payload={
+                    "role": "assistant",
+                    "content": assistant_response,
+                    "conversation_id": conversation_id,
+                    "model": model_id,
+                    "latency_ms": elapsed_ms,
+                },
             )
 
         # Store assistant trace (ALWAYS — Zero Data Loss)
