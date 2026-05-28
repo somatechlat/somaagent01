@@ -63,6 +63,13 @@ class ErrorCode(str, Enum):
     LLM_NO_CAPABLE_MODEL = "llm_no_capable_model"
     LLM_ALL_FALLBACKS_FAILED = "llm_all_fallbacks_failed"
     LLM_RATE_LIMITED = "llm_rate_limited"
+    LLM_DEGRADED_MODEL_UNAVAILABLE = "llm_degraded_model_unavailable"
+    LLM_DEGRADED_TIMEOUT = "llm_degraded_timeout"
+    LLM_DEGRADED_CIRCUIT_OPEN = "llm_degraded_circuit_open"
+
+    # Degradation
+    DEGRADED_PERMISSION_DENIED = "degraded_permission_denied"
+    DEGRADED_GATE_DENIED = "degraded_gate_denied"
 
     # Billing
     BILLING_PAYMENT_FAILED = "billing_payment_failed"
@@ -140,6 +147,17 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     ErrorCode.LLM_NO_CAPABLE_MODEL: _("No model available with required capabilities"),
     ErrorCode.LLM_ALL_FALLBACKS_FAILED: _("All LLM providers are currently unavailable"),
     ErrorCode.LLM_RATE_LIMITED: _("Rate limit exceeded, please try again later"),
+    ErrorCode.LLM_DEGRADED_MODEL_UNAVAILABLE: _(
+        "System degraded: Model selection unavailable. Using fallback context."
+    ),
+    ErrorCode.LLM_DEGRADED_TIMEOUT: _(
+        "System degraded: LLM request timed out. Please retry shortly."
+    ),
+    ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN: _(
+        "System degraded: LLM service temporarily unavailable. Using cached context only."
+    ),
+    ErrorCode.DEGRADED_PERMISSION_DENIED: _("Permission denied"),
+    ErrorCode.DEGRADED_GATE_DENIED: _("Gate denied"),
     # Billing
     ErrorCode.BILLING_PAYMENT_FAILED: _("Payment processing failed"),
     ErrorCode.BILLING_SUBSCRIPTION_EXPIRED: _("Your subscription has expired"),

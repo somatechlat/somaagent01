@@ -32,6 +32,7 @@ from uuid import uuid4
 
 from asgiref.sync import sync_to_async
 
+from admin.common.messages import ErrorCode, get_message
 from admin.core.agentiq import derive_all_settings, UnifiedGate
 from admin.core.context import build_context, BuiltContext
 from admin.core.model_router import detect_required_capabilities, select_model, SelectedModel
@@ -328,13 +329,13 @@ class V3ChatOrchestrator:
                 user_id=turn.user_id, permission="chat:send", tenant_id=tenant_id
             )
             if not perm.allowed:
-                result.response = "[Permission denied]"
+                result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
                 result.errors.append(perm.reason)
                 return result
 
             gate_ok = await self._unified_gate.check(capsule, action="chat:send")
             if not gate_ok:
-                result.response = "[Gate denied]"
+                result.response = get_message(ErrorCode.DEGRADED_GATE_DENIED)
                 result.errors.append("UnifiedGate rejected chat:send")
                 return result
             result.phase_completed = 4
@@ -422,7 +423,9 @@ class V3ChatOrchestrator:
                     ),
                 )
             except CircuitBreakerError as e:
-                raise ServiceUnavailableError("llm", f"Model selection circuit OPEN: {e}")
+                result.response = get_message(ErrorCode.LLM_DEGRADED_MODEL_UNAVAILABLE)
+                result.errors.append(f"Model selection circuit OPEN: {e}")
+                return result
             result.model_used = f"{model.provider}/{model.name}"
             logger.info("Phase 6: Model %s", result.model_used)
             self._metrics.record_turn_phase(turn_id, TurnPhase.MODEL_SELECTED)
@@ -465,9 +468,15 @@ class V3ChatOrchestrator:
                     if token:
                         response_chunks.append(token)
             except CircuitBreakerError:
-                raise ServiceUnavailableError("llm", "LLM circuit is OPEN")
+                result.response = get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
+                result.errors.append("LLM circuit OPEN — degraded mode")
+                result.phase_completed = 8
+                return result
             except asyncio.TimeoutError:
-                raise ServiceUnavailableError("llm", "LLM streaming timeout")
+                result.response = get_message(ErrorCode.LLM_DEGRADED_TIMEOUT)
+                result.errors.append("LLM streaming timeout — degraded mode")
+                result.phase_completed = 8
+                return result
 
             full_response = "".join(response_chunks)
             result.response = full_response
@@ -617,7 +626,7 @@ class V3ChatOrchestrator:
                 ),
             )
         except CircuitBreakerError:
-            yield "[Error: LLM circuit OPEN]"
+            yield get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
             return
 
         # Stream LLM
@@ -644,10 +653,10 @@ class V3ChatOrchestrator:
                     response_chunks.append(token)
                     yield token
         except CircuitBreakerError:
-            yield "[Error: LLM circuit OPEN]"
+            yield "[System degraded: LLM service temporarily unavailable. Using cached context only.]"
             return
         except asyncio.TimeoutError:
-            yield "[Error: LLM timeout]"
+            yield get_message(ErrorCode.LLM_DEGRADED_TIMEOUT)
             return
 
         # Store after streaming
