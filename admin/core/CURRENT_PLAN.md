@@ -74,24 +74,24 @@ Investigated all 43 deleted files — **NO CODE REFERENCES found** for any of th
 
 ---
 
-## 🟡 P0 — CRITICAL (Next After Blockers)
+## 🟡 P0 — CRITICAL ✅ ALL COMPLETE
 
-| # | Item | Category | Effort | Blocked By |
-|---|------|----------|--------|------------|
-| P0-D01 | Wire HealthMonitor into V3ChatOrchestrator | Degradation | Medium | — |
-| P0-D02 | Wire SimpleGovernor into V3ChatOrchestrator token budgets | Degradation | Medium | — |
-| P0-D03 | LLM circuit breaker → degraded response (not hard failure) | Degradation | Medium | — |
-| P0-D04 | Wire MemorySyncService/PendingMemory into chat memory store | Degradation | Medium | — |
-| P0-D05 | Fix DLQ consumer (`os.environ.kafka` crash) | Kafka | Small | — |
-| P0-D06 | Fix audit publisher (missing `get_durable_publisher`) | Kafka | Small | — |
-| P0-D07 | Fix memory replicator (`os.environ.service` crash) | Kafka | Small | — |
-| P0-D08 | Fix DegradationMonitor API (`admin/core/api/degradation.py`) | Degradation | Small | — |
-| P0-D09 | Fix ConversationWorker degradation check | Degradation | Small | — |
-| P0-I01 | Add OPA to `infra/aaas/docker-compose.yml` | Infrastructure | Small | — |
-| P0-I02 | Add Temporal + SpiceDB to `infra/aaas/aaas/docker-compose.yml` | Infrastructure | Medium | — |
-| P0-I04 | Create shared Redis connection pool factory | Redis | Medium | — |
-| P0-I05 | Add Kafka topic provisioning script | Kafka | Medium | — |
-| P0-I06 | Add Kafka workers to supervisord.conf | Kafka | Small | — |
+| # | Item | Category | Status | Commit |
+|---|------|----------|--------|--------|
+| P0-D01 | Wire HealthMonitor into V3ChatOrchestrator | Degradation | ✅ Already wired | — |
+| P0-D02 | Wire SimpleGovernor into V3ChatOrchestrator token budgets | Degradation | ✅ Already wired | — |
+| P0-D03 | LLM circuit breaker → degraded response (not hard failure) | Degradation | ✅ Fixed | `09688416e` |
+| P0-D04 | Wire MemorySyncService/PendingMemory into chat memory store | Degradation | ✅ Fixed | `35a892867` |
+| P0-D05 | Fix DLQ consumer (`os.environ.kafka` crash) | Kafka | ✅ Already fixed in remediation | — |
+| P0-D06 | Fix audit publisher (missing `get_durable_publisher`) | Kafka | ✅ Already fixed in remediation | — |
+| P0-D07 | Fix memory replicator (`os.environ.service` crash) | Kafka | ✅ Already fixed in remediation | — |
+| P0-D08 | Fix DegradationMonitor API (`admin/core/api/degradation.py`) | Degradation | ✅ Already fixed in remediation | — |
+| P0-D09 | Fix ConversationWorker degradation check | Degradation | ✅ Already fixed in remediation | — |
+| P0-I01 | Add OPA to `infra/aaas/docker-compose.yml` | Infrastructure | ✅ Already present | — |
+| P0-I02 | Add Temporal + SpiceDB to `infra/aaas/aaas/docker-compose.yml` | Infrastructure | ✅ Already present | — |
+| P0-I04 | Create shared Redis connection pool factory | Redis | ✅ Already present (`services/common/redis_pool.py`) | — |
+| P0-I05 | Add Kafka topic provisioning script | Kafka | ✅ Already present in docker-compose | — |
+| P0-I06 | Add Kafka workers to supervisord.conf | Kafka | ✅ Already present | — |
 
 ---
 
