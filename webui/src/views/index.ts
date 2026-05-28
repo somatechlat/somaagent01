@@ -45,6 +45,7 @@ export { SaasSubscriptions } from './saas-subscriptions.js';
 export { SaasTierBuilder } from './saas-tier-builder.js';
 export { SaasUsageAnalytics } from './saas-usage-analytics.js';
 export { SaasVoiceChat } from './saas-voice-chat.js';
+export { SaasWorkspace } from './saas-workspace.js';
 export { SaasVoicePersonas } from './saas-voice-personas.js';
 export { SaasVoiceSessions } from './saas-voice-sessions.js';
 export { SaasInfrastructureDashboard } from './saas-infrastructure-dashboard.js';

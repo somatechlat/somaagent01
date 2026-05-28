@@ -313,5 +313,21 @@ class BrainBridge:
                 logger.error(f"[GMD] HTTP set_neuromodulators failed: {e}")
 
 
-# Singleton instance
-brain = BrainBridge()
+# Lazy singleton — only instantiates on first attribute access
+_brain_instance: BrainBridge | None = None
+
+
+class _LazyBrainBridge:
+    """Lazy proxy for BrainBridge — instantiates on first use."""
+
+    def _get_instance(self) -> BrainBridge:
+        global _brain_instance
+        if _brain_instance is None:
+            _brain_instance = BrainBridge()
+        return _brain_instance
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._get_instance(), name)
+
+
+brain = _LazyBrainBridge()

@@ -21,20 +21,27 @@ The codebase has **real, production-grade infrastructure** (Kafka, Redis, Postgr
 
 ## SECTION 1: SECURITY FIXES (COMPLETED)
 
-| # | Issue | Status |
-|---|-------|--------|
-| S-01 | SQLite fallback eliminated | ✅ DONE |
-| S-02 | UnifiedGate fail-closed | ✅ DONE |
-| S-03 | Rate limiter fail-closed | ✅ DONE |
-| S-04 | JWT verify_aud configurable | ✅ DONE |
-| S-05 | Impersonation secret externalized | ✅ DONE |
-| S-06 | Missing await on decode_token | ✅ DONE |
-| S-07 | Development policy gated | ✅ DONE |
-| S-08 | BrainBridge.recall() fixed | ✅ DONE |
-| S-09 | SomaBrainClient circuit breaker | ✅ DONE |
-| S-10 | Session config Redis-backed | ✅ DONE |
-| S-11 | Placeholder code eliminated (multimodal, billing, capsules, quality, users) | ✅ DONE |
-| S-12 | ALLOW_INSECURE_AUTH_BYPASS removed | ✅ DONE |
+| # | Issue | Status | Verification |
+|---|-------|--------|-------------|
+| S-01 | SQLite fallback eliminated | ✅ DONE | `django_setup.py` now raises `ValueError` on missing/invalid DSN |
+| S-02 | UnifiedGate fail-closed | ✅ DONE | `admin/core/agentiq/unified_gate.py` — any error = DENY |
+| S-03 | Rate limiter fail-closed | ✅ DONE | `services/common/rate_limiter.py` — Redis error = DENY |
+| S-04 | JWT verify_aud configurable | ✅ DONE | `admin/common/auth.py` — `verify_aud` uses `JWT_ISSUER_STRICT` |
+| S-05 | Impersonation secret externalized | ✅ DONE | `admin/auth/api.py` — reads from settings |
+| S-06 | Missing await on decode_token | ✅ DONE | `admin/auth/api.py` — all calls use `await` |
+| S-07 | Development policy gated | ✅ DONE | `policy/soma_development.rego` — `default allow = false` |
+| S-08 | BrainBridge.recall() fixed | ✅ DONE | `aaas/brain.py` — implements real `recall()` for direct + HTTP modes |
+| S-09 | SomaBrainClient circuit breaker | ✅ DONE | `admin/core/somabrain_client.py` — circuit breaker wrapped |
+| S-10 | Session config Redis-backed | ✅ DONE | `admin/common/session_manager.py` — Redis-backed |
+| S-11 | Placeholder code eliminated (multimodal, billing, capsules, quality, users) | ✅ DONE | All replaced with real implementations or fail-closed errors |
+| S-12 | ALLOW_INSECURE_AUTH_BYPASS removed | ✅ DONE | Removed from `services/gateway/settings.py` |
+
+### New Issues Found (2026-05-28)
+| # | Issue | Location | Severity |
+|---|-------|----------|----------|
+| S-13 | `import secrets` missing in `django_setup.py` | `services/gateway/django_setup.py:53` | 🔴 Blocking Pyright |
+| S-14 | `browser_use_monkeypatch` not exported from `admin.core.helpers` | `admin/llm/services/litellm_client.py:30` | 🔴 Blocking tests |
+| S-15 | `admin.llm` app not in `INSTALLED_APPS` | `admin/llm/models.py:18` | 🔴 Blocking 8 Django tests |
 
 ---
 
@@ -267,7 +274,31 @@ These must be started separately (or added to supervisord).
 
 ---
 
-## SECTION 5: UNIFIED PRIORITIZED TODO LIST
+## SECTION 5: CODE VERIFICATION UPDATE (2026-05-28)
+
+After direct inspection and running Pyright + pytest on the current working tree:
+
+| Check | Result |
+|-------|--------|
+| **Pyright** | 1 error, 0 warnings, 0 info |
+| **Tests** | 13 failed, 43 passed, 63 skipped, 5 errors |
+| **TODO/FIXME/XXX/HACK in .py** | 0 ✅ |
+| **Placeholder code** | 28 occurrences (mostly `secrets.py` legitimate system) |
+| **NotImplementedError** | 15 occurrences (mostly abstract base classes) |
+| **Working tree drift** | 76 files changed (43 deleted, 33 modified) |
+
+### Test Failure Breakdown
+
+| Test File | Failures | Root Cause |
+|-----------|----------|------------|
+| `tests/django/test_admin_domain.py` | 8 failed | `admin.llm` not in `INSTALLED_APPS` |
+| `tests/test_deployment_mode_unified.py` | 3 failed | Missing `browser_use_monkeypatch` export |
+| `tests/proofs/test_agent_docker_proof.py` | 2 failed | Docker containers not running |
+| `tests/integration/somabrain/test_integration.py` | 5 errors | `somabrain` module not installed |
+
+---
+
+## SECTION 6: UNIFIED PRIORITIZED TODO LIST (UPDATED)
 
 ### P0 — CRITICAL (Fix First)
 
@@ -331,7 +362,14 @@ These must be started separately (or added to supervisord).
 
 ---
 
-## SECTION 6: RECOMMENDED EXECUTION ORDER
+## SECTION 7: RECOMMENDED EXECUTION ORDER (UPDATED)
+
+### Phase 0: Fix Immediate Blockers (NEW — Before Everything)
+**Goal:** Get Pyright to 0 errors and tests passing.
+- [ ] Add `import secrets` to `services/gateway/django_setup.py`
+- [ ] Export `browser_use_monkeypatch` from `admin/core/helpers/__init__.py`
+- [ ] Add `admin.llm` to `INSTALLED_APPS` or fix model app_label
+- [ ] Commit or restore the 43 deleted files (decide which are intentional)
 
 ### Phase 1: Fix Broken Code (P0-D05 through P0-D09, P0-I01 through P0-I03)
 **Goal:** Eliminate crashes on import and startup failures.
