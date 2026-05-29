@@ -13,6 +13,7 @@ import logging
 import os
 from typing import List, Optional
 
+from admin.common.messages import ErrorCode, get_message
 from services.common.vault_secrets import (
     delete_kv_secret,
     load_kv_secret,
@@ -33,18 +34,41 @@ class UnifiedSecretManager:
         """Initialize the instance."""
 
         self._vault_addr = os.environ.get("VAULT_ADDR")
+        deployment_mode = os.environ.get("SA01_DEPLOYMENT_MODE", "DEV").upper()
+        is_prod = deployment_mode in ("PROD", "PRODUCTION", "STANDALONE")
+
         if not self._vault_addr:
-            deployment_mode = os.environ.get("SA01_DEPLOYMENT_MODE", "DEV").upper()
-            if deployment_mode in ("PROD", "PRODUCTION", "STANDALONE"):
+            if is_prod:
                 raise RuntimeError(
-                    "VIBE Rule 164 VIOLATION: VAULT_ADDR is REQUIRED in production/STANDALONE mode. "
-                    "ALL system secrets (API keys, tokens, credentials) MUST be stored in Vault. "
-                    "Set VAULT_ADDR in your environment."
+                    f"VIBE Rule 164 VIOLATION: {get_message(ErrorCode.VAULT_ADDR_MISSING)}"
                 )
             LOGGER.warning(
                 "VAULT_ADDR not configured - secrets will not be available. "
                 "In production, this is a FATAL error."
             )
+            return
+
+        if is_prod and not self._check_vault_reachable():
+            raise RuntimeError(
+                f"VIBE Rule 164 VIOLATION: {get_message(ErrorCode.VAULT_UNREACHABLE, addr=self._vault_addr)}"
+            )
+
+    def _check_vault_reachable(self) -> bool:
+        """Check if Vault server is responding."""
+        if not self._vault_addr:
+            return False
+        try:
+            import urllib.request
+
+            req = urllib.request.Request(
+                f"{self._vault_addr}/v1/sys/health", method="GET"
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                # Vault returns 200, 429, 472, 473 for various healthy/reachable states
+                return resp.status in (200, 429, 472, 473)
+        except Exception as exc:
+            LOGGER.warning("Vault health check failed: %s", exc)
+            return False
 
     def _is_available(self) -> bool:
         """Check if Vault is configured."""

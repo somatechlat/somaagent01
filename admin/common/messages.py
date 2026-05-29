@@ -79,6 +79,10 @@ class ErrorCode(str, Enum):
     BUDGET_EXHAUSTED = "budget_exhausted"
     BUDGET_CHECK_FAILED = "budget_check_failed"
 
+    # Vault / Secrets
+    VAULT_ADDR_MISSING = "vault_addr_missing"
+    VAULT_UNREACHABLE = "vault_unreachable"
+
 
 class SuccessCode(str, Enum):
     """Success codes for confirmations."""
@@ -166,6 +170,13 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
         "{metric} limit exceeded: {usage}/{limit} used this {period}. Upgrade your plan."
     ),
     ErrorCode.BUDGET_CHECK_FAILED: _("Budget check failed, please try again"),
+    # Vault / Secrets
+    ErrorCode.VAULT_ADDR_MISSING: _(
+        "Vault address is required in production mode. Set VAULT_ADDR in your environment."
+    ),
+    ErrorCode.VAULT_UNREACHABLE: _(
+        "Vault is unreachable at {addr} in production mode. All system secrets must be stored in Vault."
+    ),
     # Success
     SuccessCode.CREATED: _("Successfully created"),
     SuccessCode.UPDATED: _("Successfully updated"),

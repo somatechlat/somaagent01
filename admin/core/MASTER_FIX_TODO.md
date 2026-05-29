@@ -38,7 +38,7 @@
 | 3.1 | Create shared Redis connection pool factory | `services/common/redis_client.py` | 🔲 | 6+ modules reinvent singleton |
 | 3.2 | Wire `max_connections: 20` from config loader | `admin/core/config/loader.py` | 🔲 | Phantom config never applied |
 | 3.3 | Fix `.env.example` — remove dead variables | `.env.example` | 🔲 | ~14 dead variables |
-| 3.4 | Fix `openapi_contract.yml` CI workflow | `.github/workflows/openapi_contract.yml` | 🔲 | References non-existent compose file |
+| 3.4 | Remove stale CI workflow references | `.github/workflows/` | ✅ DONE | Directory removed; stale references cleaned up |
 | 3.6 | Unify Kafka libraries → `aiokafka` only | Multiple files | 🔲 | 3 libraries used inconsistently |
 | 3.7 | Add Prometheus + Grafana to docker-compose | `infra/aaas/aaas/docker-compose.yml` | 🔲 | Metrics orphaned without scraper |
 | 3.8 | Milvus direct health check | `services/common/health_monitor.py` | 🔲 | Only monitored via SomaBrain proxy |
