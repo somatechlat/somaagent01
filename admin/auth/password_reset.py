@@ -20,6 +20,7 @@ from ninja import Router
 from pydantic import BaseModel, EmailStr
 
 from admin.common.exceptions import BadRequestError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["password-reset"])
 logger = logging.getLogger(__name__)
@@ -114,7 +115,7 @@ async def request_password_reset(request, payload: PasswordResetRequest) -> Pass
 
         """Execute create reset request."""
 
-        logger.info(f"Password reset requested for {email}")
+        logger.info('Password reset requested for %s', email)
         return True
 
     await _create_reset_request()
@@ -200,7 +201,7 @@ async def confirm_password_reset(
     except BadRequestError:
         raise
     except Exception as e:
-        logger.error(f"Password reset failed: {e}")
+        logger.error('Password reset failed: %s', e)
         raise BadRequestError("Password reset failed")
 
 
@@ -234,7 +235,7 @@ async def validate_reset_token(request, token: str) -> dict:
 
     return {
         "valid": is_valid,
-        "message": "Token is valid" if is_valid else "Token is invalid or expired",
+        "message": get_message(SuccessCode.TOKEN_VALID) if is_valid else get_message(ErrorCode.TOKEN_INVALID_OR_EXPIRED),
     }
 
 
@@ -263,5 +264,5 @@ async def change_password(request, payload: PasswordChangeRequest) -> dict:
 
     return {
         "success": True,
-        "message": "Password changed successfully",
+        "message": get_message(SuccessCode.PASSWORD_CHANGED),
     }

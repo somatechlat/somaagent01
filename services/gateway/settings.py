@@ -36,12 +36,12 @@ if not SECRET_KEY:
         # VIBE: No hardcoded secrets — generate ephemeral dev key
         SECRET_KEY = secrets.token_urlsafe(50)
     else:
-        raise ValueError("❌ Missing required environment variable: SECRET_KEY")
+        raise ValueError("Missing required environment variable: SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 if DEBUG and not IS_DEV_ENV:
-    raise ValueError("❌ DEBUG=true is only allowed in local/dev environments")
+    raise ValueError("DEBUG=true is only allowed in local/dev environments")
 
 allowed_hosts_env = os.environ.get("SA01_ALLOWED_HOSTS", "")
 if allowed_hosts_env:
@@ -49,7 +49,7 @@ if allowed_hosts_env:
 elif IS_DEV_ENV:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 else:
-    raise ValueError("❌ Missing required environment variable: SA01_ALLOWED_HOSTS")
+    raise ValueError("Missing required environment variable: SA01_ALLOWED_HOSTS")
 
 # Default security posture for non-debug operation
 SESSION_COOKIE_SECURE = not DEBUG

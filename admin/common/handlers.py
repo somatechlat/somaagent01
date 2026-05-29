@@ -63,7 +63,7 @@ def register_exception_handlers(api: NinjaAPI) -> None:
         from admin.common.messages import ErrorCode, get_message
 
         logger = logging.getLogger(__name__)
-        logger.error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
+        logger.error('Unhandled exception: %s\n%s', exc, traceback.format_exc())
 
         return JsonResponse(
             error_response(

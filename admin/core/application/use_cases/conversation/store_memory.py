@@ -139,7 +139,7 @@ class StoreMemoryUseCase:
             return StoreMemoryOutput(success=True, coordinate=coordinate)
 
         except Exception as e:
-            LOGGER.warning(f"Memory store failed: {e}")
+            LOGGER.warning('Memory store failed: %s', e)
             return StoreMemoryOutput(success=False, error=str(e))
 
     def _build_payload(self, input_data: StoreMemoryInput) -> Dict[str, Any]:

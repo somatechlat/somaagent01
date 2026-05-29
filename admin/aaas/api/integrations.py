@@ -22,6 +22,7 @@ from typing import Optional
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 logger = logging.getLogger(__name__)
 
@@ -248,7 +249,7 @@ async def update_integration(
     platform_config.defaults["integrations"] = integrations
     await platform_config.asave()
 
-    logger.info(f"Integration {provider} updated by user")
+    logger.info('Integration %s updated by user', provider)
 
     return await get_integration(request, provider)
 
@@ -365,7 +366,7 @@ async def sync_lago_plans(request) -> dict:
 
     config = await _get_integration_config("lago")
     if not config.get("api_key"):
-        return {"success": False, "message": "Lago not configured"}
+        return {"success": False, "message": get_message(ErrorCode.LAGO_NOT_CONFIGURED)}
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -379,16 +380,16 @@ async def sync_lago_plans(request) -> dict:
                 plans = response.json().get("plans", [])
                 return {
                     "success": True,
-                    "message": f"Synced {len(plans)} plans from Lago",
+                    "message": get_message(SuccessCode.LAGO_PLANS_SYNCED, count=len(plans)),
                     "plans_count": len(plans),
                     "synced_at": timezone.now().isoformat(),
                 }
             else:
-                return {"success": False, "message": f"Lago error: {response.status_code}"}
+                return {"success": False, "message": get_message(ErrorCode.LAGO_ERROR, status=response.status_code)}
 
     except Exception as e:
-        logger.error(f"Lago sync failed: {e}")
-        return {"success": False, "message": str(e)}
+        logger.error('Lago sync failed: %s', e)
+        return {"success": False, "message": get_message(ErrorCode.INTERNAL_ERROR)}
 
 
 @router.post("/smtp/test-email", response=dict)
@@ -401,15 +402,15 @@ async def send_test_email(request, to_email: str) -> dict:
 
     try:
         send_mail(
-            subject="SomaAgent Test Email",
-            message="This is a test email from SomaAgent Platform.",
+            subject=get_message(SuccessCode.TEST_EMAIL_SENT),
+            message=get_message(SuccessCode.TEST_EMAIL_SENT),
             from_email=(await _get_integration_config("smtp")).get(
                 "default_from", "no-reply@soma.ai"
             ),
             recipient_list=[to_email],
             fail_silently=False,
         )
-        return {"success": True, "message": f"Test email sent to {to_email}"}
+        return {"success": True, "message": get_message(SuccessCode.TEST_EMAIL_SENT, to_email=to_email)}
     except Exception as e:
-        logger.error(f"Test email failed: {e}")
-        return {"success": False, "message": str(e)}
+        logger.error('Test email failed: %s', e)
+        return {"success": False, "message": get_message(ErrorCode.SMTP_SEND_FAILED)}

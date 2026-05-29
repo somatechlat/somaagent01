@@ -152,7 +152,7 @@ async def create_batch_embeddings(
     """
     batch_id = str(uuid4())
 
-    logger.info(f"Batch embedding started: {batch_id}, count={len(inputs)}")
+    logger.info('Batch embedding started: %s, count=%s', batch_id, len(inputs))
 
     return {
         "batch_id": batch_id,

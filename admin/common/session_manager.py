@@ -136,7 +136,11 @@ class SessionManager:
             settings = SettingsRegistry.get()
             self.redis_url = redis_url or settings.redis_url
         except Exception:
-            self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            self.redis_url = redis_url or os.getenv("REDIS_URL")
+
+            if not self.redis_url:
+
+                raise ValueError("REDIS_URL is required")
         self.session_ttl = session_ttl
         self._redis: Optional[redis.Redis] = None
         self._connected = False
@@ -151,7 +155,7 @@ class SessionManager:
             )
             await self._redis.ping()
             self._connected = True
-            logger.info(f"SessionManager connected to Redis: {self.redis_url}")
+            logger.info('SessionManager connected to Redis: %s', self.redis_url)
 
     async def close(self) -> None:
         """Close Redis connection."""
@@ -234,9 +238,7 @@ class SessionManager:
             )
 
             SESSION_CREATED.labels(tenant_id).inc()
-            logger.info(
-                f"Session created: user={user_id}, session={session_id}, tenant={tenant_id}, ttl={self.session_ttl}s"
-            )
+            logger.info('Session created: user=%s, session=%s, tenant=%s, ttl=%ss', user_id, session_id, tenant_id, self.session_ttl)
 
             return session
 
@@ -260,7 +262,7 @@ class SessionManager:
 
             if data is None:
                 SESSION_RETRIEVED.labels("not_found").inc()
-                logger.debug(f"Session not found: {key}")
+                logger.debug('Session not found: %s', key)
                 return None
 
             try:
@@ -269,7 +271,7 @@ class SessionManager:
                 return session
             except (json.JSONDecodeError, TypeError, KeyError) as e:
                 SESSION_RETRIEVED.labels("invalid").inc()
-                logger.warning(f"Invalid session data for {key}: {e}")
+                logger.warning('Invalid session data for %s: %s', key, e)
                 return None
 
     async def get_session_by_id(self, session_id: str) -> Optional[Session]:
@@ -341,7 +343,7 @@ class SessionManager:
 
                 return True
             except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning(f"Failed to update session {key}: {e}")
+                logger.warning('Failed to update session %s: %s', key, e)
                 return False
 
     async def delete_session(self, user_id: str, session_id: str) -> bool:
@@ -364,7 +366,7 @@ class SessionManager:
 
             if deleted:
                 SESSION_DELETED.labels("explicit").inc()
-                logger.info(f"Session deleted: {key}")
+                logger.info('Session deleted: %s', key)
                 return True
 
             return False
@@ -398,7 +400,7 @@ class SessionManager:
             if keys_to_delete:
                 deleted_count = await self._redis.delete(*keys_to_delete)
                 SESSION_DELETED.labels("bulk").inc(deleted_count)
-                logger.info(f"Deleted {deleted_count} sessions for user {user_id}")
+                logger.info('Deleted %s sessions for user %s', deleted_count, user_id)
 
             return deleted_count
 
@@ -437,7 +439,7 @@ class SessionManager:
             try:
                 sessions.append(Session.from_dict(json.loads(data)))
             except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning(f"Invalid session data for {key}: {e}")
+                logger.warning('Invalid session data for %s: %s', key, e)
                 continue
 
         return sessions
@@ -459,7 +461,7 @@ class SessionManager:
             try:
                 sessions.append(Session.from_dict(json.loads(data)))
             except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning(f"Invalid session data for {key}: {e}")
+                logger.warning('Invalid session data for %s: %s', key, e)
                 continue
 
         return sessions
@@ -555,19 +557,13 @@ class SessionManager:
             spicedb = await get_spicedb_client()
             spicedb_permissions = await spicedb.get_permissions(user_id, tenant_id)
             permissions.update(spicedb_permissions)
-            logger.debug(
-                f"SpiceDB permissions resolved: user={user_id}, permissions={spicedb_permissions}"
-            )
+            logger.debug('SpiceDB permissions resolved: user=%s, permissions=%s', user_id, spicedb_permissions)
         except Exception as e:
             # Fail closed by default. Role fallback requires explicit override.
             if fail_open:
-                logger.warning(
-                    f"SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: {e}"
-                )
+                logger.warning('SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: %s', e)
             else:
-                logger.error(
-                    f"SpiceDB unavailable and fail-open disabled; returning no derived permissions: {e}"
-                )
+                logger.error('SpiceDB unavailable and fail-open disabled; returning no derived permissions: %s', e)
                 return []
 
         # Add role-based permissions as fallback/supplement
@@ -653,10 +649,10 @@ class SessionManager:
                 resource_type="agent",
                 permission="view",
             )
-            logger.debug(f"Accessible agents resolved: user={user_id}, count={len(agent_ids)}")
+            logger.debug('Accessible agents resolved: user=%s, count=%s', user_id, len(agent_ids))
             return agent_ids
         except Exception as e:
-            logger.warning(f"SpiceDB lookup failed, returning empty list: {e}")
+            logger.warning('SpiceDB lookup failed, returning empty list: %s', e)
             return []
 
 

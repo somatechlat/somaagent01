@@ -200,7 +200,7 @@ async def send_notification(
     """
     notification_id = str(uuid4())
 
-    logger.info(f"Notification sent: {notification_id} to {payload.user_id}")
+    logger.info('Notification sent: %s to %s', notification_id, payload.user_id)
 
     # In production:
     # 1. Store in database

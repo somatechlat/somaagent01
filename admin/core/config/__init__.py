@@ -118,7 +118,10 @@ def postgres_dsn() -> str:
 def redis_url() -> str:
     """Execute redis url."""
 
-    return str(env("REDIS_URL", "redis://localhost:6379/0"))
+    url = env("REDIS_URL")
+    if not url:
+        raise ValueError("REDIS_URL is required")
+    return str(url)
 
 
 def kafka_bootstrap_servers() -> str:

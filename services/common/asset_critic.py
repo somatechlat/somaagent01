@@ -155,7 +155,7 @@ class AssetCritic:
                 raise RuntimeError("Critic prompt 'multimodal_critic' not found in DB.")
 
         except Exception as e:
-            logger.error(f"Failed to load critic prompt from DB: {e}")
+            logger.error('Failed to load critic prompt from DB: %s', e)
             raise
 
     async def evaluate(

@@ -140,7 +140,11 @@ class OAuthStateStore:
         Args:
             redis_url: Redis connection URL. Defaults to REDIS_URL env var.
         """
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.redis_url = redis_url or os.getenv("REDIS_URL")
+
+        if not self.redis_url:
+
+            raise ValueError("REDIS_URL is required")
         self._redis: Optional[redis.Redis] = None
         self._connected = False
 
@@ -206,7 +210,7 @@ class OAuthStateStore:
             json.dumps(oauth_state.to_dict()),
         )
 
-        logger.info(f"OAuth state stored: provider={provider}, state={state[:8]}...")
+        logger.info('OAuth state stored: provider=%s, state=%s...', provider, state[:8])
 
         return oauth_state
 
@@ -227,13 +231,13 @@ class OAuthStateStore:
         data = await self._redis.get(key)
 
         if data is None:
-            logger.warning(f"OAuth state not found or expired: state={state[:8]}...")
+            logger.warning('OAuth state not found or expired: state=%s...', state[:8])
             return None
 
         try:
             return OAuthState.from_dict(json.loads(data))
         except (json.JSONDecodeError, TypeError, KeyError) as e:
-            logger.warning(f"Invalid OAuth state data: {e}")
+            logger.warning('Invalid OAuth state data: %s', e)
             return None
 
     async def consume_state(self, state: str) -> Optional[OAuthState]:
@@ -259,15 +263,15 @@ class OAuthStateStore:
         data = results[0]
 
         if data is None:
-            logger.warning(f"OAuth state not found or expired: state={state[:8]}...")
+            logger.warning('OAuth state not found or expired: state=%s...', state[:8])
             return None
 
         try:
             oauth_state = OAuthState.from_dict(json.loads(data))
-            logger.info(f"OAuth state consumed: provider={oauth_state.provider}")
+            logger.info('OAuth state consumed: provider=%s', oauth_state.provider)
             return oauth_state
         except (json.JSONDecodeError, TypeError, KeyError) as e:
-            logger.warning(f"Invalid OAuth state data: {e}")
+            logger.warning('Invalid OAuth state data: %s', e)
             return None
 
 

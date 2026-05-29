@@ -1,61 +1,24 @@
-"""Audit Store — persistent audit event storage backed by PostgreSQL.
+"""Audit Store — persistent audit event storage.
 
-VIBE Compliant: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from typing import Any, Dict, List, Optional
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
 
-class AuditStore:
-    """PostgreSQL-backed store for audit events."""
-
-    TABLE_NAME = "audit_events"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        """Initialize the store.
-
-        Args:
-            dsn: PostgreSQL connection string.
-        """
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        """Get or create a connection pool."""
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+class AuditStore(BaseStore[Dict[str, Any]]):
+    """Django ORM-backed store for audit events."""
 
     async def ensure_schema(self) -> None:
-        """Ensure the audit table exists."""
-        if not self.dsn:
-            raise RuntimeError("AuditStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
-                        id SERIAL PRIMARY KEY,
-                        event_type TEXT NOT NULL,
-                        actor TEXT,
-                        resource TEXT,
-                        action TEXT,
-                        payload JSONB,
-                        created_at TIMESTAMPTZ DEFAULT NOW()
-                    )
-                    """
-                )
-        except Exception as exc:
-            LOGGER.warning("AuditStore.ensure_schema failed: %s", exc)
-        finally:
-            await pool.close()
+        """Schema managed by Django migrations."""
+        pass
 
     async def record(
         self,
@@ -66,25 +29,32 @@ class AuditStore:
         payload: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist an audit event."""
-        if not self.dsn:
-            raise RuntimeError("AuditStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME}
-                        (event_type, actor, resource, action, payload)
-                    VALUES ($1, $2, $3, $4, $5)
-                    """,
-                    event_type,
-                    actor,
-                    resource,
-                    action,
-                    json.dumps(payload) if payload else None,
-                )
-        finally:
-            await pool.close()
+        from admin.aaas.models import AuditLog
+
+        await AuditLog.objects.acreate(
+            action=event_type,
+            actor_id=actor or None,
+            resource_type=resource or "",
+            resource_id=resource or None,
+            new_value=payload or {},
+        )
+
+    async def get(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a single audit event by ID."""
+        from admin.aaas.models import AuditLog
+
+        event = await AuditLog.objects.filter(id=identifier).afirst()
+        if not event:
+            return None
+        return {
+            "id": str(event.id),
+            "event_type": event.action,
+            "actor": str(event.actor_id) if event.actor_id else None,
+            "resource": event.resource_type,
+            "action": event.action,
+            "payload": event.new_value,
+            "created_at": event.created_at.isoformat() if event.created_at else None,
+        }
 
     async def list(
         self,
@@ -92,49 +62,49 @@ class AuditStore:
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """List audit events."""
-        if not self.dsn:
-            raise RuntimeError("AuditStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                if event_type:
-                    rows = await conn.fetch(
-                        f"""
-                        SELECT * FROM {self.TABLE_NAME}
-                        WHERE event_type = $1
-                        ORDER BY created_at DESC
-                        LIMIT $2
-                        """,
-                        event_type,
-                        limit,
-                    )
-                else:
-                    rows = await conn.fetch(
-                        f"""
-                        SELECT * FROM {self.TABLE_NAME}
-                        ORDER BY created_at DESC
-                        LIMIT $1
-                        """,
-                        limit,
-                    )
-                return [
-                    {
-                        "id": r["id"],
-                        "event_type": r["event_type"],
-                        "actor": r["actor"],
-                        "resource": r["resource"],
-                        "action": r["action"],
-                        "payload": (
-                            json.loads(r["payload"])
-                            if isinstance(r["payload"], str)
-                            else r["payload"]
-                        ),
-                        "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-                    }
-                    for r in rows
-                ]
-        finally:
-            await pool.close()
+        from admin.aaas.models import AuditLog
+
+        qs = AuditLog.objects.all().order_by("-created_at")
+        if event_type:
+            qs = qs.filter(action=event_type)
+        qs = qs[:limit]
+
+        results = []
+        async for event in qs:
+            results.append(
+                {
+                    "id": str(event.id),
+                    "event_type": event.action,
+                    "actor": str(event.actor_id) if event.actor_id else None,
+                    "resource": event.resource_type,
+                    "action": event.action,
+                    "payload": event.new_value,
+                    "created_at": event.created_at.isoformat() if event.created_at else None,
+                }
+            )
+        return results
+
+    async def create(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Persist a new audit event."""
+        await self.record(
+            event_type=record.get("event_type", "unknown"),
+            actor=record.get("actor"),
+            resource=record.get("resource"),
+            action=record.get("action"),
+            payload=record.get("payload"),
+        )
+        return record
+
+    async def update(self, identifier: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Audit events are immutable."""
+        raise RuntimeError("Audit events are immutable")
+
+    async def delete(self, identifier: str) -> bool:
+        """Remove an audit event."""
+        from admin.aaas.models import AuditLog
+
+        deleted, _ = await AuditLog.objects.filter(id=identifier).adelete()
+        return deleted > 0
 
 
 def from_env() -> AuditStore:

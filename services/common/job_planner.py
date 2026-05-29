@@ -1,6 +1,6 @@
 """Job planner — plans and tracks multimodal job execution steps.
 
-VIBE COMPLIANT: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
@@ -10,8 +10,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
-
-import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,10 +89,10 @@ class JobPlanner:
     """Planner for multimodal job execution."""
 
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or ""
+        pass
 
     async def ensure_schema(self) -> None:
-        """Ensure database schema exists."""
+        """Schema managed by Django migrations."""
         pass
 
     def create_plan(self, job_id: str, request: Dict[str, Any]) -> JobPlan:
@@ -117,11 +115,48 @@ class JobPlanner:
 
     async def claim_next_pending(self) -> Optional[JobPlan]:
         """Claim the next pending job plan for execution."""
-        return None
+        from admin.core.models import Job
+
+        job = await Job.objects.filter(status="pending").order_by("created_at").afirst()
+        if not job:
+            return None
+        job.status = "running"
+        job.started_at = __import__("django.utils.timezone").now()
+        await job.asave(update_fields=["status", "started_at", "updated_at"])
+        return JobPlan(
+            job_id=job.name,
+            steps=[],
+            status=JobStatus.RUNNING,
+            id=job.id,
+            tenant_id=job.tenant,
+        )
 
     async def get(self, plan_id: Optional[UUID]) -> Optional[JobPlan]:
         """Get a job plan by ID."""
-        return None
+        from admin.core.models import Job
+
+        if not plan_id:
+            return None
+        job = await Job.objects.filter(id=plan_id).afirst()
+        if not job:
+            return None
+        payload = job.payload or {}
+        return JobPlan(
+            job_id=job.name,
+            steps=[
+                TaskStep(
+                    step_type=StepType(s.get("type", "generate")),
+                    description=s.get("description", ""),
+                    parameters=s.get("parameters", {}),
+                )
+                for s in payload.get("steps", [])
+            ],
+            status=JobStatus(job.status),
+            id=job.id,
+            tenant_id=job.tenant,
+            completed_steps=payload.get("completed_steps", 0),
+            error_message=job.error,
+        )
 
     async def update_status(
         self,
@@ -130,7 +165,23 @@ class JobPlanner:
         **kwargs: Any,
     ) -> None:
         """Update the status of a job plan."""
-        pass
+        from admin.core.models import Job
+
+        if not plan_id:
+            return
+        job = await Job.objects.filter(id=plan_id).afirst()
+        if not job:
+            return
+        job.status = status.value
+        if "completed_steps" in kwargs:
+            payload = job.payload or {}
+            payload["completed_steps"] = kwargs["completed_steps"]
+            job.payload = payload
+        if "error_message" in kwargs:
+            job.error = kwargs["error_message"]
+        if status == JobStatus.COMPLETED:
+            job.completed_at = __import__("django.utils.timezone").now()
+        await job.asave()
 
     def compile(
         self,
@@ -140,8 +191,43 @@ class JobPlanner:
         request_id: Optional[str] = None,
     ) -> JobPlan:
         """Compile a DSL into a job plan."""
-        return JobPlan(job_id="", steps=[])
+        steps = []
+        if dsl:
+            for step_def in dsl.get("steps", []):
+                steps.append(
+                    TaskStep(
+                        step_type=StepType(step_def.get("type", "generate")),
+                        description=step_def.get("description", ""),
+                        parameters=step_def.get("parameters", {}),
+                    )
+                )
+        return JobPlan(
+            job_id=request_id or "",
+            steps=steps,
+            tenant_id=tenant_id or "",
+            session_id=session_id,
+        )
 
     async def create(self, plan: JobPlan) -> JobPlan:
         """Create a new job plan."""
+        from admin.core.models import Job
+
+        obj = await Job.objects.acreate(
+            name=plan.job_id,
+            job_type="multimodal",
+            tenant=plan.tenant_id,
+            payload={
+                "steps": [
+                    {
+                        "type": s.step_type.value,
+                        "description": s.description,
+                        "parameters": s.parameters,
+                    }
+                    for s in plan.steps
+                ],
+                "completed_steps": plan.completed_steps,
+            },
+            status=plan.status.value,
+        )
+        plan.id = obj.id
         return plan

@@ -19,6 +19,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -39,6 +40,8 @@ BASE_DIR = AGENT_ROOT
 # =============================================================================
 # ENVIRONMENT SETUP
 # =============================================================================
+
+logger = logging.getLogger(__name__)
 
 # Mode detection (canonical: SA01_DEPLOYMENT_MODE)
 SA01_DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "AAAS").upper()
@@ -242,12 +245,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # REDIS CONFIGURATION
 # =============================================================================
 
-REDIS_HOST = os.environ.get("SOMA_REDIS_HOST", os.environ.get("REDIS_HOST", "localhost"))
-REDIS_PORT = int(os.environ.get("SOMA_REDIS_PORT", os.environ.get("REDIS_PORT", "6379")))
-REDIS_URL = os.environ.get(
-    "REDIS_URL",
-    os.environ.get("SA01_REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0"),
-)
+REDIS_URL = os.environ.get("REDIS_URL") or os.environ.get("SA01_REDIS_URL")
+if not REDIS_URL:
+    raise ValueError("REDIS_URL is required")
+
 
 CACHES = {
     "default": {
@@ -369,4 +370,4 @@ LOGGING = {
     },
 }
 
-print(f"✅ AAAS Unified Settings Loaded: MODE={SA01_DEPLOYMENT_MODE}")
+logger.info('AAAS Unified Settings Loaded: MODE=%s', SA01_DEPLOYMENT_MODE)

@@ -1,59 +1,27 @@
-"""DLQ Store — persistent dead-letter queue backed by PostgreSQL.
+"""DLQ Store — persistent dead-letter queue storage.
 
-VIBE Compliant: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from typing import Any, Dict, List, Optional
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
 
-class DLQStore:
-    """PostgreSQL-backed store for dead-letter events."""
+class DLQStore(BaseStore[Dict[str, Any]]):
+    """Django ORM-backed store for dead-letter events."""
 
-    TABLE_NAME = "dlq_events"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        """Initialize the store.
-
-        Args:
-            dsn: PostgreSQL connection string.
-        """
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        """Get or create a connection pool."""
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+    def __init__(self) -> None:
+        pass
 
     async def ensure_schema(self) -> None:
-        """Ensure the DLQ table exists."""
-        if not self.dsn:
-            raise RuntimeError("DLQStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
-                        id SERIAL PRIMARY KEY,
-                        topic TEXT NOT NULL,
-                        event JSONB NOT NULL,
-                        error TEXT,
-                        created_at TIMESTAMPTZ DEFAULT NOW()
-                    )
-                    """
-                )
-        except Exception as exc:
-            LOGGER.warning("DLQStore.ensure_schema failed: %s", exc)
-        finally:
-            await pool.close()
+        """Schema managed by Django migrations."""
+        pass
 
     async def add(
         self,
@@ -61,87 +29,89 @@ class DLQStore:
         event: Dict[str, Any],
         error: Optional[str] = None,
     ) -> None:
-        """Persist a dead-letter event.
+        """Persist a dead-letter event."""
+        from admin.core.models import DeadLetterMessage
 
-        Args:
-            topic: Original Kafka topic.
-            event: The failed event payload.
-            error: Error message / stack trace.
-        """
-        if not self.dsn:
-            raise RuntimeError("DLQStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME} (topic, event, error)
-                    VALUES ($1, $2, $3)
-                    """,
-                    topic,
-                    json.dumps(event),
-                    error,
-                )
-        finally:
-            await pool.close()
+        await DeadLetterMessage.objects.acreate(
+            original_topic=topic,
+            payload=event,
+            headers={},
+            error_message=error or "",
+            idempotency_key=event.get("id", ""),
+        )
+
+    async def get(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a DLQ entry by ID."""
+        from admin.core.models import DeadLetterMessage
+
+        msg = await DeadLetterMessage.objects.filter(id=identifier).afirst()
+        if not msg:
+            return None
+        return {
+            "id": str(msg.id),
+            "topic": msg.original_topic,
+            "event": msg.payload,
+            "error": msg.error_message,
+            "created_at": msg.created_at.isoformat() if msg.created_at else None,
+        }
 
     async def list(
         self,
         topic: Optional[str] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
-        """List dead-letter events.
+        """List dead-letter events."""
+        from admin.core.models import DeadLetterMessage
 
-        Args:
-            topic: Filter by topic (optional).
-            limit: Maximum rows to return.
+        qs = DeadLetterMessage.objects.all().order_by("-created_at")
+        if topic:
+            qs = qs.filter(original_topic=topic)
+        qs = qs[:limit]
 
-        Returns:
-            List of DLQ rows as dicts.
-        """
-        if not self.dsn:
-            raise RuntimeError("DLQStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                if topic:
-                    rows = await conn.fetch(
-                        f"""
-                        SELECT id, topic, event, error, created_at
-                        FROM {self.TABLE_NAME}
-                        WHERE topic = $1
-                        ORDER BY created_at DESC
-                        LIMIT $2
-                        """,
-                        topic,
-                        limit,
-                    )
-                else:
-                    rows = await conn.fetch(
-                        f"""
-                        SELECT id, topic, event, error, created_at
-                        FROM {self.TABLE_NAME}
-                        ORDER BY created_at DESC
-                        LIMIT $1
-                        """,
-                        limit,
-                    )
-                return [
-                    {
-                        "id": r["id"],
-                        "topic": r["topic"],
-                        "event": (
-                            json.loads(r["event"]) if isinstance(r["event"], str) else r["event"]
-                        ),
-                        "error": r["error"],
-                        "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-                    }
-                    for r in rows
-                ]
-        finally:
-            await pool.close()
+        results = []
+        async for msg in qs:
+            results.append(
+                {
+                    "id": str(msg.id),
+                    "topic": msg.original_topic,
+                    "event": msg.payload,
+                    "error": msg.error_message,
+                    "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                }
+            )
+        return results
+
+    async def create(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Persist a dead-letter event."""
+        await self.add(
+            topic=record.get("topic", "unknown"),
+            event=record.get("event", {}),
+            error=record.get("error"),
+        )
+        return record
+
+    async def update(self, identifier: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update a DLQ entry (e.g., mark resolved)."""
+        from admin.core.models import DeadLetterMessage
+
+        msg = await DeadLetterMessage.objects.filter(id=identifier).afirst()
+        if not msg:
+            return None
+        if "resolved" in changes:
+            msg.resolved = changes["resolved"]
+        if "error" in changes:
+            msg.error_message = changes["error"]
+        await msg.asave()
+        return await self.get(identifier)
+
+    async def delete(self, identifier: str) -> bool:
+        """Remove a DLQ entry."""
+        from admin.core.models import DeadLetterMessage
+
+        deleted, _ = await DeadLetterMessage.objects.filter(id=identifier).adelete()
+        return deleted > 0
 
 
 async def ensure_schema(store: DLQStore) -> None:
-    """Compatibility helper for memory replicator."""
-    await store.ensure_schema()
+    """No-op: schema managed by Django migrations."""
+    pass

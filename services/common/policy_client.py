@@ -41,7 +41,7 @@ class PolicyClient:
             getattr(config, "external", None), "opa_url", None
         ) or os.environ.get("SA01_POLICY_URL") or os.environ.get("SA01_OPA_URL")
         if not base_url and not default_base_url:
-            raise ValueError("SA01_POLICY_URL is required. No hardcoded defaults per ")
+            raise ValueError("SA01_POLICY_URL is required. No hardcoded defaults per VIBE rules.")
         self.base_url = base_url or default_base_url
         self.data_path = (
             os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"

@@ -16,6 +16,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.common.messages import ErrorCode, get_message
 from admin.common.exceptions import NotFoundError
 from admin.core.models import FeatureFlag as FeatureFlagModel
 
@@ -121,7 +122,7 @@ async def update_system_config(
     VIBE: Runtime updates not supported for Env Vars.
     Use Deployment update.
     """
-    return {"error": "Runtime system config update not supported. Update env vars."}, 400
+    return {"error": get_message(ErrorCode.CONFIG_RUNTIME_UPDATE_NOT_SUPPORTED)}, 400
 
 
 # =============================================================================
@@ -158,7 +159,7 @@ async def update_tenant_config(
     value: str,
 ) -> tuple[dict, int]:
     """Update tenant configuration."""
-    return {"error": "Tenant config model pending"}, 501
+    return {"error": get_message(ErrorCode.CONFIG_TENANT_MODEL_PENDING)}, 501
 
 
 # =============================================================================
@@ -252,7 +253,7 @@ async def update_feature_flag(
     if count == 0:
         raise NotFoundError("flag", key)
 
-    logger.info(f"Feature flag {key} set to {enabled}")
+    logger.info('Feature flag %s set to %s', key, enabled)
     return {
         "key": key,
         "enabled": enabled,

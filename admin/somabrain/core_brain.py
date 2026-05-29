@@ -24,6 +24,7 @@ from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError
 from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 from services.common.degradation_monitor import DegradationLevel
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["core-brain"])
 logger = logging.getLogger(__name__)
@@ -135,7 +136,7 @@ async def get_somabrain_degradation_level() -> DegradationLevel:
         if somabrain_health:
             return somabrain_health.degradation_level
     except Exception as e:
-        logger.warning(f"Could not check degradation level: {e}")
+        logger.warning('Could not check degradation level: %s', e)
 
     return DegradationLevel.NONE
 
@@ -203,7 +204,7 @@ async def act(request, payload: ActRequest) -> ActResponse:
         # DEGRADED MODE: SomaBrain is unavailable
         # Return minimal response indicating degradation
         latency_ms = (time.time() - start) * 1000
-        logger.warning(f"SomaBrain unavailable for act() - DEGRADED MODE: {e}")
+        logger.warning('SomaBrain unavailable for act() - DEGRADED MODE: %s', e)
 
         raise ServiceUnavailableError(
             "somabrain", f"SomaBrain service unavailable. System is in DEGRADED MODE. Error: {e}"
@@ -242,7 +243,7 @@ async def adaptation_reset(
         }
 
     except SomaBrainError as e:
-        logger.warning(f"Adaptation reset failed - DEGRADED: {e}")
+        logger.warning('Adaptation reset failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -279,7 +280,7 @@ async def brain_sleep_mode(
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Sleep mode failed - DEGRADED: {e}")
+        logger.warning('Sleep mode failed - DEGRADED: %s', e)
         return SleepResponse(
             agent_id=agent_id,
             status="degraded",
@@ -317,7 +318,7 @@ async def util_sleep(request, agent_id: str, seconds: int = 60) -> dict:
         }
 
     except SomaBrainError as e:
-        logger.warning(f"Util sleep failed - DEGRADED: {e}")
+        logger.warning('Util sleep failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -355,7 +356,7 @@ async def personality_set(
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Personality set failed - DEGRADED: {e}")
+        logger.warning('Personality set failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -387,7 +388,7 @@ async def memory_config_get(request, agent_id: str) -> MemoryConfigResponse:
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Memory config get failed - DEGRADED: {e}")
+        logger.warning('Memory config get failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -445,7 +446,7 @@ async def memory_config_patch(
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Memory config patch failed - DEGRADED: {e}")
+        logger.warning('Memory config patch failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -468,13 +469,13 @@ async def wake_agent(request, agent_id: str) -> dict:
         return {
             "agent_id": agent_id,
             "status": state.get("status", "awake"),
-            "message": "Agent awakened",
+            "message": get_message(SuccessCode.AGENT_AWAKENED),
             "timestamp": timezone.now().isoformat(),
             "degraded": False,
         }
 
     except SomaBrainError as e:
-        logger.warning(f"Wake agent failed - DEGRADED: {e}")
+        logger.warning('Wake agent failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -508,7 +509,7 @@ async def get_brain_status(request, agent_id: str) -> dict:
         }
 
     except SomaBrainError as e:
-        logger.warning(f"Brain status failed - DEGRADED: {e}")
+        logger.warning('Brain status failed - DEGRADED: %s', e)
         return {
             "agent_id": agent_id,
             "status": "degraded",

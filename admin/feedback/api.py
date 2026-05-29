@@ -99,7 +99,7 @@ async def submit_feedback(
     """
     feedback_id = str(uuid4())
 
-    logger.info(f"Feedback: {feedback_id}, rating={rating}")
+    logger.info('Feedback: %s, rating=%s', feedback_id, rating)
 
     return Feedback(
         feedback_id=feedback_id,
@@ -191,7 +191,7 @@ async def thumbs_down(
     """
     feedback_id = str(uuid4())
 
-    logger.warning(f"Thumbs down: {message_id}")
+    logger.warning('Thumbs down: %s', message_id)
 
     return {
         "feedback_id": feedback_id,

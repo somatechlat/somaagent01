@@ -13,7 +13,7 @@ websocket_urlpatterns = [
     # URLs:
     # - /ws/v2/chat
     # - /ws/v2/chat/{agent_id}
-    # - /ws/v2/events (temporary alias for chat stream)
+    # - /ws/v2/events
     # - /ws/chat/{agent_id} (legacy)
     re_path(r"ws/v2/chat/?$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
     re_path(r"ws/v2/chat/(?P<agent_id>[^/]+)$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]

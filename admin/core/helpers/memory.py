@@ -11,32 +11,7 @@ from typing import Any, Dict, List, Mapping, Sequence
 
 from langchain_core.documents import Document
 
-try:
-    from simpleeval import simple_eval
-except Exception:
-
-    def simple_eval(
-        expr: str,
-        operators: Any | None = None,
-        functions: Any | None = None,
-        names: Mapping[str, Any] | None = None,
-    ) -> bool:
-        """Execute simple eval.
-
-        Args:
-            expr: The expr.
-            operators: The operators.
-            functions: The functions.
-            names: The names.
-        """
-
-        try:
-            if names and "==" in expr:
-                left, right = expr.split("==", 1)
-                return str(names.get(left.strip())) == right.strip().strip("'\"")
-        except Exception:
-            pass
-        return False
+from simpleeval import simple_eval
 
 
 from typing import TYPE_CHECKING

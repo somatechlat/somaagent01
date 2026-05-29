@@ -17,10 +17,8 @@ async def save_context(context: Any, reason: Optional[str] = None) -> None:
     Args:
         context: Agent context object
         reason: Reason for the checkpoint
+
+    Raises:
+        RuntimeError: Context persistence is not yet implemented.
     """
-    try:
-        # Attempt to serialize context ID for logging
-        ctx_id = getattr(context, "id", None)
-        LOGGER.debug("Context saved: id=%s reason=%s", ctx_id, reason)
-    except Exception:
-        pass
+    raise RuntimeError("Session store adapter save_context is not implemented")

@@ -66,7 +66,7 @@ async def oauth_initiate(request, provider: str):
     }
 
     redirect_url = f"{auth_url}?{urlencode(params)}"
-    logger.info(f"OAuth initiated: provider={provider}, state={oauth_state.state[:8]}...")
+    logger.info('OAuth initiated: provider=%s, state=%s...', provider, oauth_state.state[:8])
     return OAuthInitiateResponse(redirect_url=redirect_url, state=oauth_state.state)
 
 
@@ -82,7 +82,7 @@ async def oauth_callback(request, code: str, state: str):
     oauth_state = await state_store.consume_state(state)
 
     if oauth_state is None:
-        logger.warning(f"OAuth callback with invalid/expired state: state={state[:8]}...")
+        logger.warning('OAuth callback with invalid/expired state: state=%s...', state[:8])
         return HttpResponseRedirect("/login?error=oauth_state_invalid")
 
     config = get_keycloak_config()
@@ -101,17 +101,17 @@ async def oauth_callback(request, code: str, state: str):
                 },
             )
             if response.status_code != 200:
-                logger.warning(f"OAuth token exchange failed: status={response.status_code}")
+                logger.warning('OAuth token exchange failed: status=%s', response.status_code)
                 return HttpResponseRedirect("/login?error=oauth_token_exchange_failed")
             token_data = response.json()
     except httpx.HTTPError as e:
-        logger.error(f"OAuth token exchange error: {e}")
+        logger.error('OAuth token exchange error: %s', e)
         return HttpResponseRedirect("/login?error=oauth_service_unavailable")
 
     try:
         token_payload = await decode_token(token_data["access_token"])
     except Exception as e:
-        logger.error(f"OAuth token decode error: {e}")
+        logger.error('OAuth token decode error: %s', e)
         return HttpResponseRedirect("/login?error=oauth_token_invalid")
 
     session_manager = await get_session_manager()
@@ -132,9 +132,7 @@ async def oauth_callback(request, code: str, state: str):
 
     await update_last_login(token_payload)
     redirect_path = determine_redirect_path(token_payload)
-    logger.info(
-        f"OAuth login successful: provider={oauth_state.provider}, user_id={token_payload.sub}"
-    )
+    logger.info('OAuth login successful: provider=%s, user_id=%s', oauth_state.provider, token_payload.sub)
 
     response = HttpResponseRedirect(redirect_path)
     max_age = token_data.get("expires_in", 900)

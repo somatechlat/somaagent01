@@ -161,9 +161,7 @@ async def start_conversation_workflow(
     """
     workflow_id = str(uuid4())
 
-    logger.info(
-        f"A2A conversation started: {workflow_id}, {payload.initiator_agent} → {payload.target_agent}"
-    )
+    logger.info('A2A conversation started: %s, %s → %s', workflow_id, payload.initiator_agent, payload.target_agent)
 
     # In production: start Temporal workflow
     # handle = await client.start_workflow(
@@ -243,7 +241,7 @@ async def execute_tool(
     """
     execution_id = str(uuid4())
 
-    logger.info(f"Tool execution requested: {payload.tool_name} by {payload.requesting_agent}")
+    logger.info('Tool execution requested: %s by %s', payload.tool_name, payload.requesting_agent)
 
     # Execute tool
     try:
@@ -288,7 +286,7 @@ async def request_handoff(
     """
     handoff_id = str(uuid4())
 
-    logger.info(f"Handoff requested: {handoff_id}, {payload.from_agent} → {payload.to_agent}")
+    logger.info('Handoff requested: %s, %s → %s', handoff_id, payload.from_agent, payload.to_agent)
 
     # In production: notify target agent and wait for acceptance
 
@@ -364,7 +362,7 @@ async def start_maintenance(
         "backup": 30,
     }
 
-    logger.info(f"Maintenance workflow started: {payload.workflow_type}")
+    logger.info('Maintenance workflow started: %s', payload.workflow_type)
 
     return MaintenanceWorkflowResponse(
         workflow_id=workflow_id,
@@ -419,9 +417,7 @@ async def create_escalation(
         "admin": "admin-team",
     }
 
-    logger.warning(
-        f"Escalation created: {escalation_id}, type: {payload.escalation_type}, priority: {payload.priority}"
-    )
+    logger.warning('Escalation created: %s, type: %s, priority: %s', escalation_id, payload.escalation_type, payload.priority)
 
     return EscalationResponse(
         escalation_id=escalation_id,

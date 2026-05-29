@@ -107,7 +107,7 @@ async def create_chat_completion(
 
     # In production: call LLM provider
 
-    logger.info(f"Completion: {completion_id}, model={model}")
+    logger.info('Completion: %s, model=%s', completion_id, model)
 
     return CompletionResponse(
         id=completion_id,

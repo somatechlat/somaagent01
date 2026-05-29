@@ -1,6 +1,6 @@
 """Execution tracker — tracks status of multimodal job execution.
 
-VIBE COMPLIANT: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
@@ -11,8 +11,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import UUID
-
-import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,13 +39,12 @@ class ExecutionTracker:
     """Tracks execution status of a job."""
 
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or ""
         self.job_id = ""
         self.status = ExecutionStatus.PENDING
         self.progress = 0.0
 
     async def ensure_schema(self) -> None:
-        """Ensure database schema exists."""
+        """Schema managed by Django migrations."""
         pass
 
     async def get_latest_for_step(
@@ -56,7 +53,24 @@ class ExecutionTracker:
         step_index: int,
     ) -> Optional[ExecutionRecord]:
         """Get the latest execution record for a step."""
-        return None
+        from admin.core.models import ExecutionRecord as ExecutionRecordModel
+
+        record = (
+            await ExecutionRecordModel.objects.filter(
+                plan_id=str(plan_id) if plan_id else "",
+                step_index=step_index,
+            )
+            .order_by("-started_at")
+            .afirst()
+        )
+        if not record:
+            return None
+        return ExecutionRecord(
+            id=str(record.id),
+            status=ExecutionStatus(record.status),
+            started_at=record.started_at,
+            asset_id=record.asset_id,
+        )
 
     async def start(
         self,
@@ -69,10 +83,21 @@ class ExecutionTracker:
         **kwargs: Any,
     ) -> ExecutionRecord:
         """Start tracking an execution attempt."""
+        from admin.core.models import ExecutionRecord as ExecutionRecordModel
+
+        obj = await ExecutionRecordModel.objects.acreate(
+            plan_id=str(plan_id) if plan_id else "",
+            step_index=step_index,
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            provider_id=provider_id,
+            attempt_number=attempt_number,
+            status="running",
+        )
         return ExecutionRecord(
-            id="",
+            id=str(obj.id),
             status=ExecutionStatus.RUNNING,
-            started_at=datetime.now(),
+            started_at=obj.started_at,
         )
 
     async def complete(
@@ -89,7 +114,22 @@ class ExecutionTracker:
         **kwargs: Any,
     ) -> None:
         """Complete an execution attempt."""
-        pass
+        from admin.core.models import ExecutionRecord as ExecutionRecordModel
+        from django.utils import timezone
+
+        record = await ExecutionRecordModel.objects.filter(id=execution_id).afirst()
+        if not record:
+            return
+        record.status = status.value
+        record.asset_id = asset_id
+        record.latency_ms = latency_ms
+        record.cost_estimate_cents = cost_estimate_cents
+        record.quality_score = quality_score
+        record.quality_feedback = quality_feedback
+        record.error_code = error_code
+        record.error_message = error_message
+        record.completed_at = timezone.now()
+        await record.asave()
 
     def update(self, status: ExecutionStatus, progress: float) -> None:
         """Update execution status."""

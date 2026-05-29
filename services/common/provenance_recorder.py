@@ -1,17 +1,16 @@
 """Provenance recorder — tracks data lineage for multimodal operations.
 
-VIBE COMPLIANT: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,54 +25,83 @@ class ProvenanceRecord:
     rework_count: int = 0
 
 
-class ProvenanceRecorder:
-    """Records provenance (data lineage) for operations."""
-
-    TABLE_NAME = "provenance"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+class ProvenanceRecorder(BaseStore[ProvenanceRecord]):
+    """Django ORM-backed provenance recorder."""
 
     async def ensure_schema(self) -> None:
-        """Ensure database schema exists."""
+        """Schema managed by Django migrations."""
         pass
 
     async def get(self, asset_id: UUID) -> Optional[ProvenanceRecord]:
         """Get provenance record by asset ID."""
-        return None
+        from admin.core.models import Provenance
+
+        record = await Provenance.objects.filter(asset_id=str(asset_id)).afirst()
+        if not record:
+            return None
+        return ProvenanceRecord(
+            asset_id=UUID(record.asset_id) if isinstance(record.asset_id, str) else record.asset_id,
+            tenant_id=record.tenant_id or "",
+            generation_params=record.generation_params or {},
+            rework_count=record.rework_count or 0,
+        )
 
     async def record(
         self,
         operation: Optional[str] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
-        actor: str = "",
+        asset_id: Optional[str | UUID] = None,
+        tenant_id: Optional[str] = None,
+        generation_params: Optional[Dict[str, Any]] = None,
+        rework_count: int = 0,
         **kwargs: Any,
-    ) -> None:
-        """Record a provenance entry.
+    ) -> ProvenanceRecord:
+        """Record provenance information."""
+        from admin.core.models import Provenance
 
-        Accepts both the original positional-style args and the
-        extended keyword args used by the multimodal executor.
-        """
-        if not self.dsn or asyncpg is None:
-            raise RuntimeError("ProvenanceRecorder: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                import json
+        params = generation_params or {}
+        params.update(kwargs)
+        obj = await Provenance.objects.acreate(
+            asset_id=str(asset_id) if asset_id else "",
+            tenant_id=tenant_id or "",
+            operation=operation,
+            generation_params=params,
+            rework_count=rework_count,
+        )
+        return ProvenanceRecord(
+            asset_id=UUID(obj.asset_id) if isinstance(obj.asset_id, str) else obj.asset_id,
+            tenant_id=obj.tenant_id or "",
+            generation_params=obj.generation_params or {},
+            rework_count=obj.rework_count or 0,
+        )
 
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME} (operation, inputs, outputs, actor)
-                    VALUES ($1, $2, $3, $4)
-                    """,
-                    operation or kwargs.get("tool_id", "unknown"),
-                    json.dumps(inputs or kwargs),
-                    json.dumps(outputs or {}),
-                    actor or kwargs.get("user_id", ""),
-                )
-        finally:
-            await pool.close()
+    async def create(self, record: ProvenanceRecord) -> ProvenanceRecord:
+        """Persist a provenance record."""
+        return await self.record(
+            asset_id=record.asset_id,
+            tenant_id=record.tenant_id,
+            generation_params=record.generation_params,
+            rework_count=record.rework_count,
+        )
+
+    async def update(
+        self, identifier: str, changes: Dict[str, Any]
+    ) -> Optional[ProvenanceRecord]:
+        """Update a provenance record."""
+        from admin.core.models import Provenance
+
+        record = await Provenance.objects.filter(asset_id=identifier).afirst()
+        if not record:
+            return None
+        if "generation_params" in changes:
+            record.generation_params = changes["generation_params"]
+        if "rework_count" in changes:
+            record.rework_count = changes["rework_count"]
+        await record.asave()
+        return await self.get(UUID(identifier))
+
+    async def delete(self, identifier: str) -> bool:
+        """Remove a provenance record."""
+        from admin.core.models import Provenance
+
+        deleted, _ = await Provenance.objects.filter(asset_id=identifier).adelete()
+        return deleted > 0

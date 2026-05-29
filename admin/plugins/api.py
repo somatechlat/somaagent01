@@ -117,7 +117,7 @@ async def install_plugin(
     """
     plugin_id = str(uuid4())
 
-    logger.info(f"Plugin installation started: {source}")
+    logger.info('Plugin installation started: %s', source)
 
     return {
         "plugin_id": plugin_id,
@@ -153,7 +153,7 @@ async def get_plugin(request, plugin_id: str) -> Plugin:
 )
 async def enable_plugin(request, plugin_id: str) -> dict:
     """Enable a plugin."""
-    logger.info(f"Plugin enabled: {plugin_id}")
+    logger.info('Plugin enabled: %s', plugin_id)
 
     return {
         "plugin_id": plugin_id,
@@ -168,7 +168,7 @@ async def enable_plugin(request, plugin_id: str) -> dict:
 )
 async def disable_plugin(request, plugin_id: str) -> dict:
     """Disable a plugin."""
-    logger.info(f"Plugin disabled: {plugin_id}")
+    logger.info('Plugin disabled: %s', plugin_id)
 
     return {
         "plugin_id": plugin_id,
@@ -186,7 +186,7 @@ async def uninstall_plugin(request, plugin_id: str) -> dict:
 
     Security Auditor: Clean removal, revoke permissions.
     """
-    logger.info(f"Plugin uninstalled: {plugin_id}")
+    logger.info('Plugin uninstalled: %s', plugin_id)
 
     return {
         "plugin_id": plugin_id,

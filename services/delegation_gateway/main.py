@@ -114,7 +114,7 @@ def get_publisher() -> DurablePublisher:
 def get_store() -> DelegationStore:
     """Retrieve store."""
 
-    return DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
+    return DelegationStore()
 
 
 class DelegationRequest(BaseModel):

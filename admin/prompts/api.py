@@ -114,7 +114,7 @@ async def create_prompt(
 
     variables = re.findall(r"\{\{(\w+)\}\}", template)
 
-    logger.info(f"Prompt created: {name} ({prompt_id})")
+    logger.info('Prompt created: %s (%s)', name, prompt_id)
 
     return Prompt(
         prompt_id=prompt_id,
@@ -179,7 +179,7 @@ async def update_prompt(
 )
 async def delete_prompt(request, prompt_id: str) -> dict:
     """Delete a prompt template."""
-    logger.warning(f"Prompt deleted: {prompt_id}")
+    logger.warning('Prompt deleted: %s', prompt_id)
 
     return {
         "prompt_id": prompt_id,
@@ -283,7 +283,7 @@ async def rollback_version(
     version: int,
 ) -> dict:
     """Rollback to a previous version."""
-    logger.info(f"Prompt rollback: {prompt_id} to v{version}")
+    logger.info('Prompt rollback: %s to v%s', prompt_id, version)
 
     return {
         "prompt_id": prompt_id,

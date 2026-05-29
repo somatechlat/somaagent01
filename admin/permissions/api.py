@@ -137,7 +137,7 @@ async def create_role(
     """
     role_id = str(uuid4())
 
-    logger.info(f"Role created: {name} ({role_id})")
+    logger.info('Role created: %s (%s)', name, role_id)
 
     return {
         "role_id": role_id,
@@ -281,7 +281,7 @@ async def assign_role(
     """
     assignment_id = str(uuid4())
 
-    logger.info(f"Role assigned: {role_id} -> {user_id}")
+    logger.info('Role assigned: %s -> %s', role_id, user_id)
 
     return {
         "assignment_id": assignment_id,
@@ -304,7 +304,7 @@ async def remove_assignment(
 
     Security Auditor: Permission revocation.
     """
-    logger.info(f"Role assignment removed: {assignment_id}")
+    logger.info('Role assignment removed: %s', assignment_id)
 
     return {
         "assignment_id": assignment_id,

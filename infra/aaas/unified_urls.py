@@ -12,9 +12,12 @@ VIBE Compliance:
 
 from __future__ import annotations
 
+import logging
 from django.contrib import admin
 from django.urls import include, path
 from ninja import NinjaAPI
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # UNIFIED NINJA API
@@ -44,7 +47,7 @@ try:
     unified_api.add_router("/aaas/", aaas_router, tags=["aaas"])
     unified_api.add_router("/gateway/", gateway_router, tags=["gateway"])
 except ImportError as e:
-    print(f"⚠️ Agent routers not available: {e}")
+    logger.info('Agent routers not available: %s', e)
 
 # =============================================================================
 # MOUNT BRAIN ROUTERS
@@ -57,7 +60,7 @@ try:
     for router in getattr(brain_api, "_routers", []):
         unified_api.add_router("/brain/", router, tags=["brain"])
 except ImportError as e:
-    print(f"⚠️ Brain routers not available: {e}")
+    logger.info('Brain routers not available: %s', e)
 
 # =============================================================================
 # MOUNT MEMORY ROUTERS
@@ -74,7 +77,7 @@ try:
     unified_api.add_router("/memory/search/", search_router, tags=["memory-search"])
     unified_api.add_router("/memory/", health_router, tags=["memory-health"])
 except ImportError as e:
-    print(f"⚠️ Memory routers not available: {e}")
+    logger.info('Memory routers not available: %s', e)
 
 # =============================================================================
 # HEALTH ENDPOINT

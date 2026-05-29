@@ -24,6 +24,7 @@ from services.tool_executor.metrics import (
 from services.tool_executor.resource_manager import default_limits
 from services.tool_executor.tools import ToolExecutionError
 from services.tool_executor.validation import validate_tool_request
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor
@@ -168,7 +169,7 @@ class RequestHandler:
             await self._executor.publish_result(
                 event,
                 status="error",
-                payload={"message": "Policy evaluation failed."},
+                payload={"message": get_message(ErrorCode.TOOL_POLICY_EVALUATION_FAILED)},
                 execution_time=0.0,
                 metadata=metadata,
             )
@@ -197,7 +198,7 @@ class RequestHandler:
             await self._executor.publish_result(
                 event,
                 status="blocked",
-                payload={"message": "Policy denied tool execution."},
+                payload={"message": get_message(ErrorCode.TOOL_POLICY_DENIED)},
                 execution_time=0.0,
                 metadata=metadata,
             )
@@ -341,7 +342,7 @@ class RequestHandler:
             await self._executor.publish_result(
                 event,
                 status="error",
-                payload={"message": "Unhandled tool executor error."},
+                payload={"message": get_message(ErrorCode.TOOL_UNHANDLED_ERROR)},
                 execution_time=0.0,
                 metadata={**metadata, "error": str(exc)},
             )

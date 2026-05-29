@@ -90,7 +90,7 @@ def get_asset_store():
     """Get the AssetStore instance for multimodal assets."""
     from services.common.asset_store import AssetStore
 
-    return AssetStore(dsn=get_optional_env("SA01_DB_DSN", ""))
+    return AssetStore()
 
 
 def get_multimodal_executor():

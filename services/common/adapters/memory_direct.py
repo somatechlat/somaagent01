@@ -26,7 +26,7 @@ class DirectMemoryAdapter:
 
     def __init__(self, namespace: str = "default"):
         """Initialize with direct imports from SomaFractalMemory."""
-        logger.info("💾 DirectMemoryAdapter: Initializing in-process memory access")
+        logger.info('DirectMemoryAdapter: Initializing in-process memory access')
 
         self._namespace = namespace
 
@@ -35,9 +35,9 @@ class DirectMemoryAdapter:
             from somafractalmemory.services import MemoryService  # type: ignore[import]
 
             self._memory_service = MemoryService(namespace=namespace)
-            logger.info("✅ DirectMemoryAdapter initialized")
+            logger.info('DirectMemoryAdapter initialized')
         except ImportError as e:
-            logger.error(f"❌ Failed to import SomaFractalMemory: {e}")
+            logger.error('Failed to import SomaFractalMemory: %s', e)
             raise
 
     def store(

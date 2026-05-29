@@ -257,7 +257,7 @@ class SomaBrainClient:
                     "memory_id": resp.get("id"),
                 }
             except Exception as e:
-                LOGGER.error(f"Direct remember failed, falling back to HTTP: {e}")
+                LOGGER.error('Direct remember failed, falling back to HTTP: %s', e)
                 pass
 
         if coord is not None:
@@ -363,12 +363,12 @@ class SomaBrainClient:
                             "score": m.get("score", 0.0),
                             "created_at": datetime.now(
                                 timezone.utc
-                            ).isoformat(),  # Placeholder if missing
+                            ).isoformat(),  # if missing
                         }
                     )
                 return memories
             except Exception as e:
-                LOGGER.error(f"Direct recall failed, falling back to HTTP: {e}")
+                LOGGER.error('Direct recall failed, falling back to HTTP: %s', e)
                 pass
 
         result = await self._request("POST", "/memory/recall", json=body)

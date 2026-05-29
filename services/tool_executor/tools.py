@@ -60,7 +60,8 @@ class EchoTool(BaseTool):
 
         text = args.get("text")
         if not isinstance(text, str):
-            raise ToolExecutionError("echo requires a 'text' field")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="text"))
         return {"message": text}
 
     def input_schema(self) -> Dict[str, Any] | None:
@@ -130,10 +131,12 @@ class CodeExecutionTool(BaseTool):
 
         language = args.get("language", "python").lower()
         if language != "python":
-            raise ToolExecutionError("Only Python code execution is supported")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_INVALID_ARGUMENT, arg="language"))
         code = args.get("code")
         if not isinstance(code, str) or not code.strip():
-            raise ToolExecutionError("Provide Python source via 'code'")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="code"))
 
         def _execute() -> dict[str, Any]:
             """Execute execute."""
@@ -203,13 +206,16 @@ class FileReadTool(BaseTool):
 
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
-            raise ToolExecutionError("'path' argument is required")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="path"))
         base_dir = Path(os.environ.get("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
-            raise ToolExecutionError("Access outside work directory is not allowed")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_PATH_NOT_ALLOWED))
         if not target.exists() or not target.is_file():
-            raise ToolExecutionError("File not found")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_FILE_NOT_FOUND, path=path_arg))
         content = await asyncio.to_thread(target.read_text)
         return {"path": str(target), "content": content}
 
@@ -240,7 +246,8 @@ class HttpFetchTool(BaseTool):
 
         url = args.get("url")
         if not isinstance(url, str) or not url.startswith("http"):
-            raise ToolExecutionError("Valid 'url' argument required")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_URL_INVALID))
         timeout = float(args.get("timeout", 10.0))
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.get(url)
@@ -280,17 +287,20 @@ class CanvasAppendTool(BaseTool):
 
         session_id = args.get("session_id")
         if not isinstance(session_id, str) or not session_id:
-            raise ToolExecutionError("'session_id' is required")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="session_id"))
         pane = args.get("pane", "default")
         content = args.get("content")
         if content is None:
-            raise ToolExecutionError("'content' is required")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="content"))
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
 
         canvas_url = os.environ.get("CANVAS_SERVICE_URL")
         if not canvas_url:
-            raise RuntimeError("CANVAS_SERVICE_URL must be set for canvas tool execution.")
+            from admin.common.messages import ErrorCode, get_message
+            raise RuntimeError(get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="canvas"))
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
             "session_id": session_id,
@@ -359,17 +369,18 @@ class IngestDocumentTool(BaseTool):
 
         # Strict contract: attachment ingestion must be by ID only
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
-            raise ToolExecutionError("'attachment_id' is required")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="attachment_id"))
 
         base = os.environ.get("SA01_GATEWAY_BASE")
         if not base:
-            raise ToolExecutionError("SA01_GATEWAY_BASE is required. No hardcoded defaults per ")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway"))
         base = base.rstrip("/")
         token = os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN")
         if not token:
-            raise ToolExecutionError(
-                "SA01_GATEWAY_INTERNAL_TOKEN is required. No hardcoded defaults per "
-            )
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway_token"))
         url = f"{base}/internal/attachments/{attachment_id}/binary"
         headers = {"X-Internal-Token": token}
         if tenant_header:
@@ -380,7 +391,8 @@ class IngestDocumentTool(BaseTool):
             ) as client:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:
-                    raise ToolExecutionError("Attachment not found")
+                    from admin.common.messages import ErrorCode, get_message
+                    raise ToolExecutionError(get_message(ErrorCode.TOOL_ATTACHMENT_NOT_FOUND))
                 resp.raise_for_status()
                 data = resp.content
                 mime = resp.headers.get("content-type", "application/octet-stream")
@@ -397,7 +409,8 @@ class IngestDocumentTool(BaseTool):
                 # Preserve explicit tool error semantics (e.g., 404 not found)
                 raise
             LOGGER.error("Attachment fetch failed", extra={"error": str(exc)})
-            raise ToolExecutionError("Attachment fetch failed")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_ATTACHMENT_FETCH_FAILED))
 
         text = ""
         try:
@@ -432,10 +445,12 @@ class IngestDocumentTool(BaseTool):
                     LOGGER.warning("OCR extraction failed", extra={"error": str(exc)})
         except Exception as exc:
             LOGGER.error("Ingestion failed", extra={"error": str(exc)})
-            raise ToolExecutionError("Ingestion error")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_INGESTION_FAILED))
 
         if not text:
-            raise ToolExecutionError("No text could be extracted")
+            from admin.common.messages import ErrorCode, get_message
+            raise ToolExecutionError(get_message(ErrorCode.TOOL_EXTRACTION_FAILED))
 
         return {
             "attachment_id": attachment_id,

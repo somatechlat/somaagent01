@@ -1,17 +1,15 @@
 """Model Profiles — per-role deployment configuration store.
 
-VIBE Compliant: Real PostgreSQL-backed implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,108 +23,91 @@ class ModelProfile:
     config: Dict[str, Any]
 
 
-class ModelProfileStore:
-    """PostgreSQL-backed store for model profiles."""
+class ModelProfileStore(BaseStore[ModelProfile]):
+    """Django ORM-backed store for model profiles."""
 
-    TABLE_NAME = "model_profiles"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        """Initialize the store.
-
-        Args:
-            dsn: PostgreSQL connection string.
-        """
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
+    async def ensure_schema(self) -> None:
+        """Schema managed by Django migrations."""
+        pass
 
     @classmethod
     def from_env(cls) -> "ModelProfileStore":
         """Create a store from the environment."""
         return cls()
 
-    async def _get_pool(self) -> Any:
-        """Get or create a connection pool."""
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+    async def get(
+        self, role: str, deployment_mode: str = "standard"
+    ) -> Optional[ModelProfile]:
+        """Get profile for role + deployment_mode."""
+        from admin.core.models import ModelProfile as ModelProfileModel
 
-    async def ensure_schema(self) -> None:
-        """Ensure the profiles table exists."""
-        if not self.dsn:
-            raise RuntimeError("ModelProfileStore: SA01_DB_DSN not configured")
-        try:
-            pool = await self._get_pool()
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
-                        role TEXT NOT NULL,
-                        deployment_mode TEXT NOT NULL,
-                        config JSONB NOT NULL DEFAULT '{{}}',
-                        created_at TIMESTAMPTZ DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ DEFAULT NOW(),
-                        PRIMARY KEY (role, deployment_mode)
-                    )
-                    """
-                )
-            await pool.close()
-        except Exception as exc:
-            LOGGER.warning("ModelProfileStore.ensure_schema failed: %s", exc)
+        profile = await ModelProfileModel.objects.filter(
+            role=role, deployment_mode=deployment_mode
+        ).afirst()
+        if not profile:
+            return None
+        return ModelProfile(
+            role=profile.role,
+            deployment_mode=profile.deployment_mode,
+            config=profile.config,
+        )
 
-    async def list(self) -> List[ModelProfile]:
-        """List all stored profiles."""
-        if not self.dsn:
-            raise RuntimeError("ModelProfileStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(
-                    f"SELECT role, deployment_mode, config FROM {self.TABLE_NAME}"
-                )
-                return [
-                    ModelProfile(
-                        role=r["role"],
-                        deployment_mode=r["deployment_mode"],
-                        config=(
-                            json.loads(r["config"]) if isinstance(r["config"], str) else r["config"]
-                        ),
-                    )
-                    for r in rows
-                ]
-        finally:
-            await pool.close()
+    async def list(self, role: Optional[str] = None) -> List[ModelProfile]:
+        """List model profiles."""
+        from admin.core.models import ModelProfile as ModelProfileModel
 
-    async def upsert(self, profile: ModelProfile) -> None:
-        """Insert or update a profile."""
-        if not self.dsn:
-            raise RuntimeError("ModelProfileStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME} (role, deployment_mode, config, updated_at)
-                    VALUES ($1, $2, $3, NOW())
-                    ON CONFLICT (role, deployment_mode)
-                    DO UPDATE SET config = EXCLUDED.config, updated_at = NOW()
-                    """,
-                    profile.role,
-                    profile.deployment_mode,
-                    json.dumps(profile.config),
+        qs = ModelProfileModel.objects.all()
+        if role:
+            qs = qs.filter(role=role)
+        results = []
+        async for profile in qs:
+            results.append(
+                ModelProfile(
+                    role=profile.role,
+                    deployment_mode=profile.deployment_mode,
+                    config=profile.config,
                 )
-        finally:
-            await pool.close()
+            )
+        return results
 
-    async def delete(self, role: str, deployment_mode: str) -> bool:
-        """Delete a profile. Returns True if a row was deleted."""
-        if not self.dsn:
-            raise RuntimeError("ModelProfileStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                result = await conn.execute(
-                    f"DELETE FROM {self.TABLE_NAME} WHERE role = $1 AND deployment_mode = $2",
-                    role,
-                    deployment_mode,
-                )
-                # asyncpg returns "DELETE N" where N is row count
-                return result != "DELETE 0"
-        finally:
-            await pool.close()
+    async def create(self, record: ModelProfile) -> ModelProfile:
+        """Persist a model profile."""
+        from admin.core.models import ModelProfile as ModelProfileModel
+
+        obj, _ = await ModelProfileModel.objects.aupdate_or_create(
+            role=record.role,
+            deployment_mode=record.deployment_mode,
+            defaults={"config": record.config},
+        )
+        return ModelProfile(
+            role=obj.role,
+            deployment_mode=obj.deployment_mode,
+            config=obj.config,
+        )
+
+    async def update(
+        self, identifier: str, changes: Dict[str, Any]
+    ) -> Optional[ModelProfile]:
+        """Update a model profile."""
+        from admin.core.models import ModelProfile as ModelProfileModel
+
+        profile = await ModelProfileModel.objects.filter(role=identifier).afirst()
+        if not profile:
+            return None
+        if "config" in changes:
+            profile.config = changes["config"]
+        if "deployment_mode" in changes:
+            profile.deployment_mode = changes["deployment_mode"]
+        await profile.asave()
+        return ModelProfile(
+            role=profile.role,
+            deployment_mode=profile.deployment_mode,
+            config=profile.config,
+        )
+
+    async def delete(self, identifier: str) -> bool:
+        """Remove a model profile."""
+        from admin.core.models import ModelProfile as ModelProfileModel
+
+        deleted, _ = await ModelProfileModel.objects.filter(role=identifier).adelete()
+        return deleted > 0

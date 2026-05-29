@@ -113,7 +113,7 @@ async def create_document(
     """
     document_id = str(uuid4())
 
-    logger.info(f"Document created: {title} ({document_id})")
+    logger.info('Document created: %s (%s)', title, document_id)
 
     return Document(
         document_id=document_id,
@@ -155,7 +155,7 @@ async def get_document(request, document_id: str) -> Document:
 )
 async def delete_document(request, document_id: str) -> dict:
     """Delete document and chunks."""
-    logger.warning(f"Document deleted: {document_id}")
+    logger.warning('Document deleted: %s', document_id)
 
     return {
         "document_id": document_id,
@@ -178,7 +178,7 @@ async def reindex_document(request, document_id: str) -> dict:
 
     ML Eng: Re-embed with new model.
     """
-    logger.info(f"Reindexing: {document_id}")
+    logger.info('Reindexing: %s', document_id)
 
     return {
         "document_id": document_id,

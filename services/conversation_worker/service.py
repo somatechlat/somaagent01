@@ -36,7 +36,7 @@ class ConversationWorkerService(BaseService):
 
     async def startup(self) -> None:
         """Initialize conversation worker service and start the worker."""
-        LOGGER.info(f"Starting {self.service_name} service")
+        LOGGER.info('Starting %s service', self.service_name)
 
         try:
             # Import the ConversationWorker from the original module
@@ -48,15 +48,15 @@ class ConversationWorkerService(BaseService):
             # Start the worker as a background task
             self.worker_task = asyncio.create_task(self.worker.start())
 
-            LOGGER.info(f"{self.service_name} service startup completed")
+            LOGGER.info('%s service startup completed', self.service_name)
 
         except Exception as exc:
-            LOGGER.error(f"Failed to start {self.service_name} service: {exc}")
+            LOGGER.error('Failed to start %s service: %s', self.service_name, exc)
             raise
 
     async def shutdown(self) -> None:
         """Clean up conversation worker service resources."""
-        LOGGER.info(f"Shutting down {self.service_name} service")
+        LOGGER.info('Shutting down %s service', self.service_name)
 
         try:
             # Cancel the worker task
@@ -74,12 +74,12 @@ class ConversationWorkerService(BaseService):
                     await self.worker.router.close()
                     await self.worker.policy.close()
                 except Exception as e:
-                    LOGGER.debug(f"Error closing worker connections: {e}")
+                    LOGGER.debug('Error closing worker connections: %s', e)
 
-            LOGGER.info(f"{self.service_name} service shutdown completed")
+            LOGGER.info('%s service shutdown completed', self.service_name)
 
         except Exception as exc:
-            LOGGER.error(f"Error during {self.service_name} service shutdown: {exc}")
+            LOGGER.error('Error during %s service shutdown: %s', self.service_name, exc)
 
     async def _start(self) -> None:
         """Orchestrator lifecycle hook — delegates to startup."""
@@ -129,7 +129,7 @@ class ConversationWorkerService(BaseService):
                 ),
             }
 
-        LOGGER.info(f"Registered health endpoints for {self.service_name} service")
+        LOGGER.info('Registered health endpoints for %s service', self.service_name)
 
     def as_dict(self) -> Dict[str, Any]:
         """Return a serialisable representation of the conversation worker service."""

@@ -740,3 +740,176 @@ class AgentSetting(models.Model):
 
 # Import SensorOutbox so Django detects it for migrations
 from admin.core.sensors.outbox import SensorOutbox  # noqa: E402, F401
+
+
+# =============================================================================
+# ASSET MODELS (replaces asset_store.py)
+# =============================================================================
+
+
+class Asset(models.Model):
+    """Multimodal asset - replaces AssetStore."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    session_id = models.CharField(max_length=255, db_index=True)
+    name = models.CharField(max_length=255, default="")
+    asset_type = models.CharField(max_length=50, db_index=True)
+    format = models.CharField(max_length=50)
+    content = models.BinaryField(null=True, blank=True)
+    content_size_bytes = models.BigIntegerField(default=0)
+    dimensions = models.JSONField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    mime_type = models.CharField(max_length=100, null=True, blank=True)
+    original_filename = models.CharField(max_length=255, null=True, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, null=True, blank=True)
+    status = models.CharField(max_length=50, default="active")
+    tombstone_reason = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "assets"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Asset({self.asset_type}:{self.id})"
+
+
+# =============================================================================
+# EXECUTION MODELS (replaces execution_tracker.py)
+# =============================================================================
+
+
+class ExecutionRecord(models.Model):
+    """Execution attempt record - replaces ExecutionTracker raw SQL."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan_id = models.CharField(max_length=255, db_index=True)
+    step_index = models.IntegerField(default=0)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    provider_name = models.CharField(max_length=255)
+    provider_id = models.CharField(max_length=255)
+    attempt_number = models.IntegerField(default=1)
+    status = models.CharField(max_length=50, default="pending")
+    asset_id = models.CharField(max_length=255, null=True, blank=True)
+    latency_ms = models.FloatField(default=0.0)
+    cost_estimate_cents = models.IntegerField(null=True, blank=True)
+    quality_score = models.FloatField(null=True, blank=True)
+    quality_feedback = models.JSONField(null=True, blank=True)
+    error_code = models.CharField(max_length=100, null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "execution_records"
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["plan_id", "step_index", "-started_at"]),
+        ]
+
+    def __str__(self):
+        return f"Execution({self.plan_id}:{self.step_index})"
+
+
+# =============================================================================
+# PROVENANCE MODELS (replaces provenance_recorder.py)
+# =============================================================================
+
+
+class Provenance(models.Model):
+    """Data lineage record - replaces ProvenanceRecorder raw SQL."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset_id = models.CharField(max_length=255, db_index=True)
+    tenant_id = models.CharField(max_length=255, db_index=True)
+    operation = models.CharField(max_length=100, null=True, blank=True)
+    generation_params = models.JSONField(default=dict, blank=True)
+    rework_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "provenance"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Provenance({self.asset_id})"
+
+
+# =============================================================================
+# MODEL PROFILE MODELS (replaces model_profiles.py)
+# =============================================================================
+
+
+class ModelProfile(models.Model):
+    """Per-role deployment configuration - replaces ModelProfileStore."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role = models.CharField(max_length=100, db_index=True)
+    deployment_mode = models.CharField(max_length=50, default="standard")
+    config = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "model_profiles"
+        unique_together = [["role", "deployment_mode"]]
+        ordering = ["role"]
+
+    def __str__(self):
+        return f"ModelProfile({self.role}:{self.deployment_mode})"
+
+
+# =============================================================================
+# MULTIMODAL OUTCOME MODELS (replaces soma_brain_outcomes.py)
+# =============================================================================
+
+
+class MultimodalOutcome(models.Model):
+    """SomaBrain operation outcome - replaces SomaBrainOutcomesStore."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task_id = models.CharField(max_length=255, db_index=True)
+    step_type = models.CharField(max_length=100, db_index=True)
+    status = models.CharField(max_length=50)
+    result = models.JSONField(default=dict)
+    provider = models.CharField(max_length=100, default="")
+    success = models.BooleanField(default=False)
+    latency_ms = models.FloatField(default=0.0)
+    quality_score = models.FloatField(null=True, blank=True)
+    cost_cents = models.FloatField(default=0.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "multimodal_outcomes"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Outcome({self.task_id}:{self.status})"
+
+
+# =============================================================================
+# DELEGATION TASK MODELS (replaces delegation_store.py)
+# =============================================================================
+
+
+class DelegationTask(models.Model):
+    """Task delegation record - replaces DelegationStore raw SQL."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task_id = models.CharField(max_length=255, unique=True, db_index=True)
+    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=50, default="received")
+    callback_url = models.URLField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    result = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "delegation_tasks"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"DelegationTask({self.task_id}:{self.status})"

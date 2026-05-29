@@ -64,12 +64,7 @@ class PortfolioRanker:
             scores.append(((prov, model), score))
 
             # Log shadow mode details
-            logger.info(
-                f"ShadowRanker: {prov} Score={score:.3f} "
-                f"(Success={stats['success_rate']:.2f}, "
-                f"Lat={stats['avg_latency']:.0f}ms, "
-                f"Qual={stats['avg_quality']:.2f})"
-            )
+            logger.info('ShadowRanker: %s Score=%.3f (Success=%.2f, Lat=%.0fms, Qual=%.2f)', prov, score, stats['success_rate'], stats['avg_latency'], stats['avg_quality'])
 
         # Sort by score descending
         scores.sort(key=lambda x: x[1], reverse=True)

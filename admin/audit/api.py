@@ -276,7 +276,7 @@ async def acknowledge_alert(
     notes: Optional[str] = None,
 ) -> dict:
     """Acknowledge a security alert."""
-    logger.info(f"Alert acknowledged: {alert_id}")
+    logger.info('Alert acknowledged: %s', alert_id)
 
     return {
         "alert_id": alert_id,

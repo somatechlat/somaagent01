@@ -22,6 +22,7 @@ from django.http import HttpRequest
 from ninja import Router
 
 from admin.aaas.models import AuditLog, Tenant
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["webhooks"])
 logger = logging.getLogger(__name__)
@@ -63,17 +64,17 @@ async def lago_webhook(request: HttpRequest) -> dict:
     """
     # Verify signature
     if not verify_lago_signature(request):
-        return {"status": "error", "message": "Invalid signature"}
+        return {"status": "error", "message": get_message(ErrorCode.BILLING_INVALID_SIGNATURE)}
 
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
-        return {"status": "error", "message": "Invalid JSON"}
+        return {"status": "error", "message": get_message(ErrorCode.BILLING_INVALID_JSON)}
 
     event_type = payload.get("webhook_type")
     event_data = payload.get("data", {})
 
-    logger.info(f"Lago webhook received: {event_type}")
+    logger.info('Lago webhook received: %s', event_type)
 
     # Route to handler
     handlers = {
@@ -90,10 +91,10 @@ async def lago_webhook(request: HttpRequest) -> dict:
             await handler(event_data)
             return {"status": "ok", "event": event_type}
         except Exception as e:
-            logger.error(f"Webhook handler error: {e}")
+            logger.error('Webhook handler error: %s', e)
             return {"status": "error", "message": str(e)}
 
-    logger.warning(f"Unhandled webhook type: {event_type}")
+    logger.warning('Unhandled webhook type: %s', event_type)
     return {"status": "ok", "event": event_type, "handled": False}
 
 
@@ -135,10 +136,10 @@ async def handle_invoice_created(data: dict) -> None:
                 },
             )
         except Tenant.DoesNotExist:
-            logger.error(f"Tenant not found: {customer_id}")
+            logger.error('Tenant not found: %s', customer_id)
 
     await log_event()
-    logger.info(f"Invoice created for tenant {customer_id}")
+    logger.info('Invoice created for tenant %s', customer_id)
 
 
 async def handle_invoice_paid(data: dict) -> None:
@@ -172,7 +173,7 @@ async def handle_invoice_paid(data: dict) -> None:
             pass
 
     await log_event()
-    logger.info(f"Invoice paid for tenant {customer_id}")
+    logger.info('Invoice paid for tenant %s', customer_id)
 
 
 async def handle_subscription_started(data: dict) -> None:
@@ -195,9 +196,9 @@ async def handle_subscription_started(data: dict) -> None:
             if tier:
                 tenant.tier = tier
                 tenant.save(update_fields=["tier", "updated_at"])
-                logger.info(f"Tenant {customer_id} upgraded to {plan_code}")
+                logger.info('Tenant %s upgraded to %s', customer_id, plan_code)
         except Tenant.DoesNotExist:
-            logger.error(f"Tenant not found: {customer_id}")
+            logger.error('Tenant not found: %s', customer_id)
 
     await update_tenant()
 
@@ -221,7 +222,7 @@ async def handle_subscription_terminated(data: dict) -> None:
             if free_tier:
                 tenant.tier = free_tier
                 tenant.save(update_fields=["tier", "updated_at"])
-                logger.info(f"Tenant {customer_id} downgraded to free")
+                logger.info('Tenant %s downgraded to free', customer_id)
         except Tenant.DoesNotExist:
             pass
 
@@ -232,4 +233,4 @@ async def handle_customer_created(data: dict) -> None:
     """Handle customer.created event (confirmation)."""
     customer = data.get("customer", {})
     external_id = customer.get("external_id")
-    logger.info(f"Lago customer created: {external_id}")
+    logger.info('Lago customer created: %s', external_id)

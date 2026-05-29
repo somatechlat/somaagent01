@@ -67,7 +67,7 @@ if __name__ == "__main__":
         test_agent_health_check()
         test_agent_api_docs()
         test_agent_brain_config()
-        print("✅ AGENT PROOFS PASSED")
+        logger.info("✅ AGENT PROOFS PASSED")
     except Exception as e:
-        print(f"❌ PROOF FAILED: {e}")
+        logger.info('PROOF FAILED: %s', e)
         exit(1)

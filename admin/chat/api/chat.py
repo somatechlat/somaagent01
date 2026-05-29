@@ -20,6 +20,7 @@ from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.responses import paginated_response
 from admin.core.models import Session
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -228,7 +229,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
                 },
             )
         except Exception as e:
-            logger.warning(f"Agent session init failed (non-critical): {e}")
+            logger.warning('Agent session init failed (non-critical): %s', e)
 
         title = payload.title or f"Conversation {conversation.id[:8]}"
 
@@ -256,7 +257,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
         ).model_dump()
 
     except Exception as e:
-        logger.error(f"Conversation creation failed: {e}")
+        logger.error('Conversation creation failed: %s', e)
         raise ServiceError(f"Failed to create conversation: {e}")
 
 
@@ -459,7 +460,7 @@ async def send_message(
         "id": stream_request_id,
         "conversation_id": conversation_id,
         "status": "streaming",
-        "message": "Connect to WebSocket for streaming response",
+        "message": get_message(SuccessCode.WEBSOCKET_STREAMING),
         "websocket_url": f"/ws/chat/{agent_id}",
     }
 
@@ -502,5 +503,5 @@ async def get_chat_session(request, session_id: str) -> dict:
     except NotFoundError:
         raise
     except Exception as exc:
-        logger.error(f"Session error: {exc}")
+        logger.error('Session error: %s', exc)
         raise ServiceError(f"session_error: {type(exc).__name__}")

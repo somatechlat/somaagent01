@@ -124,7 +124,11 @@ class AccountLockoutService:
             settings = SettingsRegistry.get()
             self.redis_url = redis_url or settings.redis_url
         except Exception:
-            self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            self.redis_url = redis_url or os.getenv("REDIS_URL")
+
+            if not self.redis_url:
+
+                raise ValueError("REDIS_URL is required")
         self.config = config or LockoutConfig.from_env()
         self._redis: Optional[redis.Redis] = None
         self._connected = False
@@ -228,7 +232,7 @@ class AccountLockoutService:
         attempts_count = results[0]
         LOGIN_ATTEMPTS.labels("failure").inc()
 
-        logger.info(f"Failed login attempt: email={email}, attempts={attempts_count}")
+        logger.info('Failed login attempt: email=%s, attempts=%s', email, attempts_count)
 
         # Check if should lock
         if attempts_count >= self.config.max_attempts:
@@ -241,9 +245,7 @@ class AccountLockoutService:
             )
 
             ACCOUNT_LOCKOUTS.inc()
-            logger.warning(
-                f"Account locked: email={email}, attempts={attempts_count}, duration={self.config.lockout_duration}s"
-            )
+            logger.warning('Account locked: email=%s, attempts=%s, duration=%ss', email, attempts_count, self.config.lockout_duration)
 
             return LockoutStatus(
                 is_locked=True,
@@ -276,7 +278,7 @@ class AccountLockoutService:
         await self._redis.delete(attempts_key)
 
         LOGIN_ATTEMPTS.labels("success").inc()
-        logger.debug(f"Successful login, cleared attempts: email={email}")
+        logger.debug('Successful login, cleared attempts: email=%s', email)
 
     async def clear_lockout(self, email: str) -> bool:
         """Manually clear lockout (admin action).
@@ -302,7 +304,7 @@ class AccountLockoutService:
         cleared = results[0] > 0
 
         if cleared:
-            logger.info(f"Lockout cleared by admin: email={email}")
+            logger.info('Lockout cleared by admin: email=%s', email)
 
         return cleared
 

@@ -82,7 +82,7 @@ class MultimodalExecutor:
         self._soma_brain_client = soma_brain_client or SomaBrainOutcomesStore()
         self._portfolio_ranker = PortfolioRanker(self._soma_brain_client)
         self._policy_router = policy_router or PolicyGraphRouter(dsn=self._dsn)
-        self._provenance_recorder = ProvenanceRecorder(dsn=self._dsn)
+        self._provenance_recorder = ProvenanceRecorder()
         self._initialized = False
 
         # Initialize LLM Adapter for AssetCritic if needed

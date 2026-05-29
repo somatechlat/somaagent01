@@ -134,7 +134,7 @@ def add_agent_user(
         role=payload.role,
     )
 
-    logger.info(f"User {payload.user_id} added to agent {agent_id} as {payload.role}")
+    logger.info('User %s added to agent %s as %s', payload.user_id, agent_id, payload.role)
 
     return api_response(
         {
@@ -178,7 +178,7 @@ def change_agent_role(
     agent_user.role = payload.role
     agent_user.save()
 
-    logger.info(f"User {user_id} role changed to {payload.role} on agent {agent_id}")
+    logger.info('User %s role changed to %s on agent %s', user_id, payload.role, agent_id)
 
     return api_response(
         {"agent_id": agent_id, "user_id": user_id, "role": payload.role},
@@ -207,7 +207,7 @@ def remove_agent_user(
         raise ForbiddenError("remove", "manager")
 
     agent_user.delete()
-    logger.info(f"User {user_id} removed from agent {agent_id}")
+    logger.info('User %s removed from agent %s', user_id, agent_id)
 
     return api_response(
         {"agent_id": agent_id, "user_id": user_id}, message="User removed from agent"
@@ -244,7 +244,7 @@ def transfer_ownership(
     new_manager.role = AgentRole.MANAGER
     new_manager.save()
 
-    logger.info(f"Agent {agent_id} ownership transferred to {payload.new_owner_id}")
+    logger.info('Agent %s ownership transferred to %s', agent_id, payload.new_owner_id)
 
     return api_response(
         {

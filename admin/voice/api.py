@@ -96,11 +96,11 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
                     segments=result.get("segments"),
                 )
             else:
-                logger.error(f"Whisper error: {response.status_code}")
+                logger.error('Whisper error: %s', response.status_code)
                 raise ServiceUnavailableError("whisper", "Transcription service unavailable")
 
     except httpx.HTTPError as e:
-        logger.error(f"Whisper connection error: {e}")
+        logger.error('Whisper connection error: %s', e)
         # Return degraded response with browser fallback hint
         raise ServiceUnavailableError(
             "whisper", "Whisper unavailable - use browser Speech API as fallback"
@@ -159,11 +159,11 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
                     voice_used=payload.voice,
                 )
             else:
-                logger.error(f"Kokoro error: {response.status_code}")
+                logger.error('Kokoro error: %s', response.status_code)
                 raise ServiceUnavailableError("kokoro", "TTS service unavailable")
 
     except httpx.HTTPError as e:
-        logger.error(f"Kokoro connection error: {e}")
+        logger.error('Kokoro connection error: %s', e)
         raise ServiceUnavailableError(
             "kokoro", "Kokoro TTS unavailable - use browser Speech Synthesis as fallback"
         )
@@ -482,7 +482,8 @@ def delete_persona(request, persona_id: UUID):
     tenant_id = getattr(request, "tenant_id", "default")
     persona = get_object_or_404(VoicePersona, id=persona_id, tenant_id=tenant_id)
     persona.delete()
-    return {"success": True, "message": f"Persona {persona_id} deleted"}
+    from admin.common.messages import SuccessCode, get_message
+    return {"success": True, "message": get_message(SuccessCode.PERSONA_DELETED, persona_id=str(persona_id))}
 
 
 @router.post(
@@ -502,7 +503,8 @@ def set_persona_default(request, persona_id: UUID):
     persona.is_default = True
     persona.save()
 
-    return {"success": True, "message": f"Persona {persona.name} set as default"}
+    from admin.common.messages import SuccessCode, get_message
+    return {"success": True, "message": get_message(SuccessCode.PERSONA_SET_DEFAULT, name=persona.name)}
 
 
 # =============================================================================
@@ -601,7 +603,8 @@ def terminate_session(request, session_id: UUID):
     session.ended_at = timezone.now()
     session.save()
 
-    return {"success": True, "message": f"Session {session_id} terminated"}
+    from admin.common.messages import SuccessCode, get_message
+    return {"success": True, "message": get_message(SuccessCode.SESSION_TERMINATED, session_id=str(session_id))}
 
 
 # =============================================================================

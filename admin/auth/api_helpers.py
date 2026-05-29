@@ -142,7 +142,7 @@ async def update_last_login(payload: "TokenPayload") -> None:
 
         await _update_login()
     except Exception as e:
-        logger.debug(f"Could not update last_login: {e}")
+        logger.debug('Could not update last_login: %s', e)
 
 
 __all__ = [

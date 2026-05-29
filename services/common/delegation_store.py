@@ -1,61 +1,69 @@
-"""Delegation Store — persistent task delegation storage backed by PostgreSQL.
+"""Delegation Store — persistent task delegation storage.
 
-VIBE Compliant: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from typing import Any, Dict, List, Optional
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
 
-class DelegationStore:
-    """PostgreSQL-backed store for delegation tasks."""
-
-    TABLE_NAME = "delegation_tasks"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        """Initialize the store.
-
-        Args:
-            dsn: PostgreSQL connection string.
-        """
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        """Get or create a connection pool."""
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+class DelegationStore(BaseStore[Dict[str, Any]]):
+    """Django ORM-backed store for delegation tasks."""
 
     async def ensure_schema(self) -> None:
-        """Ensure the delegation tasks table exists."""
-        if not self.dsn:
-            raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
-                        task_id TEXT PRIMARY KEY,
-                        payload JSONB NOT NULL DEFAULT '{{}}',
-                        status TEXT NOT NULL DEFAULT 'received',
-                        callback_url TEXT,
-                        metadata JSONB,
-                        created_at TIMESTAMPTZ DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ DEFAULT NOW()
-                    )
-                    """
-                )
-        except Exception as exc:
-            LOGGER.warning("DelegationStore.ensure_schema failed: %s", exc)
-        finally:
-            await pool.close()
+        """Schema managed by Django migrations."""
+        pass
+
+    async def get(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a task by ID."""
+        from admin.core.models import DelegationTask
+
+        task = await DelegationTask.objects.filter(task_id=task_id).afirst()
+        if not task:
+            return None
+        return {
+            "task_id": task.task_id,
+            "payload": task.payload,
+            "status": task.status,
+            "callback_url": task.callback_url,
+            "metadata": task.metadata,
+            "result": task.result,
+            "created_at": task.created_at.isoformat() if task.created_at else None,
+            "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+        }
+
+    async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for get()."""
+        return await self.get(task_id)
+
+    async def create(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Persist a delegation task."""
+        from admin.core.models import DelegationTask
+
+        obj = await DelegationTask.objects.acreate(
+            task_id=record["task_id"],
+            payload=record.get("payload", {}),
+            status=record.get("status", "received"),
+            callback_url=record.get("callback_url"),
+            metadata=record.get("metadata"),
+            result=record.get("result"),
+        )
+        return {
+            "task_id": obj.task_id,
+            "payload": obj.payload,
+            "status": obj.status,
+            "callback_url": obj.callback_url,
+            "metadata": obj.metadata,
+            "result": obj.result,
+            "created_at": obj.created_at.isoformat() if obj.created_at else None,
+            "updated_at": obj.updated_at.isoformat() if obj.updated_at else None,
+        }
 
     async def create_task(
         self,
@@ -64,145 +72,85 @@ class DelegationStore:
         status: str = "received",
         callback_url: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """Persist a delegation task."""
-        if not self.dsn:
-            raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME}
-                        (task_id, payload, status, callback_url, metadata, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, NOW())
-                    ON CONFLICT (task_id)
-                    DO UPDATE SET
-                        payload = EXCLUDED.payload,
-                        status = EXCLUDED.status,
-                        callback_url = EXCLUDED.callback_url,
-                        metadata = EXCLUDED.metadata,
-                        updated_at = NOW()
-                    """,
-                    task_id,
-                    json.dumps(payload),
-                    status,
-                    callback_url,
-                    json.dumps(metadata) if metadata else None,
-                )
-        finally:
-            await pool.close()
+    ) -> Dict[str, Any]:
+        """Create a delegation task (API-facing alias)."""
+        return await self.create(
+            {
+                "task_id": task_id,
+                "payload": payload,
+                "status": status,
+                "callback_url": callback_url,
+                "metadata": metadata,
+            }
+        )
 
-    async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a task by ID."""
-        if not self.dsn:
-            raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"SELECT * FROM {self.TABLE_NAME} WHERE task_id = $1",
-                    task_id,
-                )
-                if not row:
-                    return None
-                return {
-                    "task_id": row["task_id"],
-                    "payload": (
-                        json.loads(row["payload"])
-                        if isinstance(row["payload"], str)
-                        else row["payload"]
-                    ),
-                    "status": row["status"],
-                    "callback_url": row["callback_url"],
-                    "metadata": (
-                        json.loads(row["metadata"])
-                        if isinstance(row["metadata"], str)
-                        else row["metadata"]
-                    ),
-                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                    "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
-                }
-        finally:
-            await pool.close()
+    async def update(self, task_id: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update task status and result."""
+        from admin.core.models import DelegationTask
+
+        task = await DelegationTask.objects.filter(task_id=task_id).afirst()
+        if not task:
+            return None
+        if "status" in changes:
+            task.status = changes["status"]
+        if "result" in changes:
+            task.result = changes["result"]
+        if "payload" in changes:
+            task.payload = changes["payload"]
+        if "callback_url" in changes:
+            task.callback_url = changes["callback_url"]
+        if "metadata" in changes:
+            task.metadata = changes["metadata"]
+        await task.asave()
+        return await self.get(task_id)
 
     async def update_task(
         self,
         task_id: str,
-        status: str,
+        status: Optional[str] = None,
         result: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """Update delegation task status and result."""
-        if not self.dsn:
-            raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    UPDATE {self.TABLE_NAME}
-                    SET status = $1,
-                        payload = COALESCE($2, payload),
-                        updated_at = NOW()
-                    WHERE task_id = $3
-                    """,
-                    status,
-                    json.dumps(result) if result else None,
-                    task_id,
-                )
-        finally:
-            await pool.close()
+        **kwargs: Any,
+    ) -> Optional[Dict[str, Any]]:
+        """Alias for update()."""
+        changes: Dict[str, Any] = dict(kwargs)
+        if status is not None:
+            changes["status"] = status
+        if result is not None:
+            changes["result"] = result
+        return await self.update(task_id, changes)
 
-    async def list_tasks(
+    async def delete(self, task_id: str) -> bool:
+        """Remove a task."""
+        from admin.core.models import DelegationTask
+
+        deleted, _ = await DelegationTask.objects.filter(task_id=task_id).adelete()
+        return deleted > 0
+
+    async def list(
         self,
         status: Optional[str] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """List delegation tasks."""
-        if not self.dsn:
-            raise RuntimeError("DelegationStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                if status:
-                    rows = await conn.fetch(
-                        f"""
-                        SELECT * FROM {self.TABLE_NAME}
-                        WHERE status = $1
-                        ORDER BY created_at DESC
-                        LIMIT $2
-                        """,
-                        status,
-                        limit,
-                    )
-                else:
-                    rows = await conn.fetch(
-                        f"""
-                        SELECT * FROM {self.TABLE_NAME}
-                        ORDER BY created_at DESC
-                        LIMIT $1
-                        """,
-                        limit,
-                    )
-                return [
-                    {
-                        "task_id": r["task_id"],
-                        "payload": (
-                            json.loads(r["payload"])
-                            if isinstance(r["payload"], str)
-                            else r["payload"]
-                        ),
-                        "status": r["status"],
-                        "callback_url": r["callback_url"],
-                        "metadata": (
-                            json.loads(r["metadata"])
-                            if isinstance(r["metadata"], str)
-                            else r["metadata"]
-                        ),
-                        "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-                        "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
-                    }
-                    for r in rows
-                ]
-        finally:
-            await pool.close()
+        from admin.core.models import DelegationTask
+
+        qs = DelegationTask.objects.all()
+        if status:
+            qs = qs.filter(status=status)
+        qs = qs.order_by("-created_at")[:limit]
+
+        results = []
+        async for task in qs:
+            results.append(
+                {
+                    "task_id": task.task_id,
+                    "payload": task.payload,
+                    "status": task.status,
+                    "callback_url": task.callback_url,
+                    "metadata": task.metadata,
+                    "result": task.result,
+                    "created_at": task.created_at.isoformat() if task.created_at else None,
+                    "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+                }
+            )
+        return results

@@ -161,7 +161,7 @@ async def register_tool(
     """
     tool_id = str(uuid4())
 
-    logger.info(f"Tool registered: {name} ({tool_id})")
+    logger.info('Tool registered: %s (%s)', name, tool_id)
 
     return Tool(
         tool_id=tool_id,
@@ -228,7 +228,7 @@ async def update_tool(
 )
 async def delete_tool(request, tool_id: str) -> dict:
     """Delete a custom tool."""
-    logger.warning(f"Tool deleted: {tool_id}")
+    logger.warning('Tool deleted: %s', tool_id)
 
     return {
         "tool_id": tool_id,
@@ -260,7 +260,7 @@ async def execute_tool(
     """
     execution_id = str(uuid4())
 
-    logger.info(f"Tool execution: {tool_id} ({execution_id})")
+    logger.info('Tool execution: %s (%s)', tool_id, execution_id)
 
     # In production: queue or execute based on approval requirements
 
@@ -306,7 +306,7 @@ async def approve_execution(
 
     Security Auditor: Human-in-the-loop.
     """
-    logger.info(f"Execution approved: {execution_id}")
+    logger.info('Execution approved: %s', execution_id)
 
     return {
         "execution_id": execution_id,
@@ -325,7 +325,7 @@ async def reject_execution(
     reason: str,
 ) -> dict:
     """Reject a pending execution."""
-    logger.info(f"Execution rejected: {execution_id}")
+    logger.info('Execution rejected: %s', execution_id)
 
     return {
         "execution_id": execution_id,
@@ -369,7 +369,7 @@ async def register_mcp_server(
     """Register an MCP server."""
     server_id = str(uuid4())
 
-    logger.info(f"MCP server registered: {name}")
+    logger.info('MCP server registered: %s', name)
 
     return {
         "server_id": server_id,

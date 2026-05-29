@@ -66,7 +66,7 @@ def _check_feature(request: HttpRequest, feature_code: str, *args: Any, **kwargs
         raise FeatureDisabledError(feature_code, "unknown", "no_tenant_context")
 
     if not is_feature_enabled(tenant_id, feature_code):
-        logger.info(f"Feature access denied: {feature_code} for {tenant_id}")
+        logger.info('Feature access denied: %s for %s', feature_code, tenant_id)
         raise FeatureDisabledError(feature_code, tenant_id)
 
 

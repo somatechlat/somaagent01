@@ -56,7 +56,7 @@ DEFAULT_SETTINGS = {
         "timeout": 30,
     },
     "redis": {
-        "url": os.getenv("REDIS_URL", "redis://localhost:6379"),
+        "url": os.getenv("REDIS_URL"),
         "max_connections": 100,
         "ttl_default": 3600,
     },

@@ -216,7 +216,7 @@ async def invoke(req: LlmInvokeRequest) -> dict:
             aggregation=get_confidence_aggregation(),
         )
     except Exception as exc:
-        logger.error(f"LLM invocation failed: {exc}")
+        logger.error('LLM invocation failed: %s', exc)
         raise ServiceError(f"llm_provider_error: {exc}")
 
     # Emit Django signal for audit logging
@@ -299,7 +299,7 @@ async def invoke_stream(req: LlmInvokeRequest) -> dict:
             aggregation=get_confidence_aggregation(),
         )
     except Exception as exc:
-        logger.error(f"LLM streaming failed: {exc}")
+        logger.error('LLM streaming failed: %s', exc)
         raise ServiceError(f"llm_provider_error: {exc}")
 
     return {

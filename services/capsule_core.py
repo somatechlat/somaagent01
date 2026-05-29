@@ -148,13 +148,13 @@ def certify_capsule(capsule: Capsule) -> Capsule:
             certified.save()
 
             capsule_operations_total.labels(operation="certify", status="success").inc()
-            logger.info(f"Capsule {capsule.name}:{capsule.version} certified successfully")
+            logger.info('Capsule %s:%s certified successfully', capsule.name, capsule.version)
 
             return certified
 
     except Exception as e:
         capsule_operations_total.labels(operation="certify", status="failure").inc()
-        logger.error(f"Certification failed for {capsule.name}: {e}")
+        logger.error('Certification failed for %s: %s', capsule.name, e)
         raise
 
 
@@ -218,9 +218,7 @@ def edit_capsule(capsule: Capsule, updates: dict) -> Capsule:
             )
 
             capsule_operations_total.labels(operation="edit", status="success").inc()
-            logger.info(
-                f"Created new version {new_capsule.name}:{new_version} from {capsule.version}"
-            )
+            logger.info('Created new version %s:%s from %s', new_capsule.name, new_version, capsule.version)
             return new_capsule
 
         else:

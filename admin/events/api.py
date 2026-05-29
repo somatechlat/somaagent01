@@ -79,7 +79,7 @@ async def publish_event(
     """
     event_id = str(uuid4())
 
-    logger.info(f"Event published: {type} ({event_id})")
+    logger.info('Event published: %s (%s)', type, event_id)
 
     # In production: publish via Redis pub/sub or similar
 
@@ -108,7 +108,7 @@ async def broadcast_event(
     """
     event_id = str(uuid4())
 
-    logger.info(f"Event broadcast: {type} ({event_id})")
+    logger.info('Event broadcast: %s (%s)', type, event_id)
 
     return {
         "event_id": event_id,

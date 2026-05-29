@@ -103,7 +103,7 @@ class LagoClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Lago create_customer failed: {e}")
+            logger.error('Lago create_customer failed: %s', e)
             raise LagoError(f"Failed to create customer: {e}")
 
     async def get_customer(self, external_id: str) -> Optional[dict]:
@@ -117,7 +117,7 @@ class LagoClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Lago get_customer failed: {e}")
+            logger.error('Lago get_customer failed: %s', e)
             return None
 
     async def update_customer(
@@ -171,7 +171,7 @@ class LagoClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Lago create_subscription failed: {e}")
+            logger.error('Lago create_subscription failed: %s', e)
             raise LagoError(f"Failed to create subscription: {e}")
 
     async def terminate_subscription(self, external_id: str) -> dict:
@@ -193,7 +193,7 @@ class LagoClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Lago get_subscription failed: {e}")
+            logger.error('Lago get_subscription failed: %s', e)
             return None
 
     # =========================================================================
@@ -234,7 +234,7 @@ class LagoClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Lago create_event failed: {e}")
+            logger.error('Lago create_event failed: %s', e)
             raise LagoError(f"Failed to create event: {e}")
 
     async def batch_events(self, events: list[dict]) -> dict:

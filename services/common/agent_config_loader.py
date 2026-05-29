@@ -19,7 +19,7 @@ async def validate_knowledge_subdirs(subdirs: List[str]) -> bool:
     for subdir in subdirs:
         # Prevent path traversal
         if ".." in subdir or subdir.startswith("/"):
-            LOGGER.warning(f"Invalid knowledge subdir path: {subdir}")
+            LOGGER.warning('Invalid knowledge subdir path: %s', subdir)
             continue
 
         path = base_knowledge_path / subdir

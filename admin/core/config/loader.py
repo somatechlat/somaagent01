@@ -135,7 +135,7 @@ def load_config() -> Config:
             "sasl_password": None,
         },
         "redis": {
-            "url": "redis://localhost:6379/0",
+            "url": os.environ.get("REDIS_URL"),
             "max_connections": 20,
             "retry_on_timeout": True,
             "socket_timeout": 5,

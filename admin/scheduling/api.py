@@ -160,7 +160,7 @@ async def create_scheduled_workflow(
     #     ),
     # )
 
-    logger.info(f"Temporal scheduled workflow created: {name} ({workflow_id})")
+    logger.info('Temporal scheduled workflow created: %s (%s)', name, workflow_id)
 
     return {
         "workflow_id": workflow_id,
@@ -214,7 +214,7 @@ async def update_scheduled_workflow(
 )
 async def delete_scheduled_workflow(request, workflow_id: str) -> dict:
     """Delete a scheduled workflow."""
-    logger.info(f"Scheduled workflow deleted: {workflow_id}")
+    logger.info('Scheduled workflow deleted: %s', workflow_id)
 
     return {
         "workflow_id": workflow_id,
@@ -243,7 +243,7 @@ async def trigger_workflow_now(request, workflow_id: str) -> dict:
     #     task_queue=TASK_QUEUE,
     # )
 
-    logger.info(f"Workflow triggered manually: {workflow_id}")
+    logger.info('Workflow triggered manually: %s', workflow_id)
 
     return {
         "workflow_id": workflow_id,
@@ -331,7 +331,7 @@ async def get_execution(request, run_id: str) -> WorkflowExecution:
 )
 async def cancel_execution(request, run_id: str) -> dict:
     """Cancel a running workflow execution."""
-    logger.warning(f"Workflow execution cancelled: {run_id}")
+    logger.warning('Workflow execution cancelled: %s', run_id)
 
     return {
         "run_id": run_id,
@@ -353,7 +353,7 @@ async def terminate_execution(
 
     DevOps: Emergency termination.
     """
-    logger.warning(f"Workflow execution terminated: {run_id}")
+    logger.warning('Workflow execution terminated: %s', run_id)
 
     return {
         "run_id": run_id,

@@ -1,78 +1,74 @@
-"""Constitution store — PostgreSQL-backed constitution/rule storage.
+"""Constitution store — persistent constitution/rule storage.
 
-VIBE COMPLIANT: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from typing import Any, Optional
 
 from services.common.store_base import BaseStore
-
-import asyncpg
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ConstitutionStore(BaseStore[dict[str, Any]]):
-    """PostgreSQL-backed store for agent constitutions."""
-
-    TABLE_NAME = "constitutions"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+    """Django ORM-backed store for agent constitutions."""
 
     async def ensure_schema(self) -> None:
-        """Ensure database schema exists."""
+        """Schema managed by Django migrations."""
         pass
 
     async def get(self, tenant_id: str) -> Optional[dict[str, Any]]:
-        if not self.dsn or asyncpg is None:
+        """Retrieve the active constitution."""
+        from admin.core.models import Constitution
+
+        constitution = await Constitution.objects.filter(is_active=True).afirst()
+        if not constitution:
             return None
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"SELECT * FROM {self.TABLE_NAME} WHERE tenant = $1",
-                    tenant_id,
-                )
-                return dict(row) if row else None
-        finally:
-            await pool.close()
+        return {
+            "tenant_id": tenant_id,
+            "rules": constitution.content,
+            "updated_at": constitution.created_at.isoformat() if constitution.created_at else None,
+        }
 
     async def create(self, record: dict[str, Any]) -> dict[str, Any]:
-        """Persist a new record and return the stored representation."""
-        raise NotImplementedError
+        """Persist a new constitution."""
+        from admin.core.models import Constitution
+
+        obj = await Constitution.objects.acreate(
+            content=record.get("rules", {}),
+            version="1.0.0",
+            content_hash="",
+            signature="",
+        )
+        return {
+            "tenant_id": record.get("tenant_id", "default"),
+            "rules": obj.content,
+            "updated_at": obj.created_at.isoformat() if obj.created_at else None,
+        }
 
     async def update(self, identifier: str, changes: dict[str, Any]) -> Optional[dict[str, Any]]:
-        """Apply partial updates and return the updated record."""
+        """Apply partial updates."""
+        from admin.core.models import Constitution
+
+        constitution = await Constitution.objects.filter(is_active=True).afirst()
+        if not constitution:
+            return None
         rules = changes.get("rules")
-        if rules is None:
-            raise ValueError("changes must contain 'rules'")
-        if not self.dsn or asyncpg is None:
-            raise RuntimeError("ConstitutionStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME} (tenant, content)
-                    VALUES ($1, $2)
-                    ON CONFLICT (tenant) DO UPDATE SET content = EXCLUDED.content
-                    """,
-                    identifier,
-                    json.dumps(rules),
-                )
-        finally:
-            await pool.close()
-        return await self.get(identifier)
+        if rules is not None:
+            constitution.content = rules
+        await constitution.asave()
+        return {
+            "tenant_id": identifier,
+            "rules": constitution.content,
+            "updated_at": constitution.created_at.isoformat() if constitution.created_at else None,
+        }
 
     async def delete(self, identifier: str) -> bool:
-        """Remove a record. Returns True if a record was removed."""
-        raise NotImplementedError
+        """Remove a constitution."""
+        from admin.core.models import Constitution
+
+        deleted, _ = await Constitution.objects.filter(is_active=True).adelete()
+        return deleted > 0

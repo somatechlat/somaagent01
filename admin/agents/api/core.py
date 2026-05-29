@@ -109,7 +109,7 @@ async def create_agent(
     """
     agent_id = str(uuid4())
 
-    logger.info(f"Agent created: {name} ({agent_id})")
+    logger.info('Agent created: %s (%s)', name, agent_id)
 
     return Agent(
         agent_id=agent_id,
@@ -174,7 +174,7 @@ async def update_agent(
 )
 async def delete_agent(request, agent_id: str) -> dict:
     """Delete an agent."""
-    logger.warning(f"Agent deleted: {agent_id}")
+    logger.warning('Agent deleted: %s', agent_id)
 
     return {
         "agent_id": agent_id,
@@ -291,7 +291,7 @@ async def get_memory_config(request, agent_id: str) -> dict:
 )
 async def activate_agent(request, agent_id: str) -> dict:
     """Activate an agent for use."""
-    logger.info(f"Agent activated: {agent_id}")
+    logger.info('Agent activated: %s', agent_id)
 
     return {
         "agent_id": agent_id,
@@ -381,7 +381,7 @@ async def deploy_agent(
     """
     deployment_id = str(uuid4())
 
-    logger.info(f"Agent deployed: {agent_id} -> {environment}")
+    logger.info('Agent deployed: %s -> %s', agent_id, environment)
 
     return {
         "deployment_id": deployment_id,
@@ -413,7 +413,7 @@ async def clone_agent(
     """
     new_agent_id = str(uuid4())
 
-    logger.info(f"Agent cloned: {agent_id} -> {new_agent_id}")
+    logger.info('Agent cloned: %s -> %s', agent_id, new_agent_id)
 
     return {
         "original_agent_id": agent_id,

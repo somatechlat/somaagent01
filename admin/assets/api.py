@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["assets"])
 logger = logging.getLogger(__name__)
@@ -140,7 +141,7 @@ async def upload_asset(
         },
     )
 
-    logger.info(f"Asset uploaded: {asset_id}, hash: {content_hash[:16]}...")
+    logger.info('Asset uploaded: %s, hash: %s...', asset_id, content_hash[:16])
 
     return AssetUploadResponse(
         asset_id=asset_id,
@@ -220,7 +221,7 @@ async def delete_asset(request, asset_id: str) -> dict:
     return {
         "asset_id": asset_id,
         "deleted": True,
-        "message": "Asset marked for deletion",
+        "message": get_message(SuccessCode.ASSET_MARKED_FOR_DELETION),
     }
 
 
@@ -333,7 +334,7 @@ async def _record_provenance(
 
     # In production: ProvenanceRecord.objects.create(...)
 
-    logger.debug(f"Provenance recorded: {asset_id} {action} by {actor}")
+    logger.debug('Provenance recorded: %s %s by %s', asset_id, action, actor)
 
     return {
         "record_id": record_id,

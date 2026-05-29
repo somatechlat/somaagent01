@@ -1,16 +1,15 @@
 """SomaBrain outcomes store — tracks multimodal operation results.
 
-VIBE COMPLIANT: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,72 +28,117 @@ class MultimodalOutcome:
     cost_cents: float = 0.0
 
 
-class SomaBrainOutcomesStore:
-    """PostgreSQL-backed store for SomaBrain operation outcomes."""
+class SomaBrainOutcomesStore(BaseStore[MultimodalOutcome]):
+    """Django ORM-backed store for SomaBrain operation outcomes."""
 
-    TABLE_NAME = "soma_brain_outcomes"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+    async def ensure_schema(self) -> None:
+        """Schema managed by Django migrations."""
+        pass
 
     async def fetch_outcomes(
         self, step_type: str, limit: int = 100
     ) -> list[MultimodalOutcome]:
         """Fetch recent multimodal outcomes for a step type."""
-        if not self.dsn or asyncpg is None:
-            raise RuntimeError("SomaBrainOutcomesStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(
-                    f"""
-                    SELECT task_id, status, result
-                    FROM {self.TABLE_NAME}
-                    WHERE result->>'step_type' = $1
-                    ORDER BY result->>'timestamp' DESC
-                    LIMIT $2
-                    """,
-                    step_type,
-                    limit,
-                )
-                return [
-                    MultimodalOutcome(
-                        task_id=row["task_id"],
-                        status=row["status"],
-                        result=row["result"],
-                        provider=row["result"].get("provider", ""),
-                        success=row["result"].get("success", False),
-                        latency_ms=row["result"].get("latency_ms", 0.0),
-                        quality_score=row["result"].get("quality_score"),
-                        cost_cents=row["result"].get("cost_cents", 0.0),
-                    )
-                    for row in rows
-                ]
-        finally:
-            await pool.close()
+        from admin.core.models import MultimodalOutcome as OutcomeModel
 
-    async def record(self, outcome: MultimodalOutcome) -> None:
-        if not self.dsn or asyncpg is None:
-            raise RuntimeError("SomaBrainOutcomesStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                import json
-
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME} (task_id, status, result)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (task_id) DO UPDATE SET
-                        status = EXCLUDED.status,
-                        result = EXCLUDED.result
-                    """,
-                    outcome.task_id,
-                    outcome.status,
-                    json.dumps(outcome.result),
+        qs = OutcomeModel.objects.filter(step_type=step_type).order_by("-created_at")[:limit]
+        results = []
+        async for outcome in qs:
+            results.append(
+                MultimodalOutcome(
+                    task_id=outcome.task_id,
+                    status=outcome.status,
+                    result=outcome.result,
+                    provider=outcome.provider or "",
+                    success=outcome.success,
+                    latency_ms=outcome.latency_ms or 0.0,
+                    quality_score=outcome.quality_score,
+                    cost_cents=outcome.cost_cents or 0.0,
                 )
-        finally:
-            await pool.close()
+            )
+        return results
+
+    async def record(
+        self,
+        task_id: str,
+        step_type: str,
+        status: str,
+        result: Dict[str, Any],
+        provider: str = "",
+        success: bool = False,
+        latency_ms: float = 0.0,
+        quality_score: Optional[float] = None,
+        cost_cents: float = 0.0,
+    ) -> None:
+        """Record an outcome."""
+        from admin.core.models import MultimodalOutcome as OutcomeModel
+
+        await OutcomeModel.objects.acreate(
+            task_id=task_id,
+            step_type=step_type,
+            status=status,
+            result=result,
+            provider=provider,
+            success=success,
+            latency_ms=latency_ms,
+            quality_score=quality_score,
+            cost_cents=cost_cents,
+        )
+
+    async def get(self, identifier: str) -> Optional[MultimodalOutcome]:
+        """Get an outcome by task_id."""
+        from admin.core.models import MultimodalOutcome as OutcomeModel
+
+        outcome = await OutcomeModel.objects.filter(task_id=identifier).afirst()
+        if not outcome:
+            return None
+        return MultimodalOutcome(
+            task_id=outcome.task_id,
+            status=outcome.status,
+            result=outcome.result,
+            provider=outcome.provider or "",
+            success=outcome.success,
+            latency_ms=outcome.latency_ms or 0.0,
+            quality_score=outcome.quality_score,
+            cost_cents=outcome.cost_cents or 0.0,
+        )
+
+    async def create(self, record: MultimodalOutcome) -> MultimodalOutcome:
+        """Persist an outcome."""
+        await self.record(
+            task_id=record.task_id,
+            step_type="unknown",
+            status=record.status,
+            result=record.result,
+            provider=record.provider,
+            success=record.success,
+            latency_ms=record.latency_ms,
+            quality_score=record.quality_score,
+            cost_cents=record.cost_cents,
+        )
+        return record
+
+    async def update(
+        self, identifier: str, changes: Dict[str, Any]
+    ) -> Optional[MultimodalOutcome]:
+        """Update an outcome."""
+        from admin.core.models import MultimodalOutcome as OutcomeModel
+
+        outcome = await OutcomeModel.objects.filter(task_id=identifier).afirst()
+        if not outcome:
+            return None
+        if "status" in changes:
+            outcome.status = changes["status"]
+        if "result" in changes:
+            outcome.result = changes["result"]
+        if "success" in changes:
+            outcome.success = changes["success"]
+        await outcome.asave()
+        return await self.get(identifier)
+
+    async def delete(self, identifier: str) -> bool:
+        """Remove an outcome."""
+        from admin.core.models import MultimodalOutcome as OutcomeModel
+
+        deleted, _ = await OutcomeModel.objects.filter(task_id=identifier).adelete()
+        return deleted > 0

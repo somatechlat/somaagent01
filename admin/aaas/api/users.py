@@ -144,7 +144,7 @@ def invite_user(
         is_active=False,  # Pending invite acceptance
     )
 
-    logger.info(f"User invited: {payload.email} as {payload.role}")
+    logger.info('User invited: %s as %s', payload.email, payload.role)
 
     return api_response(_user_to_out(user).model_dump(), message="User invited")
 
@@ -193,7 +193,7 @@ def update_user(
         user.is_active = payload.is_active
 
     user.save()
-    logger.info(f"User updated: {user_id}")
+    logger.info('User updated: %s', user_id)
 
     return api_response(_user_to_out(user).model_dump(), message="User updated")
 
@@ -214,7 +214,7 @@ def remove_user(
         raise NotFoundError("user", user_id)
 
     user.delete()
-    logger.info(f"User removed: {user_id}")
+    logger.info('User removed: %s', user_id)
 
     return api_response({"user_id": user_id}, message="User removed")
 
@@ -240,7 +240,7 @@ def change_user_role(
 
     user.role = role
     user.save()
-    logger.info(f"User role changed: {user_id} -> {role}")
+    logger.info('User role changed: %s -> %s', user_id, role)
 
     return api_response({"user_id": user_id, "role": role}, message="Role updated")
 
@@ -384,7 +384,7 @@ def suspend_user(
 
     user.is_active = False
     user.save()
-    logger.warning(f"User suspended: {user_id}")
+    logger.warning('User suspended: %s', user_id)
 
     return api_response({"user_id": user_id, "status": "suspended"}, message="User suspended")
 
@@ -406,7 +406,7 @@ def unsuspend_user(
 
     user.is_active = True
     user.save()
-    logger.info(f"User unsuspended: {user_id}")
+    logger.info('User unsuspended: %s', user_id)
 
     return api_response({"user_id": user_id, "status": "active"}, message="User unsuspended")
 
@@ -423,7 +423,7 @@ def revoke_user_session(
 ) -> dict:
     """Revoke a specific user session."""
     # Would invalidate session in Keycloak/Redis
-    logger.info(f"Session revoked: {session_id} for user {user_id}")
+    logger.info('Session revoked: %s for user %s', session_id, user_id)
     return api_response({"session_id": session_id}, message="Session revoked")
 
 
@@ -565,7 +565,7 @@ def update_profile(
 
     profile.save()
 
-    logger.info(f"Profile updated for user: {user_id}")
+    logger.info('Profile updated for user: %s', user_id)
 
     return api_response(
         {
