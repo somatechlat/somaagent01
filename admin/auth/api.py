@@ -40,6 +40,36 @@ logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
 
 
+async def _emit_auth_audit(
+    request,
+    action: str,
+    details: dict | None = None,
+    actor_id: str = "",
+    actor_email: str = "",
+) -> None:
+    """Emit audit event for auth failure. Best-effort: never blocks response."""
+    from uuid import uuid4
+
+    from asgiref.sync import sync_to_async
+
+    try:
+        from admin.aaas.models import AuditLog
+
+        await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
+            actor_id=actor_id or "anonymous",
+            actor_email=actor_email or "",
+            action=action,
+            resource_type="auth",
+            resource_id=None,
+            new_value=details or {},
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+            request_id=str(uuid4()),
+        )
+    except Exception as exc:
+        logger.warning("Auth audit logging failed: %s", exc)
+
+
 # =============================================================================
 # CORE ENDPOINTS
 # =============================================================================
@@ -119,7 +149,12 @@ async def get_token(request, payload: TokenRequest, response):
                 redirect_path=redirect_path,
             )
     except httpx.HTTPError as e:
-        logger.error(f"Keycloak communication error: {e}")
+        logger.error("Keycloak communication error: %s", e)
+        await _emit_auth_audit(
+            request,
+            action="auth.token_failed",
+            details={"error": "Authentication service unavailable", "grant_type": payload.grant_type},
+        )
         raise UnauthorizedError(message="Authentication service unavailable")
 
 
@@ -127,8 +162,13 @@ async def get_token(request, payload: TokenRequest, response):
 async def refresh_token(request, payload: RefreshRequest, response):
     """Refresh access token using refresh token."""
     config = get_keycloak_config()
-    refresh_token = payload.refresh_token or request.COOKIES.get("refresh_token")
-    if not refresh_token:
+    refresh_token_val = payload.refresh_token or request.COOKIES.get("refresh_token")
+    if not refresh_token_val:
+        await _emit_auth_audit(
+            request,
+            action="auth.refresh_failed",
+            details={"error": "Refresh token required"},
+        )
         raise BadRequestError(message="Refresh token required")
 
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
@@ -139,10 +179,15 @@ async def refresh_token(request, payload: RefreshRequest, response):
                 data={
                     "grant_type": "refresh_token",
                     "client_id": config.client_id,
-                    "refresh_token": refresh_token,
+                    "refresh_token": refresh_token_val,
                 },
             )
             if resp.status_code != 200:
+                await _emit_auth_audit(
+                    request,
+                    action="auth.refresh_failed",
+                    details={"error": "Invalid or expired refresh token", "status_code": resp.status_code},
+                )
                 raise UnauthorizedError(message="Invalid or expired refresh token")
             token_data = resp.json()
             token_payload = await decode_token(token_data["access_token"])
@@ -184,7 +229,12 @@ async def refresh_token(request, payload: RefreshRequest, response):
                 redirect_path="/chat",
             )
     except httpx.HTTPError as e:
-        logger.error(f"Token refresh error: {e}")
+        logger.error("Token refresh error: %s", e)
+        await _emit_auth_audit(
+            request,
+            action="auth.refresh_failed",
+            details={"error": "Token refresh failed"},
+        )
         raise UnauthorizedError(message="Token refresh failed")
 
 
@@ -193,6 +243,11 @@ async def get_current_user(request):
     """Get current authenticated user info."""
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
+        await _emit_auth_audit(
+            request,
+            action="auth.me_failed",
+            details={"error": "Missing authorization header"},
+        )
         raise UnauthorizedError()
     token = auth_header[7:]
     try:
@@ -216,6 +271,11 @@ async def get_current_user(request):
             permissions=get_permissions_for_roles(roles),
         )
     except (JWTError, UnauthorizedError):
+        await _emit_auth_audit(
+            request,
+            action="auth.me_failed",
+            details={"error": "Invalid token"},
+        )
         raise UnauthorizedError(message="Invalid token")
 
 
@@ -263,6 +323,12 @@ async def login_with_email(request, payload: LoginRequest, response):
     lockout_service = await get_lockout_service()
     lockout_status = await lockout_service.check_lockout(payload.email)
     if lockout_status.is_locked:
+        await _emit_auth_audit(
+            request,
+            action="auth.login_failed",
+            details={"error": "Account locked", "retry_after": lockout_status.retry_after},
+            actor_email=payload.email,
+        )
         raise ForbiddenError(
             action="login",
             resource="account",
@@ -329,15 +395,32 @@ async def login_with_email(request, payload: LoginRequest, response):
 
             new_status = await lockout_service.record_failed_attempt(payload.email)
             if new_status.is_locked:
+                await _emit_auth_audit(
+                    request,
+                    action="auth.login_failed",
+                    details={"error": "Account locked after failed attempt", "retry_after": new_status.retry_after},
+                    actor_email=payload.email,
+                )
                 raise ForbiddenError(
                     action="login",
                     resource="account",
                     message=f"Account locked. Try again in {(new_status.retry_after or 0) // 60} minutes.",
                     details={"retry_after": new_status.retry_after},
                 )
+            await _emit_auth_audit(
+                request,
+                action="auth.login_failed",
+                details={"error": "Invalid email or password"},
+                actor_email=payload.email,
+            )
             raise UnauthorizedError(message="Invalid email or password")
     except httpx.HTTPError as e:
-        logger.error(f"Login error: {e}")
+        logger.error("Login error: %s", e)
+        await _emit_auth_audit(
+            request,
+            action="auth.login_failed",
+            details={"error": "Authentication service unavailable"},
+        )
         raise UnauthorizedError(message="Authentication service unavailable")
 
 

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 
+from admin.common.messages import ErrorCode, get_message
 from services.common.circuit_breaker import (
     circuit_breaker,
     CircuitOpenError,
@@ -51,6 +53,12 @@ class ExecutionEngine:
             )
         except (TypeError, ValueError):
             self._circuit_reset_timeout = 30.0
+        try:
+            self._tool_timeout_seconds = float(
+                os.environ.get("SA01_TOOL_TIMEOUT_SECONDS", "30")
+            )
+        except (TypeError, ValueError):
+            self._tool_timeout_seconds = 30.0
         self._tool_breakers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {}
 
     async def execute(
@@ -77,11 +85,36 @@ class ExecutionEngine:
 
         try:
             async with self._resources.reserve():
-                sandbox_result: SandboxExecutionResult = await self._sandbox.run(
-                    breaker,
-                    args,
-                    limits,
+                sandbox_result: SandboxExecutionResult = await asyncio.wait_for(
+                    self._sandbox.run(
+                        breaker,
+                        args,
+                        limits,
+                    ),
+                    timeout=self._tool_timeout_seconds,
                 )
+        except asyncio.TimeoutError:
+            LOGGER.warning(
+                "Tool execution timed out",
+                extra={
+                    "tool": getattr(tool, "name", "unknown"),
+                    "timeout_seconds": self._tool_timeout_seconds,
+                },
+            )
+            return ExecutionResult(
+                status="error",
+                payload={
+                    "message": get_message(
+                        ErrorCode.TOOL_EXECUTION_FAILED,
+                        name=getattr(tool, "name", "unknown"),
+                        error="timeout",
+                    )
+                },
+                execution_time=self._tool_timeout_seconds,
+                logs=[
+                    f"Tool execution timed out after {self._tool_timeout_seconds}s",
+                ],
+            )
         except CircuitOpenError:
             LOGGER.warning(
                 "Tool execution circuit open; rejecting request",
