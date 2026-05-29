@@ -518,6 +518,33 @@ class V3ChatOrchestrator:
                 elapsed_ms=elapsed_ms,
                 token_count_out=_token_count(full_response),
             )
+
+            # Emit Django signals for outbox publishers
+            try:
+                from admin.core.signals import conversation_message, memory_created
+
+                await sync_to_async(conversation_message.send)(
+                    sender=self.__class__,
+                    conversation_id=turn.conversation_id or "",
+                    message_id=turn_id,
+                    role="assistant",
+                    content=full_response,
+                )
+                await sync_to_async(memory_created.send)(
+                    sender=self.__class__,
+                    payload={
+                        "role": "assistant",
+                        "content": full_response,
+                        "conversation_id": turn.conversation_id,
+                        "model": result.model_used,
+                        "latency_ms": elapsed_ms,
+                    },
+                    tenant_id=tenant_id,
+                    namespace="chat_history",
+                )
+            except Exception as signal_exc:
+                logger.warning("Signal emission failed: %s", signal_exc)
+
             self._metrics.record_turn_phase(turn_id, TurnPhase.MEMORY_STORED)
             result.phase_completed = 11
 
@@ -671,6 +698,32 @@ class V3ChatOrchestrator:
             elapsed_ms=elapsed_ms,
             token_count_out=_token_count(full_response),
         )
+
+        # Emit Django signals for outbox publishers
+        try:
+            from admin.core.signals import conversation_message, memory_created
+
+            await sync_to_async(conversation_message.send)(
+                sender=self.__class__,
+                conversation_id=turn.conversation_id or "",
+                message_id=turn_id,
+                role="assistant",
+                content=full_response,
+            )
+            await sync_to_async(memory_created.send)(
+                sender=self.__class__,
+                payload={
+                    "role": "assistant",
+                    "content": full_response,
+                    "conversation_id": turn.conversation_id,
+                    "model": f"{model.provider}/{model.name}",
+                    "latency_ms": elapsed_ms,
+                },
+                tenant_id=tenant_id,
+                namespace="chat_history",
+            )
+        except Exception as signal_exc:
+            logger.warning("Signal emission failed: %s", signal_exc)
 
     # =================================================================
     # INTERNAL HELPERS
