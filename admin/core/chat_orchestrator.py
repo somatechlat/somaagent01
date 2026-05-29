@@ -941,7 +941,7 @@ class V3ChatOrchestrator:
                 MessageModel.objects.create(
                     conversation_id=conversation_id,
                     role="user",
-                    content=user_message,
+                    coordinate=user_message,
                     token_count=_token_count(user_message),
                 )
 
@@ -998,7 +998,7 @@ class V3ChatOrchestrator:
                 MessageModel.objects.create(
                     conversation_id=conversation_id,
                     role="assistant",
-                    content=assistant_response,
+                    coordinate=assistant_response,
                     token_count=token_count_out,
                     latency_ms=elapsed_ms,
                     model=model_id,
