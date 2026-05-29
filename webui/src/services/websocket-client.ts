@@ -8,7 +8,10 @@
  * - Heartbeat (20s interval)
  * - Event subscription system
  *
- * SECURITY: Auth via httpOnly cookie (never in URL).
+ * SECURITY:
+ * - Auth via Sec-WebSocket-Protocol subprotocol (P3-04)
+ * - Falls back to httpOnly cookie for backward compatibility
+ * - Never puts tokens in URL query string
  */
 
 export interface WebSocketConfig {
@@ -28,6 +31,9 @@ export class WebSocketClient {
     private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     private eventHandlers: Map<string, Set<EventHandler>> = new Map();
     private _connected = false;
+    private _usingSubprotocol = false;
+    private _fallbackWithoutSubprotocol = false;
+    private _pendingUrl = '';
 
     constructor(config: Partial<WebSocketConfig> = {}) {
         this.config = {
@@ -48,7 +54,8 @@ export class WebSocketClient {
 
     /**
      * Connect to WebSocket server.
-     * Auth is handled automatically via httpOnly cookie — never put tokens in URL.
+     * Auth via Sec-WebSocket-Protocol subprotocol (P3-04) with cookie fallback.
+     * Never put tokens in the URL query string.
      */
     connect(): void {
         if (this.ws?.readyState === WebSocket.OPEN) {
@@ -60,8 +67,18 @@ export class WebSocketClient {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             url = `${protocol}//${window.location.host}${url}`;
         }
+        this._pendingUrl = url;
 
-        this.ws = new WebSocket(url);
+        const token = this._getCookie('access_token');
+        if (token && !this._fallbackWithoutSubprotocol) {
+            // P3-04: Pass token via Sec-WebSocket-Protocol header
+            this.ws = new WebSocket(url, [`soma-auth.${token}`]);
+            this._usingSubprotocol = true;
+        } else {
+            // Fallback: cookie-only auth (backward compatible with old servers)
+            this.ws = new WebSocket(url);
+            this._usingSubprotocol = false;
+        }
         this._setupEventHandlers();
     }
 
@@ -128,10 +145,21 @@ export class WebSocketClient {
             }
         };
 
-        this.ws.onclose = () => {
+        this.ws.onclose = (event) => {
             console.log('[WebSocket] Disconnected');
             this._connected = false;
             this._stopHeartbeat();
+
+            // Backward compatibility: if subprotocol handshake failed on first attempt,
+            // retry without subprotocol (old servers rely on cookie only)
+            if (this._usingSubprotocol && this.reconnectAttempts === 0 && event.code === 1006) {
+                console.log('[WebSocket] Subprotocol not supported, falling back to cookie auth');
+                this._usingSubprotocol = false;
+                this._fallbackWithoutSubprotocol = true;
+                this.ws = new WebSocket(this._pendingUrl);
+                this._setupEventHandlers();
+                return;
+            }
 
             if (this.config.reconnect && this.reconnectAttempts < this.config.maxReconnectAttempts) {
                 this.reconnectAttempts++;
@@ -154,6 +182,14 @@ export class WebSocketClient {
         if (handlers) {
             handlers.forEach((handler) => handler(data.payload));
         }
+    }
+
+    /**
+     * Read a cookie value by name.
+     */
+    private _getCookie(name: string): string | null {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
     }
 
     /**

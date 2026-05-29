@@ -203,8 +203,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 self._preload_context()
             )
 
-            # Accept connection
-            await self.accept()
+            # Determine subprotocol to accept (P3-04 backward compat)
+            selected_subprotocol = None
+            for proto in self.scope.get("subprotocols", []):
+                if proto.startswith("soma-auth."):
+                    selected_subprotocol = proto
+                    break
+
+            # Accept connection with subprotocol if client requested it
+            await self.accept(subprotocol=selected_subprotocol)
 
             # Track connection
             _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").inc()
@@ -325,26 +332,36 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     # =========================================================================
 
     async def _authenticate(self) -> bool:
-        """Authenticate user from JWT cookie.
+        """Authenticate user from JWT subprotocol or cookie.
 
-        Per design.md Section 7.1:
-        - Extract JWT from cookie
+        Per design.md Section 7.1 & P3-04:
+        - Extract JWT from Sec-WebSocket-Protocol subprotocol (preferred)
+        - Fallback to query string, Authorization header, cookie
         - Validate token
         - Extract user context
         """
         from admin.common.auth import decode_token
 
-        # Token sources: query string, Authorization header, cookie
+        # Token sources: subprotocol (P3-04), query string, Authorization header, cookie
         token = None
         cookies = {}
 
-        query_string = self.scope.get("query_string", b"").decode("utf-8")
-        if query_string:
-            params = parse_qs(query_string)
-            token_list = params.get("token")
-            if token_list:
-                token = token_list[0]
+        # 1. Subprotocol auth (P3-04 preferred)
+        for proto in self.scope.get("subprotocols", []):
+            if proto.startswith("soma-auth."):
+                token = proto[len("soma-auth."):]
+                break
 
+        # 2. Query string fallback
+        if not token:
+            query_string = self.scope.get("query_string", b"").decode("utf-8")
+            if query_string:
+                params = parse_qs(query_string)
+                token_list = params.get("token")
+                if token_list:
+                    token = token_list[0]
+
+        # 3. Authorization header fallback
         if not token:
             for header_name, header_value in self.scope.get("headers", []):
                 if header_name == b"authorization":
@@ -353,6 +370,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         token = auth_value[7:].strip()
                         break
 
+        # Parse cookies regardless (needed for session_id)
         for header_name, header_value in self.scope.get("headers", []):
             if header_name == b"cookie":
                 cookie_str = header_value.decode("utf-8")
@@ -362,6 +380,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         cookies[key] = value
                 break
 
+        # 4. Cookie fallback
         if not token:
             token = cookies.get("access_token")
 

@@ -62,6 +62,7 @@ export class ApiClient {
                     method,
                     headers,
                     signal: controller.signal,
+                    credentials: 'include',
                     ...options,
                 });
 

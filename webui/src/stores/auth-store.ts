@@ -152,6 +152,7 @@ export class SaasAuthProvider extends LitElement {
             const response = await fetch('/api/v2/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ username, password }),
             });
 
@@ -332,7 +333,7 @@ export class SaasAuthProvider extends LitElement {
             const response = await fetch('/api/v2/auth/refresh', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
+                credentials: 'include',
             });
 
             if (response.ok) {
