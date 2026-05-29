@@ -61,7 +61,7 @@ async def _publish_config_update(tenant: str, payload: dict):
         topic = settings.KAFKA_CONVERSATION_TOPIC
         await publisher.publish(topic=topic, payload=payload, tenant=tenant)
     except Exception as exc:
-        logger.warning(f"Failed to publish config update: {exc}")
+        logger.warning('Failed to publish config update: %s', exc)
 
 
 @router.get("", summary="List all feature flags")
@@ -74,7 +74,7 @@ async def list_feature_flags(request: HttpRequest) -> dict[str, Any]:
     tenant = _get_tenant(request)
 
     result = await store.get_effective_flags(tenant)
-    logger.info(f"Feature flags retrieved for tenant: {tenant}, profile: {result['profile']}")
+    logger.info('Feature flags retrieved for tenant: %s, profile: %s', tenant, result['profile'])
 
     return result
 
@@ -110,7 +110,7 @@ async def update_feature_flag(
     if not success:
         raise ServiceError("Failed to update feature flag")
 
-    logger.info(f"Feature flag updated: {tenant}/{key} = {body.enabled}")
+    logger.info('Feature flag updated: %s/%s = %s', tenant, key, body.enabled)
 
     # Emit Django signal
     feature_flag_updated.send(sender=None, tenant=tenant, key=key, enabled=body.enabled)
@@ -157,7 +157,7 @@ async def update_profile(request: HttpRequest, body: ProfileUpdateRequest) -> di
     all_flags = await store.list_all_flags()
     flags_count = len(all_flags)
 
-    logger.info(f"Feature profile updated: {tenant} -> {body.profile} ({flags_count} flags)")
+    logger.info('Feature profile updated: %s -> %s (%s flags)', tenant, body.profile, flags_count)
 
     # Emit Django signal
     feature_profile_updated.send(sender=None, tenant=tenant, profile=body.profile)

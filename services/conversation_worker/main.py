@@ -151,9 +151,7 @@ class ConversationWorkerImpl:
         # Handle system config updates (Feature Flag Reload)
         if event_type == "system.config_update":
             tenant = event.get("tenant", "default")
-            LOGGER.info(
-                f"Received config update for tenant {tenant}. Reloading worker configuration..."
-            )
+            LOGGER.info('Received config update for tenant %s. Reloading worker configuration...', tenant)
             await self._reload_config(tenant)
             return
 
@@ -171,7 +169,7 @@ class ConversationWorkerImpl:
             )
         )
         if not result.success:
-            LOGGER.warning(f"Failed: {result.error}", extra={"session_id": sid})
+            LOGGER.warning('Failed: %s', result.error, extra={"session_id": sid})
 
     async def _reload_config(self, tenant: str) -> None:
         """Reload configuration and dependencies in response to a config update.

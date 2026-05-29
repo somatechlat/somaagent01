@@ -435,14 +435,14 @@ async def run_integration_tests(auth_token: str = "") -> TestSuite:
     ]
 
     for test_func in tests:
-        logger.info(f"Running {test_func.__name__}...")
+        logger.info('Running %s...', test_func.__name__)
         result = await test_func(auth_token)
         suite.results.append(result)
 
         status = "✅ PASS" if result.passed else "❌ FAIL"
-        logger.info(f"  {status}: {result.message or result.error}")
+        logger.info('%s: %s', status, result.message or result.error)
 
-    logger.info(f"\nResults: {suite.passed}/{suite.total} passed")
+    logger.info('Results: %s/%s passed', suite.passed, suite.total)
 
     return suite
 
@@ -474,6 +474,6 @@ if __name__ == "__main__":
     token = sys.argv[1] if len(sys.argv) > 1 else ""
     suite = asyncio.run(run_integration_tests(token))
 
-    print(f"\n{'=' * 50}")
-    print(f"SomaBrain Integration Tests: {suite.passed}/{suite.total} passed")
-    print(f"{'=' * 50}")
+    logger.info('%s', '=' * 50)
+    logger.info('SomaBrain Integration Tests: %s/%s passed', suite.passed, suite.total)
+    logger.info('%s', '=' * 50)

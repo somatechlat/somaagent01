@@ -133,7 +133,7 @@ async def register_capability(
     # Initialize circuit breaker
     _circuit_breakers[capability_id] = CircuitBreakerState()
 
-    logger.info(f"Capability registered: {payload.name} ({capability_id})")
+    logger.info('Capability registered: %s (%s)', payload.name, capability_id)
 
     # In production: persist to database
     # Capability.objects.create(
@@ -169,7 +169,7 @@ async def deregister_capability(request, capability_id: str) -> dict:
     if capability_id in _circuit_breakers:
         del _circuit_breakers[capability_id]
 
-    logger.info(f"Capability deregistered: {capability_id}")
+    logger.info('Capability deregistered: %s', capability_id)
 
     return {
         "capability_id": capability_id,
@@ -280,7 +280,7 @@ async def report_health(
         # Open circuit after 3 failures
         if cb.failure_count >= 3:
             cb.state = "open"
-            logger.warning(f"Circuit OPENED for capability {capability_id}")
+            logger.warning('Circuit OPENED for capability %s', capability_id)
 
     return {
         "capability_id": capability_id,
@@ -334,7 +334,7 @@ async def reset_circuit(request, capability_id: str) -> dict:
         _circuit_breakers[capability_id].state = "closed"
         _circuit_breakers[capability_id].failure_count = 0
 
-    logger.info(f"Circuit reset for capability {capability_id}")
+    logger.info('Circuit reset for capability %s', capability_id)
 
     return {
         "capability_id": capability_id,

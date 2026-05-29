@@ -20,6 +20,7 @@ from admin.aaas.api.schemas import (
     UsageMetrics,
 )
 from admin.aaas.models import SubscriptionTier, Tenant
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router()
 
@@ -392,6 +393,6 @@ async def add_payment_method(request, tenant_id: str, payload: PaymentMethodCrea
 
     return {
         "success": True,
-        "message": "Payment method reference stored. Stripe verification required for full card details.",
+        "message": get_message(SuccessCode.PAYMENT_METHOD_REFERENCE_STORED),
         "payment_method": pm_ref,
     }

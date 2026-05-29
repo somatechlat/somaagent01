@@ -164,9 +164,7 @@ async def evaluate_quality(
             if s.score < DEFAULT_QUALITY_THRESHOLD
         ]
 
-    logger.info(
-        f"Quality evaluation {evaluation_id}: {overall:.2f} ({'PASS' if passed else 'FAIL'})"
-    )
+    logger.info('Quality evaluation %s: %.2f (%s)', evaluation_id, overall, 'PASS' if passed else 'FAIL')
 
     return QualityEvaluationResponse(
         evaluation_id=evaluation_id,
@@ -306,7 +304,7 @@ async def execute_with_retry(
             if score >= policy.quality_threshold:
                 success = True
                 final_output = output
-                logger.info(f"Retry {execution_id}: succeeded on attempt {attempts}")
+                logger.info('Retry %s: succeeded on attempt %s', execution_id, attempts)
             else:
                 errors.append(
                     f"Attempt {attempts}: quality {score:.2f} < threshold {policy.quality_threshold}"
@@ -324,7 +322,7 @@ async def execute_with_retry(
 
         except Exception as e:
             errors.append(f"Attempt {attempts}: {str(e)}")
-            logger.warning(f"Retry {execution_id}: attempt {attempts} failed: {e}")
+            logger.warning('Retry %s: attempt %s failed: %s', execution_id, attempts, e)
 
     total_duration = (time.time() - start_time) * 1000
 
@@ -476,7 +474,7 @@ Respond with ONLY a JSON object in this format:
                     )
 
     except Exception as e:
-        logger.error(f"Quality evaluation error: {e}")
+        logger.error('Quality evaluation error: %s', e)
 
     # Graceful degradation
     return QualityScore(criterion=criterion, score=0.7, feedback="Evaluation unavailable")
@@ -552,7 +550,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
             else:
                 return {"result": "error", "type": operation_type, "status": response.status_code}
     except Exception as e:
-        logger.error(f"Operation {operation_type} failed: {e}")
+        logger.error('Operation %s failed: %s', operation_type, e)
         raise
 
 

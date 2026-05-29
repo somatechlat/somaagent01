@@ -109,7 +109,7 @@ async def create_tenant(
     tenant_id = str(uuid4())
     slug = name.lower().replace(" ", "-")
 
-    logger.info(f"Tenant created: {name} ({tenant_id})")
+    logger.info('Tenant created: %s (%s)', name, tenant_id)
 
     return Tenant(
         tenant_id=tenant_id,
@@ -173,7 +173,7 @@ async def delete_tenant(request, tenant_id: str) -> dict:
 
     Security Auditor: Complete data deletion.
     """
-    logger.critical(f"Tenant deleted: {tenant_id}")
+    logger.critical('Tenant deleted: %s', tenant_id)
 
     return {
         "tenant_id": tenant_id,
@@ -201,7 +201,7 @@ async def suspend_tenant(
 
     Security Auditor: Abuse response.
     """
-    logger.warning(f"Tenant suspended: {tenant_id}, reason: {reason}")
+    logger.warning('Tenant suspended: %s, reason: %s', tenant_id, reason)
 
     return {
         "tenant_id": tenant_id,
@@ -216,7 +216,7 @@ async def suspend_tenant(
 )
 async def activate_tenant(request, tenant_id: str) -> dict:
     """Activate a suspended tenant."""
-    logger.info(f"Tenant activated: {tenant_id}")
+    logger.info('Tenant activated: %s', tenant_id)
 
     return {
         "tenant_id": tenant_id,
@@ -315,7 +315,7 @@ async def send_invite(
     """
     invite_id = str(uuid4())
 
-    logger.info(f"Invite sent: {email} -> {tenant_id}")
+    logger.info('Invite sent: %s -> %s', email, tenant_id)
 
     return {
         "invite_id": invite_id,
@@ -361,7 +361,7 @@ async def upgrade_plan(
 
     PM: Plan management.
     """
-    logger.info(f"Plan upgraded: {tenant_id} -> {new_plan}")
+    logger.info('Plan upgraded: %s -> %s', tenant_id, new_plan)
 
     return {
         "tenant_id": tenant_id,

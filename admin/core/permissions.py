@@ -249,7 +249,7 @@ def require_permission(*permissions: str):
 
             # Check if user has any of the required permissions
             if not any(p in user_perms for p in permissions):
-                logger.warning(f"Permission denied: {permissions} required, user has {user_perms}")
+                logger.warning('Permission denied: %s required, user has %s', permissions, user_perms)
                 raise HttpError(403, "Permission denied")
 
             return await func(request, *args, **kwargs)
@@ -268,7 +268,7 @@ def require_permission(*permissions: str):
                 return func(request, *args, **kwargs)
 
             if not any(p in user_perms for p in permissions):
-                logger.warning(f"Permission denied: {permissions} required, user has {user_perms}")
+                logger.warning('Permission denied: %s required, user has %s', permissions, user_perms)
                 raise HttpError(403, "Permission denied")
 
             return func(request, *args, **kwargs)

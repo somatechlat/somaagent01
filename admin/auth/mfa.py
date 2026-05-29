@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceUnavailableError, UnauthorizedError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["mfa"])
 logger = logging.getLogger(__name__)
@@ -195,7 +196,7 @@ async def use_backup_code(request, code: str) -> dict:
 
     return {
         "success": True,
-        "message": "Backup code accepted",
+        "message": get_message(SuccessCode.BACKUP_CODE_ACCEPTED),
     }
 
 

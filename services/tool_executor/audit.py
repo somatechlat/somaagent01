@@ -34,7 +34,7 @@ async def log_tool_event(
             user_agent=None,
         )
     except Exception:
-        LOGGER.debug(f"Failed to write audit log for {action}", exc_info=True)
+        LOGGER.debug('Failed to write audit log for %s', action, exc_info=True)
 
 
 def get_trace_id() -> str | None:

@@ -28,9 +28,7 @@ DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
 AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
-logger.info(
-    f"UnifiedMetrics deployment mode: {DEPLOYMENT_MODE}", extra={"deployment_mode": DEPLOYMENT_MODE}
-)
+logger.info('UnifiedMetrics deployment mode: %s', DEPLOYMENT_MODE, extra={"deployment_mode": DEPLOYMENT_MODE})
 
 
 class HealthStatus(str, Enum):
@@ -251,7 +249,7 @@ class UnifiedMetrics:
     def record_turn_phase(self, turn_id: str, phase: TurnPhase) -> None:
         """Record a phase timestamp."""
         if turn_id not in self._active_turns:
-            logger.warning(f"Turn {turn_id} not found when recording phase {phase}")
+            logger.warning('Turn %s not found when recording phase %s', turn_id, phase)
             return
         self._active_turns[turn_id].record_phase(phase)
 
@@ -266,7 +264,7 @@ class UnifiedMetrics:
     ) -> None:
         """Record completion of a turn."""
         if turn_id not in self._active_turns:
-            logger.warning(f"Turn {turn_id} not found when recording completion")
+            logger.warning('Turn %s not found when recording completion', turn_id)
             return
 
         metrics = self._active_turns.pop(turn_id)
@@ -317,27 +315,19 @@ class UnifiedMetrics:
         if AAAS_MODE:
             if service_name == "somabrain" and latency_ms > 100:
                 # AAAS: SomaBrain HTTP endpoint latency warning
-                logger.warning(
-                    f"AAAS mode: High latency for {service_name}: {latency_ms:.2f}ms "
-                    f"(inter-service HTTP call, expected <100ms)",
-                    extra={
+                logger.warning('AAAS mode: High latency for %s: %.2fms (inter-service HTTP call, expected <100ms)', service_name, latency_ms, extra={
                         "service": service_name,
                         "latency_ms": latency_ms,
                         "deployment_mode": DEPLOYMENT_MODE,
-                    },
-                )
+                    })
         elif STANDALONE_MODE:
             if service_name == "somabrain" and latency_ms > 50:
                 # STANDALONE: Embedded module execution latency warning
-                logger.debug(
-                    f"STANDALONE mode: Elevated latency for {service_name}: {latency_ms:.2f}ms "
-                    f"(embedded module call, expected <50ms)",
-                    extra={
+                logger.debug('STANDALONE mode: Elevated latency for %s: %.2fms (embedded module call, expected <50ms)', service_name, latency_ms, extra={
                         "service": service_name,
                         "latency_ms": latency_ms,
                         "deployment_mode": DEPLOYMENT_MODE,
-                    },
-                )
+                    })
 
         level = 0 if is_healthy else 4  # None (0) or Critical (4) for binary
         self.DEGRADATION_LEVEL.labels(service=service_name).set(level)
@@ -359,26 +349,18 @@ class UnifiedMetrics:
 
         if AAAS_MODE:
             if latency_ms > 90:
-                logger.warning(
-                    f"AAAS mode: Slow memory retrieval: {latency_ms:.2f}ms, "
-                    f"{snippet_count} snippets (expected 25-90ms, HTTP API call)",
-                    extra={
+                logger.warning('AAAS mode: Slow memory retrieval: %.2fms, %s snippets (expected 25-90ms, HTTP API call)', latency_ms, snippet_count, extra={
                         "latency_ms": latency_ms,
                         "snippet_count": snippet_count,
                         "deployment_mode": DEPLOYMENT_MODE,
-                    },
-                )
+                    })
         elif STANDALONE_MODE:
             if latency_ms > 35:
-                logger.debug(
-                    f"STANDALONE mode: Elevated memory retrieval latency: {latency_ms:.2f}ms, "
-                    f"{snippet_count} snippets (expected 8-35ms, embedded query)",
-                    extra={
+                logger.debug('STANDALONE mode: Elevated memory retrieval latency: %.2fms, %s snippets (expected 8-35ms, embedded query)', latency_ms, snippet_count, extra={
                         "latency_ms": latency_ms,
                         "snippet_count": snippet_count,
                         "deployment_mode": DEPLOYMENT_MODE,
-                    },
-                )
+                    })
 
         self.MEMORY_RETRIEVAL_TIME.observe(latency_seconds)
 
@@ -394,16 +376,9 @@ class UnifiedMetrics:
         """
         # Log deployment mode-specific circuit opens
         if AAAS_MODE:
-            logger.warning(
-                f"AAAS mode: Circuit opened for {service_name} (HTTP service unavailable, fallback to degraded mode)",
-                extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
-            )
+            logger.warning('AAAS mode: Circuit opened for %s (HTTP service unavailable, fallback to degraded mode)', service_name, extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE})
         elif STANDALONE_MODE:
-            logger.warning(
-                f"STANDALONE mode: Circuit opened for {service_name} "
-                f"(Embedded module error, fallback to degraded mode)",
-                extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
-            )
+            logger.warning('STANDALONE mode: Circuit opened for %s (Embedded module error, fallback to degraded mode)', service_name, extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE})
 
         self.CIRCUIT_OPENS.labels(service_name=service_name).inc()
 

@@ -56,14 +56,14 @@ def is_feature_enabled(
     """
     # 0. Recursion Guard
     if _recursion_depth > 5:
-        logger.error(f"Feature dependency cycle detected for {feature_code}")
+        logger.error('Feature dependency cycle detected for %s', feature_code)
         return False
 
     # 1. Feature Existence
     try:
         feature = get_feature(feature_code)
     except KeyError:
-        logger.warning(f"Check for unknown feature: {feature_code}")
+        logger.warning('Check for unknown feature: %s', feature_code)
         return False
 
     # 2. Dependency Check (Fail Closed)

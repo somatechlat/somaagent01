@@ -26,6 +26,7 @@ from pydantic import BaseModel, EmailStr
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["invitations"])
 logger = logging.getLogger(__name__)
@@ -131,7 +132,7 @@ async def send_invitation(request, payload: InviteUserRequest) -> InviteUserResp
         # Audit log
         """Execute create invitation."""
 
-        logger.info(f"Invitation sent to {payload.email} by admin")
+        logger.info('Invitation sent to %s by admin', payload.email)
         return True
 
     await _create_invitation()
@@ -275,7 +276,7 @@ async def accept_invitation(
         )
 
     except Exception as e:
-        logger.error(f"Accept invitation failed: {e}")
+        logger.error('Accept invitation failed: %s', e)
         raise BadRequestError("Invalid or expired invitation")
 
 
@@ -352,5 +353,5 @@ async def resend_invitation(request, invitation_id: str) -> dict:
     return {
         "success": True,
         "invitation_id": invitation_id,
-        "message": "Invitation resent",
+        "message": get_message(SuccessCode.INVITATION_RESENT),
     }

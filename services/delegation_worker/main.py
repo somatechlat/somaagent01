@@ -45,7 +45,7 @@ class DelegationWorker:
                 sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
             )
         )
-        self.store = DelegationStore(dsn=os.environ.get("SA01_DB_DSN", ""))
+        self.store = DelegationStore()
 
     async def start(self) -> None:
         """Execute start."""

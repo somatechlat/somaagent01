@@ -1,17 +1,16 @@
-"""Asset store — PostgreSQL-backed asset metadata storage.
+"""Asset store — persistent asset metadata storage.
 
-VIBE COMPLIANT: Real production implementation.
+VIBE COMPLIANT: Uses Django ORM exclusively.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-import asyncpg
+from services.common.store_base import BaseStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,24 +44,35 @@ class AssetType:
     DIAGRAM = "diagram"
 
 
-class AssetStore:
-    """PostgreSQL-backed store for assets."""
-
-    TABLE_NAME = "assets"
+class AssetStore(BaseStore[AssetRecord]):
+    """Django ORM-backed store for assets."""
 
     def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
+        pass
 
     async def ensure_schema(self) -> None:
-        """Ensure database schema exists."""
+        """Schema managed by Django migrations."""
         pass
 
     async def get(self, asset_id: Optional[str | UUID]) -> Optional[AssetRecord]:
         """Get an asset by ID."""
-        return None
+        from admin.core.models import Asset
+
+        asset = await Asset.objects.filter(id=str(asset_id)).afirst()
+        if not asset:
+            return None
+        return AssetRecord(
+            id=str(asset.id),
+            name=asset.name,
+            status=asset.status,
+            tenant=asset.tenant_id,
+            asset_type=asset.asset_type,
+            format=asset.format,
+            content_size_bytes=asset.content_size_bytes or 0,
+            mime_type=asset.mime_type,
+            original_filename=asset.original_filename,
+            checksum_sha256=asset.checksum_sha256,
+        )
 
     async def create(
         self,
@@ -76,19 +86,41 @@ class AssetStore:
         **kwargs: Any,
     ) -> AssetRecord:
         """Create a new asset."""
-        return AssetRecord(id="", name="", status="active", tenant=tenant_id)
+        from admin.core.models import Asset
+
+        obj = await Asset.objects.acreate(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            asset_type=asset_type,
+            format=format,
+            content=content,
+            content_size_bytes=len(content) if content else 0,
+            dimensions=dimensions,
+            metadata=metadata or {},
+            **kwargs,
+        )
+        return AssetRecord(
+            id=str(obj.id),
+            name=obj.name,
+            status=obj.status,
+            tenant=tenant_id,
+        )
 
     async def tombstone(self, asset_id: UUID, reason: str = "") -> bool:
-        if not self.dsn or asyncpg is None:
-            raise RuntimeError("AssetStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                result = await conn.execute(
-                    f"UPDATE {self.TABLE_NAME} SET status = 'tombstoned', reason = $2 WHERE id = $1",
-                    str(asset_id),
-                    reason,
-                )
-                return result != "UPDATE 0"
-        finally:
-            await pool.close()
+        """Mark an asset as tombstoned."""
+        from admin.core.models import Asset
+
+        asset = await Asset.objects.filter(id=str(asset_id)).afirst()
+        if not asset:
+            return False
+        asset.status = "tombstoned"
+        asset.tombstone_reason = reason
+        await asset.asave(update_fields=["status", "tombstone_reason", "updated_at"])
+        return True
+
+    async def delete(self, identifier: str) -> bool:
+        """Remove an asset."""
+        from admin.core.models import Asset
+
+        deleted, _ = await Asset.objects.filter(id=identifier).adelete()
+        return deleted > 0

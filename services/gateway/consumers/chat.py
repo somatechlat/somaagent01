@@ -233,7 +233,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 ).to_dict()
             )
 
-            logger.info(f"WebSocket connected: user={self.user_id}, agent={self.agent_id}")
+            logger.info('WebSocket connected: user=%s, agent=%s', self.user_id, self.agent_id)
 
         except UnauthorizedError:
             logger.warning("WebSocket auth failed: unauthorized")
@@ -287,7 +287,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # Track disconnection
         _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").dec()
 
-        logger.info(f"WebSocket disconnected: user={self.user_id}, code={close_code}")
+        logger.info('WebSocket disconnected: user=%s, code=%s', self.user_id, close_code)
 
     async def receive_json(self, content: dict, **kwargs):
         """Handle incoming WebSocket message.
@@ -396,11 +396,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             self.tenant_id = payload.tenant_id
             self.session_id = cookies.get("session_id")
 
-            logger.debug(f"WebSocket authenticated: user={self.user_id}")
+            logger.debug('WebSocket authenticated: user=%s', self.user_id)
             return True
 
         except UnauthorizedError as e:
-            logger.warning(f"WebSocket auth failed: {e}")
+            logger.warning('WebSocket auth failed: %s', e)
             return False
         except Exception:
             logger.exception("WebSocket auth failed: unexpected exception")

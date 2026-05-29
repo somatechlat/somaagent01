@@ -202,7 +202,7 @@ async def service_action(
     if payload.action not in valid_actions:
         raise BadRequestError(f"Invalid action. Must be one of: {valid_actions}")
 
-    logger.warning(f"ADMIN ACTION: {payload.action} service {service_name} (force={payload.force})")
+    logger.warning('ADMIN ACTION: %s service %s (force=%s)', payload.action, service_name, payload.force)
 
     # In production: execute via systemd/docker/k8s
     # subprocess.run(["systemctl", payload.action, service_name])
@@ -345,7 +345,7 @@ async def update_features(request, flags: dict) -> dict:
     """
     require_admin(request)
 
-    logger.warning(f"ADMIN ACTION: Feature flags updated: {flags}")
+    logger.warning('ADMIN ACTION: Feature flags updated: %s', flags)
 
     # In production: persist to database
     return {

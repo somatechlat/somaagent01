@@ -1,102 +1,85 @@
-"""Memory replica store — PostgreSQL-backed WAL replication storage.
+"""Memory replica store — Django ORM-backed WAL replication storage.
 
 Separated from service.py to avoid Django/ninja import dependencies.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-from typing import Any, Dict, Optional
-
-import asyncpg
+from typing import Any, Dict, List, Optional
 
 LOGGER = logging.getLogger(__name__)
 
 
 class MemoryReplicaStore:
-    """PostgreSQL-backed store for memory WAL replicas."""
+    """Django ORM-backed store for memory WAL replicas."""
 
-    TABLE_NAME = "memory_replicas"
-
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        self.dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-
-    async def _get_pool(self) -> Any:
-        return await asyncpg.create_pool(self.dsn, min_size=1, max_size=2)
-
-    async def ensure_schema(self) -> None:
-        if not self.dsn:
-            raise RuntimeError("MemoryReplicaStore: SA01_DB_DSN not configured")
-        try:
-            pool = await self._get_pool()
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
-                        id SERIAL PRIMARY KEY,
-                        event_id TEXT UNIQUE NOT NULL,
-                        tenant TEXT,
-                        namespace TEXT,
-                        payload JSONB NOT NULL,
-                        wal_timestamp TIMESTAMPTZ,
-                        created_at TIMESTAMPTZ DEFAULT NOW()
-                    )
-                    """
-                )
-            await pool.close()
-        except Exception as exc:
-            LOGGER.warning("MemoryReplicaStore.ensure_schema failed: %s", exc)
-
-    async def close(self) -> None:
-        """Close any open connections (no-op for stateless store)."""
+    def __init__(self) -> None:
         pass
 
-    async def insert_from_wal(self, wal: Dict[str, Any]) -> int:
-        """Insert a memory record from a WAL event.
+    async def ensure_schema(self) -> None:
+        """Schema managed by Django migrations."""
+        pass
 
-        Returns:
-            ID of the inserted row.
-        """
-        if not self.dsn:
-            raise RuntimeError("MemoryReplicaStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"""
-                    INSERT INTO {self.TABLE_NAME}
-                        (event_id, tenant, namespace, payload, wal_timestamp)
-                    VALUES ($1, $2, $3, $4, to_timestamp($5))
-                    ON CONFLICT (event_id)
-                    DO UPDATE SET payload = EXCLUDED.payload, wal_timestamp = EXCLUDED.wal_timestamp
-                    RETURNING id
-                    """,
-                    wal.get("event_id", ""),
-                    wal.get("tenant"),
-                    wal.get("namespace"),
-                    json.dumps(wal.get("payload", {})),
-                    float(wal.get("timestamp") or 0.0),
-                )
-                return row["id"] if row else 0
-        finally:
-            await pool.close()
+    async def insert_from_wal(self, event: Dict[str, Any]) -> None:
+        """Persist a memory WAL event."""
+        from admin.core.models import MemoryReplica
 
-    async def latest_wal_timestamp(self) -> Optional[float]:
-        if not self.dsn:
-            raise RuntimeError("MemoryReplicaStore: SA01_DB_DSN not configured")
-        pool = await self._get_pool()
-        try:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    f"SELECT EXTRACT(EPOCH FROM MAX(wal_timestamp)) as ts FROM {self.TABLE_NAME}"
-                )
-                return row["ts"] if row and row["ts"] else None
-        finally:
-            await pool.close()
+        await MemoryReplica.objects.acreate(
+            event_id=event.get("id", ""),
+            session_id=event.get("session_id", ""),
+            persona_id=event.get("persona_id", ""),
+            tenant=event.get("tenant", ""),
+            role=event.get("role", ""),
+            coord=event.get("namespace", ""),
+            request_id=event.get("request_id", ""),
+            trace_id=event.get("trace_id", ""),
+            payload=event.get("payload", {}),
+            wal_timestamp=event.get("timestamp"),
+        )
 
+    async def get_latest(self, tenant: str, namespace: str) -> Optional[Dict[str, Any]]:
+        """Get the latest replica for tenant/namespace."""
+        from admin.core.models import MemoryReplica
 
-async def ensure_schema(store: MemoryReplicaStore) -> None:
-    """Compatibility helper for memory replicator."""
-    await store.ensure_schema()
+        replica = (
+            await MemoryReplica.objects.filter(tenant=tenant, coord=namespace)
+            .order_by("-created_at")
+            .afirst()
+        )
+        if not replica:
+            return None
+        return {
+            "event_id": replica.event_id,
+            "tenant": replica.tenant,
+            "namespace": replica.coord,
+            "payload": replica.payload,
+            "created_at": replica.created_at.isoformat() if replica.created_at else None,
+        }
+
+    async def list(
+        self,
+        tenant: str,
+        namespace: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[Dict[str, Any]]:
+        """List replicas for tenant/namespace."""
+        from admin.core.models import MemoryReplica
+
+        qs = MemoryReplica.objects.filter(tenant=tenant)
+        if namespace:
+            qs = qs.filter(coord=namespace)
+        qs = qs.order_by("-created_at")[:limit]
+
+        results = []
+        async for replica in qs:
+            results.append(
+                {
+                    "event_id": replica.event_id,
+                    "tenant": replica.tenant,
+                    "namespace": replica.coord,
+                    "payload": replica.payload,
+                    "created_at": replica.created_at.isoformat() if replica.created_at else None,
+                }
+            )
+        return results

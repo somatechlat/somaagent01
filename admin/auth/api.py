@@ -17,6 +17,7 @@ from jose import jwt, JWTError
 from ninja import Router
 
 from admin.aaas.models import Tenant
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 from admin.auth.api_helpers import (
     determine_redirect_path,
     get_highest_role,
@@ -427,8 +428,8 @@ async def login_with_email(request, payload: LoginRequest, response):
 @router.post("/register")
 async def register_user(request, payload: RegisterRequest):
     """Register a new user."""
-    logger.info(f"User registration: {payload.email}")
-    return {"success": True, "message": "Verification email sent. Please check your inbox."}
+    logger.info('User registration: %s', payload.email)
+    return {"success": True, "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT)}
 
 
 # =============================================================================
@@ -514,7 +515,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         )
 
     audit = await create_audit()
-    logger.warning(f"IMPERSONATION: User {current_user.sub} impersonating tenant {tenant.id}")
+    logger.warning('IMPERSONATION: User %s impersonating tenant %s', current_user.sub, tenant.id)
     return ImpersonationResponse(
         access_token=impersonation_token,
         expires_in=3600,

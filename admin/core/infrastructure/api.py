@@ -21,6 +21,7 @@ from ninja import Router
 from pydantic import BaseModel, Field
 
 from admin.common.auth import AuthBearer
+from admin.common.messages import ErrorCode, get_message
 from admin.core.infrastructure.models import EnforcementPolicy, RateLimitPolicy
 
 router = Router(tags=["infrastructure"])
@@ -132,7 +133,7 @@ async def get_rate_limit(request, key: str) -> dict:
     limit = await _get_limit()
 
     if not limit:
-        return {"error": f"Rate limit policy '{key}' not found", "found": False}
+        return {"error": get_message(ErrorCode.RATE_LIMIT_NOT_FOUND, key=key), "found": False}
 
     return {"limit": limit, "found": True}
 
@@ -154,7 +155,7 @@ async def create_rate_limit(
     # Validate policy enum
     if payload.policy not in [e.value for e in EnforcementPolicy]:
         return {
-            "error": f"Invalid policy. Must be one of: {[e.value for e in EnforcementPolicy]}",
+            "error": get_message(ErrorCode.RATE_LIMIT_INVALID_POLICY, policies=[e.value for e in EnforcementPolicy]),
             "created": False,
         }
 
@@ -164,7 +165,7 @@ async def create_rate_limit(
         """Execute create."""
 
         if RateLimitPolicy.objects.filter(key=payload.key).exists():
-            return None, "Key already exists"
+            return None, get_message(ErrorCode.RATE_LIMIT_KEY_EXISTS)
 
         policy = RateLimitPolicy.objects.create(
             key=payload.key,
@@ -183,7 +184,7 @@ async def create_rate_limit(
     if error:
         return {"error": error, "created": False}
 
-    logger.info(f"Rate limit policy created: {payload.key}")
+    logger.info('Rate limit policy created: %s', payload.key)
 
     return {"limit": result, "created": True}
 
@@ -211,7 +212,7 @@ async def update_rate_limit(
         try:
             policy = RateLimitPolicy.objects.get(key=key)
         except RateLimitPolicy.DoesNotExist:
-            return None, "Policy not found"
+            return None, get_message(ErrorCode.RATE_LIMIT_NOT_FOUND, key=key)
 
         # Update fields if provided
         if payload.description is not None:
@@ -222,7 +223,7 @@ async def update_rate_limit(
             policy.window_seconds = payload.window_seconds
         if payload.policy is not None:
             if payload.policy not in [e.value for e in EnforcementPolicy]:
-                return None, "Invalid policy"
+                return None, get_message(ErrorCode.RATE_LIMIT_INVALID_POLICY, policies=[e.value for e in EnforcementPolicy])
             policy.policy = payload.policy
         if payload.tier_overrides is not None:
             policy.tier_overrides = payload.tier_overrides
@@ -239,7 +240,7 @@ async def update_rate_limit(
     if error:
         return {"error": error, "updated": False}
 
-    logger.info(f"Rate limit policy updated: {key}")
+    logger.info('Rate limit policy updated: %s', key)
 
     # Sync to Redis for runtime enforcement
     try:
@@ -247,9 +248,9 @@ async def update_rate_limit(
 
         limiter = await get_rate_limiter()
         await limiter.reset(key)  # Clear existing counter to apply new limits
-        logger.debug(f"Rate limit synced to Redis: {key}")
+        logger.debug('Rate limit synced to Redis: %s', key)
     except Exception as e:
-        logger.warning(f"Redis sync failed for {key}: {e}")
+        logger.warning('Redis sync failed for %s: %s', key, e)
 
     return {"limit": result, "updated": True}
 
@@ -279,9 +280,9 @@ async def delete_rate_limit(request, key: str) -> dict:
     deleted = await _delete()
 
     if not deleted:
-        return {"error": f"Policy '{key}' not found", "deleted": False}
+        return {"error": get_message(ErrorCode.RATE_LIMIT_NOT_FOUND, key=key), "deleted": False}
 
-    logger.warning(f"Rate limit policy deleted: {key}")
+    logger.warning('Rate limit policy deleted: %s', key)
 
     return {"key": key, "deleted": True}
 
@@ -378,7 +379,7 @@ async def seed_rate_limits(request) -> dict:
 
     created, skipped = await _seed()
 
-    logger.info(f"Rate limits seeded: {created}, skipped: {skipped}")
+    logger.info('Rate limits seeded: %s, skipped: %s', created, skipped)
 
     return {
         "created": created,

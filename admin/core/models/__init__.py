@@ -9,19 +9,26 @@ Import paths like `from admin.core.models import Capsule` still work.
 # Domain models (original file, now reduced)
 from admin.core.models.core import (
     AgentSetting,
+    # Asset
+    Asset,
     # Capability
     Capability,
     Capsule,
     CapsuleInstance,
     # Constitution & Capsule
     Constitution,
+    DelegationTask,
+    ExecutionRecord,
     FeatureFlag,
     # Jobs & Prompts
     Job,
     # Memory
     MemoryReplica,
+    ModelProfile,
+    MultimodalOutcome,
     Notification,
     Prompt,
+    Provenance,
     # Session
     Session,
     SessionEvent,
@@ -60,6 +67,18 @@ __all__ = [
     "Prompt",
     # Memory
     "MemoryReplica",
+    # Asset
+    "Asset",
+    # Execution
+    "ExecutionRecord",
+    # Provenance
+    "Provenance",
+    # Model Profiles
+    "ModelProfile",
+    # Outcomes
+    "MultimodalOutcome",
+    # Delegation
+    "DelegationTask",
     # ZDL Infrastructure
     "OutboxMessage",
     "DeadLetterMessage",

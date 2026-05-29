@@ -79,7 +79,7 @@ class RedisRateLimiter:
             # Test connection
             await self._redis.ping()
             self._connected = True
-            LOGGER.info(f"Redis rate limiter connected: {self.redis_url}")
+            LOGGER.info('Redis rate limiter connected: %s', self.redis_url)
 
     async def close(self) -> None:
         """Close Redis connection.
@@ -184,7 +184,7 @@ class RedisRateLimiter:
             )
 
         except Exception as e:
-            LOGGER.error(f"Rate limit check failed: {e}")
+            LOGGER.error('Rate limit check failed: %s', e)
             # VIBE SECURITY: Fail-closed on Redis errors.
             # Only fail-open if explicitly configured via env var.
             RATE_LIMIT_REQUESTS.labels(tenant_id, "error").inc()
@@ -216,7 +216,7 @@ class RedisRateLimiter:
         key = ":".join(key_parts)
 
         await self._redis.delete(key)
-        LOGGER.info(f"Rate limit reset for {key}")
+        LOGGER.info('Rate limit reset for %s', key)
 
 
 # Preconfigured limits per CANONICAL_REQUIREMENTS.md

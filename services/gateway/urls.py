@@ -13,6 +13,7 @@ from django.http import FileResponse, JsonResponse
 from django.urls import path, re_path
 
 from services.gateway.api_router import api
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 
 def health_check(request):
@@ -40,7 +41,7 @@ def serve_spa(request, path=""):
     index_path = settings.BASE_DIR / "webui" / "dist" / "index.html"
     if index_path.exists():
         return FileResponse(open(index_path, "rb"), content_type="text/html")
-    return JsonResponse({"error": "Frontend not built. Run: cd webui && npm run build"}, status=404)
+    return JsonResponse({"error": get_message(ErrorCode.FRONTEND_NOT_BUILT)}, status=404)
 
 
 urlpatterns = [

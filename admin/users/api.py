@@ -103,7 +103,7 @@ async def create_user(
     """
     user_id = str(uuid4())
 
-    logger.info(f"User created: {email} ({user_id})")
+    logger.info('User created: %s (%s)', email, user_id)
 
     return User(
         user_id=user_id,
@@ -176,7 +176,7 @@ async def delete_user(request, user_id: str) -> dict:
 
     Security Auditor: GDPR deletion.
     """
-    logger.warning(f"User deleted: {user_id}")
+    logger.warning('User deleted: %s', user_id)
 
     return {
         "user_id": user_id,
@@ -203,7 +203,7 @@ async def suspend_user(
 
     Security Auditor: Access revocation.
     """
-    logger.warning(f"User suspended: {user_id}")
+    logger.warning('User suspended: %s', user_id)
 
     return {
         "user_id": user_id,
@@ -294,7 +294,7 @@ async def reset_password(request, user_id: str) -> dict:
 
     Security Auditor: Password reset flow.
     """
-    logger.info(f"Password reset requested: {user_id}")
+    logger.info('Password reset requested: %s', user_id)
 
     return {
         "user_id": user_id,
@@ -330,7 +330,7 @@ async def disable_mfa(
     verification_code: str,
 ) -> dict:
     """Disable MFA for user."""
-    logger.warning(f"MFA disabled: {user_id}")
+    logger.warning('MFA disabled: %s', user_id)
 
     return {
         "user_id": user_id,

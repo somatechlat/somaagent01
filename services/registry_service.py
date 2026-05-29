@@ -70,7 +70,7 @@ class RegistryService:
             logger.info("Registry Signing Key Loaded Successfully.")
 
         except Exception as e:
-            logger.error(f"Failed to load Signing Key: {str(e)}")
+            logger.error('Failed to load Signing Key: %s', str(e))
             raise RuntimeError("CRITICAL: Registry Key Corruption")
 
     def certify_capsule(self, capsule_id: UUID) -> Capsule:
@@ -99,9 +99,7 @@ class RegistryService:
 
             # 3. Bind Constitution (if not already match)
             if capsule.constitution != active_constitution:
-                logger.info(
-                    f"Binding Capsule {capsule.name} to Constitution {active_constitution.id}"
-                )
+                logger.info('Binding Capsule %s to Constitution %s', capsule.name, active_constitution.id)
                 capsule.constitution = active_constitution
                 # We save here to ensure the relation is committed before canonicalization logic
                 capsule.save()
@@ -140,9 +138,7 @@ class RegistryService:
             capsule.registry_signature = signature_b64
             capsule.save()
 
-            logger.info(
-                f"Capsule {capsule.name} v{capsule.version} CERTIFIED. Sig: {signature_b64[:12]}..."
-            )
+            logger.info('Capsule %s v%s CERTIFIED. Sig: %s...', capsule.name, capsule.version, signature_b64[:12])
             return capsule
 
     def verify_capsule_integrity(self, capsule: Capsule) -> bool:
@@ -153,11 +149,11 @@ class RegistryService:
         Returns True if strictly valid, False/Raises otherwise.
         """
         if not capsule.registry_signature:
-            logger.warning(f"Capsule {capsule.name} verification failed: NO SIGNATURE.")
+            logger.warning('Capsule %s verification failed: NO SIGNATURE.', capsule.name)
             return False
 
         if not capsule.constitution:
-            logger.warning(f"Capsule {capsule.name} verification failed: NO CONSTITUTION.")
+            logger.warning('Capsule %s verification failed: NO CONSTITUTION.', capsule.name)
             return False
 
         # 1. Reconstruct Payload (Exact match of certify_capsule)
@@ -197,10 +193,8 @@ class RegistryService:
             return True
 
         except BadSignatureError:
-            logger.critical(
-                f"SECURITY ALERT: Capsule {capsule.name} signature invalid! Potential tampering."
-            )
+            logger.critical('SECURITY ALERT: Capsule %s signature invalid! Potential tampering.', capsule.name)
             return False
         except Exception as e:
-            logger.error(f"Verification error: {str(e)}")
+            logger.error('Verification error: %s', str(e))
             return False

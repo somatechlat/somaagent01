@@ -108,19 +108,19 @@ def test_rescue_mode_budget_allocation():
 
 
 if __name__ == "__main__":
-    print("=" * 70)
-    print("Running SimpleGovernor Budget Allocation Tests (GOV-002)")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("Running SimpleGovernor Budget Allocation Tests (GOV-002)")
+    logger.info("=" * 70)
 
-    print("\n1. Testing NORMAL mode allocation...")
+    logger.info("\n1. Testing NORMAL mode allocation...")
     test_normal_mode_budget_allocation()
 
-    print("\n2. Testing DEGRADED mode allocation...")
+    logger.info("\n2. Testing DEGRADED mode allocation...")
     test_degraded_mode_budget_allocation()
 
-    print("\n3. Testing RESCUE mode allocation...")
+    logger.info("\n3. Testing RESCUE mode allocation...")
     test_rescue_mode_budget_allocation()
 
-    print("\n" + "=" * 70)
-    print("✅ All SimpleGovernor tests passed!")
-    print("=" * 70)
+    logger.info("\n" + "=" * 70)
+    logger.info("✅ All SimpleGovernor tests passed!")
+    logger.info("=" * 70)

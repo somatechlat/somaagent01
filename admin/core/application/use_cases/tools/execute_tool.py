@@ -19,6 +19,7 @@ from admin.core.application.use_cases.tools.schemas import (
     ExecuteToolInput,
     ExecuteToolOutput,
 )
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 
 class ExecuteToolUseCase:
@@ -67,7 +68,7 @@ class ExecuteToolUseCase:
         if not allowed:
             return ExecuteToolOutput(
                 status="denied",
-                result={"error": "Policy denied tool execution"},
+                result={"error": get_message(ErrorCode.TOOL_EXECUTION_DENIED)},
                 execution_time=0.0,
                 logs=["Policy evaluation: DENIED"],
             )

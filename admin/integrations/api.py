@@ -154,7 +154,7 @@ async def create_integration(
         return obj
 
     obj = await _create()
-    logger.info(f"Integration created: {name} ({provider})")
+    logger.info('Integration created: %s (%s)', name, provider)
 
     return {
         "integration_id": str(obj.id),
@@ -234,7 +234,7 @@ async def delete_integration(
     if count == 0:
         raise NotFoundError("integration", integration_id)
 
-    logger.info(f"Integration deleted: {integration_id}")
+    logger.info('Integration deleted: %s', integration_id)
 
     return {
         "integration_id": integration_id,
@@ -368,7 +368,7 @@ async def trigger_sync(
     """
     sync_id = str(uuid4())
 
-    logger.info(f"Sync triggered for integration: {integration_id}")
+    logger.info('Sync triggered for integration: %s', integration_id)
 
     return {
         "integration_id": integration_id,

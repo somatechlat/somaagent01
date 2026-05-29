@@ -91,9 +91,9 @@ class KafkaEventPublisher:
                     acks="all",
                 )
                 await cls._producer.start()
-                logger.info(f"Kafka producer connected: {KAFKA_BOOTSTRAP_SERVERS}")
+                logger.info('Kafka producer connected: %s', KAFKA_BOOTSTRAP_SERVERS)
             except Exception as e:
-                logger.warning(f"Kafka producer not available: {e}")
+                logger.warning('Kafka producer not available: %s', e)
                 cls._producer = None
         return cls._producer
 
@@ -108,9 +108,9 @@ class KafkaEventPublisher:
                     value=event,
                     key=key.encode("utf-8") if key else None,
                 )
-                logger.debug(f"Published to {topic}: {event.get('event_type', 'unknown')}")
+                logger.debug('Published to %s: %s', topic, event.get('event_type', 'unknown'))
             except Exception as e:
-                logger.error(f"Kafka publish failed: {e}")
+                logger.error('Kafka publish failed: %s', e)
 
     @classmethod
     async def publish_conversation_event(cls, event: ConversationEvent):
@@ -368,7 +368,7 @@ async def start_flink_job(request, job_id: str) -> dict:
 
     DevOps: Job lifecycle management.
     """
-    logger.info(f"Starting Flink job: {job_id}")
+    logger.info('Starting Flink job: %s', job_id)
 
     return {
         "job_id": job_id,
@@ -384,7 +384,7 @@ async def start_flink_job(request, job_id: str) -> dict:
 )
 async def stop_flink_job(request, job_id: str) -> dict:
     """Stop a Flink job with savepoint."""
-    logger.warning(f"Stopping Flink job: {job_id}")
+    logger.warning('Stopping Flink job: %s', job_id)
 
     return {
         "job_id": job_id,

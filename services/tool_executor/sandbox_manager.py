@@ -11,6 +11,7 @@ from typing import Any, Awaitable, Callable
 from services.common.circuit_breaker import CircuitOpenError
 from services.tool_executor.resource_manager import ExecutionLimits
 from services.tool_executor.tools import ToolExecutionError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class SandboxManager:
             raise
         except asyncio.TimeoutError:
             status = "timeout"
-            payload = {"message": "Tool execution timed out"}
+            payload = {"message": get_message(ErrorCode.TOOL_EXECUTION_TIMEOUT)}
             logs.append("Execution exceeded timeout")
         except Exception as exc:
             LOGGER.error(

@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from services.common.job_planner import JobPlanner, PlanValidationError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 LOGGER = logging.getLogger(__name__)
 
@@ -184,7 +185,7 @@ class ProcessMessageUseCase:
             await self._session_repo.append_event(session_id, {"type": "user", **event})
         except Exception as e:
             if "UniqueViolation" not in str(type(e).__name__):
-                LOGGER.warning(f"Failed to store user event: {e}")
+                LOGGER.warning('Failed to store user event: %s', e)
 
         # Step 4: Store to memory (best effort)
         await self._store_user_memory(event, session_id, tenant, enriched_metadata)
@@ -271,7 +272,7 @@ class ProcessMessageUseCase:
             "session_id": session_id,
             "persona_id": persona_id,
             "role": "assistant",
-            "message": "Message blocked by policy. Please contact your administrator if you believe this is an error.",
+            "message": get_message(ErrorCode.POLICY_BLOCKED),
             "metadata": {
                 "source": "policy",
                 "analysis": analysis_dict,
@@ -518,5 +519,5 @@ class ProcessMessageUseCase:
             LOGGER.warning("Invalid multimodal plan: %s", e.errors)
             return response_text
         except Exception as e:
-            LOGGER.warning(f"Failed to process multimodal plan: {e}")
+            LOGGER.warning('Failed to process multimodal plan: %s', e)
             return response_text

@@ -34,7 +34,7 @@ class HTTPMemoryAdapter:
         timeout: float = 30.0,
     ):
         """Initialize HTTP client for SomaFractalMemory."""
-        logger.info("🌐 HTTPMemoryAdapter: Initializing HTTP mode (distributed)")
+        logger.info('HTTPMemoryAdapter: Initializing HTTP mode (distributed)')
 
         self._namespace = namespace
         self._base_url = base_url or os.environ.get(
@@ -52,7 +52,7 @@ class HTTPMemoryAdapter:
         self._client = httpx.Client(base_url=self._base_url, timeout=timeout, headers=headers)
         self._async_client: httpx.AsyncClient | None = None
 
-        logger.info(f"✅ HTTPMemoryAdapter initialized: {self._base_url}")
+        logger.info('HTTPMemoryAdapter initialized: %s', self._base_url)
 
     def _get_async_client(self) -> httpx.AsyncClient:
         """Lazy initialize async client."""
@@ -88,7 +88,7 @@ class HTTPMemoryAdapter:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Memory store failed: {e}")
+            logger.error('Memory store failed: %s', e)
             raise RuntimeError(f"SomaFractalMemory store failed: {e}") from e
 
     def search(
@@ -117,7 +117,7 @@ class HTTPMemoryAdapter:
             data = response.json()
             return data.get("results", data.get("matches", []))
         except httpx.HTTPError as e:
-            logger.error(f"Memory search failed: {e}")
+            logger.error('Memory search failed: %s', e)
             raise RuntimeError(f"SomaFractalMemory search failed: {e}") from e
 
     def get(
@@ -144,10 +144,10 @@ class HTTPMemoryAdapter:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return None
-            logger.error(f"Memory get failed: {e}")
+            logger.error('Memory get failed: %s', e)
             raise RuntimeError(f"SomaFractalMemory get failed: {e}") from e
         except httpx.HTTPError as e:
-            logger.error(f"Memory get failed: {e}")
+            logger.error('Memory get failed: %s', e)
             raise RuntimeError(f"SomaFractalMemory get failed: {e}") from e
 
     def delete(
@@ -172,7 +172,7 @@ class HTTPMemoryAdapter:
             data = response.json()
             return data.get("deleted", False)
         except httpx.HTTPError as e:
-            logger.error(f"Memory delete failed: {e}")
+            logger.error('Memory delete failed: %s', e)
             return False
 
     def health(self) -> dict:
@@ -210,7 +210,7 @@ class HTTPMemoryAdapter:
             data = response.json()
             return data.get("results", data.get("matches", []))
         except httpx.HTTPError as e:
-            logger.error(f"Memory search (async) failed: {e}")
+            logger.error('Memory search (async) failed: %s', e)
             raise RuntimeError(f"SomaFractalMemory search failed: {e}") from e
 
     async def store_async(
@@ -237,7 +237,7 @@ class HTTPMemoryAdapter:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            logger.error(f"Memory store (async) failed: {e}")
+            logger.error('Memory store (async) failed: %s', e)
             raise RuntimeError(f"SomaFractalMemory store failed: {e}") from e
 
     def close(self) -> None:

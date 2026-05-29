@@ -18,6 +18,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.common.messages import ErrorCode, get_message
 
 router = Router(tags=["ratelimit"])
 logger = logging.getLogger(__name__)
@@ -165,13 +166,13 @@ async def create_rate_limit(
     # Check for duplicate
     for limit in defaults["ratelimits"]:
         if limit["name"] == payload.name:
-            return {"error": "Rate limit already exists", "created": False}
+            return {"error": get_message(ErrorCode.RATE_LIMIT_RULE_EXISTS), "created": False}
 
     new_rule = payload.dict()
     defaults["ratelimits"].append(new_rule)
     await gd.asave()
 
-    logger.info(f"Rate limit created: {payload.name}")
+    logger.info('Rate limit created: %s', payload.name)
 
     return {
         "name": payload.name,
@@ -198,7 +199,7 @@ async def update_rate_limit(
     defaults = gd.defaults
 
     if "ratelimits" not in defaults:
-        return {"error": "No rate limits defined", "updated": False}
+        return {"error": get_message(ErrorCode.RATE_LIMIT_NOT_DEFINED), "updated": False}
 
     found = False
     for limit in defaults["ratelimits"]:
@@ -216,7 +217,7 @@ async def update_rate_limit(
         await gd.asave()
         return {"name": name, "updated": True}
 
-    return {"name": name, "updated": False, "error": "Not found"}
+    return {"name": name, "updated": False, "error": get_message(ErrorCode.NOT_FOUND)}
 
 
 @router.delete(
@@ -232,7 +233,7 @@ async def delete_rate_limit(request, name: str) -> dict:
     defaults = gd.defaults
 
     if "ratelimits" not in defaults:
-        return {"error": "No rate limits defined", "deleted": False}
+        return {"error": get_message(ErrorCode.RATE_LIMIT_NOT_DEFINED), "deleted": False}
 
     original_len = len(defaults["ratelimits"])
     defaults["ratelimits"] = [r for r in defaults["ratelimits"] if r["name"] != name]
@@ -244,7 +245,7 @@ async def delete_rate_limit(request, name: str) -> dict:
             "deleted": True,
         }
 
-    return {"name": name, "deleted": False, "error": "Not found"}
+    return {"name": name, "deleted": False, "error": get_message(ErrorCode.NOT_FOUND)}
 
 
 # =============================================================================
@@ -296,7 +297,7 @@ async def update_quotas(
 
     PM: Adjust limits based on subscription tier.
     """
-    logger.info(f"Quotas updated for tenant: {tenant_id}")
+    logger.info('Quotas updated for tenant: %s', tenant_id)
 
     return {
         "tenant_id": tenant_id,
@@ -360,7 +361,7 @@ async def block_ip(
 
     Security Auditor: Manual block for abuse.
     """
-    logger.warning(f"IP blocked: {ip_address}, reason: {reason}")
+    logger.warning('IP blocked: %s, reason: %s', ip_address, reason)
 
     return {
         "ip_address": ip_address,
@@ -376,7 +377,7 @@ async def block_ip(
 )
 async def unblock_ip(request, ip_address: str) -> dict:
     """Unblock an IP address."""
-    logger.info(f"IP unblocked: {ip_address}")
+    logger.info('IP unblocked: %s', ip_address)
 
     return {
         "ip_address": ip_address,

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import UnauthorizedError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
@@ -125,8 +126,8 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
         return {"memories": items, "query": payload.query}
 
     except SomaBrainError as e:
-        logger.error(f"Memory search failed: {e}")
-        return {"memories": [], "query": payload.query, "error": "SomaBrain unavailable"}
+        logger.error('Memory search failed: %s', e)
+        return {"memories": [], "query": payload.query, "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE)}
 
 
 @router.get(
@@ -166,8 +167,8 @@ async def get_recent_memories(
         return {"memories": items}
 
     except Exception as e:
-        logger.error(f"Get recent failed: {e}")
-        return {"memories": [], "error": "SomaBrain unavailable"}
+        logger.error('Get recent failed: %s', e)
+        return {"memories": [], "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE)}
 
 
 @router.post(
@@ -202,17 +203,17 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
         return {
             "success": True,
             "memory_id": result.get("id"),
-            "message": "Memory stored",
+            "message": get_message(SuccessCode.MEMORY_STORED),
         }
 
     except SomaBrainError as e:
         # ZDL: Queue for later sync
-        logger.warning(f"SomaBrain unavailable, queueing memory: {e}")
+        logger.warning('SomaBrain unavailable, queueing memory: %s', e)
         # In production: create PendingMemory record
         return {
             "success": True,
             "memory_id": None,
-            "message": "Memory queued for sync",
+            "message": get_message(SuccessCode.MEMORY_QUEUED_FOR_SYNC),
             "queued": True,
         }
 
@@ -239,7 +240,7 @@ async def delete_memory(request, memory_id: str) -> dict:
     return {
         "success": success,
         "memory_id": memory_id,
-        "message": "Memory deleted" if success else "Delete failed",
+        "message": get_message(SuccessCode.MEMORY_DELETED) if success else get_message(ErrorCode.MEMORY_DELETE_FAILED),
     }
 
 

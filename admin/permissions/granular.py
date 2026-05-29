@@ -25,6 +25,7 @@ from admin.permissions.definitions import (
     GRANULAR_PERMISSIONS,
     PREDEFINED_ROLES,
 )
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["granular-permissions"])
 logger = logging.getLogger(__name__)
@@ -206,11 +207,11 @@ async def create_custom_role(
 
     if invalid:
         return {
-            "error": "Invalid permissions",
+            "error": get_message(ErrorCode.INVALID_PERMISSIONS),
             "invalid_permissions": invalid,
         }
 
-    logger.info(f"Custom role created: {name} ({role_id})")
+    logger.info('Custom role created: %s (%s)', name, role_id)
 
     return {
         "role_id": role_id,
@@ -272,7 +273,7 @@ async def update_custom_role(
     description: Optional[str] = None,
 ) -> dict:
     """Update a custom role."""
-    logger.info(f"Custom role updated: {role_id}")
+    logger.info('Custom role updated: %s', role_id)
 
     return {
         "role_id": role_id,
@@ -293,7 +294,7 @@ async def delete_custom_role(
 
     Security Auditor: Check no users assigned.
     """
-    logger.warning(f"Custom role deleted: {role_id}")
+    logger.warning('Custom role deleted: %s', role_id)
 
     return {
         "role_id": role_id,
@@ -325,7 +326,7 @@ async def grant_permission(
     """
     grant_id = str(uuid4())
 
-    logger.info(f"Permission granted: {permission_id} -> {user_id}")
+    logger.info('Permission granted: %s -> %s', permission_id, user_id)
 
     expires_at = None
     if expires_in_days:
@@ -374,7 +375,7 @@ async def revoke_permission(
 
     Security Auditor: Access revocation.
     """
-    logger.warning(f"Permission revoked: {grant_id}")
+    logger.warning('Permission revoked: %s', grant_id)
 
     return {
         "grant_id": grant_id,

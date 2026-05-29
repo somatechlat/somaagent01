@@ -219,7 +219,7 @@ async def logout_user_everywhere(
     session_manager = await get_session_manager()
     deleted = await session_manager.delete_user_sessions(user_id)
 
-    logger.warning(f"Forced logout for user: {user_id}")
+    logger.warning('Forced logout for user: %s', user_id)
 
     return {
         "user_id": user_id,
@@ -281,7 +281,7 @@ async def terminate_session(
 
     deleted = await session_manager.delete_session(session.user_id, session_id)
 
-    logger.warning(f"Session terminated: {session_id}")
+    logger.warning('Session terminated: %s', session_id)
 
     return {
         "session_id": session_id,
@@ -398,7 +398,7 @@ async def terminate_by_ip(
             if await session_manager.delete_session(session.user_id, session.session_id):
                 deleted += 1
 
-    logger.warning(f"Sessions terminated for IP: {ip_address}")
+    logger.warning('Sessions terminated for IP: %s', ip_address)
 
     return {
         "ip_address": ip_address,

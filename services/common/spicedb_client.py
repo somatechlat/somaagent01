@@ -129,7 +129,7 @@ class SpiceDBClient:
             self._stub = ps_grpc.PermissionsServiceStub(self._channel)
             self._connected = True
 
-            logger.info(f"SpiceDB connected: {target}")
+            logger.info('SpiceDB connected: %s', target)
 
         except ImportError:
             logger.warning(
@@ -137,7 +137,7 @@ class SpiceDBClient:
             )
             raise
         except Exception as e:
-            logger.error(f"SpiceDB connection failed: {e}")
+            logger.error('SpiceDB connection failed: %s', e)
             raise
 
     async def close(self) -> None:
@@ -212,10 +212,7 @@ class SpiceDBClient:
                 result="granted" if has_permission else "denied",
             ).inc()
 
-            logger.debug(
-                f"Permission check: user={user_id}, permission={permission}, "
-                f"resource={resource_type}:{resource_id}, result={has_permission}"
-            )
+            logger.debug('Permission check: user=%s, permission=%s, resource=%s:%s, result=%s', user_id, permission, resource_type, resource_id, has_permission)
 
             return has_permission
 
@@ -225,11 +222,7 @@ class SpiceDBClient:
             SPICEDB_REQUESTS.labels(method="check_permission", result="error").inc()
 
             # FAIL-CLOSED: Deny on error
-            logger.error(
-                f"SpiceDB check_permission failed (FAIL-CLOSED): {e}, "
-                f"user={user_id}, permission={permission}, "
-                f"resource={resource_type}:{resource_id}"
-            )
+            logger.error('SpiceDB check_permission failed (FAIL-CLOSED): %s, user=%s, permission=%s, resource=%s:%s', e, user_id, permission, resource_type, resource_id)
             return False
 
     async def get_permissions(
@@ -303,9 +296,7 @@ class SpiceDBClient:
             SPICEDB_LATENCY.labels(method="get_permissions").observe(elapsed)
             SPICEDB_REQUESTS.labels(method="get_permissions", result="success").inc()
 
-            logger.debug(
-                f"Permissions retrieved: user={user_id}, tenant={tenant_id}, permissions={granted_permissions}"
-            )
+            logger.debug('Permissions retrieved: user=%s, tenant=%s, permissions=%s', user_id, tenant_id, granted_permissions)
 
             return granted_permissions
 
@@ -314,7 +305,7 @@ class SpiceDBClient:
             SPICEDB_LATENCY.labels(method="get_permissions").observe(elapsed)
             SPICEDB_REQUESTS.labels(method="get_permissions", result="error").inc()
 
-            logger.error(f"SpiceDB get_permissions failed: {e}")
+            logger.error('SpiceDB get_permissions failed: %s', e)
             return []
 
     async def lookup_resources(
@@ -371,10 +362,7 @@ class SpiceDBClient:
             SPICEDB_LATENCY.labels(method="lookup_resources").observe(elapsed)
             SPICEDB_REQUESTS.labels(method="lookup_resources", result="success").inc()
 
-            logger.debug(
-                f"Resources lookup: user={user_id}, type={resource_type}, "
-                f"permission={permission}, count={len(resource_ids)}"
-            )
+            logger.debug('Resources lookup: user=%s, type=%s, permission=%s, count=%s', user_id, resource_type, permission, len(resource_ids))
 
             return resource_ids
 
@@ -383,7 +371,7 @@ class SpiceDBClient:
             SPICEDB_LATENCY.labels(method="lookup_resources").observe(elapsed)
             SPICEDB_REQUESTS.labels(method="lookup_resources", result="error").inc()
 
-            logger.error(f"SpiceDB lookup_resources failed: {e}")
+            logger.error('SpiceDB lookup_resources failed: %s', e)
             return []
 
 

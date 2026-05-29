@@ -120,4 +120,4 @@ ax4.set_title('Memory Configuration', color='#e8e4dc', fontsize=12, pad=10)
 plt.tight_layout(rect=[0, 0, 1, 0.92])
 outfile = OUTDIR / "somabrain_cognitive_dashboard.png"
 plt.savefig(outfile, dpi=150, facecolor='#0a0a0a', edgecolor='none', bbox_inches='tight')
-print(f"✅ SOMABRAIN Dashboard: {outfile}")
+logger.info('SOMABRAIN Dashboard: %s', outfile)

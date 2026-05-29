@@ -21,6 +21,7 @@ from admin.aaas.api.schemas import (
     SsoConfig,
     SsoTestResponse,
 )
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router()
 
@@ -92,7 +93,7 @@ def create_api_key(request, payload: ApiKeyCreate):
         "name": api_key.name,
         "prefix": key_prefix,
         "key": raw_key,  # Only returned on creation!
-        "message": "Save this key now - it cannot be retrieved again",
+        "message": get_message(SuccessCode.API_KEY_SAVE_WARNING),
     }
 
 
@@ -104,9 +105,9 @@ def revoke_api_key(request, key_id: str):
         api_key = ApiKey.objects.get(id=key_id)
         api_key.is_active = False
         api_key.save()
-        return MessageResponse(message=f"API key {key_id} revoked")
+        return MessageResponse(message=get_message(SuccessCode.API_KEY_REVOKED, key_id=key_id))
     except ApiKey.DoesNotExist:
-        return MessageResponse(message=f"API key {key_id} not found", success=False)
+        return MessageResponse(message=get_message(ErrorCode.API_KEY_NOT_FOUND, key_id=key_id), success=False)
 
 
 # =============================================================================

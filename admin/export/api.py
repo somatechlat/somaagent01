@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["export"])
 logger = logging.getLogger(__name__)
@@ -119,9 +120,7 @@ async def request_export(request, payload: ExportRequest) -> ExportResponse:
     estimated_minutes = 5 if payload.export_type == "settings" else 30
     estimated_completion = timezone.now() + timedelta(minutes=estimated_minutes)
 
-    logger.info(
-        f"Export requested: {export_id}, type: {payload.export_type}, format: {payload.format}"
-    )
+    logger.info('Export requested: %s, type: %s, format: %s', export_id, payload.export_type, payload.format)
 
     # In production: queue ZDL task for export
     # ExportTask.objects.create(
@@ -207,7 +206,7 @@ async def download_export(request, export_id: str) -> dict:
         "export_id": export_id,
         "download_url": f"/api/v2/export/{export_id}/file?token={download_token}",
         "expires_in_seconds": 3600,
-        "message": "Download link valid for 1 hour",
+        "message": get_message(SuccessCode.DOWNLOAD_LINK_VALID),
     }
 
 
@@ -221,12 +220,12 @@ async def delete_export(request, export_id: str) -> dict:
 
     Per Phase 8.1: export_cancel()
     """
-    logger.info(f"Export cancelled/deleted: {export_id}")
+    logger.info('Export cancelled/deleted: %s', export_id)
 
     return {
         "export_id": export_id,
         "deleted": True,
-        "message": "Export deleted",
+        "message": get_message(SuccessCode.EXPORT_DELETED),
     }
 
 
@@ -261,9 +260,7 @@ async def request_deletion(request, payload: DeletionRequest) -> DeletionRespons
     request_id = str(uuid4())
     scheduled_date = timezone.now() + timedelta(days=30)
 
-    logger.warning(
-        f"DELETION REQUEST: {request_id}, type: {payload.delete_type}, scheduled: {scheduled_date.date()}"
-    )
+    logger.warning('DELETION REQUEST: %s, type: %s, scheduled: %s', request_id, payload.delete_type, scheduled_date.date())
 
     # In production:
     # DeletionRequest.objects.create(
@@ -314,7 +311,7 @@ async def cancel_deletion(request) -> dict:
 
     return {
         "cancelled": True,
-        "message": "Deletion request cancelled",
+        "message": get_message(SuccessCode.DELETION_REQUEST_CANCELLED),
     }
 
 

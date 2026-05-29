@@ -138,7 +138,7 @@ async def create_webhook(
     webhook_id = str(uuid4())
     secret = secrets.token_urlsafe(32)
 
-    logger.info(f"Webhook created: {name} ({webhook_id})")
+    logger.info('Webhook created: %s (%s)', name, webhook_id)
 
     return Webhook(
         webhook_id=webhook_id,
@@ -208,7 +208,7 @@ async def update_webhook(
 )
 async def delete_webhook(request, webhook_id: str) -> dict:
     """Delete a webhook."""
-    logger.info(f"Webhook deleted: {webhook_id}")
+    logger.info('Webhook deleted: %s', webhook_id)
 
     return {
         "webhook_id": webhook_id,
@@ -233,7 +233,7 @@ async def rotate_secret(request, webhook_id: str) -> dict:
     """
     new_secret = secrets.token_urlsafe(32)
 
-    logger.info(f"Webhook secret rotated: {webhook_id}")
+    logger.info('Webhook secret rotated: %s', webhook_id)
 
     return {
         "webhook_id": webhook_id,

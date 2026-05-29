@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from admin.common.session_manager import get_session_manager, SessionManager
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ class SessionMiddleware:
         if not access_token:
             logger.warning("Auth failure: no access token")
             return JsonResponse(
-                {"error": "unauthorized", "message": "Authentication required"},
+                {"error": "unauthorized", "message": get_message(ErrorCode.UNAUTHORIZED)},
                 status=401,
             )
 
@@ -149,7 +150,7 @@ class SessionMiddleware:
             except Exception as audit_exc:
                 logger.warning("Auth audit logging failed: %s", audit_exc)
             return JsonResponse(
-                {"error": "invalid_token", "message": "Invalid or expired token"},
+                {"error": "invalid_token", "message": get_message(ErrorCode.AUTH_INVALID_OR_EXPIRED_TOKEN)},
                 status=401,
             )
 
@@ -184,7 +185,7 @@ class SessionMiddleware:
                 return JsonResponse(
                     {
                         "error": "session_expired",
-                        "message": "Session expired. Please log in again.",
+                        "message": get_message(ErrorCode.AUTH_SESSION_EXPIRED),
                     },
                     status=401,
                 )

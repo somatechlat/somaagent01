@@ -269,7 +269,7 @@ async def trigger_reindex(
     """
     job_id = str(uuid4())
 
-    logger.info(f"Reindex triggered: {index or 'all'}, job: {job_id}")
+    logger.info('Reindex triggered: %s, job: %s', index or 'all', job_id)
 
     # In production: start background job
 

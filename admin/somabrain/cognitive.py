@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceUnavailableError
 from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["cognitive"])
 logger = logging.getLogger(__name__)
@@ -136,7 +137,7 @@ async def create_cognitive_thread(
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Thread create failed - DEGRADED: {e}")
+        logger.warning('Thread create failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -177,7 +178,7 @@ async def cognitive_thread_next(
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Cognitive step failed - DEGRADED: {e}")
+        logger.warning('Cognitive step failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -199,12 +200,12 @@ async def cognitive_thread_reset(request, thread_id: str) -> dict:
         return {
             "thread_id": thread_id,
             "status": "reset",
-            "message": "Thread reset to initial state",
+            "message": get_message(SuccessCode.THREAD_RESET),
             "degraded": False,
         }
 
     except SomaBrainError as e:
-        logger.warning(f"Thread reset failed - DEGRADED: {e}")
+        logger.warning('Thread reset failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -222,7 +223,7 @@ async def terminate_cognitive_thread(request, thread_id: str) -> dict:
     return {
         "thread_id": thread_id,
         "status": "terminated",
-        "message": "Thread terminated",
+        "message": get_message(SuccessCode.THREAD_TERMINATED),
         "degraded": False,
     }
 
@@ -258,7 +259,7 @@ async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Get cognitive state failed - DEGRADED: {e}")
+        logger.warning('Get cognitive state failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -287,7 +288,7 @@ async def update_cognitive_params(
             "degraded": False,
         }
     except SomaBrainError as e:
-        logger.warning(f"Update params failed - DEGRADED: {e}")
+        logger.warning('Update params failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -309,11 +310,11 @@ async def reset_adaptation(request, agent_id: str) -> dict:
             "agent_id": agent_id,
             "status": "reset",
             "result": result,
-            "message": "Adaptation parameters reset to defaults",
+            "message": get_message(SuccessCode.ADAPTATION_RESET),
             "degraded": False,
         }
     except SomaBrainError as e:
-        logger.warning(f"Adaptation reset failed - DEGRADED: {e}")
+        logger.warning('Adaptation reset failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 
@@ -351,7 +352,7 @@ async def trigger_sleep_cycle(
         )
 
     except SomaBrainError as e:
-        logger.warning(f"Sleep cycle failed - DEGRADED: {e}")
+        logger.warning('Sleep cycle failed - DEGRADED: %s', e)
         return SleepCycleResponse(
             status="degraded",
             memories_consolidated=0,
@@ -385,5 +386,5 @@ async def get_sleep_status(request, agent_id: str) -> dict:
         }
 
     except SomaBrainError as e:
-        logger.warning(f"Sleep status failed - DEGRADED: {e}")
+        logger.warning('Sleep status failed - DEGRADED: %s', e)
         raise ServiceUnavailableError("somabrain", str(e))

@@ -141,7 +141,7 @@ def assign_feature_to_tier(
     )
 
     action = "assigned to" if created else "updated on"
-    logger.info(f"Feature {feature_code} {action} tier {tier_id}")
+    logger.info('Feature %s %s tier %s', feature_code, action, tier_id)
 
     return {
         "id": str(tf.id),
@@ -161,7 +161,7 @@ def remove_feature_from_tier(request, tier_id: str, feature_code: str):
     ).delete()
 
     if deleted:
-        logger.info(f"Feature {feature_code} removed from tier {tier_id}")
+        logger.info('Feature %s removed from tier %s', feature_code, tier_id)
         return MessageResponse(message=get_message(SuccessCode.FEATURE_REMOVED, feature_code=feature_code))
 
     return MessageResponse(

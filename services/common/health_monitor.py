@@ -151,10 +151,7 @@ class HealthMonitor:
             )
         self.health_checkers[service_name] = checker
 
-        logger.debug(
-            f"Health checker registered for {service_name}",
-            extra={"service": service_name},
-        )
+        logger.debug('Health checker registered for %s', service_name, extra={"service": service_name})
 
     def _register_milvus_checker(self) -> None:
         """Register Milvus health check if configured."""
@@ -219,7 +216,7 @@ class HealthMonitor:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Health monitoring loop error: {e}", exc_info=True)
+                logger.error('Health monitoring loop error: %s', e, exc_info=True)
                 await asyncio.sleep(5.0)
 
     async def _check_all_services(self) -> None:
@@ -272,14 +269,11 @@ class HealthMonitor:
                 error=result.error,
             )
 
-            logger.debug(
-                f"Health check: {service_name}",
-                extra={
+            logger.debug('Health check: %s', service_name, extra={
                     "service": service_name,
                     "healthy": result.healthy,
                     "latency_ms": latency_ms,
-                },
-            )
+                })
 
             # Report to metrics
             from services.common.unified_metrics import get_metrics

@@ -152,7 +152,7 @@ def handle_memory_created(sender, **kwargs):
         partition_key=tenant_id,
     )
 
-    logger.debug(f"Memory queued for SomaBrain: tenant={tenant_id}")
+    logger.debug('Memory queued for SomaBrain: tenant=%s', tenant_id)
 
 
 @receiver(conversation_message)
@@ -186,7 +186,7 @@ def handle_conversation_message(sender, **kwargs):
         idempotency_key=f"conv:{conversation_id}:{message_id}",
     )
 
-    logger.debug(f"Conversation message queued: {conversation_id}/{message_id}")
+    logger.debug('Conversation message queued: %s/%s', conversation_id, message_id)
 
 
 @receiver(tool_executed)
@@ -220,7 +220,7 @@ def handle_tool_executed(sender, **kwargs):
         idempotency_key=f"tool:{execution_id}",
     )
 
-    logger.debug(f"Tool result queued: {tool_name}/{execution_id}")
+    logger.debug('Tool result queued: %s/%s', tool_name, execution_id)
 
 
 # =============================================================================

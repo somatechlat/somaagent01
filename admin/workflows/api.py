@@ -120,7 +120,7 @@ async def start_workflow(
     workflow_id = payload.workflow_id or f"{payload.workflow_type}-{uuid4().hex[:8]}"
     run_id = uuid4().hex
 
-    logger.info(f"Starting workflow: {workflow_id}, type: {payload.workflow_type}")
+    logger.info('Starting workflow: %s, type: %s', workflow_id, payload.workflow_type)
 
     # In production: use Temporal client
     # from temporalio.client import Client
@@ -201,7 +201,7 @@ async def cancel_workflow(request, workflow_id: str) -> WorkflowCancelResponse:
 
     Per Phase 7.3: workflow_cancel()
     """
-    logger.warning(f"Cancelling workflow: {workflow_id}")
+    logger.warning('Cancelling workflow: %s', workflow_id)
 
     # In production:
     # handle = client.get_workflow_handle(workflow_id)
@@ -233,7 +233,7 @@ async def signal_workflow(
     - resume: Resume workflow
     - update_params: Update workflow parameters
     """
-    logger.info(f"Signaling workflow {workflow_id}: {payload.signal_name}")
+    logger.info('Signaling workflow %s: %s', workflow_id, payload.signal_name)
 
     # In production:
     # handle = client.get_workflow_handle(workflow_id)
@@ -282,7 +282,7 @@ async def terminate_workflow(
 
     WARNING: This does not allow cleanup. Use cancel() first.
     """
-    logger.warning(f"FORCE TERMINATING workflow: {workflow_id}, reason: {reason}")
+    logger.warning('FORCE TERMINATING workflow: %s, reason: %s', workflow_id, reason)
 
     # In production:
     # await handle.terminate(reason)

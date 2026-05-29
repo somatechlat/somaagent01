@@ -99,7 +99,7 @@ async def create_job(
     """
     job_id = str(uuid4())
 
-    logger.info(f"Job created: {name} ({job_id})")
+    logger.info('Job created: %s (%s)', name, job_id)
 
     return ScheduledJob(
         job_id=job_id,
@@ -156,7 +156,7 @@ async def update_job(
 )
 async def delete_job(request, job_id: str) -> dict:
     """Delete a scheduled job."""
-    logger.warning(f"Job deleted: {job_id}")
+    logger.warning('Job deleted: %s', job_id)
 
     return {
         "job_id": job_id,
@@ -181,7 +181,7 @@ async def run_job_now(request, job_id: str) -> dict:
     """
     execution_id = str(uuid4())
 
-    logger.info(f"Job triggered: {job_id}")
+    logger.info('Job triggered: %s', job_id)
 
     return {
         "job_id": job_id,

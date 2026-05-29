@@ -22,13 +22,10 @@ django.setup()
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from services.common.dlq import DeadLetterQueue
-from services.common.dlq_store import DLQStore, ensure_schema as ensure_dlq_schema
+from services.common.dlq_store import DLQStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.tracing import setup_tracing
-from services.memory_replicator.store import (
-    ensure_schema as ensure_replica_schema,
-    MemoryReplicaStore,
-)
+from services.memory_replicator.store import MemoryReplicaStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,20 +86,11 @@ class MemoryReplicator:
         self.bus = KafkaEventBus(self.kafka_settings)
         self.wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
         self.group_id = os.environ.get("MEMORY_REPLICATOR_GROUP", "memory-replicator")
-        # Use centralized admin settings for Postgres DSN.
-        self.replica = MemoryReplicaStore(dsn=os.environ.get("SA01_DB_DSN", ""))
-        self.dlq_store = DLQStore(dsn=os.environ.get("SA01_DB_DSN", ""))
+        self.replica = MemoryReplicaStore()
+        self.dlq_store = DLQStore()
         self.dlq = DeadLetterQueue(source_topic=self.wal_topic)
 
     async def start(self) -> None:
-        try:
-            await ensure_replica_schema(self.replica)
-        except Exception:
-            LOGGER.debug("Replica schema ensure failed", exc_info=True)
-        try:
-            await ensure_dlq_schema(self.dlq_store)
-        except Exception:
-            LOGGER.debug("DLQ schema ensure failed", exc_info=True)
         await self.bus.consume(self.wal_topic, self.group_id, self._handle_wal)
 
     async def _handle_wal(self, event: dict[str, Any]) -> None:
@@ -147,4 +135,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        LOGGER.info("Memory replicator stopped")
+        LOGGER.info("Memory replicator shutting down")

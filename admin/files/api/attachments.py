@@ -24,7 +24,7 @@ def _get_store():
 
     from services.common.attachments_store import AttachmentsStore
 
-    return AttachmentsStore(dsn=settings.DATABASE_DSN)
+    return AttachmentsStore()
 
 
 @router.get("/{attachment_id}", summary="Download attachment")

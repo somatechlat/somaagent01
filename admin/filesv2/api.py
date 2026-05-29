@@ -16,6 +16,7 @@ import logging
 import uuid
 from typing import Optional
 
+from admin.common.messages import ErrorCode, SuccessCode, get_message
 from django.conf import settings
 from ninja import Router
 
@@ -132,7 +133,7 @@ def get_file(request, file_id: str):
             "updated_at": f.updated_at.isoformat(),
         }
     except File.DoesNotExist:
-        return {"error": "File not found"}, 404
+        return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
 
 
 @router.post("/upload", response=FileUploadResponse)
@@ -194,7 +195,7 @@ def create_upload_url(
         }
 
     except Exception as e:
-        logger.exception(f"S3 presigned URL error: {e}")
+        logger.exception('S3 presigned URL error: %s', e)
         # Fallback for local dev
         return {
             "file_id": file_id,
@@ -216,17 +217,17 @@ def upload_local(request, file_id: str, file: UploadedFile = File(...)):
 
         # Security check: ensure file size doesn't exceed limit
         if file.size > f.size_bytes + (1024 * 1024):  # 1MB buffer
-            return {"error": "File size exceeds declared size"}, 400
+            return {"error": get_message(ErrorCode.FILE_SIZE_EXCEEDED)}, 400
 
         # Save to local storage using the pre-defined key
         path = default_storage.save(f.storage_key, ContentFile(file.read()))
 
         return {"success": True, "path": path}
     except FileModel.DoesNotExist:
-        return {"error": "File record not found"}, 404
+        return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
     except Exception as e:
-        logger.exception(f"Local upload failed: {e}")
-        return {"error": str(e)}, 500
+        logger.exception('Local upload failed: %s', e)
+        return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500
 
 
 @router.delete("/{file_id}")
@@ -240,9 +241,9 @@ def delete_file(request, file_id: str):
         f = File.objects.get(id=file_id, deleted_at__isnull=True)
         f.deleted_at = timezone.now()
         f.save()
-        return {"success": True, "message": "File deleted"}
+        return {"success": True, "message": get_message(SuccessCode.DELETED)}
     except File.DoesNotExist:
-        return {"error": "File not found"}, 404
+        return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
 
 
 @router.get("/{file_id}/download-url")
@@ -278,7 +279,7 @@ def get_download_url(request, file_id: str):
         }
 
     except File.DoesNotExist:
-        return {"error": "File not found"}, 404
+        return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
     except Exception as e:
-        logger.exception(f"S3 download URL error: {e}")
-        return {"error": str(e)}, 500
+        logger.exception('S3 download URL error: %s', e)
+        return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500

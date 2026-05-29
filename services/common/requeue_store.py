@@ -27,7 +27,7 @@ class RequeueStore:
         except Exception:
             raw_url = url or os.environ.get("SA01_REDIS_URL", "")
         if not raw_url:
-            raise ValueError("Redis URL is required for the requeue store.")
+            raise ValueError("Redis URL is required for the requeue store")
         self.url = os.path.expandvars(raw_url)
         try:
             from config.settings_registry import SettingsRegistry
@@ -38,7 +38,7 @@ class RequeueStore:
             self.prefix = prefix or os.environ.get("POLICY_REQUEUE_PREFIX", "policy:requeue")
         self.keyset = f"{self.prefix}:keys"
         if not self.url.startswith(("redis://", "rediss://", "unix://")):
-            raise ValueError(f"Invalid Redis URL scheme for requeue store: {self.url!r}")
+            raise ValueError("Invalid Redis URL scheme for requeue store")
         self.client: Any = get_async_redis_pool(self.url)
 
     def _key(self, identifier: str) -> str:
@@ -69,7 +69,7 @@ class RequeueStore:
         except Exception:
             url = redis_url or os.environ.get("SA01_REDIS_URL", "")
         if not url:
-            raise ValueError("Redis URL is required for the requeue store.")
+            raise ValueError("Redis URL is required for the requeue store")
         try:
             from config.settings_registry import SettingsRegistry
 

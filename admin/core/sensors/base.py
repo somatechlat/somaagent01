@@ -93,12 +93,12 @@ class BaseSensor(ABC):
     def enable(self) -> None:
         """Enable the sensor."""
         self._enabled = True
-        logger.debug(f"{self.SENSOR_NAME} sensor enabled")
+        logger.debug('%s sensor enabled', self.SENSOR_NAME)
 
     def disable(self) -> None:
         """Disable the sensor (for testing/debugging)."""
         self._enabled = False
-        logger.debug(f"{self.SENSOR_NAME} sensor disabled")
+        logger.debug('%s sensor disabled', self.SENSOR_NAME)
 
     def capture(self, event_type: str, payload: dict) -> Optional[SensorEvent]:
         """Capture an event and persist to outbox.
@@ -123,7 +123,7 @@ class BaseSensor(ABC):
         self._persist_to_outbox(event)
 
         # Log capture
-        logger.debug(f"[{self.SENSOR_NAME}] Captured {event_type}: {event.event_id}")
+        logger.debug('[%s] Captured %s: %s', self.SENSOR_NAME, event_type, event.event_id)
 
         return event
 
@@ -148,7 +148,7 @@ class BaseSensor(ABC):
             )
 
         except Exception as e:
-            logger.error(f"Failed to persist to outbox: {e}")
+            logger.error('Failed to persist to outbox: %s', e)
             # Best-effort: log and continue. Never crash the calling action
             # for an observability failure. Dead letter queue handles
             # critical events via admin/core/management/commands/cleanup_outbox.py

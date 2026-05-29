@@ -61,11 +61,11 @@ class RouterClient:
 # ---------------------------------------------------------------------------
 # The codebase historically imported a ``get_router_client`` function from this
 # module.  The original implementation was removed during refactoring, which now
-# causes an ``ImportError`` when modules such as ``services.gateway.routers.
-# uploads_full`` attempt to import it.  To preserve backwards compatibility while
-# keeping a single source of truth, we expose a lightweight factory that returns a
-# shared ``RouterClient`` instance.  The instance is cached at module level so
-# repeated calls are inexpensive and behave like a singleton.
+# causes an ``ImportError`` when modules such as ``services.gateway.routers.uploads_full``
+# attempt to import it.  To preserve backwards compatibility while keeping a
+# single source of truth, we expose a lightweight factory that returns a shared
+# ``RouterClient`` instance.  The instance is cached at module level so repeated
+# calls are inexpensive and behave like a singleton.
 
 _router_client: RouterClient | None = None
 

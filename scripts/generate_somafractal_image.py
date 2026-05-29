@@ -118,4 +118,4 @@ ax2.set_title('Deterministic Coordinate Table', color='#e8e4dc', fontsize=12, pa
 plt.tight_layout(rect=[0, 0, 1, 0.92])
 outfile = OUTDIR / "somafractal_memory_3d_space.png"
 plt.savefig(outfile, dpi=150, facecolor='#0a0a0a', edgecolor='none', bbox_inches='tight')
-print(f"✅ SOMAFRACTAL Memory Space: {outfile}")
+logger.info('SOMAFRACTAL Memory Space: %s', outfile)

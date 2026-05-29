@@ -142,7 +142,7 @@ class ValidationError(ApiError):
 
     def __init__(
         self,
-        message: str = "Validation failed",
+        message: str | None = None,
         *,
         field: str | None = None,
         errors: list[dict[str, Any]] | None = None,
@@ -155,7 +155,10 @@ class ValidationError(ApiError):
             field: Field that failed validation
             errors: List of validation errors
         """
-        super().__init__(message, **kwargs)
+        from admin.common.messages import ErrorCode, get_message
+
+        final_message = message or get_message(ErrorCode.VALIDATION_ERROR)
+        super().__init__(final_message, **kwargs)
         if field:
             self.details["field"] = field
         if errors:
@@ -206,7 +209,7 @@ class RateLimitError(ApiError):
 
     def __init__(
         self,
-        message: str = "Rate limit exceeded",
+        message: str | None = None,
         *,
         retry_after: int | None = None,
         **kwargs: Any,
@@ -217,7 +220,10 @@ class RateLimitError(ApiError):
             message: Error message
             retry_after: Seconds until retry is allowed
         """
-        super().__init__(message, **kwargs)
+        from admin.common.messages import ErrorCode, get_message
+
+        final_message = message or get_message(ErrorCode.LLM_RATE_LIMITED)
+        super().__init__(final_message, **kwargs)
         if retry_after:
             self.details["retry_after"] = retry_after
 
@@ -240,9 +246,10 @@ class ServiceUnavailableError(ApiError):
             service: Name of unavailable service
             message: Optional custom message
         """
-        if message is None:
-            message = f"Service '{service}' is temporarily unavailable"
-        super().__init__(message, **kwargs)
+        from admin.common.messages import ErrorCode, get_message
+
+        final_message = message or get_message(ErrorCode.INTERNAL_ERROR)
+        super().__init__(final_message, **kwargs)
         self.details["service"] = service
 
 
@@ -257,11 +264,14 @@ class ServiceError(ApiError):
 
     def __init__(
         self,
-        message: str = "An internal service error occurred",
+        message: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize service error."""
-        super().__init__(message, **kwargs)
+        from admin.common.messages import ErrorCode, get_message
+
+        final_message = message or get_message(ErrorCode.INTERNAL_ERROR)
+        super().__init__(final_message, **kwargs)
 
 
 class BadRequestError(ApiError):
@@ -275,8 +285,11 @@ class BadRequestError(ApiError):
 
     def __init__(
         self,
-        message: str = "Bad request",
+        message: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize bad request error."""
-        super().__init__(message, **kwargs)
+        from admin.common.messages import ErrorCode, get_message
+
+        final_message = message or get_message(ErrorCode.INVALID_REQUEST)
+        super().__init__(final_message, **kwargs)

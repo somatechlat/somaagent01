@@ -8,7 +8,7 @@ This package is the SINGLE SOURCE OF TRUTH for all configuration.
 Usage:
     from config import get_settings
     settings = get_settings()
-    print(settings.postgres_host)
+    host = settings.postgres_host  # example
 """
 
 from config.settings_registry import (

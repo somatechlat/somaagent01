@@ -37,12 +37,12 @@ def get_memory_service(namespace: str = "default") -> MemoryServiceProtocol:
         - HTTPMemoryAdapter if SOMA_AAAS_MODE=false (distributed)
     """
     if SOMA_AAAS_MODE:
-        logger.info("💾 Using DirectMemoryAdapter (AAAS in-process mode)")
+        logger.info('Using DirectMemoryAdapter (AAAS in-process mode)')
         from services.common.adapters.memory_direct import get_direct_memory_adapter
 
         return get_direct_memory_adapter(namespace=namespace)
     else:
-        logger.info("🌐 Using HTTPMemoryAdapter (distributed mode)")
+        logger.info('Using HTTPMemoryAdapter (distributed mode)')
         from services.common.adapters.memory_http import get_http_memory_adapter
 
         return get_http_memory_adapter(namespace=namespace)
