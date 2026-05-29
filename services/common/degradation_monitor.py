@@ -205,13 +205,13 @@ class _ComponentsProxy:
 class DegradationMonitor:
     """Production adapter exposing HealthMonitor data via the legacy API.
 
-    Used by:
-    - admin/core/infrastructure/degradation_api.py (REST endpoints)
-    - services/conversation_worker/main.py (worker health checks)
-    - admin/somabrain/core_brain.py (degradation awareness)
-    - admin/core/api/health.py (health endpoint)
+    DEPRECATED (P3-02): Use services.common.health_monitor.HealthMonitor
+    directly for new code. DegradationMonitor is kept for backward
+    compatibility with existing API endpoints and worker health checks.
 
     All methods have real implementations backed by HealthMonitor.
+    Migration path: replace `degradation_monitor.xxx()` with
+    `get_health_monitor().xxx()` equivalents.
     """
 
     SERVICE_DEPENDENCIES = SERVICE_DEPENDENCIES

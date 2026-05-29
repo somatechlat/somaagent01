@@ -149,8 +149,9 @@ class BaseSensor(ABC):
 
         except Exception as e:
             logger.error(f"Failed to persist to outbox: {e}")
-            # In production: use dead letter queue
-            raise
+            # Best-effort: log and continue. Never crash the calling action
+            # for an observability failure. Dead letter queue handles
+            # critical events via admin/core/management/commands/cleanup_outbox.py
 
     @abstractmethod
     def on_event(self, event_type: str, data: Any) -> None:
