@@ -123,6 +123,9 @@ class HealthMonitor:
                 last_check=0.0,
             )
 
+        # Register non-critical services
+        self._register_milvus_checker()
+
         logger.info(
             "HealthMonitor initialized",
             extra={"critical_services": list(self.CRITICAL_SERVICES)},
@@ -152,6 +155,22 @@ class HealthMonitor:
             f"Health checker registered for {service_name}",
             extra={"service": service_name},
         )
+
+    def _register_milvus_checker(self) -> None:
+        """Register Milvus health check if configured."""
+        try:
+            from config.settings_registry import get_settings
+
+            settings = get_settings()
+            milvus_host = getattr(settings, "milvus_host", "")
+            if not milvus_host:
+                logger.debug("Milvus not configured, skipping health check registration")
+                return
+        except Exception as e:
+            logger.debug("Could not load settings for Milvus health check: %s", e)
+            return
+
+        self.register_health_checker("milvus", _check_milvus)
 
     async def start_monitoring(self) -> None:
         """Start health monitoring loop."""
@@ -383,6 +402,41 @@ class HealthMonitor:
             ServiceStatus if found, None otherwise
         """
         return self.checks.get(service_name)
+
+
+def _check_milvus() -> HealthCheck:
+    """Check Milvus health via lightweight operation."""
+    import socket
+    import time
+
+    start = time.monotonic()
+    try:
+        from config.settings_registry import get_settings
+
+        settings = get_settings()
+        milvus_host = getattr(settings, "milvus_host", "")
+        milvus_port = getattr(settings, "milvus_port", 19530)
+        if not milvus_host:
+            return HealthCheck(healthy=True, latency_ms=0.0, error="Milvus not configured")
+    except Exception as e:
+        return HealthCheck(healthy=True, latency_ms=0.0, error=f"Milvus settings unavailable: {e}")
+
+    try:
+        from pymilvus import connections, list_collections  # pyright: ignore[reportMissingImports]
+
+        connections.connect(host=milvus_host, port=milvus_port, timeout=2)
+        list_collections()
+        connections.disconnect("default")
+        latency_ms = (time.monotonic() - start) * 1000.0
+        return HealthCheck(healthy=True, latency_ms=latency_ms)
+    except Exception:
+        try:
+            with socket.create_connection((milvus_host, milvus_port), timeout=2):
+                latency_ms = (time.monotonic() - start) * 1000.0
+                return HealthCheck(healthy=True, latency_ms=latency_ms)
+        except Exception as sock_err:
+            latency_ms = (time.monotonic() - start) * 1000.0
+            return HealthCheck(healthy=False, latency_ms=latency_ms, error=str(sock_err))
 
 
 # Singleton instance for consistency

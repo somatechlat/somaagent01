@@ -79,18 +79,18 @@ class KafkaEventPublisher:
     _producer = None
 
     @classmethod
-    def get_producer(cls):
+    async def get_producer(cls):
         """Get or create Kafka producer."""
         if cls._producer is None:
             try:
-                from kafka import KafkaProducer
+                from aiokafka import AIOKafkaProducer
 
-                cls._producer = KafkaProducer(
+                cls._producer = AIOKafkaProducer(
                     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                     acks="all",
-                    retries=3,
                 )
+                await cls._producer.start()
                 logger.info(f"Kafka producer connected: {KAFKA_BOOTSTRAP_SERVERS}")
             except Exception as e:
                 logger.warning(f"Kafka producer not available: {e}")
@@ -98,43 +98,42 @@ class KafkaEventPublisher:
         return cls._producer
 
     @classmethod
-    def publish(cls, topic: str, event: dict, key: str | None = None):
+    async def publish(cls, topic: str, event: dict, key: str | None = None):
         """Publish event to Kafka topic."""
-        producer = cls.get_producer()
+        producer = await cls.get_producer()
         if producer:
             try:
-                producer.send(
+                await producer.send(
                     topic,
                     value=event,
                     key=key.encode("utf-8") if key else None,
                 )
-                producer.flush()
                 logger.debug(f"Published to {topic}: {event.get('event_type', 'unknown')}")
             except Exception as e:
                 logger.error(f"Kafka publish failed: {e}")
 
     @classmethod
-    def publish_conversation_event(cls, event: ConversationEvent):
+    async def publish_conversation_event(cls, event: ConversationEvent):
         """Publish conversation event for analytics."""
-        cls.publish(
+        await cls.publish(
             KAFKA_TOPICS["conversation_events"],
             asdict(event),
             key=event.tenant_id,
         )
 
     @classmethod
-    def publish_usage_event(cls, event: UsageMeteringEvent):
+    async def publish_usage_event(cls, event: UsageMeteringEvent):
         """Publish usage event for billing aggregation."""
-        cls.publish(
+        await cls.publish(
             KAFKA_TOPICS["usage_metering"],
             asdict(event),
             key=event.tenant_id,
         )
 
     @classmethod
-    def publish_permission_audit(cls, event: PermissionAuditEvent):
+    async def publish_permission_audit(cls, event: PermissionAuditEvent):
         """Publish permission audit event."""
-        cls.publish(
+        await cls.publish(
             KAFKA_TOPICS["permission_audit"],
             asdict(event),
             key=event.tenant_id,
