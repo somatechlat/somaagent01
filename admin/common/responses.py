@@ -102,13 +102,13 @@ def error_response(
         Error response dictionary
     """
     response: dict[str, Any] = {
-        "success": False,
-        "error": error,
-        "message": message,
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "error": {
+            "code": error,
+            "message": message,
+        }
     }
     if details:
-        response["details"] = details
+        response["error"]["detail"] = details
     return response
 
 

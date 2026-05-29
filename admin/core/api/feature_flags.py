@@ -16,6 +16,9 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.exceptions import ConflictError, NotFoundError
+from admin.common.messages import ErrorCode, get_message
+
 router = Router(tags=["Feature Flags"])
 
 
@@ -60,6 +63,30 @@ class FeatureFlagListResponse(BaseModel):
 
     items: List[FeatureFlagResponse]
     total: int
+
+
+class DeleteFlagResponse(BaseModel):
+    """Response for deleting a feature flag."""
+
+    success: bool
+    key: str
+
+
+class ToggleFlagResponse(BaseModel):
+    """Response for toggling a feature flag."""
+
+    success: bool
+    key: str
+    status: str
+
+
+class FlagCheckResponse(BaseModel):
+    """Response for checking if a feature flag is enabled."""
+
+    key: str
+    enabled: bool
+    status: str
+    scope: str
 
 
 # --- In-memory storage (would be Django model in production) ---
@@ -166,25 +193,28 @@ def list_feature_flags(
     )
 
 
-@router.get("/{flag_key}", response=FeatureFlagResponse)
+@router.get("/{flag_key}", response=FeatureFlagResponse, summary="Get feature flag")
 def get_feature_flag(request: HttpRequest, flag_key: str):
     """
     Get single feature flag by key.
     Permission: feature:view
     """
     if flag_key not in _FLAGS_STORE:
-        return {"error": f"Feature flag not found: {flag_key}"}
+        raise NotFoundError("feature flag", flag_key)
     return FeatureFlagResponse(**_FLAGS_STORE[flag_key])
 
 
-@router.post("/", response=FeatureFlagResponse)
+@router.post("/", response=FeatureFlagResponse, summary="Create feature flag")
 def create_feature_flag(request: HttpRequest, payload: FeatureFlagCreate):
     """
     Create new feature flag.
     Permission: feature:create
     """
     if payload.key in _FLAGS_STORE:
-        return {"error": f"Feature flag already exists: {payload.key}"}
+        raise ConflictError(
+            get_message(ErrorCode.VALIDATION_ERROR, details=f"Feature flag already exists: {payload.key}"),
+            resource="feature flag",
+        )
 
     flag = {
         "id": str(uuid4()),
@@ -199,14 +229,14 @@ def create_feature_flag(request: HttpRequest, payload: FeatureFlagCreate):
     return FeatureFlagResponse(**flag)
 
 
-@router.put("/{flag_key}", response=FeatureFlagResponse)
+@router.put("/{flag_key}", response=FeatureFlagResponse, summary="Update feature flag")
 def update_feature_flag(request: HttpRequest, flag_key: str, payload: FeatureFlagUpdate):
     """
     Update feature flag.
     Permission: feature:edit
     """
     if flag_key not in _FLAGS_STORE:
-        return {"error": f"Feature flag not found: {flag_key}"}
+        raise NotFoundError("feature flag", flag_key)
 
     flag = _FLAGS_STORE[flag_key]
     if payload.name is not None:
@@ -222,51 +252,51 @@ def update_feature_flag(request: HttpRequest, flag_key: str, payload: FeatureFla
     return FeatureFlagResponse(**flag)
 
 
-@router.delete("/{flag_key}")
+@router.delete("/{flag_key}", response=DeleteFlagResponse, summary="Delete feature flag")
 def delete_feature_flag(request: HttpRequest, flag_key: str):
     """
     Delete feature flag.
     Permission: feature:delete
     """
     if flag_key not in _FLAGS_STORE:
-        return {"success": False, "error": f"Feature flag not found: {flag_key}"}
+        raise NotFoundError("feature flag", flag_key)
 
     del _FLAGS_STORE[flag_key]
-    return {"success": True, "key": flag_key}
+    return DeleteFlagResponse(success=True, key=flag_key)
 
 
-@router.post("/{flag_key}/toggle")
+@router.post("/{flag_key}/toggle", response=ToggleFlagResponse, summary="Toggle feature flag")
 def toggle_feature_flag(request: HttpRequest, flag_key: str):
     """
     Toggle feature flag on/off.
     Permission: feature:edit
     """
     if flag_key not in _FLAGS_STORE:
-        return {"success": False, "error": f"Feature flag not found: {flag_key}"}
+        raise NotFoundError("feature flag", flag_key)
 
     flag = _FLAGS_STORE[flag_key]
     new_status = "off" if flag["status"] == "on" else "on"
     flag["status"] = new_status
     flag["updated_at"] = datetime.now()
 
-    return {"success": True, "key": flag_key, "status": new_status}
+    return ToggleFlagResponse(success=True, key=flag_key, status=new_status)
 
 
-@router.get("/check/{flag_key}")
+@router.get("/check/{flag_key}", response=FlagCheckResponse, summary="Check feature flag enabled")
 def check_flag_enabled(request: HttpRequest, flag_key: str, tenant_id: Optional[str] = None):
     """
     Check if a feature flag is enabled.
     Used by application code to check features.
     """
     if flag_key not in _FLAGS_STORE:
-        return {"enabled": False, "reason": "not_found"}
+        raise NotFoundError("feature flag", flag_key)
 
     flag = _FLAGS_STORE[flag_key]
     enabled = flag["status"] in ("on", "beta")
 
-    return {
-        "key": flag_key,
-        "enabled": enabled,
-        "status": flag["status"],
-        "scope": flag["scope"],
-    }
+    return FlagCheckResponse(
+        key=flag_key,
+        enabled=enabled,
+        status=flag["status"],
+        scope=flag["scope"],
+    )

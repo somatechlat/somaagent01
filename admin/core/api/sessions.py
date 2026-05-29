@@ -20,6 +20,8 @@ from django.http import StreamingHttpResponse
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.common.exceptions import NotFoundError, ServiceError
+from admin.common.messages import ErrorCode, get_message
 from admin.core.models import Session, SessionEvent
 
 router = Router(tags=["sessions"])
@@ -52,6 +54,40 @@ class SessionMessageResponse(BaseModel):
 
     session_id: str
     event_id: str
+    workflow_id: str
+
+
+class SessionDetailResponse(BaseModel):
+    """Session detail response."""
+
+    session_id: str
+    persona_id: Optional[str] = None
+    tenant: Optional[str] = None
+    metadata: Optional[dict] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class SessionEventItem(BaseModel):
+    """Individual session event."""
+
+    event_type: str
+    payload: Optional[dict] = None
+    role: str
+    created_at: str
+
+
+class SessionHistoryResponse(BaseModel):
+    """Session history response."""
+
+    session_id: str
+    events: list[SessionEventItem]
+
+
+class TerminationResponse(BaseModel):
+    """Workflow termination response."""
+
+    status: str
     workflow_id: str
 
 
@@ -166,42 +202,40 @@ async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> list[dict]:
     ]
 
 
-@router.get("/{session_id}", summary="Get session details")
-async def get_session(session_id: str) -> dict:
+@router.get("/{session_id}", response=SessionDetailResponse, summary="Get session details")
+async def get_session(session_id: str) -> SessionDetailResponse:
     """Get session envelope."""
     session = await _get_session(session_id)
     if session:
-        return {
-            "session_id": str(session.session_id),
-            "persona_id": session.persona_id,
-            "tenant": session.tenant,
-            "metadata": session.metadata,
-            "created_at": session.created_at.isoformat() if session.created_at else None,
-            "updated_at": session.updated_at.isoformat() if session.updated_at else None,
-        }
-    return {"session_id": session_id, "status": "not_found"}
+        return SessionDetailResponse(
+            session_id=str(session.session_id),
+            persona_id=session.persona_id,
+            tenant=session.tenant,
+            metadata=session.metadata,
+            created_at=session.created_at.isoformat() if session.created_at else None,
+            updated_at=session.updated_at.isoformat() if session.updated_at else None,
+        )
+    raise NotFoundError("session", session_id)
 
 
-@router.get("/{session_id}/history", summary="Get session history")
-async def session_history(session_id: str, limit: int = Query(100, ge=1, le=500)) -> dict:
+@router.get("/{session_id}/history", response=SessionHistoryResponse, summary="Get session history")
+async def session_history(session_id: str, limit: int = Query(100, ge=1, le=500)) -> SessionHistoryResponse:
     """Return session history events."""
-    from admin.common.exceptions import NotFoundError
-
     events = await _get_session_events(session_id, limit)
     if events is None:
         raise NotFoundError("session", session_id)
-    return {
-        "session_id": session_id,
-        "events": [
-            {
-                "event_type": e.event_type,
-                "payload": e.payload,
-                "role": e.role,
-                "created_at": e.created_at.isoformat(),
-            }
+    return SessionHistoryResponse(
+        session_id=session_id,
+        events=[
+            SessionEventItem(
+                event_type=e.event_type,
+                payload=e.payload,
+                role=e.role,
+                created_at=e.created_at.isoformat(),
+            )
             for e in events
         ],
-    }
+    )
 
 
 @router.get("/{session_id}/events", summary="Session events (SSE or JSON)")
@@ -273,8 +307,8 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
     return {"session_id": session_id, "event_id": event_id, "workflow_id": workflow_id}
 
 
-@router.post("/terminate/{workflow_id}", summary="Terminate conversation workflow")
-async def terminate_conversation(workflow_id: str) -> dict:
+@router.post("/terminate/{workflow_id}", response=TerminationResponse, summary="Terminate conversation workflow")
+async def terminate_conversation(workflow_id: str) -> TerminationResponse:
     """Cancel a running conversation workflow."""
     from services.gateway import providers
 
@@ -282,6 +316,9 @@ async def terminate_conversation(workflow_id: str) -> dict:
     try:
         handle = client.get_workflow_handle(workflow_id=workflow_id)
         await handle.cancel()
-        return {"status": "canceled", "workflow_id": workflow_id}
+        return TerminationResponse(status="canceled", workflow_id=workflow_id)
     except Exception as exc:
-        return {"status": "error", "workflow_id": workflow_id, "error": str(exc)}
+        raise ServiceError(
+            get_message(ErrorCode.INTERNAL_ERROR),
+            details={"workflow_id": workflow_id, "detail": str(exc)},
+        )

@@ -24,7 +24,8 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
-from admin.common.exceptions import NotFoundError
+from admin.common.exceptions import NotFoundError, ServiceError
+from admin.common.messages import ErrorCode, get_message
 
 router = Router(tags=["gateway"])
 logger = logging.getLogger(__name__)
@@ -65,8 +66,15 @@ async def execute_a2a(req: A2ARequest) -> dict:
     return {"status": "started", "workflow_id": workflow_id}
 
 
-@router.post("/a2a/terminate/{workflow_id}", summary="Terminate A2A workflow")
-async def terminate_a2a(workflow_id: str) -> dict:
+class A2aTerminationResponse(BaseModel):
+    """A2A workflow termination response."""
+
+    status: str
+    workflow_id: str
+
+
+@router.post("/a2a/terminate/{workflow_id}", response=A2aTerminationResponse, summary="Terminate A2A workflow")
+async def terminate_a2a(workflow_id: str) -> A2aTerminationResponse:
     """Cancel a running A2A workflow."""
     from services.gateway.providers import get_temporal_client
 
@@ -74,9 +82,12 @@ async def terminate_a2a(workflow_id: str) -> dict:
     try:
         handle = client.get_workflow_handle(workflow_id=workflow_id)
         await handle.cancel()
-        return {"status": "canceled", "workflow_id": workflow_id}
+        return A2aTerminationResponse(status="canceled", workflow_id=workflow_id)
     except Exception as exc:
-        return {"status": "error", "workflow_id": workflow_id, "error": str(exc)}
+        raise ServiceError(
+            get_message(ErrorCode.INTERNAL_ERROR),
+            details={"workflow_id": workflow_id, "detail": str(exc)},
+        )
 
 
 # === Workflow Describe ===
