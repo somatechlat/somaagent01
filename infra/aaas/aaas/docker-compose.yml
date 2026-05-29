@@ -18,6 +18,8 @@ volumes:
   somastack_etcd_data:
   somastack_minio_data:
   somastack_kafka_data:
+  somastack_prometheus_data:
+  somastack_grafana_data:
 
 
 services:
@@ -441,3 +443,61 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
+
+  # ===========================================================================
+  # 4. OBSERVABILITY (Prometheus + Grafana)
+  # ===========================================================================
+
+  somastack_prometheus:
+    container_name: somastack_prometheus
+    image: prom/prometheus:latest
+    ports:
+      - "63909:9090"
+    volumes:
+      - somastack_prometheus_data:/prometheus
+    networks:
+      - soma_stack_net
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cat > /etc/prometheus/prometheus.yml << 'EOF'
+        global:
+          scrape_interval: 15s
+          evaluation_interval: 15s
+        scrape_configs:
+          - job_name: 'soma-agent'
+            static_configs:
+              - targets: ['somastack_aaas:9000']
+            metrics_path: /metrics
+        EOF
+        /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  somastack_grafana:
+    container_name: somastack_grafana
+    image: grafana/grafana:latest
+    ports:
+      - "63930:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - somastack_grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - soma_stack_net
+    depends_on:
+      - somastack_prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M

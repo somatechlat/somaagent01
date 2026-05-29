@@ -257,9 +257,9 @@ No hardware interface requirements are specified in this document.
 | REQ-ARCH-013 | Business logic in service modules | SRS-ARCHITECTURAL-PATTERNS | `admin/*/services/` | `admin/agents/services/`, `admin/*/services/*.py` | Inspection |
 | REQ-ARCH-014 | Domain model segregation | SRS-ARCHITECTURAL-PATTERNS | `admin/*/models/` | `admin/core/models/core.py`, `admin/core/models/zdl.py`, `admin/aaas/models/` | Inspection |
 | REQ-ARCH-016 | Enum extraction pattern | SRS-ARCHITECTURAL-PATTERNS | `admin/*/enums.py` | `admin/*/scheduler_enums.py`, `admin/*/choices.py` | Inspection |
-| NFR-MNT-001 | Max 650 lines per file | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `.github/workflows/`, `pyproject.toml` | CI lint |
-| NFR-MNT-002 | Max cyclomatic complexity 10 | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `.github/workflows/`, `pyproject.toml` | CI lint |
-| NFR-MNT-003 | Min 80% test coverage | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `.github/workflows/` | CI coverage report |
+| NFR-MNT-001 | Max 650 lines per file | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `pyproject.toml` | CI lint |
+| NFR-MNT-002 | Max cyclomatic complexity 10 | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `pyproject.toml` | CI lint |
+| NFR-MNT-003 | Min 80% test coverage | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `pyproject.toml` | CI coverage report |
 
 ### 4.2 Requirement to Test Case Mapping
 
