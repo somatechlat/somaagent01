@@ -16,6 +16,9 @@ from django.conf import settings
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.exceptions import ServiceError
+from admin.common.messages import ErrorCode, get_message
+
 router = Router(tags=["health"])
 logger = logging.getLogger(__name__)
 
@@ -32,6 +35,14 @@ class HealthResponse(BaseModel):
 
     status: str  # "ok", "degraded", "down"
     components: dict[str, ComponentHealth]
+
+
+class ReadinessResponse(BaseModel):
+    """Readiness check response."""
+
+    status: str
+    postgres: str
+    redis: str
 
 
 async def _check_postgres() -> tuple[str, Optional[str]]:
@@ -190,7 +201,7 @@ async def quick_health() -> dict:
     return {"status": "ok"}
 
 
-@router.get("/health/ready", summary="Readiness check")
+@router.get("/health/ready", response=ReadinessResponse, summary="Readiness check")
 async def readiness_check() -> dict:
     """
     Readiness check - verifies critical dependencies are available.
@@ -210,4 +221,7 @@ async def readiness_check() -> dict:
             "redis": redis_status,
         }
     except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+        raise ServiceError(
+            get_message(ErrorCode.INTERNAL_ERROR),
+            details={"detail": str(exc)},
+        )

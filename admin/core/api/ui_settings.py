@@ -18,6 +18,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.exceptions import ServiceError
+from admin.common.messages import ErrorCode, get_message
 
 router = Router(tags=["settings"])
 logger = logging.getLogger(__name__)
@@ -42,6 +43,12 @@ class TestConnectionRequest(BaseModel):
     model: Optional[str] = None
 
 
+class TestConnectionResponse(BaseModel):
+    """Connection test response."""
+
+    success: bool
+
+
 def _get_store():
     """Get UiSettingsStore instance."""
     from services.common.ui_settings_store import UiSettingsStore
@@ -62,7 +69,7 @@ async def get_settings(request: HttpRequest) -> dict:
 
     data = await store.get()
     if not data or not data.get("sections"):
-        raise ServiceError("Settings schema generation failed")
+        raise ServiceError(get_message(ErrorCode.INTERNAL_ERROR))
 
     # Enrich with feature flags
     try:
@@ -152,8 +159,8 @@ async def put_settings(request: HttpRequest, body: SettingsUpdate) -> dict:
     return {"status": "ok"}
 
 
-@router.post("/test_connection", summary="Test LLM connection")
-async def test_connection(body: TestConnectionRequest) -> dict:
+@router.post("/test_connection", response=TestConnectionResponse, summary="Test LLM connection")
+async def test_connection(body: TestConnectionRequest) -> TestConnectionResponse:
     """Validate connectivity to LLM provider."""
     import litellm
 
@@ -178,9 +185,12 @@ async def test_connection(body: TestConnectionRequest) -> dict:
             api_base=body.base_url,
             timeout=5,
         )
-        return {"success": True}
+        return TestConnectionResponse(success=True)
     except Exception as exc:
-        return {"success": False, "error": str(exc)}
+        raise ServiceError(
+            get_message(ErrorCode.INTERNAL_ERROR),
+            details={"detail": str(exc)},
+        )
 
 
 @router.get("/{key}", summary="Get single setting")

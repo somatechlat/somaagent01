@@ -33,6 +33,8 @@ def register_exception_handlers(api: NinjaAPI) -> None:
     @api.exception_handler(PydanticValidationError)
     def handle_pydantic_validation_error(request, exc: PydanticValidationError):
         """Handle Pydantic validation errors."""
+        from admin.common.messages import ErrorCode, get_message
+
         errors = []
         for error in exc.errors():
             errors.append(
@@ -46,7 +48,7 @@ def register_exception_handlers(api: NinjaAPI) -> None:
         return JsonResponse(
             error_response(
                 error="validation_error",
-                message="Request validation failed",
+                message=get_message(ErrorCode.VALIDATION_ERROR),
                 details={"errors": errors},
             ),
             status=400,
@@ -58,13 +60,15 @@ def register_exception_handlers(api: NinjaAPI) -> None:
         import logging
         import traceback
 
+        from admin.common.messages import ErrorCode, get_message
+
         logger = logging.getLogger(__name__)
         logger.error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
 
         return JsonResponse(
             error_response(
                 error="internal_error",
-                message="An unexpected error occurred",
+                message=get_message(ErrorCode.INTERNAL_ERROR),
             ),
             status=500,
         )

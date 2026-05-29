@@ -15,6 +15,9 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.exceptions import ServiceError, ValidationError
+from admin.common.messages import ErrorCode, get_message
+
 router = Router(tags=["Settings"])
 
 
@@ -31,6 +34,14 @@ class SettingsUpdateRequest(BaseModel):
     """Request to update settings"""
 
     values: dict
+
+
+class SettingsUpdateResponse(BaseModel):
+    """Response for updating settings."""
+
+    success: bool
+    entity: str
+    message: str
 
 
 # Default settings from environment/Django settings (secure defaults)
@@ -141,7 +152,7 @@ def get_settings(request: HttpRequest, entity: str):
     )
 
 
-@router.put("/{entity}", response=dict)
+@router.put("/{entity}", response=SettingsUpdateResponse, summary="Update service settings")
 def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRequest):
     """
     Update settings for a service entity.
@@ -149,16 +160,22 @@ def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRe
     """
     # Validate entity
     if entity not in DEFAULT_SETTINGS:
-        return {"success": False, "error": f"Unknown entity: {entity}"}
+        raise ValidationError(
+            get_message(ErrorCode.VALIDATION_ERROR, details=f"Unknown entity: {entity}"),
+            details={"entity": entity},
+        )
 
     # Merge with defaults (don't lose fields)
     merged = {**DEFAULT_SETTINGS.get(entity, {}), **payload.values}
 
     # Save to database
     if save_settings_to_db(entity, merged):
-        return {"success": True, "entity": entity, "message": "Settings saved"}
+        return SettingsUpdateResponse(success=True, entity=entity, message="Settings saved")
     else:
-        return {"success": False, "error": "Failed to save settings"}
+        raise ServiceError(
+            get_message(ErrorCode.INTERNAL_ERROR),
+            details={"entity": entity},
+        )
 
 
 @router.get("/", response=list)

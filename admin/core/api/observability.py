@@ -10,11 +10,15 @@ Observability API - Django Ninja endpoints for platform metrics
 
 import time
 from datetime import datetime
+from typing import Optional
 
 import psutil
 from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
+
+from admin.common.exceptions import ValidationError
+from admin.common.messages import ErrorCode, get_message
 
 router = Router(tags=["Observability"])
 
@@ -85,6 +89,14 @@ class SLAStatus(BaseModel):
     target: float
     actual: float
     status: str  # 'ok', 'warning', 'critical'
+
+
+class TrackEventResponse(BaseModel):
+    """Response for tracking a metric event."""
+
+    success: bool
+    metric: Optional[str] = None
+    new_value: Optional[int] = None
 
 
 # Track application start time
@@ -219,7 +231,7 @@ def get_sla_status(request: HttpRequest):
     ]
 
 
-@router.get("/health", response=dict)
+@router.get("/health", response=dict, summary="Observability health check")
 def get_observability_health(request: HttpRequest):
     """Quick health check for observability subsystem"""
     return {
@@ -229,7 +241,7 @@ def get_observability_health(request: HttpRequest):
     }
 
 
-@router.post("/track")
+@router.post("/track", response=TrackEventResponse, summary="Track metric event")
 def track_event(request: HttpRequest, metric: str, value: int = 1):
     """
     Track a metric event (for internal use).
@@ -237,5 +249,8 @@ def track_event(request: HttpRequest, metric: str, value: int = 1):
     """
     if metric in RUNTIME_METRICS:
         increment_metric(metric, value)
-        return {"success": True, "metric": metric, "new_value": RUNTIME_METRICS[metric]}
-    return {"success": False, "error": f"Unknown metric: {metric}"}
+        return TrackEventResponse(success=True, metric=metric, new_value=RUNTIME_METRICS[metric])
+    raise ValidationError(
+        get_message(ErrorCode.VALIDATION_ERROR, details=f"Unknown metric: {metric}"),
+        details={"metric": metric},
+    )
