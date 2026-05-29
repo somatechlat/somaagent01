@@ -190,6 +190,33 @@ class SensorOutbox(models.Model):
         return cls.objects.filter(dead_letter=True).count()
 
     @classmethod
+    def check_scaling_threshold(cls, target_service: str = "somabrain", threshold: int = 1000) -> dict:
+        """Check if pending outbox count exceeds scaling threshold.
+
+        Args:
+            target_service: Service to check pending count for
+            threshold: Count at which to recommend scale-up
+
+        Returns:
+            Dict with count, threshold, and recommendation
+        """
+        count = cls.get_pending_count(target_service)
+        if count > threshold:
+            logger.warning(
+                "SensorOutbox pending count for %s is %d (threshold: %d). "
+                "Recommend scaling up outbox workers.",
+                target_service,
+                count,
+                threshold,
+            )
+        return {
+            "target_service": target_service,
+            "pending_count": count,
+            "threshold": threshold,
+            "recommend_scale_up": count > threshold,
+        }
+
+    @classmethod
     def cleanup_synced(cls, older_than_days: int = 7) -> int:
         """Cleanup old synced events."""
         cutoff = timezone.now() - timedelta(days=older_than_days)

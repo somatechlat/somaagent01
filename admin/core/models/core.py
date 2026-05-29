@@ -392,8 +392,8 @@ class Capsule(models.Model):
             },
             "governance": {
                 "constitution_ref": self.constitution_ref,
-                "opa_policies": {},
-                "spicedb_relations": {},
+                "opa_policies": self.persona_config.get("governance", {}).get("opa_policies", {}),
+                "spicedb_relations": self.persona_config.get("governance", {}).get("spicedb_relations", {}),
             },
             "resource_limits": self.resource_limits,
             "memory_pointer": self.memory_pointer,
