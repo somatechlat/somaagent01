@@ -118,6 +118,7 @@ class SessionMiddleware:
                 access_token = auth_header[7:]
 
         if not access_token:
+            logger.warning("Auth failure: no access token")
             return JsonResponse(
                 {"error": "unauthorized", "message": "Authentication required"},
                 status=401,
@@ -129,7 +130,24 @@ class SessionMiddleware:
 
             claims = await decode_token(access_token)
         except Exception as e:
-            logger.warning(f"JWT validation failed: {e}")
+            logger.warning("JWT validation failed: %s", e)
+            try:
+                from asgiref.sync import sync_to_async
+                from admin.aaas.models import AuditLog
+                from uuid import uuid4
+                await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
+                    actor_id="anonymous",
+                    actor_email="",
+                    action="auth.middleware_token_failed",
+                    resource_type="auth",
+                    resource_id=None,
+                    new_value={"error": str(e)},
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+                    request_id=str(uuid4()),
+                )
+            except Exception as audit_exc:
+                logger.warning("Auth audit logging failed: %s", audit_exc)
             return JsonResponse(
                 {"error": "invalid_token", "message": "Invalid or expired token"},
                 status=401,
@@ -145,7 +163,24 @@ class SessionMiddleware:
             session = await session_manager.get_session(claims.sub, session_id)
 
             if session is None:
-                logger.warning(f"Session not found: user={claims.sub}, session={session_id}")
+                logger.warning("Session not found: user=%s, session=%s", claims.sub, session_id)
+                try:
+                    from asgiref.sync import sync_to_async
+                    from admin.aaas.models import AuditLog
+                    from uuid import uuid4
+                    await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
+                        actor_id=str(claims.sub),
+                        actor_email="",
+                        action="auth.session_expired",
+                        resource_type="auth",
+                        resource_id=None,
+                        new_value={"session_id": session_id},
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+                        request_id=str(uuid4()),
+                    )
+                except Exception as audit_exc:
+                    logger.warning("Auth audit logging failed: %s", audit_exc)
                 return JsonResponse(
                     {
                         "error": "session_expired",

@@ -156,18 +156,21 @@ def measure_duration(metric_name: str):
                 return result
             finally:
                 duration = time.time() - start_time
-                if metric_name == "sse_message":
-                    sse_message_duration.labels(message_type=func.__name__).observe(duration)
-                elif metric_name == "gateway_request":
-                    gateway_request_duration.labels(method="GET", endpoint=func.__name__).observe(
-                        duration
-                    )
-                elif metric_name == "database_query":
-                    db_query_duration.labels(operation=func.__name__).observe(duration)
-                elif metric_name == "auth_check":
-                    auth_duration.labels(source=func.__name__).observe(duration)
-                elif metric_name == "tool_execution":
-                    tool_duration.labels(tool_name=func.__name__).observe(duration)
+                try:
+                    if metric_name == "sse_message":
+                        sse_message_duration.labels(message_type=func.__name__).observe(duration)
+                    elif metric_name == "gateway_request":
+                        gateway_request_duration.labels(method="GET", endpoint=func.__name__).observe(
+                            duration
+                        )
+                    elif metric_name == "database_query":
+                        db_query_duration.labels(operation=func.__name__).observe(duration)
+                    elif metric_name == "auth_check":
+                        auth_duration.labels(source=func.__name__).observe(duration)
+                    elif metric_name == "tool_execution":
+                        tool_duration.labels(tool_name=func.__name__).observe(duration)
+                except Exception:
+                    logger.warning("Failed to record metric", exc_info=True)
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs) -> Any:
@@ -177,12 +180,15 @@ def measure_duration(metric_name: str):
                 return result
             finally:
                 duration = time.time() - start_time
-                if metric_name == "sse_message":
-                    sse_message_duration.labels(message_type=func.__name__).observe(duration)
-                elif metric_name == "gateway_request":
-                    gateway_request_duration.labels(method="GET", endpoint=func.__name__).observe(
-                        duration
-                    )
+                try:
+                    if metric_name == "sse_message":
+                        sse_message_duration.labels(message_type=func.__name__).observe(duration)
+                    elif metric_name == "gateway_request":
+                        gateway_request_duration.labels(method="GET", endpoint=func.__name__).observe(
+                            duration
+                        )
+                except Exception:
+                    logger.warning("Failed to record metric", exc_info=True)
 
         return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 

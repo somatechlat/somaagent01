@@ -138,14 +138,14 @@ class KafkaEventBus:
             extra={"topic": topic, "payload": payload, "headers": headers},
         )
 
-    async def consume(
+    async def _consume_once(
         self,
         topic: str,
         group_id: str,
         handler: Callable[[dict[str, Any]], asyncio.Future | Any],
         stop_event: Optional[asyncio.Event] = None,
     ) -> None:
-        """Consume events and forward to *handler* until stop_event is set."""
+        """Run a single consumer instance until stopped or error."""
         settings = self.settings
         kwargs: dict[str, Any] = {
             "bootstrap_servers": settings.bootstrap_servers,
@@ -184,6 +184,51 @@ class KafkaEventBus:
         finally:
             await consumer.stop()
             LOGGER.info("Stopped consumer", extra={"topic": topic, "group_id": group_id})
+
+    async def consume(
+        self,
+        topic: str,
+        group_id: str,
+        handler: Callable[[dict[str, Any]], asyncio.Future | Any],
+        stop_event: Optional[asyncio.Event] = None,
+    ) -> None:
+        """Consume events with auto-restart on failure and exponential backoff."""
+        max_consecutive_failures = 5
+        failure_count = 0
+
+        while True:
+            try:
+                await self._consume_once(topic, group_id, handler, stop_event)
+                # Clean exit (stop_event set) — reset failures and break
+                break
+            except Exception as exc:
+                failure_count += 1
+                LOGGER.error(
+                    "Kafka consumer crashed",
+                    exc_info=True,
+                    extra={
+                        "topic": topic,
+                        "group_id": group_id,
+                        "failure_count": failure_count,
+                    },
+                )
+                if failure_count >= max_consecutive_failures:
+                    LOGGER.critical(
+                        "Kafka consumer exceeded max consecutive failures; stopping retries",
+                        extra={
+                            "topic": topic,
+                            "group_id": group_id,
+                            "max_failures": max_consecutive_failures,
+                        },
+                    )
+                    break
+                backoff_seconds = min(5 * (2 ** (failure_count - 1)), 60)
+                LOGGER.info(
+                    "Restarting Kafka consumer in %ss",
+                    backoff_seconds,
+                    extra={"topic": topic, "group_id": group_id, "backoff_seconds": backoff_seconds},
+                )
+                await asyncio.sleep(backoff_seconds)
 
     async def close(self) -> None:
         """Execute close."""
