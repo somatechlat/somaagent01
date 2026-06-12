@@ -253,6 +253,12 @@ class _SomaDocStore:
         self._soma_cache_include_wm = include_wm
         self._soma_cache_wm_limit = wm_limit
 
+    def _require_client(self) -> SomaBrainClient:
+        """Return the SomaBrain client or raise if not configured."""
+        if self._client is None:
+            raise SomaClientError("SomaBrain not configured", status_code=503)
+        return self._client
+
     def _get_lock(self) -> asyncio.Lock:
         """Execute get lock."""
 
@@ -268,7 +274,8 @@ class _SomaDocStore:
 
         async with self._get_lock():
             try:
-                data = await self._client.migrate_export(
+                client = self._require_client()
+                data = await client.migrate_export(
                     include_wm=self._soma_cache_include_wm,
                     wm_limit=self._soma_cache_wm_limit,
                 )
@@ -358,8 +365,9 @@ class _SomaDocStore:
             metadata["soma_coord"] = coord
             payload = self._build_payload(metadata, doc.page_content)
             try:
+                client = self._require_client()
                 coord_str = self._format_coord(coord)
-                result = await self._client.remember(
+                result = await client.remember(
                     payload,
                     coord=coord_str,
                     universe=self.memory.memory_subdir,
@@ -414,7 +422,8 @@ class _SomaDocStore:
                 continue
             coord_list = self._parse_coord(coord)
             try:
-                await self._client.delete(coord_list)
+                client = self._require_client()
+                await client.delete(coord_list)
             except SomaClientError as exc:
                 PrintStyle.error(f"Failed to delete memory {doc_id}: {exc}")
                 continue
@@ -435,7 +444,8 @@ class _SomaDocStore:
         """
 
         try:
-            response = await self._client.recall(
+            client = self._require_client()
+            response = await client.recall(
                 query,
                 top_k=limit or 3,
                 universe=self.memory.memory_subdir,

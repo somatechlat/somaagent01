@@ -102,6 +102,8 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
     tenant_id = request.auth.effective_tenant_id
 
     client = get_somabrain_client()
+    if client is None:
+        raise SomaBrainError("SomaBrain not configured", status_code=503)
 
     try:
         memories = await client.recall(
@@ -149,6 +151,8 @@ async def get_recent_memories(
         raise UnauthorizedError("Tenant context required for recent memories")
     tenant_id = request.auth.effective_tenant_id
     client = get_somabrain_client()
+    if client is None:
+        raise SomaBrainError("SomaBrain not configured", status_code=503)
 
     try:
         memories = await client.get_recent(tenant_id=tenant_id, limit=limit)
@@ -190,6 +194,8 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     user_id = request.auth.sub
 
     client = get_somabrain_client()
+    if client is None:
+        raise SomaBrainError("SomaBrain not configured", status_code=503)
 
     try:
         result = await client.remember(
@@ -234,6 +240,8 @@ async def delete_memory(request, memory_id: str) -> dict:
         raise UnauthorizedError("Tenant context required for delete")
     tenant_id = request.auth.effective_tenant_id
     client = get_somabrain_client()
+    if client is None:
+        raise SomaBrainError("SomaBrain not configured", status_code=503)
 
     success = await client.forget(memory_id=memory_id, tenant_id=tenant_id)
 
@@ -260,6 +268,8 @@ async def get_pending_count(request) -> dict:
         raise UnauthorizedError("Tenant context required for pending count")
     tenant_id = request.auth.effective_tenant_id
     client = get_somabrain_client()
+    if client is None:
+        raise SomaBrainError("SomaBrain not configured", status_code=503)
 
     count = await client.get_pending_count(tenant_id=tenant_id)
 

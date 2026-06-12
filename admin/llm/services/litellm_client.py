@@ -27,7 +27,6 @@ from langchain_core.messages import AIMessageChunk, BaseMessage, HumanMessage, S
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
 from litellm import acompletion, completion, embedding
 
-from admin.core.helpers import browser_use_monkeypatch  # type: ignore
 from admin.core.helpers.tokens import approximate_tokens
 from admin.llm.exceptions import LLMNotConfiguredError
 from admin.llm.services.litellm_helpers import (
@@ -66,7 +65,6 @@ if not llm_logger.handlers:
 
 # Initialize
 turn_off_logging()
-browser_use_monkeypatch.apply()
 if litellm is not None:
     try:
         litellm.modify_params = True

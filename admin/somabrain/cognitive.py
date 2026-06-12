@@ -119,6 +119,8 @@ async def create_cognitive_thread(
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
     thread_id = str(uuid4())
 
     try:
@@ -157,6 +159,8 @@ async def cognitive_thread_next(
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         # Call SomaBrain act endpoint
@@ -193,6 +197,8 @@ async def cognitive_thread_reset(request, thread_id: str) -> dict:
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         await client.adaptation_reset(thread_id)
@@ -245,6 +251,8 @@ async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         state = await client.get_cognitive_state(agent_id)
@@ -278,6 +286,8 @@ async def update_cognitive_params(
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         result = await client.update_cognitive_params(agent_id, params)
@@ -303,6 +313,8 @@ async def reset_adaptation(request, agent_id: str) -> dict:
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         result = await client.adaptation_reset(agent_id)
@@ -339,6 +351,8 @@ async def trigger_sleep_cycle(
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         result = await client.trigger_sleep_cycle(agent_id)
@@ -373,6 +387,8 @@ async def get_sleep_status(request, agent_id: str) -> dict:
     REAL SomaBrain call - NO MOCK DATA.
     """
     client = get_somabrain_client()
+    if client is None:
+        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
         state = await client.get_cognitive_state(agent_id)

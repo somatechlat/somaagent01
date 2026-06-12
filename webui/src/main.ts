@@ -5,7 +5,7 @@
  * VIBE COMPLIANT:
  * - Real routing
  * - Login flow support
- * - DEV_MODE bypass for development
+ * - httpOnly cookie auth in every environment
  */
 
 // Import components
@@ -16,9 +16,6 @@ import './views/index';
 
 // Import styles
 import './styles/tokens.css';
-
-// DEV MODE: true in `npm run dev`, false in production builds
-const DEV_MODE = import.meta.env.DEV;
 
 // Routing logic
 const app = document.getElementById('app');
@@ -41,26 +38,19 @@ if (app) {
             }
         };
 
-        // 1. Unauthenticated -> Login (skip in dev mode)
-        if (DEV_MODE) {
-            // Skip auth check in development; do not set fake tokens.
-        } else {
-            const isAuthenticated = await checkAuth();
-            if (!isAuthenticated && !publicPaths.includes(path)) {
-                window.history.replaceState(null, '', '/login');
-                renderRoute();
-                return;
-            }
+        // 1. Unauthenticated -> Login
+        const isAuthenticated = await checkAuth();
+        if (!isAuthenticated && !publicPaths.includes(path)) {
+            window.history.replaceState(null, '', '/login');
+            renderRoute();
+            return;
         }
 
         if (path === '/login') {
-            if (!DEV_MODE) {
-                const isAuthenticated = await checkAuth();
-                if (isAuthenticated) {
-                    window.history.replaceState(null, '', '/saas/dashboard');
-                    renderRoute();
-                    return;
-                }
+            if (isAuthenticated) {
+                window.history.replaceState(null, '', '/saas/dashboard');
+                renderRoute();
+                return;
             }
             app.innerHTML = '';
             await import('./views/saas-login.js');
@@ -474,6 +464,5 @@ if (app) {
 console.log('[SaaS] SaaS Sys Admin v1.0.0 initialized');
 console.log('[SaaS] API: /api/v2/');
 console.log('[SaaS] WebSocket: /ws/v2/');
-console.log('[SaaS] DEV_MODE:', DEV_MODE ? 'ON' : 'OFF');
 
 

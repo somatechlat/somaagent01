@@ -206,10 +206,10 @@ def context_builder(real_infrastructure):
     from admin.core.context.builder import ContextBuilder
     from admin.core.somabrain_client import SomaBrainClient
 
-    return ContextBuilder(
-        somabrain=SomaBrainClient(),
-        token_counter=lambda t: len(t.split()),
-    )
+    brain_client = SomaBrainClient.get()
+    if brain_client is None:
+        pytest.skip("SomaBrain not configured")
+    return ContextBuilder(brain_client=brain_client)
 
 
 # =============================================================================

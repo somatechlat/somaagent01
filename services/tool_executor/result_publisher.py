@@ -138,8 +138,11 @@ class ResultPublisher:
             "tags": ["tool_executor"],
         }
         try:
-            await self._executor.soma.context_feedback(feedback)  # type: ignore[attr-defined]
-            TOOL_FEEDBACK_TOTAL.labels("delivered").inc()
+            if self._executor.soma is None:
+                LOGGER.debug("SomaBrain not configured; skipping tool feedback")
+            else:
+                await self._executor.soma.context_feedback(feedback)
+                TOOL_FEEDBACK_TOTAL.labels("delivered").inc()
         except Exception as exc:
             try:
                 await self._executor.publisher.publish(
@@ -226,6 +229,9 @@ class ResultPublisher:
                 )
 
             if allow_memory:
+                if self._executor.soma is None:
+                    LOGGER.debug("SomaBrain not configured; skipping tool memory capture")
+                    return
                 wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
                 result = await self._executor.soma.remember(memory_payload)
                 try:

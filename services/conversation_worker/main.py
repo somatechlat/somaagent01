@@ -225,7 +225,8 @@ async def main() -> None:
     try:
         await w.start()
     finally:
-        await w.soma.close()
+        if w.soma is not None:
+            await w.soma.close()
         await w.router.close()
         await w.policy.close()
         await degradation_monitor.stop_monitoring()

@@ -955,19 +955,22 @@ class V3ChatOrchestrator:
         brain_stored = False
         try:
             client = await SomaBrainClient.get_async()
-            await self._cb_somabrain.call(
-                client.remember,
-                payload={
-                    "role": "assistant",
-                    "content": assistant_response,
-                    "conversation_id": conversation_id,
-                    "model": model_id,
-                    "latency_ms": elapsed_ms,
-                },
-                tenant=tenant_id,
-                namespace="chat_history",
-            )
-            brain_stored = True
+            if client is None:
+                logger.debug("SomaBrain not configured; skipping primary memory store")
+            else:
+                await self._cb_somabrain.call(
+                    client.remember,
+                    payload={
+                        "role": "assistant",
+                        "content": assistant_response,
+                        "conversation_id": conversation_id,
+                        "model": model_id,
+                        "latency_ms": elapsed_ms,
+                    },
+                    tenant=tenant_id,
+                    namespace="chat_history",
+                )
+                brain_stored = True
         except CircuitBreakerError:
             logger.warning("SomaBrain circuit OPEN — falling back to SomaFractalMemory + PendingMemory")
         except Exception as e:
@@ -1083,18 +1086,21 @@ class V3ChatOrchestrator:
 
         try:
             client = await SomaBrainClient.get_async()
-            await self._cb_somabrain.call(
-                client.remember,
-                payload={
-                    "content": content,
-                    "conversation_id": conversation_id,
-                    "model": model_id,
-                    "latency_ms": elapsed_ms,
-                },
-                tenant=tenant_id,
-                namespace="episodic",
-            )
-            brain_stored = True
+            if client is None:
+                logger.debug("SomaBrain not configured; skipping episodic memory store")
+            else:
+                await self._cb_somabrain.call(
+                    client.remember,
+                    payload={
+                        "content": content,
+                        "conversation_id": conversation_id,
+                        "model": model_id,
+                        "latency_ms": elapsed_ms,
+                    },
+                    tenant=tenant_id,
+                    namespace="episodic",
+                )
+                brain_stored = True
         except Exception as e:
             logger.debug("Episodic Brain store failed: %s", e)
 

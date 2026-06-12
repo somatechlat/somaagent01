@@ -71,7 +71,8 @@ class ToolExecutorService(BaseService):
             if self.worker:
                 try:
                     await self.worker.policy.close()
-                    await self.worker.soma.close()
+                    if self.worker.soma is not None:
+                        await self.worker.soma.close()
                 except Exception as e:
                     LOGGER.debug('Error closing worker connections: %s', e)
 

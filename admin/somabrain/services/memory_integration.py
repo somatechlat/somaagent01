@@ -22,7 +22,7 @@ class MemoryIntegration:
         self.somabrain_client: Optional[SomaBrainClient] = None
         self.circuit_breaker = get_circuit_breaker("somabrain_memory")
 
-    async def _get_client(self) -> SomaBrainClient:
+    async def _get_client(self) -> Optional[SomaBrainClient]:
         if self.somabrain_client is None:
             self.somabrain_client = SomaBrainClient.get()
         return self.somabrain_client
@@ -61,6 +61,9 @@ class MemoryIntegration:
         """
         try:
             client = await self._get_client()
+            if client is None:
+                LOGGER.debug("SomaBrain not configured; skipping store_interaction")
+                return False
             await client.remember(
                 {
                     "interaction_id": interaction_id,
@@ -105,6 +108,9 @@ class MemoryIntegration:
         """
         try:
             client = await self._get_client()
+            if client is None:
+                LOGGER.debug("SomaBrain not configured; returning empty recall_context")
+                return []
             return await client.recall(query, top_k=top_k, tenant_id=tenant_id)
         except Exception as exc:
             LOGGER.warning("recall_context failed: %s", exc)

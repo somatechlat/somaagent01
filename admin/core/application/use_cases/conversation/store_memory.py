@@ -128,6 +128,10 @@ class StoreMemoryUseCase:
             )
             return StoreMemoryOutput(success=False, policy_denied=True)
 
+        if self._memory_client is None:
+            LOGGER.debug("SomaBrain not configured; memory store unavailable")
+            return StoreMemoryOutput(success=False, error="SomaBrain not configured")
+
         # Store to memory
         try:
             result = await self._memory_client.remember(payload)

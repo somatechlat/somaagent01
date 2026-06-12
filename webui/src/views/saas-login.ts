@@ -866,11 +866,6 @@ export class SaasLogin extends LitElement {
         window.location.href = googleAuthService.getAuthUrl();
     }
 
-    private _handleDevLogin() {
-        // Dev-mode auth bypass is handled in main.ts; do not store fake tokens.
-        window.location.href = '/chat';
-    }
-
     private async _testConnection() {
         this._testStatus = 'pending';
         this._testMessage = 'Testing connection to identity provider...';
