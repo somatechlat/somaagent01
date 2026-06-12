@@ -72,6 +72,39 @@ class AgentDeployment(BaseModel):
     deployed_by: str
 
 
+class CapsuleConfigOut(BaseModel):
+    """Capsule configuration response."""
+
+    agent_id: str
+    capsule_id: str
+    name: str
+    description: Optional[str] = None
+    status: str
+    system_prompt: str
+    personality_traits: dict
+    neuromodulator_baseline: dict
+    learning_config: dict
+
+
+class CapsuleConfigUpdate(BaseModel):
+    """Capsule configuration update payload."""
+
+    name: Optional[str] = None
+    description: Optional[str] = None
+    system_prompt: Optional[str] = None
+    personality_traits: Optional[dict] = None
+    neuromodulator_baseline: Optional[dict] = None
+    learning_config: Optional[dict] = None
+
+
+class CapsuleConfigUpdateResult(BaseModel):
+    """Capsule configuration update result."""
+
+    agent_id: str
+    capsule_id: str
+    updated: bool
+
+
 # =============================================================================
 # HELPERS
 # =============================================================================
@@ -143,6 +176,40 @@ def _get_tenant(tenant_id: str) -> Tenant | None:
         return Tenant.objects.get(id=tenant_id)
     except Tenant.DoesNotExist:
         return None
+
+
+@sync_to_async
+def _get_agent_capsule(agent_id: str, tenant_id: str) -> Capsule | None:
+    """Fetch an agent's primary capsule by agent ID and tenant."""
+    try:
+        agent = AgentModel.objects.select_related("primary_capsule").get(
+            id=agent_id, tenant_id=tenant_id
+        )
+    except AgentModel.DoesNotExist:
+        return None
+
+    return agent.primary_capsule
+
+
+@sync_to_async
+def _update_capsule(
+    capsule: Capsule,
+    payload: CapsuleConfigUpdate,
+) -> None:
+    """Persist capsule field updates."""
+    if payload.name is not None:
+        capsule.name = payload.name
+    if payload.description is not None:
+        capsule.description = payload.description
+    if payload.system_prompt is not None:
+        capsule.system_prompt = payload.system_prompt
+    if payload.personality_traits is not None:
+        capsule.personality_traits = payload.personality_traits
+    if payload.neuromodulator_baseline is not None:
+        capsule.neuromodulator_baseline = payload.neuromodulator_baseline
+    if payload.learning_config is not None:
+        capsule.learning_config = payload.learning_config
+    capsule.save()
 
 
 def _reserve_slug(tenant: Tenant, base_slug: str) -> str:
@@ -622,3 +689,60 @@ async def update_multimodal_config(request, agent_id: str, config: MultimodalCon
     await gd.asave()
 
     return {"updated": True}
+
+
+# =============================================================================
+# ENDPOINTS - Capsule Configuration
+# =============================================================================
+
+
+@router.get(
+    "/{agent_id}/capsule",
+    response=CapsuleConfigOut,
+    summary="Get agent capsule config",
+    auth=AuthBearer(),
+)
+async def get_agent_capsule_config(request, agent_id: str) -> CapsuleConfigOut:
+    """Get the agent's primary capsule configuration."""
+    effective_tenant_id = _resolve_tenant_id(request, None)
+    capsule = await _get_agent_capsule(agent_id, effective_tenant_id)
+    if capsule is None:
+        raise HttpError(404, f"Capsule for agent {agent_id} not found")
+
+    return CapsuleConfigOut(
+        agent_id=agent_id,
+        capsule_id=str(capsule.id),
+        name=capsule.name,
+        description=capsule.description,
+        status=capsule.status,
+        system_prompt=capsule.system_prompt,
+        personality_traits=capsule.personality_traits,
+        neuromodulator_baseline=capsule.neuromodulator_baseline,
+        learning_config=capsule.learning_config,
+    )
+
+
+@router.patch(
+    "/{agent_id}/capsule",
+    response=CapsuleConfigUpdateResult,
+    summary="Update agent capsule config",
+    auth=AuthBearer(),
+)
+async def update_agent_capsule_config(
+    request,
+    agent_id: str,
+    payload: CapsuleConfigUpdate,
+) -> CapsuleConfigUpdateResult:
+    """Update the agent's primary capsule configuration."""
+    effective_tenant_id = _resolve_tenant_id(request, None)
+    capsule = await _get_agent_capsule(agent_id, effective_tenant_id)
+    if capsule is None:
+        raise HttpError(404, f"Capsule for agent {agent_id} not found")
+
+    await _update_capsule(capsule, payload)
+
+    return CapsuleConfigUpdateResult(
+        agent_id=agent_id,
+        capsule_id=str(capsule.id),
+        updated=True,
+    )

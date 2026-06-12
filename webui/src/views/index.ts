@@ -55,3 +55,4 @@ export { SaasAgentMetrics } from './saas-agent-metrics.js';
 export { SaasTenantsView, SaasUsersView, SaasAgentsView, SaasFeaturesView } from './saas-entity-views.js';
 export { SaasUserDetail } from './saas-user-detail.js';
 export { SaasTenantWizard } from './saas-tenant-wizard.js';
+export { SaasAgentCapsule } from './saas-agent-capsule.js';
