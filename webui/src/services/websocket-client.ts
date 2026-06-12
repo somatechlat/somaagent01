@@ -36,8 +36,11 @@ export class WebSocketClient {
     private _pendingUrl = '';
 
     constructor(config: Partial<WebSocketConfig> = {}) {
+        if (!config.url) {
+            throw new Error('WebSocket URL is required');
+        }
         this.config = {
-            url: config.url ?? '/ws/v2/chat',
+            url: config.url,
             reconnect: config.reconnect ?? true,
             maxReconnectAttempts: config.maxReconnectAttempts ?? 10,
             reconnectDelay: config.reconnectDelay ?? 1000,
@@ -134,6 +137,7 @@ export class WebSocketClient {
             this._connected = true;
             this.reconnectAttempts = 0;
             this._startHeartbeat();
+            this._emit('connected');
         };
 
         this.ws.onmessage = (event) => {
@@ -149,6 +153,7 @@ export class WebSocketClient {
             console.log('[WebSocket] Disconnected');
             this._connected = false;
             this._stopHeartbeat();
+            this._emit('disconnected', { code: event.code, reason: event.reason });
 
             // Backward compatibility: if subprotocol handshake failed on first attempt,
             // retry without subprotocol (old servers rely on cookie only)
@@ -171,7 +176,18 @@ export class WebSocketClient {
 
         this.ws.onerror = (error) => {
             console.error('[WebSocket] Error:', error);
+            this._emit('error', error);
         };
+    }
+
+    /**
+     * Emit a lifecycle event to subscribers.
+     */
+    private _emit(event: string, payload?: unknown): void {
+        const handlers = this.eventHandlers.get(event);
+        if (handlers) {
+            handlers.forEach((handler) => handler(payload));
+        }
     }
 
     /**
@@ -215,5 +231,3 @@ export class WebSocketClient {
     }
 }
 
-// Singleton instance
-export const wsClient = new WebSocketClient();

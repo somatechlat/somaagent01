@@ -17,8 +17,8 @@ import './views/index';
 // Import styles
 import './styles/tokens.css';
 
-// DEV MODE: Set to true to bypass auth during development
-const DEV_MODE = true;
+// DEV MODE: true in `npm run dev`, false in production builds
+const DEV_MODE = import.meta.env.DEV;
 
 // Routing logic
 const app = document.getElementById('app');
@@ -28,47 +28,57 @@ if (app) {
     // Route handler
     const renderRoute = async () => {
         const path = window.location.pathname;
-        const token = localStorage.getItem('saas_auth_token');
 
-        // DEV MODE: Skip auth check
-        if (DEV_MODE) {
-            // Set fake token for dev
-            if (!token) {
-                localStorage.setItem('saas_auth_token', 'dev_token');
-                localStorage.setItem('saas_user', JSON.stringify({
-                    email: 'admin@dev.local',
-                    name: 'Dev Admin',
-                    role: 'saas_admin'
-                }));
-            }
-        }
-
-        // 1. Unauthenticated -> Login (skip in dev mode)
         // Public auth routes that don't require login
         const publicPaths = ['/login', '/auth/callback', '/register', '/forgot-password', '/reset-password', '/verify-email'];
 
-        if (!DEV_MODE && !token) {
-            if (!publicPaths.includes(path)) {
+        const checkAuth = async (): Promise<boolean> => {
+            try {
+                const res = await fetch('/api/v2/auth/me', { credentials: 'include' });
+                return res.ok;
+            } catch {
+                return false;
+            }
+        };
+
+        // 1. Unauthenticated -> Login (skip in dev mode)
+        if (DEV_MODE) {
+            // Skip auth check in development; do not set fake tokens.
+        } else {
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated && !publicPaths.includes(path)) {
                 window.history.replaceState(null, '', '/login');
                 renderRoute();
                 return;
             }
+        }
+
+        if (path === '/login') {
+            if (!DEV_MODE) {
+                const isAuthenticated = await checkAuth();
+                if (isAuthenticated) {
+                    window.history.replaceState(null, '', '/saas/dashboard');
+                    renderRoute();
+                    return;
+                }
+            }
             app.innerHTML = '';
-
-            // Route to appropriate auth page
-            if (path === '/register') {
-                await import('./views/saas-register.js');
-                app.appendChild(document.createElement('saas-register'));
-                return;
-            }
-            if (path === '/forgot-password') {
-                await import('./views/saas-forgot-password.js');
-                app.appendChild(document.createElement('saas-forgot-password'));
-                return;
-            }
-
             await import('./views/saas-login.js');
             app.appendChild(document.createElement('saas-login'));
+            return;
+        }
+
+        if (path === '/register') {
+            app.innerHTML = '';
+            await import('./views/saas-register.js');
+            app.appendChild(document.createElement('saas-register'));
+            return;
+        }
+
+        if (path === '/forgot-password') {
+            app.innerHTML = '';
+            await import('./views/saas-forgot-password.js');
+            app.appendChild(document.createElement('saas-forgot-password'));
             return;
         }
 
@@ -319,19 +329,6 @@ if (app) {
             app.appendChild(document.createElement('saas-cognitive-panel'));
             return;
         }
-
-        // 4. Login Route
-        if (path === '/login') {
-            if (token) {
-                window.history.replaceState(null, '', '/saas/dashboard');
-                renderRoute();
-                return;
-            }
-            await import('./views/saas-login.js');
-            app.appendChild(document.createElement('saas-login'));
-            return;
-        }
-
 
         // Onboarding Wizard (invitation acceptance)
         if (path.startsWith('/onboarding') || path.startsWith('/invite/')) {
