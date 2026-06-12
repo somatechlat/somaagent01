@@ -1,19 +1,25 @@
 /**
  * Voice Personas View
- * 
+ *
  * VIBE COMPLIANT - Lit View
- * Manage voice personas for tenant.
- * Uses voice-persona-card and voice-config-panel components.
+ * Manage voice personas for tenant using real voice API endpoints.
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 // Import components
 import '../components/voice-persona-card.js';
 import '../components/voice-config-panel.js';
 import '../components/saas-glass-modal.js';
 import '../components/saas-sidebar.js';
+
+interface LLMOption {
+    id: string;
+    name: string;
+    provider: string;
+}
 
 interface VoicePersona {
     id: string;
@@ -34,6 +40,11 @@ interface VoicePersona {
     silence_duration_ms: number;
     is_active: boolean;
     is_default: boolean;
+}
+
+interface PaginatedPersonas {
+    items: VoicePersona[];
+    total: number;
 }
 
 @customElement('saas-voice-personas')
@@ -195,219 +206,308 @@ export class SaasVoicePersonas extends LitElement {
             color: white;
         }
 
+        .btn-primary:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+
         .loading {
             display: flex;
             justify-content: center;
             padding: 40px;
         }
+
+        .error-banner {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border-radius: 8px;
+            font-size: 14px;
+        }
     `;
 
     @state() private personas: VoicePersona[] = [];
+    @state() private llmOptions: LLMOption[] = [];
+    @state() private voiceOptions: string[] = [];
     @state() private loading = true;
-    @state() private showCreateModal = false;
-    @state() private showEditModal = false;
+    @state() private saving = false;
+    @state() private showModal = false;
     @state() private editingPersona: VoicePersona | null = null;
-    @state() private newPersona = { name: '', description: '' };
+    @state() private basePersona = { name: '', description: '', is_active: true };
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
-        this._loadPersonas();
+        this._loadData();
     }
 
-    private async _loadPersonas() {
+    private async _loadData() {
         this.loading = true;
-        try {
-            const response = await fetch('/api/v2/voice/personas');
-            if (response.ok) {
-                const data = await response.json();
-                this.personas = data.items || data || [];
-            }
-        } catch (e) {
-            console.error('Failed to load personas:', e);
-            // Demo data for development
-            this.personas = [
-                {
-                    id: '1',
-                    name: 'Customer Support',
-                    description: 'Friendly and helpful support agent',
-                    voice_id: 'af_heart',
-                    voice_speed: 1.0,
-                    stt_model: 'tiny',
-                    stt_language: 'en',
-                    llm_config_id: '1',
-                    llm_config_name: 'llama-3.3-70b',
-                    llm_provider: 'groq',
-                    system_prompt: 'You are a helpful customer support agent.',
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                    turn_detection_enabled: true,
-                    turn_detection_threshold: 0.5,
-                    silence_duration_ms: 500,
-                    is_active: true,
-                    is_default: true,
-                },
-                {
-                    id: '2',
-                    name: 'Sales Assistant',
-                    description: 'Professional sales representative',
-                    voice_id: 'af_bella',
-                    voice_speed: 1.1,
-                    stt_model: 'small',
-                    stt_language: 'en',
-                    llm_config_id: '2',
-                    llm_config_name: 'claude-3-sonnet',
-                    llm_provider: 'anthropic',
-                    system_prompt: 'You are a professional sales assistant.',
-                    temperature: 0.8,
-                    max_tokens: 2048,
-                    turn_detection_enabled: true,
-                    turn_detection_threshold: 0.6,
-                    silence_duration_ms: 600,
-                    is_active: true,
-                    is_default: false,
-                },
-            ];
-        }
+        await Promise.all([
+            this._loadPersonas(),
+            this._loadLLMOptions(),
+            this._loadVoiceOptions(),
+        ]);
         this.loading = false;
     }
 
-    render() {
-        return html`
-            <saas-sidebar></saas-sidebar>
-            
-            <div class="main-content">
-                <div class="header">
-                    <h1>🎙️ Voice Personas</h1>
-                    <button class="create-btn" @click=${() => this.showCreateModal = true}>
-                        + Create Persona
-                    </button>
-                </div>
+    private async _loadPersonas() {
+        try {
+            const data = await apiClient.get<PaginatedPersonas>(
+                '/voice/personas?active_only=true'
+            );
+            this.personas = data.items || [];
+        } catch (e) {
+            console.error('Failed to load personas:', e);
+            this.error = 'Unable to load voice personas.';
+        }
+    }
 
-                ${this.loading ? html`
-                    <div class="loading">Loading...</div>
-                ` : html`
-                    <div class="personas-grid">
-                        ${this.personas.length === 0 ? html`
-                            <div class="empty-state">
-                                <h3>No Voice Personas</h3>
-                                <p>Create your first voice persona to get started with AgentVoice Vox.</p>
-                                <button class="create-btn" @click=${() => this.showCreateModal = true}>
-                                    + Create Persona
-                                </button>
-                            </div>
-                        ` : this.personas.map(persona => html`
-                            <voice-persona-card
-                                .persona=${persona}
-                                @persona-edit=${(e: CustomEvent) => this._handleEdit(e.detail.persona)}
-                                @persona-duplicate=${(e: CustomEvent) => this._handleDuplicate(e.detail.persona)}
-                                @persona-set-default=${(e: CustomEvent) => this._handleSetDefault(e.detail.persona)}
-                                @persona-delete=${(e: CustomEvent) => this._handleDelete(e.detail.persona)}
-                            ></voice-persona-card>
-                        `)}
-                    </div>
-                `}
-            </div>
+    private async _loadLLMOptions() {
+        try {
+            const data = await apiClient.get<{ items: LLMOption[]; total: number }>(
+                '/voice/llm-configs?model_type=chat'
+            );
+            this.llmOptions = data.items || [];
+        } catch (e) {
+            console.error('Failed to load LLM configs:', e);
+            this.llmOptions = [];
+        }
+    }
 
-            ${this.showCreateModal ? html`
-                <saas-glass-modal 
-                    size="large"
-                    @close=${() => this.showCreateModal = false}
-                >
-                    <div class="modal-header">
-                        <h2>Create Voice Persona</h2>
-                        <p>Configure a new voice persona for your agents.</p>
-                    </div>
+    private async _loadVoiceOptions() {
+        try {
+            const data = await apiClient.get<{ items: { voice_id: string; name: string }[]; total: number }>(
+                '/voice/models'
+            );
+            this.voiceOptions = (data.items || []).map((m) => m.voice_id);
+        } catch (e) {
+            console.error('Failed to load voice models:', e);
+            this.voiceOptions = ['af_heart', 'af_bella', 'af_nicole', 'am_adam', 'am_michael'];
+        }
+    }
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Name</label>
-                            <input type="text" placeholder="e.g. Customer Support"
-                                .value=${this.newPersona.name}
-                                @input=${(e: Event) => this.newPersona = { ...this.newPersona, name: (e.target as HTMLInputElement).value }}
-                            />
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group full">
-                            <label>Description</label>
-                            <textarea placeholder="Brief description of this persona..."
-                                .value=${this.newPersona.description}
-                                @input=${(e: Event) => this.newPersona = { ...this.newPersona, description: (e.target as HTMLTextAreaElement).value }}
-                            ></textarea>
-                        </div>
-                    </div>
-
-                    <voice-config-panel></voice-config-panel>
-
-                    <div class="modal-actions">
-                        <button class="btn btn-secondary" @click=${() => this.showCreateModal = false}>Cancel</button>
-                        <button class="btn btn-primary" @click=${this._handleCreate}>Create Persona</button>
-                    </div>
-                </saas-glass-modal>
-            ` : ''}
-        `;
+    private _openCreate() {
+        this.editingPersona = null;
+        this.basePersona = { name: '', description: '', is_active: true };
+        this.showModal = true;
     }
 
     private _handleEdit(persona: VoicePersona) {
-        this.editingPersona = persona;
-        this.showEditModal = true;
+        this.editingPersona = { ...persona };
+        this.basePersona = {
+            name: persona.name,
+            description: persona.description,
+            is_active: persona.is_active,
+        };
+        this.showModal = true;
     }
 
     private _handleDuplicate(persona: VoicePersona) {
-        const newPersona = { ...persona, id: '', name: `${persona.name} (Copy)`, is_default: false };
-        this.editingPersona = newPersona;
-        this.showCreateModal = true;
+        this.editingPersona = null;
+        this.basePersona = {
+            name: `${persona.name} (Copy)`,
+            description: persona.description,
+            is_active: persona.is_active,
+        };
+        this.showModal = true;
     }
 
     private async _handleSetDefault(persona: VoicePersona) {
         try {
-            await fetch(`/api/v2/voice/personas/${persona.id}/set-default`, { method: 'POST' });
-            this._loadPersonas();
+            await apiClient.post(`/voice/personas/${persona.id}/set-default`, {});
+            await this._loadPersonas();
         } catch (e) {
-            // Update locally for demo
-            this.personas = this.personas.map(p => ({ ...p, is_default: p.id === persona.id }));
+            console.error('Failed to set default persona:', e);
+            this.error = 'Failed to set default persona.';
         }
     }
 
     private async _handleDelete(persona: VoicePersona) {
         if (!confirm(`Delete "${persona.name}"?`)) return;
         try {
-            await fetch(`/api/v2/voice/personas/${persona.id}`, { method: 'DELETE' });
-            this._loadPersonas();
+            await apiClient.delete(`/voice/personas/${persona.id}`);
+            await this._loadPersonas();
         } catch (e) {
-            // Remove locally for demo
-            this.personas = this.personas.filter(p => p.id !== persona.id);
+            console.error('Failed to delete persona:', e);
+            this.error = 'Failed to delete persona.';
         }
     }
 
-    private async _handleCreate() {
-        const configPanel = this.shadowRoot?.querySelector('voice-config-panel') as any;
+    private _getConfigPanel() {
+        return this.shadowRoot?.querySelector('voice-config-panel') as any;
+    }
+
+    private async _handleSave() {
+        const configPanel = this._getConfigPanel();
         const config = configPanel?.getConfig() || {};
 
-        const payload = {
-            name: this.newPersona.name,
-            description: this.newPersona.description,
+        const payload: Record<string, unknown> = {
+            name: this.basePersona.name,
+            description: this.basePersona.description,
             ...config,
+            llm_config_id: config.llm_config_id || null,
         };
 
+        this.saving = true;
+        this.error = '';
         try {
-            const response = await fetch('/api/v2/voice/personas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            if (response.ok) {
-                this.showCreateModal = false;
-                this._loadPersonas();
+            if (this.editingPersona) {
+                await apiClient.put(`/voice/personas/${this.editingPersona.id}`, payload);
+            } else {
+                await apiClient.post('/voice/personas', payload);
             }
+            this.showModal = false;
+            this.basePersona = { name: '', description: '', is_active: true };
+            this.editingPersona = null;
+            await this._loadPersonas();
         } catch (e) {
-            // Add locally for demo
-            this.personas = [...this.personas, { ...payload, id: String(Date.now()), is_active: true, is_default: false } as VoicePersona];
-            this.showCreateModal = false;
+            console.error('Failed to save persona:', e);
+            this.error = 'Failed to save persona. Please check your input and try again.';
         }
+        this.saving = false;
+    }
 
-        this.newPersona = { name: '', description: '' };
+    private _modalTitle() {
+        return this.editingPersona ? 'Edit Voice Persona' : 'Create Voice Persona';
+    }
+
+    render() {
+        return html`
+            <saas-sidebar></saas-sidebar>
+
+            <div class="main-content">
+                <div class="header">
+                    <h1>
+                        <span class="material-symbols-outlined">record_voice_over</span>
+                        Voice Personas
+                    </h1>
+                    <button class="create-btn" @click=${this._openCreate}>
+                        <span class="material-symbols-outlined">add</span>
+                        Create Persona
+                    </button>
+                </div>
+
+                ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
+
+                ${this.loading
+                    ? html`<div class="loading">Loading...</div>`
+                    : html`
+                          <div class="personas-grid">
+                              ${this.personas.length === 0
+                                  ? html`
+                                        <div class="empty-state">
+                                            <h3>No Voice Personas</h3>
+                                            <p>Create your first voice persona to get started with AgentVoice Vox.</p>
+                                            <button class="create-btn" @click=${this._openCreate}>
+                                                <span class="material-symbols-outlined">add</span>
+                                                Create Persona
+                                            </button>
+                                        </div>
+                                    `
+                                  : this.personas.map(
+                                        (persona) => html`
+                                            <voice-persona-card
+                                                .persona=${persona}
+                                                @persona-edit=${(e: CustomEvent) =>
+                                                    this._handleEdit(e.detail.persona)}
+                                                @persona-duplicate=${(e: CustomEvent) =>
+                                                    this._handleDuplicate(e.detail.persona)}
+                                                @persona-set-default=${(e: CustomEvent) =>
+                                                    this._handleSetDefault(e.detail.persona)}
+                                                @persona-delete=${(e: CustomEvent) =>
+                                                    this._handleDelete(e.detail.persona)}
+                                            ></voice-persona-card>
+                                        `
+                                    )}
+                          </div>
+                      `}
+            </div>
+
+            ${this.showModal
+                ? html`
+                      <saas-glass-modal size="large" @close=${() => (this.showModal = false)}>
+                          <div class="modal-header">
+                              <h2>${this._modalTitle()}</h2>
+                              <p>Configure voice persona settings for your agents.</p>
+                          </div>
+
+                          <div class="form-row">
+                              <div class="form-group">
+                                  <label>Name</label>
+                                  <input
+                                      type="text"
+                                      placeholder="e.g. Customer Support"
+                                      .value=${this.basePersona.name}
+                                      @input=${(e: Event) =>
+                                          (this.basePersona = {
+                                              ...this.basePersona,
+                                              name: (e.target as HTMLInputElement).value,
+                                          })}
+                                  />
+                              </div>
+                              <div class="form-group">
+                                  <label>Status</label>
+                                  <select
+                                      .value=${this.basePersona.is_active ? 'active' : 'inactive'}
+                                      @change=${(e: Event) =>
+                                          (this.basePersona = {
+                                              ...this.basePersona,
+                                              is_active:
+                                                  (e.target as HTMLSelectElement).value ===
+                                                  'active',
+                                          })}
+                                  >
+                                      <option value="active">Active</option>
+                                      <option value="inactive">Inactive</option>
+                                  </select>
+                              </div>
+                          </div>
+
+                          <div class="form-row">
+                              <div class="form-group full">
+                                  <label>Description</label>
+                                  <textarea
+                                      placeholder="Brief description of this persona..."
+                                      .value=${this.basePersona.description}
+                                      @input=${(e: Event) =>
+                                          (this.basePersona = {
+                                              ...this.basePersona,
+                                              description: (
+                                                  e.target as HTMLTextAreaElement
+                                              ).value,
+                                          })}
+                                  ></textarea>
+                              </div>
+                          </div>
+
+                          <voice-config-panel
+                              .config=${this.editingPersona}
+                              .llmOptions=${this.llmOptions}
+                              .voiceOptions=${this.voiceOptions}
+                          ></voice-config-panel>
+
+                          <div class="modal-actions">
+                              <button
+                                  class="btn btn-secondary"
+                                  @click=${() => (this.showModal = false)}
+                                  ?disabled=${this.saving}
+                              >
+                                  Cancel
+                              </button>
+                              <button
+                                  class="btn btn-primary"
+                                  @click=${this._handleSave}
+                                  ?disabled=${this.saving || !this.basePersona.name.trim()}
+                              >
+                                  ${this.saving ? 'Saving...' : 'Save Persona'}
+                              </button>
+                          </div>
+                      </saas-glass-modal>
+                  `
+                : ''}
+        `;
     }
 }
 

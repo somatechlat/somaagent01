@@ -279,8 +279,11 @@ from uuid import UUID
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
+from admin.llm.models import LLMModelConfig
 from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
 from admin.voice.schemas import (
+    LLMConfigListOut,
+    LLMConfigOut,
     VoiceModelListOut,
     VoiceModelOut,
     VoicePersonaCreate,
@@ -291,6 +294,36 @@ from admin.voice.schemas import (
     VoiceSessionOut,
     VoiceSessionStats,
 )
+
+
+@router.get(
+    "/llm-configs",
+    response=LLMConfigListOut,
+    summary="List active LLM configurations",
+    auth=AuthBearer(),
+)
+def list_llm_configs(request, model_type: str = "chat"):
+    """List active LLMModelConfig entries for persona LLM selection.
+
+    Lit UI: voice-config-panel uses this endpoint.
+    """
+    queryset = LLMModelConfig.objects.filter(is_active=True)
+    if model_type:
+        queryset = queryset.filter(model_type=model_type)
+
+    items = [
+        LLMConfigOut(
+            id=m.id,
+            name=m.name,
+            display_name=m.display_name or m.name,
+            provider=m.provider,
+            model_type=m.model_type,
+            is_active=m.is_active,
+        )
+        for m in queryset.order_by("provider", "name")
+    ]
+
+    return LLMConfigListOut(items=items, total=len(items))
 
 
 @router.get(
