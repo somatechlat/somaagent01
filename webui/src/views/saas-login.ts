@@ -717,14 +717,6 @@ export class SaasLogin extends LitElement {
                         </button>
                     </form>
 
-                    <!-- Dev Login - HIDDEN IN PRODUCTION -->
-                    ${location.hostname === 'localhost' ? html`
-                    <div class="divider">development only</div>
-                    <button class="oauth-btn" @click=${this._handleDevLogin} style="background: #fef3c7; border-color: #f59e0b; opacity: 0.6;">
-                        <span class="material-symbols-outlined" style="color: #b45309;">developer_mode</span>
-                        Dev Login (localhost only)
-                    </button>
-                    ` : ''}
 
                     <div class="footer">
                         <p class="footer-text">Powered by <a href="https://somatech.lat" target="_blank">SomaTech LAT</a></p>
@@ -872,11 +864,6 @@ export class SaasLogin extends LitElement {
         window.location.href = googleAuthService.getAuthUrl();
     }
 
-    private _handleDevLogin() {
-        localStorage.setItem('saas_auth_token', 'dev_token_' + Date.now());
-        localStorage.setItem('saas_user', JSON.stringify({ email: 'admin@dev.local', name: 'Dev Admin', role: 'saas_admin' }));
-        window.location.href = '/mode-select';
-    }
 
     private async _testConnection() {
         this._testStatus = 'pending';

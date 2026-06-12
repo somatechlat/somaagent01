@@ -122,6 +122,26 @@ class DenyingPermissionChecker(PermissionChecker):
         )
 
 
+class AllowingGate:
+    """Dummy gate that always allows (isolates tests from real OPA/SpiceDB)."""
+
+    async def check(self, *args, **kwargs):
+        return True
+
+    async def check_endpoint_permission(self, *args, **kwargs):
+        return True
+
+
+class DenyingGate:
+    """Dummy gate that always denies (for testing denied paths)."""
+
+    async def check(self, *args, **kwargs):
+        return False
+
+    async def check_endpoint_permission(self, *args, **kwargs):
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -162,7 +182,7 @@ async def test_process_turn_gate_denied():
     # Default UnifiedGate denies when no OPA/SpiceDB policies are defined
     capsule = _create_test_capsule(tenant)
 
-    orchestrator = V3ChatOrchestrator()
+    orchestrator = V3ChatOrchestrator(unified_gate=DenyingGate())
     turn = ChatTurn(
         capsule=capsule,
         user_id="user-123",
@@ -210,7 +230,7 @@ async def test_process_turn_returns_chat_result():
         title="Test Conversation",
     )
 
-    orchestrator = V3ChatOrchestrator()
+    orchestrator = V3ChatOrchestrator(unified_gate=AllowingGate())
     turn = ChatTurn(
         capsule=capsule,
         user_id="user-123",
@@ -260,7 +280,7 @@ async def test_stream_turn_yields_tokens():
         title="Test Conversation",
     )
 
-    orchestrator = V3ChatOrchestrator()
+    orchestrator = V3ChatOrchestrator(unified_gate=AllowingGate())
     turn = ChatTurn(
         capsule=capsule,
         user_id="user-123",

@@ -1,3 +1,7 @@
+> **HISTORICAL SNAPSHOT — 2026-05-20**
+>
+> This audit report reflects the state of the codebase on the date above. Since then, several issues documented here have been resolved in code (e.g. `ALLOW_INSECURE_AUTH_BYPASS` removed, rate limiter made fail-closed, `UnifiedGate` now makes real OPA/SpiceDB calls, V3 orchestrator wired as the WebSocket/REST production path, `BrainBridge.recall()` implemented, WebUI containerized). For the current authoritative state, see `AGENT.md` and the latest approved plan.
+
 # 🔬 SOMAAGENT01 COMPREHENSIVE CODEBASE AUDIT REPORT
 ## Production-Grade Forensic Analysis | 1,491 Files | 6 Specialized Agents
 

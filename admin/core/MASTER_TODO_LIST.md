@@ -16,7 +16,7 @@
 | P0-05 | Impersonation secret from settings (not hardcoded) | ✅ DONE | `admin/auth/api.py` |
 | P0-06 | Missing `await` on `decode_token(token)` | ✅ DONE | `admin/auth/api.py` |
 | P0-07 | Development policy gated (`default allow = false`) | ✅ DONE | `policy/soma_development.rego` |
-| P0-08 | BrainBridge.recall() NotImplementedError + empty container | ✅ DONE | `services/common/brain_bridge.py`, `admin/core/somabrain_client.py` |
+| P0-08 | BrainBridge.recall() NotImplementedError + empty container | ✅ DONE | `aaas/brain.py` (BrainBridge), `admin/core/somabrain_client.py` |
 | P0-08b | SomaBrainClient._request() circuit breaker | ✅ DONE | `admin/core/somabrain_client.py` |
 | P0-08c | UnifiedGate.check_endpoint_permission() | ✅ DONE | `admin/core/agentiq/unified_gate.py` |
 | P0-09 | Session API static placeholder data | ✅ DONE | `admin/sessions/api.py` + `admin/common/session_manager.py` |

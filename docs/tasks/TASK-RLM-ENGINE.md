@@ -35,9 +35,13 @@
 
 ```
 admin/agents/services/
-├── mind_body.py        # Mind-Body loop
-└── brain_bridge.py     # brain.ask() bridge
+└── mind_body.py        # Mind-Body loop (if implemented)
+
+aaas/brain.py           # BrainBridge — current SomaBrain access layer
+admin/core/somabrain_client.py  # HTTP SomaBrain client
 ```
+
+**Note:** `brain_bridge.py` was removed during consolidation. Current Brain access is via `BrainBridge` in `aaas/brain.py` or `SomaBrainClient` in `admin/core/somabrain_client.py`.
 
 ---
 

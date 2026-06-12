@@ -41,7 +41,7 @@ def verify_lago_signature(request: HttpRequest) -> bool:
     webhook_secret = getattr(settings, "LAGO_WEBHOOK_SECRET", "")
     if not webhook_secret:
         logger.warning("LAGO_WEBHOOK_SECRET not configured")
-        return True  # Allow in dev mode
+        return False  # FAIL-CLOSED: never accept unverified webhooks
 
     body = request.body
     expected = hmac.new(

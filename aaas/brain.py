@@ -160,6 +160,20 @@ class BrainBridge:
             resp = await self._client.post("/api/recall", json=payload)
             return resp.json()["results"]
 
+    async def recall_text(
+        self,
+        query: str,
+        *,
+        top_k: int = 5,
+        tenant: str = "default",
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Recall memories from a text query.
+
+        Delegates to the underlying brain client's recall method.
+        """
+        return await self.recall(query, top_k=top_k, tenant=tenant, filters=filters)
+
     async def health(self) -> Dict[str, Any]:
         """Get brain health status."""
         if self._mode == "direct":

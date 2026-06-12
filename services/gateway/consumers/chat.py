@@ -177,7 +177,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             from admin.core.agentiq import UnifiedGate
 
             gate = UnifiedGate()
-            self.perm_cache = await gate.check(self.capsule, action="chat:send")
+            self.perm_cache = await gate.check(
+                self.capsule,
+                action="chat:send",
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+            )
             if not self.perm_cache:
                 logger.warning("Permission denied for capsule: %s", self.capsule.id)
                 await self.close(code=4003)  # Permission denied

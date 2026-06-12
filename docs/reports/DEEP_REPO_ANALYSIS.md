@@ -1,3 +1,7 @@
+> **HISTORICAL SNAPSHOT — 2026-01-25**
+>
+> This analysis reflects the state of the repo on the date above. Several findings are no longer accurate (e.g. root `README.md` is now populated, `services/common/chat/*` modules were deleted during V3 consolidation, the V3 orchestrator is now the WebSocket/REST production path). For current authoritative context, see `AGENT.md` and the latest approved plan.
+
 # SomaAgent01 Deep Repo Analysis
 
 Date: 2026-01-25

@@ -1,3 +1,7 @@
+> **HISTORICAL SNAPSHOT — 2025-01-26**
+>
+> This handoff reflects the architecture as understood in January 2025. Significant consolidation has occurred since then: the old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted and replaced by the V3 orchestrator in `admin/core/chat_orchestrator.py`; `SOMA_AAAS_MODE` is no longer the canonical deployment-mode switch (use `SA01_DEPLOYMENT_MODE`); and `SimpleGovernor`/context builder details have evolved. For current architecture, see `AGENT.md` and the latest approved plan.
+
 # 🤖 AGENT HANDOFF - SomaAgent01 Repository
 
 **Date**: 2025-01-26  
@@ -57,23 +61,23 @@ User → Django API → SomaBrain → LLM
 
 ### 3. Chat Service Architecture ✅
 
-
-**Component Hierarchy:**
+**Current state (post-V3 consolidation):**
 ```
-ChatService (facade, ~150 lines)
-├── ConversationService - Django ORM persistence
-├── MessageService - LLM integration via LiteLLM
-├── SessionManager - Local session store
-└── TitleGenerator - Utility model calls
+V3ChatOrchestrator (admin/core/chat_orchestrator.py) — 12-phase production pipeline
+├── create_conversation(), get_conversation()
+├── process_turn() — sync REST path
+├── stream_turn() — WebSocket streaming path
+├── AgentIQ derivation, UnifiedGate checks
+├── 5-lane context building
+├── Tool discovery & execution
+├── Memory storage via SomaBrainClient / SFM fallback
+└── Django signal emission for outbox/audit
 
-├── recall_memories() - Uses BrainBridge (direct) or SomaBrainClient (HTTP)
-├── store_memory() - Same dual-mode support
-└── store_interaction() - Full interaction storage
+services/common/chat_service.py — thin test-compatibility wrapper around V3ChatOrchestrator
+services/conversation_worker/main.py — separate Kafka/Temporal pipeline (NOT V3; uses ProcessMessageUseCase)
 ```
 
-**Deployment Mode Support:**
-- **AAAS Mode**: HTTP POST to SomaBrain with circuit breaker
-- **STANDALONE Mode**: Direct PostgreSQL query via `somabrain.cognition.core.HybridSearch`
+**Note:** The old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted during consolidation.
 
 ---
 

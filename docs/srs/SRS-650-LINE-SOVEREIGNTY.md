@@ -173,7 +173,7 @@ The 650-line limit is a code quality constraint applied across the SOMA ecosyste
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-033 | The system shall decompose `admin/conversations/api.py` to not exceed 650 lines. | Should | Test | Draft |
+| REQ-033 | ~~The system shall decompose `admin/conversations/api.py` to not exceed 650 lines.~~ | Should | Test | **N/A — `admin/conversations/` was deleted; chat endpoints consolidated into `admin/chat/api/chat.py`** |
 | REQ-034 | The system shall decompose `admin/permissions/granular.py` to not exceed 650 lines. | Should | Test | Draft |
 | REQ-035 | The system shall decompose `admin/voice/api.py` to not exceed 650 lines. | Should | Test | Draft |
 | REQ-036 | The system shall decompose `admin/flink/api.py` to not exceed 650 lines. | Should | Test | Draft |
@@ -243,7 +243,7 @@ No external interfaces are affected by this refactoring.
 | REQ-022 | core/models.py decomposition | VIBE-245 | `admin/core/models/` | `admin/core/models/session.py`, `capability.py`, `settings.py`, `jobs.py`, `notification.py`, `prompt.py`, `audit.py` | `tests/unit/test_models_import.py` |
 | REQ-030 | Capsule import compatibility | VIBE-102 | `admin/core/models/__init__.py` | `admin/core/models/__init__.py` | `tests/unit/test_models_import.py` |
 | REQ-031 | Migration detection | VIBE-245 | Django migrations | `makemigrations` output | `tests/django/test_migrations.py` |
-| REQ-033 | conversations/api.py decomposition | VIBE-245 | `admin/conversations/api/` | `admin/conversations/api/*.py` | `tests/unit/test_conversations_api.py` |
+| REQ-033 | ~~conversations/api.py decomposition~~ | VIBE-245 | N/A | N/A — `admin/conversations/` deleted; chat endpoints in `admin/chat/api/chat.py` | N/A |
 | REQ-034 | permissions/granular.py decomposition | VIBE-245 | `admin/permissions/` | `admin/permissions/*.py` | `tests/unit/test_permissions.py` |
 | REQ-035 | voice/api.py decomposition | VIBE-245 | `admin/voice/api/` | `admin/voice/api/*.py` | `tests/unit/test_voice_api.py` |
 | REQ-036 | flink/api.py decomposition | VIBE-245 | `admin/flink/api/` | `admin/flink/api/*.py` | `tests/unit/test_flink_api.py` |

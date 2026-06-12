@@ -127,3 +127,4 @@ ui/frontend/node_modules/
 *.backup
 *_backup*
 docs/sphinx/_build/
+.worktrees/

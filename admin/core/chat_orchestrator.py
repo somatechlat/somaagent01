@@ -333,7 +333,9 @@ class V3ChatOrchestrator:
                 result.errors.append(perm.reason)
                 return result
 
-            gate_ok = await self._unified_gate.check(capsule, action="chat:send")
+            gate_ok = await self._unified_gate.check(
+                capsule, action="chat:send", user_id=turn.user_id, tenant_id=tenant_id
+            )
             if not gate_ok:
                 result.response = get_message(ErrorCode.DEGRADED_GATE_DENIED)
                 result.errors.append("UnifiedGate rejected chat:send")
@@ -598,7 +600,9 @@ class V3ChatOrchestrator:
             yield "[Permission denied]"
             return
 
-        gate_ok = await self._unified_gate.check(capsule, action="chat:send")
+        gate_ok = await self._unified_gate.check(
+            capsule, action="chat:send", user_id=turn.user_id, tenant_id=tenant_id
+        )
         if not gate_ok:
             yield "[Gate denied]"
             return
