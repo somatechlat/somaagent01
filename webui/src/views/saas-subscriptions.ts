@@ -698,10 +698,23 @@ export class SaasSubscriptions extends LitElement {
     private async _loadTiers() {
         this._isLoading = true;
         try {
-            const response = await apiClient.get('/aaas/subscriptions/') as { tiers?: SubscriptionTier[] };
-            if (response.tiers) {
-                this._tiers = response.tiers;
-            }
+            const response = await apiClient.get('/aaas/tiers/') as
+                | { tiers?: unknown[] }
+                | Array<{ id: string; name: string; slug: string; price: number; billing_period: string; limits: { agents: number; users: number; tokens_per_month: number; storage_gb: number }; active_count: number }>;
+            const raw = Array.isArray(response) ? response : (response.tiers || []);
+            this._tiers = raw.map((t: any) => ({
+                id: String(t.id),
+                name: t.name,
+                slug: t.slug,
+                maxAgents: t.limits?.agents ?? 1,
+                maxUsers: t.limits?.users ?? 1,
+                maxTokensPerMonth: t.limits?.tokens_per_month ?? 0,
+                maxStorageGB: t.limits?.storage_gb ?? 0,
+                priceCents: Math.round((t.price ?? 0) * 100),
+                billingInterval: (t.billing_period ?? 'monthly') as 'monthly' | 'yearly',
+                tenantCount: t.active_count ?? 0,
+                isCustom: false,
+            }));
         } catch {
             // Demo data if API not available
             this._tiers = [
@@ -737,20 +750,22 @@ export class SaasSubscriptions extends LitElement {
         const tierData = {
             name: nameEl.value,
             slug: nameEl.value.toLowerCase().replace(/\s+/g, '-'),
-            maxAgents: parseInt(maxAgentsEl.value),
-            maxUsers: parseInt(maxUsersEl.value),
-            maxTokensPerMonth: parseInt(maxTokensEl.value),
-            maxStorageGB: parseInt(maxStorageEl.value),
-            priceCents: Math.round(parseFloat(priceEl.value) * 100),
-            billingInterval: intervalEl.value as 'monthly' | 'yearly',
-            isCustom: true,
+            price_cents: Math.round(parseFloat(priceEl.value) * 100),
+            billing_interval: intervalEl.value,
+            limits: {
+                agents: parseInt(maxAgentsEl.value),
+                users: parseInt(maxUsersEl.value),
+                tokens_per_month: parseInt(maxTokensEl.value),
+                storage_gb: parseInt(maxStorageEl.value),
+            },
+            features: [],
         };
 
         try {
             if (this._editingTier) {
-                await apiClient.put(`/aaas/subscriptions/${this._editingTier.id}/`, tierData);
+                await apiClient.patch(`/aaas/tiers/${this._editingTier.id}/`, tierData);
             } else {
-                await apiClient.post('/aaas/subscriptions/', tierData);
+                await apiClient.post('/aaas/tiers/', tierData);
             }
             await this._loadTiers();
             this._closeModal();
@@ -764,7 +779,7 @@ export class SaasSubscriptions extends LitElement {
             return;
         }
         try {
-            await apiClient.delete(`/aaas/subscriptions/${tierId}/`);
+            await apiClient.delete(`/aaas/tiers/${tierId}/`);
             await this._loadTiers();
         } catch (error) {
             console.error('Failed to delete tier:', error);

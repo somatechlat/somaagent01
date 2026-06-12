@@ -409,6 +409,7 @@ export class SaasTenantSettings extends LitElement {
   `;
 
     @state() private settings: TenantSettings | null = null;
+    @state() private _tenantId = '';
     @state() private loading = true;
     @state() private saving = false;
     @state() private activeTab: SettingsTab = 'general';
@@ -423,63 +424,63 @@ export class SaasTenantSettings extends LitElement {
         this.loading = true;
         try {
             const token = localStorage.getItem('saas_auth_token');
-            const res = await fetch('/api/v2/aaas/settings', {
+            const listRes = await fetch('/api/v2/aaas/tenants?page=1&per_page=1', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            if (res.ok) {
-                const data = await res.json();
-                this.settings = data.data || data;
-            } else {
-                // Demo data fallback
-                this.settings = this._getDemoSettings();
+            if (!listRes.ok) {
+                throw new Error('Failed to load tenant list');
             }
+            const listData = await listRes.json();
+            const tenant = listData.items?.[0];
+            if (!tenant) {
+                throw new Error('No tenant found');
+            }
+            this._tenantId = tenant.id;
+
+            const res = await fetch(`/api/v2/aaas/tenants/${tenant.id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                throw new Error('Failed to load tenant details');
+            }
+            const data = await res.json();
+            this.settings = {
+                id: data.id,
+                name: data.name,
+                slug: data.slug,
+                billingEmail: '',
+                tier: { id: data.tier, name: data.tier, slug: data.tier },
+                status: data.status,
+                quotas: { agents: { used: data.agents || 0, limit: 0 }, users: { used: data.users || 0, limit: 0 }, storage: { used: 0, limit: 0 } },
+                branding: { primaryColor: '#2563eb', accentColor: '#3b82f6' },
+                security: { mfaRequired: false, ssoEnabled: false, sessionTimeout: 30 },
+                featureOverrides: {},
+            };
         } catch (e) {
             console.error('Failed to load settings:', e);
-            this.settings = this._getDemoSettings();
+            this.settings = null;
         } finally {
             this.loading = false;
         }
     }
 
-    private _getDemoSettings(): TenantSettings {
-        return {
-            id: 'tenant-001',
-            name: 'Acme Corporation',
-            slug: 'acme-corp',
-            billingEmail: 'billing@acme.com',
-            tier: { id: 'tier-team', name: 'Team', slug: 'team' },
-            status: 'active',
-            quotas: {
-                agents: { used: 5, limit: 25 },
-                users: { used: 45, limit: 50 },
-                storage: { used: 12, limit: 50 },
-            },
-            branding: {
-                primaryColor: '#2563eb',
-                accentColor: '#3b82f6',
-            },
-            security: {
-                mfaRequired: false,
-                ssoEnabled: false,
-                sessionTimeout: 30,
-            },
-            featureOverrides: {},
-        };
-    }
-
     private async _saveSettings() {
-        if (!this.settings) return;
+        if (!this.settings || !this._tenantId) return;
         this.saving = true;
         try {
             const token = localStorage.getItem('saas_auth_token');
-            const res = await fetch('/api/v2/aaas/settings', {
-                method: 'PUT',
+            const payload = {
+                name: this.settings.name,
+                status: this.settings.status,
+                tier: this.settings.tier.slug,
+            };
+            const res = await fetch(`/api/v2/aaas/tenants/${this._tenantId}`, {
+                method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(this.settings),
+                body: JSON.stringify(payload),
             });
 
             if (res.ok) {
