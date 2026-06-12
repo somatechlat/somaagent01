@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/infrastructure/ratelimits endpoint
+ * - Uses /api/v2/core/infrastructure/ratelimits endpoint
  * - Permission: infra:ratelimit
  * - Per SRS-INFRASTRUCTURE-ADMIN.md Section 3.2
  *
@@ -260,7 +260,7 @@ export class SaasRateLimits extends LitElement {
     this.loading = true;
     try {
       // Correct API endpoint matching admin/ratelimit/api.py
-      const res = await fetch('/api/v2/ratelimit/limits', { headers: this.getAuthHeaders() });
+      const res = await fetch('/api/v2/core/infrastructure/ratelimits', { headers: this.getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         this.limits = data.limits || [];
@@ -313,7 +313,7 @@ export class SaasRateLimits extends LitElement {
   private async saveRateLimits() {
     this.saving = true;
     try {
-      const res = await fetch('/api/v2/infrastructure/ratelimits', {
+      const res = await fetch('/api/v2/core/infrastructure/ratelimits', {
         method: 'PUT',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ limits: this.limits, tiers: this.tiers }),

@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses existing /api/v2/saas/tiers endpoints
+ * - Uses existing /api/v2/aaas/tiers endpoints
  * - Permission-aware (tier:view, tier:create, tier:edit)
  * - Light theme, minimal, professional
  */
@@ -382,7 +382,7 @@ export class SaasTierBuilder extends LitElement {
     private async loadTiers() {
         this.loading = true;
         try {
-            const res = await fetch('/api/v2/saas/tiers', { headers: this.getAuthHeaders() });
+            const res = await fetch('/api/v2/aaas/tiers', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 this.tiers = await res.json();
             } else {

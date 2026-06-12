@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/saas/features endpoints
+ * - Uses /api/v2/aaas/features endpoints
  * - Permission: platform:manage_features
  * - Per SRS-FEATURE-CATALOG.md Section 10
  *
@@ -258,7 +258,7 @@ export class SaasFeatureCatalog extends LitElement {
     private async loadFeatures() {
         this.loading = true;
         try {
-            const res = await fetch('/api/v2/saas/features', { headers: this.getAuthHeaders() });
+            const res = await fetch('/api/v2/aaas/features', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 this.features = data.features || [];
@@ -288,7 +288,7 @@ export class SaasFeatureCatalog extends LitElement {
 
     private async toggleFeature(feature: Feature) {
         try {
-            const res = await fetch(`/api/v2/saas/features/${feature.id}`, {
+            const res = await fetch(`/api/v2/aaas/features/${feature.id}`, {
                 method: 'PATCH',
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify({ is_enabled: !feature.is_enabled }),

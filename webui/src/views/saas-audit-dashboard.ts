@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses existing /api/v2/saas/audit endpoints
+ * - Uses existing /api/v2/aaas/audit endpoints
  * - Permission-aware (audit:view)
  * - Light theme, minimal, professional
  * - Material Symbols icons
@@ -339,7 +339,7 @@ export class SaasAuditDashboard extends LitElement {
         if (this.actionFilter) params.set('action', this.actionFilter);
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
 
-        const res = await fetch(`/api/v2/saas/audit?${params}`, { headers: this.getAuthHeaders() });
+        const res = await fetch(`/api/v2/aaas/audit?${params}`, { headers: this.getAuthHeaders() });
         if (res.ok) {
             const data = await res.json();
             this.logs = data.items || [];
@@ -348,7 +348,7 @@ export class SaasAuditDashboard extends LitElement {
     }
 
     private async fetchStats() {
-        const res = await fetch('/api/v2/saas/audit/stats', { headers: this.getAuthHeaders() });
+        const res = await fetch('/api/v2/aaas/audit/stats', { headers: this.getAuthHeaders() });
         if (res.ok) {
             this.stats = await res.json();
         }
@@ -356,8 +356,8 @@ export class SaasAuditDashboard extends LitElement {
 
     private async fetchFilters() {
         const [actionsRes, typesRes] = await Promise.all([
-            fetch('/api/v2/saas/audit/actions', { headers: this.getAuthHeaders() }),
-            fetch('/api/v2/saas/audit/resource-types', { headers: this.getAuthHeaders() }),
+            fetch('/api/v2/aaas/audit/actions', { headers: this.getAuthHeaders() }),
+            fetch('/api/v2/aaas/audit/resource-types', { headers: this.getAuthHeaders() }),
         ]);
         if (actionsRes.ok) {
             const data = await actionsRes.json();
@@ -374,7 +374,7 @@ export class SaasAuditDashboard extends LitElement {
         if (this.actionFilter) params.set('action', this.actionFilter);
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
 
-        window.location.href = `/api/v2/saas/audit/export?${params}`;
+        window.location.href = `/api/v2/aaas/audit/export?${params}`;
     }
 
     private getActionBadgeClass(action: string): string {

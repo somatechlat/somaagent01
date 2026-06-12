@@ -882,8 +882,8 @@ export class SaasPlatformDashboard extends LitElement {
          * VIBE Rule #5: Fail Fast - no silent fallbacks
          * VIBE Rule #9: All data from real backends
          * 
-         * API: GET /api/v2/saas/dashboard/
-         * Backend: services/gateway/routers/saas.py
+         * API: GET /api/v2/aaas/dashboard/
+         * Backend: admin/aaas/api/dashboard.py
          */
         this._loading = true;
         this._error = null;
@@ -893,7 +893,7 @@ export class SaasPlatformDashboard extends LitElement {
                 metrics: PlatformMetrics;
                 topTenants: TopTenant[];
                 recentEvents: RecentEvent[];
-            }>('/saas/dashboard/');
+            }>('/aaas/dashboard/');
 
             this._metrics = response.metrics;
             this._topTenants = response.topTenants;

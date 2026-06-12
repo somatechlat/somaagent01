@@ -12,7 +12,7 @@
  * Usage:
  * <entity-manager
  *   entity="tenant"
- *   api-base="/api/v2/saas"
+ *   api-base="/api/v2/aaas"
  *   .columns=${tenantColumns}
  *   .permissions=${userPermissions}
  * />

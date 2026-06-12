@@ -65,7 +65,7 @@ export class SaasTenantsView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="tenant"
-          api-base="/api/v2/saas"
+          api-base="/api/v2/aaas"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -83,7 +83,7 @@ export class SaasUsersView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="user"
-          api-base="/api/v2/admin"
+          api-base="/api/v2/aaas/admin"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -101,7 +101,7 @@ export class SaasAgentsView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="agent"
-          api-base="/api/v2/admin"
+          api-base="/api/v2/aaas/admin"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -119,7 +119,7 @@ export class SaasFeaturesView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="feature"
-          api-base="/api/v2/platform"
+          api-base="/api/v2/aaas"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>

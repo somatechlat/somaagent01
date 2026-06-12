@@ -521,7 +521,7 @@ export class SaasTenantDashboard extends LitElement {
 
     private async _loadData() {
         try {
-            const response = await apiClient.get('/admin/dashboard/');
+            const response = await apiClient.get('/aaas/dashboard/');
             const data = response as { stats?: TenantStats; agents?: Agent[] };
             if (data.stats) this._stats = data.stats;
             if (data.agents) this._agents = data.agents;

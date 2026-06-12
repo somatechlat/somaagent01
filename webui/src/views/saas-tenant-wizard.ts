@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/saas/tenants endpoints
+ * - Uses /api/v2/aaas/tenants endpoints
  * - Real-time slug validation
  * - Per SRS-SAAS-TENANT-CREATION.md
  *
@@ -311,7 +311,7 @@ export class SaasTenantWizard extends LitElement {
 
     private async loadTiers() {
         try {
-            const res = await fetch('/api/v2/saas/tiers', { headers: this.getAuthHeaders() });
+            const res = await fetch('/api/v2/aaas/tiers', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 this.tiers = data.tiers || [];
@@ -352,7 +352,7 @@ export class SaasTenantWizard extends LitElement {
         this.slugStatus = 'checking';
         this.slugCheckTimeout = window.setTimeout(async () => {
             try {
-                const res = await fetch(`/api/v2/saas/tenants/check-slug?slug=${slug}`, { headers: this.getAuthHeaders() });
+                const res = await fetch(`/api/v2/aaas/tenants/check-slug?slug=${slug}`, { headers: this.getAuthHeaders() });
                 const data = await res.json();
                 this.slugStatus = data.available ? 'available' : 'taken';
             } catch {
@@ -397,7 +397,7 @@ export class SaasTenantWizard extends LitElement {
         this.error = null;
 
         try {
-            const res = await fetch('/api/v2/saas/tenants', {
+            const res = await fetch('/api/v2/aaas/tenants', {
                 method: 'POST',
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify({

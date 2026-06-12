@@ -364,7 +364,7 @@ export class SaasUserDetail extends LitElement {
         this.loading = true;
         try {
             const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/v2/admin/users/${this.userId}`, {
+            const res = await fetch(`/api/v2/aaas/admin/users/${this.userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -387,7 +387,7 @@ export class SaasUserDetail extends LitElement {
         if (!this.user) return;
         try {
             const token = localStorage.getItem('auth_token');
-            await fetch(`/api/v2/admin/users/${this.userId}/role`, {
+            await fetch(`/api/v2/aaas/admin/users/${this.userId}/role`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -405,7 +405,7 @@ export class SaasUserDetail extends LitElement {
         if (!confirm('Are you sure you want to suspend this user?')) return;
         try {
             const token = localStorage.getItem('auth_token');
-            await fetch(`/api/v2/admin/users/${this.userId}/suspend`, {
+            await fetch(`/api/v2/aaas/admin/users/${this.userId}/suspend`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
             });

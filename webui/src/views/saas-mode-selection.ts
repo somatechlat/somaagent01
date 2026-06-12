@@ -556,7 +556,7 @@ export class SaasModeSelection extends LitElement {
             }
 
             try {
-                const response = await apiClient.get('/saas/tenants/') as { tenants?: Tenant[] };
+                const response = await apiClient.get('/aaas/tenants/') as { tenants?: Tenant[] };
                 if (response.tenants) {
                     this._tenants = response.tenants;
                 }

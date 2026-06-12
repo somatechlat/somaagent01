@@ -423,7 +423,7 @@ export class SaasTenantSettings extends LitElement {
         this.loading = true;
         try {
             const token = localStorage.getItem('saas_auth_token');
-            const res = await fetch('/api/v2/admin/settings', {
+            const res = await fetch('/api/v2/aaas/settings', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -473,7 +473,7 @@ export class SaasTenantSettings extends LitElement {
         this.saving = true;
         try {
             const token = localStorage.getItem('saas_auth_token');
-            const res = await fetch('/api/v2/admin/settings', {
+            const res = await fetch('/api/v2/aaas/settings', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

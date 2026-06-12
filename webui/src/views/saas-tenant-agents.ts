@@ -487,7 +487,7 @@ export class SaasTenantAgents extends LitElement {
 
     private async _loadAgents() {
         try {
-            const response = await apiClient.get('/admin/agents/');
+            const response = await apiClient.get('/aaas/admin/agents/');
             const data = response as { agents?: Agent[] };
             if (data.agents) this._agents = data.agents;
         } catch {
@@ -506,7 +506,7 @@ export class SaasTenantAgents extends LitElement {
         const voiceEl = this.shadowRoot?.getElementById('voiceEnabled') as HTMLInputElement;
 
         try {
-            await apiClient.post('/admin/agents/', {
+            await apiClient.post('/aaas/admin/agents/', {
                 name: nameEl.value,
                 chat_model: modelEl.value,
                 memory_enabled: memoryEl.checked,
@@ -522,7 +522,7 @@ export class SaasTenantAgents extends LitElement {
     private async _toggleAgent(agent: Agent) {
         try {
             const action = agent.status === 'running' ? 'stop' : 'start';
-            await apiClient.post(`/admin/agents/${agent.id}/${action}/`, {});
+            await apiClient.post(`/aaas/admin/agents/${agent.id}/${action}/`, {});
             await this._loadAgents();
         } catch (error) {
             console.error('Failed to toggle agent:', error);

@@ -5,7 +5,7 @@
  * Per AGENT_TASKS.md Phase 4.7: Audit Log
  * 
  * 7-Persona Implementation:
- * - 🏗️ Django Architect: /saas/audit API integration
+ * - 🏗️ Django Architect: /aaas/audit API integration
  * - 🔒 Security Auditor: Tamper-proof log display
  * - 📈 PM: Searchable, filterable audit trail
  * - 🧪 QA Engineer: Pagination, export
@@ -291,7 +291,7 @@ export class SaasAuditLog extends LitElement {
 
     private async _loadEvents() {
         this.isLoading = true;
-        // Demo data - would fetch from /api/v2/saas/audit
+        // Demo data - would fetch from /api/v2/aaas/audit
         await new Promise(r => setTimeout(r, 300));
 
         this.events = [
@@ -361,7 +361,7 @@ export class SaasAuditLog extends LitElement {
     }
 
     private async _exportCsv() {
-        // Would call /api/v2/saas/audit/export
+        // Would call /api/v2/aaas/audit/export
         const csv = this.events.map(e =>
             `${e.timestamp},${e.actor_email},${e.action},${e.status}`
         ).join('\n');

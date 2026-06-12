@@ -452,7 +452,7 @@ export class SaasTenantUsers extends LitElement {
 
     private async _loadUsers() {
         try {
-            const response = await apiClient.get('/admin/users/');
+            const response = await apiClient.get('/aaas/admin/users/');
             const data = response as { users?: User[] };
             if (data.users) this._users = data.users;
         } catch {
@@ -471,7 +471,7 @@ export class SaasTenantUsers extends LitElement {
         const roleEl = this.shadowRoot?.getElementById('inviteRole') as HTMLSelectElement;
 
         try {
-            await apiClient.post('/admin/users/', { email: emailEl.value, role: roleEl.value });
+            await apiClient.post('/aaas/admin/users/', { email: emailEl.value, role: roleEl.value });
             this._showModal = false;
             await this._loadUsers();
         } catch (error) {

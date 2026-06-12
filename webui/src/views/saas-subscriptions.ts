@@ -698,7 +698,7 @@ export class SaasSubscriptions extends LitElement {
     private async _loadTiers() {
         this._isLoading = true;
         try {
-            const response = await apiClient.get('/saas/subscriptions/') as { tiers?: SubscriptionTier[] };
+            const response = await apiClient.get('/aaas/subscriptions/') as { tiers?: SubscriptionTier[] };
             if (response.tiers) {
                 this._tiers = response.tiers;
             }
@@ -748,9 +748,9 @@ export class SaasSubscriptions extends LitElement {
 
         try {
             if (this._editingTier) {
-                await apiClient.put(`/saas/subscriptions/${this._editingTier.id}/`, tierData);
+                await apiClient.put(`/aaas/subscriptions/${this._editingTier.id}/`, tierData);
             } else {
-                await apiClient.post('/saas/subscriptions/', tierData);
+                await apiClient.post('/aaas/subscriptions/', tierData);
             }
             await this._loadTiers();
             this._closeModal();
@@ -764,7 +764,7 @@ export class SaasSubscriptions extends LitElement {
             return;
         }
         try {
-            await apiClient.delete(`/saas/subscriptions/${tierId}/`);
+            await apiClient.delete(`/aaas/subscriptions/${tierId}/`);
             await this._loadTiers();
         } catch (error) {
             console.error('Failed to delete tier:', error);
