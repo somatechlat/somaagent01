@@ -53,6 +53,14 @@ class Agent(BaseModel):
     updated_at: str
 
 
+class AgentUpdatePayload(BaseModel):
+    """Agent settings update payload."""
+
+    name: Optional[str] = None
+    description: Optional[str] = None
+    model: Optional[str] = None
+
+
 class AgentStats(BaseModel):
     """Agent statistics."""
 
@@ -212,6 +220,24 @@ def _update_capsule(
     capsule.save()
 
 
+@sync_to_async
+@sync_to_async
+def _update_agent(
+    agent: AgentModel,
+    payload: AgentUpdatePayload,
+) -> None:
+    """Persist agent field updates."""
+    if payload.name is not None:
+        agent.name = payload.name
+    if payload.description is not None:
+        agent.description = payload.description
+    if payload.model is not None:
+        config = agent.config or {}
+        config["model"] = payload.model
+        agent.config = config
+    agent.save()
+
+
 def _reserve_slug(tenant: Tenant, base_slug: str) -> str:
     """Best-effort reservation of a unique slug within a tenant."""
     slug = base_slug
@@ -348,11 +374,16 @@ async def get_agent(request, agent_id: str) -> Agent:
 async def update_agent(
     request,
     agent_id: str,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    model: Optional[str] = None,
+    payload: AgentUpdatePayload,
 ) -> dict:
     """Update agent settings."""
+    effective_tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, effective_tenant_id)
+    if agent is None:
+        raise HttpError(404, f"Agent {agent_id} not found")
+
+    await _update_agent(agent, payload)
+
     return {
         "agent_id": agent_id,
         "updated": True,

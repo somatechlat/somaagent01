@@ -56,3 +56,4 @@ export { SaasTenantsView, SaasUsersView, SaasAgentsView, SaasFeaturesView } from
 export { SaasUserDetail } from './saas-user-detail.js';
 export { SaasTenantWizard } from './saas-tenant-wizard.js';
 export { SaasAgentCapsule } from './saas-agent-capsule.js';
+export { SaasAgentSettings } from './saas-agent-settings.js';
