@@ -27,6 +27,12 @@ export default defineConfig({
                 target: 'http://localhost:8010',
                 changeOrigin: true,
             },
+            // WebSocket chat endpoint
+            '/ws': {
+                target: 'ws://localhost:8010',
+                changeOrigin: true,
+                ws: true,
+            },
             // Legacy/Fallback (If needed, but VIBE rules say pure Django)
             '/static': {
                 target: 'http://localhost:8010',

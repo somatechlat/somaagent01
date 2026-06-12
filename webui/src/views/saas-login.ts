@@ -850,9 +850,11 @@ export class SaasLogin extends LitElement {
             }
 
             const result = await response.json();
-            localStorage.setItem('saas_auth_token', result.token);
-            localStorage.setItem('saas_user', JSON.stringify(result.user));
-            window.location.href = result.redirect_path || '/mode-select';
+            // Auth token is stored in httpOnly cookie by backend; do not cache locally.
+            if (result.user) {
+                localStorage.setItem('saas_user', JSON.stringify(result.user));
+            }
+            window.location.href = result.redirect_path || '/chat';
         } catch (err) {
             this._error = err instanceof Error ? err.message : 'Login failed';
         } finally {
@@ -864,6 +866,10 @@ export class SaasLogin extends LitElement {
         window.location.href = googleAuthService.getAuthUrl();
     }
 
+    private _handleDevLogin() {
+        // Dev-mode auth bypass is handled in main.ts; do not store fake tokens.
+        window.location.href = '/chat';
+    }
 
     private async _testConnection() {
         this._testStatus = 'pending';

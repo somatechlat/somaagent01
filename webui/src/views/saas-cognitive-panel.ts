@@ -19,7 +19,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
-import { wsClient } from '../services/websocket-client.js';
 
 interface NeuromodulatorLevel {
     name: string;
@@ -547,21 +546,9 @@ export class SaasCognitivePanel extends LitElement {
         { message: 'Sleep cycle initiated', time: '1 hour ago', icon: 'bedtime' },
     ];
 
-    private _unsubscribe?: () => void;
-
     async connectedCallback() {
         super.connectedCallback();
         await this._loadCognitiveState();
-
-        // Subscribe to real-time cognitive updates
-        this._unsubscribe = wsClient.on('cognitive.update', (data) => {
-            this._handleCognitiveUpdate(data);
-        });
-    }
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this._unsubscribe?.();
     }
 
     render() {
