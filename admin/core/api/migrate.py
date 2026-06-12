@@ -13,6 +13,7 @@ from ninja import Router
 from pydantic import BaseModel, Field
 
 from admin.common.auth import RoleRequired
+from admin.core.somabrain_client import SomaClientError
 
 router = Router(tags=["admin-migrate"])
 logger = logging.getLogger(__name__)
@@ -81,6 +82,8 @@ async def admin_migrate_export(
     from admin.agents.services.somabrain_integration import SomaBrainClient
 
     client = SomaBrainClient.get()
+    if client is None:
+        raise SomaClientError("SomaBrain not configured", status_code=503)
     result = await client.migrate_export(
         include_wm=payload.include_wm,
         wm_limit=payload.wm_limit,
@@ -111,6 +114,8 @@ async def admin_migrate_import(
     from admin.agents.services.somabrain_integration import SomaBrainClient
 
     client = SomaBrainClient.get()
+    if client is None:
+        raise SomaClientError("SomaBrain not configured", status_code=503)
     result = await client.migrate_import(
         manifest=payload.manifest,
         memories=payload.memories,

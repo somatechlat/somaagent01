@@ -303,6 +303,9 @@ class ProcessMessageUseCase:
         metadata: Dict[str, Any],
     ) -> None:
         """Store user message to memory (best effort)."""
+        if self._memory_client is None:
+            LOGGER.debug("SomaBrain not configured; skipping user memory store")
+            return
         try:
             from services.common.idempotency import generate_for_memory_payload
 
@@ -330,6 +333,9 @@ class ProcessMessageUseCase:
         metadata: Dict[str, Any],
     ) -> None:
         """Store assistant response to memory (best effort)."""
+        if self._memory_client is None:
+            LOGGER.debug("SomaBrain not configured; skipping assistant memory store")
+            return
         try:
             from services.common.idempotency import generate_for_memory_payload
 
@@ -371,21 +377,24 @@ class ProcessMessageUseCase:
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
         # Recall memory snippets via memory_client (SomaBrainClient) if available
-        try:
-            memory_results = await self._memory_client.recall(
-                query=event.get("message", ""),
-                top_k=3,
-                tenant=tenant,
-                namespace="chat_history",
-            )
-            memories = memory_results.get("memories", [])
-            for mem in memories[:3]:
-                payload = mem.get("payload", {})
-                content = payload.get("content", "")
-                if content:
-                    messages.append({"role": "system", "content": f"[Memory] {content}"})
-        except Exception:
-            LOGGER.debug("Memory recall skipped in conversation worker", exc_info=True)
+        if self._memory_client is None:
+            LOGGER.debug("SomaBrain not configured; skipping memory recall")
+        else:
+            try:
+                memory_results = await self._memory_client.recall(
+                    query=event.get("message", ""),
+                    top_k=3,
+                    tenant=tenant,
+                    namespace="chat_history",
+                )
+                memories = memory_results.get("memories", [])
+                for mem in memories[:3]:
+                    payload = mem.get("payload", {})
+                    content = payload.get("content", "")
+                    if content:
+                        messages.append({"role": "system", "content": f"[Memory] {content}"})
+            except Exception:
+                LOGGER.debug("Memory recall skipped in conversation worker", exc_info=True)
 
         # Add history
         messages.extend(history_messages)

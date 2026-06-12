@@ -98,6 +98,9 @@ class Command(BaseCommand):
 
         async def _push() -> None:
             client = await SomaBrainClient.get_async()
+            if client is None:
+                logger.info("SomaBrain not configured; nothing to sync")
+                return
             await client.remember(
                 payload=mem.payload,
                 tenant=mem.tenant_id,

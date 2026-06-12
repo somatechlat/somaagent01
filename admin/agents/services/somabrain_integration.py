@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
@@ -10,6 +11,8 @@ if TYPE_CHECKING:
 
 from admin.core.helpers.print_style import PrintStyle
 from admin.core.somabrain_client import SomaBrainClient, SomaClientError
+
+LOGGER = logging.getLogger(__name__)
 
 # Re-export for backward compatibility
 __all__ = [
@@ -30,9 +33,12 @@ async def build_context_async(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         payload: Context building payload with ``session_id`` and ``messages`` keys
 
     Returns:
-        List of context items
+        List of context items (empty when SomaBrain is not configured)
     """
     client = SomaBrainClient.get()
+    if client is None:
+        LOGGER.debug("SomaBrain not configured; returning empty context")
+        return []
     return await client.build_context(payload["session_id"], payload["messages"])
 
 
@@ -40,9 +46,12 @@ async def get_weights_async() -> Dict[str, Any]:
     """Retrieve model weights from SomaBrain.
 
     Returns:
-        Weight configuration dictionary
+        Weight configuration dictionary (empty when SomaBrain is not configured)
     """
     client = SomaBrainClient.get()
+    if client is None:
+        LOGGER.debug("SomaBrain not configured; returning empty weights")
+        return {}
     return await client.get_weights()
 
 
@@ -53,9 +62,12 @@ async def publish_reward_async(payload: Dict[str, Any]) -> bool:
         payload: Reward payload with ``session_id``, ``signal`` and ``value`` keys
 
     Returns:
-        Reward acknowledgment
+        Reward acknowledgment (False when SomaBrain is not configured)
     """
     client = SomaBrainClient.get()
+    if client is None:
+        LOGGER.debug("SomaBrain not configured; skipping reward publish")
+        return False
     return await client.publish_reward(
         payload["session_id"], payload["signal"], payload["value"], payload.get("meta")
     )
@@ -85,12 +97,21 @@ def clamp_neuromodulator(name: str, value: float) -> float:
     return max(min_val, min(max_val, value))
 
 
+def _get_agent_soma_client(agent: "Agent") -> Optional[SomaBrainClient]:
+    """Return the agent's SomaBrain client, or None if not configured."""
+    return getattr(agent, "soma_client", None)
+
+
 async def store_memory(
     agent: "Agent",
     content: Dict[str, Any],
     memory_type: str = "interaction",
 ) -> Optional[str]:
     """Store memory in SomaBrain with proper metadata."""
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping store_memory")
+        return None
     try:
         memory_payload = {
             "value": {
@@ -109,7 +130,7 @@ async def store_memory(
             "novelty": 0.7,
             "trace_id": agent.session_id,
         }
-        result = await agent.soma_client.remember(memory_payload)
+        result = await soma_client.remember(memory_payload)
         coordinate = result.get("coordinate")
         if coordinate:
             PrintStyle(font_color="cyan", padding=False).print(
@@ -128,8 +149,12 @@ async def recall_memories(
     memory_type: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Recall memories from SomaBrain based on query."""
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; returning empty recall results")
+        return []
     try:
-        result = await agent.soma_client.recall(
+        result = await soma_client.recall(
             query=query,
             top_k=top_k,
             tenant=agent.tenant_id,
@@ -151,8 +176,12 @@ async def get_adaptation_state(agent: "Agent") -> Optional[Dict[str, Any]]:
     Uses GET /context/adaptation/state endpoint which returns retrieval weights,
     utility weights, history length, and learning rate.
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping get_adaptation_state")
+        return None
     try:
-        result = await agent.soma_client.get_adaptation_state(
+        result = await soma_client.get_adaptation_state(
             tenant_id=agent.tenant_id,
             persona_id=agent.persona_id,  # Accepted for compatibility, not used by SomaBrain
         )
@@ -166,8 +195,12 @@ async def get_adaptation_state(agent: "Agent") -> Optional[Dict[str, Any]]:
 
 async def get_neuromodulators(agent: "Agent") -> Optional[Dict[str, float]]:
     """Get current neuromodulator state from SomaBrain."""
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping get_neuromodulators")
+        return None
     try:
-        result = await agent.soma_client.get_neuromodulators(
+        result = await soma_client.get_neuromodulators(
             tenant_id=agent.tenant_id,
             persona_id=agent.persona_id,
         )
@@ -198,6 +231,10 @@ async def update_neuromodulators(
     Returns:
         True if update succeeded, False otherwise
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping update_neuromodulators")
+        return False
     try:
         current = agent.data.get("neuromodulators", {})
         # Apply deltas and clamp to physiological ranges
@@ -215,7 +252,7 @@ async def update_neuromodulators(
                 "acetylcholine", current.get("acetylcholine", 0.0) + acetylcholine_delta
             ),
         }
-        result = await agent.soma_client.update_neuromodulators(
+        result = await soma_client.update_neuromodulators(
             tenant_id=agent.tenant_id,
             persona_id=agent.persona_id,
             neuromodulators=new_levels,
@@ -235,9 +272,13 @@ async def initialize_persona(agent: "Agent") -> bool:
 
     Checks if persona exists via get_persona, creates via put_persona if not.
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping initialize_persona")
+        return False
     try:
         try:
-            existing = await agent.soma_client.get_persona(agent.persona_id)
+            existing = await soma_client.get_persona(agent.persona_id)
             if existing:
                 return True
         except SomaClientError:
@@ -252,7 +293,7 @@ async def initialize_persona(agent: "Agent") -> bool:
                 "profile": agent.config.profile,
             },
         }
-        await agent.soma_client.put_persona(agent.persona_id, persona_data)
+        await soma_client.put_persona(agent.persona_id, persona_data)
         return True
     except SomaClientError as e:
         PrintStyle(font_color="orange", padding=False).print(f"Failed to initialize persona: {e}")
@@ -266,6 +307,10 @@ async def track_interaction(
     success: bool = True,
 ) -> None:
     """Track an interaction for learning and adaptation."""
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping track_interaction")
+        return
     try:
         tracking_payload = {
             "interaction_type": interaction_type,
@@ -300,8 +345,12 @@ async def reset_adaptation_state(
     Returns:
         True if reset succeeded, False otherwise
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping reset_adaptation_state")
+        return False
     try:
-        result = await agent.soma_client.adaptation_reset(
+        result = await soma_client.adaptation_reset(
             tenant_id=agent.tenant_id,
             base_lr=base_lr,
             reset_history=reset_history,
@@ -336,8 +385,12 @@ async def execute_action(
     Returns:
         ActResponse dict or None on failure
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping execute_action")
+        return None
     try:
-        result = await agent.soma_client.act(
+        result = await soma_client.act(
             task=task,
             universe=universe,
             session_id=agent.session_id,
@@ -368,8 +421,12 @@ async def transition_sleep_state(
     Returns:
         True if transition succeeded, False otherwise
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping transition_sleep_state")
+        return False
     try:
-        result = await agent.soma_client.brain_sleep_mode(
+        result = await soma_client.brain_sleep_mode(
             target_state=target_state,
             ttl_seconds=ttl_seconds,
             trace_id=agent.session_id,
@@ -397,8 +454,12 @@ async def get_sleep_status(agent: "Agent") -> Optional[Dict[str, Any]]:
     Returns:
         SleepStatusResponse dict or None on failure
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping get_sleep_status")
+        return None
     try:
-        result = await agent.soma_client.sleep_status()
+        result = await soma_client.sleep_status()
         if result:
             return dict(result)
     except SomaClientError as e:
@@ -415,8 +476,12 @@ async def get_micro_diagnostics(agent: "Agent") -> Optional[Dict[str, Any]]:
     Returns:
         Diagnostic info dict or None on failure
     """
+    soma_client = _get_agent_soma_client(agent)
+    if soma_client is None:
+        LOGGER.debug("SomaBrain not configured; skipping get_micro_diagnostics")
+        return None
     try:
-        result = await agent.soma_client.micro_diag()
+        result = await soma_client.micro_diag()
         if result:
             return dict(result)
     except SomaClientError as e:

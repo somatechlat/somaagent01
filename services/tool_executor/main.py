@@ -162,7 +162,8 @@ async def main() -> None:
         await executor.start()
     finally:
         await executor.policy.close()
-        await executor.soma.close()
+        if executor.soma is not None:
+            await executor.soma.close()
 
 
 if __name__ == "__main__":

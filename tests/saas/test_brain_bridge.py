@@ -75,18 +75,35 @@ class TestSomaBrainClientConfiguration:
 
         assert client1 is client2
 
+    def test_factory_returns_none_when_disabled(self):
+        """Factory returns None when SomaBrain is not configured."""
+        from admin.core.somabrain_client import SomaBrainClient
+
+        # This test only makes sense when SomaBrain is not configured
+        if SomaBrainClient._get_base_url() is not None:
+            pytest.skip("SomaBrain is configured")
+
+        client = SomaBrainClient.get()
+        assert client is None
+
+    def test_factory_returns_configured_instance(self):
+        """Factory returns a configured instance when SOMABRAIN_URL is set."""
+        from admin.core.somabrain_client import SomaBrainClient
+
+        if SomaBrainClient._get_base_url() is None:
+            pytest.skip("SomaBrain is not configured")
+
+        client = SomaBrainClient.get()
+        assert client is not None
+        assert client.is_enabled is True
+        assert client._base_url == SomaBrainClient._get_base_url()
+
     def test_facade_availability_check(self):
-        """Verify HAS_FACADE check for direct import mode."""
+        """Verify HAS_BRIDGE check for direct import mode."""
         from admin.core import somabrain_client
 
-        # HAS_FACADE should be a boolean
-        assert isinstance(somabrain_client.HAS_FACADE, bool)
-
-        # If True, direct import is available
-        if somabrain_client.HAS_FACADE:
-            # BrainMemoryFacade should be importable
-            from soma_core.memory_client import BrainMemoryFacade
-            assert BrainMemoryFacade is not None
+        # HAS_BRIDGE should be a boolean
+        assert isinstance(somabrain_client.HAS_BRIDGE, bool)
 
 
 class TestSomaBrainDirectImport:
@@ -198,7 +215,7 @@ class TestDirectModeVerification:
         """Identify if AAAS Direct mode is active."""
         from admin.core import somabrain_client
 
-        mode = "direct" if somabrain_client.HAS_FACADE else "http"
+        mode = "direct" if somabrain_client.HAS_BRIDGE else "http"
 
         print(f"✅ SomaBrain Mode: {mode.upper()}")
 
