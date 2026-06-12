@@ -18,6 +18,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface TenantFormData {
     // Step 1: Identity
@@ -304,18 +305,10 @@ export class SaasTenantWizard extends LitElement {
         this.loadTiers();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadTiers() {
         try {
-            const res = await fetch('/api/v2/aaas/tiers', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.tiers = data.tiers || [];
-            }
+            const data = await apiClient.get<{ tiers?: SubscriptionTier[] }>('/aaas/tiers');
+            this.tiers = data.tiers || [];
         } catch (e) {
             // Use defaults
             this.tiers = [
@@ -352,8 +345,7 @@ export class SaasTenantWizard extends LitElement {
         this.slugStatus = 'checking';
         this.slugCheckTimeout = window.setTimeout(async () => {
             try {
-                const res = await fetch(`/api/v2/aaas/tenants/check-slug?slug=${slug}`, { headers: this.getAuthHeaders() });
-                const data = await res.json();
+                const data = await apiClient.get<{ available: boolean }>(`/aaas/tenants/check-slug?slug=${slug}`);
                 this.slugStatus = data.available ? 'available' : 'taken';
             } catch {
                 this.slugStatus = 'available'; // Assume available on error
@@ -397,43 +389,34 @@ export class SaasTenantWizard extends LitElement {
         this.error = null;
 
         try {
-            const res = await fetch('/api/v2/aaas/tenants', {
-                method: 'POST',
-                headers: this.getAuthHeaders(),
-                body: JSON.stringify({
-                    name: this.formData.name,
-                    slug: this.formData.slug,
-                    region: this.formData.region,
-                    compliance_frameworks: this.formData.compliance,
-                    custom_domain: this.formData.domain || null,
-                    tier_id: this.formData.tier_id,
-                    settings: {
-                        auth: {
-                            mfa_enforced: this.formData.mfa_enforced,
-                            allow_social_login: this.formData.allow_social_login,
-                            session_timeout_hours: this.formData.session_timeout_hours,
-                        },
-                        compute: {
-                            allowed_models: this.formData.allowed_models,
-                        },
-                        branding: {
-                            theme: this.formData.theme,
-                            accent_color: this.formData.accent_color,
-                        },
+            await apiClient.post('/aaas/tenants', {
+                name: this.formData.name,
+                slug: this.formData.slug,
+                region: this.formData.region,
+                compliance_frameworks: this.formData.compliance,
+                custom_domain: this.formData.domain || null,
+                tier_id: this.formData.tier_id,
+                settings: {
+                    auth: {
+                        mfa_enforced: this.formData.mfa_enforced,
+                        allow_social_login: this.formData.allow_social_login,
+                        session_timeout_hours: this.formData.session_timeout_hours,
                     },
-                    admin_email: this.formData.admin_email,
-                }),
+                    compute: {
+                        allowed_models: this.formData.allowed_models,
+                    },
+                    branding: {
+                        theme: this.formData.theme,
+                        accent_color: this.formData.accent_color,
+                    },
+                },
+                admin_email: this.formData.admin_email,
             });
 
-            if (res.ok) {
-                // Success - redirect to tenants list
-                window.location.href = '/platform/tenants';
-            } else {
-                const data = await res.json();
-                this.error = data.detail || 'Failed to create tenant';
-            }
+            // Success - redirect to tenants list
+            window.location.href = '/platform/tenants';
         } catch (e) {
-            this.error = 'Network error. Please try again.';
+            this.error = e instanceof Error ? e.message : 'Network error. Please try again.';
         } finally {
             this.creating = false;
         }

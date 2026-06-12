@@ -16,6 +16,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface RateLimit {
   key: string;
@@ -251,29 +252,18 @@ export class SaasRateLimits extends LitElement {
     this.loadRateLimits();
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   private async loadRateLimits() {
     this.loading = true;
     try {
-      const res = await fetch('/api/v2/core/infrastructure/ratelimits', { headers: this.getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        this.limits = (data.limits || []).map((l: any) => ({
-          key: l.key,
-          label: l.description || l.key,
-          limit: l.limit,
-          window_seconds: l.window_seconds,
-          policy: l.policy,
-        }));
-        this.tiers = [];
-      } else {
-        this.limits = [];
-        this.tiers = [];
-      }
+      const data = await apiClient.get<{ limits?: any[] }>('/core/infrastructure/ratelimits');
+      this.limits = (data.limits || []).map((l: any) => ({
+        key: l.key,
+        label: l.description || l.key,
+        limit: l.limit,
+        window_seconds: l.window_seconds,
+        policy: l.policy,
+      }));
+      this.tiers = [];
     } catch {
       this.limits = [];
       this.tiers = [];
@@ -305,15 +295,11 @@ export class SaasRateLimits extends LitElement {
     try {
       await Promise.all(
         this.limits.map((limit) =>
-          fetch(`/api/v2/core/infrastructure/ratelimits/${limit.key}`, {
-            method: 'PUT',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify({
-              description: limit.label,
-              limit: limit.limit,
-              window_seconds: limit.window_seconds,
-              policy: limit.policy,
-            }),
+          apiClient.put(`/core/infrastructure/ratelimits/${limit.key}`, {
+            description: limit.label,
+            limit: limit.limit,
+            window_seconds: limit.window_seconds,
+            policy: limit.policy,
           })
         )
       );

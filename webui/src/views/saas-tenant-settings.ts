@@ -17,6 +17,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-permission-guard.js';
 import '../components/saas-toggle.js';
@@ -423,27 +424,22 @@ export class SaasTenantSettings extends LitElement {
     private async _loadSettings() {
         this.loading = true;
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const listRes = await fetch('/api/v2/aaas/tenants?page=1&per_page=1', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!listRes.ok) {
-                throw new Error('Failed to load tenant list');
-            }
-            const listData = await listRes.json();
+            const listData = await apiClient.get<{ items?: Array<{ id: string }> }>('/aaas/tenants?page=1&per_page=1');
             const tenant = listData.items?.[0];
             if (!tenant) {
                 throw new Error('No tenant found');
             }
             this._tenantId = tenant.id;
 
-            const res = await fetch(`/api/v2/aaas/tenants/${tenant.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) {
-                throw new Error('Failed to load tenant details');
-            }
-            const data = await res.json();
+            const data = await apiClient.get<{
+                id: string;
+                name: string;
+                slug: string;
+                tier: string;
+                status: 'active' | 'suspended' | 'pending';
+                agents?: number;
+                users?: number;
+            }>(`/aaas/tenants/${tenant.id}`);
             this.settings = {
                 id: data.id,
                 name: data.name,
@@ -468,29 +464,19 @@ export class SaasTenantSettings extends LitElement {
         if (!this.settings || !this._tenantId) return;
         this.saving = true;
         try {
-            const token = localStorage.getItem('saas_auth_token');
             const payload = {
                 name: this.settings.name,
                 status: this.settings.status,
                 tier: this.settings.tier.slug,
             };
-            const res = await fetch(`/api/v2/aaas/tenants/${this._tenantId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
+            await apiClient.patch(`/aaas/tenants/${this._tenantId}`, payload);
 
-            if (res.ok) {
-                this.dirty = false;
-                this.dispatchEvent(new CustomEvent('show-toast', {
-                    detail: { type: 'success', message: 'Settings saved successfully' },
-                    bubbles: true,
-                    composed: true,
-                }));
-            }
+            this.dirty = false;
+            this.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { type: 'success', message: 'Settings saved successfully' },
+                bubbles: true,
+                composed: true,
+            }));
         } catch (e) {
             console.error('Failed to save:', e);
         } finally {

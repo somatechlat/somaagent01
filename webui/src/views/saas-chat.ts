@@ -1310,10 +1310,7 @@ export class SaasChat extends LitElement {
     }
 
     private _logout() {
-        // Clear all auth tokens
-        localStorage.removeItem('saas_auth_token');
-        localStorage.removeItem('saas_user');
-        localStorage.removeItem('saas_keycloak_token');
+        // Clear any session state
         sessionStorage.removeItem('saas_auth_state');
         sessionStorage.removeItem('saas_auth_nonce');
 

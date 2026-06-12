@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 // Components imported dynamically as needed
 
 // Interface Definitions based on API
@@ -232,27 +233,17 @@ export class SaasPermissions extends LitElement {
   async fetchData() {
     try {
       this.loading = true;
-      const token = localStorage.getItem('auth_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
 
       // Parallel fetch
-      const [rolesRes, permsRes] = await Promise.all([
-        fetch('/api/v2/permissions/roles', { headers }),
-        fetch('/api/v2/permissions/permissions', { headers }),
+      const [rolesData, permsData] = await Promise.all([
+        apiClient.get<{ roles: Role[] }>('/permissions/roles'),
+        apiClient.get<{ permissions: Permission[] }>('/permissions/permissions'),
       ]);
-
-      if (!rolesRes.ok || !permsRes.ok) throw new Error('Failed to fetch data');
-
-      const rolesData = await rolesRes.json();
-      const permsData = await permsRes.json();
 
       this.roles = rolesData.roles;
       this.permissions = permsData.permissions;
     } catch (err: any) {
-      this.error = err.message;
+      this.error = err.message || 'Failed to fetch data';
     } finally {
       this.loading = false;
     }
@@ -265,20 +256,10 @@ export class SaasPermissions extends LitElement {
     this.checkResult = null;
 
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch('/api/v2/permissions/check', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: this.checkUserId,
-          permission: this.checkPermission
-        })
+      const data = await apiClient.post<{ allowed: boolean; reason: string }>('/permissions/check', {
+        user_id: this.checkUserId,
+        permission: this.checkPermission
       });
-
-      const data = await res.json();
       this.checkResult = data;
     } catch (err) {
       this.checkResult = { allowed: false, reason: 'API Error' };

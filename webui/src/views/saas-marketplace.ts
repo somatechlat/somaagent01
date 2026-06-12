@@ -17,6 +17,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-permission-guard.js';
 
@@ -322,23 +323,13 @@ export class SaasMarketplace extends LitElement {
     private async _loadTemplates() {
         this.loading = true;
         try {
-            const token = localStorage.getItem('saas_auth_token');
             const params = new URLSearchParams();
             if (this.activeCategory !== 'all') params.set('category', this.activeCategory);
             if (this.searchQuery) params.set('search', this.searchQuery);
             params.set('sort', this.sortBy);
 
-            const res = await fetch(`/api/v2/platform/marketplace/templates?${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                this.templates = data.items || data.data || [];
-            } else {
-                // Fallback to demo data
-                this.templates = this._getDemoTemplates();
-            }
+            const data = await apiClient.get<{ items?: AgentTemplate[]; data?: AgentTemplate[] }>(`/platform/marketplace/templates?${params}`);
+            this.templates = data.items || data.data || [];
         } catch (e) {
             console.error('Failed to load templates:', e);
             this.templates = this._getDemoTemplates();

@@ -11,6 +11,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface ServiceHealth {
   name: string;
@@ -783,11 +784,6 @@ export class SaasInfrastructureDashboard extends LitElement {
     if (this.pollInterval) clearInterval(this.pollInterval);
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   async fetchData() {
     this.loading = true;
     await Promise.all([this.fetchHealth(), this.fetchRateLimits(), this.fetchDegradation()]);
@@ -797,11 +793,8 @@ export class SaasInfrastructureDashboard extends LitElement {
   async fetchHealth() {
     try {
       this.refreshing = true;
-      const res = await fetch('/api/v2/observability/infrastructure/health', { headers: this.getAuthHeaders() });
-      if (res.ok) {
-        this.health = await res.json();
-        this.lastRefresh = new Date();
-      }
+      this.health = await apiClient.get<InfrastructureHealth>('/observability/infrastructure/health');
+      this.lastRefresh = new Date();
     } catch (err) {
       console.error('Health fetch failed:', err);
     } finally {
@@ -811,11 +804,8 @@ export class SaasInfrastructureDashboard extends LitElement {
 
   async fetchRateLimits() {
     try {
-      const res = await fetch('/api/v2/core/infrastructure/ratelimits', { headers: this.getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        this.rateLimits = data.limits || [];
-      }
+      const data = await apiClient.get<{ limits?: RateLimitPolicy[] }>('/core/infrastructure/ratelimits');
+      this.rateLimits = data.limits || [];
     } catch (err) {
       console.error('Rate limits fetch failed:', err);
     }
@@ -823,31 +813,26 @@ export class SaasInfrastructureDashboard extends LitElement {
 
   async fetchDegradation() {
     try {
-      const [statusRes, componentsRes, historyRes] = await Promise.all([
-        fetch('/api/v2/core/infrastructure/degradation/status', { headers: this.getAuthHeaders() }),
-        fetch('/api/v2/core/infrastructure/degradation/components', { headers: this.getAuthHeaders() }),
-        fetch('/api/v2/core/infrastructure/degradation/history?limit=50', { headers: this.getAuthHeaders() }),
+      const [statusData, componentsData, historyData] = await Promise.all([
+        apiClient.get<DegradationStatus>('/core/infrastructure/degradation/status'),
+        apiClient.get<ComponentHealth[]>('/core/infrastructure/degradation/components'),
+        apiClient.get<HistoryRecord[]>('/core/infrastructure/degradation/history?limit=50'),
       ]);
-      if (statusRes.ok) {
-        this.degradation = await statusRes.json();
-      }
-      if (componentsRes.ok) {
-        this.components = await componentsRes.json();
-      }
-      if (historyRes.ok) {
-        this.history = await historyRes.json();
-      }
+      this.degradation = statusData;
+      this.components = componentsData;
+      this.history = historyData;
     } catch (err) {
       console.error('Degradation fetch failed:', err);
     }
   }
 
   async seedRateLimits() {
-    const res = await fetch('/api/v2/core/infrastructure/ratelimits/seed', {
-      method: 'POST',
-      headers: this.getAuthHeaders()
-    });
-    if (res.ok) await this.fetchRateLimits();
+    try {
+      await apiClient.post('/core/infrastructure/ratelimits/seed', {});
+      await this.fetchRateLimits();
+    } catch (err) {
+      console.error('Seed rate limits failed:', err);
+    }
   }
 
   private navigate(path: string) {

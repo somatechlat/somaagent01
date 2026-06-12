@@ -188,7 +188,7 @@ export class SaasAuthCallback extends LitElement {
 
         // Token is stored in httpOnly cookie by backend; keep only minimal user info for UI.
         if (result.user) {
-            localStorage.setItem('saas_user', JSON.stringify(result.user));
+            sessionStorage.setItem('saas_user', JSON.stringify(result.user));
         }
 
         // Clear state
@@ -227,7 +227,7 @@ export class SaasAuthCallback extends LitElement {
         const userInfo = await keycloakService.getUserInfo();
 
         if (userInfo) {
-            localStorage.setItem('saas_user', JSON.stringify({
+            sessionStorage.setItem('saas_user', JSON.stringify({
                 id: userInfo.sub,
                 username: userInfo.preferred_username,
                 email: userInfo.email,

@@ -11,6 +11,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface Integration {
     provider: string;
@@ -206,20 +207,10 @@ export class SaasIntegrationsDashboard extends LitElement {
         this.loadIntegrations();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadIntegrations() {
         this.loading = true;
         try {
-            const res = await fetch('/api/v2/aaas/integrations', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                this.integrations = await res.json();
-            } else {
-                this.integrations = this.getMockIntegrations();
-            }
+            this.integrations = await apiClient.get<Integration[]>('/aaas/integrations');
         } catch {
             this.integrations = this.getMockIntegrations();
         } finally {
@@ -240,11 +231,7 @@ export class SaasIntegrationsDashboard extends LitElement {
     private async testConnection(provider: string) {
         this.testing = provider;
         try {
-            const res = await fetch(`/api/v2/aaas/integrations/${provider}/test`, {
-                method: 'POST',
-                headers: this.getAuthHeaders(),
-            });
-            const result: TestResult = await res.json();
+            const result = await apiClient.post<TestResult>(`/aaas/integrations/${provider}/test`, {});
             this.showToast(result.success ? `${result.message} (${result.latency_ms}ms)` : result.message, result.success ? 'success' : 'error');
             this.loadIntegrations();
         } catch (e) {

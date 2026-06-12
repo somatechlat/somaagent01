@@ -547,8 +547,8 @@ export class SaasModeSelection extends LitElement {
         this._isLoading = true;
 
         try {
-            // Load user from localStorage
-            const userStr = localStorage.getItem('saas_user');
+            // Load user from sessionStorage
+            const userStr = sessionStorage.getItem('saas_user');
             if (userStr) {
                 const user = JSON.parse(userStr);
                 this._userName = user.name || 'Admin User';
@@ -607,8 +607,7 @@ export class SaasModeSelection extends LitElement {
     }
 
     private _logout() {
-        localStorage.removeItem('saas_auth_token');
-        localStorage.removeItem('saas_user');
+        sessionStorage.removeItem('saas_user');
         sessionStorage.removeItem('saas_mode');
         sessionStorage.removeItem('saas_tenant_id');
         window.location.href = '/login';

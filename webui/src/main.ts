@@ -328,8 +328,6 @@ if (app) {
         }
 
         if (path === '/logout') {
-            localStorage.removeItem('saas_auth_token');
-            localStorage.removeItem('saas_user');
             window.location.href = '/login';
             return;
         }

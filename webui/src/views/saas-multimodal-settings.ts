@@ -16,6 +16,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface MultimodalConfig {
     image_enabled: boolean;
@@ -291,21 +292,13 @@ export class SaasMultimodalSettings extends LitElement {
         this.loadConfig();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadConfig() {
         if (!this.agentId) return;
         this.loading = true;
         try {
-            const res = await fetch(`/api/v2/agents/${this.agentId}/multimodal-config`, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.config = { ...this.config, ...data.config };
-                this.quotas = data.quotas || this.quotas;
-            }
+            const data = await apiClient.get<{ config?: Partial<MultimodalConfig>; quotas?: QuotaUsage }>(`/agents/${this.agentId}/multimodal-config`);
+            this.config = { ...this.config, ...data.config };
+            this.quotas = data.quotas || this.quotas;
         } catch (e) {
             console.error('Failed to load multimodal config:', e);
         } finally {
@@ -316,15 +309,9 @@ export class SaasMultimodalSettings extends LitElement {
     private async saveConfig() {
         this.saving = true;
         try {
-            const res = await fetch(`/api/v2/agents/${this.agentId || 'current'}/multimodal-config`, {
-                method: 'PUT',
-                headers: this.getAuthHeaders(),
-                body: JSON.stringify(this.config),
-            });
-            if (res.ok) {
-                // Show success toast
-                console.log('Multimodal config saved');
-            }
+            await apiClient.put(`/agents/${this.agentId || 'current'}/multimodal-config`, this.config);
+            // Show success toast
+            console.log('Multimodal config saved');
         } catch (e) {
             console.error('Failed to save:', e);
         } finally {

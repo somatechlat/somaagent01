@@ -850,9 +850,9 @@ export class SaasLogin extends LitElement {
             }
 
             const result = await response.json();
-            // Auth token is stored in httpOnly cookie by backend; do not cache locally.
+            // Auth token is stored in httpOnly cookie by backend; user info lives in sessionStorage.
             if (result.user) {
-                localStorage.setItem('saas_user', JSON.stringify(result.user));
+                sessionStorage.setItem('saas_user', JSON.stringify(result.user));
             }
             window.location.href = result.redirect_path || '/chat';
         } catch (err) {

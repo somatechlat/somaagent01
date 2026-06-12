@@ -908,8 +908,6 @@ export class SaasPlatformDashboard extends LitElement {
     }
 
     private _logout() {
-        localStorage.removeItem('saas_auth_token');
-        localStorage.removeItem('saas_user');
         sessionStorage.removeItem('saas_mode');
         window.location.href = '/login';
     }

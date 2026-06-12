@@ -16,6 +16,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface UsageMetric {
     label: string;
@@ -216,24 +217,14 @@ export class SaasAgentMetrics extends LitElement {
         this.loadMetrics();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadMetrics() {
         this.loading = true;
         try {
             // Try to fetch from real API
-            const res = await fetch('/api/v2/observability/tenant-usage', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.usage = data.usage || [];
-                this.agents = data.agents || [];
-                this.costs = data.costs || [];
-            } else {
-                this.loadMockData();
-            }
+            const data = await apiClient.get<{ usage?: UsageMetric[]; agents?: AgentUsage[]; costs?: CostBreakdown[] }>('/observability/tenant-usage');
+            this.usage = data.usage || [];
+            this.agents = data.agents || [];
+            this.costs = data.costs || [];
         } catch {
             this.loadMockData();
         } finally {

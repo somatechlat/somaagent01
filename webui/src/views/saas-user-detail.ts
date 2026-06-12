@@ -17,6 +17,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-user-profile-card.js';
 import '../components/saas-permission-guard.js';
@@ -363,15 +364,7 @@ export class SaasUserDetail extends LitElement {
     private async _loadUser() {
         this.loading = true;
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`/api/v2/aaas/admin/users/${this.userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                this.user = data;
-            }
+            this.user = await apiClient.get<UserDetail>(`/aaas/admin/users/${this.userId}`);
         } catch (e) {
             console.error('Failed to load user:', e);
         } finally {
@@ -386,15 +379,7 @@ export class SaasUserDetail extends LitElement {
     private async _changeRole(newRole: string) {
         if (!this.user) return;
         try {
-            const token = localStorage.getItem('auth_token');
-            await fetch(`/api/v2/aaas/admin/users/${this.userId}/role`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ role: newRole }),
-            });
+            await apiClient.put(`/aaas/admin/users/${this.userId}/role`, { role: newRole });
             this._loadUser();
         } catch (e) {
             console.error('Failed to change role:', e);
@@ -404,11 +389,7 @@ export class SaasUserDetail extends LitElement {
     private async _suspendUser() {
         if (!confirm('Are you sure you want to suspend this user?')) return;
         try {
-            const token = localStorage.getItem('auth_token');
-            await fetch(`/api/v2/aaas/admin/users/${this.userId}/suspend`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
+            await apiClient.post(`/aaas/admin/users/${this.userId}/suspend`, {});
             this._loadUser();
         } catch (e) {
             console.error('Failed to suspend user:', e);

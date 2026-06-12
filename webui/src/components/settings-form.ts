@@ -20,6 +20,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 // JSON Schema field definition
 interface SchemaField {
@@ -427,20 +428,19 @@ export class SettingsForm extends LitElement {
       this.permissions.includes('*');
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   private async loadData() {
     this.loading = true;
 
     // Load schema (from URL or builtin)
     if (this.schemaUrl) {
       try {
-        const res = await fetch(this.schemaUrl, { headers: this.getAuthHeaders() });
-        if (res.ok) {
-          this.schema = await res.json();
+        if (this.schemaUrl.startsWith('/api/v2/')) {
+          this.schema = await apiClient.get<SettingsSchema>(this.schemaUrl.replace('/api/v2', ''));
+        } else {
+          const res = await fetch(this.schemaUrl, { credentials: 'include' });
+          if (res.ok) {
+            this.schema = await res.json();
+          }
         }
       } catch (err) {
         console.error(`Failed to load schema from ${this.schemaUrl}:`, err);
@@ -455,10 +455,7 @@ export class SettingsForm extends LitElement {
     // Load values
     const effectiveValuesUrl = this.valuesUrl || `/api/v2/settings/${this.entity}`;
     try {
-      const res = await fetch(effectiveValuesUrl, { headers: this.getAuthHeaders() });
-      if (res.ok) {
-        this.values = await res.json();
-      }
+      this.values = await apiClient.get<Record<string, unknown>>(effectiveValuesUrl.replace('/api/v2', ''));
     } catch (err) {
       console.error(`Failed to load values from ${effectiveValuesUrl}:`, err);
       // Initialize with defaults from schema
@@ -491,21 +488,11 @@ export class SettingsForm extends LitElement {
     const effectiveValuesUrl = this.valuesUrl || `/api/v2/settings/${this.entity}`;
 
     try {
-      const res = await fetch(effectiveValuesUrl, {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(this.values),
-      });
-
-      if (res.ok) {
-        this.successMessage = 'Settings saved successfully';
-        this.dirty = false;
-      } else {
-        const error = await res.json().catch(() => ({ detail: 'Save failed' }));
-        this.errorMessage = error.detail || 'Failed to save settings';
-      }
+      await apiClient.put(effectiveValuesUrl.replace('/api/v2', ''), this.values);
+      this.successMessage = 'Settings saved successfully';
+      this.dirty = false;
     } catch (err) {
-      this.errorMessage = 'Network error occurred';
+      this.errorMessage = err instanceof Error ? err.message : 'Network error occurred';
       console.error('Save settings error:', err);
     } finally {
       this.saving = false;

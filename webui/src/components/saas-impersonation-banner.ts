@@ -15,6 +15,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 @customElement('saas-impersonation-banner')
 export class SaasImpersonationBanner extends LitElement {
@@ -155,29 +156,20 @@ export class SaasImpersonationBanner extends LitElement {
 
     private async _endImpersonation() {
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/v2/auth/impersonate/end', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            await apiClient.post('/auth/impersonate/end', {});
 
-            if (res.ok) {
-                // Clear impersonation state
-                sessionStorage.removeItem('impersonation');
-                sessionStorage.removeItem('user_permissions');
+            // Clear impersonation state
+            sessionStorage.removeItem('impersonation');
+            sessionStorage.removeItem('user_permissions');
 
-                // Dispatch event
-                this.dispatchEvent(new CustomEvent('impersonation-ended', {
-                    bubbles: true,
-                    composed: true
-                }));
+            // Dispatch event
+            this.dispatchEvent(new CustomEvent('impersonation-ended', {
+                bubbles: true,
+                composed: true
+            }));
 
-                // Redirect back to platform admin
-                window.location.href = '/platform/tenants';
-            }
+            // Redirect back to platform admin
+            window.location.href = '/platform/tenants';
         } catch (e) {
             console.error('Failed to end impersonation:', e);
         }

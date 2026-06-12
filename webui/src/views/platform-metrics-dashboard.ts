@@ -18,6 +18,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface MetricSnapshot {
   gateway: {
@@ -357,30 +358,15 @@ export class PlatformMetricsDashboard extends LitElement {
     if (this.pollInterval) clearInterval(this.pollInterval);
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   private async fetchMetrics() {
     try {
-      const [metricsRes, slaRes] = await Promise.all([
-        fetch('/api/v2/core/observability/snapshot', { headers: this.getAuthHeaders() }),
-        fetch('/api/v2/core/observability/sla', { headers: this.getAuthHeaders() }),
+      const [metricsData, slaData] = await Promise.all([
+        apiClient.get<MetricSnapshot>('/core/observability/snapshot'),
+        apiClient.get<SLAStatus[]>('/core/observability/sla'),
       ]);
 
-      if (metricsRes.ok) {
-        this.metrics = await metricsRes.json();
-      } else {
-        // Generate mock data for demo
-        this.metrics = this.getMockMetrics();
-      }
-
-      if (slaRes.ok) {
-        this.sla = await slaRes.json();
-      } else {
-        this.sla = this.getMockSLA();
-      }
+      this.metrics = metricsData;
+      this.sla = slaData;
 
       this.lastRefresh = new Date();
     } catch (err) {

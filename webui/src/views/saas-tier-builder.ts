@@ -11,6 +11,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface TierLimits {
     agents: number;
@@ -374,21 +375,10 @@ export class SaasTierBuilder extends LitElement {
         this.loadTiers();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadTiers() {
         this.loading = true;
         try {
-            const res = await fetch('/api/v2/aaas/tiers', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                this.tiers = await res.json();
-            } else {
-                // Demo data
-                this.tiers = this.getMockTiers();
-            }
+            this.tiers = await apiClient.get<SubscriptionTier[]>('/aaas/tiers');
         } catch (e) {
             this.tiers = this.getMockTiers();
         } finally {

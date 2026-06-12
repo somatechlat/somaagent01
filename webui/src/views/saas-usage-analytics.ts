@@ -18,6 +18,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface UsageMetrics {
     tokens: {
@@ -325,23 +326,12 @@ export class SaasUsageAnalytics extends LitElement {
         this.loadUsageData();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadUsageData() {
         this.loading = true;
         try {
-            const res = await fetch(`/api/v2/aaas/billing/usage?period=${this.period}`, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.usage = data.current || this.getMockUsage();
-                this.dailyUsage = data.daily || this.getMockDaily();
-            } else {
-                this.usage = this.getMockUsage();
-                this.dailyUsage = this.getMockDaily();
-            }
+            const data = await apiClient.get<{ current?: UsageMetrics; daily?: DailyUsage[] }>(`/aaas/billing/usage?period=${this.period}`);
+            this.usage = data.current || this.getMockUsage();
+            this.dailyUsage = data.daily || this.getMockDaily();
         } catch {
             this.usage = this.getMockUsage();
             this.dailyUsage = this.getMockDaily();

@@ -15,6 +15,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-toggle.js';
 
@@ -261,32 +262,29 @@ export class SaasPersonalProfile extends LitElement {
     private async _loadProfile() {
         this.loading = true;
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const res = await fetch('/api/v2/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const data = await apiClient.get<{
+                id: string;
+                email?: string;
+                name?: string;
+                avatar_url?: string;
+            }>('/auth/me');
 
-            if (res.ok) {
-                const data = await res.json();
-                this.profile = {
-                    id: data.id,
-                    email: data.email || '',
-                    displayName: data.name || '',
-                    avatarUrl: data.avatar_url,
-                    theme: 'system',
-                    language: 'en',
-                    timezone: 'America/New_York',
-                    mfaEnabled: true,
-                    activeSessions: 1,
-                    notifications: {
-                        agentReplies: true,
-                        activitySummary: false,
-                        productUpdates: false,
-                    },
-                };
-            } else {
-                this.profile = this._getDemoProfile();
-            }
+            this.profile = {
+                id: data.id,
+                email: data.email || '',
+                displayName: data.name || '',
+                avatarUrl: data.avatar_url,
+                theme: 'system',
+                language: 'en',
+                timezone: 'America/New_York',
+                mfaEnabled: true,
+                activeSessions: 1,
+                notifications: {
+                    agentReplies: true,
+                    activitySummary: false,
+                    productUpdates: false,
+                },
+            };
         } catch (e) {
             this.profile = this._getDemoProfile();
         } finally {

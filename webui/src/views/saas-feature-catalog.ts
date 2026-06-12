@@ -16,6 +16,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface Feature {
     id: string;
@@ -250,21 +251,11 @@ export class SaasFeatureCatalog extends LitElement {
         this.loadFeatures();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadFeatures() {
         this.loading = true;
         try {
-            const res = await fetch('/api/v2/aaas/features', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.features = data.features || [];
-            } else {
-                this.features = this.getMockFeatures();
-            }
+            const data = await apiClient.get<{ features?: Feature[] }>('/aaas/features');
+            this.features = data.features || [];
         } catch {
             this.features = this.getMockFeatures();
         } finally {
@@ -288,15 +279,9 @@ export class SaasFeatureCatalog extends LitElement {
 
     private async toggleFeature(feature: Feature) {
         try {
-            const res = await fetch(`/api/v2/aaas/features/${feature.id}`, {
-                method: 'PATCH',
-                headers: this.getAuthHeaders(),
-                body: JSON.stringify({ is_enabled: !feature.is_enabled }),
-            });
-            if (res.ok) {
-                feature.is_enabled = !feature.is_enabled;
-                this.requestUpdate();
-            }
+            await apiClient.patch(`/aaas/features/${feature.id}`, { is_enabled: !feature.is_enabled });
+            feature.is_enabled = !feature.is_enabled;
+            this.requestUpdate();
         } catch (e) {
             console.error('Failed to toggle feature:', e);
         }

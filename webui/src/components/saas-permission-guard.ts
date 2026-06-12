@@ -15,6 +15,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 @customElement('saas-permission-guard')
 export class SaasPermissionGuard extends LitElement {
@@ -128,15 +129,9 @@ export class SaasPermissionGuard extends LitElement {
                 this.userPermissions = new Set(JSON.parse(cached));
             } else {
                 // Fetch from Django API
-                const token = localStorage.getItem('auth_token');
-                const res = await fetch('/api/v2/auth/permissions', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    this.userPermissions = new Set(data.permissions || []);
-                    sessionStorage.setItem('user_permissions', JSON.stringify(data.permissions));
-                }
+                const data = await apiClient.get<{ permissions: string[] }>('/auth/permissions');
+                this.userPermissions = new Set(data.permissions || []);
+                sessionStorage.setItem('user_permissions', JSON.stringify(data.permissions));
             }
 
             // Check if user has required permission

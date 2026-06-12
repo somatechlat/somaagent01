@@ -156,19 +156,15 @@ export const ACTION_PERMISSIONS: Record<string, string> = {
 // =============================================================================
 
 /**
- * Get user permissions from JWT in localStorage.
+ * Get user permissions from sessionStorage user info.
  */
 export function getUserPermissions(): string[] {
     try {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        if (!token) return [];
+        const userJson = sessionStorage.getItem('saas_user');
+        if (!userJson) return [];
 
-        // Decode JWT payload
-        const parts = token.split('.');
-        if (parts.length !== 3) return [];
-
-        const payload = JSON.parse(atob(parts[1]));
-        return payload.permissions || [];
+        const user = JSON.parse(userJson);
+        return user.permissions || [];
     } catch {
         return [];
     }
@@ -233,18 +229,15 @@ export function filterNavigationByPermissions<T extends { route: string }>(
 }
 
 /**
- * Get current user's role name from JWT.
+ * Get current user's role name from sessionStorage user info.
  */
 export function getUserRole(): string | null {
     try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return null;
+        const userJson = sessionStorage.getItem('saas_user');
+        if (!userJson) return null;
 
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-
-        const payload = JSON.parse(atob(parts[1]));
-        return payload.role || payload.role_name || null;
+        const user = JSON.parse(userJson);
+        return user.role || user.role_name || null;
     } catch {
         return null;
     }
