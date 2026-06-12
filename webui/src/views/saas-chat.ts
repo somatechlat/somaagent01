@@ -11,7 +11,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
-import { wsClient } from '../services/websocket-client.js';
+import { WebSocketClient } from '../services/websocket-client.js';
 import { apiClient } from '../services/api-client.js';
 
 export interface ChatMessage {
@@ -738,11 +738,12 @@ export class SaasChat extends LitElement {
     @state() private _activeConversationId = '';
     @state() private _wsConnected = false;
     @state() private _wsReconnecting = false;
-    @state() private _agents: { id: string; name: string; description: string }[] = [];
+    @state() private _agents: { id: string; name: string; description: string; capsule_id?: string }[] = [];
     @state() private _selectedAgentId = '';
 
     @query('.messages') private _messagesContainer!: HTMLElement;
 
+    private _wsClient: WebSocketClient | null = null;
     private _unsubscribe?: () => void;
 
     private _modes = [
@@ -762,39 +763,6 @@ export class SaasChat extends LitElement {
 
         await this._loadConversations();
 
-        // Subscribe to WebSocket events
-        this._unsubscribe = wsClient.on('chat.message', (data) => {
-            this._handleIncomingMessage(data as ChatMessage);
-        });
-
-        wsClient.on('chat.delta', (data: unknown) => {
-            this._handleStreamDelta(data as { delta?: string; content?: string });
-        });
-
-        wsClient.on('chat.done', (data: unknown) => {
-            this._handleStreamDone(data as { content?: string; confidence?: number });
-        });
-
-        // WebSocket connection status handlers
-        // Per design.md Section 11.7 - WebSocket Reconnection
-        wsClient.on('connected', () => {
-            this._wsConnected = true;
-            this._wsReconnecting = false;
-            console.log('[SaasChat] WebSocket connected');
-        });
-
-        wsClient.on('disconnected', () => {
-            this._wsConnected = false;
-            this._wsReconnecting = true;
-            console.log('[SaasChat] WebSocket disconnected, reconnecting...');
-        });
-
-        wsClient.on('error', () => {
-            this._wsReconnecting = true;
-        });
-
-        wsClient.connect();
-
         // Close dropdown on outside click
         document.addEventListener('click', this._handleOutsideClick);
     }
@@ -805,19 +773,74 @@ export class SaasChat extends LitElement {
      */
     private async _loadAgents(): Promise<void> {
         try {
-            const response = await apiClient.get('/agents');
-            if ((response as Response).ok) {
-                const data = await (response as Response).json();
-                this._agents = data.agents || [];
+            const data = await apiClient.get<{ agents: { agent_id: string; name: string; description: string; capsule_id?: string }[]; total: number }>('/agents');
+            const agents = (data.agents || []).map((agent) => ({
+                id: agent.agent_id,
+                name: agent.name,
+                description: agent.description,
+                capsule_id: agent.capsule_id,
+            }));
+            this._agents = agents;
 
-                // Auto-select if single agent per design.md Section 7.3
-                if (this._agents.length === 1) {
-                    this._selectedAgentId = this._agents[0].id;
-                }
+            // Prefer agent from ?agent= query param
+            const params = new URLSearchParams(window.location.search);
+            const queryAgentId = params.get('agent');
+            if (queryAgentId && agents.some(a => a.id === queryAgentId)) {
+                this._selectedAgentId = queryAgentId;
+            } else if (agents.length === 1) {
+                this._selectedAgentId = agents[0].id;
+            }
+
+            if (this._selectedAgentId) {
+                this._connectWebSocket();
             }
         } catch (error) {
             console.error('[SaasChat] Failed to load agents:', error);
         }
+    }
+
+    /**
+     * Connect WebSocket for the currently selected agent using its capsule_id.
+     */
+    private _connectWebSocket(): void {
+        // Disconnect existing
+        if (this._wsClient) {
+            this._wsClient.disconnect();
+            this._wsClient = null;
+        }
+
+        const agent = this._agents.find(a => a.id === this._selectedAgentId);
+        if (!agent?.capsule_id) {
+            console.warn('[SaasChat] No capsule_id for selected agent');
+            return;
+        }
+
+        this._wsClient = new WebSocketClient({ url: `/ws/v2/chat/${agent.capsule_id}` });
+
+        this._wsClient.on('chat.message', (data) => {
+            this._handleIncomingMessage(data as ChatMessage);
+        });
+        this._wsClient.on('chat.delta', (data) => {
+            this._handleStreamDelta(data as { delta?: string; content?: string });
+        });
+        this._wsClient.on('chat.done', (data) => {
+            this._handleStreamDone(data as { content?: string; confidence?: number });
+        });
+        this._wsClient.on('connected', () => {
+            this._wsConnected = true;
+            this._wsReconnecting = false;
+            console.log('[SaasChat] WebSocket connected');
+        });
+        this._wsClient.on('disconnected', () => {
+            this._wsConnected = false;
+            this._wsReconnecting = true;
+            console.log('[SaasChat] WebSocket disconnected, reconnecting...');
+        });
+        this._wsClient.on('error', () => {
+            this._wsReconnecting = true;
+        });
+
+        this._wsClient.connect();
     }
 
     /**
@@ -853,15 +876,10 @@ export class SaasChat extends LitElement {
      */
     private async _createConversation(agentId: string): Promise<string | null> {
         try {
-            const response = await apiClient.post('/chat/conversations', {
+            const data = await apiClient.post<{ id?: string }>('/chat/conversations', {
                 agent_id: agentId,
             });
-
-            if ((response as Response).ok) {
-                const data = await (response as Response).json();
-                return data.id;
-            }
-            return null;
+            return data?.id ?? null;
         } catch (error) {
             console.error('[SaasChat] Failed to create conversation:', error);
             return null;
@@ -871,6 +889,10 @@ export class SaasChat extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         this._unsubscribe?.();
+        if (this._wsClient) {
+            this._wsClient.disconnect();
+            this._wsClient = null;
+        }
         document.removeEventListener('click', this._handleOutsideClick);
     }
 
@@ -960,7 +982,7 @@ export class SaasChat extends LitElement {
 
                 <header class="header">
                     <div class="header-left">
-                        <span class="agent-name">Support-AI</span>
+                        ${this._renderAgentSelector()}
                     </div>
 
                     <!-- Mode Selector -->
@@ -1003,18 +1025,19 @@ export class SaasChat extends LitElement {
                     <div class="input-field">
                         <textarea
                             rows="1"
-                            placeholder="Type your message..."
+                            placeholder=${this._selectedAgentId ? 'Type your message...' : 'Select an agent to start chatting'}
                             .value=${this._input}
+                            ?disabled=${!this._selectedAgentId}
                             @input=${this._handleInput}
                             @keydown=${this._handleKeydown}
                         ></textarea>
                     </div>
-                    <button class="voice-btn" title="Voice input">
+                    <button class="voice-btn" title="Voice input" ?disabled=${!this._selectedAgentId}>
                         <span class="material-symbols-outlined">mic</span>
                     </button>
-                    <button 
+                    <button
                         class="send-btn"
-                        ?disabled=${!this._input.trim() || this._isStreaming}
+                        ?disabled=${!this._input.trim() || this._isStreaming || !this._selectedAgentId}
                         @click=${this._sendMessage}
                         title="Send message"
                     >
@@ -1035,6 +1058,40 @@ export class SaasChat extends LitElement {
                 </div>
             </div>
         `;
+    }
+
+    private _renderAgentSelector() {
+        if (!this._selectedAgentId) {
+            return html`<span class="agent-name">Select an agent</span>`;
+        }
+        if (this._agents.length <= 1) {
+            const agent = this._agents.find(a => a.id === this._selectedAgentId);
+            return html`<span class="agent-name">${agent?.name ?? 'Support-AI'}</span>`;
+        }
+        return html`
+            <select
+                class="agent-name"
+                style="border: none; background: transparent; font: inherit; cursor: pointer; outline: none;"
+                @change=${this._handleAgentSelect}
+            >
+                ${this._agents.map(agent => html`
+                    <option value=${agent.id} ?selected=${agent.id === this._selectedAgentId}>
+                        ${agent.name}
+                    </option>
+                `)}
+            </select>
+        `;
+    }
+
+    private _handleAgentSelect(e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const agentId = select.value;
+        if (agentId && agentId !== this._selectedAgentId) {
+            this._selectedAgentId = agentId;
+            this._activeConversationId = '';
+            this._messages = [];
+            this._connectWebSocket();
+        }
     }
 
     private _renderMessage(msg: ChatMessage) {
@@ -1100,7 +1157,12 @@ export class SaasChat extends LitElement {
 
     private async _sendMessage() {
         const content = this._input.trim();
-        if (!content || this._isStreaming) return;
+        if (!content || this._isStreaming || !this._selectedAgentId) {
+            if (!this._selectedAgentId) {
+                console.warn('[SaasChat] No agent selected');
+            }
+            return;
+        }
 
         const wsReady = await this._ensureWebSocket();
         if (!wsReady) {
@@ -1142,10 +1204,9 @@ export class SaasChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
 
         try {
-            wsClient.send({
+            this._wsClient?.send({
                 type: 'chat.message',
                 conversation_id: conversationId,
-                agent_id: this._selectedAgentId || undefined,
                 content,
                 mode: this._currentMode,
             });
@@ -1156,14 +1217,17 @@ export class SaasChat extends LitElement {
     }
 
     private async _ensureWebSocket(): Promise<boolean> {
-        if (wsClient.connected) {
+        if (!this._wsClient) {
+            return false;
+        }
+        if (this._wsClient.connected) {
             return true;
         }
 
-        wsClient.connect();
+        this._wsClient.connect();
 
         return new Promise(resolve => {
-            const unsubscribe = wsClient.on('connected', () => {
+            const unsubscribe = this._wsClient!.on('connected', () => {
                 unsubscribe();
                 resolve(true);
             });

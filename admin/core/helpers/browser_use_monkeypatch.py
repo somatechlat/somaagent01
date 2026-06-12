@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def apply() -> None:
     """Apply browser-use compatibility patches.
 
-    Raises:
-        RuntimeError: Patches are not yet implemented.
+    Currently a no-op while browser-use integration is pending.
+    Logs at debug level so callers can verify the patch hook ran.
     """
-    raise RuntimeError("browser-use monkeypatch is not implemented")
+    logger.debug("browser-use monkeypatch is a no-op; skipping")

@@ -186,9 +186,10 @@ export class SaasAuthCallback extends LitElement {
         // Exchange code via backend (keeps client_secret secure)
         const result = await googleAuthService.exchangeCode(callback.code);
 
-        // Store token and user info
-        localStorage.setItem('saas_auth_token', result.access_token);
-        localStorage.setItem('saas_user', JSON.stringify(result.user));
+        // Token is stored in httpOnly cookie by backend; keep only minimal user info for UI.
+        if (result.user) {
+            localStorage.setItem('saas_user', JSON.stringify(result.user));
+        }
 
         // Clear state
         googleAuthService.clearState();

@@ -14,11 +14,18 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from django.utils import timezone
+from asgiref.sync import sync_to_async
+from django.conf import settings
+from django.db import IntegrityError, transaction
+from django.utils.text import slugify
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
+from admin.aaas.models.agents import Agent as AgentModel
+from admin.aaas.models.tenants import Tenant
 from admin.common.auth import AuthBearer
+from admin.core.models.core import Capsule
 
 router = Router(tags=["agents"])
 logger = logging.getLogger(__name__)
@@ -41,6 +48,7 @@ class Agent(BaseModel):
     personality: dict
     tools: list[str]
     memory_config: dict
+    capsule_id: Optional[str] = None
     created_at: str
     updated_at: str
 
@@ -65,6 +73,129 @@ class AgentDeployment(BaseModel):
 
 
 # =============================================================================
+# HELPERS
+# =============================================================================
+
+
+def _resolve_tenant_id(request, tenant_id: Optional[str]) -> str:
+    """Resolve effective tenant ID from auth, query param, or settings."""
+    auth_tenant = None
+    if hasattr(request, "auth") and request.auth is not None:
+        auth_tenant = getattr(request.auth, "tenant_id", None)
+    if auth_tenant:
+        return auth_tenant
+    if tenant_id:
+        return tenant_id
+    default_tenant = getattr(settings, "AAAS_DEFAULT_TENANT_ID", None)
+    if default_tenant:
+        return str(default_tenant)
+    raise HttpError(400, "tenant_id is required")
+
+
+def _map_agent_to_schema(agent: AgentModel) -> Agent:
+    """Map an Agent ORM instance to the Agent schema."""
+    config = agent.config or {}
+    return Agent(
+        agent_id=str(agent.id),
+        name=agent.name,
+        description=agent.description,
+        tenant_id=str(agent.tenant_id),
+        status=agent.status,
+        model=config.get("model", "gpt-4"),
+        personality=config.get("personality", {}),
+        tools=config.get("tools", []),
+        memory_config=config.get("memory", {}),
+        capsule_id=str(agent.primary_capsule_id) if agent.primary_capsule_id else None,
+        created_at=agent.created_at.isoformat(),
+        updated_at=agent.updated_at.isoformat(),
+    )
+
+
+@sync_to_async
+def _list_agents(
+    tenant_id: str,
+    status: Optional[str],
+    limit: int,
+) -> tuple[list[AgentModel], int]:
+    """Query agents for the given tenant and return page + total count."""
+    qs = AgentModel.objects.filter(tenant_id=tenant_id)
+    if status:
+        qs = qs.filter(status=status)
+    total = qs.count()
+    page_qs = qs.select_related("tenant").order_by("-created_at")[:limit]
+    agents = list(page_qs)
+    return agents, total
+
+
+@sync_to_async
+def _get_agent_by_id(agent_id: str, tenant_id: str) -> AgentModel | None:
+    """Fetch a single agent by ID and tenant."""
+    try:
+        return AgentModel.objects.select_related("tenant").get(id=agent_id, tenant_id=tenant_id)
+    except AgentModel.DoesNotExist:
+        return None
+
+
+@sync_to_async
+def _get_tenant(tenant_id: str) -> Tenant | None:
+    """Fetch a tenant by ID."""
+    try:
+        return Tenant.objects.get(id=tenant_id)
+    except Tenant.DoesNotExist:
+        return None
+
+
+def _reserve_slug(tenant: Tenant, base_slug: str) -> str:
+    """Best-effort reservation of a unique slug within a tenant."""
+    slug = base_slug
+    counter = 1
+    while AgentModel.objects.filter(tenant=tenant, slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    return slug
+
+
+@sync_to_async
+def _create_agent_and_capsule(
+    tenant: Tenant,
+    name: str,
+    description: Optional[str],
+    model: str,
+) -> AgentModel:
+    """Create a Capsule and Agent atomically with slug-collision retries."""
+    base_slug = slugify(name) or "agent"
+    last_error: Optional[Exception] = None
+
+    for attempt in range(5):
+        slug = _reserve_slug(tenant, base_slug)
+        try:
+            with transaction.atomic():
+                capsule = Capsule.objects.create(
+                    tenant=tenant,
+                    name=name,
+                    description=description or "",
+                    status=Capsule.STATUS_ACTIVE,
+                    system_prompt="You are a helpful assistant.",
+                )
+                agent = AgentModel.objects.create(
+                    tenant=tenant,
+                    name=name,
+                    slug=slug,
+                    description=description or "",
+                    status="draft",
+                    config={"model": model},
+                    primary_capsule=capsule,
+                )
+            return agent
+        except IntegrityError as exc:
+            last_error = exc
+            # Collision likely on the unique (tenant, slug) constraint; retry.
+            continue
+
+    raise HttpError(409, f"Slug conflict after retries: {last_error}")
+
+
+# =============================================================================
 # ENDPOINTS - Agent CRUD
 # =============================================================================
 
@@ -84,9 +215,12 @@ async def list_agents(
 
     PM: Agent catalog.
     """
+    effective_tenant_id = _resolve_tenant_id(request, tenant_id)
+    limit = min(max(limit, 1), 200)
+    agents, total = await _list_agents(effective_tenant_id, status, limit)
     return {
-        "agents": [],
-        "total": 0,
+        "agents": [_map_agent_to_schema(agent) for agent in agents],
+        "total": total,
     }
 
 
@@ -107,23 +241,21 @@ async def create_agent(
 
     PhD Dev: Agent instantiation.
     """
-    agent_id = str(uuid4())
+    effective_tenant_id = _resolve_tenant_id(request, tenant_id)
+    tenant = await _get_tenant(effective_tenant_id)
+    if tenant is None:
+        raise HttpError(400, "Invalid tenant")
 
-    logger.info('Agent created: %s (%s)', name, agent_id)
-
-    return Agent(
-        agent_id=agent_id,
+    agent = await _create_agent_and_capsule(
+        tenant=tenant,
         name=name,
         description=description,
-        tenant_id=tenant_id,
-        status="draft",
         model=model,
-        personality={},
-        tools=[],
-        memory_config={"type": "conversation", "retention_days": 30},
-        created_at=timezone.now().isoformat(),
-        updated_at=timezone.now().isoformat(),
     )
+
+    logger.info('Agent created: %s (%s)', name, agent.id)
+
+    return _map_agent_to_schema(agent)
 
 
 @router.get(
@@ -134,18 +266,11 @@ async def create_agent(
 )
 async def get_agent(request, agent_id: str) -> Agent:
     """Get agent details."""
-    return Agent(
-        agent_id=agent_id,
-        name="Example Agent",
-        tenant_id="tenant-1",
-        status="active",
-        model="gpt-4",
-        personality={},
-        tools=[],
-        memory_config={},
-        created_at=timezone.now().isoformat(),
-        updated_at=timezone.now().isoformat(),
-    )
+    effective_tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, effective_tenant_id)
+    if agent is None:
+        raise HttpError(404, f"Agent {agent_id} not found")
+    return _map_agent_to_schema(agent)
 
 
 @router.patch(
