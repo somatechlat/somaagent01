@@ -413,27 +413,31 @@ async def send_message(
 
     user = get_current_user(request)
     user_id = user.sub
-
-    @sync_to_async
-    def _get_conversation():
-        try:
-            return Conversation.objects.get(id=conversation_id)
-        except Conversation.DoesNotExist:
-            return None
-
-    conv = await _get_conversation()
-    if not conv:
-        raise NotFoundError("conversation", conversation_id)
-
-    agent_id = str(conv.agent_id)
     tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
 
     orchestrator = await get_chat_orchestrator()
 
+    conv = await orchestrator.get_conversation(conversation_id, user_id)
+    if not conv:
+        raise NotFoundError("conversation", conversation_id)
+
+    agent_id = str(conv.agent_id)
+
+    # Load capsule for the orchestrator pipeline
+    from admin.core.models import Capsule
+
+    @sync_to_async
+    def _get_capsule():
+        return Capsule.objects.filter(id=agent_id).first()
+
+    capsule = await _get_capsule()
+    if not capsule:
+        raise ServiceError("Agent capsule not found")
+
     # Sync mode: run full 12-phase pipeline and return complete response
     if not payload.stream:
         turn = ChatTurn(
-            capsule_id=agent_id,
+            capsule=capsule,
             user_id=user_id,
             tenant_id=tenant_id or "",
             user_message=payload.content,

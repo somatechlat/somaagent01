@@ -63,8 +63,12 @@ async def check_rate_limit(
     except RateLimitError:
         raise
     except Exception as e:
-        # Fail open - don't block requests if rate limiter fails
-        logger.error('Rate limiter error (failing open): %s', e)
+        # Fail closed on rate limiter errors
+        logger.error('Rate limiter error (failing closed): %s', e)
+        raise RateLimitError(
+            message="Service temporarily unavailable. Please try again later.",
+            retry_after=60,
+        )
 
 
 def rate_limit(

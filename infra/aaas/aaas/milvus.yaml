@@ -6,11 +6,13 @@ etcd:
   endpoints: somastack_etcd:2379
 
 # MinIO configuration - REQUIRED for standalone mode
+# SECURITY: These MUST be overridden via environment or secret injection.
+# Never commit real credentials to this file.
 minio:
   address: somastack_minio
   port: 9000
-  accessKeyID: minioadmin
-  secretAccessKey: minioadmin
+  accessKeyID: ${MINIO_ACCESS_KEY:-<REQUIRED>}
+  secretAccessKey: ${MINIO_SECRET_KEY:-<REQUIRED>}
   bucketName: a-bucket
   useSSL: false
   rootPath: files

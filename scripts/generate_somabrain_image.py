@@ -4,11 +4,14 @@ Generate SOMABRAIN Cognitive State Visualization
 Real neuromodulator data rendered as a dashboard image.
 """
 
+import logging
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 OUTDIR = Path(__file__).parent.parent / "docs" / "deployment" / "images"
 OUTDIR.mkdir(parents=True, exist_ok=True)

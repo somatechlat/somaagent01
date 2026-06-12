@@ -361,7 +361,7 @@ Not applicable.
 | REQ-010 | Pure Python settings derivation | Knobs spec | Derivation functions | `admin/core/chat_orchestrator.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-011 | Five-lane context assembly | Context SRS | Context builder | `admin/core/context/builder.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-012 | Lane allocation from learned or defaults | Context SRS | Lane allocator | `admin/core/context/lanes.py` | `tests/agent_chat/test_full_chat_flow.py` |
-| REQ-013 | SomaBrain recall with circuit breaker | Memory SRS | Brain bridge | `services/common/brain_bridge.py` | `tests/agent_chat/test_full_chat_flow.py` |
+| REQ-013 | SomaBrain recall with circuit breaker | Memory SRS | Brain bridge | `aaas/brain.py`, `admin/core/somabrain_client.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-014 | Empty memory fallback | Resilience spec | Degradation service | `services/common/degradation_monitor.py` | `tests/saas/test_chat_flow_e2e.py` |
 | REQ-015 | LLM invocation with circuit breaker | Resilience spec | Circuit breaker | `services/common/circuit_breaker.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-016 | Fallback chains per use case | Resilience spec | Degradation monitor | `services/common/degradation_monitor.py` | `tests/saas/test_chat_flow_e2e.py` |
@@ -369,7 +369,7 @@ Not applicable.
 | REQ-018 | Turn failure on chain exhaustion | Resilience spec | Error handler | `admin/core/chat_orchestrator.py` | `tests/saas/test_chat_flow_e2e.py` |
 | REQ-019 | RLM execution in Phase 8 | RLM SRS | RLM engine | `tmp/rlm/rlm/core/rlm.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-020 | Per-tool circuit breakers | Tool SRS | Circuit breaker registry | `services/common/circuit_breaker.py` | `tests/agent_chat/test_full_chat_flow.py` |
-| REQ-021 | SomaBrain memorize with circuit breaker | Memory SRS | Brain bridge | `services/common/brain_bridge.py` | `tests/agent_chat/test_full_chat_flow.py` |
+| REQ-021 | SomaBrain memorize with circuit breaker | Memory SRS | Brain bridge | `aaas/brain.py`, `admin/core/somabrain_client.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-022 | Skip memorization on failure | Resilience spec | Degradation service | `services/common/degradation_monitor.py` | `tests/saas/test_chat_flow_e2e.py` |
 | REQ-023 | Async Kafka event emission | Observability spec | Event bus | `services/common/event_bus.py` | `tests/agent_chat/test_full_chat_flow.py` |
 | REQ-024 | Local queue on Kafka failure | Resilience spec | DLQ store | `services/common/dlq.py` | `tests/saas/test_chat_flow_e2e.py` |

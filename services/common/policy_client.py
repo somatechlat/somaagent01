@@ -36,15 +36,26 @@ class PolicyClient:
     ) -> None:
         """Initialize the instance."""
 
-        config = os.environ
-        default_base_url = getattr(
-            getattr(config, "external", None), "opa_url", None
-        ) or os.environ.get("SA01_POLICY_URL") or os.environ.get("SA01_OPA_URL")
-        if not base_url and not default_base_url:
-            raise ValueError("SA01_POLICY_URL is required. No hardcoded defaults per VIBE rules.")
-        self.base_url = base_url or default_base_url
+        default_base_url = (
+            base_url
+            or os.environ.get("SA01_POLICY_URL")
+            or os.environ.get("SA01_OPA_URL")
+        )
+        if not default_base_url:
+            raise ValueError(
+                "SA01_POLICY_URL or SA01_OPA_URL is required. No hardcoded defaults per VIBE rules."
+            )
+        # Robust URL handling: strip trailing /v1/data/soma or /v1/data/soma/allow
+        # so we don't double-append the data path when env var includes it.
+        _base = default_base_url.rstrip("/")
+        if _base.endswith("/v1/data/soma/allow"):
+            _base = _base[: -len("/v1/data/soma/allow")]
+        elif _base.endswith("/v1/data/soma"):
+            _base = _base[: -len("/v1/data/soma")]
+        self.base_url = _base
         self.data_path = (
-            os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"
+            os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow")
+            or "/v1/data/soma/allow"
         )
         self._client = httpx.AsyncClient(timeout=10.0)
         self.cache_ttl = float(os.environ.get("SA01_POLICY_CACHE_TTL", "2") or "2")
@@ -128,3 +139,30 @@ class PolicyClient:
         if isinstance(value, list):
             return tuple(self._freeze(v) for v in value)
         return value
+
+
+# =============================================================================
+# SINGLETON INSTANCE
+# =============================================================================
+
+_policy_client_instance: Optional[PolicyClient] = None
+
+
+def get_policy_client() -> PolicyClient:
+    """Get or create the singleton PolicyClient.
+
+    Usage:
+        client = get_policy_client()
+        allowed = await client.evaluate(PolicyRequest(...))
+    """
+    global _policy_client_instance
+    if _policy_client_instance is None:
+        _policy_client_instance = PolicyClient()
+    return _policy_client_instance
+
+
+__all__ = [
+    "PolicyClient",
+    "PolicyRequest",
+    "get_policy_client",
+]

@@ -9,10 +9,13 @@ Django Architect: Async-first design with caching.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from admin.core.models import Capsule
+
+from services.common.policy_client import PolicyClient, PolicyRequest, get_policy_client
+from services.common.spicedb_client import SpiceDBClient, get_spicedb_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,23 +25,36 @@ class UnifiedGate:
     Single gate for all permission checks.
 
     Combines:
-    1. OPA policy check (from capsule.body.governance.opa_policies)
-    2. SpiceDB permission (from capsule.body.governance.spicedb_relations)
+    1. OPA policy check (real HTTP call to OPA server)
+    2. SpiceDB permission (real gRPC call to SpiceDB)
     3. Capsule scope (from capsule.body.persona.tools.enabled_capabilities)
 
     Security: FAIL-CLOSED. Any failure = DENY.
-    Performance: OPA is cached in-memory. SpiceDB has fallback.
+    Performance: OPA is cached by PolicyClient. SpiceDB has connection reuse.
     """
 
     def __init__(self) -> None:
         """Initialize UnifiedGate."""
-        self._opa_cache: Dict[str, bool] = {}
+        self._policy_client: Optional[PolicyClient] = None
+        self._spicedb_client: Optional[SpiceDBClient] = None
+
+    def _get_policy_client(self) -> PolicyClient:
+        if self._policy_client is None:
+            self._policy_client = get_policy_client()
+        return self._policy_client
+
+    def _get_spicedb_client(self) -> SpiceDBClient:
+        if self._spicedb_client is None:
+            self._spicedb_client = SpiceDBClient()
+        return self._spicedb_client
 
     async def check(
         self,
         capsule: "Capsule",
         action: str,
         resource: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> bool:
         """
         Check if action is permitted for this capsule.
@@ -47,6 +63,8 @@ class UnifiedGate:
             capsule: The Capsule with governance config
             action: Action to check (e.g., "tool:execute", "memory:write")
             resource: Optional resource identifier
+            user_id: User ID for SpiceDB subject (required for real checks)
+            tenant_id: Tenant ID for OPA context
 
         Returns:
             bool: True if permitted, False otherwise
@@ -55,26 +73,32 @@ class UnifiedGate:
             FAIL-CLOSED: Any error returns False
         """
         try:
-            # Extract governance from capsule.body
-            body: Dict[str, Any] = capsule.body or {}
-            governance = body.get("governance", {})
-
-            # 1. OPA Policy Check (cached)
-            opa_allowed = self._check_opa(governance.get("opa_policies", {}), action)
+            # 1. OPA Policy Check (real HTTP call)
+            opa_allowed = await self._check_opa(
+                action=action,
+                resource=resource,
+                capsule=capsule,
+                user_id=user_id,
+                tenant_id=tenant_id,
+            )
             if not opa_allowed:
                 logger.debug("OPA denied action=%s for capsule=%s", action, capsule.id)
                 return False
 
-            # 2. SpiceDB Check (with fallback to capsule.governance)
+            # 2. SpiceDB Check (real gRPC call)
             spicedb_allowed = await self._check_spicedb(
-                governance.get("spicedb_relations", {}),
-                action,
+                action=action,
+                resource=resource,
+                capsule=capsule,
+                user_id=user_id,
+                tenant_id=tenant_id,
             )
             if not spicedb_allowed:
                 logger.debug("SpiceDB denied action=%s for capsule=%s", action, capsule.id)
                 return False
 
             # 3. Capsule Scope Check
+            body: Dict[str, Any] = capsule.body or {}
             persona = body.get("persona", {})
             tools_config = persona.get("tools", {})
             scope_allowed = self._check_scope(
@@ -103,67 +127,84 @@ class UnifiedGate:
             )
             return False
 
-    def _check_opa(self, opa_policies: Dict[str, Any], action: str) -> bool:
+    async def _check_opa(
+        self,
+        action: str,
+        resource: str | None,
+        capsule: "Capsule",
+        user_id: str | None,
+        tenant_id: str | None,
+    ) -> bool:
         """
-        Check OPA policy from capsule governance.
+        Check OPA policy via real HTTP call to OPA server.
 
-        VIBE SECURITY: FAIL-CLOSED. No policy defined = DENY.
-        Cache uses hash of policies dict content (not object id) for cross-worker safety.
+        VIBE SECURITY: FAIL-CLOSED. Any error = DENY.
         """
-        # Cache key using hash of policies content — safe across workers/processes
         try:
-            cache_key = f"{hash(tuple(sorted(opa_policies.items())))}:{action}"
-        except TypeError:
-            # Fallback for nested dicts
-            cache_key = f"{hash(str(opa_policies))}:{action}"
-        if cache_key in self._opa_cache:
-            return self._opa_cache[cache_key]
-
-        # Parse action (e.g., "tool:execute" -> "tool_execution")
-        policy_key = action.replace(":", "_")
-
-        policy = opa_policies.get(policy_key, {})
-        if not policy:
-            # VIBE SECURITY: No policy defined = DENY (secure-by-default)
-            logger.warning("No OPA policy defined for action=%s — denying", action)
-            result = False
-        else:
-            result = policy.get("allow", False)
-
-        self._opa_cache[cache_key] = result
-        return result
+            client = self._get_policy_client()
+            request = PolicyRequest(
+                tenant=tenant_id or str(capsule.tenant_id),
+                persona_id=None,
+                action=action,
+                resource=resource or str(capsule.id),
+                context={
+                    "user_id": user_id,
+                    "capsule_id": str(capsule.id),
+                },
+            )
+            return await client.evaluate(request)
+        except Exception as exc:
+            logger.exception("OPA check failed (FAIL-CLOSED): %s", exc)
+            return False
 
     async def _check_spicedb(
         self,
-        spicedb_relations: Dict[str, Any],
         action: str,
+        resource: str | None,
+        capsule: "Capsule",
+        user_id: str | None,
+        tenant_id: str | None,
     ) -> bool:
         """
-        Check SpiceDB permission.
+        Check SpiceDB permission via real gRPC call.
 
-        VIBE SECURITY: FAIL-CLOSED. No relation defined = DENY.
+        VIBE SECURITY: FAIL-CLOSED. Missing user_id or any error = DENY.
         """
-        # Parse action for SpiceDB relation
-        relation_key = action.replace(":", "_")
-
-        # Check if relation exists and is allowed
-        relation_value = spicedb_relations.get(relation_key)
-        if relation_value is None:
-            # Try alternate key format
-            relation_value = spicedb_relations.get(f"can_{relation_key}")
-
-        if relation_value is None:
-            # VIBE SECURITY: No relation defined = DENY (secure-by-default)
-            logger.warning("No SpiceDB relation defined for action=%s — denying", action)
+        if not user_id:
+            logger.warning(
+                "SpiceDB check requires user_id (FAIL-CLOSED): action=%s", action
+            )
             return False
 
-        if isinstance(relation_value, bool):
-            return relation_value
-        if isinstance(relation_value, list):
-            # Non-empty list = allowed
-            return len(relation_value) > 0
+        try:
+            client = self._get_spicedb_client()
 
-        return False
+            # Derive SpiceDB resource type and permission from action.
+            # action format: "domain:permission" (e.g., "chat:send", "tool:execute")
+            if ":" in action:
+                domain, permission = action.split(":", 1)
+            else:
+                domain, permission = "agent", action
+
+            resource_type_map = {
+                "chat": "conversation",
+                "memory": "memory",
+                "tool": "tool",
+                "voice": "voice_session",
+                "cognitive": "cognitive_state",
+            }
+            resource_type = resource_type_map.get(domain, "agent")
+            resource_id = resource or str(capsule.id)
+
+            return await client.check_permission(
+                user_id=user_id,
+                permission=permission,
+                resource_type=resource_type,
+                resource_id=resource_id,
+            )
+        except Exception as exc:
+            logger.exception("SpiceDB check failed (FAIL-CLOSED): %s", exc)
+            return False
 
     async def check_endpoint_permission(
         self,
@@ -176,35 +217,38 @@ class UnifiedGate:
         Used by @require_permission decorator.
         FAIL-CLOSED: any error = DENY.
 
-        VIBE SECURITY: This currently requires explicit permission grants.
-        Until real SpiceDB/OPA is wired, permissions must be defined in
-        settings or the user is DENIED.
+        Calls real OPA and SpiceDB engines.
         """
+        if not user_id:
+            logger.warning("Endpoint permission check requires user_id (FAIL-CLOSED)")
+            return False
+
         try:
-            from django.conf import settings
-
-            # Get explicit endpoint permissions mapping from settings
-            endpoint_perms = getattr(settings, "ENDPOINT_PERMISSIONS", {})
-            allowed_users = endpoint_perms.get(permission, [])
-
-            # If no permission mapping exists, DENY (secure-by-default)
-            if not allowed_users:
-                logger.warning(
-                    "No endpoint permission mapping for perm=%s — denying user=%s",
-                    permission,
-                    user_id,
+            # 1. OPA check
+            client = self._get_policy_client()
+            opa_allowed = await client.evaluate(
+                PolicyRequest(
+                    tenant=tenant_id or "default",
+                    persona_id=None,
+                    action=permission,
+                    resource="endpoint",
+                    context={"user_id": user_id},
                 )
+            )
+            if not opa_allowed:
+                logger.debug("OPA denied endpoint permission=%s user=%s", permission, user_id)
                 return False
 
-            # Allow if user is in explicit allow-list or "*" (all authenticated)
-            if allowed_users == "*" or user_id in allowed_users:
-                logger.debug("Endpoint permission granted: user=%s perm=%s", user_id, permission)
-                return True
-
-            logger.warning("Endpoint permission denied: user=%s perm=%s", user_id, permission)
-            return False
+            # 2. SpiceDB check
+            sdb_client = self._get_spicedb_client()
+            return await sdb_client.check_permission(
+                user_id=user_id,
+                permission=permission,
+                resource_type="tenant",
+                resource_id=tenant_id or "default",
+            )
         except Exception as exc:
-            logger.warning("Endpoint permission error: %s", exc)
+            logger.warning("Endpoint permission error (FAIL-CLOSED): %s", exc)
             return False
 
     def _check_scope(

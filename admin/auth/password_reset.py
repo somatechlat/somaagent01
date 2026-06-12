@@ -186,7 +186,9 @@ async def confirm_password_reset(
 
         """Execute reset password."""
 
-        return True
+        # FAIL-CLOSED: Cannot reset password without validating the token
+        # against the database. Treat as failure until persistence is wired.
+        raise BadRequestError("Invalid or expired token")
 
     try:
         await _reset_password()
@@ -220,16 +222,13 @@ async def validate_reset_token(request, token: str) -> dict:
 
     @sync_to_async
     def _check_token():
-        # reset_token = PasswordResetToken.objects.filter(
-        #     token_hash=token_hash,
-        #     used=False,
-        #     revoked=False,
-        #     expires_at__gt=timezone.now(),
-        # ).first()
-        # return reset_token is not None
+        # FAIL-CLOSED: Password reset token validation requires the
+        # PasswordResetToken database model to verify token hash,
+        # expiration, and usage status.
+        # Until persistence is wired, all tokens are treated as invalid.
         """Execute check token."""
 
-        return True
+        return False
 
     is_valid = await _check_token()
 

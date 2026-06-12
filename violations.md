@@ -34,8 +34,8 @@ These require architectural decisions before implementation — code cannot be w
 
 | Risk | Location | Recommended Action |
 |------|----------|-------------------|
-| Chat pipeline duplication (3 parallel implementations) | `admin/core/chat_orchestrator.py`, `admin/chat/api/chat.py`, `admin/conversations/api.py` | Select canonical implementation, delete the other three |
-| Model router duplication | `services/common/model_router.py` vs `admin/core/model_router.py` | Consolidate into single canonical router |
+| Chat pipeline duplication (2 remaining pipelines) | `admin/core/chat_orchestrator.py` (WebSocket/REST) vs `admin/core/application/use_cases/conversation/process_message.py` (conversation worker) | Consolidate worker onto V3 orchestrator or formally split responsibilities |
+| Model router duplication | `admin/core/model_router.py` is canonical; `services/common/model_router.py` was deleted | Confirm all callers use `admin/core/model_router.py` |
 | Context builder duplication | `admin/core/context/builder.py` vs `admin/core/application/use_cases/conversation/build_context.py` | Choose one, delete other |
 | AuthZ stack overlap | Keycloak/JWT in `admin/common/auth.py`, SpiceDB client | Decide single authoritative auth path, deprecate duplicates |
 | MFA DB model missing | `admin/auth/mfa.py` | Implement `MFASetup` model with encrypted secret storage before MFA endpoints can go live |

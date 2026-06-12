@@ -17,8 +17,7 @@ import './views/index';
 // Import styles
 import './styles/tokens.css';
 
-// DEV MODE: Set to true to bypass auth during development
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // Routing logic
 const app = document.getElementById('app');
@@ -30,18 +29,6 @@ if (app) {
         const path = window.location.pathname;
         const token = localStorage.getItem('saas_auth_token');
 
-        // DEV MODE: Skip auth check
-        if (DEV_MODE) {
-            // Set fake token for dev
-            if (!token) {
-                localStorage.setItem('saas_auth_token', 'dev_token');
-                localStorage.setItem('saas_user', JSON.stringify({
-                    email: 'admin@dev.local',
-                    name: 'Dev Admin',
-                    role: 'saas_admin'
-                }));
-            }
-        }
 
         // 1. Unauthenticated -> Login (skip in dev mode)
         // Public auth routes that don't require login

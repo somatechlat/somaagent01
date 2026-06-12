@@ -1,3 +1,7 @@
+> **HISTORICAL SNAPSHOT — 2026-05-28**
+>
+> This violation audit reflects the state of the codebase on the date above. Several critical findings (e.g. `ALLOW_INSECURE_AUTH_BYPASS`, fail-open rate limiting, JSON-blob OPA/SpiceDB checks, `DEV_MODE=true`, V3 orchestrator bypass) have since been addressed in code. For the current state, see `AGENT.md` and the latest approved plan.
+
 # BRUTAL VIBE CODING RULES AUDIT — SOMA Agent 01
 
 **Auditor:** Full Code Line-by-Line Audit  

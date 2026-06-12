@@ -191,13 +191,13 @@ async def disable_mfa(request, payload: MFAVerifyRequest) -> dict:
 )
 async def use_backup_code(request, code: str) -> dict:
     """Use a backup code for recovery."""
-    # In production: validate against stored backup codes
-    # Mark code as used (one-time use only)
-
-    return {
-        "success": True,
-        "message": get_message(SuccessCode.BACKUP_CODE_ACCEPTED),
-    }
+    # FAIL-CLOSED: Backup code validation requires the MFASetup database
+    # model to verify the code against stored (hashed) backup codes.
+    # Until persistence is wired, backup codes cannot be validated.
+    raise ServiceUnavailableError(
+        "mfa",
+        "Backup code validation: secret storage not yet implemented.",
+    )
 
 
 # =============================================================================

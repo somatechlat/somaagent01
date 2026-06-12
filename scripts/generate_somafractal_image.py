@@ -4,6 +4,7 @@ Generate SOMAFRACTAL MEMORY 3D Coordinate Visualization
 Deterministic fractal coordinate space from hash-derived seeds.
 """
 
+import logging
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -11,6 +12,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import hashlib
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 OUTDIR = Path(__file__).parent.parent / "docs" / "deployment" / "images"
 OUTDIR.mkdir(parents=True, exist_ok=True)

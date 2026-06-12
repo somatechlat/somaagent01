@@ -186,17 +186,7 @@ class RedisRateLimiter:
         except Exception as e:
             LOGGER.error('Rate limit check failed: %s', e)
             # VIBE SECURITY: Fail-closed on Redis errors.
-            # Only fail-open if explicitly configured via env var.
             RATE_LIMIT_REQUESTS.labels(tenant_id, "error").inc()
-
-            fail_open = os.environ.get("RATE_LIMIT_FAIL_OPEN", "false").lower() == "true"
-            if fail_open:
-                LOGGER.warning("RATE_LIMIT_FAIL_OPEN is set — allowing request despite Redis error")
-                return RateLimitResult(
-                    allowed=True,
-                    remaining=limit,
-                    reset_at=now + window,
-                )
 
             return RateLimitResult(
                 allowed=False,

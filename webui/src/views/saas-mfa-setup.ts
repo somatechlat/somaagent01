@@ -244,14 +244,38 @@ export class SaasMfaSetup extends LitElement {
     `;
 
     @state() private step: 'intro' | 'scan' | 'verify' | 'success' = 'intro';
-    @state() private secretKey = 'JBSWY3DPEHPK3PXP';
+    @state() private secretKey = this._generateTOTPSecret();
     @state() private verificationCode = '';
     @state() private isLoading = false;
     @state() private error = '';
-    @state() private recoveryCodes = [
-        'a1b2c3d4', 'e5f6g7h8', 'i9j0k1l2', 'm3n4o5p6',
-        'q7r8s9t0', 'u1v2w3x4', 'y5z6a7b8', 'c9d0e1f2',
-    ];
+    @state() private recoveryCodes = this._generateRecoveryCodes();
+
+    private _generateTOTPSecret(): string {
+        // Generate a cryptographically random base32-encoded secret for TOTP
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        const bytes = new Uint8Array(20);
+        crypto.getRandomValues(bytes);
+        let secret = '';
+        for (let i = 0; i < bytes.length; i++) {
+            secret += chars[bytes[i] % chars.length];
+        }
+        return secret;
+    }
+
+    private _generateRecoveryCodes(): string[] {
+        const codes: string[] = [];
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (let i = 0; i < 8; i++) {
+            const bytes = new Uint8Array(8);
+            crypto.getRandomValues(bytes);
+            let code = '';
+            for (let j = 0; j < bytes.length; j++) {
+                code += chars[bytes[j] % chars.length];
+            }
+            codes.push(code);
+        }
+        return codes;
+    }
 
     private async _startSetup() {
         this.isLoading = true;

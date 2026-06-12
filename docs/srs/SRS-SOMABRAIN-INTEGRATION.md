@@ -72,7 +72,7 @@ This document specifies the requirements for integrating SomaBrain, the Layer 3 
 |----|----------|---------|----------|
 | REF-001 | SRS-CHAT-FLOW-MASTER.md | 3.0 | docs/srs/SRS-CHAT-FLOW-MASTER.md |
 | REF-002 | SRS-CAPSULE-PORTABILITY.md | 3.0 | docs/srs/SRS-CAPSULE-PORTABILITY.md |
-| REF-003 | SomaBrain Service API | 1.0 | services/common/brain_bridge.py |
+| REF-003 | SomaBrain Service API | 1.0 | `aaas/brain.py` (BrainBridge), `admin/core/somabrain_client.py` (HTTP client) |
 | REF-004 | Django Models | Current | admin/core/models/core.py |
 
 ---
@@ -239,18 +239,18 @@ None.
 
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
-| REQ-SBI-001 | recall() operation | Chat Flow Phase 4 | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_recall.py |
-| REQ-SBI-002 | recall() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_capsule_memory.py |
-| REQ-SBI-003 | memorize() operation | Chat Flow Phase 9 | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_memorize.py |
-| REQ-SBI-004 | memorize() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_capsule_memory.py |
-| REQ-SBI-005 | learn() operation | Chat Flow Phase 10 | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-006 | Lane preference update | Adaptive Learning | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-007 | Tool preference update | Adaptive Learning | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-008 | Neuromodulator update | Adaptive Learning | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-009 | Persist learned state | Capsule Persistence | admin/core/models/core.py | services/common/brain_bridge.py | tests/unit/test_capsule_save.py |
-| REQ-SBI-010 | ask() Sub-LM operation | RLM Integration | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_ask.py |
-| REQ-SBI-011 | ask() memory augmentation | RLM Integration | admin/core/chat_orchestrator.py | services/common/brain_bridge.py | tests/unit/test_brain_ask.py |
-| REQ-SBI-012 | AAAS direct import mode | Deployment Modes | config/settings_registry.py | services/common/adapters/brain_direct.py | tests/integration/test_aaas_mode.py |
+| REQ-SBI-001 | recall() operation | Chat Flow Phase 4 | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_recall.py |
+| REQ-SBI-002 | recall() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_memory.py |
+| REQ-SBI-003 | memorize() operation | Chat Flow Phase 9 | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_memorize.py |
+| REQ-SBI-004 | memorize() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_memory.py |
+| REQ-SBI-005 | learn() operation | Chat Flow Phase 10 | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-006 | Lane preference update | Adaptive Learning | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-007 | Tool preference update | Adaptive Learning | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-008 | Neuromodulator update | Adaptive Learning | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-009 | Persist learned state | Capsule Persistence | admin/core/models/core.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_save.py |
+| REQ-SBI-010 | ask() Sub-LM operation | RLM Integration | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_ask.py |
+| REQ-SBI-011 | ask() memory augmentation | RLM Integration | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_ask.py |
+| REQ-SBI-012 | AAAS direct import mode | Deployment Modes | config/settings_registry.py | aaas/brain.py | tests/integration/test_aaas_mode.py |
 | REQ-SBI-013 | Standalone HTTP client mode | Deployment Modes | config/settings_registry.py | admin/core/somabrain_client.py | tests/integration/test_standalone_mode.py |
 | REQ-SBI-014 | Deployment mode selection | Deployment Modes | config/settings_registry.py | config/settings_registry.py | tests/unit/test_settings.py |
 

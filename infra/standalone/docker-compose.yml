@@ -143,3 +143,61 @@ services:
     depends_on:
       somaagent_postgres:
         condition: service_healthy
+
+  # ===========================================================================
+  # 6. WEBUI (Lit 3.x Frontend)
+  # ===========================================================================
+  somaagent_webui:
+    container_name: somaagent_webui
+    build:
+      context: ../../webui
+      dockerfile: Dockerfile
+    ports:
+      - "20080:80"
+    networks:
+      - somaagent_net
+    depends_on:
+      - somaagent_standalone
+    restart: unless-stopped
+
+  # ===========================================================================
+  # 7. MOCK SOMABRAIN (Optional — enable with --profile mocks)
+  # ===========================================================================
+  somaagent_mock_brain:
+    container_name: somaagent_mock_brain
+    build:
+      context: ../../infra/mocks/somabrain
+      dockerfile: Dockerfile
+    ports:
+      - "20996:9696"
+    networks:
+      - somaagent_net
+    profiles:
+      - mocks
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9696/api/health/\")'" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # 8. MOCK SOMAFRACTALMEMORY (Optional — enable with --profile mocks)
+  # ===========================================================================
+  somaagent_mock_memory:
+    container_name: somaagent_mock_memory
+    build:
+      context: ../../infra/mocks/somafractalmemory
+      dockerfile: Dockerfile
+    ports:
+      - "20101:10101"
+    networks:
+      - somaagent_net
+    profiles:
+      - mocks
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:10101/api/health/\")'" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5

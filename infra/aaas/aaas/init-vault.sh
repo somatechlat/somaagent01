@@ -9,7 +9,10 @@
 set -e
 
 VAULT_ADDR=${VAULT_ADDR:-http://localhost:63982}
-VAULT_TOKEN=${VAULT_TOKEN:-soma_dev_token}
+if [ -z "${VAULT_TOKEN}" ]; then
+    echo "❌ VAULT_TOKEN is required. Set it via environment variable."
+    exit 1
+fi
 
 echo "🔒 Initializing Vault secrets..."
 echo "   VAULT_ADDR: $VAULT_ADDR"
@@ -37,22 +40,31 @@ curl -s -X POST \
     -d '{"data": {"password": ""}}' \
     "$VAULT_ADDR/v1/secret/data/soma/redis"
 
-# Postgres password
+# Postgres credentials (from environment - fail if not set)
+if [ -z "${SOMA_POSTGRES_USER}" ] || [ -z "${SOMA_POSTGRES_PASSWORD}" ]; then
+    echo "❌ SOMA_POSTGRES_USER and SOMA_POSTGRES_PASSWORD are required."
+    exit 1
+fi
 curl -s -X POST \
     -H "X-Vault-Token: $VAULT_TOKEN" \
-    -d '{"data": {"password": "soma", "user": "soma"}}' \
+    -d "{\"data\": {\"password\": \"$SOMA_POSTGRES_PASSWORD\", \"user\": \"$SOMA_POSTGRES_USER\"}}" \
     "$VAULT_ADDR/v1/secret/data/soma/postgres"
 
-# MinIO credentials
+# MinIO credentials (from environment - fail if not set)
+if [ -z "${MINIO_ACCESS_KEY}" ] || [ -z "${MINIO_SECRET_KEY}" ]; then
+    echo "❌ MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required."
+    exit 1
+fi
 curl -s -X POST \
     -H "X-Vault-Token: $VAULT_TOKEN" \
-    -d '{"data": {"access_key": "minioadmin", "secret_key": "minioadmin"}}' \
+    -d "{\"data\": {\"access_key\": \"$MINIO_ACCESS_KEY\", \"secret_key\": \"$MINIO_SECRET_KEY\"}}" \
     "$VAULT_ADDR/v1/secret/data/soma/minio"
 
-# SOMA API token
+# SOMA API token (cryptographically random)
+SOMA_API_TOKEN="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
 curl -s -X POST \
     -H "X-Vault-Token: $VAULT_TOKEN" \
-    -d '{"data": {"token": "soma_aaas_api_token_$(date +%s)"}}' \
+    -d "{\"data\": {\"token\": \"$SOMA_API_TOKEN\"}}" \
     "$VAULT_ADDR/v1/secret/data/soma/api"
 
 # Milvus token (empty for local dev)
