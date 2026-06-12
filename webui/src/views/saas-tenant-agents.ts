@@ -25,6 +25,19 @@ interface Agent {
     createdAt: string;
 }
 
+interface Quota {
+    agents_used: number;
+    agents_limit: number;
+    users_used: number;
+    users_limit: number;
+    tokens_used: number;
+    tokens_limit: number;
+    storage_used_gb: number;
+    storage_limit_gb: number;
+    can_create_agent: boolean;
+    can_invite_user: boolean;
+}
+
 @customElement('saas-tenant-agents')
 export class SaasTenantAgents extends LitElement {
     static styles = css`
@@ -124,9 +137,27 @@ export class SaasTenantAgents extends LitElement {
         .btn:hover { background: var(--saas-bg-hover, #fafafa); }
         .btn.primary { background: #1a1a1a; color: white; border-color: #1a1a1a; }
         .btn.primary:hover { background: #333; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn .material-symbols-outlined { font-size: 18px; }
 
         .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+        /* Quota Bar */
+        .quota-bar {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            background: var(--saas-bg-card, #ffffff);
+            border: 1px solid var(--saas-border-light, #e0e0e0);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .quota-item { flex: 1; }
+        .quota-label { font-size: 12px; color: var(--saas-text-muted, #999); margin-bottom: 6px; }
+        .quota-value { font-size: 18px; font-weight: 600; }
+        .quota-limit { font-size: 13px; color: var(--saas-text-secondary, #666); font-weight: 400; }
 
         /* Agent Cards Grid */
         .agents-grid {
@@ -326,6 +357,7 @@ export class SaasTenantAgents extends LitElement {
 
     @state() private _tenantName = '';
     @state() private _agents: Agent[] = [];
+    @state() private _quota: Quota | null = null;
     @state() private _showModal = false;
 
     connectedCallback() {
@@ -370,13 +402,14 @@ export class SaasTenantAgents extends LitElement {
             <main class="main">
                 <header class="header">
                     <h2 class="header-title">Agents</h2>
-                    <button class="btn primary" @click=${() => this._showModal = true}>
+                    <button class="btn primary" ?disabled=${this._quota && !this._quota.can_create_agent} @click=${() => this._showModal = true}>
                         <span class="material-symbols-outlined">add</span>
                         Create Agent
                     </button>
                 </header>
 
                 <div class="content">
+                    ${this._renderQuotaBar()}
                     <div class="agents-grid">
                         ${this._agents.map(agent => this._renderAgentCard(agent))}
                     </div>
@@ -485,17 +518,85 @@ export class SaasTenantAgents extends LitElement {
         `;
     }
 
+    private _renderQuotaBar() {
+        if (!this._quota) return '';
+        return html`
+            <div class="quota-bar">
+                <div class="quota-item">
+                    <div class="quota-label">Agents</div>
+                    <div class="quota-value">${this._quota.agents_used}<span class="quota-limit"> / ${this._quota.agents_limit}</span></div>
+                </div>
+                <div class="quota-item">
+                    <div class="quota-label">Users</div>
+                    <div class="quota-value">${this._quota.users_used}<span class="quota-limit"> / ${this._quota.users_limit}</span></div>
+                </div>
+                <div class="quota-item">
+                    <div class="quota-label">Tokens</div>
+                    <div class="quota-value">${this._formatNumber(this._quota.tokens_used)}<span class="quota-limit"> / ${this._formatNumber(this._quota.tokens_limit)}</span></div>
+                </div>
+                <div class="quota-item">
+                    <div class="quota-label">Storage</div>
+                    <div class="quota-value">${this._quota.storage_used_gb.toFixed(1)}<span class="quota-limit"> / ${this._quota.storage_limit_gb.toFixed(0)} GB</span></div>
+                </div>
+            </div>
+        `;
+    }
+
+    private _mapStatus(status: string): Agent['status'] {
+        switch (status) {
+            case 'active': return 'running';
+            case 'paused': return 'stopped';
+            case 'error': return 'error';
+            default: return 'stopped';
+        }
+    }
+
+    private _formatDate(value: string): string {
+        try {
+            const date = new Date(value);
+            return date.toLocaleDateString();
+        } catch {
+            return value;
+        }
+    }
+
+    private _formatNumber(num: number): string {
+        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+        if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+        return String(num);
+    }
+
     private async _loadAgents() {
         try {
-            const response = await apiClient.get('/aaas/admin/agents/');
-            const data = response as { agents?: Agent[] };
-            if (data.agents) this._agents = data.agents;
-        } catch {
-            this._agents = [
-                { id: '1', name: 'Support-AI', slug: 'support-ai', status: 'running', ownerName: 'Jane Smith', chatModel: 'gpt-4o', memoryEnabled: true, voiceEnabled: false, createdAt: '2 weeks ago' },
-                { id: '2', name: 'Sales-Bot', slug: 'sales-bot', status: 'stopped', ownerName: 'Bob Johnson', chatModel: 'claude-3-sonnet', memoryEnabled: true, voiceEnabled: true, createdAt: '1 month ago' },
-                { id: '3', name: 'Research-AI', slug: 'research-ai', status: 'running', ownerName: 'Alice Williams', chatModel: 'gpt-4o-mini', memoryEnabled: true, voiceEnabled: false, createdAt: '3 days ago' },
-            ];
+            const response = await apiClient.get('/aaas/admin/agents') as {
+                data?: Array<{
+                    id: string;
+                    name: string;
+                    slug: string;
+                    status: string;
+                    chat_model: string;
+                    memory_enabled: boolean;
+                    voice_enabled: boolean;
+                    created_at: string;
+                }>;
+                quota?: Quota;
+            };
+            this._agents = (response.data || []).map((a: any) => ({
+                id: String(a.id),
+                name: a.name,
+                slug: a.slug,
+                status: this._mapStatus(a.status),
+                ownerName: '',
+                chatModel: a.chat_model,
+                memoryEnabled: a.memory_enabled,
+                voiceEnabled: a.voice_enabled,
+                createdAt: this._formatDate(a.created_at),
+            }));
+            this._quota = response.quota || null;
+        } catch (error) {
+            console.error('Failed to load agents:', error);
+            this._agents = [];
+            this._quota = null;
         }
     }
 
@@ -506,7 +607,7 @@ export class SaasTenantAgents extends LitElement {
         const voiceEl = this.shadowRoot?.getElementById('voiceEnabled') as HTMLInputElement;
 
         try {
-            await apiClient.post('/aaas/admin/agents/', {
+            await apiClient.post('/aaas/admin/agents', {
                 name: nameEl.value,
                 chat_model: modelEl.value,
                 memory_enabled: memoryEl.checked,
@@ -522,7 +623,7 @@ export class SaasTenantAgents extends LitElement {
     private async _toggleAgent(agent: Agent) {
         try {
             const action = agent.status === 'running' ? 'stop' : 'start';
-            await apiClient.post(`/aaas/admin/agents/${agent.id}/${action}/`, {});
+            await apiClient.post(`/aaas/admin/agents/${agent.id}/${action}`, {});
             await this._loadAgents();
         } catch (error) {
             console.error('Failed to toggle agent:', error);
