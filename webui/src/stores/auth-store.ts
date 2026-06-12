@@ -21,7 +21,6 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { provide } from '@lit/context';
 import { apiClient } from '../services/api-client.js';
-import { wsClient } from '../services/websocket-client.js';
 
 export interface User {
     id: string;
@@ -268,7 +267,7 @@ export class SaasAuthProvider extends LitElement {
             error: null,
         };
 
-        wsClient.disconnect();
+        // Backend logout clears the httpOnly cookie; no local WebSocket state to tear down here.
 
         // Redirect to login
         window.location.href = '/login';

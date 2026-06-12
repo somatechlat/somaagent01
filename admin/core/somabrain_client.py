@@ -90,25 +90,34 @@ class SomaBrainClient:
         self._client: Optional[httpx.AsyncClient] = None
 
     @staticmethod
-    def _get_base_url() -> str:
+    def _get_base_url() -> Optional[str]:
         """Get SomaBrain URL from Django settings or environment.
 
         Implements
         Prioritizes Django settings, falls back to environment.
+        Returns None when disabled (standalone mode).
         """
 
         # Try Django settings first
         if hasattr(settings, "SOMABRAIN_URL"):
-            return str(settings.SOMABRAIN_URL)
+            url = str(settings.SOMABRAIN_URL)
+            if url:
+                return url
 
-        # Fallback to environment variable or Docker default
-        return os.environ.get("SOMABRAIN_URL", "http://host.docker.internal:30101")
+        # Fallback to environment variable
+        env_url = os.environ.get("SOMABRAIN_URL")
+        if env_url:
+            return env_url
+
+        # Disabled in standalone mode
+        return None
 
     @classmethod
     def get(cls) -> "SomaBrainClient":
         """Get or create singleton instance.
 
         Thread-safe singleton pattern for connection pooling.
+        Always returns an instance; public methods are no-ops when disabled.
         """
         if cls._instance is None:
             cls._instance = cls()
@@ -116,14 +125,20 @@ class SomaBrainClient:
 
     @classmethod
     async def get_async(cls) -> "SomaBrainClient":
-        """Get or create singleton instance (async version)."""
+        """Get or create singleton instance (async version).
+
+        Always returns an instance; public methods are no-ops when disabled.
+        """
         async with cls._lock:
             if cls._instance is None:
                 cls._instance = cls()
             return cls._instance
 
-    async def _ensure_client(self) -> httpx.AsyncClient:
+    async def _ensure_client(self) -> Optional[httpx.AsyncClient]:
         """Ensure HTTP client is initialized."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; no client instantiated")
+            return None
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
@@ -163,6 +178,10 @@ class SomaBrainClient:
             SomaClientError: On HTTP or connection errors
             CircuitBreakerError: If circuit breaker is OPEN
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping _request %s", path)
+            return {}
+
         breaker = get_circuit_breaker("somabrain_http", failure_threshold=5, reset_timeout=30)
 
         async def _do_request() -> Dict[str, Any]:
@@ -222,6 +241,10 @@ class SomaBrainClient:
 
         VIBE Rule 1: NO BULLSHIT - Real API call to somabrain /memory/remember
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping remember")
+            return {}
+
         effective_tenant = tenant_id or tenant or "default"
         payload = payload or {}
         if content is not None:
@@ -274,6 +297,9 @@ class SomaBrainClient:
         tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Delete memory by coordinate (alias for forget)."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping delete")
+            return {}
         coord_str = coordinate if isinstance(coordinate, str) else json.dumps(coordinate)
         return await self.forget(coordinate=coord_str, tenant=tenant, tenant_id=tenant_id)
 
@@ -283,6 +309,9 @@ class SomaBrainClient:
         wm_limit: int = 128,
     ) -> Dict[str, Any]:
         """Export memories for migration."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping migrate_export")
+            return {}
         return await self._request(
             "GET",
             "/admin/migrate/export",
@@ -297,6 +326,9 @@ class SomaBrainClient:
         replace: bool = False,
     ) -> Dict[str, Any]:
         """Import memories from migration."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping migrate_import")
+            return {}
         body = {
             "manifest": manifest,
             "memories": memories,
@@ -331,6 +363,10 @@ class SomaBrainClient:
         Returns:
             Response with memory results
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping recall")
+            return []
+
         effective_tenant = tenant_id or tenant
         effective_limit = limit or top_k
         body: Dict[str, Any] = {
@@ -393,6 +429,10 @@ class SomaBrainClient:
         Returns:
             Deletion confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping forget")
+            return {}
+
         effective_coordinate = coordinate if coordinate else memory_id
         effective_tenant = tenant_id or tenant
         body = {"coordinate": effective_coordinate}
@@ -416,6 +456,9 @@ class SomaBrainClient:
         Returns:
             Context evaluation response with memories and scores
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping context_evaluate")
+            return {}
         return await self._request("POST", "/v1/context/evaluate", json=request)
 
     async def get_adaptation_state(
@@ -432,6 +475,9 @@ class SomaBrainClient:
         Returns:
             Adaptation state with weights, history, learning rate
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_adaptation_state")
+            return {}
         params: Dict[str, Any] = {"tenant": tenant_id}
         if persona_id:
             params["persona"] = persona_id
@@ -454,6 +500,9 @@ class SomaBrainClient:
         Returns:
             Reset confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping adaptation_reset")
+            return {}
         body: Dict[str, Any] = {"tenant": tenant_id, "reset_history": reset_history}
         if base_lr is not None:
             body["base_lr"] = base_lr
@@ -477,6 +526,9 @@ class SomaBrainClient:
         Returns:
             Neuromodulator levels (dopamine, serotonin, etc.)
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_neuromodulators")
+            return {}
         params: Dict[str, Any] = {"tenant": tenant_id}
         if persona_id:
             params["persona"] = persona_id
@@ -498,6 +550,9 @@ class SomaBrainClient:
         Returns:
             Update confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping update_neuromodulators")
+            return {}
         body = {
             "tenant": tenant_id,
             "persona": persona_id,
@@ -518,6 +573,9 @@ class SomaBrainClient:
         Returns:
             Persona data
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_persona")
+            return {}
         return await self._request("GET", f"/personas/{persona_id}")
 
     async def delete_persona(self, persona_id: str) -> Dict[str, Any]:
@@ -529,6 +587,9 @@ class SomaBrainClient:
         Returns:
             Deletion confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping delete_persona")
+            return {}
         return await self._request("DELETE", f"/personas/{persona_id}")
 
     async def put_persona(
@@ -547,6 +608,9 @@ class SomaBrainClient:
         Returns:
             Created/updated persona
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping put_persona")
+            return {}
         req_headers = {"If-Match": etag} if etag else None
         return await self._request("PUT", f"/personas/{persona_id}", json=persona_data, headers=req_headers)
 
@@ -579,6 +643,9 @@ class SomaBrainClient:
         Returns:
             Action response with results and salience
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping act")
+            return {}
         body: Dict[str, Any] = {}
         if task is not None:
             body["task"] = task
@@ -617,6 +684,9 @@ class SomaBrainClient:
         Returns:
             Transition confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping brain_sleep_mode")
+            return {}
         valid_states = {"active", "light", "deep", "freeze"}
         if target_state not in valid_states:
             raise ValueError(f"Invalid sleep state: {target_state}. Must be one of {valid_states}")
@@ -634,6 +704,9 @@ class SomaBrainClient:
         Returns:
             Sleep status with current state and metrics
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping sleep_status")
+            return {}
         return await self._request("GET", "/brain/sleep/status")
 
     async def micro_diag(self) -> Dict[str, Any]:
@@ -642,6 +715,9 @@ class SomaBrainClient:
         Returns:
             Diagnostic information
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping micro_diag")
+            return {}
         return await self._request("GET", "/admin/micro/diag")
 
     # =========================================================================
@@ -657,6 +733,9 @@ class SomaBrainClient:
         Returns:
             Cognitive state dict
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_cognitive_state")
+            return {}
         return await self.get_adaptation_state(tenant_id=agent_id)
 
     async def update_cognitive_params(
@@ -671,6 +750,9 @@ class SomaBrainClient:
         Returns:
             Update confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping update_cognitive_params")
+            return {}
         return await self._request("POST", f"/cognitive/params/{agent_id}", json=params)
 
     async def trigger_sleep_cycle(self, agent_id: str) -> Dict[str, Any]:
@@ -682,6 +764,9 @@ class SomaBrainClient:
         Returns:
             Sleep cycle confirmation
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping trigger_sleep_cycle")
+            return {}
         return await self.brain_sleep_mode("deep", trace_id=agent_id)
 
     async def health_check(self) -> bool:
@@ -690,6 +775,9 @@ class SomaBrainClient:
         Returns:
             True if healthy, False otherwise
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping health_check")
+            return False
         try:
             result = await self._request("GET", "/health")
             return result.get("status") == "ok" or result.get("ready", False)
@@ -711,6 +799,9 @@ class SomaBrainClient:
         Returns:
             List of recent memory records
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_recent")
+            return []
         params: Dict[str, Any] = {"limit": limit}
         if tenant_id:
             params["tenant"] = tenant_id
@@ -732,6 +823,9 @@ class SomaBrainClient:
         Returns:
             Number of pending memories
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_pending_count")
+            return 0
         params: Dict[str, Any] = {}
         if tenant_id:
             params["tenant"] = tenant_id
@@ -744,6 +838,9 @@ class SomaBrainClient:
         Returns:
             Health status dict with status and optional details
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping health")
+            return {"status": "disabled"}
         try:
             return await self._request("GET", "/health")
         except SomaClientError as e:
@@ -765,6 +862,9 @@ class SomaBrainClient:
         Returns:
             Weight configuration
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping get_weights")
+            return {}
         params = {"persona": persona_id} if persona_id else None
         return await self._request("GET", "/weights", params=params)
 
@@ -782,6 +882,9 @@ class SomaBrainClient:
         Returns:
             Additional context messages to prepend/append
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping build_context")
+            return []
         body = {"session_id": session_id, "messages": messages[-10:]}
         result = await self._request("POST", "/context/build", json=body)
         if isinstance(result, list):
@@ -801,22 +904,37 @@ class SomaBrainClient:
 
     async def constitution_version(self) -> Dict[str, Any]:
         """Get current constitution version."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping constitution_version")
+            return {}
         return await self._request("GET", "/constitution/version")
 
     async def constitution_validate(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
         """Validate a constitution document."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping constitution_validate")
+            return {}
         return await self._request("POST", "/constitution/validate", json=dict(payload))
 
     async def constitution_load(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
         """Load a constitution document."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping constitution_load")
+            return {}
         return await self._request("POST", "/constitution/load", json=dict(payload))
 
     async def update_opa_policy(self) -> Dict[str, Any]:
         """Regenerate OPA policy from current constitution."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping update_opa_policy")
+            return {}
         return await self._request("POST", "/opa/policy/update")
 
     async def opa_policy(self) -> Dict[str, Any]:
         """Get current OPA policy."""
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping opa_policy")
+            return {}
         return await self._request("GET", "/opa/policy")
 
     async def context_feedback(self, **kwargs: Any) -> Dict[str, Any]:
@@ -825,6 +943,9 @@ class SomaBrainClient:
         Returns:
             Feedback response dict.
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping context_feedback")
+            return {}
         return await self._request("POST", "/context/feedback", json=dict(kwargs))
 
     async def publish_reward(
@@ -845,6 +966,9 @@ class SomaBrainClient:
         Returns:
             True if published successfully
         """
+        if not self._base_url:
+            LOGGER.debug("SomaBrain disabled; skipping publish_reward")
+            return False
         body = {
             "session_id": session_id,
             "signal": signal,
@@ -863,7 +987,7 @@ def get_somabrain_client() -> SomaBrainClient:
     """Get SomaBrain client singleton (synchronous helper).
 
     Returns:
-        SomaBrainClient instance
+        SomaBrainClient instance (public methods are no-ops when disabled).
     """
     return SomaBrainClient.get()
 

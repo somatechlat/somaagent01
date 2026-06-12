@@ -59,16 +59,8 @@ class KeycloakService {
     init(config: Partial<KeycloakConfig>) {
         this.config = { ...this.config, ...config };
 
-        // Check for stored token
-        const storedToken = localStorage.getItem('saas_keycloak_token');
-        if (storedToken) {
-            try {
-                this.token = JSON.parse(storedToken);
-                this._scheduleRefresh();
-            } catch {
-                localStorage.removeItem('saas_keycloak_token');
-            }
-        }
+        // Tokens are kept in memory only; the backend sets an httpOnly cookie for auth.
+        // Legacy localStorage tokens are cleared on logout.
     }
 
     /**
@@ -260,10 +252,8 @@ class KeycloakService {
     // Private methods
 
     private _storeToken(): void {
-        if (this.token) {
-            localStorage.setItem('saas_keycloak_token', JSON.stringify(this.token));
-            localStorage.setItem('saas_auth_token', this.token.access_token);
-        }
+        // Tokens are kept in memory only; never store JWTs in localStorage.
+        // The backend sets the httpOnly access_token cookie used by API/WebSocket.
     }
 
     private _scheduleRefresh(): void {
