@@ -514,22 +514,55 @@ export class SaasCognitivePanel extends LitElement {
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--saas-bg-hover, #fafafa);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .empty-icon .material-symbols-outlined {
+            font-size: 28px;
+            color: var(--saas-text-secondary, #666);
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-desc {
+            font-size: 14px;
+            color: var(--saas-text-secondary, #666);
+            max-width: 320px;
+        }
     `;
 
+    @state() private _agentId = '';
     @state() private _isLoading = false;
     @state() private _isDirty = false;
     @state() private _isSaving = false;
-    @state() private _cognitiveLoad = 42;
+    @state() private _cognitiveLoad = 0;
     @state() private _sleepCycleActive = false;
+    @state() private _loadError = '';
 
-    @state() private _neuromodulators: NeuromodulatorLevel[] = [
-        { name: 'Dopamine', value: 0.72, min: 0, max: 1, unit: '', description: 'Reward & Motivation', icon: 'mood' },
-        { name: 'Serotonin', value: 0.65, min: 0, max: 1, unit: '', description: 'Mood & Stability', icon: 'sentiment_satisfied' },
-        { name: 'Norepinephrine', value: 0.58, min: 0, max: 1, unit: '', description: 'Alertness & Focus', icon: 'electric_bolt' },
-        { name: 'Acetylcholine', value: 0.81, min: 0, max: 1, unit: '', description: 'Learning & Memory', icon: 'school' },
-        { name: 'GABA', value: 0.45, min: 0, max: 1, unit: '', description: 'Calm & Inhibition', icon: 'spa' },
-        { name: 'Cortisol', value: 0.32, min: 0, max: 1, unit: '', description: 'Stress Response', icon: 'warning' },
-    ];
+    @state() private _neuromodulators: NeuromodulatorLevel[] = [];
 
     @state() private _params: AdaptationParams = {
         learningRate: 0.001,
@@ -539,16 +572,22 @@ export class SaasCognitivePanel extends LitElement {
         emotionalSensitivity: 0.5,
     };
 
-    @state() private _activityLog: { message: string; time: string; icon: string }[] = [
-        { message: 'Learning rate adjusted to 0.001', time: '2 min ago', icon: 'tune' },
-        { message: 'Memory consolidation cycle completed', time: '15 min ago', icon: 'memory' },
-        { message: 'Dopamine spike detected', time: '32 min ago', icon: 'trending_up' },
-        { message: 'Sleep cycle initiated', time: '1 hour ago', icon: 'bedtime' },
-    ];
+    @state() private _activityLog: { message: string; time: string; icon: string }[] = [];
 
     async connectedCallback() {
         super.connectedCallback();
-        await this._loadCognitiveState();
+        this._agentId = this._parseAgentId();
+        if (this._agentId) {
+            sessionStorage.setItem('cognitive_agent_id', this._agentId);
+            await this._loadCognitiveState();
+        } else {
+            this._loadError = 'No agent selected. Open /cognitive?agent=AGENT_ID';
+        }
+    }
+
+    private _parseAgentId(): string {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('agent') || sessionStorage.getItem('cognitive_agent_id') || '';
     }
 
     render() {
@@ -616,7 +655,13 @@ export class SaasCognitivePanel extends LitElement {
                 </header>
 
                 <div class="content">
-                    ${this._isLoading ? html`
+                    ${this._loadError ? html`
+                        <div class="empty-state">
+                            <div class="empty-icon"><span class="material-symbols-outlined">error</span></div>
+                            <div class="empty-title">Unable to load cognitive panel</div>
+                            <div class="empty-desc">${this._loadError}</div>
+                        </div>
+                    ` : this._isLoading ? html`
                         <div class="loading"><div class="spinner"></div></div>
                     ` : html`
                         <!-- Neuromodulator Gauges -->
@@ -737,28 +782,72 @@ export class SaasCognitivePanel extends LitElement {
         `;
     }
 
+    private _defaultNeuromodulators(): NeuromodulatorLevel[] {
+        return [
+            { name: 'Dopamine', value: 0.5, min: 0, max: 1, unit: '', description: 'Reward & Motivation', icon: 'mood' },
+            { name: 'Serotonin', value: 0.5, min: 0, max: 1, unit: '', description: 'Mood & Stability', icon: 'sentiment_satisfied' },
+            { name: 'Norepinephrine', value: 0.5, min: 0, max: 1, unit: '', description: 'Alertness & Focus', icon: 'electric_bolt' },
+            { name: 'Acetylcholine', value: 0.5, min: 0, max: 1, unit: '', description: 'Learning & Memory', icon: 'school' },
+            { name: 'GABA', value: 0.5, min: 0, max: 1, unit: '', description: 'Calm & Inhibition', icon: 'spa' },
+            { name: 'Cortisol', value: 0.5, min: 0, max: 1, unit: '', description: 'Stress Response', icon: 'warning' },
+        ];
+    }
+
+    private _mapNeuromodulators(input: Record<string, number> | undefined): NeuromodulatorLevel[] {
+        const defaults = this._defaultNeuromodulators();
+        if (!input) return defaults;
+        return defaults.map(nm => {
+            const key = nm.name.toLowerCase();
+            const value = input[key];
+            return { ...nm, value: typeof value === 'number' ? value : 0.5 };
+        });
+    }
+
+    private _mapParams(input: Record<string, number> | undefined): AdaptationParams {
+        const p = input || {};
+        return {
+            learningRate: p.learning_rate ?? p.learningRate ?? 0.001,
+            explorationRate: p.exploration_rate ?? p.explorationRate ?? 0.15,
+            attentionSpan: p.attention_span ?? p.attentionSpan ?? 0.8,
+            memoryConsolidation: p.memory_consolidation ?? p.memoryConsolidation ?? 0.7,
+            emotionalSensitivity: p.emotional_sensitivity ?? p.emotionalSensitivity ?? 0.5,
+        };
+    }
+
+    private _toSnakeParams(params: AdaptationParams): Record<string, number> {
+        return {
+            learning_rate: params.learningRate,
+            exploration_rate: params.explorationRate,
+            attention_span: params.attentionSpan,
+            memory_consolidation: params.memoryConsolidation,
+            emotional_sensitivity: params.emotionalSensitivity,
+        };
+    }
+
     private async _loadCognitiveState() {
+        if (!this._agentId) return;
         this._isLoading = true;
         try {
-            // Call SomaBrain Cognitive API
-            const response = await apiClient.get('/cognitive/state/') as {
-                neuromodulators?: NeuromodulatorLevel[];
-                params?: AdaptationParams;
-                cognitiveLoad?: number;
+            const response = await apiClient.get(`/somabrain/cognitive/state/${this._agentId}`) as {
+                agent_id?: string;
+                neuromodulators?: Record<string, number>;
+                adaptation_params?: Record<string, number>;
+                memory_stats?: Record<string, unknown>;
+                last_sleep?: string | null;
+                degraded?: boolean;
             } | null;
             if (response) {
-                if (response.neuromodulators) {
-                    this._neuromodulators = response.neuromodulators;
-                }
-                if (response.params) {
-                    this._params = response.params;
-                }
-                if (response.cognitiveLoad !== undefined) {
-                    this._cognitiveLoad = response.cognitiveLoad;
-                }
+                this._neuromodulators = this._mapNeuromodulators(response.neuromodulators);
+                this._params = this._mapParams(response.adaptation_params);
+                this._cognitiveLoad = typeof response.memory_stats?.load === 'number'
+                    ? response.memory_stats.load
+                    : 0;
+                this._sleepCycleActive = response.last_sleep === null ? false : false;
+                this._activityLog = [];
             }
         } catch (error) {
             console.error('Failed to load cognitive state:', error);
+            this._loadError = 'Failed to load cognitive state from SomaBrain';
         } finally {
             this._isLoading = false;
         }
@@ -770,9 +859,10 @@ export class SaasCognitivePanel extends LitElement {
     }
 
     private async _saveParams() {
+        if (!this._agentId) return;
         this._isSaving = true;
         try {
-            await apiClient.put('/cognitive/params/', this._params);
+            await apiClient.patch(`/somabrain/cognitive/params/${this._agentId}`, this._toSnakeParams(this._params));
             this._isDirty = false;
             this._activityLog = [
                 { message: 'Parameters updated successfully', time: 'Just now', icon: 'check_circle' },
@@ -786,24 +876,21 @@ export class SaasCognitivePanel extends LitElement {
     }
 
     private async _triggerSleepCycle() {
-        if (this._sleepCycleActive) return;
+        if (!this._agentId || this._sleepCycleActive) return;
 
         this._sleepCycleActive = true;
         try {
-            await apiClient.post('/cognitive/sleep-cycle/', {});
+            const response = await apiClient.post(`/somabrain/cognitive/sleep/${this._agentId}`, {
+                duration_minutes: 5,
+                consolidate_memory: true,
+            }) as { status?: string; memories_consolidated?: number };
             this._activityLog = [
-                { message: 'Sleep cycle initiated', time: 'Just now', icon: 'bedtime' },
+                { message: `Sleep cycle ${response.status || 'initiated'}`, time: 'Just now', icon: 'bedtime' },
                 ...this._activityLog.slice(0, 9),
             ];
-
-            // Simulate cycle completion after delay
-            setTimeout(() => {
+            if (response.status === 'completed') {
                 this._sleepCycleActive = false;
-                this._activityLog = [
-                    { message: 'Sleep cycle completed', time: 'Just now', icon: 'check_circle' },
-                    ...this._activityLog.slice(0, 9),
-                ];
-            }, 5000);
+            }
         } catch (error) {
             console.error('Failed to trigger sleep cycle:', error);
             this._sleepCycleActive = false;
@@ -811,12 +898,12 @@ export class SaasCognitivePanel extends LitElement {
     }
 
     private async _resetAdaptation() {
-        if (!confirm('Reset all adaptation parameters to defaults? This cannot be undone.')) {
+        if (!this._agentId || !confirm('Reset all adaptation parameters to defaults? This cannot be undone.')) {
             return;
         }
 
         try {
-            await apiClient.post('/cognitive/reset/', {});
+            await apiClient.post(`/somabrain/cognitive/adaptation/reset/${this._agentId}`, {});
             this._params = {
                 learningRate: 0.001,
                 explorationRate: 0.15,
