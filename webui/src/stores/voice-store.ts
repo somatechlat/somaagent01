@@ -167,8 +167,6 @@ export class SaasVoiceProvider extends LitElement {
 
         this.state = { ...this.state, state: 'processing' };
 
-        // In a real implementation, this would send audio to STT
-        // For now, simulate processing
         this.dispatchEvent(new CustomEvent('voice-stop', {
             bubbles: true,
             composed: true,

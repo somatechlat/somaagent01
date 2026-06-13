@@ -9,6 +9,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 import '../components/entity-manager.js';
 
 // Base view with shared styles and permission loading
@@ -43,15 +44,12 @@ abstract class BaseEntityView extends LitElement {
     }
 
     private async loadPermissions() {
-        // TODO: Load from auth context or API
-        // For now, grant full permissions for demo
-        this.permissions = [
-            'tenant:list', 'tenant:view', 'tenant:create', 'tenant:edit', 'tenant:delete', 'tenant:suspend', 'tenant:impersonate',
-            'user:list', 'user:view', 'user:create', 'user:edit', 'user:delete', 'user:suspend',
-            'agent:list', 'agent:view', 'agent:create', 'agent:edit', 'agent:delete',
-            'feature:list', 'feature:view', 'feature:edit',
-            'ratelimit:list', 'ratelimit:view', 'ratelimit:edit', 'ratelimit:delete',
-        ];
+        try {
+            const response = await apiClient.get('/auth/me/permissions') as { permissions?: string[] };
+            this.permissions = response.permissions || [];
+        } catch {
+            this.permissions = [];
+        }
     }
 }
 

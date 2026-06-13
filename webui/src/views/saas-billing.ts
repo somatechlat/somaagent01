@@ -440,33 +440,33 @@ export class SaasBilling extends LitElement {
         .view-all:hover {
             color: var(--saas-text-primary, #1a1a1a);
         }
+
+        .error-banner {
+            padding: 12px 16px;
+            margin: 0 24px 24px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            font-size: 14px;
+        }
     `;
 
     @state() private _metrics: BillingMetrics = {
-        mrr: 24580,
-        arpu: 185,
-        churnRate: 2.3,
-        totalRevenue: 98320,
-        totalTenants: 133,
-        paidTenants: 88,
+        mrr: 0,
+        arpu: 0,
+        churnRate: 0,
+        totalRevenue: 0,
+        totalTenants: 0,
+        paidTenants: 0,
     };
 
-    @state() private _tierRevenue: TierRevenue[] = [
-        { tier: 'Enterprise', revenue: 11988, tenants: 12, percentage: 49 },
-        { tier: 'Team', revenue: 5572, tenants: 28, percentage: 23 },
-        { tier: 'Starter', revenue: 1568, tenants: 32, percentage: 6 },
-        { tier: 'Free', revenue: 0, tenants: 45, percentage: 0 },
-    ];
+    @state() private _tierRevenue: TierRevenue[] = [];
 
-    @state() private _invoices: Invoice[] = [
-        { id: '1', tenantName: 'Acme Corporation', amount: 99900, status: 'paid', dueDate: '2025-12-15', paidDate: '2025-12-14' },
-        { id: '2', tenantName: 'TechStart Inc', amount: 19900, status: 'paid', dueDate: '2025-12-18', paidDate: '2025-12-18' },
-        { id: '3', tenantName: 'Globex Industries', amount: 4900, status: 'pending', dueDate: '2025-12-25' },
-        { id: '4', tenantName: 'Initech LLC', amount: 19900, status: 'overdue', dueDate: '2025-12-10' },
-        { id: '5', tenantName: 'Hooli Systems', amount: 99900, status: 'paid', dueDate: '2025-12-20', paidDate: '2025-12-19' },
-    ];
+    @state() private _invoices: Invoice[] = [];
 
     @state() private _isLoading = false;
+    @state() private _error = '';
 
     async connectedCallback() {
         super.connectedCallback();
@@ -534,6 +534,8 @@ export class SaasBilling extends LitElement {
                     </div>
                 </header>
 
+                ${this._error ? html`<div class="error-banner">${this._error}</div>` : ''}
+
                 <div class="content">
                     <!-- Stats -->
                     <div class="stats-grid">
@@ -545,10 +547,6 @@ export class SaasBilling extends LitElement {
                                 </div>
                             </div>
                             <div class="stat-value">$${this._formatCurrency(this._metrics.mrr)}</div>
-                            <div class="stat-trend up">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">arrow_upward</span>
-                                +12.5% from last month
-                            </div>
                         </div>
 
                         <div class="stat-card">
@@ -559,10 +557,6 @@ export class SaasBilling extends LitElement {
                                 </div>
                             </div>
                             <div class="stat-value">$${this._metrics.arpu}</div>
-                            <div class="stat-trend up">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">arrow_upward</span>
-                                +5.2% from last month
-                            </div>
                         </div>
 
                         <div class="stat-card">
@@ -573,10 +567,6 @@ export class SaasBilling extends LitElement {
                                 </div>
                             </div>
                             <div class="stat-value">${this._metrics.churnRate}%</div>
-                            <div class="stat-trend down">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">arrow_downward</span>
-                                -0.8% from last month
-                            </div>
                         </div>
 
                         <div class="stat-card">
@@ -587,10 +577,6 @@ export class SaasBilling extends LitElement {
                                 </div>
                             </div>
                             <div class="stat-value">${this._metrics.paidTenants}/${this._metrics.totalTenants}</div>
-                            <div class="stat-trend up">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">arrow_upward</span>
-                                +4 this month
-                            </div>
                         </div>
                     </div>
 
@@ -656,6 +642,7 @@ export class SaasBilling extends LitElement {
 
     private async _loadBillingData() {
         this._isLoading = true;
+        this._error = '';
         try {
             const response = await apiClient.get('/aaas/billing/') as {
                 metrics?: BillingMetrics;
@@ -672,7 +659,7 @@ export class SaasBilling extends LitElement {
                 this._invoices = response.invoices;
             }
         } catch {
-            // Demo data already set in state
+            this._error = 'Failed to load billing data';
         } finally {
             this._isLoading = false;
         }

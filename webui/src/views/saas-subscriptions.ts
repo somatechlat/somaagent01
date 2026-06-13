@@ -203,6 +203,16 @@ export class SaasSubscriptions extends LitElement {
             font-size: 18px;
         }
 
+        .error-banner {
+            padding: 12px 16px;
+            margin: 0 24px 24px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
         /* Content */
         .content {
             flex: 1;
@@ -465,6 +475,7 @@ export class SaasSubscriptions extends LitElement {
     @state() private _showModal = false;
     @state() private _editingTier: SubscriptionTier | null = null;
     @state() private _isLoading = false;
+    @state() private _error = '';
 
     async connectedCallback() {
         super.connectedCallback();
@@ -531,6 +542,8 @@ export class SaasSubscriptions extends LitElement {
                         </button>
                     </div>
                 </header>
+
+                ${this._error ? html`<div class="error-banner">${this._error}</div>` : ''}
 
                 <div class="content">
                     <div class="tier-grid">
@@ -697,6 +710,7 @@ export class SaasSubscriptions extends LitElement {
 
     private async _loadTiers() {
         this._isLoading = true;
+        this._error = '';
         try {
             const response = await apiClient.get('/aaas/tiers/') as
                 | { tiers?: unknown[] }
@@ -716,13 +730,8 @@ export class SaasSubscriptions extends LitElement {
                 isCustom: false,
             }));
         } catch {
-            // Demo data if API not available
-            this._tiers = [
-                { id: '1', name: 'Free', slug: 'free', maxAgents: 1, maxUsers: 3, maxTokensPerMonth: 100000, maxStorageGB: 1, priceCents: 0, billingInterval: 'monthly', tenantCount: 45, isCustom: false },
-                { id: '2', name: 'Starter', slug: 'starter', maxAgents: 3, maxUsers: 10, maxTokensPerMonth: 1000000, maxStorageGB: 10, priceCents: 4900, billingInterval: 'monthly', tenantCount: 32, isCustom: false },
-                { id: '3', name: 'Team', slug: 'team', maxAgents: 10, maxUsers: 50, maxTokensPerMonth: 10000000, maxStorageGB: 100, priceCents: 19900, billingInterval: 'monthly', tenantCount: 28, isCustom: false },
-                { id: '4', name: 'Enterprise', slug: 'enterprise', maxAgents: -1, maxUsers: -1, maxTokensPerMonth: -1, maxStorageGB: -1, priceCents: 99900, billingInterval: 'monthly', tenantCount: 12, isCustom: false },
-            ];
+            this._error = 'Failed to load subscription tiers';
+            this._tiers = [];
         } finally {
             this._isLoading = false;
         }

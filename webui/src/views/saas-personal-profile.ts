@@ -240,6 +240,16 @@ export class SaasPersonalProfile extends LitElement {
       padding: var(--saas-spacing-md, 16px) 0;
     }
 
+    .error-banner {
+      padding: 12px 16px;
+      margin-bottom: var(--saas-spacing-lg, 24px);
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: var(--saas-radius-md, 8px);
+      font-size: var(--saas-text-sm, 13px);
+    }
+
     .loading {
       display: flex;
       align-items: center;
@@ -253,6 +263,7 @@ export class SaasPersonalProfile extends LitElement {
     @state() private loading = true;
     @state() private saving = false;
     @state() private dirty = false;
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -261,6 +272,7 @@ export class SaasPersonalProfile extends LitElement {
 
     private async _loadProfile() {
         this.loading = true;
+        this.error = '';
         try {
             const data = await apiClient.get<{
                 id: string;
@@ -286,40 +298,37 @@ export class SaasPersonalProfile extends LitElement {
                 },
             };
         } catch (e) {
-            this.profile = this._getDemoProfile();
+            this.error = 'Failed to load profile';
+            this.profile = null;
         } finally {
             this.loading = false;
         }
     }
 
-    private _getDemoProfile(): UserProfile {
-        return {
-            id: 'user-001',
-            email: 'jane@acme.com',
-            displayName: 'Jane User',
-            theme: 'system',
-            language: 'en',
-            timezone: 'America/New_York',
-            mfaEnabled: true,
-            lastPasswordChange: '2025-11-25',
-            activeSessions: 1,
-            notifications: {
-                agentReplies: true,
-                activitySummary: false,
-                productUpdates: false,
-            },
-        };
-    }
-
     private async _saveProfile() {
         if (!this.profile) return;
         this.saving = true;
+        this.error = '';
         try {
-            // Would call PUT /api/v2/profile
-            await new Promise(r => setTimeout(r, 500));
+            await apiClient.put('/auth/me', {
+                name: this.profile.displayName,
+                email: this.profile.email,
+                theme: this.profile.theme,
+                language: this.profile.language,
+                timezone: this.profile.timezone,
+                mfa_enabled: this.profile.mfaEnabled,
+                notifications: this.profile.notifications,
+            });
             this.dirty = false;
             this.dispatchEvent(new CustomEvent('show-toast', {
                 detail: { type: 'success', message: 'Profile saved' },
+                bubbles: true,
+                composed: true,
+            }));
+        } catch (e) {
+            this.error = 'Failed to save profile';
+            this.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { type: 'error', message: 'Failed to save profile' },
                 bubbles: true,
                 composed: true,
             }));
@@ -360,6 +369,8 @@ export class SaasPersonalProfile extends LitElement {
         <div class="page-header">
           <h1 class="page-title">My Profile</h1>
         </div>
+
+        ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
 
         <!-- Display Section -->
         <div class="section">

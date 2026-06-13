@@ -16,6 +16,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface AuditEvent {
     id: string;
@@ -274,6 +275,16 @@ export class SaasAuditLog extends LitElement {
             font-size: 48px;
             margin-bottom: 16px;
         }
+
+        .error-banner {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            font-size: 14px;
+        }
     `;
 
     @state() private events: AuditEvent[] = [];
@@ -281,8 +292,9 @@ export class SaasAuditLog extends LitElement {
     @state() private actionFilter = 'all';
     @state() private dateFilter = 'all';
     @state() private currentPage = 1;
-    @state() private totalPages = 5;
+    @state() private totalPages = 1;
     @state() private isLoading = false;
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -291,68 +303,21 @@ export class SaasAuditLog extends LitElement {
 
     private async _loadEvents() {
         this.isLoading = true;
-        // Demo data - would fetch from /api/v2/aaas/audit
-        await new Promise(r => setTimeout(r, 300));
-
-        this.events = [
-            {
-                id: '1',
-                timestamp: '2025-12-25T06:25:00Z',
-                actor_email: 'admin@example.com',
-                action: 'user.login',
-                resource_type: 'session',
-                resource_id: 'sess_123',
-                ip_address: '192.168.1.1',
-                details: { mfa_used: true },
-                status: 'success',
-            },
-            {
-                id: '2',
-                timestamp: '2025-12-25T06:20:00Z',
-                actor_email: 'dev@example.com',
-                action: 'agent.create',
-                resource_type: 'agent',
-                resource_id: 'agent_456',
-                ip_address: '10.0.0.5',
-                details: { name: 'Sales Bot' },
-                status: 'success',
-            },
-            {
-                id: '3',
-                timestamp: '2025-12-25T06:15:00Z',
-                actor_email: 'user@example.com',
-                action: 'apikey.generate',
-                resource_type: 'api_key',
-                resource_id: 'key_789',
-                ip_address: '172.16.0.10',
-                details: {},
-                status: 'success',
-            },
-            {
-                id: '4',
-                timestamp: '2025-12-25T06:10:00Z',
-                actor_email: 'hacker@suspicious.com',
-                action: 'user.login',
-                resource_type: 'session',
-                resource_id: 'sess_bad',
-                ip_address: '203.0.113.50',
-                details: { reason: 'invalid_password' },
-                status: 'failure',
-            },
-            {
-                id: '5',
-                timestamp: '2025-12-25T06:05:00Z',
-                actor_email: 'admin@example.com',
-                action: 'tenant.settings.update',
-                resource_type: 'tenant',
-                resource_id: 'tenant_main',
-                ip_address: '192.168.1.1',
-                details: { field: 'mfa_required', value: true },
-                status: 'success',
-            },
-        ];
-
-        this.isLoading = false;
+        this.error = '';
+        try {
+            const response = await apiClient.get('/aaas/audit/') as {
+                events?: AuditEvent[];
+                total_pages?: number;
+            };
+            this.events = response.events || [];
+            this.totalPages = response.total_pages || 1;
+        } catch (e) {
+            this.error = 'Failed to load audit events';
+            this.events = [];
+            this.totalPages = 1;
+        } finally {
+            this.isLoading = false;
+        }
     }
 
     private _formatTime(isoString: string): string {
@@ -381,7 +346,7 @@ export class SaasAuditLog extends LitElement {
         return html`
             <div class="container">
                 <div class="header">
-                    <h1>📋 Audit Log</h1>
+                    <h1>Audit Log</h1>
                     <div class="actions">
                         <button class="btn btn-secondary" @click=${this._exportCsv}>
                             📥 Export CSV
@@ -391,6 +356,8 @@ export class SaasAuditLog extends LitElement {
                         </button>
                     </div>
                 </div>
+
+                ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
 
                 <div class="stats">
                     <div class="stat-card">
