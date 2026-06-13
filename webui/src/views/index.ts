@@ -37,6 +37,7 @@ export { SaasIntegrationsDashboard } from './saas-integrations-dashboard.js';
 export { SaasMarketplace } from './saas-marketplace.js';
 export { SaasMfaSetup } from './saas-mfa-setup.js';
 export { SaasMultimodalSettings } from './saas-multimodal-settings.js';
+export { SaasMultimodalJobs } from './saas-multimodal-jobs.js';
 export { SaasOnboarding } from './saas-onboarding.js';
 export { SaasPersonalProfile } from './saas-personal-profile.js';
 export { SaasPlatformProfile } from './saas-platform-profile.js';

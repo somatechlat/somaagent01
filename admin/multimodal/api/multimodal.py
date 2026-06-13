@@ -17,6 +17,7 @@ from django.http import HttpRequest, StreamingHttpResponse
 from ninja import Query, Router
 from pydantic import BaseModel, Field
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import ForbiddenError, NotFoundError
 
 router = Router(tags=["multimodal"])
@@ -48,6 +49,28 @@ class JobStatusResponse(BaseModel):
     total_steps: int
     completed_steps: int
     error_message: Optional[str] = None
+
+
+class JobListItem(BaseModel):
+    """Data model for JobListItem."""
+
+    id: str
+    name: str
+    status: str
+    total_steps: int
+    completed_steps: int
+    created_at: str
+    updated_at: str
+    error_message: Optional[str] = None
+
+
+class JobListResponse(BaseModel):
+    """Data model for JobListResponse."""
+
+    items: list[JobListItem]
+    total: int
+    page: int
+    page_size: int
 
 
 class CapabilityResponse(BaseModel):
@@ -148,6 +171,59 @@ async def create_job(request: HttpRequest, body: JobCreateRequest) -> dict:
         raise ValidationError(f"Invalid plan: {exc.errors}")
 
     return {"job_id": str(plan.id), "status": plan.status.value}
+
+
+@router.get(
+    "/jobs",
+    response=JobListResponse,
+    summary="List multimodal jobs",
+    auth=AuthBearer(),
+)
+async def list_jobs(
+    request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> JobListResponse:
+    """List multimodal jobs for the current tenant."""
+    from asgiref.sync import sync_to_async
+    from django.conf import settings
+
+    from admin.core.models import Job
+
+    tenant_id = getattr(request, "tenant_id", None) or getattr(
+        settings, "AAAS_DEFAULT_TENANT_ID", "default"
+    )
+
+    @sync_to_async
+    def _fetch():
+        queryset = Job.objects.filter(tenant=str(tenant_id), job_type="multimodal").order_by(
+            "-created_at"
+        )
+        total = queryset.count()
+        offset = (page - 1) * page_size
+        jobs = list(queryset[offset : offset + page_size])
+        return total, jobs
+
+    total, jobs = await _fetch()
+
+    items = []
+    for job in jobs:
+        payload = job.payload or {}
+        steps = payload.get("steps", [])
+        items.append(
+            JobListItem(
+                id=str(job.id),
+                name=job.name,
+                status=job.status,
+                total_steps=len(steps),
+                completed_steps=payload.get("completed_steps", 0),
+                created_at=job.created_at.isoformat() if job.created_at else "",
+                updated_at=job.updated_at.isoformat() if job.updated_at else "",
+                error_message=job.error,
+            )
+        )
+
+    return JobListResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/jobs/{plan_id}", response=JobStatusResponse, summary="Get job status")

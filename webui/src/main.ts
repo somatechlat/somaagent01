@@ -217,6 +217,13 @@ if (app) {
             return;
         }
 
+        // Multimodal Jobs & Assets
+        if (path === '/multimodal/jobs' || path === '/agent/multimodal/jobs') {
+            await import('./views/saas-multimodal-jobs.js');
+            app.appendChild(document.createElement('saas-multimodal-jobs'));
+            return;
+        }
+
         // Settings Configuration (uses SettingsForm pattern)
         if (path.startsWith('/platform/settings/')) {
             const entity = path.split('/').pop() || 'postgresql';
