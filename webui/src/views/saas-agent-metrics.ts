@@ -201,6 +201,15 @@ export class SaasAgentMetrics extends LitElement {
 
     .loading { display: flex; justify-content: center; align-items: center; padding: 60px; color: #666; }
 
+    .error-banner {
+      padding: 12px 16px;
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
     @media (max-width: 1200px) {
       .usage-grid { grid-template-columns: repeat(2, 1fr); }
       .cost-grid { grid-template-columns: repeat(2, 1fr); }
@@ -211,6 +220,7 @@ export class SaasAgentMetrics extends LitElement {
     @state() private usage: UsageMetric[] = [];
     @state() private agents: AgentUsage[] = [];
     @state() private costs: CostBreakdown[] = [];
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -219,38 +229,20 @@ export class SaasAgentMetrics extends LitElement {
 
     private async loadMetrics() {
         this.loading = true;
+        this.error = '';
         try {
-            // Try to fetch from real API
             const data = await apiClient.get<{ usage?: UsageMetric[]; agents?: AgentUsage[]; costs?: CostBreakdown[] }>('/observability/tenant-usage');
             this.usage = data.usage || [];
             this.agents = data.agents || [];
             this.costs = data.costs || [];
-        } catch {
-            this.loadMockData();
+        } catch (e) {
+            this.error = 'Unable to load metrics. Please try again later.';
+            this.usage = [];
+            this.agents = [];
+            this.costs = [];
         } finally {
             this.loading = false;
         }
-    }
-
-    private loadMockData() {
-        this.usage = [
-            { label: 'API Calls', current: 52345, limit: 100000, unit: '', percentage: 52 },
-            { label: 'LLM Tokens', current: 523000, limit: 1000000, unit: 'K', percentage: 52 },
-            { label: 'Images', current: 312, limit: 500, unit: '', percentage: 62 },
-            { label: 'Voice Minutes', current: 245, limit: 500, unit: 'min', percentage: 49 },
-        ];
-
-        this.agents = [
-            { id: '1', name: 'Support-AI', requests: 23456, tokens: 245000, images: 156, voice_minutes: 120 },
-            { id: '2', name: 'Sales-Bot', requests: 18234, tokens: 178000, images: 98, voice_minutes: 80 },
-            { id: '3', name: 'Internal-AI', requests: 10655, tokens: 100000, images: 58, voice_minutes: 45 },
-        ];
-
-        this.costs = [
-            { category: 'LLM Tokens', amount: 156.78, details: 'GPT-4o: $120, Claude: $36.78' },
-            { category: 'Images', amount: 12.48, details: 'DALLE 3 @ $0.04/image' },
-            { category: 'Voice', amount: 24.50, details: 'Whisper + Kokoro' },
-        ];
     }
 
     private getProgressClass(percentage: number): string {
@@ -285,6 +277,7 @@ export class SaasAgentMetrics extends LitElement {
         </header>
 
         <div class="content">
+          ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
           ${this.loading ? html`<div class="loading">Loading metrics...</div>` : html`
             <!-- Usage Summary -->
             <div class="usage-grid">

@@ -27,6 +27,12 @@ from admin.core.infrastructure import health_checker
 router = Router(tags=["observability"])
 logger = logging.getLogger(__name__)
 
+
+# Approximate cost rates for dashboard estimates
+_COST_PER_TOKEN = 0.00001
+_COST_PER_VOICE_MINUTE = 0.005
+_COST_PER_IMAGE = 0.04
+
 # Store application start time for uptime calculation
 _app_start_time = time.time()
 
@@ -84,6 +90,43 @@ class MetricsJsonResponse(BaseModel):
     """JSON metrics response."""
 
     metrics: list[MetricValue]
+
+
+class UsageMetric(BaseModel):
+    """Tenant usage metric with quota."""
+
+    label: str
+    current: int
+    limit: int
+    unit: str
+    percentage: int
+
+
+class AgentUsage(BaseModel):
+    """Per-agent usage summary."""
+
+    id: str
+    name: str
+    requests: int
+    tokens: int
+    images: int
+    voice_minutes: int
+
+
+class CostBreakdown(BaseModel):
+    """Estimated cost breakdown."""
+
+    category: str
+    amount: float
+    details: str
+
+
+class TenantUsageResponse(BaseModel):
+    """Tenant usage response for the Agent Metrics dashboard."""
+
+    usage: list[UsageMetric]
+    agents: list[AgentUsage]
+    costs: list[CostBreakdown]
 
 
 # =============================================================================
@@ -335,6 +378,141 @@ async def get_sla_compliance(request) -> dict:
         ],
         "overall_status": result["overall_status"],
     }
+
+
+# =============================================================================
+# ENDPOINTS - Tenant Usage (Agent Metrics Dashboard)
+# =============================================================================
+
+
+@router.get(
+    "/tenant-usage",
+    response=TenantUsageResponse,
+    summary="Get tenant usage and cost breakdown",
+    auth=AuthBearer(),
+)
+async def get_tenant_usage(request) -> TenantUsageResponse:
+    """Aggregate real tenant usage from VoiceSession and Agent models.
+
+    PM: Usage tracking, quota visualization.
+    """
+    from asgiref.sync import sync_to_async
+    from django.conf import settings
+    from django.db.models import Sum
+
+    from admin.aaas.models.agents import Agent
+    from admin.aaas.models.tenants import Tenant
+    from admin.voice.models import VoiceSession
+
+    tenant_id = getattr(request, "tenant_id", None) or getattr(
+        settings, "AAAS_DEFAULT_TENANT_ID", None
+    )
+
+    @sync_to_async
+    def _aggregate():
+        try:
+            tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
+        except Tenant.DoesNotExist:
+            tenant = None
+
+        now = timezone.now()
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        sessions = VoiceSession.objects.filter(
+            tenant_id=str(tenant_id), created_at__gte=start_of_month
+        )
+        agg = sessions.aggregate(
+            total_turns=Sum("turn_count") or 0,
+            total_input_tokens=Sum("input_tokens") or 0,
+            total_output_tokens=Sum("output_tokens") or 0,
+            total_audio_seconds=Sum("audio_seconds") or 0,
+        )
+
+        turns = agg["total_turns"] or 0
+        tokens = (agg["total_input_tokens"] or 0) + (agg["total_output_tokens"] or 0)
+        audio_seconds = agg["total_audio_seconds"] or 0
+        voice_minutes = int(audio_seconds / 60)
+        api_calls = sessions.count() + (turns or 0)
+        images = 0  # Future: aggregate multimodal jobs
+
+        tier = tenant.tier if tenant else None
+        api_limit = tier.max_monthly_api_calls if tier else 100000
+        token_limit = api_limit * 10 if tier else 1000000
+        voice_limit = tier.max_monthly_voice_minutes if tier else 500
+        image_limit = 500
+
+        usage = [
+            UsageMetric(
+                label="API Calls",
+                current=api_calls,
+                limit=api_limit,
+                unit="",
+                percentage=min(100, int((api_calls / api_limit) * 100) if api_limit else 0),
+            ),
+            UsageMetric(
+                label="LLM Tokens",
+                current=tokens,
+                limit=token_limit,
+                unit="",
+                percentage=min(100, int((tokens / token_limit) * 100) if token_limit else 0),
+            ),
+            UsageMetric(
+                label="Images",
+                current=images,
+                limit=image_limit,
+                unit="",
+                percentage=0,
+            ),
+            UsageMetric(
+                label="Voice Minutes",
+                current=voice_minutes,
+                limit=voice_limit,
+                unit="min",
+                percentage=min(100, int((voice_minutes / voice_limit) * 100) if voice_limit else 0),
+            ),
+        ]
+
+        agents_qs = Agent.objects.filter(tenant_id=str(tenant_id)).order_by("name")
+        agents = [
+            AgentUsage(
+                id=str(agent.id),
+                name=agent.name,
+                requests=0,
+                tokens=0,
+                images=0,
+                voice_minutes=0,
+            )
+            for agent in agents_qs
+        ]
+
+        token_cost = tokens * _COST_PER_TOKEN
+        voice_cost = voice_minutes * _COST_PER_VOICE_MINUTE
+        image_cost = images * _COST_PER_IMAGE
+
+        costs = [
+            CostBreakdown(
+                category="LLM Tokens",
+                amount=round(token_cost, 2),
+                details=f"Estimated @ ${_COST_PER_TOKEN}/token",
+            ),
+            CostBreakdown(
+                category="Voice",
+                amount=round(voice_cost, 2),
+                details=f"Estimated @ ${_COST_PER_VOICE_MINUTE}/minute",
+            ),
+        ]
+        if images:
+            costs.append(
+                CostBreakdown(
+                    category="Images",
+                    amount=round(image_cost, 2),
+                    details=f"Estimated @ ${_COST_PER_IMAGE}/image",
+                )
+            )
+
+        return TenantUsageResponse(usage=usage, agents=agents, costs=costs)
+
+    return await _aggregate()
 
 
 # =============================================================================
