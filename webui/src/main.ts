@@ -293,6 +293,12 @@ if (app) {
             return;
         }
 
+        if (path.match(/^\/agents\/[^/]+\/tools$/)) {
+            await import('./views/saas-agent-tools.js');
+            app.appendChild(document.createElement('saas-agent-tools'));
+            return;
+        }
+
         if (path === '/platform/features') {
             await import('./views/saas-entity-views.js');
             app.appendChild(document.createElement('saas-features-view'));

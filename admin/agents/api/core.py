@@ -80,6 +80,28 @@ class AgentDeployment(BaseModel):
     deployed_by: str
 
 
+class ToolInfo(BaseModel):
+    """Tool metadata for the agent tools screen."""
+
+    name: str
+    description: str
+    input_schema: Optional[dict] = None
+
+
+class AgentToolsOut(BaseModel):
+    """Agent tools configuration response."""
+
+    agent_id: str
+    available_tools: list[ToolInfo]
+    enabled_tools: list[str]
+
+
+class AgentToolsUpdate(BaseModel):
+    """Agent tools configuration update payload."""
+
+    tools: list[str]
+
+
 class CapsuleConfigOut(BaseModel):
     """Capsule configuration response."""
 
@@ -448,38 +470,84 @@ async def update_personality(
     }
 
 
+def _available_tools() -> list[ToolInfo]:
+    """Return metadata for all registered tools."""
+    from services.tool_executor.tools import AVAILABLE_TOOLS
+
+    return [
+        ToolInfo(
+            name=tool.name,
+            description=tool.__doc__ or tool.name,
+            input_schema=tool.input_schema(),
+        )
+        for tool in AVAILABLE_TOOLS.values()
+    ]
+
+
 @router.get(
     "/{agent_id}/tools",
+    response=AgentToolsOut,
     summary="Get tools",
     auth=AuthBearer(),
 )
-async def get_agent_tools(request, agent_id: str) -> dict:
-    """Get agent's enabled tools.
+async def get_agent_tools(request, agent_id: str) -> AgentToolsOut:
+    """Get agent's enabled tools and the full catalog of available tools.
 
     PhD Dev: Tool configuration.
     """
-    return {
-        "agent_id": agent_id,
-        "tools": [],
-    }
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
+    config = agent.config or {}
+    enabled = config.get("tools", []) or []
+    if isinstance(enabled, str):
+        enabled = [enabled]
+
+    return AgentToolsOut(
+        agent_id=agent_id,
+        available_tools=_available_tools(),
+        enabled_tools=list(enabled),
+    )
 
 
 @router.patch(
     "/{agent_id}/tools",
+    response=AgentToolsOut,
     summary="Update tools",
     auth=AuthBearer(),
 )
 async def update_agent_tools(
     request,
     agent_id: str,
-    tools: list[str],
-) -> dict:
-    """Update agent's tools."""
-    return {
-        "agent_id": agent_id,
-        "tools": tools,
-        "updated": True,
-    }
+    payload: AgentToolsUpdate,
+) -> AgentToolsOut:
+    """Update agent's enabled tools."""
+    from services.tool_executor.tools import AVAILABLE_TOOLS
+
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
+    valid_tools = set(AVAILABLE_TOOLS.keys())
+    enabled = [t for t in payload.tools if t in valid_tools]
+
+    @sync_to_async
+    def _persist() -> None:
+        config = agent.config or {}
+        config["tools"] = enabled
+        agent.config = config
+        agent.save(update_fields=["config", "updated_at"])
+
+    await _persist()
+
+    return AgentToolsOut(
+        agent_id=agent_id,
+        available_tools=_available_tools(),
+        enabled_tools=enabled,
+    )
 
 
 @router.get(
