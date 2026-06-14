@@ -82,13 +82,14 @@ class QuotaStatus(BaseModel):
 def _agent_to_schema(agent: Agent) -> AgentSchema:
     """Convert Agent model to schema."""
     config = agent.config or {}
+    chat_model = config.get("chat_model") or config.get("model") or settings.AAAS_DEFAULT_CHAT_MODEL
     return AgentSchema(
         id=str(agent.id),
         name=agent.name,
         slug=agent.slug or agent.name.lower().replace(" ", "-"),
         status=agent.status,
         tenant_id=str(agent.tenant_id),  # type: ignore[reportAttributeAccessIssue]
-        chat_model=config.get("chat_model", settings.AAAS_DEFAULT_CHAT_MODEL),
+        chat_model=chat_model,
         memory_enabled=config.get("memory_enabled", True),
         voice_enabled=config.get("voice_enabled", False),
         created_at=agent.created_at,
@@ -106,13 +107,11 @@ def get_tenant_quota(tenant_id: str) -> QuotaStatus:
     try:
         tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
         tier = tenant.tier
-        if tier and tier.limits:
-            agents_limit = tier.limits.get("max_agents", settings.AAAS_DEFAULT_MAX_AGENTS)
-            users_limit = tier.limits.get("max_users", settings.AAAS_DEFAULT_MAX_USERS)
-            tokens_limit = tier.limits.get(
-                "max_tokens_monthly", settings.AAAS_DEFAULT_MAX_TOKENS_MONTHLY
-            )
-            storage_limit = tier.limits.get("storage_gb", settings.AAAS_DEFAULT_STORAGE_GB)
+        if tier:
+            agents_limit = tier.max_agents
+            users_limit = tier.max_users_per_agent
+            tokens_limit = tier.max_monthly_api_calls
+            storage_limit = float(tier.max_storage_gb)
         else:
             agents_limit = settings.AAAS_DEFAULT_MAX_AGENTS
             users_limit = settings.AAAS_DEFAULT_MAX_USERS

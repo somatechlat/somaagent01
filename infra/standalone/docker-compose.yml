@@ -31,6 +31,7 @@ services:
       - SOMA_AAAS_MODE=false
       - VAULT_ADDR=http://somaagent_vault:8200
       - SA01_KEYCLOAK_CLIENT_SECRET=${SA01_KEYCLOAK_CLIENT_SECRET:-soma-api-secret}
+      - AAAS_DEFAULT_TENANT_ID=${AAAS_DEFAULT_TENANT_ID:-00000000-0000-0000-0000-000000000001}
     ports:
       - "20020:9000" # Agent API
     networks:
