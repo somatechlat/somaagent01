@@ -10,14 +10,20 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
-import { WebSocketClient } from '../services/websocket-client.js';
+import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import { ChatStreamingController } from '../controllers/chat-streaming-controller.js';
+
+// Register extracted components
+import '../components/saas-conversation-list.js';
+import '../components/saas-chat-message-list.js';
+import '../components/saas-chat-input.js';
 
 export interface ChatMessage {
     id: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
+    coordinate?: string;
     timestamp: string;
     confidence?: number;
     streaming?: boolean;
@@ -48,7 +54,6 @@ export class SaasChat extends LitElement {
             box-sizing: border-box;
         }
 
-        /* Material Symbols - Required for Shadow DOM */
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
@@ -65,209 +70,6 @@ export class SaasChat extends LitElement {
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ========================================
-           SIDEBAR
-           ======================================== */
-        .sidebar {
-            width: 280px;
-            background: var(--saas-bg-card, #ffffff);
-            border-right: 1px solid var(--saas-border-light, #e0e0e0);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .brand-icon {
-            width: 36px;
-            height: 36px;
-            background: #1a1a1a;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .brand-icon svg {
-            width: 18px;
-            height: 18px;
-            stroke: white;
-            fill: none;
-        }
-
-        .brand-name {
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        /* New Conversation Button */
-        .new-chat-btn {
-            margin: 16px 20px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            background: #1a1a1a;
-            color: white;
-            border: none;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background 0.15s ease;
-        }
-
-        .new-chat-btn:hover {
-            background: #333;
-        }
-
-        /* Conversation List */
-        .conversations-section {
-            padding: 0 12px;
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .section-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: var(--saas-text-muted, #999);
-            padding: 16px 8px 8px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .conversation-item {
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.1s ease;
-            margin-bottom: 4px;
-        }
-
-        .conversation-item:hover {
-            background: var(--saas-bg-hover, #fafafa);
-        }
-
-        .conversation-item.active {
-            background: var(--saas-bg-active, #f0f0f0);
-        }
-
-        .conversation-title {
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .conversation-preview {
-            font-size: 12px;
-            color: var(--saas-text-secondary, #666);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Quick Links */
-        .quick-links {
-            padding: 16px 12px;
-            border-top: 1px solid var(--saas-border-light, #e0e0e0);
-        }
-
-        .quick-link {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: var(--saas-text-secondary, #666);
-            cursor: pointer;
-            transition: all 0.1s ease;
-        }
-
-        .quick-link:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-primary, #1a1a1a);
-        }
-
-        .quick-link-icon {
-            font-size: 18px;
-            width: 20px;
-            text-align: center;
-        }
-
-        /* User Section */
-        .user-section {
-            padding: 16px 20px;
-            border-top: 1px solid var(--saas-border-light, #e0e0e0);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--saas-bg-active, #f0f0f0);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .user-info {
-            flex: 1;
-        }
-
-        .user-name {
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .user-role {
-            font-size: 12px;
-            color: var(--saas-text-muted, #999);
-        }
-
-        .logout-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            background: transparent;
-            border: none;
-            color: var(--saas-text-secondary, #666);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.1s ease;
-        }
-
-        .logout-btn:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-status-danger, #ef4444);
-        }
-
-
-        /* ========================================
-           MAIN CHAT AREA
-           ======================================== */
         .main {
             flex: 1;
             display: flex;
@@ -276,7 +78,6 @@ export class SaasChat extends LitElement {
             overflow: hidden;
         }
 
-        /* Header */
         .header {
             padding: 16px 24px;
             background: var(--saas-bg-card, #ffffff);
@@ -297,7 +98,6 @@ export class SaasChat extends LitElement {
             font-weight: 600;
         }
 
-        /* Mode Selector */
         .mode-selector {
             position: relative;
         }
@@ -393,310 +193,21 @@ export class SaasChat extends LitElement {
             color: var(--saas-text-muted, #999);
         }
 
-        /* Messages */
-        .messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            padding-bottom: 120px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .message {
-            max-width: 75%;
-            padding: 14px 18px;
-            border-radius: 16px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .message.user {
-            align-self: flex-end;
-            background: #1a1a1a;
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.assistant {
-            align-self: flex-start;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            color: var(--saas-text-primary, #1a1a1a);
-            border-bottom-left-radius: 4px;
-        }
-
-        .message.system {
-            align-self: center;
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-secondary, #666);
-            font-size: 13px;
-            border-radius: 99px;
-            padding: 8px 16px;
-        }
-
-        .message-time {
-            font-size: 11px;
-            color: inherit;
-            opacity: 0.6;
-            margin-top: 6px;
-        }
-
-        .message.user .message-time {
-            color: rgba(255,255,255,0.7);
-        }
-
-        /* Confidence Indicator */
-        .confidence {
-            font-size: 11px;
-            color: var(--saas-text-muted, #999);
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .confidence-bar {
-            width: 60px;
-            height: 4px;
-            background: var(--saas-border-light, #e0e0e0);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            background: var(--saas-status-success, #22c55e);
-            border-radius: 2px;
-        }
-
-        /* Quick Replies */
-        .quick-replies {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 12px;
-        }
-
-        .quick-reply {
-            padding: 8px 14px;
-            border-radius: 99px;
-            background: var(--saas-bg-hover, #fafafa);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.1s ease;
-        }
-
-        .quick-reply:hover {
-            background: var(--saas-bg-active, #f0f0f0);
-            border-color: var(--saas-border-medium, #ccc);
-        }
-
-        /* Empty State */
-        .empty-state {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .empty-icon {
-            width: 64px;
-            height: 64px;
-            background: var(--saas-bg-hover, #fafafa);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin-bottom: 20px;
-        }
-
-        .empty-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .empty-desc {
-            font-size: 14px;
-            color: var(--saas-text-secondary, #666);
-            max-width: 320px;
-        }
-
-        /* ========================================
-           INPUT DOCK (Floating)
-           ======================================== */
-        .input-dock {
+        .input-dock-wrapper {
             position: absolute;
             bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 48px);
-            max-width: 700px;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 24px;
-            padding: 8px;
+            left: 0;
+            right: 0;
             display: flex;
-            align-items: flex-end;
-            gap: 8px;
-            box-shadow: var(--saas-shadow-lg, 0 8px 24px rgba(0,0,0,0.1));
-            transition: box-shadow 0.2s ease;
-        }
-
-        .input-dock:focus-within {
-            border-color: var(--saas-border-medium, #ccc);
-            box-shadow: var(--saas-shadow-lg, 0 8px 24px rgba(0,0,0,0.1)), 0 0 0 2px rgba(0,0,0,0.05);
-        }
-
-        /* Attachment Button */
-        .attach-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: transparent;
-            border: none;
-            color: var(--saas-text-secondary, #666);
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
             justify-content: center;
-            transition: all 0.1s ease;
-            flex-shrink: 0;
+            padding: 0 24px;
+            pointer-events: none;
         }
 
-        .attach-btn:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-primary, #1a1a1a);
+        .input-dock-wrapper > * {
+            pointer-events: auto;
         }
 
-        .input-field {
-            flex: 1;
-            padding: 8px 4px;
-        }
-
-        .input-field textarea {
-            width: 100%;
-            padding: 4px 0;
-            border: none;
-            background: transparent;
-            color: var(--saas-text-primary, #1a1a1a);
-            font-family: inherit;
-            font-size: 14px;
-            resize: none;
-            outline: none;
-            max-height: 120px;
-            line-height: 1.5;
-        }
-
-        .input-field textarea::placeholder {
-            color: var(--saas-text-muted, #999);
-        }
-
-        /* Voice Button */
-        .voice-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: transparent;
-            border: none;
-            color: var(--saas-text-secondary, #666);
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.1s ease;
-            flex-shrink: 0;
-        }
-
-        .voice-btn:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-primary, #1a1a1a);
-        }
-
-        .voice-btn.active {
-            background: var(--saas-status-danger, #ef4444);
-            color: white;
-        }
-
-        /* Send Button */
-        .send-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #1a1a1a;
-            border: none;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.15s ease;
-            flex-shrink: 0;
-        }
-
-        .send-btn:hover:not(:disabled) {
-            background: #333;
-            transform: scale(1.05);
-        }
-
-        .send-btn:disabled {
-            background: var(--saas-border-light, #e0e0e0);
-            color: var(--saas-text-muted, #999);
-            cursor: not-allowed;
-        }
-
-        /* ========================================
-           ANIMATIONS
-           ======================================== */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message {
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-            display: flex;
-            gap: 4px;
-            padding: 14px 18px;
-            align-self: flex-start;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 16px;
-            border-bottom-left-radius: 4px;
-        }
-
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--saas-text-muted, #999);
-            border-radius: 50%;
-            animation: typing 1.4s infinite ease-in-out;
-        }
-
-        .typing-dot:nth-child(1) { animation-delay: 0s; }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
-            30% { transform: translateY(-6px); opacity: 1; }
-        }
-
-        /* Reconnection Indicator */
         .reconnecting-banner {
             position: absolute;
             top: 0;
@@ -727,7 +238,6 @@ export class SaasChat extends LitElement {
         }
     `;
 
-    @property({ type: String }) sessionId = '';
     @state() private _messages: ChatMessage[] = [];
     @state() private _conversations: Conversation[] = [];
     @state() private _input = '';
@@ -736,15 +246,13 @@ export class SaasChat extends LitElement {
     @state() private _currentMode: AgentMode = 'STD';
     @state() private _showModeDropdown = false;
     @state() private _activeConversationId = '';
-    @state() private _wsConnected = false;
     @state() private _wsReconnecting = false;
-    @state() private _agents: { id: string; name: string; description: string; capsule_id?: string }[] = [];
+    @state() private _agents: { id: string; name: string; status?: string }[] = [];
     @state() private _selectedAgentId = '';
+    @state() private _userName = '';
+    @state() private _userRole = '';
 
-    @query('.messages') private _messagesContainer!: HTMLElement;
-
-    private _wsClient: WebSocketClient | null = null;
-    private _unsubscribe?: () => void;
+    private _streamingController: ChatStreamingController;
 
     private _modes = [
         { id: 'STD', name: 'Standard Mode', desc: 'Normal operation', locked: false },
@@ -755,16 +263,32 @@ export class SaasChat extends LitElement {
         { id: 'DGR', name: 'Degraded Mode', desc: 'Limited functionality', locked: true },
     ];
 
+    constructor() {
+        super();
+        this._streamingController = new ChatStreamingController({
+            onMessage: (msg) => this._handleIncomingMessage(msg),
+            onDelta: (delta) => this._handleStreamDelta(delta),
+            onDone: (content, confidence) => this._handleStreamDone({ content, confidence }),
+            onStatusChange: (status) => {
+                this._wsReconnecting = status.reconnecting;
+            },
+        });
+    }
+
     async connectedCallback() {
         super.connectedCallback();
 
-        // Load agents from API (filtered by SpiceDB permissions)
         await this._loadAgents();
-
+        this._loadUser();
         await this._loadConversations();
 
-        // Close dropdown on outside click
         document.addEventListener('click', this._handleOutsideClick);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this._streamingController.disconnect();
+        document.removeEventListener('click', this._handleOutsideClick);
     }
 
     /**
@@ -773,74 +297,45 @@ export class SaasChat extends LitElement {
      */
     private async _loadAgents(): Promise<void> {
         try {
-            const data = await apiClient.get<{ agents: { agent_id: string; name: string; description: string; capsule_id?: string }[]; total: number }>('/agents');
-            const agents = (data.agents || []).map((agent) => ({
-                id: agent.agent_id,
+            const data = await apiClient.get<{ data?: Array<{ id: string; name: string; status?: string }> }>('/aaas/admin/agents');
+            const agents = (data.data || []).map((agent) => ({
+                id: agent.id,
                 name: agent.name,
-                description: agent.description,
-                capsule_id: agent.capsule_id,
+                status: agent.status,
             }));
             this._agents = agents;
 
-            // Prefer agent from ?agent= query param
             const params = new URLSearchParams(window.location.search);
             const queryAgentId = params.get('agent');
-            if (queryAgentId && agents.some(a => a.id === queryAgentId)) {
+            if (queryAgentId && agents.some((a) => a.id === queryAgentId)) {
                 this._selectedAgentId = queryAgentId;
             } else if (agents.length === 1) {
                 this._selectedAgentId = agents[0].id;
             }
 
             if (this._selectedAgentId) {
-                this._connectWebSocket();
+                this._streamingController.connect(this._selectedAgentId);
             }
         } catch (error) {
             console.error('[SaasChat] Failed to load agents:', error);
         }
     }
 
-    /**
-     * Connect WebSocket for the currently selected agent using its capsule_id.
-     */
-    private _connectWebSocket(): void {
-        // Disconnect existing
-        if (this._wsClient) {
-            this._wsClient.disconnect();
-            this._wsClient = null;
+    private async _loadUser() {
+        try {
+            const userStr = sessionStorage.getItem('saas_user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                this._userName = user.name || '';
+                this._userRole = user.role || '';
+                return;
+            }
+            const user = await apiClient.get<{ name?: string; role?: string }>('/auth/me');
+            this._userName = user?.name || '';
+            this._userRole = user?.role || '';
+        } catch (error) {
+            console.error('[SaasChat] Failed to load user:', error);
         }
-
-        const agent = this._agents.find(a => a.id === this._selectedAgentId);
-        if (!agent?.capsule_id) {
-            console.warn('[SaasChat] No capsule_id for selected agent');
-            return;
-        }
-
-        this._wsClient = new WebSocketClient({ url: `/ws/v2/chat/${agent.capsule_id}` });
-
-        this._wsClient.on('chat.message', (data) => {
-            this._handleIncomingMessage(data as ChatMessage);
-        });
-        this._wsClient.on('chat.delta', (data) => {
-            this._handleStreamDelta(data as { delta?: string; content?: string });
-        });
-        this._wsClient.on('chat.done', (data) => {
-            this._handleStreamDone(data as { content?: string; confidence?: number });
-        });
-        this._wsClient.on('connected', () => {
-            this._wsConnected = true;
-            this._wsReconnecting = false;
-            console.log('[SaasChat] WebSocket connected');
-        });
-        this._wsClient.on('disconnected', () => {
-            this._wsConnected = false;
-            this._wsReconnecting = true;
-            console.log('[SaasChat] WebSocket disconnected, reconnecting...');
-        });
-        this._wsClient.on('error', () => {
-            this._wsReconnecting = true;
-        });
-
-        this._wsClient.connect();
     }
 
     /**
@@ -886,16 +381,6 @@ export class SaasChat extends LitElement {
         }
     }
 
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this._unsubscribe?.();
-        if (this._wsClient) {
-            this._wsClient.disconnect();
-            this._wsClient = null;
-        }
-        document.removeEventListener('click', this._handleOutsideClick);
-    }
-
     private _handleOutsideClick = (e: Event) => {
         const target = e.target as HTMLElement;
         if (!target.closest('.mode-selector')) {
@@ -905,74 +390,18 @@ export class SaasChat extends LitElement {
 
     render() {
         return html`
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <div class="brand">
-                        <div class="brand-icon">
-                            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                            </svg>
-                        </div>
-                        <span class="brand-name">SomaAgent</span>
-                    </div>
-                </div>
+            <saas-conversation-list
+                .conversations=${this._conversations}
+                .activeConversationId=${this._activeConversationId}
+                .userName=${this._userName}
+                .userRole=${this._userRole}
+                @saas-select-conversation=${this._onSelectConversation}
+                @saas-new-chat=${this._startNewChat}
+                @saas-navigate=${this._onNavigate}
+                @saas-logout=${this._logout}
+            ></saas-conversation-list>
 
-                <button class="new-chat-btn" @click=${this._startNewChat}>
-                    <span>+</span> New Conversation
-                </button>
-
-                <div class="conversations-section">
-                    <div class="section-label">Conversations</div>
-                    ${this._conversations.map(conv => html`
-                        <div 
-                            class="conversation-item ${conv.id === this._activeConversationId ? 'active' : ''}"
-                            @click=${() => this._selectConversation(conv.id)}
-                        >
-                            <div class="conversation-title">${conv.title}</div>
-                            <div class="conversation-preview">${conv.lastMessage}</div>
-                        </div>
-                    `)}
-                </div>
-
-                <div class="quick-links">
-                    <div class="section-label">Quick Access</div>
-                    <div class="quick-link" @click=${() => this._navigate('/memory')}>
-                        <span class="material-symbols-outlined quick-link-icon">psychology</span> Memory
-                    </div>
-                    <div class="quick-link" @click=${() => this._navigate('/tools')}>
-                        <span class="material-symbols-outlined quick-link-icon">construction</span> Tools
-                    </div>
-                    <div class="quick-link" @click=${() => this._navigate('/settings')}>
-                        <span class="material-symbols-outlined quick-link-icon">settings</span> Settings
-                    </div>
-                    <div class="quick-link" @click=${() => this._navigate('/themes')}>
-                        <span class="material-symbols-outlined quick-link-icon">palette</span> Theme
-                    </div>
-                </div>
-
-                <div class="user-section">
-                    <div class="user-avatar">JD</div>
-                    <div class="user-info">
-                        <div class="user-name">John Doe</div>
-                        <div class="user-role">Member</div>
-                    </div>
-                    <button class="logout-btn" @click=${this._logout} title="Logout">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                            <polyline points="16 17 21 12 16 7"/>
-                            <line x1="21" y1="12" x2="9" y2="12"/>
-                        </svg>
-                    </button>
-                </div>
-            </aside>
-
-            <!-- Main Chat Area -->
             <main class="main">
-                <!-- Reconnection Banner per design.md Section 11.7 -->
                 ${this._wsReconnecting ? html`
                     <div class="reconnecting-banner">
                         <div class="reconnecting-spinner"></div>
@@ -985,23 +414,22 @@ export class SaasChat extends LitElement {
                         ${this._renderAgentSelector()}
                     </div>
 
-                    <!-- Mode Selector -->
                     <div class="mode-selector">
                         <button class="mode-btn" @click=${this._toggleModeDropdown}>
                             <span class="mode-badge">${this._currentMode}</span>
                             ${this._getModeLabel(this._currentMode)}
-                            <span>▼</span>
+                            <span class="material-symbols-outlined">expand_more</span>
                         </button>
                         <div class="mode-dropdown ${this._showModeDropdown ? 'open' : ''}">
-                            ${this._modes.map(mode => html`
-                                <div 
+                            ${this._modes.map((mode) => html`
+                                <div
                                     class="mode-option ${mode.id === this._currentMode ? 'active' : ''} ${mode.locked ? 'locked' : ''}"
                                     @click=${() => this._selectMode(mode.id as AgentMode, mode.locked)}
                                 >
                                     <div class="mode-option-header">
                                         <span class="mode-badge" style="background: ${mode.id === this._currentMode ? '#1a1a1a' : '#e0e0e0'}; color: ${mode.id === this._currentMode ? 'white' : '#666'}">${mode.id}</span>
                                         <span class="mode-option-title">${mode.name}</span>
-                                        ${mode.locked ? html`<span class="lock-icon">🔒</span>` : ''}
+                                        ${mode.locked ? html`<span class="lock-icon material-symbols-outlined">lock</span>` : ''}
                                     </div>
                                     <div class="mode-option-desc">${mode.desc}</div>
                                 </div>
@@ -1010,53 +438,22 @@ export class SaasChat extends LitElement {
                     </div>
                 </header>
 
-                <div class="messages">
-                    ${this._messages.length === 0 ? this._renderEmptyState() : html`
-                        ${this._messages.map(msg => this._renderMessage(msg))}
-                        ${this._isStreaming ? this._renderTypingIndicator() : ''}
-                    `}
-                </div>
+                <saas-chat-message-list
+                    .messages=${this._messages}
+                    .streamContent=${this._streamContent}
+                    .isStreaming=${this._isStreaming}
+                ></saas-chat-message-list>
 
-                <!-- Floating Input Dock -->
-                <div class="input-dock">
-                    <button class="attach-btn" title="Attach file">
-                        +
-                    </button>
-                    <div class="input-field">
-                        <textarea
-                            rows="1"
-                            placeholder=${this._selectedAgentId ? 'Type your message...' : 'Select an agent to start chatting'}
-                            .value=${this._input}
-                            ?disabled=${!this._selectedAgentId}
-                            @input=${this._handleInput}
-                            @keydown=${this._handleKeydown}
-                        ></textarea>
-                    </div>
-                    <button class="voice-btn" title="Voice input" ?disabled=${!this._selectedAgentId}>
-                        <span class="material-symbols-outlined">mic</span>
-                    </button>
-                    <button
-                        class="send-btn"
-                        ?disabled=${!this._input.trim() || this._isStreaming || !this._selectedAgentId}
-                        @click=${this._sendMessage}
-                        title="Send message"
-                    >
-                        ➤
-                    </button>
+                <div class="input-dock-wrapper">
+                    <saas-chat-input
+                        .value=${this._input}
+                        .disabled=${!this._selectedAgentId}
+                        .isStreaming=${this._isStreaming}
+                        @saas-input=${this._onInput}
+                        @saas-send=${this._onSend}
+                    ></saas-chat-input>
                 </div>
             </main>
-        `;
-    }
-
-    private _renderEmptyState() {
-        return html`
-            <div class="empty-state">
-                <div class="empty-icon"><span class="material-symbols-outlined">chat</span></div>
-                <div class="empty-title">Start a Conversation</div>
-                <div class="empty-desc">
-                    Ask me anything about your data, configurations, or system management.
-                </div>
-            </div>
         `;
     }
 
@@ -1065,8 +462,8 @@ export class SaasChat extends LitElement {
             return html`<span class="agent-name">Select an agent</span>`;
         }
         if (this._agents.length <= 1) {
-            const agent = this._agents.find(a => a.id === this._selectedAgentId);
-            return html`<span class="agent-name">${agent?.name ?? 'Support-AI'}</span>`;
+            const agent = this._agents.find((a) => a.id === this._selectedAgentId);
+            return html`<span class="agent-name">${agent?.name ?? ''}</span>`;
         }
         return html`
             <select
@@ -1074,7 +471,7 @@ export class SaasChat extends LitElement {
                 style="border: none; background: transparent; font: inherit; cursor: pointer; outline: none;"
                 @change=${this._handleAgentSelect}
             >
-                ${this._agents.map(agent => html`
+                ${this._agents.map((agent) => html`
                     <option value=${agent.id} ?selected=${agent.id === this._selectedAgentId}>
                         ${agent.name}
                     </option>
@@ -1090,41 +487,12 @@ export class SaasChat extends LitElement {
             this._selectedAgentId = agentId;
             this._activeConversationId = '';
             this._messages = [];
-            this._connectWebSocket();
+            this._streamingController.connect(agentId);
         }
     }
 
-    private _renderMessage(msg: ChatMessage) {
-        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        return html`
-            <div class="message ${msg.role}">
-                <div class="message-content" style="white-space: pre-wrap;">${msg.content}</div>
-                <div class="message-time">${time}</div>
-                ${msg.confidence != null ? html`
-                    <div class="confidence">
-                        <div class="confidence-bar">
-                            <div class="confidence-fill" style="width: ${msg.confidence * 100}%"></div>
-                        </div>
-                        <span>${Math.round(msg.confidence * 100)}%</span>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    private _renderTypingIndicator() {
-        return html`
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        `;
-    }
-
     private _getModeLabel(mode: AgentMode): string {
-        const modeInfo = this._modes.find(m => m.id === mode);
+        const modeInfo = this._modes.find((m) => m.id === mode);
         return modeInfo?.name.replace(' Mode', '') || mode;
     }
 
@@ -1139,23 +507,11 @@ export class SaasChat extends LitElement {
         this._showModeDropdown = false;
     }
 
-    private _handleInput(e: Event) {
-        const textarea = e.target as HTMLTextAreaElement;
-        this._input = textarea.value;
-
-        // Auto-resize textarea
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    private _onInput(e: CustomEvent<string>) {
+        this._input = e.detail;
     }
 
-    private _handleKeydown(e: KeyboardEvent) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            this._sendMessage();
-        }
-    }
-
-    private async _sendMessage() {
+    private async _onSend() {
         const content = this._input.trim();
         if (!content || this._isStreaming || !this._selectedAgentId) {
             if (!this._selectedAgentId) {
@@ -1164,7 +520,7 @@ export class SaasChat extends LitElement {
             return;
         }
 
-        const wsReady = await this._ensureWebSocket();
+        const wsReady = await this._streamingController.ensureConnected();
         if (!wsReady) {
             console.error('[SaasChat] WebSocket not connected');
             return;
@@ -1197,45 +553,14 @@ export class SaasChat extends LitElement {
         this._isStreaming = true;
         this._streamContent = '';
 
-        // Reset textarea height
-        const textarea = this.shadowRoot?.querySelector('textarea');
-        if (textarea) textarea.style.height = 'auto';
-
         this.updateComplete.then(() => this._scrollToBottom());
 
         try {
-            this._wsClient?.send({
-                type: 'chat.message',
-                conversation_id: conversationId,
-                content,
-                mode: this._currentMode,
-            });
+            this._streamingController.sendMessage(conversationId, content);
         } catch (error) {
             console.error('Failed to send message:', error);
             this._isStreaming = false;
         }
-    }
-
-    private async _ensureWebSocket(): Promise<boolean> {
-        if (!this._wsClient) {
-            return false;
-        }
-        if (this._wsClient.connected) {
-            return true;
-        }
-
-        this._wsClient.connect();
-
-        return new Promise(resolve => {
-            const unsubscribe = this._wsClient!.on('connected', () => {
-                unsubscribe();
-                resolve(true);
-            });
-            const timeout = setTimeout(() => {
-                unsubscribe();
-                resolve(false);
-            }, 5000);
-        });
     }
 
     private _handleIncomingMessage(msg: ChatMessage) {
@@ -1245,8 +570,7 @@ export class SaasChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
     }
 
-    private _handleStreamDelta(chunk: { delta?: string; content?: string }) {
-        const delta = chunk.delta ?? chunk.content ?? '';
+    private _handleStreamDelta(delta: string) {
         this._streamContent += delta;
         this.updateComplete.then(() => this._scrollToBottom());
     }
@@ -1263,13 +587,13 @@ export class SaasChat extends LitElement {
     }
 
     private _scrollToBottom() {
-        if (this._messagesContainer) {
-            this._messagesContainer.scrollTop = this._messagesContainer.scrollHeight;
+        const messagesContainer = this.renderRoot.querySelector('saas-chat-message-list');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
     }
 
     private async _startNewChat() {
-        // Create conversation via API per design.md Section 8.1
         if (this._selectedAgentId) {
             const conversationId = await this._createConversation(this._selectedAgentId);
             if (conversationId) {
@@ -1280,14 +604,15 @@ export class SaasChat extends LitElement {
         this._messages = [];
     }
 
-    private _selectConversation(id: string) {
+    private _onSelectConversation(e: CustomEvent<string>) {
+        const id = e.detail;
         this._activeConversationId = id;
         this._loadConversationMessages(id);
     }
 
     private async _loadConversationMessages(conversationId: string): Promise<void> {
         try {
-            const response = await apiClient.get(`/chat/conversations/${conversationId}/messages`);
+            const response = await apiClient.get(`/chat/messages/${conversationId}`);
             const items = Array.isArray(response)
                 ? response
                 : (response as { data?: ChatMessage[] }).data || [];
@@ -1295,7 +620,8 @@ export class SaasChat extends LitElement {
             this._messages = items.map((msg: any) => ({
                 id: msg.id,
                 role: msg.role,
-                content: msg.content,
+                content: msg.content ?? '',
+                coordinate: msg.coordinate,
                 timestamp: msg.created_at,
                 confidence: msg.metadata?.confidence,
             }));
@@ -1305,16 +631,13 @@ export class SaasChat extends LitElement {
         }
     }
 
-    private _navigate(path: string) {
-        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: path } }));
+    private _onNavigate(e: CustomEvent<{ route: string }>) {
+        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: e.detail }));
     }
 
     private _logout() {
-        // Clear any session state
         sessionStorage.removeItem('saas_auth_state');
         sessionStorage.removeItem('saas_auth_nonce');
-
-        // Redirect to login
         window.location.href = '/login';
     }
 }

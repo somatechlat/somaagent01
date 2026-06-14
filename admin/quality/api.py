@@ -429,20 +429,33 @@ async def _evaluate_criterion(
     content: Optional[str],
     asset_type: str,
 ) -> QualityScore:
-    """Evaluate a single quality criterion using LLM."""
+    """Evaluate a single quality criterion using LLM.
+
+    VIBE: Never fabricate quality scores. If the evaluator is unreachable or
+    returns unparseable output, fail-closed with a clear error.
+    """
     import httpx
     from django.conf import settings
 
-    try:
-        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
+    from admin.common.exceptions import ServiceUnavailableError
 
-        prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
+    llm_url = getattr(settings, "LLM_API_URL", None)
+    if not llm_url:
+        raise ServiceUnavailableError(
+            "quality_evaluator",
+            "LLM_API_URL is not configured; quality evaluation is unavailable.",
+        )
+
+    api_key = getattr(settings, "LLM_API_KEY", None) or ""
+
+    prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
         
 Content: {content[:500] if content else "No content provided"}
 
 Respond with ONLY a JSON object in this format:
 {{"score": 0.X, "feedback": "Brief explanation"}}"""
 
+    try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 llm_url,
@@ -451,33 +464,44 @@ Respond with ONLY a JSON object in this format:
                     "model": getattr(settings, "QUALITY_EVAL_MODEL", "gpt-4o-mini"),
                     "max_tokens": 100,
                 },
-                headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"},
+                headers={"Authorization": f"Bearer {api_key}"},
             )
+    except Exception as exc:
+        logger.error("Quality evaluator unreachable: %s", exc)
+        raise ServiceUnavailableError(
+            "quality_evaluator",
+            "Quality evaluator is unreachable.",
+        )
 
-            if response.status_code == 200:
-                import json
+    if response.status_code != 200:
+        logger.error(
+            "Quality evaluator returned HTTP %s: %s",
+            response.status_code,
+            response.text,
+        )
+        raise ServiceUnavailableError(
+            "quality_evaluator",
+            f"Quality evaluator returned HTTP {response.status_code}.",
+        )
 
-                result = response.json()
-                content_text = result.get("content", result.get("message", {}).get("content", ""))
-                # Parse JSON from response
-                try:
-                    eval_result = json.loads(content_text.strip())
-                    return QualityScore(
-                        criterion=criterion,
-                        score=float(eval_result.get("score", 0.7)),
-                        feedback=eval_result.get("feedback"),
-                    )
-                except json.JSONDecodeError:
-                    # Fallback parsing
-                    return QualityScore(
-                        criterion=criterion, score=0.7, feedback="Evaluation complete"
-                    )
+    import json
 
-    except Exception as e:
-        logger.error('Quality evaluation error: %s', e)
+    result = response.json()
+    content_text = result.get("content", result.get("message", {}).get("content", ""))
+    try:
+        eval_result = json.loads(content_text.strip())
+    except json.JSONDecodeError as exc:
+        logger.error("Quality evaluator returned non-JSON response: %s", exc)
+        raise ServiceUnavailableError(
+            "quality_evaluator",
+            "Quality evaluator returned an unparseable response.",
+        )
 
-    # Graceful degradation
-    return QualityScore(criterion=criterion, score=0.7, feedback="Evaluation unavailable")
+    return QualityScore(
+        criterion=criterion,
+        score=float(eval_result.get("score", 0.0)),
+        feedback=eval_result.get("feedback"),
+    )
 
 
 def _generate_critique(
@@ -529,29 +553,34 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
     import httpx
     from django.conf import settings
 
+    from admin.common.exceptions import ServiceUnavailableError
+
     # Route to appropriate service
     service_urls = {
-        "generate_image": getattr(settings, "IMAGE_GEN_URL", "http://localhost:8003/generate"),
-        "render_diagram": getattr(settings, "DIAGRAM_URL", "http://localhost:8004/render"),
-        "llm_completion": getattr(
-            settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat"
-        ),
+        "generate_image": getattr(settings, "IMAGE_GEN_URL", None),
+        "render_diagram": getattr(settings, "DIAGRAM_URL", None),
+        "llm_completion": getattr(settings, "LLM_API_URL", None),
     }
 
     url = service_urls.get(operation_type)
     if not url:
-        return {"result": "unknown_operation", "type": operation_type}
+        raise ServiceUnavailableError(
+            "quality_operation",
+            f"No service URL configured for operation '{operation_type}'.",
+        )
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, json=input_data)
             if response.status_code == 200:
                 return {"result": "completed", "type": operation_type, "data": response.json()}
-            else:
-                return {"result": "error", "type": operation_type, "status": response.status_code}
+            return {"result": "error", "type": operation_type, "status": response.status_code}
     except Exception as e:
         logger.error('Operation %s failed: %s', operation_type, e)
-        raise
+        raise ServiceUnavailableError(
+            "quality_operation",
+            f"Operation '{operation_type}' failed: {e}",
+        )
 
 
 async def _quick_quality_check(output: dict) -> float:

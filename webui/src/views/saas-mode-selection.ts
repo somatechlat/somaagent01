@@ -427,8 +427,8 @@ export class SaasModeSelection extends LitElement {
     @state() private _searchQuery = '';
     @state() private _isLoading = false;
     @state() private _error = '';
-    @state() private _userName = 'Admin User';
-    @state() private _userEmail = 'admin@somatech.dev';
+    @state() private _userName = '';
+    @state() private _userEmail = '';
 
     async connectedCallback() {
         super.connectedCallback();
@@ -565,8 +565,8 @@ export class SaasModeSelection extends LitElement {
             const userStr = sessionStorage.getItem('saas_user');
             if (userStr) {
                 const user = JSON.parse(userStr);
-                this._userName = user.name || 'Admin User';
-                this._userEmail = user.email || 'admin@somatech.dev';
+                this._userName = user.name || '';
+                this._userEmail = user.email || '';
             }
 
             const response = await apiClient.get('/aaas/tenants/') as { tenants?: Tenant[] };

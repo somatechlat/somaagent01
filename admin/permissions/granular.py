@@ -16,6 +16,7 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
@@ -402,23 +403,36 @@ async def check_granular_permission(
 ) -> dict:
     """Check if user has a specific permission.
 
-    Django Architect: SpiceDB query for authorization.
+    Django Architect: SpiceDB query for authorization. Fail-closed on any
+    configuration or runtime error.
     """
-    # In production: query SpiceDB
-    # authzed.check(
-    #     subject=f"user:{user_id}",
-    #     permission=permission_id.replace(":", "_"),
-    #     resource=f"{scope_type}:{scope_id or '*'}",
-    # )
+    resource_type = scope_type
+    resource_id = scope_id or "*"
+    action = permission_id.replace(":", "_")
 
-    return {
-        "user_id": user_id,
-        "permission_id": permission_id,
-        "scope_type": scope_type,
-        "scope_id": scope_id,
-        "allowed": True,
-        "reason": "direct_grant",
-    }
+    try:
+        from services.common.spicedb_client import get_spicedb_client
+
+        client = await get_spicedb_client()
+        allowed = await client.check_permission(user_id, action, resource_type, resource_id)
+        return {
+            "user_id": user_id,
+            "permission_id": permission_id,
+            "scope_type": scope_type,
+            "scope_id": scope_id,
+            "allowed": allowed,
+            "reason": "spicedb_check",
+        }
+    except Exception as exc:
+        logger.error("SpiceDB granular permission check failed (fail-closed): %s", exc)
+        return {
+            "user_id": user_id,
+            "permission_id": permission_id,
+            "scope_type": scope_type,
+            "scope_id": scope_id,
+            "allowed": False,
+            "reason": "fail_closed",
+        }
 
 
 @router.get(
@@ -434,15 +448,37 @@ async def get_effective_permissions(
 ) -> dict:
     """Get all effective permissions for a user.
 
-    Security Auditor: Complete access picture.
+    Security Auditor: Complete access picture resolved from Django RBAC models.
     """
-    # In production: aggregate from roles + direct grants
+    from admin.permissions.models import UserRoleAssignment
 
+    @sync_to_async
+    def _resolve():
+        filters = {"user_id": user_id}
+        if scope_type:
+            filters["scope_type"] = scope_type
+        if scope_id:
+            filters["scope_id"] = scope_id
+        assignments = (
+            UserRoleAssignment.objects.filter(**filters)
+            .select_related("role")
+            .prefetch_related("role__permissions")
+        )
+        roles = []
+        effective = set()
+        for assignment in assignments:
+            role = assignment.role
+            roles.append({"role_id": str(role.id), "name": role.name, "scope": assignment.scope_type, "scope_id": assignment.scope_id})
+            for perm in role.permissions.all():
+                effective.add(perm.codename)
+        return roles, sorted(effective)
+
+    roles, effective = await _resolve()
     return {
         "user_id": user_id,
         "scope_type": scope_type,
         "scope_id": scope_id,
-        "roles": [],
+        "roles": roles,
         "direct_grants": [],
-        "effective_permissions": [],
+        "effective_permissions": effective,
     }

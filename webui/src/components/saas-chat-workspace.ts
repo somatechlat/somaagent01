@@ -12,6 +12,21 @@ export class SaasChatWorkspace extends LitElement {
     @state() private _messages: Array<{role: string; content: string}> = [];
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: flex;
             flex-direction: column;
@@ -124,13 +139,6 @@ export class SaasChatWorkspace extends LitElement {
             this._hasConversation = true;
             this._messages.push({ role: 'user', content: e.detail.text });
             this.requestUpdate();
-            setTimeout(() => {
-                this._messages.push({ 
-                    role: 'assistant', 
-                    content: 'I received your message. This is a placeholder response while the WebSocket integration is being connected.' 
-                });
-                this.requestUpdate();
-            }, 1500);
         }) as EventListener);
 
         this.addEventListener('clear-chat', () => {
@@ -161,14 +169,9 @@ export class SaasChatWorkspace extends LitElement {
                 <div class="messages">
                     ${this._messages.map(m => html`
                         <div class="message ${m.role}">
-                            <div class="message-avatar">${m.role === 'user' ? '👤' : '🤖'}</div>
+                            <div class="message-avatar">${m.role === 'user' ? html`<span class='material-symbols-outlined'>person</span>` : html`<span class='material-symbols-outlined'>smart_toy</span>`}</div>
                             <div class="message-bubble">
                                 ${m.content}
-                                ${m.role === 'assistant' ? html`
-                                    <div class="confidence-bar">
-                                        <div class="confidence-fill" style="width:94%;background:var(--aaas-success,#22c55e)"></div>
-                                    </div>
-                                ` : ''}
                             </div>
                         </div>
                     `)}

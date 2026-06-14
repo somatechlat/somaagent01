@@ -362,7 +362,7 @@ export class SaasTenantAgents extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this._tenantName = sessionStorage.getItem('saas_tenant_name') || 'Demo Tenant';
+        this._tenantName = sessionStorage.getItem('saas_tenant_name') || '';
         this._loadAgents();
     }
 

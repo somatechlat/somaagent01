@@ -34,8 +34,16 @@ from asgiref.sync import sync_to_async
 
 from admin.common.messages import ErrorCode, get_message
 from admin.core.agentiq import derive_all_settings, UnifiedGate
-from admin.core.context import build_context, BuiltContext
-from admin.core.model_router import detect_required_capabilities, select_model, SelectedModel
+from admin.core.chat_context import (
+    background_task_done_callback,
+    ChatContextManager,
+    ConversationSummary,
+    load_neuromodulators,
+    token_count,
+)
+from admin.core.chat_inference import ChatInferenceEngine
+from admin.core.chat_tools import ChatToolManager
+from admin.core.context import build_context
 from admin.core.permission_matrix import PermissionChecker
 from admin.core.somabrain_client import SomaBrainClient
 from services.common.adapters import get_memory_service
@@ -45,19 +53,6 @@ from services.common.simple_governor import get_governor
 from services.common.unified_metrics import get_metrics, TurnPhase
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# tiktoken — accurate token counting
-# ---------------------------------------------------------------------------
-import tiktoken
-
-_ENCODING = tiktoken.get_encoding("cl100k_base")
-
-
-def _token_count(text: str) -> int:
-    """Accurate LLM token count."""
-    return len(_ENCODING.encode(text))
-
 
 # ---------------------------------------------------------------------------
 # DTOs
@@ -107,21 +102,6 @@ class ChatResult:
     turn_id: str = ""
 
 
-@dataclass
-class ConversationSummary:
-    """Conversation metadata."""
-
-    id: str
-    title: str
-    agent_id: str
-    user_id: str
-    tenant_id: str
-    status: str
-    message_count: int
-    created_at: Any
-    updated_at: Any
-
-
 # ---------------------------------------------------------------------------
 # V3 Chat Orchestrator
 # ---------------------------------------------------------------------------
@@ -153,12 +133,21 @@ class V3ChatOrchestrator:
 
         # SomaFractalMemory adapter — independent from SomaBrain
         # Used as memory fallback when Brain is unavailable
-        self._sfm_adapter = None
+        sfm_adapter = None
         try:
-            self._sfm_adapter = get_memory_service(namespace="chat_history")
+            sfm_adapter = get_memory_service(namespace="chat_history")
             logger.info("V3ChatOrchestrator: SomaFractalMemory adapter initialized")
         except Exception as exc:
             logger.warning("V3ChatOrchestrator: SomaFractalMemory not available: %s", exc)
+
+        self._context_manager = ChatContextManager(
+            sfm_adapter=sfm_adapter,
+            cb_somabrain=self._cb_somabrain,
+        )
+        self._inference = ChatInferenceEngine(
+            cb_llm=self._cb_llm,
+            metrics=self._metrics,
+        )
 
     # =================================================================
     # PUBLIC API — Conversation CRUD (from old ConversationService)
@@ -168,89 +157,23 @@ class V3ChatOrchestrator:
         self, agent_id: str, user_id: str, tenant_id: str, title: Optional[str] = None
     ) -> ConversationSummary:
         """Create a new conversation."""
-        from admin.chat.models import Conversation as ConversationModel
-        from django.db import transaction
-
-        @sync_to_async
-        def _create() -> ConversationSummary:
-            with transaction.atomic():
-                db = ConversationModel.objects.create(
-                    agent_id=agent_id,
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                    status="active",
-                    message_count=0,
-                    title=title or f"Conversation {str(uuid4())[:8]}",
-                )
-                return ConversationSummary(
-                    id=str(db.id),
-                    title=db.title,
-                    agent_id=str(db.agent_id),
-                    user_id=str(db.user_id),
-                    tenant_id=str(db.tenant_id),
-                    status=db.status,
-                    message_count=db.message_count,
-                    created_at=db.created_at,
-                    updated_at=db.updated_at,
-                )
-
-        return await _create()
+        return await self._context_manager.create_conversation(
+            agent_id=agent_id, user_id=user_id, tenant_id=tenant_id, title=title
+        )
 
     async def get_conversation(
         self, conversation_id: str, user_id: str
     ) -> Optional[ConversationSummary]:
         """Get conversation with ownership check."""
-        from admin.chat.models import Conversation as ConversationModel
-
-        @sync_to_async
-        def _get() -> Optional[ConversationSummary]:
-            try:
-                db = ConversationModel.objects.get(id=conversation_id)
-                if str(db.user_id) != user_id:
-                    return None
-                return ConversationSummary(
-                    id=str(db.id),
-                    title=db.title,
-                    agent_id=str(db.agent_id),
-                    user_id=str(db.user_id),
-                    tenant_id=str(db.tenant_id),
-                    status=db.status,
-                    message_count=db.message_count,
-                    created_at=db.created_at,
-                    updated_at=db.updated_at,
-                )
-            except ConversationModel.DoesNotExist:
-                return None
-
-        return await _get()
+        return await self._context_manager.get_conversation(conversation_id, user_id)
 
     async def list_conversations(
         self, user_id: str, tenant_id: str, limit: int = 50, offset: int = 0
     ) -> List[ConversationSummary]:
         """List user's conversations."""
-        from admin.chat.models import Conversation as ConversationModel
-
-        @sync_to_async
-        def _list() -> List[ConversationSummary]:
-            qs = ConversationModel.objects.filter(user_id=user_id, tenant_id=tenant_id).order_by(
-                "-updated_at"
-            )[offset : offset + limit]
-            return [
-                ConversationSummary(
-                    id=str(c.id),
-                    title=c.title,
-                    agent_id=str(c.agent_id),
-                    user_id=str(c.user_id),
-                    tenant_id=str(c.tenant_id),
-                    status=c.status,
-                    message_count=c.message_count,
-                    created_at=c.created_at,
-                    updated_at=c.updated_at,
-                )
-                for c in qs
-            ]
-
-        return await _list()
+        return await self._context_manager.list_conversations(
+            user_id=user_id, tenant_id=tenant_id, limit=limit, offset=offset
+        )
 
     # =================================================================
     # PUBLIC API — Session Management (from old SessionManager)
@@ -285,8 +208,8 @@ class V3ChatOrchestrator:
                 }
 
         session = await _create()
-        task = asyncio.create_task(self._load_neuromodulators(agent_id, user_context))
-        task.add_done_callback(self._on_background_task_done("_load_neuromodulators"))
+        task = asyncio.create_task(load_neuromodulators(agent_id, user_context))
+        task.add_done_callback(background_task_done_callback("_load_neuromodulators"))
         return session
 
     # =================================================================
@@ -312,7 +235,7 @@ class V3ChatOrchestrator:
             result.phase_completed = 2
 
             tenant_id = str(capsule.tenant_id) if capsule.tenant_id else turn.tenant_id
-            turn_metrics = self._metrics.record_turn_start(
+            self._metrics.record_turn_start(
                 turn_id=turn_id, tenant_id=tenant_id, user_id=turn.user_id,
                 agent_id=str(capsule.id),
             )
@@ -389,7 +312,7 @@ class V3ChatOrchestrator:
 
             # Phase 5: Context Building (5-lane with memory recall)
             # SomaBrain primary + SomaFractalMemory fallback (independent)
-            history = turn.history or await self._recall_history(
+            history = turn.history or await self._context_manager.recall_history(
                 turn.conversation_id or "", tenant_id
             )
             brain_client = await SomaBrainClient.get_async()
@@ -398,7 +321,7 @@ class V3ChatOrchestrator:
                 user_message=turn.user_message,
                 history=history,
                 brain_client=brain_client,
-                memory_client=self._sfm_adapter,
+                memory_client=self._context_manager._sfm_adapter,
                 budget_override=budget_override,
             )
             result.context_tokens = context.total_tokens
@@ -411,18 +334,12 @@ class V3ChatOrchestrator:
             result.phase_completed = 5
 
             # Phase 6: Model Selection
-            caps = detect_required_capabilities(
-                message=turn.user_message, attachments=turn.attachments
-            )
             try:
-                model = cast(
-                    SelectedModel,
-                    await self._cb_llm.call(
-                        select_model,
-                        required_capabilities=caps,
-                        capsule_body=capsule.body or {},
-                        tenant_id=tenant_id,
-                    ),
+                model = await self._inference.select_model(
+                    user_message=turn.user_message,
+                    attachments=turn.attachments,
+                    capsule_body=capsule.body or {},
+                    tenant_id=tenant_id,
                 )
             except CircuitBreakerError as e:
                 result.response = get_message(ErrorCode.LLM_DEGRADED_MODEL_UNAVAILABLE)
@@ -434,41 +351,23 @@ class V3ChatOrchestrator:
             result.phase_completed = 6
 
             # Phase 7: Tool Discovery — from Capsule's ToolRegistry
-            tools_for_llm: List[Dict[str, Any]] = []
-            if turn.tool_registry:
-                for tool_def in turn.tool_registry.list():
-                    handler = tool_def.handler
-                    schema = handler.input_schema() if handler else None
-                    if schema:
-                        tools_for_llm.append({
-                            "type": "function",
-                            "function": {
-                                "name": tool_def.name,
-                                "description": tool_def.description or tool_def.name,
-                                "parameters": schema,
-                            }
-                        })
+            tool_manager = ChatToolManager(turn.tool_registry)
+            tools_for_llm = tool_manager.list_for_llm()
             result.phase_completed = 7
 
             # Phase 8: LLM Invocation (REAL — NO PLACEHOLDER)
             llm = get_chat_model(provider=model.provider, name=model.name)
-            messages = self._to_langchain_messages(context, history, turn.user_message)
             self._metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
 
             response_chunks: List[str] = []
             try:
-                stream = cast(
-                    AsyncIterator[Any],
-                    await self._cb_llm.call(llm._astream, messages=messages),
-                )
-                async for chunk in stream:
-                    token = (
-                        str(chunk.message.content)
-                        if hasattr(chunk, "message") and hasattr(chunk.message, "content")
-                        else ""
-                    )
-                    if token:
-                        response_chunks.append(token)
+                async for token in self._inference.stream_llm(
+                    llm=llm,
+                    context=context,
+                    history=history,
+                    user_message=turn.user_message,
+                ):
+                    response_chunks.append(token)
             except CircuitBreakerError:
                 result.response = get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
                 result.errors.append("LLM circuit OPEN — degraded mode")
@@ -485,25 +384,10 @@ class V3ChatOrchestrator:
             result.phase_completed = 8
 
             # Phase 9: Tool Execution (if LLM requested tools)
-            tools_called: List[str] = []
             if tools_for_llm and turn.tool_registry:
-                # Simple heuristic: check if response contains tool call patterns
-                # Full implementation requires parsing LLM tool_calls
-                tool_calls = self._extract_tool_calls(full_response)
-                for tool_call in tool_calls:
-                    tool_name = tool_call.get("name", "")
-                    tool_def = turn.tool_registry.get(tool_name)
-                    if tool_def:
-                        try:
-                            import json
-                            args = json.loads(tool_call.get("arguments", "{}"))
-                            tool_result = await tool_def.run(args)
-                            tools_called.append(tool_name)
-                            logger.info("Tool executed: %s → %s", tool_name, tool_result.get("status", "ok"))
-                        except Exception as tool_exc:
-                            logger.error("Tool execution failed: %s", tool_exc)
-                            result.errors.append(f"Tool {tool_name} failed: {tool_exc}")
-            result.tools_called = tools_called
+                tools_called, tool_errors = await tool_manager.run_extracted(full_response)
+                result.tools_called = tools_called
+                result.errors.extend(tool_errors)
             result.phase_completed = 9
 
             # Phase 10: Response Formatting
@@ -518,34 +402,19 @@ class V3ChatOrchestrator:
                 assistant_response=full_response,
                 model_id=result.model_used,
                 elapsed_ms=elapsed_ms,
-                token_count_out=_token_count(full_response),
+                token_count_out=token_count(full_response),
             )
 
             # Emit Django signals for outbox publishers
-            try:
-                from admin.core.signals import conversation_message, memory_created
-
-                await sync_to_async(conversation_message.send)(
-                    sender=self.__class__,
-                    conversation_id=turn.conversation_id or "",
-                    message_id=turn_id,
-                    role="assistant",
-                    content=full_response,
-                )
-                await sync_to_async(memory_created.send)(
-                    sender=self.__class__,
-                    payload={
-                        "role": "assistant",
-                        "content": full_response,
-                        "conversation_id": turn.conversation_id,
-                        "model": result.model_used,
-                        "latency_ms": elapsed_ms,
-                    },
-                    tenant_id=tenant_id,
-                    namespace="chat_history",
-                )
-            except Exception as signal_exc:
-                logger.warning("Signal emission failed: %s", signal_exc)
+            await self._context_manager.emit_signals(
+                sender_cls=self.__class__,
+                conversation_id=turn.conversation_id or "",
+                message_id=turn_id,
+                full_response=full_response,
+                model_used=result.model_used,
+                elapsed_ms=elapsed_ms,
+                tenant_id=tenant_id,
+            )
 
             self._metrics.record_turn_phase(turn_id, TurnPhase.MEMORY_STORED)
             result.phase_completed = 11
@@ -554,8 +423,8 @@ class V3ChatOrchestrator:
             result.latency_ms = elapsed_ms
             self._metrics.record_turn_complete(
                 turn_id=turn_id,
-                tokens_in=_token_count(turn.user_message),
-                tokens_out=_token_count(full_response),
+                tokens_in=token_count(turn.user_message),
+                tokens_out=token_count(full_response),
                 model=result.model_used,
                 provider=model.provider,
                 error=None,
@@ -618,7 +487,9 @@ class V3ChatOrchestrator:
         budget_override = gov_decision.lane_budget.to_dict()
 
         # Build context
-        history = turn.history or await self._recall_history(turn.conversation_id or "", tenant_id)
+        history = turn.history or await self._context_manager.recall_history(
+            turn.conversation_id or "", tenant_id
+        )
         brain_client = await SomaBrainClient.get_async()
         context = await build_context(
             capsule=capsule,
@@ -629,32 +500,16 @@ class V3ChatOrchestrator:
         )
 
         # Phase 7: Tool Discovery
-        tools_for_llm: List[Dict[str, Any]] = []
-        if turn.tool_registry:
-            for tool_def in turn.tool_registry.list():
-                handler = tool_def.handler
-                schema = handler.input_schema() if handler else None
-                if schema:
-                    tools_for_llm.append({
-                        "type": "function",
-                        "function": {
-                            "name": tool_def.name,
-                            "description": tool_def.description or tool_def.name,
-                            "parameters": schema,
-                        }
-                    })
+        tool_manager = ChatToolManager(turn.tool_registry)
+        tools_for_llm = tool_manager.list_for_llm()
 
         # Select model
-        caps = detect_required_capabilities(message=turn.user_message, attachments=turn.attachments)
         try:
-            model = cast(
-                SelectedModel,
-                await self._cb_llm.call(
-                    select_model,
-                    required_capabilities=caps,
-                    capsule_body=capsule.body or {},
-                    tenant_id=tenant_id,
-                ),
+            model = await self._inference.select_model(
+                user_message=turn.user_message,
+                attachments=turn.attachments,
+                capsule_body=capsule.body or {},
+                tenant_id=tenant_id,
             )
         except CircuitBreakerError:
             yield get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
@@ -662,27 +517,18 @@ class V3ChatOrchestrator:
 
         # Stream LLM
         llm = get_chat_model(provider=model.provider, name=model.name)
-        messages = self._to_langchain_messages(context, history, turn.user_message)
 
         response_chunks: List[str] = []
         try:
-            stream = cast(
-                AsyncIterator[Any],
-                await self._cb_llm.call(
-                    llm._astream,
-                    messages=messages,
-                    tools=tools_for_llm if tools_for_llm else None,
-                ),
-            )
-            async for chunk in stream:
-                token = (
-                    str(chunk.message.content)
-                    if hasattr(chunk, "message") and hasattr(chunk.message, "content")
-                    else ""
-                )
-                if token:
-                    response_chunks.append(token)
-                    yield token
+            async for token in self._inference.stream_llm(
+                llm=llm,
+                context=context,
+                history=history,
+                user_message=turn.user_message,
+                tools_for_llm=tools_for_llm,
+            ):
+                response_chunks.append(token)
+                yield token
         except CircuitBreakerError:
             yield "[System degraded: LLM service temporarily unavailable. Using cached context only.]"
             return
@@ -693,230 +539,34 @@ class V3ChatOrchestrator:
         # Store after streaming
         full_response = "".join(response_chunks)
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-        await self._store_turn(
+        await self._context_manager.store_turn(
             conversation_id=turn.conversation_id or "",
             tenant_id=tenant_id,
             user_message=turn.user_message,
             assistant_response=full_response,
             model_id=f"{model.provider}/{model.name}",
             elapsed_ms=elapsed_ms,
-            token_count_out=_token_count(full_response),
+            token_count_out=token_count(full_response),
         )
 
         # Emit Django signals for outbox publishers
-        try:
-            from admin.core.signals import conversation_message, memory_created
-
-            await sync_to_async(conversation_message.send)(
-                sender=self.__class__,
-                conversation_id=turn.conversation_id or "",
-                message_id=turn_id,
-                role="assistant",
-                content=full_response,
-            )
-            await sync_to_async(memory_created.send)(
-                sender=self.__class__,
-                payload={
-                    "role": "assistant",
-                    "content": full_response,
-                    "conversation_id": turn.conversation_id,
-                    "model": f"{model.provider}/{model.name}",
-                    "latency_ms": elapsed_ms,
-                },
-                tenant_id=tenant_id,
-                namespace="chat_history",
-            )
-        except Exception as signal_exc:
-            logger.warning("Signal emission failed: %s", signal_exc)
+        await self._context_manager.emit_signals(
+            sender_cls=self.__class__,
+            conversation_id=turn.conversation_id or "",
+            message_id=turn_id,
+            full_response=full_response,
+            model_used=f"{model.provider}/{model.name}",
+            elapsed_ms=elapsed_ms,
+            tenant_id=tenant_id,
+        )
 
     # =================================================================
     # INTERNAL HELPERS
     # =================================================================
 
-    async def _load_capsule(self, capsule_id: str) -> Optional[Any]:
-        """Load Capsule from Django ORM.
-
-        DEPRECATED: Capsules should be pre-loaded at WebSocket connection time.
-        This method remains for backward compatibility and non-WebSocket paths.
-        """
-        from admin.core.models import Capsule
-
-        @sync_to_async
-        def _get():
-            return Capsule.objects.filter(id=capsule_id).first()
-
-        return await _get()
-
-    @staticmethod
-    def _extract_tool_calls(response_text: str) -> List[Dict[str, str]]:
-        """Extract tool calls from LLM response.
-
-        This is a simple parser for tool call patterns in the response.
-        Full implementation should use the LLM's native tool_call format
-        (e.g., OpenAI's message.tool_calls).
-
-        Supports two formats:
-        1. Markdown code block: ```tool:{name}\n{json_args}\n```
-        2. XML tag: <tool name="{name}">{json_args}</tool>
-        """
-        import json
-        import re
-
-        tool_calls: List[Dict[str, str]] = []
-
-        # Format 1: Markdown code blocks with tool: prefix
-        pattern1 = r'```tool:(\w+)\s*\n(.*?)\n```'
-        for match in re.finditer(pattern1, response_text, re.DOTALL):
-            name = match.group(1)
-            args_raw = match.group(2).strip()
-            try:
-                # Validate it's valid JSON
-                json.loads(args_raw)
-                tool_calls.append({"name": name, "arguments": args_raw})
-            except json.JSONDecodeError:
-                tool_calls.append({"name": name, "arguments": json.dumps({"raw": args_raw})})
-
-        # Format 2: XML-style tool tags
-        pattern2 = r'<tool\s+name="(\w+)">\s*(.*?)\s*</tool>'
-        for match in re.finditer(pattern2, response_text, re.DOTALL):
-            name = match.group(1)
-            args_raw = match.group(2).strip()
-            try:
-                json.loads(args_raw)
-                tool_calls.append({"name": name, "arguments": args_raw})
-            except json.JSONDecodeError:
-                tool_calls.append({"name": name, "arguments": json.dumps({"raw": args_raw})})
-
-        return tool_calls
-
-    async def _recall_history(self, conversation_id: str, tenant_id: str) -> List[Dict[str, str]]:
-        """Recall last 20 messages from PostgreSQL trace."""
-        if not conversation_id:
-            return []
-        from admin.chat.models import Message as MessageModel
-
-        @sync_to_async
-        def _load():
-            qs = MessageModel.objects.filter(conversation_id=conversation_id).order_by(
-                "-created_at"
-            )[:20]
-            return [
-                {"role": m.role, "content": getattr(m, "content", None) or ""}
-                for m in reversed(list(qs))
-            ]
-
-        return await _load()
-
-    def _to_langchain_messages(
-        self, context: BuiltContext, history: List[Dict[str, str]], user_message: str
-    ) -> List[Any]:
-        """Convert BuiltContext to LangChain messages."""
-        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-
-        msgs: List[Any] = []
-        if context.system:
-            msgs.append(SystemMessage(content=context.system))
-        for h in history:
-            role, content = h.get("role"), h.get("content", "")
-            if role == "assistant":
-                msgs.append(AIMessage(content=content))
-            else:
-                msgs.append(HumanMessage(content=content))
-        msgs.append(HumanMessage(content=user_message))
-        return msgs
-
-    @staticmethod
-    def _make_coordinate(seed: str) -> tuple[float, float, float]:
-        """Generate a deterministic 3D fractal coordinate from a seed string."""
-        import hashlib
-
-        h = hashlib.md5(seed.encode()).hexdigest()
-        return (
-            (int(h[0:8], 16) / 0xFFFFFFFF) * 2 - 1,
-            (int(h[8:16], 16) / 0xFFFFFFFF) * 2 - 1,
-            (int(h[16:24], 16) / 0xFFFFFFFF) * 2 - 1,
-        )
-
-    async def _store_to_sfm(
-        self,
-        content: str,
-        conversation_id: str,
-        tenant_id: str,
-        namespace: str,
-        metadata: dict,
-    ) -> None:
-        """Store memory to SomaFractalMemory (independent from SomaBrain)."""
-        adapter = self._sfm_adapter
-        if adapter is None:
-            return
-
-        coordinate = self._make_coordinate(f"{conversation_id}:{content[:50]}")
-        payload = {
-            "content": content,
-            "conversation_id": conversation_id,
-            **metadata,
-        }
-
-        try:
-            # HTTP adapter has store_async; Direct adapter has store (sync)
-            if hasattr(adapter, "store_async"):
-                await adapter.store_async(
-                    coordinate=coordinate,
-                    payload=payload,
-                    tenant=tenant_id,
-                    namespace=namespace,
-                )
-            else:
-                # Wrap sync store in thread for non-blocking
-                import asyncio
-
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: adapter.store(
-                        coordinate=coordinate,
-                        payload=payload,
-                        tenant=tenant_id,
-                        namespace=namespace,
-                    ),
-                )
-            logger.debug("SFM store OK: %s", conversation_id)
-        except Exception as exc:
-            logger.warning("SFM store failed: %s", exc)
-
-    async def _queue_pending_memory(
-        self,
-        tenant_id: str,
-        namespace: str,
-        payload: Dict[str, Any],
-    ) -> None:
-        """Queue memory to PendingMemory for sync when SomaBrain recovers.
-
-        Best-effort: logs on failure, never blocks the chat turn.
-        """
-        from uuid import uuid4
-
-        from admin.core.models import PendingMemory
-        from asgiref.sync import sync_to_async
-        from django.db import transaction
-
-        idempotency_key = f"chat:{tenant_id}:{payload.get('conversation_id', '')}:{str(uuid4())[:8]}"
-
-        @sync_to_async
-        def _create() -> None:
-            try:
-                with transaction.atomic():
-                    PendingMemory.objects.get_or_create(
-                        idempotency_key=idempotency_key,
-                        defaults={
-                            "tenant_id": tenant_id,
-                            "namespace": namespace,
-                            "payload": payload,
-                        },
-                    )
-            except Exception as exc:
-                logger.warning("PendingMemory queue failed: %s", exc)
-
-        await _create()
+    async def trigger_sleep_cycle(self, tenant_id: str, persona_id: str) -> None:
+        """Trigger a SomaBrain sleep/consolidation cycle."""
+        await self._context_manager.trigger_sleep_cycle(tenant_id, persona_id)
 
     async def _store_turn(
         self,
@@ -928,97 +578,18 @@ class V3ChatOrchestrator:
         elapsed_ms: int,
         token_count_out: int,
     ) -> None:
-        """Store user + assistant messages.
-
-        Storage hierarchy:
-        1. PostgreSQL — ALWAYS (persistence layer)
-        2. SomaBrain — PRIMARY (cognitive + memory)
-        3. SomaFractalMemory — FALLBACK (pure memory, independent from Brain)
-        """
-        from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
-        from django.db import transaction
-
-        # Store user message trace (ALWAYS — Zero Data Loss)
-        @sync_to_async
-        def _store_user():
-            with transaction.atomic():
-                MessageModel.objects.create(
-                    conversation_id=conversation_id,
-                    role="user",
-                    coordinate=user_message,
-                    token_count=_token_count(user_message),
-                )
-
-        await _store_user()
-
-        # SomaBrain memory (PRIMARY — cognitive + memory)
-        brain_stored = False
-        try:
-            client = await SomaBrainClient.get_async()
-            if client is None:
-                logger.debug("SomaBrain not configured; skipping primary memory store")
-            else:
-                await self._cb_somabrain.call(
-                    client.remember,
-                    payload={
-                        "role": "assistant",
-                        "content": assistant_response,
-                        "conversation_id": conversation_id,
-                        "model": model_id,
-                        "latency_ms": elapsed_ms,
-                    },
-                    tenant=tenant_id,
-                    namespace="chat_history",
-                )
-                brain_stored = True
-        except CircuitBreakerError:
-            logger.warning("SomaBrain circuit OPEN — falling back to SomaFractalMemory + PendingMemory")
-        except Exception as e:
-            logger.warning("SomaBrain store failed: %s — falling back to SomaFractalMemory + PendingMemory", e)
-
-        # SomaFractalMemory fallback (independent from Brain)
-        if not brain_stored:
-            await self._store_to_sfm(
-                content=assistant_response,
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                namespace="chat_history",
-                metadata={"role": "assistant", "model": model_id, "latency_ms": elapsed_ms},
-            )
-            # Queue to PendingMemory for later sync when Brain recovers
-            await self._queue_pending_memory(
-                tenant_id=tenant_id,
-                namespace="chat_history",
-                payload={
-                    "role": "assistant",
-                    "content": assistant_response,
-                    "conversation_id": conversation_id,
-                    "model": model_id,
-                    "latency_ms": elapsed_ms,
-                },
-            )
-
-        # Store assistant trace (ALWAYS — Zero Data Loss)
-        @sync_to_async
-        def _store_assistant():
-            with transaction.atomic():
-                MessageModel.objects.create(
-                    conversation_id=conversation_id,
-                    role="assistant",
-                    coordinate=assistant_response,
-                    token_count=token_count_out,
-                    latency_ms=elapsed_ms,
-                    model=model_id,
-                )
-                ConversationModel.objects.filter(id=conversation_id).update(
-                    message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
-                )
-
-        await _store_assistant()
-
-        # Background: episodic memory (Brain primary → SFM fallback)
+        """Store user + assistant messages and queue background episodic memory."""
+        await self._context_manager.store_turn(
+            conversation_id=conversation_id,
+            tenant_id=tenant_id,
+            user_message=user_message,
+            assistant_response=assistant_response,
+            model_id=model_id,
+            elapsed_ms=elapsed_ms,
+            token_count_out=token_count_out,
+        )
         task = asyncio.create_task(
-            self._store_episodic_bg(
+            self._context_manager.store_episodic_bg(
                 tenant_id=tenant_id,
                 user_message=user_message,
                 assistant_response=assistant_response,
@@ -1027,112 +598,16 @@ class V3ChatOrchestrator:
                 elapsed_ms=elapsed_ms,
             )
         )
-        task.add_done_callback(self._on_background_task_done("_store_episodic_bg"))
+        task.add_done_callback(background_task_done_callback("_store_episodic_bg"))
 
-    async def trigger_sleep_cycle(self, tenant_id: str, persona_id: str) -> None:
-        """Trigger a SomaBrain sleep/consolidation cycle.
-
-        This should be called periodically (e.g., every 6 hours) by a
-        background scheduler to consolidate memories and update graph
-        relationships.
-        """
-        try:
-            brain_client = await SomaBrainClient.get_async()
-            if brain_client:
-                await self._cb_somabrain.call(
-                    brain_client.brain_sleep_mode,
-                    "deep",
-                    ttl_seconds=600,
-                )
-                logger.info("Sleep cycle triggered for persona=%s", persona_id)
-        except Exception as exc:
-            logger.debug("Sleep cycle trigger skipped: %s", exc)
-
-    @staticmethod
-    def _on_background_task_done(task_name: str):
-        """Create a callback that logs exceptions from background tasks.
-
-        Usage:
-            task = asyncio.create_task(self._store_episodic_bg(...))
-            task.add_done_callback(self._on_background_task_done("_store_episodic_bg"))
-        """
-
-        def _callback(task: asyncio.Task) -> None:
-            try:
-                task.result()
-            except asyncio.CancelledError:
-                pass
-            except Exception as exc:
-                logger.error("Background task %s failed: %s", task_name, exc, exc_info=True)
-
-        return _callback
-
-    async def _store_episodic_bg(
+    async def _queue_pending_memory(
         self,
         tenant_id: str,
-        user_message: str,
-        assistant_response: str,
-        conversation_id: str,
-        model_id: str,
-        elapsed_ms: int,
+        namespace: str,
+        payload: Dict[str, Any],
     ) -> None:
-        """Non-blocking episodic memory storage.
-
-        Hierarchy: SomaBrain primary → SomaFractalMemory fallback.
-        SFM is independent from Brain and can queue for Brain sync internally.
-        """
-        content = f"User: {user_message}\nAssistant: {assistant_response}"
-        brain_stored = False
-
-        try:
-            client = await SomaBrainClient.get_async()
-            if client is None:
-                logger.debug("SomaBrain not configured; skipping episodic memory store")
-            else:
-                await self._cb_somabrain.call(
-                    client.remember,
-                    payload={
-                        "content": content,
-                        "conversation_id": conversation_id,
-                        "model": model_id,
-                        "latency_ms": elapsed_ms,
-                    },
-                    tenant=tenant_id,
-                    namespace="episodic",
-                )
-                brain_stored = True
-        except Exception as e:
-            logger.debug("Episodic Brain store failed: %s", e)
-
-        if not brain_stored:
-            await self._store_to_sfm(
-                content=content,
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                namespace="episodic",
-                metadata={"model": model_id, "latency_ms": elapsed_ms},
-            )
-
-    async def _load_neuromodulators(self, agent_id: str, user_context: dict) -> None:
-        """Load neuromodulator baseline from Capsule."""
-        from admin.core.models import Capsule
-
-        @sync_to_async
-        def _get():
-            c = Capsule.objects.filter(id=agent_id).first()
-            return c.neuromodulator_baseline if c else None
-
-        try:
-            baseline = await _get()
-            neuro = baseline or {
-                "dopamine": 0.5,
-                "serotonin": 0.5,
-                "norepinephrine": 0.5,
-                "acetylcholine": 0.5,
-            }
-            logger.info("[GMD] Neuromodulators for %s: %s", agent_id[:8], neuro)
-        except Exception as e:
-            logger.warning("[GMD] Failed: %s", e)
+        """Queue memory to PendingMemory for sync when SomaBrain recovers."""
+        await self._context_manager.queue_pending_memory(tenant_id, namespace, payload)
 
 
 class ServiceUnavailableError(Exception):

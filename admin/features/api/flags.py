@@ -188,5 +188,6 @@ async def list_available_flags() -> dict[str, Any]:
     """List all available feature flag keys and profiles."""
     store = _get_store()
     flags = await store.list_all_flags()
+    profiles = await store.list_all_profiles()
 
-    return {"flags": flags, "profiles": ["minimal", "standard", "enhanced", "max"]}
+    return {"flags": flags, "profiles": profiles}

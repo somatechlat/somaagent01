@@ -5,13 +5,13 @@
  * Per AGENT_TASKS.md Phase 4.7: Audit Log
  * 
  * 7-Persona Implementation:
- * - 🏗️ Django Architect: /aaas/audit API integration
- * - 🔒 Security Auditor: Tamper-proof log display
- * - 📈 PM: Searchable, filterable audit trail
- * - 🧪 QA Engineer: Pagination, export
- * - 📚 Technical Writer: Event descriptions
- * - ⚡ Performance Lead: Virtual scrolling ready
- * - 🌍 i18n Specialist: Date formatting
+ * - architecture Django Architect: /aaas/audit API integration
+ * - lock Security Auditor: Tamper-proof log display
+ * - monitoring PM: Searchable, filterable audit trail
+ * - science QA Engineer: Pagination, export
+ * - menu_book Technical Writer: Event descriptions
+ * - bolt Performance Lead: Virtual scrolling ready
+ * - language i18n Specialist: Date formatting
  */
 
 import { LitElement, html, css } from 'lit';
@@ -33,6 +33,21 @@ interface AuditEvent {
 @customElement('saas-audit-log')
 export class SaasAuditLog extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             min-height: 100vh;
@@ -349,10 +364,10 @@ export class SaasAuditLog extends LitElement {
                     <h1>Audit Log</h1>
                     <div class="actions">
                         <button class="btn btn-secondary" @click=${this._exportCsv}>
-                            📥 Export CSV
+                            <span class="material-symbols-outlined">download</span> Export CSV
                         </button>
                         <button class="btn btn-primary" @click=${this._loadEvents}>
-                            🔄 Refresh
+                            <span class="material-symbols-outlined">refresh</span> Refresh
                         </button>
                     </div>
                 </div>
@@ -432,7 +447,7 @@ export class SaasAuditLog extends LitElement {
                                         <td>${event.ip_address}</td>
                                         <td>
                                             <span class="status-badge status-${event.status}">
-                                                ${event.status === 'success' ? '✓' : '✗'}
+                                                ${event.status === 'success' ? html`<span class='material-symbols-outlined' style='font-size:12px;'>check_circle</span>` : html`<span class='material-symbols-outlined' style='font-size:12px;'>cancel</span>`}
                                                 ${event.status}
                                             </span>
                                         </td>
@@ -451,20 +466,20 @@ export class SaasAuditLog extends LitElement {
                                     ?disabled=${this.currentPage === 1}
                                     @click=${() => this.currentPage--}
                                 >
-                                    ← Previous
+                                    <span class="material-symbols-outlined">arrow_back</span> Previous
                                 </button>
                                 <button 
                                     class="page-btn"
                                     ?disabled=${this.currentPage === this.totalPages}
                                     @click=${() => this.currentPage++}
                                 >
-                                    Next →
+                                    Next <span class="material-symbols-outlined">arrow_forward</span>
                                 </button>
                             </div>
                         </div>
                     ` : html`
                         <div class="empty-state">
-                            <div class="empty-icon">📋</div>
+                            <div class="empty-icon material-symbols-outlined">fact_check</div>
                             <p>No audit events found</p>
                         </div>
                     `}

@@ -112,9 +112,9 @@ async def _get_integration_config(provider: str) -> dict:
             return {
                 "name": "OpenAI (LLM)",
                 "icon": "🤖",
-                "endpoint": "https://api.openai.com/v1",  # Hardcoded base or from model.api_base
-                "api_key": "managed-by-vault",  # We don't expose keys here
-                "status": "connected",
+                "endpoint": model.api_base or "https://api.openai.com/v1",
+                "api_key": None,  # Never expose secrets; resolved at call time from Vault
+                "status": "configured",
                 "last_check": None,
             }
         return {"name": "OpenAI", "status": "unconfigured"}
@@ -125,7 +125,7 @@ async def _get_integration_config(provider: str) -> dict:
     config = defaults.defaults.get("integrations", {}).get(provider, {})
 
     if not config:
-        # Fallback to minimal stub
+        # Honest empty-state: no configuration present for this provider
         return {"name": provider.title(), "status": "unconfigured"}
 
     return config

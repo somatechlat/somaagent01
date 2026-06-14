@@ -9,9 +9,9 @@
  * - Per SRS-METRICS-DASHBOARDS.md Section 3.2
  *
  * 7-Persona Implementation:
- * - 📈 PM: Usage tracking, quota visualization
- * - 🏦 CFO: Cost breakdown, budget tracking
- * - 🏗️ Architect: Real-time metric aggregation
+ * - monitoring PM: Usage tracking, quota visualization
+ * - account_balance CFO: Cost breakdown, budget tracking
+ * - architecture Architect: Real-time metric aggregation
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -44,6 +44,21 @@ interface CostBreakdown {
 @customElement('saas-agent-metrics')
 export class SaasAgentMetrics extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: flex;
       height: 100vh;
@@ -194,9 +209,46 @@ export class SaasAgentMetrics extends LitElement {
       background: #0d0d0d;
       border-radius: 8px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: flex-end;
+      justify-content: space-around;
+      padding: 16px;
+      gap: 12px;
       color: #666;
+    }
+
+    .bar-chart-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      min-width: 40px;
+    }
+
+    .bar-chart-bar {
+      width: 100%;
+      max-width: 60px;
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+    }
+
+    .bar-chart-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    .bar-chart-value {
+      font-size: 11px;
+      color: #aaa;
+      margin-bottom: 4px;
     }
 
     .loading { display: flex; justify-content: center; align-items: center; padding: 60px; color: #666; }
@@ -257,6 +309,31 @@ export class SaasAgentMetrics extends LitElement {
         return num.toLocaleString();
     }
 
+    private _renderUsageBarChart() {
+        if (this.usage.length === 0) {
+            return html`
+                <div class="chart-container" style="align-items: center; justify-content: center;">
+                    No usage data available
+                </div>
+            `;
+        }
+        const max = Math.max(...this.usage.map(u => u.current || 0), 1);
+        return html`
+            <div class="chart-container">
+                ${this.usage.map(u => {
+                    const height = Math.max((u.current / max) * 100, 4);
+                    return html`
+                        <div class="bar-chart-item" title="${u.label}: ${u.current}">
+                            <div class="bar-chart-value">${this.formatNumber(u.current)}</div>
+                            <div class="bar-chart-bar" style="height: ${height}%"></div>
+                            <div class="bar-chart-label">${u.label}</div>
+                        </div>
+                    `;
+                })}
+            </div>
+        `;
+    }
+
     private get totalCost(): number {
         return this.costs.reduce((sum, c) => sum + c.amount, 0);
     }
@@ -270,7 +347,7 @@ export class SaasAgentMetrics extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">📊 Agent Metrics</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">bar_chart</span> Agent Metrics</h1>
             <p class="header-subtitle">Usage and cost breakdown for your agents</p>
           </div>
           <input type="month" class="date-range" value="2025-12">
@@ -347,9 +424,7 @@ export class SaasAgentMetrics extends LitElement {
             <div class="section">
               <div class="section-header">Usage Trend (Last 30 Days)</div>
               <div class="section-content">
-                <div class="chart-container">
-                  📈 Connect to Prometheus/Grafana for real-time charts
-                </div>
+                ${this._renderUsageBarChart()}
               </div>
             </div>
           `}

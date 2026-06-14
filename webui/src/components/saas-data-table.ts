@@ -33,6 +33,22 @@ export class SaasDataTable extends LitElement {
             display: block;
         }
 
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
         .table-wrapper {
             background: var(--saas-bg-card, #ffffff);
             border: 1px solid var(--saas-border-light, #e0e0e0);
@@ -74,6 +90,7 @@ export class SaasDataTable extends LitElement {
         th .sort-indicator {
             margin-left: 4px;
             opacity: 0.5;
+            font-size: 12px;
         }
 
         th.sorted .sort-indicator {
@@ -149,7 +166,7 @@ export class SaasDataTable extends LitElement {
                                 >
                                     ${col.label}
                                     ${col.sortable ? html`
-                                        <span class="sort-indicator">
+                                        <span class="sort-indicator material-symbols-outlined">
                                             ${this._getSortIcon(col.key)}
                                         </span>
                                     ` : ''}
@@ -227,8 +244,8 @@ export class SaasDataTable extends LitElement {
     }
 
     private _getSortIcon(column: string): string {
-        if (this._sortColumn !== column) return '↕';
-        return this._sortDirection === 'asc' ? '↑' : '↓';
+        if (this._sortColumn !== column) return 'swap_vert';
+        return this._sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward';
     }
 
     private _handleRowClick(row: Record<string, unknown>) {

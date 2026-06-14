@@ -17,6 +17,21 @@ export class SaasComposer extends LitElement {
     @query('textarea') private _textarea!: HTMLTextAreaElement;
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             padding: 12px 20px 16px;
@@ -222,8 +237,8 @@ export class SaasComposer extends LitElement {
                     <div class="attachments">
                         ${this._attachments.map((file, i) => html`
                             <div class="attachment-chip">
-                                <span>📎 ${file.name}</span>
-                                <span class="remove" @click=${() => composerStore.removeAttachment(i)}>✕</span>
+                                <span><span class="material-symbols-outlined">attach_file</span> ${file.name}</span>
+                                <span class="remove material-symbols-outlined" @click=${() => composerStore.removeAttachment(i)}>close</span>
                             </div>
                         `)}
                     </div>
@@ -235,7 +250,7 @@ export class SaasComposer extends LitElement {
                         @click=${this._toggleMenu}
                         title="Menu"
                     >
-                        +
+                        <span class="material-symbols-outlined" style="font-size:18px">add</span>
                     </button>
                     <textarea
                         placeholder="Describe what you want the agent to do..."
@@ -250,17 +265,17 @@ export class SaasComposer extends LitElement {
                         ?disabled=${!this._input.trim() || this._isSending}
                         title="Send"
                     >
-                        ➤
+                        <span class="material-symbols-outlined">arrow_forward</span>
                     </button>
                 </div>
 
                 ${this._menuOpen ? html`<saas-composer-menu></saas-composer-menu>` : ''}
 
                 <div class="actions-row">
-                    <button class="action-btn" @click=${() => {}}>🎤 Voice</button>
+                    <button class="action-btn" @click=${() => {}}><span class="material-symbols-outlined">mic</span> Voice</button>
                     <button class="action-btn" @click=${() => {}}>Compact</button>
-                    <button class="action-btn" @click=${() => {}}>⏸ Pause</button>
-                    <button class="action-btn" @click=${() => {}}>👋 Nudge</button>
+                    <button class="action-btn" @click=${() => {}}><span class="material-symbols-outlined">pause</span> Pause</button>
+                    <button class="action-btn" @click=${() => {}}><span class="material-symbols-outlined">waving_hand</span> Nudge</button>
                 </div>
             </div>
         `;

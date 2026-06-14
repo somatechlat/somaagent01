@@ -77,8 +77,10 @@ class PortfolioRanker:
         count = len(relevant)
 
         if count == 0:
-            # Cold start: Give a neutral baseline
-            return {"success_rate": 0.8, "avg_quality": 0.7, "avg_latency": 2000.0, "avg_cost": 0.0}
+            # Cold start: no historical data. Return neutral scores so all candidates
+            # are ranked equally rather than fabricating a favorable baseline.
+            logger.info("Cold-start ranking for provider=%s; no historical outcomes", provider)
+            return {"success_rate": 0.5, "avg_quality": 0.5, "avg_latency": 0.0, "avg_cost": 0.0}
 
         successes = [1 for h in relevant if h.success]
         success_rate = sum(successes) / count

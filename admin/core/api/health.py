@@ -179,7 +179,8 @@ async def health_check() -> dict:
     if degradation_monitor.is_monitoring():  # type: ignore[attr-defined]
         record_status("degradation_monitor", "ok")
 
-    # Static services (assume running via Docker)
+    # External worker services are not directly reachable from this API.
+    # Report them as "unknown" rather than fabricating a healthy status.
     static_services = [
         "conversation-worker",
         "tool-executor",
@@ -187,7 +188,7 @@ async def health_check() -> dict:
         "fasta2a-gateway",
     ]
     for svc in static_services:
-        record_status(svc, "ok")
+        record_status(svc, "unknown", "Health endpoint for this service is not implemented")
 
     return {"status": overall_status, "components": components}
 

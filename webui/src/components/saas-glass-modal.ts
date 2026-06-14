@@ -18,6 +18,21 @@ export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 @customElement('saas-glass-modal')
 export class SaasGlassModal extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: contents;
         }
@@ -221,7 +236,7 @@ export class SaasGlassModal extends LitElement {
                                     @click=${this.close}
                                     aria-label="Close modal"
                                 >
-                                    ✕
+                                    <span class="material-symbols-outlined">close</span>
                                 </button>
                             ` : ''}
                         </header>

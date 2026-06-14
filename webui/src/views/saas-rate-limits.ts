@@ -9,9 +9,9 @@
  * - Per SRS-INFRASTRUCTURE-ADMIN.md Section 3.2
  *
  * 7-Persona Implementation:
- * - 🔒 Security: Rate limit enforcement
- * - 🏗️ Architect: Redis integration
- * - ⚡ Performance: Quota management
+ * - lock Security: Rate limit enforcement
+ * - architecture Architect: Redis integration
+ * - bolt Performance: Quota management
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -38,6 +38,21 @@ interface TierOverride {
 @customElement('saas-rate-limits')
 export class SaasRateLimits extends LitElement {
   static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: flex;
       height: 100vh;
@@ -323,7 +338,7 @@ export class SaasRateLimits extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">⚡ Rate Limits</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">bolt</span> Rate Limits</h1>
             <p class="header-subtitle">Configure global rate limits and per-tier overrides</p>
           </div>
           <div class="header-actions">
@@ -331,7 +346,7 @@ export class SaasRateLimits extends LitElement {
               + Add New Limit
             </button>
             <button class="btn btn-primary" ?disabled=${this.saving} @click=${() => this.saveRateLimits()}>
-              ${this.saving ? 'Saving...' : '💾 Save Changes'}
+              ${this.saving ? 'Saving...' : html`<span class='material-symbols-outlined'>save</span> Save Changes`}
             </button>
           </div>
         </header>
@@ -381,7 +396,7 @@ export class SaasRateLimits extends LitElement {
                           </select>
                         </td>
                         <td>
-                          <button class="btn btn-icon" title="Delete">🗑️</button>
+                          <button class="btn btn-icon" title="Delete"><span class="material-symbols-outlined">delete</span></button>
                         </td>
                       </tr>
                     `)}

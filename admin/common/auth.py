@@ -233,6 +233,18 @@ class AuthBearer(HttpBearer):
             ...
     """
 
+    async def __call__(self, request):
+        """Allow authentication from header or cookie.
+
+        Overrides HttpBearer so that missing Authorization headers fall back
+        to the httpOnly access_token cookie instead of failing immediately.
+        """
+        auth_value = request.headers.get(self.header, "")
+        token = ""
+        if auth_value.lower().startswith(f"{self.openapi_scheme} "):
+            token = auth_value[len(self.openapi_scheme) + 1 :]
+        return await self.authenticate(request, token)
+
     async def authenticate(self, request, token: str) -> TokenPayload | None:
         """Authenticate the bearer token or cookie."""
         try:

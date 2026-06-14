@@ -23,32 +23,7 @@ export const activityContext = createContext<ActivityStore>('activity-store');
 
 export class ActivityStore {
     private _state: ActivityState = {
-        events: [
-            {
-                id: '1',
-                type: 'tool',
-                agentId: 'dev-1',
-                agentName: 'Dev-1',
-                description: 'Executed tool: git_commit',
-                timestamp: new Date(Date.now() - 120000).toISOString(),
-            },
-            {
-                id: '2',
-                type: 'memory',
-                agentId: 'dev-1',
-                agentName: 'Dev-1',
-                description: '3 memories consolidated during sleep cycle',
-                timestamp: new Date(Date.now() - 3600000).toISOString(),
-            },
-            {
-                id: '3',
-                type: 'message',
-                agentId: 'support-ai',
-                agentName: 'Support-AI',
-                description: 'Confidence: 94% on last response',
-                timestamp: new Date(Date.now() - 600000).toISOString(),
-            },
-        ],
+        events: [],
         unreadCount: 0,
     };
 

@@ -8,9 +8,9 @@
  * - Supports multiple fallback modes
  *
  * PERSONAS APPLIED:
- * - 🔒 Security Auditor: Permission enforcement
- * - 🎨 UX Consultant: Fallback modes for better UX
- * - 🏗️ Django Architect: Backend integration
+ * - lock Security Auditor: Permission enforcement
+ * - palette UX Consultant: Fallback modes for better UX
+ * - architecture Django Architect: Backend integration
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -20,6 +20,21 @@ import { apiClient } from '../services/api-client.js';
 @customElement('saas-permission-guard')
 export class SaasPermissionGuard extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: contents;
     }
@@ -185,7 +200,7 @@ export class SaasPermissionGuard extends LitElement {
             case 'message':
                 return html`
           <div class="guard-message">
-            <div class="guard-icon">🔒</div>
+            <div class="guard-icon"><span class="material-symbols-outlined">lock</span></div>
             <div class="guard-title">Permission Required</div>
             <div class="guard-desc">You don't have permission to access this content.</div>
             <div class="guard-permission">${this.permission || this.permissions.join(' or ')}</div>

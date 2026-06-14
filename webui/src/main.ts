@@ -206,7 +206,7 @@ if (app) {
         // Platform Metrics Dashboard
         if (path === '/platform/metrics' || path === '/saas/metrics') {
             await import('./views/platform-metrics-dashboard.js');
-            app.appendChild(document.createElement('platform-metrics-dashboard'));
+            app.appendChild(document.createElement('saas-platform-metrics-dashboard'));
             return;
         }
 
@@ -238,12 +238,6 @@ if (app) {
         if (path === '/platform/tenants-new') {
             await import('./views/saas-entity-views.js');
             app.appendChild(document.createElement('saas-tenants-view'));
-            return;
-        }
-
-        if (path === '/admin/users') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-users-view'));
             return;
         }
 
@@ -282,12 +276,6 @@ if (app) {
             return;
         }
 
-        if (path === '/admin/agents') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-agents-view'));
-            return;
-        }
-
         if (path.match(/^\/agents\/[^/]+\/capsule$/)) {
             await import('./views/saas-agent-capsule.js');
             app.appendChild(document.createElement('saas-agent-capsule'));
@@ -303,12 +291,6 @@ if (app) {
         if (path.match(/^\/agents\/[^/]+\/tools$/)) {
             await import('./views/saas-agent-tools.js');
             app.appendChild(document.createElement('saas-agent-tools'));
-            return;
-        }
-
-        if (path === '/platform/features') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-features-view'));
             return;
         }
 
@@ -357,12 +339,6 @@ if (app) {
             return;
         }
 
-        if (path === '/mode-select' || path === '/select-mode') {
-            await import('./views/saas-mode-selection.js');
-            app.appendChild(document.createElement('saas-mode-selection'));
-            return;
-        }
-
         // 5. Tenant Admin Routes
         if (path === '/admin/dashboard') {
             await import('./views/saas-tenant-dashboard.js');
@@ -390,7 +366,7 @@ if (app) {
         }
 
         // Audit Log
-        if (path === '/audit' || path === '/admin/audit' || path === '/platform/audit') {
+        if (path === '/audit' || path === '/admin/audit') {
             await import('./views/saas-audit-log.js');
             app.appendChild(document.createElement('saas-audit-log'));
             return;
@@ -462,9 +438,16 @@ if (app) {
 
 
 
-        // Default: New SAAS Dashboard
-        await import('./views/saas-platform-dashboard.js');
-        app.appendChild(document.createElement('saas-platform-dashboard'));
+        // Root redirect
+        if (path === '/') {
+            window.history.replaceState(null, '', '/saas/dashboard');
+            renderRoute();
+            return;
+        }
+
+        // Default: 404 Not Found
+        await import('./views/saas-not-found.js');
+        app.appendChild(document.createElement('saas-not-found'));
     };
 
     // Initial Render

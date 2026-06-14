@@ -5,21 +5,37 @@
  * Per AGENT_TASKS.md Phase 2.2: MFA Setup
  * 
  * 7-Persona Implementation:
- * - 🏗️ Django Architect: API integration for /auth/mfa/*
- * - 🔒 Security Auditor: TOTP setup, recovery codes
- * - 📈 PM: Clear setup wizard UX
- * - 🧪 QA Engineer: Validation, error handling
- * - 📚 Technical Writer: Help text, instructions
- * - ⚡ Performance Lead: Minimal API calls
- * - 🌍 i18n Specialist: Translatable strings
+ * - architecture Django Architect: API integration for /auth/mfa/*
+ * - lock Security Auditor: TOTP setup, recovery codes
+ * - monitoring PM: Clear setup wizard UX
+ * - science QA Engineer: Validation, error handling
+ * - menu_book Technical Writer: Help text, instructions
+ * - bolt Performance Lead: Minimal API calls
+ * - language i18n Specialist: Translatable strings
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 @customElement('saas-mfa-setup')
 export class SaasMfaSetup extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             min-height: 100vh;
@@ -244,46 +260,29 @@ export class SaasMfaSetup extends LitElement {
     `;
 
     @state() private step: 'intro' | 'scan' | 'verify' | 'success' = 'intro';
-    @state() private secretKey = this._generateTOTPSecret();
+    @state() private secretKey = '';
+    @state() private qrCodeBase64 = '';
+    @state() private provisioningUri = '';
     @state() private verificationCode = '';
     @state() private isLoading = false;
     @state() private error = '';
-    @state() private recoveryCodes = this._generateRecoveryCodes();
-
-    private _generateTOTPSecret(): string {
-        // Generate a cryptographically random base32-encoded secret for TOTP
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        const bytes = new Uint8Array(20);
-        crypto.getRandomValues(bytes);
-        let secret = '';
-        for (let i = 0; i < bytes.length; i++) {
-            secret += chars[bytes[i] % chars.length];
-        }
-        return secret;
-    }
-
-    private _generateRecoveryCodes(): string[] {
-        const codes: string[] = [];
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 8; i++) {
-            const bytes = new Uint8Array(8);
-            crypto.getRandomValues(bytes);
-            let code = '';
-            for (let j = 0; j < bytes.length; j++) {
-                code += chars[bytes[j] % chars.length];
-            }
-            codes.push(code);
-        }
-        return codes;
-    }
+    @state() private recoveryCodes: string[] = [];
 
     private async _startSetup() {
         this.isLoading = true;
         this.error = '';
 
         try {
-            // POST /auth/mfa/setup
-            await new Promise(r => setTimeout(r, 1000)); // Simulate API
+            const data = await apiClient.post<{
+                secret?: string;
+                qr_code_base64?: string;
+                provisioning_uri?: string;
+                backup_codes?: string[];
+            }>('/auth/mfa/setup', {});
+            if (data.secret) this.secretKey = data.secret;
+            if (data.qr_code_base64) this.qrCodeBase64 = data.qr_code_base64;
+            if (data.provisioning_uri) this.provisioningUri = data.provisioning_uri;
+            if (data.backup_codes) this.recoveryCodes = data.backup_codes;
             this.step = 'scan';
         } catch (e) {
             this.error = 'Failed to initialize MFA setup';
@@ -302,8 +301,9 @@ export class SaasMfaSetup extends LitElement {
         this.error = '';
 
         try {
-            // POST /auth/mfa/verify
-            await new Promise(r => setTimeout(r, 1000)); // Simulate API
+            await apiClient.post('/auth/mfa/verify', {
+                code: this.verificationCode,
+            });
             this.step = 'success';
         } catch (e) {
             this.error = 'Invalid verification code';
@@ -341,7 +341,7 @@ export class SaasMfaSetup extends LitElement {
 
     private _renderIntro() {
         return html`
-            <h1>🔐 Set Up Two-Factor Authentication</h1>
+            <h1><span class="material-symbols-outlined">vpn_key</span> Set Up Two-Factor Authentication</h1>
             <p class="subtitle">Add an extra layer of security to your account.</p>
 
             <div class="step-indicator">
@@ -374,7 +374,7 @@ export class SaasMfaSetup extends LitElement {
 
     private _renderScan() {
         return html`
-            <h1>📱 Scan QR Code</h1>
+            <h1><span class="material-symbols-outlined">smartphone</span> Scan QR Code</h1>
             <p class="subtitle">Scan this QR code with your authenticator app.</p>
 
             <div class="step-indicator">
@@ -386,14 +386,22 @@ export class SaasMfaSetup extends LitElement {
 
             <div class="qr-container">
                 <div class="qr-code">
-                    <span class="qr-placeholder">📷</span>
+                    ${this.qrCodeBase64
+                        ? html`<img src="data:image/png;base64,${this.qrCodeBase64}" alt="MFA QR code" style="max-width: 100%; max-height: 100%;">`
+                        : html`<span class="qr-placeholder material-symbols-outlined">photo_camera</span>`}
                 </div>
                 <p style="font-size: 12px; color: var(--saas-text-dim); margin-bottom: 12px;">
                     Can't scan? Enter this key manually:
                 </p>
                 <div class="secret-key" @click=${this._copySecretKey}>
-                    ${this.secretKey}
+                    ${this.secretKey || this.provisioningUri}
                 </div>
+                ${this.provisioningUri && !this.qrCodeBase64 ? html`
+                    <p style="font-size: 12px; color: var(--saas-text-dim); margin-top: 12px;">
+                        Or open this URI in your authenticator app:<br>
+                        <a href="${this.provisioningUri}" target="_blank" rel="noopener">${this.provisioningUri}</a>
+                    </p>
+                ` : ''}
             </div>
 
             <button 
@@ -411,7 +419,7 @@ export class SaasMfaSetup extends LitElement {
 
     private _renderVerify() {
         return html`
-            <h1>✅ Verify Setup</h1>
+            <h1><span class="material-symbols-outlined">check_circle</span> Verify Setup</h1>
             <p class="subtitle">Enter the 6-digit code from your authenticator app.</p>
 
             <div class="step-indicator">
@@ -457,7 +465,7 @@ export class SaasMfaSetup extends LitElement {
                 <span class="step-dot active"></span>
             </div>
 
-            <div class="success-icon">🎉</div>
+            <div class="success-icon material-symbols-outlined">celebration</div>
             <div class="success-message">
                 <h2 style="margin: 0 0 8px;">MFA Enabled!</h2>
                 <p style="color: var(--saas-text-dim); margin: 0;">
@@ -466,7 +474,7 @@ export class SaasMfaSetup extends LitElement {
             </div>
 
             <div class="warning">
-                ⚠️ <strong>Save your recovery codes!</strong> 
+                <span class="material-symbols-outlined">warning</span> <strong>Save your recovery codes!</strong> 
                 You'll need them if you lose access to your authenticator app.
             </div>
 
@@ -483,7 +491,7 @@ export class SaasMfaSetup extends LitElement {
                 class="btn btn-primary"
                 @click=${this._downloadRecoveryCodes}
             >
-                📥 Download Recovery Codes
+                <span class="material-symbols-outlined">download</span> Download Recovery Codes
             </button>
 
             <button 

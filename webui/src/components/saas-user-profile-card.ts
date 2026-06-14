@@ -8,9 +8,9 @@
  * - Action slots for customization
  *
  * PERSONAS APPLIED:
- * - 🎨 UX Consultant: Clear visual hierarchy
- * - 🔒 Security: Role and permission display
- * - ⚡ Performance: Efficient rendering
+ * - palette UX Consultant: Clear visual hierarchy
+ * - lock Security: Role and permission display
+ * - bolt Performance: Efficient rendering
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -31,6 +31,26 @@ export interface UserProfileData {
 @customElement('saas-user-profile-card')
 export class SaasUserProfileCard extends LitElement {
     static styles = css`
+        .status-icon {
+            font-size: 8px;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
     }
@@ -232,9 +252,9 @@ export class SaasUserProfileCard extends LitElement {
           <div class="profile-header">
             <span class="profile-name">${this.user.displayName}</span>
             <span class="profile-status ${this._getStatusClass(this.user.status)}">
-              ${this.user.status === 'active' ? '🟢' :
-                this.user.status === 'pending' ? '🟡' :
-                    this.user.status === 'suspended' ? '🔴' : '⚪'}
+              ${this.user.status === 'active' ? html`<span class="material-symbols-outlined status-icon" style="color: #22c55e">circle</span>` :
+                this.user.status === 'pending' ? html`<span class="material-symbols-outlined status-icon" style="color: #f59e0b">circle</span>` :
+                    this.user.status === 'suspended' ? html`<span class="material-symbols-outlined status-icon" style="color: #ef4444">circle</span>` : html`<span class="material-symbols-outlined status-icon" style="color: #6b7280">circle</span>`}
               ${this.user.status.charAt(0).toUpperCase() + this.user.status.slice(1)}
             </span>
           </div>
@@ -254,7 +274,7 @@ export class SaasUserProfileCard extends LitElement {
             <div class="meta-item">
               <span class="meta-label">MFA</span>
               <span class="mfa-indicator ${this.user.mfaEnabled ? 'mfa-enabled' : 'mfa-disabled'}">
-                ${this.user.mfaEnabled ? '✓ Enabled' : '✗ Disabled'}
+                ${this.user.mfaEnabled ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled` : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}
               </span>
             </div>
           </div>

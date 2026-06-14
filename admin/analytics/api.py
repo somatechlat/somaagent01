@@ -15,11 +15,14 @@ from datetime import timedelta
 from typing import Optional
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
+from django.db.models import Count, Q
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.common.exceptions import ServiceUnavailableError
 
 router = Router(tags=["analytics"])
 logger = logging.getLogger(__name__)
@@ -104,20 +107,27 @@ async def get_dashboard_metrics(request) -> DashboardMetrics:
 
     PM: High-level business KPIs for Eye of God.
     """
-    # In production: aggregate from database
-    return DashboardMetrics(
-        total_tenants=0,
-        active_tenants=0,
-        total_agents=0,
-        active_agents=0,
-        total_users=0,
-        active_users=0,
-        total_conversations=0,
-        total_messages=0,
-        api_requests_today=0,
-        avg_response_time_ms=0.0,
-        error_rate_percent=0.0,
-    )
+    from admin.aaas.models import Agent, Tenant, TenantUser
+    from admin.chat.models import Conversation, Message
+
+    @sync_to_async
+    def _aggregate():
+        return {
+            "total_tenants": Tenant.objects.count(),
+            "active_tenants": Tenant.objects.filter(status="active").count(),
+            "total_agents": Agent.objects.count(),
+            "active_agents": Agent.objects.filter(status="active").count(),
+            "total_users": TenantUser.objects.count(),
+            "active_users": TenantUser.objects.filter(is_active=True).count(),
+            "total_conversations": Conversation.objects.count(),
+            "total_messages": Message.objects.count(),
+            "api_requests_today": 0,  # Requires metrics backend; not fabricated
+            "avg_response_time_ms": 0.0,  # Requires metrics backend; not fabricated
+            "error_rate_percent": 0.0,  # Requires metrics backend; not fabricated
+        }
+
+    data = await _aggregate()
+    return DashboardMetrics(**data)
 
 
 @router.get(
@@ -130,24 +140,49 @@ async def get_metric_summaries(request) -> dict:
 
     PM: Changes compared to previous period.
     """
-    return {
-        "summaries": [
+    from admin.aaas.models import Agent, Tenant
+
+    @sync_to_async
+    def _summaries():
+        now = timezone.now()
+        prev = now - timedelta(days=7)
+        current_tenants = Tenant.objects.filter(status="active", created_at__lte=now).count()
+        previous_tenants = Tenant.objects.filter(status="active", created_at__lte=prev).count()
+        current_agents = Agent.objects.filter(status="active", created_at__lte=now).count()
+        previous_agents = Agent.objects.filter(status="active", created_at__lte=prev).count()
+
+        def trend(current, previous):
+            if previous == 0:
+                return "up" if current > 0 else "stable"
+            pct = ((current - previous) / previous) * 100
+            if pct > 1:
+                return "up"
+            if pct < -1:
+                return "down"
+            return "stable"
+
+        return [
             MetricSummary(
                 name="active_tenants",
-                current_value=0,
-                previous_value=0,
-                change_percent=0.0,
-                trend="stable",
+                current_value=float(current_tenants),
+                previous_value=float(previous_tenants),
+                change_percent=round(
+                    ((current_tenants - previous_tenants) / max(previous_tenants, 1)) * 100, 2
+                ),
+                trend=trend(current_tenants, previous_tenants),
             ).dict(),
             MetricSummary(
                 name="active_agents",
-                current_value=0,
-                previous_value=0,
-                change_percent=0.0,
-                trend="stable",
+                current_value=float(current_agents),
+                previous_value=float(previous_agents),
+                change_percent=round(
+                    ((current_agents - previous_agents) / max(previous_agents, 1)) * 100, 2
+                ),
+                trend=trend(current_agents, previous_agents),
             ).dict(),
-        ],
-    }
+        ]
+
+    return {"summaries": await _summaries()}
 
 
 # =============================================================================
@@ -170,27 +205,16 @@ async def get_timeseries(
 
     PhD Dev: Statistical time series for analysis.
     """
-    # Generate sample data points
-    points = []
-    now = timezone.now()
-
-    intervals = {"1h": 60, "24h": 24, "7d": 168, "30d": 720}
-    num_points = intervals.get(period, 24)
-
-    for i in range(min(num_points, 100)):
-        points.append(
-            TimeSeriesPoint(
-                timestamp=(now - timedelta(hours=i)).isoformat(),
-                value=0.0,
-            ).dict()
-        )
-
-    return {
-        "metric": metric,
-        "period": period,
-        "granularity": granularity,
-        "points": points,
-    }
+    # VIBE: Do not fabricate time-series samples. Real metrics backend required.
+    logger.error(
+        "Time-series metrics backend not implemented for metric=%s period=%s",
+        metric,
+        period,
+    )
+    raise ServiceUnavailableError(
+        "metrics_backend",
+        "Time-series metrics backend is not implemented. Configure a metrics store.",
+    )
 
 
 # =============================================================================
@@ -209,19 +233,43 @@ async def get_current_usage(request) -> UsageReport:
 
     PM: Billing-relevant usage data.
     """
+    from admin.aaas.models import Agent
+    from admin.aaas.models.usage import UsageRecord
+    from admin.chat.models import Conversation, Message
+    from django.db.models import Sum
+
     now = timezone.now()
     period_start = now.replace(day=1, hour=0, minute=0, second=0)
 
-    return UsageReport(
-        report_id=str(uuid4()),
-        period_start=period_start.isoformat(),
-        period_end=now.isoformat(),
-        total_api_calls=0,
-        total_tokens_used=0,
-        total_conversations=0,
-        total_agents_active=0,
-        cost_estimate=0.0,
-    )
+    @sync_to_async
+    def _aggregate():
+        tokens = (
+            UsageRecord.objects.filter(period_start__gte=period_start)
+            .aggregate(total=Sum("quantity"))
+            .get("total")
+            or 0
+        )
+        msg_tokens = (
+            Message.objects.filter(created_at__gte=period_start)
+            .aggregate(total=Sum("token_count"))
+            .get("total")
+            or 0
+        )
+        return {
+            "report_id": str(uuid4()),
+            "period_start": period_start.isoformat(),
+            "period_end": now.isoformat(),
+            "total_api_calls": 0,  # Requires API gateway metrics backend
+            "total_tokens_used": int(tokens) + int(msg_tokens),
+            "total_conversations": Conversation.objects.filter(
+                created_at__gte=period_start
+            ).count(),
+            "total_agents_active": Agent.objects.filter(status="active").count(),
+            "cost_estimate": 0.0,  # Requires billing integration
+        }
+
+    data = await _aggregate()
+    return UsageReport(**data)
 
 
 @router.get(
@@ -237,7 +285,29 @@ async def get_usage_history(
 
     PM: Trend analysis for capacity planning.
     """
-    return {"reports": [], "total": 0}
+    from admin.aaas.models.usage import UsageRecord
+    from django.db.models import Sum
+
+    @sync_to_async
+    def _history():
+        # Aggregate usage records by billing period
+        periods = (
+            UsageRecord.objects.values("billing_period")
+            .annotate(total_tokens=Sum("quantity"))
+            .order_by("-billing_period")[:months]
+        )
+        return [
+            {
+                "period": p["billing_period"],
+                "total_tokens_used": p["total_tokens"] or 0,
+                "total_api_calls": 0,  # Requires metrics backend
+                "cost_estimate": 0.0,  # Requires billing integration
+            }
+            for p in periods
+        ]
+
+    reports = await _history()
+    return {"reports": reports, "total": len(reports)}
 
 
 @router.get(
@@ -255,11 +325,15 @@ async def export_usage(
 
     PM: Downloadable reports for accounting.
     """
-    return {
-        "export_id": str(uuid4()),
-        "format": format,
-        "download_url": f"/api/v2/analytics/exports/{uuid4()}",
-    }
+    logger.error(
+        "Usage report export not implemented for period %s - %s",
+        period_start,
+        period_end,
+    )
+    raise ServiceUnavailableError(
+        "analytics_export",
+        "Usage report export is not implemented. Configure an export backend.",
+    )
 
 
 # =============================================================================
@@ -281,15 +355,32 @@ async def get_tenant_analytics(
 
     PM: Tenant-level performance metrics.
     """
-    return TenantAnalytics(
-        tenant_id=tenant_id,
-        active_agents=0,
-        active_users=0,
-        conversations_24h=0,
-        messages_24h=0,
-        api_calls_24h=0,
-        avg_response_time_ms=0.0,
-    )
+    from admin.aaas.models import Agent, TenantUser
+    from admin.chat.models import Conversation, Message
+
+    @sync_to_async
+    def _aggregate():
+        since = timezone.now() - timedelta(hours=24)
+        return {
+            "tenant_id": tenant_id,
+            "active_agents": Agent.objects.filter(tenant_id=tenant_id, status="active").count(),
+            "active_users": TenantUser.objects.filter(
+                tenant_id=tenant_id, is_active=True
+            ).count(),
+            "conversations_24h": Conversation.objects.filter(
+                tenant_id=tenant_id, created_at__gte=since
+            ).count(),
+            "messages_24h": Message.objects.filter(
+                conversation_id__in=Conversation.objects.filter(tenant_id=tenant_id)
+                .values("id"),
+                created_at__gte=since,
+            ).count(),
+            "api_calls_24h": 0,  # Requires metrics backend
+            "avg_response_time_ms": 0.0,  # Requires metrics backend
+        }
+
+    data = await _aggregate()
+    return TenantAnalytics(**data)
 
 
 @router.get(
@@ -306,7 +397,40 @@ async def get_all_tenants_analytics(
 
     PM: Platform-wide tenant comparison.
     """
-    return {"tenants": [], "total": 0}
+    from admin.aaas.models import Agent, Tenant, TenantUser
+    from admin.chat.models import Conversation, Message
+
+    @sync_to_async
+    def _tenants():
+        since = timezone.now() - timedelta(hours=24)
+        tenants = Tenant.objects.filter(status="active").order_by("name")[:limit]
+        result = []
+        for tenant in tenants:
+            result.append(
+                {
+                    "tenant_id": str(tenant.id),
+                    "active_agents": Agent.objects.filter(
+                        tenant_id=tenant.id, status="active"
+                    ).count(),
+                    "active_users": TenantUser.objects.filter(
+                        tenant_id=tenant.id, is_active=True
+                    ).count(),
+                    "conversations_24h": Conversation.objects.filter(
+                        tenant_id=tenant.id, created_at__gte=since
+                    ).count(),
+                    "messages_24h": Message.objects.filter(
+                        conversation_id__in=Conversation.objects.filter(
+                            tenant_id=tenant.id
+                        ).values("id"),
+                        created_at__gte=since,
+                    ).count(),
+                    "api_calls_24h": 0,  # Requires metrics backend
+                }
+            )
+        return result
+
+    tenants = await _tenants()
+    return {"tenants": tenants, "total": len(tenants)}
 
 
 # =============================================================================
@@ -327,14 +451,28 @@ async def get_agent_analytics(
 
     PhD Dev: Agent performance metrics.
     """
-    return {
-        "agent_id": agent_id,
-        "conversations_24h": 0,
-        "messages_24h": 0,
-        "avg_response_time_ms": 0.0,
-        "user_satisfaction_score": None,
-        "error_rate_percent": 0.0,
-    }
+    from admin.chat.models import Conversation, Message
+
+    @sync_to_async
+    def _aggregate():
+        since = timezone.now() - timedelta(hours=24)
+        conversations = Conversation.objects.filter(
+            agent_id=agent_id, created_at__gte=since
+        ).count()
+        messages = Message.objects.filter(
+            conversation_id__in=Conversation.objects.filter(agent_id=agent_id).values("id"),
+            created_at__gte=since,
+        ).count()
+        return {
+            "agent_id": agent_id,
+            "conversations_24h": conversations,
+            "messages_24h": messages,
+            "avg_response_time_ms": 0.0,  # Requires metrics backend
+            "user_satisfaction_score": None,  # Requires feedback aggregation
+            "error_rate_percent": 0.0,  # Requires metrics backend
+        }
+
+    return await _aggregate()
 
 
 @router.get(
@@ -348,7 +486,39 @@ async def get_all_agents_analytics(
     limit: int = 100,
 ) -> dict:
     """Get analytics for all agents."""
-    return {"agents": [], "total": 0}
+    from admin.aaas.models import Agent
+    from admin.chat.models import Conversation, Message
+
+    @sync_to_async
+    def _agents():
+        since = timezone.now() - timedelta(hours=24)
+        qs = Agent.objects.all()
+        if tenant_id:
+            qs = qs.filter(tenant_id=tenant_id)
+        qs = qs.order_by("name")[:limit]
+        result = []
+        for agent in qs:
+            result.append(
+                {
+                    "agent_id": str(agent.id),
+                    "conversations_24h": Conversation.objects.filter(
+                        agent_id=agent.id, created_at__gte=since
+                    ).count(),
+                    "messages_24h": Message.objects.filter(
+                        conversation_id__in=Conversation.objects.filter(
+                            agent_id=agent.id
+                        ).values("id"),
+                        created_at__gte=since,
+                    ).count(),
+                    "avg_response_time_ms": 0.0,  # Requires metrics backend
+                    "user_satisfaction_score": None,  # Requires feedback aggregation
+                    "error_rate_percent": 0.0,  # Requires metrics backend
+                }
+            )
+        return result
+
+    agents = await _agents()
+    return {"agents": agents, "total": len(agents)}
 
 
 # =============================================================================
@@ -366,16 +536,63 @@ async def get_infrastructure_metrics(request) -> dict:
 
     DevOps: System health and performance.
     """
+    import time
+
+    import httpx
+    from django.conf import settings
+    from django.core.cache import cache
+    from django.db import connection
+
+    services: dict[str, dict] = {}
+
+    # PostgreSQL
+    start = time.time()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        services["postgres"] = {
+            "status": "healthy",
+            "latency_ms": round((time.time() - start) * 1000, 2),
+        }
+    except Exception as exc:
+        services["postgres"] = {"status": "down", "latency_ms": None, "error": str(exc)}
+
+    # Redis
+    start = time.time()
+    try:
+        cache.set("analytics_health_check", "ok", timeout=5)
+        result = cache.get("analytics_health_check")
+        services["redis"] = {
+            "status": "healthy" if result == "ok" else "degraded",
+            "latency_ms": round((time.time() - start) * 1000, 2),
+        }
+    except Exception as exc:
+        services["redis"] = {"status": "down", "latency_ms": None, "error": str(exc)}
+
+    # SomaBrain
+    somabrain_url = getattr(settings, "SOMABRAIN_URL", None)
+    if somabrain_url:
+        start = time.time()
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{somabrain_url}/health")
+            services["somabrain"] = {
+                "status": "healthy" if response.status_code == 200 else "degraded",
+                "latency_ms": round((time.time() - start) * 1000, 2),
+            }
+        except Exception as exc:
+            services["somabrain"] = {"status": "down", "latency_ms": None, "error": str(exc)}
+    else:
+        services["somabrain"] = {"status": "unknown", "latency_ms": None, "error": "SOMABRAIN_URL not configured"}
+
+    # Django itself is running because we are responding
+    services["django"] = {"status": "healthy", "latency_ms": 0.0}
+
     return {
-        "services": {
-            "django": {"status": "healthy", "latency_ms": 0},
-            "postgres": {"status": "healthy", "latency_ms": 0},
-            "redis": {"status": "healthy", "latency_ms": 0},
-            "somabrain": {"status": "healthy", "latency_ms": 0},
-        },
+        "services": services,
         "system": {
-            "cpu_percent": 0.0,
-            "memory_percent": 0.0,
-            "disk_percent": 0.0,
+            "cpu_percent": None,  # Requires host metrics collector
+            "memory_percent": None,
+            "disk_percent": None,
         },
     }

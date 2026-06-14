@@ -15,299 +15,36 @@ from typing import Optional
 from uuid import uuid4
 
 from asgiref.sync import sync_to_async
-from django.conf import settings
-from django.db import IntegrityError, transaction
-from django.utils.text import slugify
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel
 
-from admin.aaas.models.agents import Agent as AgentModel
-from admin.aaas.models.tenants import Tenant
+from admin.agents.api.schemas import (
+    Agent,
+    AgentStats,
+    AgentToolsOut,
+    AgentToolsUpdate,
+    AgentUpdatePayload,
+    CapsuleConfigOut,
+    CapsuleConfigUpdate,
+    CapsuleConfigUpdateResult,
+    MultimodalConfig,
+)
+from admin.agents.services.agent_service import (
+    _available_tools,
+    _create_agent_and_capsule,
+    _get_agent_by_id,
+    _get_agent_capsule,
+    _get_tenant,
+    _list_agents,
+    _map_agent_to_schema,
+    _resolve_tenant_id,
+    _update_agent,
+    _update_capsule,
+)
 from admin.common.auth import AuthBearer
-from admin.core.models.core import Capsule
 
 router = Router(tags=["agents"])
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# SCHEMAS
-# =============================================================================
-
-
-class Agent(BaseModel):
-    """Agent definition."""
-
-    agent_id: str
-    name: str
-    description: Optional[str] = None
-    tenant_id: str
-    status: str  # draft, active, paused, archived
-    model: str  # gpt-4, claude-3, etc.
-    personality: dict
-    tools: list[str]
-    memory_config: dict
-    capsule_id: Optional[str] = None
-    created_at: str
-    updated_at: str
-
-
-class AgentUpdatePayload(BaseModel):
-    """Agent settings update payload."""
-
-    name: Optional[str] = None
-    description: Optional[str] = None
-    model: Optional[str] = None
-
-
-class AgentStats(BaseModel):
-    """Agent statistics."""
-
-    total_conversations: int
-    total_messages: int
-    avg_response_time_ms: float
-    satisfaction_score: Optional[float] = None
-
-
-class AgentDeployment(BaseModel):
-    """Agent deployment info."""
-
-    agent_id: str
-    environment: str
-    version: str
-    deployed_at: str
-    deployed_by: str
-
-
-class ToolInfo(BaseModel):
-    """Tool metadata for the agent tools screen."""
-
-    name: str
-    description: str
-    input_schema: Optional[dict] = None
-
-
-class AgentToolsOut(BaseModel):
-    """Agent tools configuration response."""
-
-    agent_id: str
-    available_tools: list[ToolInfo]
-    enabled_tools: list[str]
-
-
-class AgentToolsUpdate(BaseModel):
-    """Agent tools configuration update payload."""
-
-    tools: list[str]
-
-
-class CapsuleConfigOut(BaseModel):
-    """Capsule configuration response."""
-
-    agent_id: str
-    capsule_id: str
-    name: str
-    description: Optional[str] = None
-    status: str
-    system_prompt: str
-    personality_traits: dict
-    neuromodulator_baseline: dict
-    learning_config: dict
-
-
-class CapsuleConfigUpdate(BaseModel):
-    """Capsule configuration update payload."""
-
-    name: Optional[str] = None
-    description: Optional[str] = None
-    system_prompt: Optional[str] = None
-    personality_traits: Optional[dict] = None
-    neuromodulator_baseline: Optional[dict] = None
-    learning_config: Optional[dict] = None
-
-
-class CapsuleConfigUpdateResult(BaseModel):
-    """Capsule configuration update result."""
-
-    agent_id: str
-    capsule_id: str
-    updated: bool
-
-
-# =============================================================================
-# HELPERS
-# =============================================================================
-
-
-def _resolve_tenant_id(request, tenant_id: Optional[str]) -> str:
-    """Resolve effective tenant ID from auth, query param, or settings."""
-    auth_tenant = None
-    if hasattr(request, "auth") and request.auth is not None:
-        auth_tenant = getattr(request.auth, "tenant_id", None)
-    if auth_tenant:
-        return auth_tenant
-    if tenant_id:
-        return tenant_id
-    default_tenant = getattr(settings, "AAAS_DEFAULT_TENANT_ID", None)
-    if default_tenant:
-        return str(default_tenant)
-    raise HttpError(400, "tenant_id is required")
-
-
-def _map_agent_to_schema(agent: AgentModel) -> Agent:
-    """Map an Agent ORM instance to the Agent schema."""
-    config = agent.config or {}
-    return Agent(
-        agent_id=str(agent.id),
-        name=agent.name,
-        description=agent.description,
-        tenant_id=str(agent.tenant_id),
-        status=agent.status,
-        model=config.get("model", "gpt-4"),
-        personality=config.get("personality", {}),
-        tools=config.get("tools", []),
-        memory_config=config.get("memory", {}),
-        capsule_id=str(agent.primary_capsule_id) if agent.primary_capsule_id else None,
-        created_at=agent.created_at.isoformat(),
-        updated_at=agent.updated_at.isoformat(),
-    )
-
-
-@sync_to_async
-def _list_agents(
-    tenant_id: str,
-    status: Optional[str],
-    limit: int,
-) -> tuple[list[AgentModel], int]:
-    """Query agents for the given tenant and return page + total count."""
-    qs = AgentModel.objects.filter(tenant_id=tenant_id)
-    if status:
-        qs = qs.filter(status=status)
-    total = qs.count()
-    page_qs = qs.select_related("tenant").order_by("-created_at")[:limit]
-    agents = list(page_qs)
-    return agents, total
-
-
-@sync_to_async
-def _get_agent_by_id(agent_id: str, tenant_id: str) -> AgentModel | None:
-    """Fetch a single agent by ID and tenant."""
-    try:
-        return AgentModel.objects.select_related("tenant").get(id=agent_id, tenant_id=tenant_id)
-    except AgentModel.DoesNotExist:
-        return None
-
-
-@sync_to_async
-def _get_tenant(tenant_id: str) -> Tenant | None:
-    """Fetch a tenant by ID."""
-    try:
-        return Tenant.objects.get(id=tenant_id)
-    except Tenant.DoesNotExist:
-        return None
-
-
-@sync_to_async
-def _get_agent_capsule(agent_id: str, tenant_id: str) -> Capsule | None:
-    """Fetch an agent's primary capsule by agent ID and tenant."""
-    try:
-        agent = AgentModel.objects.select_related("primary_capsule").get(
-            id=agent_id, tenant_id=tenant_id
-        )
-    except AgentModel.DoesNotExist:
-        return None
-
-    return agent.primary_capsule
-
-
-@sync_to_async
-def _update_capsule(
-    capsule: Capsule,
-    payload: CapsuleConfigUpdate,
-) -> None:
-    """Persist capsule field updates."""
-    if payload.name is not None:
-        capsule.name = payload.name
-    if payload.description is not None:
-        capsule.description = payload.description
-    if payload.system_prompt is not None:
-        capsule.system_prompt = payload.system_prompt
-    if payload.personality_traits is not None:
-        capsule.personality_traits = payload.personality_traits
-    if payload.neuromodulator_baseline is not None:
-        capsule.neuromodulator_baseline = payload.neuromodulator_baseline
-    if payload.learning_config is not None:
-        capsule.learning_config = payload.learning_config
-    capsule.save()
-
-
-@sync_to_async
-@sync_to_async
-def _update_agent(
-    agent: AgentModel,
-    payload: AgentUpdatePayload,
-) -> None:
-    """Persist agent field updates."""
-    if payload.name is not None:
-        agent.name = payload.name
-    if payload.description is not None:
-        agent.description = payload.description
-    if payload.model is not None:
-        config = agent.config or {}
-        config["model"] = payload.model
-        agent.config = config
-    agent.save()
-
-
-def _reserve_slug(tenant: Tenant, base_slug: str) -> str:
-    """Best-effort reservation of a unique slug within a tenant."""
-    slug = base_slug
-    counter = 1
-    while AgentModel.objects.filter(tenant=tenant, slug=slug).exists():
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-    return slug
-
-
-@sync_to_async
-def _create_agent_and_capsule(
-    tenant: Tenant,
-    name: str,
-    description: Optional[str],
-    model: str,
-) -> AgentModel:
-    """Create a Capsule and Agent atomically with slug-collision retries."""
-    base_slug = slugify(name) or "agent"
-    last_error: Optional[Exception] = None
-
-    for attempt in range(5):
-        slug = _reserve_slug(tenant, base_slug)
-        try:
-            with transaction.atomic():
-                capsule = Capsule.objects.create(
-                    tenant=tenant,
-                    name=name,
-                    description=description or "",
-                    status=Capsule.STATUS_ACTIVE,
-                    system_prompt="You are a helpful assistant.",
-                )
-                agent = AgentModel.objects.create(
-                    tenant=tenant,
-                    name=name,
-                    slug=slug,
-                    description=description or "",
-                    status="draft",
-                    config={"model": model},
-                    primary_capsule=capsule,
-                )
-            return agent
-        except IntegrityError as exc:
-            last_error = exc
-            # Collision likely on the unique (tenant, slug) constraint; retry.
-            continue
-
-    raise HttpError(409, f"Slug conflict after retries: {last_error}")
 
 
 # =============================================================================
@@ -468,20 +205,6 @@ async def update_personality(
         "agent_id": agent_id,
         "updated": True,
     }
-
-
-def _available_tools() -> list[ToolInfo]:
-    """Return metadata for all registered tools."""
-    from services.tool_executor.tools import AVAILABLE_TOOLS
-
-    return [
-        ToolInfo(
-            name=tool.name,
-            description=tool.__doc__ or tool.name,
-            input_schema=tool.input_schema(),
-        )
-        for tool in AVAILABLE_TOOLS.values()
-    ]
 
 
 @router.get(
@@ -717,28 +440,6 @@ async def clone_agent(
 # =============================================================================
 # ENDPOINTS - Multimodal Configuration (SRS 4.1)
 # =============================================================================
-
-
-class MultimodalConfig(BaseModel):
-    """Multimodal capabilities configuration."""
-
-    image_enabled: bool = True
-    image_quality: str = "standard"
-    image_style: str = "vivid"
-    diagram_enabled: bool = True
-    diagram_format: str = "svg"
-    diagram_theme: str = "default"
-    screenshot_enabled: bool = True
-    screenshot_width: int = 1920
-    screenshot_height: int = 1080
-    screenshot_full_page: bool = True
-    video_enabled: bool = False
-    vision_enabled: bool = True
-    chat_model_vision: bool = True
-    browser_model_vision: bool = True
-    image_provider: str = "dalle3"
-    diagram_provider: str = "mermaid"
-    screenshot_provider: str = "playwright"
 
 
 @router.get(

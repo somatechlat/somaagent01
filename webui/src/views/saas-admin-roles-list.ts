@@ -12,6 +12,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 import '../components/saas-data-table.js';
 import '../components/saas-glass-modal.js';
 import '../components/saas-form-field.js';
@@ -156,17 +157,51 @@ export class SaasAdminRolesList extends LitElement {
         }
     `;
 
-    @state() private _roles: Role[] = [
-        { id: '1', name: 'SAAS Super Admin', code: 'saas_superadmin', level: 'platform', users: 2, permissions: 45, description: 'Full access to everything' },
-        { id: '2', name: 'SAAS Support', code: 'saas_support', level: 'platform', users: 5, permissions: 12, description: 'Support ticket access only' },
-        { id: '3', name: 'Tenant SysAdmin', code: 'sysadmin', level: 'tenant', users: 124, permissions: 32, description: 'Full tenant control' },
-        { id: '4', name: 'Tenant Admin', code: 'admin', level: 'tenant', users: 340, permissions: 24, description: 'Agent management' },
-        { id: '5', name: 'Developer', code: 'developer', level: 'agent', users: 890, permissions: 18, description: 'DEV access' },
-        { id: '6', name: 'Trainer', code: 'trainer', level: 'agent', users: 45, permissions: 15, description: 'TRN access' },
-    ];
-
+    @state() private _roles: Role[] = [];
     @state() private _activeTab = 'platform';
     @state() private _showModal = false;
+
+    connectedCallback() {
+        super.connectedCallback();
+        this._loadRoles();
+    }
+
+    private async _loadRoles() {
+        try {
+            const data = await apiClient.get('/permissions/roles') as {
+                roles?: Array<{
+                    role_id: string;
+                    name: string;
+                    description?: string;
+                    permissions?: string[];
+                    is_system?: boolean;
+                    tenant_id?: string | null;
+                }>;
+            };
+            this._roles = (data.roles || []).map(r => ({
+                id: r.role_id,
+                name: r.name,
+                code: this._slugFromName(r.name),
+                level: this._mapLevel(r.is_system, r.tenant_id),
+                users: 0,
+                permissions: r.permissions?.length ?? 0,
+                description: r.description ?? '',
+            }));
+        } catch (error) {
+            console.error('[SaasAdminRolesList] Failed to load roles:', error);
+            this._roles = [];
+        }
+    }
+
+    private _slugFromName(name: string): string {
+        return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    }
+
+    private _mapLevel(is_system?: boolean, tenant_id?: string | null): 'platform' | 'tenant' | 'agent' {
+        if (is_system) return 'platform';
+        if (tenant_id) return 'tenant';
+        return 'agent';
+    }
 
     private _columns: TableColumn[] = [
         { key: 'name', label: 'Role Name', sortable: true, width: '25%' },
@@ -196,29 +231,7 @@ export class SaasAdminRolesList extends LitElement {
         }
     ];
 
-    /* Sample Matrix Data */
-    private _matrix = [
-        {
-            group: 'Chat & Memory',
-            perms: [
-                { code: 'chat:send', desc: 'Send chat messages', checked: true },
-                { code: 'chat:view_history', desc: 'View conversation history', checked: true },
-                { code: 'memory:read', desc: 'Read from SomaBrain', checked: true },
-                { code: 'memory:write', desc: 'Write to SomaBrain', checked: true },
-                { code: 'memory:delete', desc: 'Delete memories', checked: false }
-            ]
-        },
-        {
-            group: 'Tools',
-            perms: [
-                { code: 'tools:execute', desc: 'Execute approved tools', checked: true },
-                { code: 'tools:code_exec', desc: 'Execute code snippets', checked: true },
-                { code: 'tools:browser', desc: 'Use browser agent', checked: true },
-                { code: 'tools:debug', desc: 'Access debug tools', checked: true },
-                { code: 'tools:configure', desc: 'Configure tool settings', checked: false }
-            ]
-        }
-    ];
+    private _matrix: Array<{ group: string; perms: Array<{ code: string; desc: string; checked: boolean }> }> = [];
 
     render() {
         return html`
@@ -252,8 +265,8 @@ export class SaasAdminRolesList extends LitElement {
             >
                 <div>
                     <div style="display: flex; gap: 16px; margin-bottom: 24px">
-                        <saas-form-field label="Role Name" value="Developer" style="flex: 1"></saas-form-field>
-                        <saas-form-field label="Role Code" value="developer" disabled style="flex: 1"></saas-form-field>
+                        <saas-form-field label="Role Name" value="" style="flex: 1"></saas-form-field>
+                        <saas-form-field label="Role Code" value="" disabled style="flex: 1"></saas-form-field>
                     </div>
 
                     <div style="margin-bottom: 16px">
@@ -267,19 +280,25 @@ export class SaasAdminRolesList extends LitElement {
                         </div>
                     </div>
 
-                    <div class="matrix-container">
+                    <div class="matrix-container" style="opacity: 0.6; pointer-events: none;">
                         <div class="matrix-header">
                             <span>PERMISSION MATRIX</span>
-                            <span style="color: var(--saas-accent); cursor: pointer">Select All</span>
+                            <span style="color: var(--saas-text-secondary);">Select All</span>
                         </div>
-                        
+
+                        ${this._matrix.length === 0 ? html`
+                            <p style="font-size: 13px; color: var(--saas-text-secondary); padding: 12px 0;">
+                                Permission matrix editor is unavailable until a matrix endpoint is implemented.
+                            </p>
+                        ` : ''}
+
                         ${this._matrix.map(group => html`
                             <div class="matrix-group">
                                 <div class="matrix-group-title">${group.group}</div>
                                 ${group.perms.map(perm => html`
                                     <div class="matrix-row">
                                         <div class="perm-check">
-                                            <input type="checkbox" ?checked=${perm.checked}>
+                                            <input type="checkbox" ?checked=${perm.checked} disabled>
                                         </div>
                                         <div class="perm-code">${perm.code}</div>
                                         <div class="perm-desc">${perm.desc}</div>
@@ -292,13 +311,13 @@ export class SaasAdminRolesList extends LitElement {
 
                 <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px">
                     <button class="btn-secondary" @click=${() => this._showModal = false} style="
-                        padding: 8px 16px; 
-                        background: transparent; 
-                        border: 1px solid var(--saas-border-light); 
+                        padding: 8px 16px;
+                        background: transparent;
+                        border: 1px solid var(--saas-border-light);
                         border-radius: 8px;
                         cursor: pointer;
                     ">Cancel</button>
-                    <button class="btn-primary">Save Changes</button>
+                    <button class="btn-primary" disabled>Save Changes</button>
                 </div>
             </saas-glass-modal>
         `;

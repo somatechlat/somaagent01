@@ -7,8 +7,8 @@
  * - Django Ninja API integration
  *
  * PERSONAS APPLIED:
- * - 🎨 UX Consultant: Role preview, agent selection
- * - 🔒 Security Auditor: Role permission display
+ * - palette UX Consultant: Role preview, agent selection
+ * - lock Security Auditor: Role permission display
  */
 
 import { LitElement, html, css } from 'lit';
@@ -17,7 +17,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 interface RoleDefinition {
     code: string;
     label: string;
-    icon: string;
+
     color: string;
     description: string;
     canAccess: string[];
@@ -35,7 +35,7 @@ const ROLES: RoleDefinition[] = [
     {
         code: 'sysadmin',
         label: 'SysAdmin',
-        icon: '🟠',
+
         color: '#f97316',
         description: 'Full tenant access',
         canAccess: ['All modes', 'All agents', 'Billing', 'Settings'],
@@ -44,7 +44,7 @@ const ROLES: RoleDefinition[] = [
     {
         code: 'admin',
         label: 'Admin',
-        icon: '🟡',
+
         color: '#eab308',
         description: 'Manage users and agents',
         canAccess: ['STD mode', 'ADM mode', 'All agents', 'User management'],
@@ -53,7 +53,7 @@ const ROLES: RoleDefinition[] = [
     {
         code: 'developer',
         label: 'Developer',
-        icon: '🔵',
+
         color: '#3b82f6',
         description: 'Development and debugging',
         canAccess: ['STD mode', 'DEV mode', 'Assigned agents', 'Logs'],
@@ -62,7 +62,7 @@ const ROLES: RoleDefinition[] = [
     {
         code: 'trainer',
         label: 'Trainer',
-        icon: '🟣',
+
         color: '#a855f7',
         description: 'Tune agent behavior',
         canAccess: ['STD mode', 'TRN mode', 'Assigned agents', 'Neuromodulators'],
@@ -71,7 +71,7 @@ const ROLES: RoleDefinition[] = [
     {
         code: 'user',
         label: 'User',
-        icon: '⚪',
+
         color: '#6b7280',
         description: 'Standard agent access',
         canAccess: ['STD mode', 'Assigned agents', 'Chat', 'Memory'],
@@ -80,7 +80,7 @@ const ROLES: RoleDefinition[] = [
     {
         code: 'viewer',
         label: 'Viewer',
-        icon: '⚫',
+
         color: '#374151',
         description: 'Read-only access',
         canAccess: ['View chat history', 'View memory'],
@@ -91,6 +91,26 @@ const ROLES: RoleDefinition[] = [
 @customElement('saas-user-invite-modal')
 export class SaasUserInviteModal extends LitElement {
     static styles = css`
+        .status-icon {
+            font-size: 8px;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
     }
@@ -392,7 +412,7 @@ export class SaasUserInviteModal extends LitElement {
         <div class="modal">
           <div class="modal-header">
             <span class="modal-title">Invite New User</span>
-            <button class="close-btn" @click=${this._handleClose}>×</button>
+            <button class="close-btn" @click=${this._handleClose}><span class="material-symbols-outlined">close</span></button>
           </div>
 
           <div class="modal-content">
@@ -410,7 +430,7 @@ export class SaasUserInviteModal extends LitElement {
                 ${ROLES.map(role => html`
                   <div class="role-option ${this.selectedRole === role.code ? 'selected' : ''}"
                        @click=${() => this.selectedRole = role.code}>
-                    <span class="role-name">${role.icon} ${role.label}</span>
+                    <span class="role-name"><span class="material-symbols-outlined status-icon" style="color: ${role.color}">circle</span> ${role.label}</span>
                   </div>
                 `)}
               </div>
@@ -418,17 +438,17 @@ export class SaasUserInviteModal extends LitElement {
 
             <div class="role-preview">
               <div class="role-header">
-                <span style="font-size: 24px;">${roleInfo.icon}</span>
+                <span class="material-symbols-outlined status-icon" style="color: ${roleInfo.color};">circle</span>
                 <span class="role-title">${roleInfo.label}</span>
               </div>
               <div class="role-desc">${roleInfo.description}</div>
               <div class="access-list">
-                <h4 class="access-can">✅ Can access:</h4>
+                <h4 class="access-can"><span class="material-symbols-outlined">check_circle</span> Can access:</h4>
                 <ul>
                   ${roleInfo.canAccess.map(item => html`<li>${item}</li>`)}
                 </ul>
                 ${roleInfo.cannotAccess.length > 0 ? html`
-                  <h4 class="access-cannot">❌ Cannot access:</h4>
+                  <h4 class="access-cannot"><span class="material-symbols-outlined">cancel</span> Cannot access:</h4>
                   <ul>
                     ${roleInfo.cannotAccess.map(item => html`<li>${item}</li>`)}
                   </ul>

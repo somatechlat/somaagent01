@@ -379,49 +379,12 @@ export class SaasTierBuilder extends LitElement {
         this.loading = true;
         try {
             this.tiers = await apiClient.get<SubscriptionTier[]>('/aaas/tiers');
-        } catch (e) {
-            this.tiers = this.getMockTiers();
+        } catch (err) {
+            console.error('Failed to load tiers', err);
+            this.tiers = [];
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockTiers(): SubscriptionTier[] {
-        return [
-            {
-                id: '1',
-                name: 'Starter',
-                slug: 'starter',
-                price: 0,
-                billing_period: 'month',
-                limits: { agents: 1, users: 3, tokens_per_month: 10000, storage_gb: 1 },
-                features: ['Basic Chat', 'Email Support'],
-                popular: false,
-                active_count: 156,
-            },
-            {
-                id: '2',
-                name: 'Professional',
-                slug: 'professional',
-                price: 49,
-                billing_period: 'month',
-                limits: { agents: 5, users: 10, tokens_per_month: 100000, storage_gb: 10 },
-                features: ['SSE Streaming', 'Memory System', 'Voice', 'Priority Support'],
-                popular: true,
-                active_count: 89,
-            },
-            {
-                id: '3',
-                name: 'Enterprise',
-                slug: 'enterprise',
-                price: 199,
-                billing_period: 'month',
-                limits: { agents: 50, users: 100, tokens_per_month: 1000000, storage_gb: 100 },
-                features: ['Unlimited Agents', 'Custom Models', 'SLA', 'Dedicated Support', 'On-Prem Option'],
-                popular: false,
-                active_count: 23,
-            },
-        ];
     }
 
     private openNewTierModal() {

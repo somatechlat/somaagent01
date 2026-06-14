@@ -124,9 +124,17 @@ class MemoryIntegration:
 
         Returns:
             Number of messages replayed
+
+        Raises:
+            RuntimeError: Degraded-queue replay is not implemented.
         """
-        LOGGER.info("Replay degraded queue for tenant=%s", tenant_id)
-        return 0
+        LOGGER.error(
+            "Replay degraded queue attempted for tenant=%s but backend is not implemented",
+            tenant_id,
+        )
+        raise RuntimeError(
+            "Degraded memory queue replay is not implemented. Configure a replay backend."
+        )
 
 
 _instance: Optional[MemoryIntegration] = None

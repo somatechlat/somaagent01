@@ -13,14 +13,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 
 from prometheus_client import Counter, Gauge
 
-from services.common.redis_pool import get_async_redis_pool
+from services.common.redis_pool import get_async_redis_pool, get_redis_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ class RedisRateLimiter:
     ):
         """Initialize the instance."""
 
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.redis_url = redis_url or get_redis_url()
         self.default_limit = default_limit
         self.default_window_seconds = default_window_seconds
         self.key_prefix = key_prefix

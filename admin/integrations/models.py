@@ -1,4 +1,4 @@
-"""Stub integration model for type-checking."""
+"""Integration model for external service connections."""
 
 import uuid
 
@@ -6,7 +6,7 @@ from django.db import models
 
 
 class Integration(models.Model):
-    """Stub for Integration model."""
+    """External service integration (Lago, Keycloak, SMTP, LLM, Storage)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)

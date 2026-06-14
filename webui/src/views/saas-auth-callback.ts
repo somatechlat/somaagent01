@@ -18,6 +18,21 @@ import { Router } from '@vaadin/router';
 @customElement('saas-auth-callback')
 export class SaasAuthCallback extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: flex;
             justify-content: center;
@@ -135,7 +150,7 @@ export class SaasAuthCallback extends LitElement {
                         Return to Login
                     </button>
                 ` : html`
-                    <div class="success-icon">✓</div>
+                    <div class="success-icon"><span class="material-symbols-outlined">check_circle</span></div>
                     <p class="status">Success!</p>
                     <p class="detail">Redirecting to application...</p>
                 `}

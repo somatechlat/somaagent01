@@ -14,10 +14,12 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.common.exceptions import ServiceUnavailableError
 
 router = Router(tags=["permissions"])
 logger = logging.getLogger(__name__)
@@ -83,40 +85,33 @@ async def list_roles(
 ) -> dict:
     """List available roles.
 
-    PM: View role hierarchy.
+    PM: View role hierarchy from Django RBAC models.
     """
+    from admin.permissions.models import Role as RoleModel
+
+    @sync_to_async
+    def _load():
+        qs = RoleModel.objects.all()
+        if tenant_id:
+            qs = qs.filter(tenant_id=tenant_id)
+        if not include_system:
+            qs = qs.filter(is_system=False)
+        return list(qs.prefetch_related("permissions"))
+
+    roles = await _load()
     return {
         "roles": [
             Role(
-                role_id="aaas_admin",
-                name="AAAS Administrator",
-                description="Platform-level admin (God Mode)",
-                permissions=["*"],
-                is_system=True,
-            ).dict(),
-            Role(
-                role_id="tenant_admin",
-                name="Tenant Administrator",
-                description="Tenant-level admin",
-                permissions=["tenant:*", "agent:*", "user:*"],
-                is_system=True,
-            ).dict(),
-            Role(
-                role_id="agent_owner",
-                name="Agent Owner",
-                description="Can manage assigned agents",
-                permissions=["agent:read", "agent:write", "conversation:*"],
-                is_system=True,
-            ).dict(),
-            Role(
-                role_id="user",
-                name="User",
-                description="Standard user access",
-                permissions=["conversation:read", "conversation:write"],
-                is_system=True,
-            ).dict(),
+                role_id=str(role.id),
+                name=role.name,
+                description=role.description,
+                permissions=[p.codename for p in role.permissions.all()],
+                is_system=role.is_system,
+                tenant_id=str(role.tenant_id) if role.tenant_id else None,
+            ).dict()
+            for role in roles
         ],
-        "total": 4,
+        "total": len(roles),
     }
 
 
@@ -330,15 +325,39 @@ async def check_permission(
 ) -> dict:
     """Check if user has a permission.
 
-    Django Architect: SpiceDB query.
+    Django Architect: SpiceDB query. Fail-closed: denies on any error or
+    misconfiguration rather than fabricating an authorization grant.
     """
-    # In production: query SpiceDB
-    return {
-        "user_id": user_id,
-        "permission": permission,
-        "allowed": True,
-        "reason": "role_grant",
-    }
+    if not resource_id:
+        return {
+            "user_id": user_id,
+            "permission": permission,
+            "allowed": False,
+            "reason": "resource_id_required",
+        }
+
+    resource_type = permission.split(":")[0] if ":" in permission else "resource"
+    action = permission.split(":")[-1] if ":" in permission else permission
+
+    try:
+        from services.common.spicedb_client import get_spicedb_client
+
+        client = await get_spicedb_client()
+        allowed = await client.check_permission(user_id, action, resource_type, resource_id)
+        return {
+            "user_id": user_id,
+            "permission": permission,
+            "allowed": allowed,
+            "reason": "spicedb_check",
+        }
+    except Exception as exc:
+        logger.error("SpiceDB permission check failed (fail-closed): %s", exc)
+        return {
+            "user_id": user_id,
+            "permission": permission,
+            "allowed": False,
+            "reason": "fail_closed",
+        }
 
 
 @router.get(
@@ -352,10 +371,32 @@ async def get_user_permissions(
 ) -> dict:
     """Get all permissions for a user.
 
-    Security Auditor: Effective permissions.
+    Security Auditor: Effective permissions resolved from Django RBAC models.
     """
+    from admin.permissions.models import UserRoleAssignment
+
+    @sync_to_async
+    def _resolve():
+        assignments = UserRoleAssignment.objects.filter(user_id=user_id).select_related("role").prefetch_related("role__permissions")
+        roles = []
+        permissions = set()
+        for assignment in assignments:
+            role = assignment.role
+            roles.append(
+                {
+                    "role_id": str(role.id),
+                    "name": role.name,
+                    "scope": assignment.scope_type,
+                    "scope_id": assignment.scope_id,
+                }
+            )
+            for perm in role.permissions.all():
+                permissions.add(perm.codename)
+        return roles, sorted(permissions)
+
+    roles, permissions = await _resolve()
     return {
         "user_id": user_id,
-        "roles": [],
-        "permissions": [],
+        "roles": roles,
+        "permissions": permissions,
     }

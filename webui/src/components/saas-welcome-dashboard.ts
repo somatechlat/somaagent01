@@ -14,19 +14,34 @@ interface ActionCard {
 }
 
 const ACTIONS: ActionCard[] = [
-    { icon: '+', label: 'New Chat', description: 'Start a new conversation', action: () => window.dispatchEvent(new CustomEvent('new-conversation')) },
-    { icon: '📁', label: 'Projects', description: 'Manage agent projects', action: () => {} },
-    { icon: '🧠', label: 'Memory', description: 'Browse agent memories', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/memory' } })) },
-    { icon: '⏱', label: 'Tasks', description: 'View scheduled tasks', action: () => {} },
-    { icon: '⚙', label: 'Settings', description: 'Configure agent', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/settings' } })) },
-    { icon: '🎨', label: 'Skins', description: 'Customize appearance', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/themes' } })) },
-    { icon: '💊', label: 'Capsules', description: 'Manage agent identity', action: () => {} },
-    { icon: '🌐', label: 'Browser', description: 'Open web browser', action: () => {} },
+    { icon: 'add', label: 'New Chat', description: 'Start a new conversation', action: () => window.dispatchEvent(new CustomEvent('new-conversation')) },
+    { icon: 'folder', label: 'Projects', description: 'Manage agent projects', action: () => {} },
+    { icon: 'neurology', label: 'Memory', description: 'Browse agent memories', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/memory' } })) },
+    { icon: 'timer', label: 'Tasks', description: 'View scheduled tasks', action: () => {} },
+    { icon: 'settings', label: 'Settings', description: 'Configure agent', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/settings' } })) },
+    { icon: 'palette', label: 'Skins', description: 'Customize appearance', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/themes' } })) },
+    { icon: 'medication', label: 'Capsules', description: 'Manage agent identity', action: () => {} },
+    { icon: 'public', label: 'Browser', description: 'Open web browser', action: () => {} },
 ];
 
 @customElement('saas-welcome-dashboard')
 export class SaasWelcomeDashboard extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: flex;
             flex-direction: column;
@@ -185,7 +200,7 @@ export class SaasWelcomeDashboard extends LitElement {
             <div class="actions-grid">
                 ${ACTIONS.map(a => html`
                     <div class="action-card" @click=${a.action}>
-                        <div class="action-icon">${a.icon}</div>
+                        <div class="action-icon material-symbols-outlined">${a.icon}</div>
                         <div class="action-label">${a.label}</div>
                         <div class="action-desc">${a.description}</div>
                     </div>

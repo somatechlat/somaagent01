@@ -27,6 +27,21 @@ interface VoicePersona {
 @customElement('voice-persona-card')
 export class VoicePersonaCard extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
         }
@@ -176,9 +191,9 @@ export class VoicePersonaCard extends LitElement {
             <div class="persona-card ${p.is_active ? '' : 'inactive'}">
                 <div class="header">
                     <div class="title-row">
-                        <span class="icon">🎙️</span>
+                        <span class="icon material-symbols-outlined">mic</span>
                         <span class="name">${p.name}</span>
-                        ${p.is_default ? html`<span class="default-badge">★ Default</span>` : ''}
+                        ${p.is_default ? html`<span class="default-badge"><span class="material-symbols-outlined" style="font-size: 12px;">star</span> Default</span>` : ''}
                     </div>
                     <span class="status-badge ${p.is_active ? 'active' : 'inactive'}">
                         ${p.is_active ? 'Active' : 'Inactive'}

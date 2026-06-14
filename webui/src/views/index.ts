@@ -7,6 +7,7 @@ export { SaasForgotPassword } from './saas-forgot-password.js';
 
 // Platform Views
 export { SaasPlatformDashboard } from './saas-platform-dashboard.js';
+export { SaasNotFound } from './saas-not-found.js';
 export { SaasTenants } from './saas-tenants.js';
 export { SaasModeSelection } from './saas-mode-selection.js';
 export { SaasSettings } from './saas-settings.js';

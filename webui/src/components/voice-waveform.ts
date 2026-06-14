@@ -5,13 +5,13 @@
  * Real-time audio visualization for voice sessions.
  * 
  * 7-Persona Implementation:
- * - 🏗️ Django Architect: WebSocket ready
- * - 🔒 Security Auditor: MediaStream permission handling
- * - 📈 PM: Clear visual feedback
- * - 🧪 QA Engineer: Fallback for no mic
- * - 📚 Technical Writer: Clear documentation
- * - ⚡ Performance Lead: requestAnimationFrame optimization
- * - 🌍 i18n Specialist: Accessible labels
+ * - architecture Django Architect: WebSocket ready
+ * - lock Security Auditor: MediaStream permission handling
+ * - monitoring PM: Clear visual feedback
+ * - science QA Engineer: Fallback for no mic
+ * - menu_book Technical Writer: Clear documentation
+ * - bolt Performance Lead: requestAnimationFrame optimization
+ * - language i18n Specialist: Accessible labels
  */
 
 import { LitElement, html, css } from 'lit';
@@ -20,6 +20,21 @@ import { customElement, property, state } from 'lit/decorators.js';
 @customElement('voice-waveform')
 export class VoiceWaveform extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             width: 100%;
@@ -269,7 +284,7 @@ export class VoiceWaveform extends LitElement {
                         @click=${this._toggleRecording}
                         aria-label=${this.isRecording ? 'Stop recording' : 'Start recording'}
                     >
-                        ${this.isRecording ? '⏹️' : '🎙️'}
+                        ${this.isRecording ? html`<span class='material-symbols-outlined'>stop_circle</span>` : html`<span class='material-symbols-outlined'>mic</span>`}
                     </button>
                 </div>
             ` : ''}

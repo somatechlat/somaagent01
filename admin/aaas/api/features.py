@@ -8,6 +8,7 @@ Per SRS Section 4.3.1 - Tier Builder Feature Management.
 import logging
 from typing import Any, Optional
 
+from asgiref.sync import sync_to_async
 from django.db import transaction
 from ninja import Router
 
@@ -201,12 +202,53 @@ def update_tier_feature_settings(
 # FEATURE FLAGS (Legacy - for rollout control)
 # =============================================================================
 @router.get("/flags", response=list[FeatureFlagOut])
-def list_feature_flags(request):
-    """Get all feature flags."""
-    return []
+async def list_feature_flags(request):
+    """Get all feature flags from Django models."""
+    from admin.aaas.models.features import AaasFeature
+
+    @sync_to_async
+    def _load():
+        return list(AaasFeature.objects.filter(is_active=True).order_by("name"))
+
+    flags = await _load()
+    return [
+        FeatureFlagOut(
+            id=str(flag.id),
+            name=flag.name,
+            description=flag.description or "",
+            enabled=flag.is_active,
+            rollout_percentage=100 if flag.is_active else 0,
+            created_at=flag.created_at,
+            updated_at=flag.updated_at,
+        )
+        for flag in flags
+    ]
 
 
 @router.patch("/flags/{flag_id}", response=FeatureFlagOut)
-def update_feature_flag(request, flag_id: str, payload: FeatureFlagUpdate):
+async def update_feature_flag(request, flag_id: str, payload: FeatureFlagUpdate):
     """Update a feature flag."""
-    raise Exception("Feature flags not yet implemented")
+    from admin.aaas.models.features import AaasFeature
+    from admin.common.exceptions import NotFoundError
+
+    @sync_to_async
+    def _update():
+        try:
+            flag = AaasFeature.objects.get(id=flag_id)
+        except AaasFeature.DoesNotExist:
+            raise NotFoundError("feature flag", flag_id)
+        if payload.enabled is not None:
+            flag.is_active = payload.enabled
+        flag.save()
+        return flag
+
+    flag = await _update()
+    return FeatureFlagOut(
+        id=str(flag.id),
+        name=flag.name,
+        description=flag.description or "",
+        enabled=flag.is_active,
+        rollout_percentage=100 if flag.is_active else 0,
+        created_at=flag.created_at,
+        updated_at=flag.updated_at,
+    )

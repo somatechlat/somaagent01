@@ -17,6 +17,21 @@ export class SaasAgentHeader extends LitElement {
     @state() private _iqState = iqStore.knobs.intelligence;
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             background: var(--aaas-bg-card, #1e1e1e);
@@ -235,7 +250,7 @@ export class SaasAgentHeader extends LitElement {
         return html`
             <div class="header">
                 <div class="agent-info">
-                    <div class="agent-avatar">🤖</div>
+                    <div class="agent-avatar material-symbols-outlined">smart_toy</div>
                     <div class="agent-meta">
                         <div class="agent-name">${agent?.name || 'SomaAgent'}</div>
                         <div class="agent-status">
@@ -256,7 +271,7 @@ export class SaasAgentHeader extends LitElement {
                             @click=${() => { this._profileDropdownOpen = !this._profileDropdownOpen; this._presetDropdownOpen = false; }}
                         >
                             <span>${activeProfile?.name || 'Default'}</span>
-                            <span class="chevron">▼</span>
+                            <span class="chevron material-symbols-outlined">expand_more</span>
                         </button>
                         ${this._profileDropdownOpen ? html`
                             <div class="dropdown">
@@ -265,13 +280,13 @@ export class SaasAgentHeader extends LitElement {
                                         class="dropdown-item ${p.id === this._agentState.activeProfileId ? 'active' : ''}"
                                         @click=${() => { agentStore.setActiveProfile(p.id); this._profileDropdownOpen = false; }}
                                     >
-                                        <span class="item-icon">🤖</span>
+                                        <span class="item-icon material-symbols-outlined">smart_toy</span>
                                         <span>${p.name}</span>
                                     </div>
                                 `)}
                                 <div class="dropdown-divider"></div>
                                 <div class="dropdown-item" @click=${() => { this._profileDropdownOpen = false; }}>
-                                    <span class="item-icon">+</span>
+                                    <span class="item-icon material-symbols-outlined">add</span>
                                     <span>Create Profile</span>
                                 </div>
                             </div>
@@ -283,8 +298,8 @@ export class SaasAgentHeader extends LitElement {
                             class="pill-btn ${this._presetDropdownOpen ? 'open' : ''}"
                             @click=${() => { this._presetDropdownOpen = !this._presetDropdownOpen; this._profileDropdownOpen = false; }}
                         >
-                            <span>⚡ ${activePreset?.name || 'Balanced'}</span>
-                            <span class="chevron">▼</span>
+                            <span><span class="material-symbols-outlined">bolt</span> ${activePreset?.name || 'Balanced'}</span>
+                            <span class="chevron material-symbols-outlined">expand_more</span>
                         </button>
                         ${this._presetDropdownOpen ? html`
                             <div class="dropdown">
@@ -293,7 +308,7 @@ export class SaasAgentHeader extends LitElement {
                                         class="dropdown-item ${p.id === this._agentState.activePresetId ? 'active' : ''}"
                                         @click=${() => { agentStore.setActivePreset(p.id); this._presetDropdownOpen = false; }}
                                     >
-                                        <span class="item-icon">⚡</span>
+                                        <span class="item-icon material-symbols-outlined">bolt</span>
                                         <span>${p.name}</span>
                                         <span style="margin-left:auto;color:var(--aaas-text-muted);font-size:11px">${p.model}</span>
                                     </div>
@@ -303,10 +318,10 @@ export class SaasAgentHeader extends LitElement {
                     </div>
 
                     <button class="icon-btn" @click=${() => workspaceStore.setSurface('capsule')} title="Capsule Settings">
-                        ⚙
+                        <span class="material-symbols-outlined">settings</span>
                     </button>
                     <button class="icon-btn" @click=${() => workspaceStore.setSurface('tools')} title="Tools">
-                        🔧
+                        <span class="material-symbols-outlined">build</span>
                     </button>
                 </div>
             </div>

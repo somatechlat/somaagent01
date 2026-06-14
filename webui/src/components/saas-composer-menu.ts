@@ -21,6 +21,21 @@ export class SaasComposerMenu extends LitElement {
     composerStore!: ComposerStore;
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             position: relative;
@@ -96,29 +111,29 @@ export class SaasComposerMenu extends LitElement {
         return html`
             <div class="menu">
                 <label class="menu-item">
-                    <span class="icon">📎</span>
+                    <span class="icon material-symbols-outlined">attach_file</span>
                     <span>Attach Files</span>
                     <input type="file" multiple @change=${this._onFileSelect} />
                 </label>
                 <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">🧠</span>
+                    <span class="icon material-symbols-outlined">neurology</span>
                     <span>Memory Context</span>
                 </div>
                 <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">🎯</span>
+                    <span class="icon material-symbols-outlined">target</span>
                     <span>Skills</span>
                 </div>
                 <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">📜</span>
+                    <span class="icon material-symbols-outlined">script</span>
                     <span>History</span>
                 </div>
                 <div class="menu-divider"></div>
                 <div class="menu-item" @click=${this._clearChat}>
-                    <span class="icon">🗑</span>
+                    <span class="icon material-symbols-outlined">delete</span>
                     <span>Clear Chat</span>
                 </div>
                 <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">📤</span>
+                    <span class="icon material-symbols-outlined">upload</span>
                     <span>Export Chat</span>
                 </div>
             </div>

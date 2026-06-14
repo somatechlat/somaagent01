@@ -9,9 +9,9 @@
  * - Per SRS-FEATURE-CATALOG.md Section 10
  *
  * 7-Persona Implementation:
- * - 📈 PM: Feature lifecycle management
- * - 🏗️ Architect: Feature/tier matrix
- * - 🔒 Security: Billable feature tracking
+ * - monitoring PM: Feature lifecycle management
+ * - architecture Architect: Feature/tier matrix
+ * - lock Security: Billable feature tracking
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -256,25 +256,12 @@ export class SaasFeatureCatalog extends LitElement {
         try {
             const data = await apiClient.get<{ features?: Feature[] }>('/aaas/features');
             this.features = data.features || [];
-        } catch {
-            this.features = this.getMockFeatures();
+        } catch (err) {
+            console.error('Failed to load features', err);
+            this.features = [];
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockFeatures(): Feature[] {
-        return [
-            { id: '1', code: 'memory', name: 'Long-term Memory', description: 'Vector-based memory recall and consolidation', category: 'Core', is_billable: true, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '2', code: 'voice', name: 'Voice Mode', description: 'Real-time voice conversation with Whisper + Kokoro', category: 'Communication', is_billable: true, is_enabled: true, tiers: ['team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '3', code: 'mcp', name: 'MCP Integration', description: 'Model Context Protocol for external tools', category: 'Extensibility', is_billable: false, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '4', code: 'browser_agent', name: 'Browser Agent', description: 'Web browsing and automation capabilities', category: 'Capabilities', is_billable: false, is_enabled: true, tiers: ['team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '5', code: 'code_execution', name: 'Code Execution', description: 'Sandboxed Python/JS execution', category: 'Capabilities', is_billable: false, is_enabled: true, tiers: ['enterprise'], created_at: '2025-01-01' },
-            { id: '6', code: 'vision', name: 'Vision', description: 'Image understanding and analysis', category: 'Capabilities', is_billable: true, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '7', code: 'delegation', name: 'Agent Delegation', description: 'Multi-agent task delegation', category: 'Advanced', is_billable: false, is_enabled: true, tiers: ['enterprise'], created_at: '2025-01-01' },
-            { id: '8', code: 'file_upload', name: 'File Upload', description: 'Upload and process documents', category: 'Core', is_billable: true, is_enabled: true, tiers: ['free', 'starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '9', code: 'export', name: 'Data Export', description: 'Export conversations and memories', category: 'Data', is_billable: false, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-        ];
     }
 
     private async toggleFeature(feature: Feature) {
@@ -321,7 +308,7 @@ export class SaasFeatureCatalog extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">🧩 Feature Catalog</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">extension</span> Feature Catalog</h1>
             <p class="header-subtitle">Manage platform features and tier assignments</p>
           </div>
           <div class="header-actions">
@@ -347,7 +334,7 @@ export class SaasFeatureCatalog extends LitElement {
               <div class="stat-card">
                 <div class="stat-label">Enabled</div>
                 <div class="stat-value" style="color: #16a34a;">${this.stats.enabled}</div>
-                <div class="stat-sublabel">${Math.round((this.stats.enabled / this.stats.total) * 100)}% active</div>
+                <div class="stat-sublabel">${this.stats.total ? Math.round((this.stats.enabled / this.stats.total) * 100) : 0}% active</div>
               </div>
               <div class="stat-card">
                 <div class="stat-label">Billable</div>
@@ -377,9 +364,9 @@ export class SaasFeatureCatalog extends LitElement {
                       <div class="feature-name">${feature.name}</div>
                       <div class="feature-desc">${feature.description}</div>
                       <div class="tags">
-                        ${feature.is_billable ? html`<span class="tag tag-billable">💰 Billable</span>` : nothing}
+                        ${feature.is_billable ? html`<span class="tag tag-billable"><span class="material-symbols-outlined" style="font-size: 12px;">payments</span> Billable</span>` : nothing}
                         <span class="tag ${feature.is_enabled ? 'tag-enabled' : 'tag-disabled'}">
-                          ${feature.is_enabled ? '✓ Enabled' : '✗ Disabled'}
+                          ${feature.is_enabled ? html`<span class='material-symbols-outlined' style='font-size: 12px;'>check_circle</span> Enabled` : html`<span class='material-symbols-outlined' style='font-size: 12px;'>cancel</span> Disabled`}
                         </span>
                       </div>
                       <div class="tiers">

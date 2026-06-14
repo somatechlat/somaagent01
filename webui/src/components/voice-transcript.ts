@@ -5,13 +5,13 @@
  * Real-time transcript display for voice sessions.
  * 
  * 7-Persona Implementation:
- * - 🏗️ Django Architect: WebSocket message handling
- * - 🔒 Security Auditor: XSS-safe rendering
- * - 📈 PM: Clear conversation view
- * - 🧪 QA Engineer: Auto-scroll, empty states
- * - 📚 Technical Writer: Accessibility labels
- * - ⚡ Performance Lead: Virtual scrolling ready
- * - 🌍 i18n Specialist: RTL support ready
+ * - architecture Django Architect: WebSocket message handling
+ * - lock Security Auditor: XSS-safe rendering
+ * - monitoring PM: Clear conversation view
+ * - science QA Engineer: Auto-scroll, empty states
+ * - menu_book Technical Writer: Accessibility labels
+ * - bolt Performance Lead: Virtual scrolling ready
+ * - language i18n Specialist: RTL support ready
  */
 
 import { LitElement, html, css } from 'lit';
@@ -28,6 +28,21 @@ interface TranscriptMessage {
 @customElement('voice-transcript')
 export class VoiceTranscript extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             height: 100%;
@@ -204,7 +219,7 @@ export class VoiceTranscript extends LitElement {
         return html`
             <div class="transcript-container">
                 <div class="header">
-                    <span>💬 Transcript</span>
+                    <span><span class="material-symbols-outlined">chat</span> Transcript</span>
                     ${this.messages.length > 0 ? html`
                         <button class="clear-btn" @click=${this._clearMessages}>
                             Clear
@@ -214,7 +229,7 @@ export class VoiceTranscript extends LitElement {
 
                 ${this.messages.length === 0 ? html`
                     <div class="empty-state">
-                        <div class="empty-icon">🎙️</div>
+                        <div class="empty-icon material-symbols-outlined">mic</div>
                         <div class="empty-text">${this.emptyMessage}</div>
                     </div>
                 ` : html`

@@ -24,34 +24,15 @@ class UiSettingsStore:
         self.redis = get_async_redis_pool()
 
     async def ensure_schema(self) -> None:
-        """Ensure default schema exists if not present."""
+        """Ensure default schema exists if not present.
+
+        VIBE: No hardcoded UI defaults. If no schema is configured, leave the
+        store empty so callers know configuration is required.
+        """
         exists = await self.redis.exists(self.REDIS_KEY)
         if not exists:
-            LOGGER.info("Initializing UI settings with default schema")
-            default_settings = {
-                "sections": [
-                    {
-                        "id": "agent_config",
-                        "title": "Agent Configuration",
-                        "fields": [
-                            {
-                                "id": "profile",
-                                "label": "Agent Profile",
-                                "type": "select",
-                                "value": "enhanced",
-                                "options": ["minimal", "standard", "enhanced", "max"],
-                            },
-                            {
-                                "id": "code_exec_ssh_enabled",
-                                "label": "Enable SSH Execution",
-                                "type": "boolean",
-                                "value": True,
-                            },
-                        ],
-                    }
-                ]
-            }
-            await self.redis.set(self.REDIS_KEY, json.dumps(default_settings))
+            LOGGER.info("UI settings schema not configured; skipping default injection")
+            await self.redis.set(self.REDIS_KEY, json.dumps({"sections": []}))
 
     async def get(self) -> Dict[str, Any]:
         """Get current settings."""

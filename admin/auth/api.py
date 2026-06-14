@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 
 import httpx
+from django.http import HttpResponse
 from jose import jwt, JWTError
 from ninja import Router
 
@@ -35,7 +36,7 @@ from admin.auth.api_schemas import (
     UserResponse,
 )
 from admin.common.auth import decode_token, get_keycloak_config
-from admin.common.exceptions import BadRequestError, UnauthorizedError
+from admin.common.exceptions import BadRequestError, ServiceUnavailableError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -77,7 +78,7 @@ async def _emit_auth_audit(
 
 
 @router.post("/token", response=TokenResponse)
-async def get_token(request, payload: TokenRequest, response):
+async def get_token(request, payload: TokenRequest, response: HttpResponse):
     """Get access token via password grant or OAuth code exchange."""
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
@@ -100,16 +101,16 @@ async def get_token(request, payload: TokenRequest, response):
                     raise BadRequestError(
                         message="Username and password required", details={"field": "username"}
                     )
-                resp = await client.post(
-                    token_url,
-                    data={
-                        "grant_type": "password",
-                        "client_id": config.client_id,
-                        "username": payload.username,
-                        "password": payload.password,
-                        "scope": "openid profile email",
-                    },
-                )
+                token_data = {
+                    "grant_type": "password",
+                    "client_id": config.client_id,
+                    "username": payload.username,
+                    "password": payload.password,
+                    "scope": "openid profile email",
+                }
+                if config.client_secret:
+                    token_data["client_secret"] = config.client_secret
+                resp = await client.post(token_url, data=token_data)
 
             if resp.status_code != 200:
                 raise UnauthorizedError(message="Invalid credentials")
@@ -118,8 +119,6 @@ async def get_token(request, payload: TokenRequest, response):
             token_payload = await decode_token(token_data["access_token"])
             redirect_path = determine_redirect_path(token_payload)
             await update_last_login(token_payload)
-
-            from django.conf import settings
 
             from admin.common.session_manager import get_session_manager
 
@@ -139,8 +138,7 @@ async def get_token(request, payload: TokenRequest, response):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
-            cookie_secure = not settings.DEBUG
-            _set_auth_cookies(response, token_data, session.session_id, cookie_secure)
+            _set_auth_cookies(response, token_data, session.session_id, request)
 
             return TokenResponse(
                 access_token=token_data["access_token"],
@@ -160,7 +158,7 @@ async def get_token(request, payload: TokenRequest, response):
 
 
 @router.post("/refresh", response=TokenResponse)
-async def refresh_token(request, payload: RefreshRequest, response):
+async def refresh_token(request, payload: RefreshRequest, response: HttpResponse):
     """Refresh access token using refresh token."""
     config = get_keycloak_config()
     refresh_token_val = payload.refresh_token or request.COOKIES.get("refresh_token")
@@ -175,14 +173,14 @@ async def refresh_token(request, payload: RefreshRequest, response):
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                token_url,
-                data={
-                    "grant_type": "refresh_token",
-                    "client_id": config.client_id,
-                    "refresh_token": refresh_token_val,
-                },
-            )
+            refresh_data = {
+                "grant_type": "refresh_token",
+                "client_id": config.client_id,
+                "refresh_token": refresh_token_val,
+            }
+            if config.client_secret:
+                refresh_data["client_secret"] = config.client_secret
+            resp = await client.post(token_url, data=refresh_data)
             if resp.status_code != 200:
                 await _emit_auth_audit(
                     request,
@@ -192,8 +190,6 @@ async def refresh_token(request, payload: RefreshRequest, response):
                 raise UnauthorizedError(message="Invalid or expired refresh token")
             token_data = resp.json()
             token_payload = await decode_token(token_data["access_token"])
-
-            from django.conf import settings
 
             from admin.common.session_manager import get_session_manager
 
@@ -220,8 +216,7 @@ async def refresh_token(request, payload: RefreshRequest, response):
                 )
                 session_id = session.session_id
 
-            cookie_secure = not settings.DEBUG
-            _set_auth_cookies(response, token_data, session_id, cookie_secure)
+            _set_auth_cookies(response, token_data, session_id, request)
             return TokenResponse(
                 access_token=token_data["access_token"],
                 refresh_token=token_data.get("refresh_token"),
@@ -241,16 +236,23 @@ async def refresh_token(request, payload: RefreshRequest, response):
 
 @router.get("/me", response=UserResponse)
 async def get_current_user(request):
-    """Get current authenticated user info."""
+    """Get current authenticated user info.
+
+    Supports both Bearer header and httpOnly cookie fallback.
+    """
     auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    if not token:
+        token = request.COOKIES.get("access_token", "")
+    if not token:
         await _emit_auth_audit(
             request,
             action="auth.me_failed",
-            details={"error": "Missing authorization header"},
+            details={"error": "Missing authorization header or cookie"},
         )
         raise UnauthorizedError()
-    token = auth_header[7:]
     try:
         payload = await decode_token(token)
         config = get_keycloak_config()
@@ -289,9 +291,10 @@ async def logout(request, response):
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             if refresh_token:
-                await client.post(
-                    logout_url, data={"client_id": config.client_id, "refresh_token": refresh_token}
-                )
+                logout_data = {"client_id": config.client_id, "refresh_token": refresh_token}
+                if config.client_secret:
+                    logout_data["client_secret"] = config.client_secret
+                await client.post(logout_url, data=logout_data)
     except httpx.HTTPError:
         pass
 
@@ -309,7 +312,7 @@ async def logout(request, response):
 
 
 @router.post("/login")
-async def login_with_email(request, payload: LoginRequest, response):
+async def login_with_email(request, payload: LoginRequest, response: HttpResponse):
     """Login with email and password with account lockout protection."""
     from admin.common.account_lockout import get_lockout_service
     from admin.common.exceptions import ForbiddenError
@@ -342,16 +345,16 @@ async def login_with_email(request, payload: LoginRequest, response):
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                token_url,
-                data={
-                    "grant_type": "password",
-                    "client_id": config.client_id,
-                    "username": payload.email,
-                    "password": payload.password,
-                    "scope": "openid profile email",
-                },
-            )
+            login_data = {
+                "grant_type": "password",
+                "client_id": config.client_id,
+                "username": payload.email,
+                "password": payload.password,
+                "scope": "openid profile email",
+            }
+            if config.client_secret:
+                login_data["client_secret"] = config.client_secret
+            resp = await client.post(token_url, data=login_data)
 
             if resp.status_code == 200:
                 await lockout_service.record_successful_login(payload.email)
@@ -375,10 +378,7 @@ async def login_with_email(request, payload: LoginRequest, response):
                     user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
 
-                from django.conf import settings
-
-                cookie_secure = not settings.DEBUG
-                _set_auth_cookies(response, token_data, session.session_id, cookie_secure)
+                _set_auth_cookies(response, token_data, session.session_id, request)
 
                 return {
                     "token": token_data["access_token"],
@@ -427,9 +427,16 @@ async def login_with_email(request, payload: LoginRequest, response):
 
 @router.post("/register")
 async def register_user(request, payload: RegisterRequest):
-    """Register a new user."""
-    logger.info('User registration: %s', payload.email)
-    return {"success": True, "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT)}
+    """Register a new user.
+
+    VIBE: Registration requires a real identity provider (Keycloak) or user
+    persistence. Returning a fake success message is a security violation.
+    """
+    logger.error("User registration attempted but backend user provisioning is not implemented")
+    raise ServiceUnavailableError(
+        "identity_provider",
+        "User registration backend is not implemented. Configure Keycloak or implement user provisioning.",
+    )
 
 
 # =============================================================================
@@ -530,10 +537,15 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 # =============================================================================
 
 
-def _set_auth_cookies(response, token_data: dict, session_id: str, secure: bool):
-    """Set authentication cookies on response."""
+def _set_auth_cookies(response, token_data: dict, session_id: str, request):
+    """Set authentication cookies on response.
+
+    Security: the Secure flag follows the incoming request scheme so that
+    local HTTP development works without weakening production HTTPS sessions.
+    """
     access_ttl = token_data.get("expires_in", 900)
     refresh_ttl = token_data.get("refresh_expires_in", 86400)
+    secure = request.is_secure()
     response.set_cookie(
         "access_token",
         token_data["access_token"],

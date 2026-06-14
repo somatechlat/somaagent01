@@ -9,8 +9,8 @@
  * - Django Ninja API integration
  *
  * PERSONAS APPLIED:
- * - 🎨 UX Consultant: Clean, focused layout
- * - 🔒 Security Auditor: MFA, sessions
+ * - palette UX Consultant: Clean, focused layout
+ * - lock Security Auditor: MFA, sessions
  */
 
 import { LitElement, html, css } from 'lit';
@@ -40,6 +40,21 @@ interface UserProfile {
 @customElement('saas-personal-profile')
 export class SaasPersonalProfile extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
       min-height: 100vh;
@@ -374,7 +389,7 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Display Section -->
         <div class="section">
-          <div class="section-header">📝 Display</div>
+          <div class="section-header"><span class="material-symbols-outlined">edit</span> Display</div>
           <div class="section-content">
             <div class="avatar-section">
               <div class="avatar">
@@ -404,16 +419,16 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Preferences Section -->
         <div class="section">
-          <div class="section-header">⚙️ Preferences</div>
+          <div class="section-header"><span class="material-symbols-outlined">settings</span> Preferences</div>
           <div class="section-content">
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Theme</label>
                 <select class="form-input" .value=${this.profile.theme}
                         @change=${(e: Event) => this._updateField('theme', (e.target as HTMLSelectElement).value)}>
-                  <option value="system">◐ System Default</option>
-                  <option value="light">☀️ Light</option>
-                  <option value="dark">🌙 Dark</option>
+                  <option value="system">System Default</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
                 </select>
               </div>
               <div class="form-group">
@@ -444,12 +459,12 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Security Section -->
         <div class="section">
-          <div class="section-header">🔒 Security</div>
+          <div class="section-header"><span class="material-symbols-outlined">lock</span> Security</div>
           <div class="section-content">
             <div class="security-row">
               <div class="security-info">
                 <span class="security-label">Multi-Factor Authentication</span>
-                <span class="security-value">${this.profile.mfaEnabled ? '✅ Enabled (TOTP)' : '❌ Disabled'}</span>
+                <span class="security-value">${this.profile.mfaEnabled ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled (TOTP)` : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}</span>
               </div>
               <button class="btn btn-secondary">Reconfigure</button>
             </div>
@@ -474,7 +489,7 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Notifications Section -->
         <div class="section">
-          <div class="section-header">🔔 Notifications</div>
+          <div class="section-header"><span class="material-symbols-outlined">notifications</span> Notifications</div>
           <div class="section-content">
             <div class="toggle-row">
               <span class="toggle-label">Agent replies to my conversations</span>

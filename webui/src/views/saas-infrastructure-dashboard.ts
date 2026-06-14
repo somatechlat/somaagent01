@@ -1,6 +1,6 @@
 /**
- * Infrastructure Dashboard - SaaS Platform Admin Platform Admin
- * 
+ * Infrastructure Dashboard - SaaS Platform Admin
+ *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
  * - Matches existing SAAS design system (tokens.css)
@@ -11,86 +11,19 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { apiClient } from '../services/api-client.js';
-
-interface ServiceHealth {
-  name: string;
-  status: 'healthy' | 'degraded' | 'down';
-  latency_ms: number | null;
-  details: Record<string, any> | null;
-  error: string | null;
-}
-
-interface InfrastructureHealth {
-  overall_status: string;
-  timestamp: string;
-  duration_ms: number;
-  services: ServiceHealth[];
-}
-
-interface RateLimitPolicy {
-  id: string;
-  key: string;
-  description: string;
-  limit: number;
-  window_seconds: number;
-  window_display: string;
-  policy: 'HARD' | 'SOFT' | 'NONE';
-  tier_overrides: Record<string, number>;
-  is_active: boolean;
-}
-
-// Degradation monitoring types
-interface DegradationStatus {
-  overall_level: string;
-  affected_components: string[];
-  healthy_components: string[];
-  total_components: number;
-  timestamp: number;
-  recommendations: string[];
-  mitigation_actions: string[];
-}
-
-interface ComponentHealth {
-  name: string;
-  healthy: boolean;
-  response_time: number;
-  error_rate: number;
-  degradation_level: string;
-  circuit_state: string;
-  last_check: number;
-}
-
-interface ServiceDependency {
-  service: string;
-  depends_on: string[];
-  depended_by: string[];
-}
-
-interface HistoryRecord {
-  timestamp: number;
-  component_name: string;
-  degradation_level: string;
-  healthy: boolean;
-  response_time: number;
-  error_rate: number;
-  event_type: string;
-}
-
-// Material Symbol names for each service
-const SERVICE_ICONS: Record<string, string> = {
-  postgresql: 'database',
-  redis: 'bolt',
-  kafka: 'mail',
-  flink: 'stream',
-  temporal: 'schedule',
-  qdrant: 'psychology',
-  keycloak: 'lock',
-  lago: 'payments',
-  somabrain: 'neurology',
-  whisper: 'mic',
-  kokoro: 'volume_up',
-};
+import {
+  InfraDashboardController,
+  type InfrastructureHealth,
+  type RateLimitPolicy,
+  type DegradationStatus,
+  type ComponentHealth,
+  type ServiceDependency,
+  type HistoryRecord,
+} from '../controllers/infra-dashboard-controller.js';
+import '../components/saas-infra-status-card.js';
+import { type InfraMetric } from '../components/saas-infra-metrics-chart.js';
+import '../components/saas-infra-metrics-chart.js';
+import '../components/saas-infra-alert-list.js';
 
 @customElement('saas-infrastructure-dashboard')
 export class SaasInfrastructureDashboard extends LitElement {
@@ -106,7 +39,7 @@ export class SaasInfrastructureDashboard extends LitElement {
   @state() refreshing = false;
   @state() lastRefresh: Date | null = null;
 
-  private pollInterval: number | null = null;
+  private controller = new InfraDashboardController(this);
 
   static styles = css`
     :host {
@@ -135,9 +68,7 @@ export class SaasInfrastructureDashboard extends LitElement {
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ========================================
-       SIDEBAR - Minimal Navigation
-       ======================================== */
+    /* Sidebar */
     .sidebar {
       width: 260px;
       background: var(--saas-bg-card, #ffffff);
@@ -240,9 +171,7 @@ export class SaasInfrastructureDashboard extends LitElement {
 
     .nav-item .material-symbols-outlined { font-size: 18px; }
 
-    /* ========================================
-       MAIN CONTENT
-       ======================================== */
+    /* Main content */
     .main {
       flex: 1;
       display: flex;
@@ -307,7 +236,6 @@ export class SaasInfrastructureDashboard extends LitElement {
       to { transform: rotate(360deg); }
     }
 
-    /* Tabs */
     .tabs {
       display: flex;
       gap: 0;
@@ -340,88 +268,6 @@ export class SaasInfrastructureDashboard extends LitElement {
       padding: 32px;
     }
 
-    /* ========================================
-       METRICS GRID
-       ======================================== */
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-      margin-bottom: 32px;
-    }
-
-    @media (max-width: 1400px) {
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    .metric-card {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      border-radius: 12px;
-      padding: 24px;
-      transition: all 0.15s ease;
-    }
-
-    .metric-card:hover {
-      border-color: var(--saas-border-medium, #ccc);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    }
-
-    .metric-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
-    }
-
-    .metric-label {
-      font-size: 13px;
-      color: var(--saas-text-secondary, #666);
-      font-weight: 500;
-    }
-
-    .metric-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: var(--saas-bg-hover, #fafafa);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .metric-value {
-      font-size: 32px;
-      font-weight: 700;
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-
-    .metric-value.healthy { color: var(--saas-status-success, #22c55e); }
-    .metric-value.degraded { color: var(--saas-status-warning, #f59e0b); }
-    .metric-value.down { color: var(--saas-status-danger, #ef4444); }
-
-    .metric-sub {
-      font-size: 12px;
-      color: var(--saas-text-muted, #999);
-    }
-
-    .metric-card.featured {
-      background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
-      color: white;
-      border-color: #1a1a1a;
-    }
-
-    .metric-card.featured .metric-label { color: rgba(255,255,255,0.7); }
-    .metric-card.featured .metric-icon { background: rgba(255,255,255,0.15); }
-    .metric-card.featured .metric-icon .material-symbols-outlined { color: white; }
-    .metric-card.featured .metric-sub { color: rgba(255,255,255,0.6); }
-    .metric-card.featured .metric-value { color: white; }
-
-    /* ========================================
-       SERVICES GRID
-       ======================================== */
     .section-title {
       font-size: 15px;
       font-weight: 600;
@@ -442,108 +288,14 @@ export class SaasInfrastructureDashboard extends LitElement {
       gap: 16px;
     }
 
-    .service-card {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      border-radius: 12px;
-      padding: 20px;
-      transition: all 0.15s ease;
+    .component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
     }
 
-    .service-card:hover {
-      border-color: var(--saas-border-medium, #ccc);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    }
-
-    .service-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .service-name {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-      font-size: 14px;
-      text-transform: capitalize;
-    }
-
-    .service-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--saas-bg-hover, #fafafa);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .service-icon .material-symbols-outlined { font-size: 16px; }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .status-badge.healthy {
-      background: rgba(34, 197, 94, 0.15);
-      color: #16a34a;
-    }
-
-    .status-badge.degraded {
-      background: rgba(245, 158, 11, 0.15);
-      color: #d97706;
-    }
-
-    .status-badge.down {
-      background: rgba(239, 68, 68, 0.15);
-      color: #dc2626;
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-    }
-
-    .status-dot.healthy { background: var(--saas-status-success, #22c55e); }
-    .status-dot.degraded { background: var(--saas-status-warning, #f59e0b); }
-    .status-dot.down { background: var(--saas-status-danger, #ef4444); }
-
-    .service-details {
-      font-size: 12px;
-      color: var(--saas-text-muted, #999);
-      margin-bottom: 8px;
-    }
-
-    .latency {
-      font-size: 11px;
-      font-family: var(--saas-font-mono, monospace);
-      color: var(--saas-text-muted, #999);
-    }
-
-    .error-box {
-      margin-top: 10px;
-      padding: 10px;
-      background: rgba(239, 68, 68, 0.08);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: 6px;
-      font-size: 11px;
-      color: #dc2626;
-    }
-
-    /* ========================================
-       TABLE
-       ======================================== */
+    /* Rate limits table */
     .card {
       background: var(--saas-bg-card, #ffffff);
       border: 1px solid var(--saas-border-light, #e0e0e0);
@@ -629,7 +381,6 @@ export class SaasInfrastructureDashboard extends LitElement {
 
     .active-dot.inactive { background: #e5e7eb; }
 
-    /* Loading */
     .loading {
       display: flex;
       justify-content: center;
@@ -643,196 +394,36 @@ export class SaasInfrastructureDashboard extends LitElement {
       padding: 40px;
       color: var(--saas-text-muted, #999);
     }
-
-    /* ========================================
-       DEGRADATION LEVEL STYLES
-       ======================================== */
-    .deg-none { color: #22c55e; }
-    .deg-minor { color: #84cc16; }
-    .deg-moderate { color: #f59e0b; }
-    .deg-severe { color: #f97316; }
-    .deg-critical { color: #ef4444; }
-
-    .deg-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .deg-badge.none { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
-    .deg-badge.minor { background: rgba(132, 204, 22, 0.15); color: #65a30d; }
-    .deg-badge.moderate { background: rgba(245, 158, 11, 0.15); color: #d97706; }
-    .deg-badge.severe { background: rgba(249, 115, 22, 0.15); color: #ea580c; }
-    .deg-badge.critical { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
-
-    .component-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-
-    .component-card {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      border-radius: 12px;
-      padding: 16px;
-      transition: all 0.15s ease;
-    }
-
-    .component-card:hover {
-      border-color: var(--saas-border-medium, #ccc);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    }
-
-    .component-card.unhealthy {
-      border-color: rgba(239, 68, 68, 0.3);
-      background: rgba(239, 68, 68, 0.02);
-    }
-
-    .component-name {
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      text-transform: capitalize;
-    }
-
-    .component-stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 11px;
-      color: var(--saas-text-muted, #999);
-    }
-
-    .component-stat {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .component-stat .material-symbols-outlined { font-size: 14px; }
-
-    .recommendations-panel {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      border-radius: 12px;
-      padding: 20px;
-      margin-top: 24px;
-    }
-
-    .recommendations-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .recommendations-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .recommendations-list li {
-      padding: 8px 12px;
-      background: var(--saas-bg-hover, #fafafa);
-      border-radius: 6px;
-      margin-bottom: 8px;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .recommendations-list li .material-symbols-outlined {
-      font-size: 16px;
-      color: #f59e0b;
-    }
-
-    .circuit-badge {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    .circuit-badge.closed { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
-    .circuit-badge.open { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
-    .circuit-badge.half_open { background: rgba(245, 158, 11, 0.15); color: #d97706; }
   `;
 
   connectedCallback() {
     super.connectedCallback();
-    this.fetchData();
-    this.pollInterval = window.setInterval(() => this.fetchHealth(), 30000);
+    this.controller.connect();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this.pollInterval) clearInterval(this.pollInterval);
+    this.controller.disconnect();
   }
 
-  async fetchData() {
-    this.loading = true;
-    await Promise.all([this.fetchHealth(), this.fetchRateLimits(), this.fetchDegradation()]);
-    this.loading = false;
+  fetchData(): Promise<void> {
+    return this.controller.fetchData();
   }
 
-  async fetchHealth() {
-    try {
-      this.refreshing = true;
-      this.health = await apiClient.get<InfrastructureHealth>('/observability/infrastructure/health');
-      this.lastRefresh = new Date();
-    } catch (err) {
-      console.error('Health fetch failed:', err);
-    } finally {
-      this.refreshing = false;
-    }
+  fetchHealth(): Promise<void> {
+    return this.controller.fetchHealth();
   }
 
-  async fetchRateLimits() {
-    try {
-      const data = await apiClient.get<{ limits?: RateLimitPolicy[] }>('/core/infrastructure/ratelimits');
-      this.rateLimits = data.limits || [];
-    } catch (err) {
-      console.error('Rate limits fetch failed:', err);
-    }
+  fetchRateLimits(): Promise<void> {
+    return this.controller.fetchRateLimits();
   }
 
-  async fetchDegradation() {
-    try {
-      const [statusData, componentsData, historyData] = await Promise.all([
-        apiClient.get<DegradationStatus>('/core/infrastructure/degradation/status'),
-        apiClient.get<ComponentHealth[]>('/core/infrastructure/degradation/components'),
-        apiClient.get<HistoryRecord[]>('/core/infrastructure/degradation/history?limit=50'),
-      ]);
-      this.degradation = statusData;
-      this.components = componentsData;
-      this.history = historyData;
-    } catch (err) {
-      console.error('Degradation fetch failed:', err);
-    }
+  fetchDegradation(): Promise<void> {
+    return this.controller.fetchDegradation();
   }
 
-  async seedRateLimits() {
-    try {
-      await apiClient.post('/core/infrastructure/ratelimits/seed', {});
-      await this.fetchRateLimits();
-    } catch (err) {
-      console.error('Seed rate limits failed:', err);
-    }
+  seedRateLimits(): Promise<void> {
+    return this.controller.seedRateLimits();
   }
 
   private navigate(path: string) {
@@ -923,48 +514,37 @@ export class SaasInfrastructureDashboard extends LitElement {
     `;
   }
 
-  renderHealth() {
-    if (!this.health) return html`<div class="empty-state">No health data</div>`;
-
+  private get healthMetrics(): InfraMetric[] {
+    if (!this.health) return [];
     const h = this.health.services.filter(s => s.status === 'healthy').length;
     const d = this.health.services.filter(s => s.status === 'degraded').length;
     const x = this.health.services.filter(s => s.status === 'down').length;
+    return [
+      { label: 'Overall Status', value: this.health.overall_status.toUpperCase(), sub: `${this.health.duration_ms.toFixed(0)}ms check time`, icon: 'monitoring', featured: true },
+      { label: 'Healthy', value: String(h), sub: 'services operational', icon: 'check_circle', statusClass: 'healthy' },
+      { label: 'Degraded', value: String(d), sub: 'services degraded', icon: 'warning', statusClass: 'degraded' },
+      { label: 'Down', value: String(x), sub: 'services down', icon: 'error', statusClass: 'down' },
+    ];
+  }
+
+  private get degradationMetrics(): InfraMetric[] {
+    if (!this.degradation) return [];
+    const level = this.degradation.overall_level;
+    const healthy = this.degradation.healthy_components.length;
+    const affected = this.degradation.affected_components.length;
+    return [
+      { label: 'Degradation Level', value: html`<span class="deg-badge ${level}">${level.toUpperCase()}</span>`, sub: 'System status assessment', icon: 'thermostat', featured: true },
+      { label: 'Healthy', value: String(healthy), sub: 'components operational', icon: 'check_circle', statusClass: 'healthy' },
+      { label: 'Affected', value: String(affected), sub: 'components impacted', icon: 'warning', statusClass: affected > 0 ? 'degraded' : '' },
+      { label: 'Total', value: String(this.degradation.total_components), sub: 'monitored components', icon: 'grid_view' },
+    ];
+  }
+
+  private renderHealth() {
+    if (!this.health) return html`<div class="empty-state">No health data</div>`;
 
     return html`
-      <div class="metrics-grid">
-        <div class="metric-card featured">
-          <div class="metric-header">
-            <span class="metric-label">Overall Status</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">monitoring</span></div>
-          </div>
-          <div class="metric-value">${this.health.overall_status.toUpperCase()}</div>
-          <div class="metric-sub">${this.health.duration_ms.toFixed(0)}ms check time</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Healthy</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">check_circle</span></div>
-          </div>
-          <div class="metric-value healthy">${h}</div>
-          <div class="metric-sub">services operational</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Degraded</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">warning</span></div>
-          </div>
-          <div class="metric-value degraded">${d}</div>
-          <div class="metric-sub">services degraded</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Down</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">error</span></div>
-          </div>
-          <div class="metric-value down">${x}</div>
-          <div class="metric-sub">services down</div>
-        </div>
-      </div>
+      <saas-infra-metrics-chart .metrics=${this.healthMetrics}></saas-infra-metrics-chart>
 
       <h3 class="section-title">
         <span class="material-symbols-outlined">dns</span>
@@ -973,33 +553,13 @@ export class SaasInfrastructureDashboard extends LitElement {
 
       <div class="services-grid">
         ${this.health.services.map(s => html`
-          <div class="service-card">
-            <div class="service-header">
-              <span class="service-name">
-                <div class="service-icon">
-                  <span class="material-symbols-outlined">${SERVICE_ICONS[s.name] || 'settings'}</span>
-                </div>
-                ${s.name}
-              </span>
-              <span class="status-badge ${s.status}">
-                <span class="status-dot ${s.status}"></span>
-                ${s.status}
-              </span>
-            </div>
-            ${s.details && Object.keys(s.details).length > 0 ? html`
-              <div class="service-details">
-                ${Object.entries(s.details).map(([k, v]) => html`${k}: ${v}<br>`)}
-              </div>
-            ` : nothing}
-            ${s.latency_ms ? html`<div class="latency">${s.latency_ms.toFixed(0)}ms</div>` : nothing}
-            ${s.error ? html`<div class="error-box">${s.error}</div>` : nothing}
-          </div>
+          <saas-infra-status-card .service=${s}></saas-infra-status-card>
         `)}
       </div>
     `;
   }
 
-  renderRateLimits() {
+  private renderRateLimits() {
     return html`
       <div class="card">
         <div class="card-header">
@@ -1050,150 +610,27 @@ export class SaasInfrastructureDashboard extends LitElement {
     `;
   }
 
-  renderDegradation() {
+  private renderDegradation() {
     if (!this.degradation) return html`<div class="empty-state">No degradation data</div>`;
 
-    const level = this.degradation.overall_level;
-    const healthy = this.degradation.healthy_components.length;
-    const affected = this.degradation.affected_components.length;
-
     return html`
-      <!-- Status Cards -->
-      <div class="metrics-grid">
-        <div class="metric-card featured">
-          <div class="metric-header">
-            <span class="metric-label">Degradation Level</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">thermostat</span></div>
-          </div>
-          <div class="metric-value">
-            <span class="deg-badge ${level}">${level.toUpperCase()}</span>
-          </div>
-          <div class="metric-sub">System status assessment</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Healthy</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">check_circle</span></div>
-          </div>
-          <div class="metric-value healthy">${healthy}</div>
-          <div class="metric-sub">components operational</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Affected</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">warning</span></div>
-          </div>
-          <div class="metric-value ${affected > 0 ? 'degraded' : ''}">${affected}</div>
-          <div class="metric-sub">components impacted</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Total</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">grid_view</span></div>
-          </div>
-          <div class="metric-value">${this.degradation.total_components}</div>
-          <div class="metric-sub">monitored components</div>
-        </div>
-      </div>
+      <saas-infra-metrics-chart .metrics=${this.degradationMetrics}></saas-infra-metrics-chart>
 
-      <!-- Component Grid -->
       <h3 class="section-title">
         <span class="material-symbols-outlined">memory</span>
         Component Health
       </h3>
       <div class="component-grid">
         ${this.components.map(c => html`
-          <div class="component-card ${!c.healthy ? 'unhealthy' : ''}">
-            <div class="component-name">
-              <div class="service-icon">
-                <span class="material-symbols-outlined">${SERVICE_ICONS[c.name] || 'settings'}</span>
-              </div>
-              ${c.name}
-              <span class="deg-badge ${c.degradation_level}">${c.degradation_level}</span>
-            </div>
-            <div class="component-stats">
-              <span class="component-stat">
-                <span class="material-symbols-outlined">speed</span>
-                ${c.response_time ? c.response_time.toFixed(2) + 's' : '0s'}
-              </span>
-              <span class="component-stat">
-                <span class="material-symbols-outlined">error_outline</span>
-                ${(c.error_rate * 100).toFixed(0)}% errors
-              </span>
-              <span class="circuit-badge ${c.circuit_state}">${c.circuit_state}</span>
-            </div>
-          </div>
+          <saas-infra-status-card .component=${c}></saas-infra-status-card>
         `)}
       </div>
 
-      <!-- Recommendations -->
-      ${this.degradation.recommendations.length > 0 || this.degradation.mitigation_actions.length > 0 ? html`
-        <div class="recommendations-panel">
-          <h4 class="recommendations-title">
-            <span class="material-symbols-outlined">lightbulb</span>
-            Recommendations & Actions
-          </h4>
-          <ul class="recommendations-list">
-            ${this.degradation.recommendations.map(r => html`
-              <li>
-                <span class="material-symbols-outlined">tips_and_updates</span>
-                ${r}
-              </li>
-            `)}
-            ${this.degradation.mitigation_actions.map(a => html`
-              <li>
-                <span class="material-symbols-outlined">build</span>
-                ${a}
-              </li>
-            `)}
-          </ul>
-        </div>
-      ` : nothing}
-
-      <!-- History Timeline -->
-      ${this.history.length > 0 ? html`
-        <h3 class="section-title" style="margin-top: 32px;">
-          <span class="material-symbols-outlined">history</span>
-          Event History
-        </h3>
-        <div class="card">
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Component</th>
-                <th>Level</th>
-                <th>Status</th>
-                <th>Response</th>
-                <th>Event</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${this.history.slice(0, 20).map(h => html`
-                <tr>
-                  <td style="font-family: var(--saas-font-mono, monospace); font-size: 11px;">
-                    ${new Date(h.timestamp * 1000).toLocaleTimeString()}
-                  </td>
-                  <td><strong style="text-transform: capitalize;">${h.component_name}</strong></td>
-                  <td><span class="deg-badge ${h.degradation_level}">${h.degradation_level}</span></td>
-                  <td>
-                    <span class="status-badge ${h.healthy ? 'healthy' : 'down'}">
-                      <span class="status-dot ${h.healthy ? 'healthy' : 'down'}"></span>
-                      ${h.healthy ? 'healthy' : 'unhealthy'}
-                    </span>
-                  </td>
-                  <td style="font-family: var(--saas-font-mono, monospace); font-size: 11px;">
-                    ${h.response_time ? h.response_time.toFixed(3) + 's' : '-'}
-                  </td>
-                  <td>
-                    <span class="policy-badge ${h.event_type === 'failure' ? 'HARD' : 'SOFT'}">${h.event_type}</span>
-                  </td>
-                </tr>
-              `)}
-            </tbody>
-          </table>
-        </div>
-      ` : nothing}
+      <saas-infra-alert-list
+        .recommendations=${this.degradation.recommendations}
+        .mitigationActions=${this.degradation.mitigation_actions}
+        .history=${this.history}
+      ></saas-infra-alert-list>
     `;
   }
 }

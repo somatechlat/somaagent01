@@ -211,21 +211,12 @@ export class SaasIntegrationsDashboard extends LitElement {
         this.loading = true;
         try {
             this.integrations = await apiClient.get<Integration[]>('/aaas/integrations');
-        } catch {
-            this.integrations = this.getMockIntegrations();
+        } catch (err) {
+            console.error('Failed to load integrations', err);
+            this.integrations = [];
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockIntegrations(): Integration[] {
-        return [
-            { provider: 'lago', name: 'Lago (Billing)', icon: '💰', connected: true, status: 'connected', last_24h_events: 45 },
-            { provider: 'keycloak', name: 'Keycloak (Auth)', icon: '🔐', connected: true, status: 'connected', last_24h_events: 128 },
-            { provider: 'smtp', name: 'SMTP (Email)', icon: '📧', connected: false, status: 'error', status_message: 'Connection timeout', last_24h_events: 0 },
-            { provider: 'openai', name: 'OpenAI (LLM)', icon: '🤖', connected: true, status: 'connected', last_24h_events: 1250 },
-            { provider: 's3', name: 'AWS S3 (Storage)', icon: '☁️', connected: true, status: 'connected', last_24h_events: 89 },
-        ];
     }
 
     private async testConnection(provider: string) {
@@ -261,7 +252,7 @@ export class SaasIntegrationsDashboard extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">🔌 Platform Integrations</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">power</span> Platform Integrations</h1>
             <p class="header-subtitle">Manage external service connections</p>
           </div>
           <button class="btn" @click=${() => this.loadIntegrations()}>
@@ -277,11 +268,11 @@ export class SaasIntegrationsDashboard extends LitElement {
                 <div class="integration-card">
                   <div class="integration-header">
                     <div style="display: flex; align-items: center;">
-                      <span class="integration-icon">${int.icon}</span>
+                      <span class="integration-icon material-symbols-outlined">${int.icon}</span>
                       <span class="integration-title">${int.name}</span>
                     </div>
                     <span class="status-badge ${this.getStatusClass(int.status)}">
-                      ${int.status === 'connected' ? '✓ Connected' : int.status === 'error' ? '✗ Error' : 'Not Configured'}
+                      ${int.status === 'connected' ? html`<span class='material-symbols-outlined' style='font-size:12px;'>check_circle</span> Connected` : int.status === 'error' ? html`<span class='material-symbols-outlined' style='font-size:12px;'>cancel</span> Error` : 'Not Configured'}
                     </span>
                   </div>
 

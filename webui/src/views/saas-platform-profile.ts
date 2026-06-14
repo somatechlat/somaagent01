@@ -10,9 +10,9 @@
  * - Reusable component composition
  *
  * PERSONAS APPLIED:
- * - 🔒 Security Auditor: MFA, sessions
- * - 🎨 UX Consultant: Clean profile layout
- * - 🏗️ Django Architect: API integration
+ * - lock Security Auditor: MFA, sessions
+ * - palette UX Consultant: Clean profile layout
+ * - architecture Django Architect: API integration
  */
 
 import { LitElement, html, css } from 'lit';
@@ -48,6 +48,21 @@ interface AdminProfile {
 @customElement('saas-platform-profile')
 export class SaasPlatformProfile extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
       min-height: 100vh;
@@ -437,7 +452,7 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Personal Information -->
         <div class="section">
-          <div class="section-title">📝 Personal Information</div>
+          <div class="section-title"><span class="material-symbols-outlined">edit</span> Personal Information</div>
           
           <div class="avatar-section">
             <div class="avatar-preview">
@@ -476,12 +491,12 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Security -->
         <div class="section">
-          <div class="section-title">🔒 Security</div>
+          <div class="section-title"><span class="material-symbols-outlined">lock</span> Security</div>
           
           <div class="security-item">
             <div class="security-info">
               <span class="security-label">Multi-Factor Authentication</span>
-              <span class="security-value">${this.profile.mfaEnabled ? 'Enabled ✓' : 'Disabled'}</span>
+              <span class="security-value">${this.profile.mfaEnabled ? html`Enabled <span class='material-symbols-outlined'>check_circle</span>` : 'Disabled'}</span>
             </div>
             <button class="btn-secondary">Reconfigure</button>
           </div>
@@ -526,7 +541,7 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Platform Access -->
         <div class="section">
-          <div class="section-title">🛡️ Platform Access</div>
+          <div class="section-title"><span class="material-symbols-outlined">shield</span> Platform Access</div>
           
           <div class="access-grid">
             <div class="access-item">
@@ -548,7 +563,7 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Notification Preferences -->
         <div class="section">
-          <div class="section-title">🔔 Notification Preferences</div>
+          <div class="section-title"><span class="material-symbols-outlined">notifications</span> Notification Preferences</div>
           
           <div class="notification-item">
             <span class="notification-label">Critical alerts (downtime, security)</span>

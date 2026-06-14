@@ -15,6 +15,21 @@ export class SaasBrainPanel extends LitElement {
     @state() private _snapshotHours = 24;
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
         }
@@ -225,10 +240,10 @@ export class SaasBrainPanel extends LitElement {
         const neuro = state.neuromodulators;
 
         const neuroData = [
-            { name: 'Dopamine', value: neuro.dopamine, icon: '🧪', status: neuro.dopamine > 0.5 ? 'active' : 'low', color: '#22c55e' },
-            { name: 'Serotonin', value: neuro.serotonin, icon: '😌', status: neuro.serotonin > 0.8 ? 'stable' : 'low', color: '#3b82f6' },
-            { name: 'Noradrenaline', value: neuro.noradrenaline, icon: '⚡', status: neuro.noradrenaline > 0.1 ? 'alert' : 'calm', color: '#f59e0b' },
-            { name: 'Acetylcholine', value: neuro.acetylcholine, icon: '🎯', status: neuro.acetylcholine > 0.4 ? 'focused' : 'low', color: '#8b5cf6' },
+            { name: 'Dopamine', value: neuro.dopamine, icon: 'science', status: neuro.dopamine > 0.5 ? 'active' : 'low', color: '#22c55e' },
+            { name: 'Serotonin', value: neuro.serotonin, icon: 'sentiment_satisfied', status: neuro.serotonin > 0.8 ? 'stable' : 'low', color: '#3b82f6' },
+            { name: 'Noradrenaline', value: neuro.noradrenaline, icon: 'bolt', status: neuro.noradrenaline > 0.1 ? 'alert' : 'calm', color: '#f59e0b' },
+            { name: 'Acetylcholine', value: neuro.acetylcholine, icon: 'target', status: neuro.acetylcholine > 0.4 ? 'focused' : 'low', color: '#8b5cf6' },
         ];
 
         return html`
@@ -245,7 +260,7 @@ export class SaasBrainPanel extends LitElement {
                 <div class="neuro-list">
                     ${neuroData.map(n => html`
                         <div class="neuro-row">
-                            <span class="neuro-icon">${n.icon}</span>
+                            <span class="neuro-icon material-symbols-outlined">${n.icon}</span>
                             <div class="neuro-info">
                                 <div class="neuro-name">${n.name}</div>
                                 <div class="neuro-bar">

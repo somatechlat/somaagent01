@@ -4,12 +4,12 @@
  *
  * VIBE COMPLIANT:
  * - TypeScript implementation
- * - Uses JWT claims from localStorage
+ * - Uses JWT claims from sessionStorage
  * - Supports wildcard (*) for super admin
  *
  * 7-Persona Implementation:
- * - 🔒 Security Auditor: Client-side checks (defense in depth)
- * - 📈 PM: UI conditional rendering
+ * - lock Security Auditor: Client-side checks (defense in depth)
+ * - monitoring PM: UI conditional rendering
  */
 
 // =============================================================================

@@ -8,9 +8,9 @@
  * - Audit logging integration
  *
  * PERSONAS APPLIED:
- * - 🔒 Security Auditor: Session isolation, audit trail
- * - 🎨 UX Consultant: Clear visual indicator
- * - 📊 Analyst: Time tracking, reason display
+ * - lock Security Auditor: Session isolation, audit trail
+ * - palette UX Consultant: Clear visual indicator
+ * - bar_chart Analyst: Time tracking, reason display
  */
 
 import { LitElement, html, css } from 'lit';
@@ -20,6 +20,21 @@ import { apiClient } from '../services/api-client.js';
 @customElement('saas-impersonation-banner')
 export class SaasImpersonationBanner extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
     }
@@ -179,7 +194,7 @@ export class SaasImpersonationBanner extends LitElement {
         return html`
       <div class="banner">
         <div class="banner-content">
-          <span class="banner-icon">⚠️</span>
+          <span class="banner-icon material-symbols-outlined">warning</span>
           <div class="banner-text">
             <div class="banner-title">
               IMPERSONATING: 
@@ -192,7 +207,7 @@ export class SaasImpersonationBanner extends LitElement {
           </div>
         </div>
         <div class="banner-actions">
-          <span class="banner-timer">⏱️ ${this.elapsed}</span>
+          <span class="banner-timer"><span class="material-symbols-outlined">timer</span> ${this.elapsed}</span>
           <button class="btn-end" @click=${this._endImpersonation}>
             End Impersonation
           </button>

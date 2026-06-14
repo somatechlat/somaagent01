@@ -5,21 +5,37 @@
  * Per AGENT_TASKS.md Phase 2.4: Onboarding wizard UI
  * 
  * 7-Persona Implementation:
- * - 🏗️ Django Architect: /invitations/{token}/accept API
- * - 🔒 Security Auditor: Token validation, secure password
- * - 📈 PM: Smooth onboarding UX
- * - 🧪 QA Engineer: Validation, error states
- * - 📚 Technical Writer: Clear instructions
- * - ⚡ Performance Lead: Minimal API calls
- * - 🌍 i18n Specialist: Welcome messages
+ * - architecture Django Architect: /invitations/{token}/accept API
+ * - lock Security Auditor: Token validation, secure password
+ * - monitoring PM: Smooth onboarding UX
+ * - science QA Engineer: Validation, error states
+ * - menu_book Technical Writer: Clear instructions
+ * - bolt Performance Lead: Minimal API calls
+ * - language i18n Specialist: Welcome messages
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 @customElement('saas-onboarding')
 export class SaasOnboarding extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
             min-height: 100vh;
@@ -264,8 +280,8 @@ export class SaasOnboarding extends LitElement {
     `;
 
     @property({ type: String }) token = '';
-    @property({ type: String }) tenantName = 'Acme Corp';
-    @property({ type: String }) inviterEmail = 'admin@acme.com';
+    @property({ type: String }) tenantName = '';
+    @property({ type: String }) inviterEmail = '';
 
     @state() private step: 'welcome' | 'profile' | 'password' | 'complete' = 'welcome';
     @state() private firstName = '';
@@ -305,8 +321,11 @@ export class SaasOnboarding extends LitElement {
         this.error = '';
 
         try {
-            // POST /invitations/{token}/accept
-            await new Promise(r => setTimeout(r, 1500)); // Simulate API
+            await apiClient.post(`/auth/invitations/${this.token}/accept`, {
+                first_name: this.firstName,
+                last_name: this.lastName,
+                password: this.password,
+            });
             this.step = 'complete';
         } catch (e) {
             this.error = 'Failed to complete registration';
@@ -322,7 +341,7 @@ export class SaasOnboarding extends LitElement {
             <div class="wizard-container">
                 <div class="card">
                     <div class="logo">
-                        <div class="logo-icon">🚀</div>
+                        <div class="logo-icon material-symbols-outlined">rocket_launch</div>
                         <div class="logo-text">SaaS Platform</div>
                     </div>
 
@@ -344,22 +363,22 @@ export class SaasOnboarding extends LitElement {
 
     private _renderWelcome() {
         return html`
-            <h2>You're Invited! 🎉</h2>
+            <h2>You're Invited! <span class="material-symbols-outlined">celebration</span></h2>
             <p class="subtitle">You've been invited to join a team on our platform.</p>
 
-            <div class="tenant-badge">📍 ${this.tenantName}</div>
+            <div class="tenant-badge"><span class="material-symbols-outlined">location_on</span> ${this.tenantName}</div>
 
             <div class="features-list">
                 <div class="feature-item">
-                    <span class="feature-icon">🤖</span>
+                    <span class="feature-icon material-symbols-outlined">smart_toy</span>
                     <span class="feature-text">AI-powered agents at your fingertips</span>
                 </div>
                 <div class="feature-item">
-                    <span class="feature-icon">🔐</span>
+                    <span class="feature-icon material-symbols-outlined">vpn_key</span>
                     <span class="feature-text">Enterprise-grade security</span>
                 </div>
                 <div class="feature-item">
-                    <span class="feature-icon">📊</span>
+                    <span class="feature-icon material-symbols-outlined">bar_chart</span>
                     <span class="feature-text">Real-time analytics and insights</span>
                 </div>
             </div>
@@ -473,7 +492,7 @@ export class SaasOnboarding extends LitElement {
     private _renderComplete() {
         return html`
             <div class="welcome-message">
-                <div class="welcome-icon">🎊</div>
+                <div class="welcome-icon material-symbols-outlined">celebration</div>
                 <h2>Welcome Aboard!</h2>
                 <p class="subtitle">
                     Your account has been created successfully.<br/>
