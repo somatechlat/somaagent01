@@ -15,13 +15,10 @@ interface ActionCard {
 
 const ACTIONS: ActionCard[] = [
     { icon: 'add', label: 'New Chat', description: 'Start a new conversation', action: () => window.dispatchEvent(new CustomEvent('new-conversation')) },
-    { icon: 'folder', label: 'Projects', description: 'Manage agent projects', action: () => {} },
+    { icon: 'diamond', label: 'Workspace', description: 'Open your workspace', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/workspace' } })) },
+    { icon: 'smart_toy', label: 'Agents', description: 'Manage agents', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/admin/agents' } })) },
     { icon: 'neurology', label: 'Memory', description: 'Browse agent memories', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/memory' } })) },
-    { icon: 'timer', label: 'Tasks', description: 'View scheduled tasks', action: () => {} },
     { icon: 'settings', label: 'Settings', description: 'Configure agent', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/settings' } })) },
-    { icon: 'palette', label: 'Skins', description: 'Customize appearance', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/themes' } })) },
-    { icon: 'medication', label: 'Capsules', description: 'Manage agent identity', action: () => {} },
-    { icon: 'public', label: 'Browser', description: 'Open web browser', action: () => {} },
 ];
 
 @customElement('saas-welcome-dashboard')
@@ -136,51 +133,37 @@ export class SaasWelcomeDashboard extends LitElement {
             letter-spacing: 0.5px;
         }
 
-        .health-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .health-item {
+        .health-card {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: var(--aaas-bg-card, #1e1e1e);
             border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             border-radius: var(--aaas-radius-lg, 12px);
+            cursor: pointer;
+            transition: all 200ms ease;
         }
 
-        .health-bar {
-            flex: 1;
-            height: 6px;
+        .health-card:hover {
+            border-color: var(--aaas-border-medium, rgba(255,255,255,0.1));
             background: var(--aaas-bg-hover, #141414);
-            border-radius: var(--aaas-radius-full, 9999px);
-            overflow: hidden;
         }
 
-        .health-fill {
-            height: 100%;
-            border-radius: var(--aaas-radius-full, 9999px);
-            transition: width 500ms ease;
-        }
-
-        .health-fill.success { background: var(--aaas-success, #22c55e); }
-        .health-fill.warning { background: var(--aaas-warning, #f59e0b); }
-        .health-fill.danger { background: var(--aaas-danger, #ef4444); }
-
-        .health-label {
-            font-size: 13px;
+        .health-card-icon {
+            font-size: 20px;
             color: var(--aaas-text-secondary, #a1a1a1);
-            min-width: 140px;
         }
 
-        .health-value {
-            font-size: 12px;
+        .health-card-label {
+            flex: 1;
+            font-size: 14px;
+            color: var(--aaas-text-primary, #ffffff);
+        }
+
+        .health-card-arrow {
+            font-size: 18px;
             color: var(--aaas-text-muted, #6b6b6b);
-            min-width: 80px;
-            text-align: right;
         }
 
         @media (max-width: 600px) {
@@ -209,22 +192,10 @@ export class SaasWelcomeDashboard extends LitElement {
 
             <div class="health-section">
                 <div class="section-title">System Health</div>
-                <div class="health-grid">
-                    <div class="health-item">
-                        <span class="health-label">SomaBrain</span>
-                        <div class="health-bar"><div class="health-fill success" style="width:92%"></div></div>
-                        <span class="health-value">Connected</span>
-                    </div>
-                    <div class="health-item">
-                        <span class="health-label">Memory</span>
-                        <div class="health-bar"><div class="health-fill success" style="width:100%"></div></div>
-                        <span class="health-value">Healthy</span>
-                    </div>
-                    <div class="health-item">
-                        <span class="health-label">Cognitive Load</span>
-                        <div class="health-bar"><div class="health-fill warning" style="width:62%"></div></div>
-                        <span class="health-value">Medium</span>
-                    </div>
+                <div class="health-card" @click=${() => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/platform/infrastructure' } }))}>
+                    <span class="material-symbols-outlined health-card-icon">monitoring</span>
+                    <span class="health-card-label">View Infrastructure Dashboard</span>
+                    <span class="material-symbols-outlined health-card-arrow">arrow_forward</span>
                 </div>
             </div>
         `;

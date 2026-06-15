@@ -7,6 +7,7 @@ export { SaasForgotPassword } from './saas-forgot-password.js';
 
 // Platform Views
 export { SaasPlatformDashboard } from './saas-platform-dashboard.js';
+export { PlatformMetricsDashboard } from './platform-metrics-dashboard.js';
 export { SaasNotFound } from './saas-not-found.js';
 export { SaasTenants } from './saas-tenants.js';
 export { SaasModeSelection } from './saas-mode-selection.js';
@@ -22,6 +23,7 @@ export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
 export { SaasAdminModelsList } from './saas-admin-models-list.js';
 export { SaasAdminRolesList } from './saas-admin-roles-list.js';
 export { SaasRoleMatrix } from './saas-role-matrix.js';
+export { SaasPermissions } from './saas-permissions.js';
 
 // Tenant Views
 export { SaasTenantDashboard } from './saas-tenant-dashboard.js';

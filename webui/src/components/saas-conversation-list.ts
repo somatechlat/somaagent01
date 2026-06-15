@@ -272,9 +272,6 @@ export class SaasConversationList extends LitElement {
                 <div class="quick-link" @click=${() => this._navigate('/settings')}>
                     <span class="material-symbols-outlined quick-link-icon">settings</span> Settings
                 </div>
-                <div class="quick-link" @click=${() => this._navigate('/themes')}>
-                    <span class="material-symbols-outlined quick-link-icon">palette</span> Theme
-                </div>
             </div>
 
             <div class="user-section">
@@ -327,10 +324,7 @@ export class SaasConversationList extends LitElement {
     }
 
     private _logout() {
-        this.dispatchEvent(new CustomEvent('saas-logout', {
-            bubbles: true,
-            composed: true,
-        }));
+        this._navigate('/logout');
     }
 }
 

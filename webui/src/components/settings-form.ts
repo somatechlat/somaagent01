@@ -23,7 +23,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { SettingsFormController, type SettingsSchema, type SchemaField } from '../controllers/settings-form-controller.js';
 import './saas-settings-section.js';
 
-@customElement('saas-settings-form')
 export class SettingsForm extends LitElement {
   static styles = css`
     :host {
@@ -297,6 +296,5 @@ if (!customElements.get('settings-form')) {
 declare global {
   interface HTMLElementTagNameMap {
     'settings-form': SettingsForm;
-    'saas-settings-form': SettingsForm;
   }
 }

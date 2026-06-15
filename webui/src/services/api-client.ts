@@ -138,5 +138,36 @@ export class ApiClient {
     }
 }
 
+/**
+ * Extract the data payload from a standardized API response.
+ *
+ * Supports:
+ * - `api_response({ data: T })`
+ * - `paginated_response({ data: T[], pagination: {...} })`
+ * - Legacy list envelopes `{ items: T[] }`
+ * - Already-unwrapped arrays
+ *
+ * Returns `undefined` when the response is null/undefined or does not match
+ * a recognized envelope so callers can apply their own defaults.
+ */
+export function getData<T>(response: unknown): T | undefined {
+    if (response === null || response === undefined) {
+        return undefined;
+    }
+    if (Array.isArray(response)) {
+        return response as T;
+    }
+    if (typeof response === 'object') {
+        const obj = response as Record<string, unknown>;
+        if (obj.data !== undefined) {
+            return obj.data as T;
+        }
+        if (Array.isArray(obj.items)) {
+            return obj.items as T;
+        }
+    }
+    return undefined;
+}
+
 // Singleton instance
 export const apiClient = new ApiClient();

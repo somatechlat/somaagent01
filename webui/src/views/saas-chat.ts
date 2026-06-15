@@ -398,7 +398,7 @@ export class SaasChat extends LitElement {
                 @saas-select-conversation=${this._onSelectConversation}
                 @saas-new-chat=${this._startNewChat}
                 @saas-navigate=${this._onNavigate}
-                @saas-logout=${this._logout}
+                @saas-logout=${() => this._onNavigate(new CustomEvent('navigate', { detail: { route: '/logout' } }))}
             ></saas-conversation-list>
 
             <main class="main">
@@ -635,11 +635,6 @@ export class SaasChat extends LitElement {
         window.dispatchEvent(new CustomEvent('saas-navigate', { detail: e.detail }));
     }
 
-    private _logout() {
-        sessionStorage.removeItem('saas_auth_state');
-        sessionStorage.removeItem('saas_auth_nonce');
-        window.location.href = '/login';
-    }
 }
 
 declare global {

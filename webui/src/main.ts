@@ -8,14 +8,9 @@
  * - httpOnly cookie auth in every environment
  */
 
-// Import components
-import './components/index';
-
-// Import views
-import './views/index';
-
 // Import styles
 import './styles/tokens.css';
+import { apiClient } from './services/api-client.js';
 
 // Routing logic
 const app = document.getElementById('app');
@@ -27,7 +22,7 @@ if (app) {
         const path = window.location.pathname;
 
         // Public auth routes that don't require login
-        const publicPaths = ['/login', '/auth/callback', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+        const publicPaths = ['/login', '/auth/callback', '/register', '/forgot-password', '/reset-password', '/verify-email', '/logout'];
 
         const checkAuth = async (): Promise<boolean> => {
             try {
@@ -79,7 +74,6 @@ if (app) {
             app.appendChild(document.createElement('saas-auth-callback'));
             return;
         }
-
 
         // Clear app content before rendering new view
         app.innerHTML = '';
@@ -314,7 +308,6 @@ if (app) {
             return;
         }
 
-
         if (path === '/mode-select' || path === '/select-mode') {
             await import('./views/saas-mode-selection.js');
             app.appendChild(document.createElement('saas-mode-selection'));
@@ -335,11 +328,17 @@ if (app) {
         }
 
         if (path === '/logout') {
+            try {
+                await apiClient.post('/auth/logout', {});
+            } catch {
+                // Best-effort: still clear state and redirect on failure
+            }
+            sessionStorage.clear();
             window.location.href = '/login';
             return;
         }
 
-        // 5. Tenant Admin Routes
+        // 4. Tenant Admin Routes
         if (path === '/admin/dashboard') {
             await import('./views/saas-tenant-dashboard.js');
             app.appendChild(document.createElement('saas-tenant-dashboard'));
@@ -372,8 +371,6 @@ if (app) {
             return;
         }
 
-
-
         if (path === '/chat') {
             await import('./views/saas-chat.js');
             app.appendChild(document.createElement('saas-chat'));
@@ -387,14 +384,8 @@ if (app) {
         }
 
         if (path === '/memory') {
-            try {
-                await import('./views/saas-memory-view.js');
-                app.appendChild(document.createElement('saas-memory-view'));
-            } catch {
-                // Fallback to legacy memory
-                await import('./views/saas-memory-view.js');
-                app.appendChild(document.createElement('saas-memory-view'));
-            }
+            await import('./views/saas-memory-view.js');
+            app.appendChild(document.createElement('saas-memory-view'));
             return;
         }
 
@@ -410,14 +401,8 @@ if (app) {
             return;
         }
 
-        if (path === '/themes') {
-            // Note: Themes view might not exist yet, redirecting to settings
-            window.history.replaceState(null, '', '/settings');
-            renderRoute();
-            return;
-        }
 
-        // 6. Voice Routes (AgentVoice Vox)
+        // 5. Voice Routes (AgentVoice Vox)
         if (path === '/voice/personas' || path === '/platform/voice/personas') {
             await import('./views/saas-voice-personas.js');
             app.appendChild(document.createElement('saas-voice-personas'));
@@ -435,8 +420,6 @@ if (app) {
             app.appendChild(document.createElement('saas-voice-chat'));
             return;
         }
-
-
 
         // Root redirect
         if (path === '/') {
@@ -470,5 +453,3 @@ if (app) {
 console.log('[SaaS] SaaS Sys Admin v1.0.0 initialized');
 console.log('[SaaS] API: /api/v2/');
 console.log('[SaaS] WebSocket: /ws/v2/');
-
-

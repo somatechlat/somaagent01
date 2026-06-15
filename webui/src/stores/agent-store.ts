@@ -4,6 +4,7 @@
  */
 
 import { createContext } from '@lit/context';
+import { apiClient } from '../services/api-client.js';
 
 export interface AgentProfile {
     id: string;
@@ -91,7 +92,6 @@ export class AgentStore {
 
     async loadAgent(agentId: string) {
         try {
-            const { apiClient } = await import('../services/api-client.js');
             const res = await apiClient.get(`/agents/${agentId}`) as AgentState['currentAgent'];
             this.setCurrentAgent(res);
         } catch (e) {

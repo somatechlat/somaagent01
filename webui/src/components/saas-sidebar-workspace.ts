@@ -19,7 +19,6 @@ const NAV_ITEMS: NavItem[] = [
     { icon: 'smart_toy', label: 'Agents', route: '/admin/agents' },
     { icon: 'neurology', label: 'Memory', route: '/memory' },
     { icon: 'medication', label: 'Capsules', route: '/workspace?tab=capsule' },
-    { icon: 'palette', label: 'Skins', route: '/themes' },
     { icon: 'settings', label: 'Settings', route: '/settings' },
 ];
 
