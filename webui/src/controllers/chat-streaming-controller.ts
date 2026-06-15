@@ -6,10 +6,13 @@
 import { WebSocketClient } from '../services/websocket-client.js';
 import type { ChatMessage } from '../views/saas-chat.js';
 
+interface ChatDeltaEvent { delta?: string; content?: string; }
+interface ChatDoneEvent { content?: string; token_count?: number; }
+
 export interface ChatStreamingControllerOptions {
     onMessage: (msg: ChatMessage) => void;
     onDelta: (delta: string) => void;
-    onDone: (content?: string, confidence?: number) => void;
+    onDone: (content?: string, tokenCount?: number) => void;
     onStatusChange: (status: { connected: boolean; reconnecting: boolean }) => void;
 }
 
@@ -50,13 +53,13 @@ export class ChatStreamingController {
             this._options.onMessage(data as ChatMessage);
         });
         this._wsClient.on('chat.delta', (data) => {
-            const chunk = data as { delta?: string; content?: string };
+            const chunk = data as ChatDeltaEvent;
             const delta = chunk.delta ?? chunk.content ?? '';
             this._options.onDelta(delta);
         });
         this._wsClient.on('chat.done', (data) => {
-            const chunk = data as { content?: string; confidence?: number };
-            this._options.onDone(chunk.content, chunk.confidence);
+            const chunk = data as ChatDoneEvent;
+            this._options.onDone(chunk.content, chunk.token_count);
         });
         this._wsClient.on('connected', () => {
             this._connected = true;

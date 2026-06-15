@@ -30,7 +30,7 @@ export interface AgentState {
         name: string;
         description: string;
         status: 'active' | 'paused' | 'archived' | 'error';
-        iq_level: number;
+        iq_level?: number;
         skin_id?: string;
     } | null;
     profiles: AgentProfile[];
@@ -92,8 +92,21 @@ export class AgentStore {
 
     async loadAgent(agentId: string) {
         try {
-            const res = await apiClient.get(`/agents/${agentId}`) as AgentState['currentAgent'];
-            this.setCurrentAgent(res);
+            const res = await apiClient.get('/agents/' + agentId) as {
+                agent_id: string;
+                name: string;
+                description?: string;
+                status: string;
+            };
+            const status = ['active', 'paused', 'archived', 'error'].includes(res.status)
+                ? res.status
+                : 'active';
+            this.setCurrentAgent({
+                id: res.agent_id,
+                name: res.name,
+                description: res.description ?? '',
+                status: status as 'active' | 'paused' | 'archived' | 'error',
+            });
         } catch (e) {
             console.error('[AgentStore] Failed to load agent:', e);
         }

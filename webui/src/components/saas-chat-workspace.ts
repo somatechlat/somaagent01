@@ -1,15 +1,31 @@
 /**
  * SomaAgent01 — Chat Workspace Wrapper
- * Embeds existing saas-chat functionality within the workspace layout
+ * Embeds existing saas-chat functionality within the workspace layout.
+ * Wired to the real chat backend (agents API, conversations API, WebSocket).
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient, getData } from '../services/api-client.js';
+import { ChatStreamingController } from '../controllers/chat-streaming-controller.js';
+import { agentStore } from '../stores/agent-store.js';
+
+interface AgentApiItem { id: string; name: string; status?: string; }
+interface ConversationDetailOut { id: string; title?: string; agent_id?: string; }
+interface MessageApiItem { id: string; role: string; coordinate?: string; content?: string; created_at?: string; }
+interface WorkspaceMessage { id: string; role: 'user' | 'assistant'; content: string; timestamp: string; }
 
 @customElement('saas-chat-workspace')
 export class SaasChatWorkspace extends LitElement {
-    @state() private _hasConversation = false;
-    @state() private _messages: Array<{role: string; content: string}> = [];
+    @state() private _agents: AgentApiItem[] = [];
+    @state() private _selectedAgentId = '';
+    @state() private _activeConversationId = '';
+    @state() private _messages: WorkspaceMessage[] = [];
+    @state() private _isStreaming = false;
+    @state() private _streamContent = '';
+    @state() private _isSending = false;
+
+    private _streamingController: ChatStreamingController | null = null;
 
     static styles = css`
         .material-symbols-outlined {
@@ -118,49 +134,191 @@ export class SaasChatWorkspace extends LitElement {
             30% { transform: translateY(-6px); }
         }
 
-        .confidence-bar {
-            height: 3px;
-            background: var(--aaas-bg-hover, #141414);
-            border-radius: var(--aaas-radius-full, 9999px);
-            margin-top: 8px;
-            overflow: hidden;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            border-radius: var(--aaas-radius-full, 9999px);
-            transition: width 500ms ease;
-        }
     `;
 
-    connectedCallback() {
+    async connectedCallback() {
         super.connectedCallback();
-        this.addEventListener('send-message', ((e: CustomEvent) => {
-            this._hasConversation = true;
-            this._messages.push({ role: 'user', content: e.detail.text });
-            this.requestUpdate();
-        }) as EventListener);
+        await this._loadAgents();
 
-        this.addEventListener('clear-chat', () => {
-            this._messages = [];
-            this._hasConversation = false;
-            this.requestUpdate();
+        this.addEventListener('send-message', this._handleSendMessage as unknown as EventListener);
+        window.addEventListener('clear-chat', this._handleClearChat as unknown as EventListener);
+        window.addEventListener('new-conversation', this._handleNewConversation as unknown as EventListener);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this.removeEventListener('send-message', this._handleSendMessage as unknown as EventListener);
+        window.removeEventListener('clear-chat', this._handleClearChat as unknown as EventListener);
+        window.removeEventListener('new-conversation', this._handleNewConversation as unknown as EventListener);
+        this._streamingController?.disconnect();
+    }
+
+    private async _loadAgents(): Promise<void> {
+        try {
+            const response = await apiClient.get<unknown>('/aaas/admin/agents');
+            const agents = getData<AgentApiItem[]>(response) ?? [];
+            this._agents = agents;
+
+            const params = new URLSearchParams(window.location.search);
+            const queryAgentId = params.get('agent');
+            if (queryAgentId && agents.some(a => a.id === queryAgentId)) {
+                this._selectedAgentId = queryAgentId;
+            } else if (agents.length > 0) {
+                this._selectedAgentId = agents[0].id;
+            }
+
+            if (this._selectedAgentId) {
+                const agent = agents.find(a => a.id === this._selectedAgentId);
+                if (agent) {
+                    agentStore.setCurrentAgent({
+                        id: agent.id,
+                        name: agent.name,
+                        description: '',
+                        status: ['active', 'paused', 'archived', 'error'].includes(agent.status ?? '')
+                            ? (agent.status as 'active' | 'paused' | 'archived' | 'error')
+                            : 'active',
+                    });
+                }
+                this._connectStreaming();
+            }
+        } catch (error) {
+            console.error('[SaasChatWorkspace] Failed to load agents:', error);
+        }
+    }
+
+    private _connectStreaming(): void {
+        if (this._streamingController) {
+            this._streamingController.disconnect();
+            this._streamingController = null;
+        }
+
+        this._streamingController = new ChatStreamingController({
+            onMessage: () => { /* full messages handled via chat.done */ },
+            onDelta: (delta) => this._handleStreamDelta(delta),
+            onDone: (content, tokenCount) => this._handleStreamDone(content, tokenCount),
+            onStatusChange: () => { /* lifecycle ignored for now */ },
         });
 
-        this.addEventListener('new-conversation', () => {
-            this._messages = [];
-            this._hasConversation = true;
-            this.requestUpdate();
-        });
+        this._streamingController.connect(this._selectedAgentId);
+    }
+
+    private _handleSendMessage = async (e: CustomEvent) => {
+        const text = e.detail?.text?.trim();
+        if (!text || this._isSending || !this._selectedAgentId) {
+            return;
+        }
+
+        this._isSending = true;
+        this._appendUserMessage(text);
+
+        try {
+            if (!this._activeConversationId) {
+                const conversationId = await this._createConversation();
+                if (!conversationId) {
+                    console.error('[SaasChatWorkspace] Failed to create conversation');
+                    this._isSending = false;
+                    return;
+                }
+                this._activeConversationId = conversationId;
+                await this._loadMessages(conversationId);
+            }
+
+            const connected = await this._streamingController?.ensureConnected();
+            if (!connected) {
+                console.error('[SaasChatWorkspace] WebSocket not connected');
+                this._isSending = false;
+                return;
+            }
+
+            this._isStreaming = true;
+            this._streamContent = '';
+            this._streamingController!.sendMessage(this._activeConversationId, text);
+        } catch (error) {
+            console.error('[SaasChatWorkspace] Failed to send message:', error);
+        } finally {
+            this._isSending = false;
+        }
+    };
+
+    private _handleClearChat = () => {
+        this._messages = [];
+        this._streamContent = '';
+        this._isStreaming = false;
+    };
+
+    private _handleNewConversation = async () => {
+        if (!this._selectedAgentId) {
+            return;
+        }
+        const conversationId = await this._createConversation();
+        if (conversationId) {
+            this._activeConversationId = conversationId;
+        }
+        this._messages = [];
+        this._streamContent = '';
+        this._isStreaming = false;
+    };
+
+    private async _createConversation(): Promise<string | null> {
+        try {
+            const data = await apiClient.post<ConversationDetailOut>('/chat/conversations', {
+                agent_id: this._selectedAgentId,
+            });
+            return data.id ?? null;
+        } catch (error) {
+            console.error('[SaasChatWorkspace] Failed to create conversation:', error);
+            return null;
+        }
+    }
+
+    private async _loadMessages(conversationId: string): Promise<void> {
+        try {
+            const response = await apiClient.get<unknown>(`/chat/conversations/${conversationId}/messages`);
+            const items = getData<MessageApiItem[]>(response) ?? [];
+            this._messages = items.map((msg) => ({
+                id: msg.id,
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.coordinate ?? msg.content ?? '',
+                timestamp: msg.created_at ?? new Date().toISOString(),
+            }));
+        } catch (error) {
+            console.error('[SaasChatWorkspace] Failed to load messages:', error);
+        }
+    }
+
+    private _appendUserMessage(text: string): void {
+        const message: WorkspaceMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'user',
+            content: text,
+            timestamp: new Date().toISOString(),
+        };
+        this._messages = [...this._messages, message];
+    }
+
+    private _handleStreamDelta(delta: string): void {
+        this._streamContent += delta;
+    }
+
+    private _handleStreamDone(content?: string, _tokenCount?: number): void {
+        const assistantMessage: WorkspaceMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: content ?? this._streamContent,
+            timestamp: new Date().toISOString(),
+        };
+        this._messages = [...this._messages, assistantMessage];
+        this._isStreaming = false;
+        this._streamContent = '';
     }
 
     render() {
-        if (!this._hasConversation && this._messages.length === 0) {
+        if (!this._activeConversationId && this._messages.length === 0) {
             return html`
                 <div style="flex:1;overflow:auto;">
                     <saas-welcome-dashboard></saas-welcome-dashboard>
                 </div>
-                <saas-composer></saas-composer>
+                <saas-composer .isStreaming=${this._isStreaming} .disabled=${!this._selectedAgentId}></saas-composer>
             `;
         }
 
@@ -169,20 +327,27 @@ export class SaasChatWorkspace extends LitElement {
                 <div class="messages">
                     ${this._messages.map(m => html`
                         <div class="message ${m.role}">
-                            <div class="message-avatar">${m.role === 'user' ? html`<span class='material-symbols-outlined'>person</span>` : html`<span class='material-symbols-outlined'>smart_toy</span>`}</div>
+                            <div class="message-avatar">
+                                ${m.role === 'user'
+                                    ? html`<span class='material-symbols-outlined'>person</span>`
+                                    : html`<span class='material-symbols-outlined'>smart_toy</span>`}
+                            </div>
                             <div class="message-bubble">
                                 ${m.content}
                             </div>
                         </div>
                     `)}
-                    <div class="typing-indicator" style="display:none">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                    </div>
+                    ${this._isStreaming ? html`
+                        <div class="message assistant">
+                            <div class="message-avatar"><span class='material-symbols-outlined'>smart_toy</span></div>
+                            <div class="message-bubble">
+                                ${this._streamContent}
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
-            <saas-composer></saas-composer>
+            <saas-composer .isStreaming=${this._isStreaming} .disabled=${!this._selectedAgentId}></saas-composer>
         `;
     }
 }

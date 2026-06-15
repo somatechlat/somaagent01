@@ -4,11 +4,14 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, state, query } from 'lit/decorators.js';
+import { customElement, property, state, query } from 'lit/decorators.js';
 import { composerStore } from '../stores/composer-store.js';
 
 @customElement('saas-composer')
 export class SaasComposer extends LitElement {
+    @property({ type: Boolean }) isStreaming = false;
+    @property({ type: Boolean }) disabled = false;
+
     @state() private _input = '';
     @state() private _menuOpen = false;
     @state() private _isSending = false;
@@ -189,11 +192,19 @@ export class SaasComposer extends LitElement {
         }
     `;
 
+    private _unsubscribeComposer: (() => void) | null = null;
+
     connectedCallback() {
         super.connectedCallback();
-        composerStore.subscribe(() => {
+        this._unsubscribeComposer = composerStore.subscribe(() => {
             this._attachments = composerStore.state.attachments;
         });
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this._unsubscribeComposer?.();
+        this._unsubscribeComposer = null;
     }
 
     private _onInput() {
@@ -215,9 +226,9 @@ export class SaasComposer extends LitElement {
 
     private _send() {
         const text = this._input.trim();
-        if (!text || this._isSending) return;
+        if (!text || this._isSending || this.disabled || this.isStreaming) return;
         this._isSending = true;
-        this.dispatchEvent(new CustomEvent('send-message', { detail: { text, attachments: this._attachments } }));
+        this.dispatchEvent(new CustomEvent('send-message', { bubbles: true, composed: true, detail: { text, attachments: this._attachments } }));
         this._input = '';
         this._textarea.value = '';
         this._adjustHeight();
@@ -255,14 +266,15 @@ export class SaasComposer extends LitElement {
                     <textarea
                         placeholder="Describe what you want the agent to do..."
                         .value=${this._input}
+                        ?disabled=${this.disabled}
                         @input=${this._onInput}
                         @keydown=${this._onKeydown}
                         rows="1"
                     ></textarea>
-                    <button 
+                    <button
                         class="send-btn"
                         @click=${this._send}
-                        ?disabled=${!this._input.trim() || this._isSending}
+                        ?disabled=${!this._input.trim() || this._isSending || this.isStreaming || this.disabled}
                         title="Send"
                     >
                         <span class="material-symbols-outlined">arrow_forward</span>

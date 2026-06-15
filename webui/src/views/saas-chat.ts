@@ -11,7 +11,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { apiClient } from '../services/api-client.js';
+import { apiClient, getData } from '../services/api-client.js';
 import { ChatStreamingController } from '../controllers/chat-streaming-controller.js';
 
 // Register extracted components
@@ -26,6 +26,7 @@ export interface ChatMessage {
     coordinate?: string;
     timestamp: string;
     confidence?: number;
+    tokenCount?: number;
     streaming?: boolean;
 }
 
@@ -37,7 +38,17 @@ export interface Conversation {
     messageCount: number;
 }
 
+interface AgentApiItem { id: string; name: string; status?: string; }
+interface ConversationApiItem { id: string; title?: string; last_message?: string; updated_at?: string; message_count?: number; }
+interface MessageApiItem { id: string; role: string; coordinate?: string; content?: string; token_count?: number; metadata?: { confidence?: number }; created_at?: string; }
+interface ConversationDetailOut { id: string; title?: string; agent_id?: string; memory_mode?: string; message_count?: number; created_at?: string; updated_at?: string; }
+
 type AgentMode = 'STD' | 'TRN' | 'ADM' | 'DEV' | 'RO' | 'DGR';
+
+const CHAT_ROLES = ['user', 'assistant', 'system'] as const;
+function toChatRole(role: string): ChatMessage['role'] {
+    return CHAT_ROLES.includes(role as ChatMessage['role']) ? (role as ChatMessage['role']) : 'assistant';
+}
 
 @customElement('saas-chat')
 export class SaasChat extends LitElement {
@@ -268,7 +279,7 @@ export class SaasChat extends LitElement {
         this._streamingController = new ChatStreamingController({
             onMessage: (msg) => this._handleIncomingMessage(msg),
             onDelta: (delta) => this._handleStreamDelta(delta),
-            onDone: (content, confidence) => this._handleStreamDone({ content, confidence }),
+            onDone: (content, tokenCount) => this._handleStreamDone({ content, tokenCount }),
             onStatusChange: (status) => {
                 this._wsReconnecting = status.reconnecting;
             },
@@ -297,8 +308,8 @@ export class SaasChat extends LitElement {
      */
     private async _loadAgents(): Promise<void> {
         try {
-            const data = await apiClient.get<{ data?: Array<{ id: string; name: string; status?: string }> }>('/aaas/admin/agents');
-            const agents = (data.data || []).map((agent) => ({
+            const data = await apiClient.get('/aaas/admin/agents');
+            const agents = (getData<AgentApiItem[]>(data) ?? []).map((agent) => ({
                 id: agent.id,
                 name: agent.name,
                 status: agent.status,
@@ -344,11 +355,9 @@ export class SaasChat extends LitElement {
     private async _loadConversations(): Promise<void> {
         try {
             const response = await apiClient.get('/chat/conversations');
-            const items = Array.isArray(response)
-                ? response
-                : (response as { data?: Conversation[] }).data || [];
+            const items = getData<ConversationApiItem[]>(response) ?? [];
 
-            this._conversations = items.map((conv: any) => ({
+            this._conversations = items.map((conv) => ({
                 id: conv.id,
                 title: conv.title ?? 'Untitled',
                 lastMessage: conv.last_message ?? '',
@@ -371,10 +380,11 @@ export class SaasChat extends LitElement {
      */
     private async _createConversation(agentId: string): Promise<string | null> {
         try {
-            const data = await apiClient.post<{ id?: string }>('/chat/conversations', {
+            const response = await apiClient.post('/chat/conversations', {
                 agent_id: agentId,
             });
-            return data?.id ?? null;
+            const detail = response as ConversationDetailOut;
+            return detail.id ?? null;
         } catch (error) {
             console.error('[SaasChat] Failed to create conversation:', error);
             return null;
@@ -575,13 +585,13 @@ export class SaasChat extends LitElement {
         this.updateComplete.then(() => this._scrollToBottom());
     }
 
-    private _handleStreamDone(chunk: { content?: string; confidence?: number }) {
+    private _handleStreamDone(chunk: { content?: string; tokenCount?: number }) {
         const message: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'assistant',
             content: chunk.content ?? this._streamContent,
             timestamp: new Date().toISOString(),
-            confidence: chunk.confidence,
+            tokenCount: chunk.tokenCount,
         };
         this._handleIncomingMessage(message);
     }
@@ -599,9 +609,9 @@ export class SaasChat extends LitElement {
             if (conversationId) {
                 this._activeConversationId = conversationId;
                 await this._loadConversations();
+                this._messages = [];
             }
         }
-        this._messages = [];
     }
 
     private _onSelectConversation(e: CustomEvent<string>) {
@@ -612,18 +622,17 @@ export class SaasChat extends LitElement {
 
     private async _loadConversationMessages(conversationId: string): Promise<void> {
         try {
-            const response = await apiClient.get(`/chat/messages/${conversationId}`);
-            const items = Array.isArray(response)
-                ? response
-                : (response as { data?: ChatMessage[] }).data || [];
+            const response = await apiClient.get(`/chat/conversations/${conversationId}/messages`);
+            const items = getData<MessageApiItem[]>(response) ?? [];
 
-            this._messages = items.map((msg: any) => ({
+            this._messages = items.map((msg) => ({
                 id: msg.id,
-                role: msg.role,
+                role: toChatRole(msg.role),
                 content: msg.content ?? '',
-                coordinate: msg.coordinate,
-                timestamp: msg.created_at,
+                coordinate: msg.coordinate ?? '',
+                timestamp: msg.created_at ?? '',
                 confidence: msg.metadata?.confidence,
+                tokenCount: msg.token_count ?? undefined,
             }));
             this.updateComplete.then(() => this._scrollToBottom());
         } catch (error) {

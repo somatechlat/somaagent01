@@ -20,13 +20,16 @@ interface Agent {
     status: string;
 }
 
-const MODEL_OPTIONS = [
-    { value: 'gpt-4o', label: 'GPT-4o' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-    { value: 'gpt-4', label: 'GPT-4' },
-];
+interface ModelApiItem {
+    model_id: string;
+    name: string;
+    is_available?: boolean;
+}
+
+interface ModelsApiResponse {
+    models?: ModelApiItem[];
+    total?: number;
+}
 
 @customElement('saas-agent-settings')
 export class SaasAgentSettings extends LitElement {
@@ -258,12 +261,14 @@ export class SaasAgentSettings extends LitElement {
     @state() private _saving = false;
     @state() private _saveStatus = '';
     @state() private _saveStatusType: 'success' | 'error' | '' = '';
+    @state() private _modelOptions: ModelApiItem[] = [];
+    @state() private _loadingModels = false;
 
     connectedCallback() {
         super.connectedCallback();
         this._agentId = this._parseAgentId();
         if (this._agentId) {
-            this._loadAgent();
+            this._loadAgent().then(() => this._loadModels());
         } else {
             this._loading = false;
             this._loadError = 'Invalid agent ID in URL';
@@ -291,6 +296,20 @@ export class SaasAgentSettings extends LitElement {
             console.error('[saas-agent-settings] load error:', e);
         } finally {
             this._loading = false;
+        }
+    }
+
+    private async _loadModels() {
+        this._loadingModels = true;
+        try {
+            const res = await apiClient.get<ModelsApiResponse>('/models');
+            const models = res.models ?? [];
+            this._modelOptions = models.filter(m => m.is_available !== false);
+        } catch (e) {
+            this._modelOptions = [];
+            console.error('[saas-agent-settings] failed to load models:', e);
+        } finally {
+            this._loadingModels = false;
         }
     }
 
@@ -417,9 +436,8 @@ export class SaasAgentSettings extends LitElement {
                                         .value=${this._model}
                                         @change=${(e: Event) => { this._model = (e.target as HTMLSelectElement).value; }}
                                     >
-                                        ${MODEL_OPTIONS.map(option => html`
-                                            <option value="${option.value}">${option.label}</option>
-                                        `)}
+                                        ${this._modelOptions.map(m => html`<option value="${m.model_id}">${m.name}</option>`)}
+                                        ${this._modelOptions.length === 0 ? html`<option value="${this._model}">${this._model}</option>` : ''}
                                     </select>
                                 </div>
                             </div>
