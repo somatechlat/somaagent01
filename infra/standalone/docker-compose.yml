@@ -30,10 +30,22 @@ services:
       - SA01_DEPLOYMENT_MODE=STANDALONE
       - SOMA_AAAS_MODE=false
       - VAULT_ADDR=http://somaagent_vault:8200
+      - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID:?VAULT_DEV_ROOT_TOKEN_ID is required}
+      - SA01_JWT_ISSUER_STRICT=false
+      # GROQ_API_KEY and OPENAI_API_KEY come from env_file (.env) — never hardcode secrets (VIBE Rule 164)
+      - AAAS_DEFAULT_CHAT_MODEL=groq/openai/gpt-oss-120b
+      - AAAS_DEFAULT_TENANT_ID=cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c
     ports:
       - "20020:9000" # Agent API
     networks:
       - somaagent_net
+    volumes:
+      - ../../admin:/app/admin
+      - ../../services:/app/services
+      - ../../core:/app/core
+      - ../../config:/app/config
+      - ../../manage.py:/app/manage.py
+      - ../../soma-compatibility.json:/app/soma-compatibility.json
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -47,10 +59,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2048M
+          cpus: '4.0'
+          memory: 4096M
         reservations:
-          memory: 512M
+          memory: 1024M
 
   # ===========================================================================
   # 2. VAULT (Secrets Management - VIBE Rule 164)

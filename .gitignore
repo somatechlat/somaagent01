@@ -128,3 +128,4 @@ ui/frontend/node_modules/
 *_backup*
 docs/sphinx/_build/
 .worktrees/
+test-results/
