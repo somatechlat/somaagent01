@@ -123,18 +123,27 @@ class ContextBuilder:
         Returns:
             BuiltContext with all 5 lanes assembled
         """
-        body: Dict[str, Any] = capsule.body or {}
+        from asgiref.sync import sync_to_async
+
+        body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or (await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {})
         persona = body.get("persona", {})
 
         # 1. Derive settings from AgentIQ (0ms)
-        settings = derive_all_settings(capsule)
+        settings = await sync_to_async(derive_all_settings)(capsule)
         max_tokens = settings.max_tokens
 
         # 2. Get lane allocation from learned, defaults, or governor override
         if budget_override:
-            token_budget = budget_override
+            # Normalize governor keys to context builder keys
+            token_budget = {
+                "system": budget_override.get("system_policy", budget_override.get("system", 4000)),
+                "history": budget_override.get("history", 2000),
+                "memory": budget_override.get("memory", 2000),
+                "tools": budget_override.get("tools", 1000),
+                "buffer": budget_override.get("buffer", 1000),
+            }
         else:
-            lanes = get_lane_allocation(capsule)
+            lanes = await get_lane_allocation(capsule)
             token_budget = lanes.allocate(max_tokens)
 
         # 3. Build system lane

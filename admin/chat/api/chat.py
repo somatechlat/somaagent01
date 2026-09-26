@@ -423,12 +423,24 @@ async def send_message(
 
     agent_id = str(conv.agent_id)
 
-    # Load capsule for the orchestrator pipeline
+    # Load capsule via Agent → primary_capsule (Agent ID ≠ Capsule ID)
+    from admin.aaas.models import Agent
     from admin.core.models import Capsule
 
     @sync_to_async
     def _get_capsule():
-        return Capsule.objects.filter(id=agent_id).first()
+        # Try direct Capsule lookup first (backward compat)
+        capsule = Capsule.objects.filter(id=agent_id).first()
+        if capsule:
+            return capsule
+        # Agent lookup: conversation stores Agent ID, capsule is on Agent
+        agent = Agent.objects.filter(id=agent_id).select_related("primary_capsule").first()
+        if agent and agent.primary_capsule:
+            return agent.primary_capsule
+        # Fallback: any active capsule for this tenant
+        if tenant_id:
+            return Capsule.objects.filter(tenant_id=tenant_id, status="active").first()
+        return None
 
     capsule = await _get_capsule()
     if not capsule:

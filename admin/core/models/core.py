@@ -363,6 +363,23 @@ class Capsule(models.Model):
         - Export/Import (portable agent DNA)
         """
         capabilities = self.capabilities.filter(is_enabled=True)
+        return self._build_body_dict(capabilities)
+
+    async def async_body(self) -> dict:
+        """Async-safe version of body() for use in async contexts.
+
+        Uses sync_to_async to avoid SynchronousOnlyOperation errors.
+        """
+        from asgiref.sync import sync_to_async
+
+        @sync_to_async
+        def _get_body():
+            return self.body
+
+        return await _get_body()
+
+    def _build_body_dict(self, capabilities) -> dict:
+        """Build body dict from capabilities queryset."""
         return {
             "persona": {
                 "core": {

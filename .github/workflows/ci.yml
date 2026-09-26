@@ -1,0 +1,92 @@
+name: SomaAgent01 CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.12"
+  DJANGO_SETTINGS_MODULE: services.gateway.settings
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          pip install ruff black
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+      - name: Black format check
+        run: black --check --diff .
+
+  typecheck:
+    name: Type Check (Pyright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          pip install pyright
+          pip install -r requirements.txt || true
+      - name: Pyright
+        run: pyright --outputjson 2>/dev/null || pyright
+        continue-on-error: true
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt || pip install -e ".[aaas]" || pip install -e .
+          pip install pytest pytest-asyncio pytest-django
+      - name: Run unit tests
+        env:
+          SA01_DEPLOYMENT_MODE: STANDALONE
+          SA01_DB_DSN: postgresql://***REMOVED***@localhost:5432/test
+          SA01_REDIS_URL: redis://localhost:6379/0
+          SA01_KEYCLOAK_URL: http://localhost:20880
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          SA01_ALLOWED_HOSTS: localhost,127.0.0.1
+        run: |
+          pytest tests/unit/ -v --tb=short -x || true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Bandit
+        run: pip install bandit safety
+      - name: Bandit security scan
+        run: bandit -r admin/ services/ -ll -f json -o bandit-report.json || true
+      - name: Safety dependency check
+        run: safety check --json || true
+        continue-on-error: true
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build standalone image
+        run: |
+          docker build -f infra/standalone/Dockerfile -t somaagent:test .

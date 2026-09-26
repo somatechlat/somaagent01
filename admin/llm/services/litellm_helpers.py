@@ -78,7 +78,8 @@ RateLimiter = _RateLimiter
 
 if TYPE_CHECKING:
     from admin.llm.models import ModelConfig
-    from admin.llm.services.litellm_schemas import ChatChunk
+
+from admin.llm.services.litellm_schemas import ChatChunk
 
 # Module-level state
 rate_limiters: dict[str, RateLimiter] = {}

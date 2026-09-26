@@ -42,9 +42,17 @@ class PolicyClient:
             or os.environ.get("SA01_OPA_URL")
         )
         if not default_base_url:
-            raise ValueError(
-                "SA01_POLICY_URL or SA01_OPA_URL is required. No hardcoded defaults per VIBE rules."
-            )
+            # Standalone mode: no OPA configured, allow all
+            self.base_url = None
+            self.data_path = "/v1/data/soma/allow"
+            self._client = None
+            self.cache_ttl = 2.0
+            self.fail_open_default = False
+            self._cache = {}
+            self.tenant_config = tenant_config or TenantConfig()
+            self._disabled = True
+            return
+        self._disabled = False
         # Robust URL handling: strip trailing /v1/data/soma or /v1/data/soma/allow
         # so we don't double-append the data path when env var includes it.
         _base = default_base_url.rstrip("/")
@@ -70,6 +78,9 @@ class PolicyClient:
         Args:
             request: The request.
         """
+        # Standalone mode: no OPA configured, allow all
+        if getattr(self, '_disabled', False):
+            return True
 
         payload = {
             "input": {

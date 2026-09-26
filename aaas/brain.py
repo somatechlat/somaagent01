@@ -89,8 +89,10 @@ class BrainBridge:
         from config import get_settings
 
         _settings = get_settings()
-        self._base_url = f"http://{getattr(_settings, 'somabrain_host', 'somastack_aaas')}:9696"
-        logger.info('Using centralized config for SomaBrain URL')
+        # Use settings.SOMABRAIN_URL if available, else fallback to localhost:9696 (standalone default)
+        from django.conf import settings as django_settings
+        self._base_url = getattr(django_settings, "SOMABRAIN_URL", "") or "http://localhost:9696"
+        logger.info('BrainBridge HTTP mode -> %s', self._base_url)
 
         self._client = httpx.AsyncClient(base_url=self._base_url, timeout=30.0)
         self._mode = "http"

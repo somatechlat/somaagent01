@@ -6,8 +6,8 @@
 |-------|-------|
 | Document Title | SomaAgent01 Agent Knowledge Base |
 | Document Identifier | SOMA-DOC-002 |
-| Version | 1.1.0 |
-| Date | 2026-06-01 |
+| Version | 2.0.0 |
+| Date | 2026-06-15 |
 | Status | Pre-Production |
 | Author | SomaTech Engineering |
 | Classification | Internal |
@@ -18,6 +18,7 @@
 |---------|------|--------|-------------|
 | 1.0.0 | 2025-12-30 | SomaTech Engineering | Initial release |
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated to reflect actual implementation status; corrected deployment port namespaces; documented known gaps |
+| 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; corrected audit findings; added ISO documentation suite |
 
 ---
 

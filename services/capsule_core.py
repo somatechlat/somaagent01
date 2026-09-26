@@ -74,7 +74,7 @@ class InjectedCapsule:
             name=capsule.name,
             version=capsule.version,
             tenant=capsule.tenant,
-            soul=capsule.soul,  # type: ignore[attr-defined]
+            soul=capsule.core,  # Renamed from 'soul' per naming conventions
             body=capsule.body,  # type: ignore[attr-defined]
             constitution_ref=capsule.constitution_ref,
         )
@@ -205,17 +205,30 @@ def edit_capsule(capsule: Capsule, updates: dict) -> Capsule:
                 version=new_version,
                 tenant=capsule.tenant,
                 description=capsule.description,
-                parent=capsule,  # Link to parent
+                parent=capsule,
                 status=Capsule.STATUS_DRAFT,
-                # Copy soul
+                constitution=capsule.constitution,
+                # Soul/Core
                 system_prompt=updates.get("system_prompt", capsule.system_prompt),
                 personality_traits=updates.get("personality_traits", capsule.personality_traits),
                 neuromodulator_baseline=updates.get(
                     "neuromodulator_baseline", capsule.neuromodulator_baseline
                 ),
-                # Copy body
+                learning_config=updates.get("learning_config", capsule.learning_config),
+                # Model FKs
+                chat_model=capsule.chat_model,
+                image_model=capsule.image_model,
+                voice_model=capsule.voice_model,
+                browser_model=capsule.browser_model,
+                # Body config
+                persona_config=updates.get("persona_config", capsule.persona_config),
+                tool_policy=updates.get("tool_policy", capsule.tool_policy),
+                memory_pointer=updates.get("memory_pointer", capsule.memory_pointer),
                 resource_limits=updates.get("resource_limits", capsule.resource_limits),
             )
+            # Copy M2M capabilities
+            for cap in capsule.capabilities.all():
+                new_capsule.capabilities.add(cap)
 
             capsule_operations_total.labels(operation="edit", status="success").inc()
             logger.info('Created new version %s:%s from %s', new_capsule.name, new_version, capsule.version)

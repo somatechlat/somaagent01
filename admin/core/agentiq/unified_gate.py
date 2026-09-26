@@ -98,7 +98,7 @@ class UnifiedGate:
                 return False
 
             # 3. Capsule Scope Check
-            body: Dict[str, Any] = capsule.body or {}
+            body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or capsule.body or {}
             persona = body.get("persona", {})
             tools_config = persona.get("tools", {})
             scope_allowed = self._check_scope(

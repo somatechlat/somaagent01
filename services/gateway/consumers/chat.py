@@ -119,8 +119,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.tool_registry: Optional[Any] = None
         self.perm_cache: Optional[bool] = None
         self._cached_history: List[Dict[str, str]] = []
-        self._cached_memory: List[Dict[str, Any]] = []
-        self._context_preload_task: Optional[asyncio.Task] = None
 
     async def connect(self):
         """Handle WebSocket connection.
@@ -135,28 +133,70 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             url_route = self.scope.get("url_route") or {}
             self.agent_id = url_route.get("kwargs", {}).get("agent_id")
 
-            # Authenticate from cookie
+            # Determine subprotocol to accept (P3-04 backward compat)
+            selected_subprotocol = None
+            for proto in self.scope.get("subprotocols", []):
+                if proto.startswith("soma-auth."):
+                    selected_subprotocol = proto
+                    break
+
+            # Accept connection FIRST so we can send error messages gracefully
+            await self.accept(subprotocol=selected_subprotocol)
+
+            # Authenticate from cookie/query/header
             auth_result = await self._authenticate()
             if not auth_result:
-                await self.close(code=4001)  # Unauthorized
+                await self._send_error("Unauthorized", code="unauthorized")
+                await self.close(code=4001)
                 return
 
             # Phase 2: LOAD CAPSULE (ONCE)
+            # Agent ID (from URL) → Agent → primary_capsule (different UUIDs)
+            from admin.aaas.models import Agent as AgentModel
             from admin.core.models import Capsule
 
+            if not self.agent_id:
+                # No agent in URL: use user's first active agent
+                agent = await sync_to_async(
+                    lambda: AgentModel.objects.filter(
+                        tenant_id=self.tenant_id, status="active"
+                    ).select_related("primary_capsule").first(),
+                    thread_sensitive=True,
+                )()
+                if agent:
+                    self.agent_id = str(agent.id)
+                    logger.info("Auto-resolved agent=%s for user=%s", self.agent_id, self.user_id)
+
+            # Resolve capsule: try direct Capsule ID first, then Agent lookup
             self.capsule = await sync_to_async(
                 lambda: Capsule.objects.filter(id=self.agent_id).first(),
                 thread_sensitive=True,
             )()
             if not self.capsule:
-                logger.warning("Capsule not found: %s", self.agent_id)
-                await self.close(code=4004)  # Capsule not found
+                # agent_id is an Agent UUID, not Capsule — look up via Agent
+                agent = await sync_to_async(
+                    lambda: AgentModel.objects.filter(id=self.agent_id)
+                    .select_related("primary_capsule").first(),
+                    thread_sensitive=True,
+                )()
+                if agent and agent.primary_capsule:
+                    self.capsule = agent.primary_capsule
+                    logger.info("Resolved agent %s → capsule %s", self.agent_id, self.capsule.id)
+            if not self.capsule:
+                logger.warning("Capsule not found for agent: %s", self.agent_id)
+                await self.close(code=4004)
                 return
+
+            # Phase 2.5: Pre-cache capsule body (avoids SynchronousOnlyOperation)
+            if hasattr(self.capsule, 'async_body'):
+                self.capsule._cached_body = await self.capsule.async_body()
+            else:
+                self.capsule._cached_body = self.capsule.body or {}
 
             # Phase 3: DERIVE AGENT IQ (ONCE)
             from admin.core.agentiq import derive_all_settings
 
-            self.iq = derive_all_settings(self.capsule)
+            self.iq = await sync_to_async(derive_all_settings)(self.capsule)
             logger.info(
                 "WebSocket IQ derived: tier=%s, auto=%s",
                 self.iq.model_tier,
@@ -202,21 +242,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     logger.info("Neuromodulators synced to Brain for capsule %s", self.capsule.id)
             except Exception as neuro_exc:
                 logger.debug("Neuromodulator sync skipped: %s", neuro_exc)
-
-            # Phase 7: PRE-WARM CONTEXT (background, non-blocking)
-            self._context_preload_task = asyncio.create_task(
-                self._preload_context()
-            )
-
-            # Determine subprotocol to accept (P3-04 backward compat)
-            selected_subprotocol = None
-            for proto in self.scope.get("subprotocols", []):
-                if proto.startswith("soma-auth."):
-                    selected_subprotocol = proto
-                    break
-
-            # Accept connection with subprotocol if client requested it
-            await self.accept(subprotocol=selected_subprotocol)
 
             # Track connection
             _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").inc()
@@ -530,9 +555,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
             _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DONE).inc()
 
-            # Generate title if first message
-            await self._maybe_generate_title(conversation_id, orchestrator)
-
         except asyncio.TimeoutError:
             await self._send_error("Response timeout", code="timeout")
 
@@ -584,124 +606,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         except Exception as exc:
             logger.debug("Feedback publish skipped: %s", exc)
 
-    async def _maybe_generate_title(self, conversation_id: str, chat_service):
-        """Generate title after first message exchange.
-
-        Per design.md Section 7.3:
-        - Call utility model after first message
-        - Update conversation title
-        - Send title_update message
-        """
-        from asgiref.sync import sync_to_async
-
-        from admin.chat.models import Conversation, Message
-
-        @sync_to_async
-        def get_conversation_data():
-            """Retrieve conversation data."""
-
-            try:
-                conv = Conversation.objects.get(id=conversation_id)
-                if conv.title:
-                    return None, None  # Already has title
-
-                messages = list(
-                    Message.objects.filter(conversation_id=conversation_id).order_by("created_at")[
-                        :5
-                    ]
-                )
-                return conv, messages
-            except Conversation.DoesNotExist:
-                return None, None
-
-        conv, messages = await get_conversation_data()
-
-        if conv is None or not messages:
-            return
-
-        try:
-            from services.common.chat_schemas import Message as MessageDC
-
-            message_dcs = [
-                MessageDC(
-                    id=str(m.id),
-                    conversation_id=str(m.conversation_id),
-                    role=m.role,
-                    content=m.content,
-                    token_count=m.token_count,
-                    model=m.model,
-                    latency_ms=m.latency_ms,
-                    created_at=m.created_at,
-                )
-                for m in messages
-            ]
-
-            title = await chat_service.generate_title(conversation_id, message_dcs)
-
-            # Send title update
-            await self.send_json(
-                WSMessage(
-                    type=MSG_TITLE_UPDATE,
-                    payload={
-                        "conversation_id": conversation_id,
-                        "title": title,
-                    },
-                ).to_dict()
-            )
-            _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_TITLE_UPDATE).inc()
-
-        except Exception:
-            logger.exception("Title generation failed")
-
     # =========================================================================
     # HELPERS
     # =========================================================================
-
-    async def _preload_context(self):
-        """Pre-warm context in background while user is typing.
-
-        Fetches conversation history and relevant memories so they are
-        ready when the first message arrives.
-        """
-        try:
-            if not self.conversation_id:
-                return
-
-            # Fetch last 20 messages from PostgreSQL
-            from admin.chat.models import Message as MessageModel
-            from asgiref.sync import sync_to_async
-
-            @sync_to_async
-            def _load_history():
-                qs = MessageModel.objects.filter(
-                    conversation_id=self.conversation_id
-                ).order_by("-created_at")[:20]
-                return [
-                    {"role": m.role, "content": getattr(m, "content", None) or ""}
-                    for m in reversed(list(qs))
-                ]
-
-            self._cached_history = await _load_history()
-
-            # Fetch memories from SomaBrain (best effort)
-            if self.capsule:
-                from admin.core.somabrain_client import SomaBrainClient
-
-                brain_client = await SomaBrainClient.get_async()
-                if brain_client:
-                    try:
-                        mp = self.capsule.memory_pointer or {}
-                        memories = await brain_client.recall(
-                            query="",
-                            top_k=mp.get("recall_limit", 10),
-                            tenant=mp.get("tenant", self.tenant_id or "default"),
-                            namespace=mp.get("namespace", "chat_history"),
-                        )
-                        self._cached_memory = memories or []
-                    except Exception as exc:
-                        logger.debug("Pre-warm memory recall failed: %s", exc)
-        except Exception as exc:
-            logger.debug("Context pre-warm failed: %s", exc)
 
     async def _send_error(self, message: str, code: str = "error"):
         """Send error message."""

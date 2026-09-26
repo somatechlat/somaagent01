@@ -64,7 +64,7 @@ DEFAULT_LANES_MID = LaneAllocation(system=0.15, history=0.30, memory=0.25, tools
 DEFAULT_LANES_HIGH = LaneAllocation(system=0.10, history=0.35, memory=0.30, tools=0.15, buffer=0.10)
 
 
-def get_lane_allocation(capsule: "Capsule") -> LaneAllocation:
+async def get_lane_allocation(capsule: "Capsule") -> LaneAllocation:
     """
     Get lane allocation from capsule.body.learned or defaults.
 
@@ -78,7 +78,9 @@ def get_lane_allocation(capsule: "Capsule") -> LaneAllocation:
     Returns:
         LaneAllocation with normalized percentages
     """
-    body: Dict[str, Any] = capsule.body or {}
+    from asgiref.sync import sync_to_async
+
+    body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or (await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {})
 
     # Try brain-learned preferences first
     learned = body.get("learned", {})

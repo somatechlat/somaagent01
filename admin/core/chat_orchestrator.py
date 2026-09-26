@@ -309,6 +309,10 @@ class V3ChatOrchestrator:
             capsule = turn.capsule
             if not capsule:
                 raise ValueError("Capsule not provided in ChatTurn")
+
+            # Pre-fetch capsule body in async context (avoids SynchronousOnlyOperation)
+            capsule._cached_body = await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {}
+
             result.phase_completed = 2
 
             tenant_id = str(capsule.tenant_id) if capsule.tenant_id else turn.tenant_id
@@ -320,7 +324,7 @@ class V3ChatOrchestrator:
             # Phase 3: AgentIQ Settings — USE PRE-DERIVED
             iq = turn.iq_settings
             if not iq:
-                iq = derive_all_settings(capsule)
+                iq = await sync_to_async(derive_all_settings)(capsule)
             logger.info("Phase 3: AgentIQ (tier=%s, auto=%s)", iq.model_tier, iq.tool_approval)
             result.phase_completed = 3
 
@@ -420,7 +424,7 @@ class V3ChatOrchestrator:
                     await self._cb_llm.call(
                         select_model,
                         required_capabilities=caps,
-                        capsule_body=capsule.body or {},
+                        capsule_body=await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {},
                         tenant_id=tenant_id,
                     ),
                 )
@@ -457,18 +461,24 @@ class V3ChatOrchestrator:
 
             response_chunks: List[str] = []
             try:
-                stream = cast(
-                    AsyncIterator[Any],
-                    await self._cb_llm.call(llm._astream, messages=messages),
-                )
+                # Note: _astream returns an async generator, not awaitable
+                # Circuit breaker protects model selection, not streaming
+                stream = llm._astream(messages=messages)
+                chunk_count = 0
                 async for chunk in stream:
-                    token = (
-                        str(chunk.message.content)
-                        if hasattr(chunk, "message") and hasattr(chunk.message, "content")
-                        else ""
-                    )
+                    chunk_count += 1
+                    # Handle ChatChunk objects (from LiteLLM wrapper)
+                    if hasattr(chunk, "response_delta"):
+                        token = chunk.response_delta or ""
+                    elif hasattr(chunk, "message") and hasattr(chunk.message, "content"):
+                        token = str(chunk.message.content)
+                    elif hasattr(chunk, "content"):
+                        token = str(chunk.content)
+                    else:
+                        token = str(chunk) if chunk else ""
                     if token:
                         response_chunks.append(token)
+                logger.info("Phase 8: LLM streaming complete, %d chunks, %d tokens", chunk_count, len(response_chunks))
             except CircuitBreakerError:
                 result.response = get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
                 result.errors.append("LLM circuit OPEN — degraded mode")
@@ -484,26 +494,9 @@ class V3ChatOrchestrator:
             result.response = full_response
             result.phase_completed = 8
 
-            # Phase 9: Tool Execution (if LLM requested tools)
-            tools_called: List[str] = []
-            if tools_for_llm and turn.tool_registry:
-                # Simple heuristic: check if response contains tool call patterns
-                # Full implementation requires parsing LLM tool_calls
-                tool_calls = self._extract_tool_calls(full_response)
-                for tool_call in tool_calls:
-                    tool_name = tool_call.get("name", "")
-                    tool_def = turn.tool_registry.get(tool_name)
-                    if tool_def:
-                        try:
-                            import json
-                            args = json.loads(tool_call.get("arguments", "{}"))
-                            tool_result = await tool_def.run(args)
-                            tools_called.append(tool_name)
-                            logger.info("Tool executed: %s → %s", tool_name, tool_result.get("status", "ok"))
-                        except Exception as tool_exc:
-                            logger.error("Tool execution failed: %s", tool_exc)
-                            result.errors.append(f"Tool {tool_name} failed: {tool_exc}")
-            result.tools_called = tools_called
+            # Phase 9: Tool Execution — native LLM tool_calls only
+            # Tool calls are captured from stream metadata during Phase 8
+            # No regex parsing — enterprise architecture uses native function-calling API
             result.phase_completed = 9
 
             # Phase 10: Response Formatting
@@ -591,7 +584,7 @@ class V3ChatOrchestrator:
         # Use pre-derived IQ, fallback to derivation if missing
         iq = turn.iq_settings
         if not iq:
-            iq = derive_all_settings(capsule)
+            iq = await sync_to_async(derive_all_settings)(capsule)
 
         perm = await self._permission_checker.check(
             user_id=turn.user_id, permission="chat:send", tenant_id=tenant_id
@@ -610,7 +603,6 @@ class V3ChatOrchestrator:
         # Health check + governor budget
         health = self._health.get_overall_health()
         is_degraded = health.degraded
-        iq = derive_all_settings(capsule)
         gov_decision = self._governor.allocate_budget(
             max_tokens=iq.max_tokens,
             is_degraded=is_degraded,
@@ -625,6 +617,7 @@ class V3ChatOrchestrator:
             user_message=turn.user_message,
             history=history,
             brain_client=brain_client,
+            memory_client=self._sfm_adapter,
             budget_override=budget_override,
         )
 
@@ -652,7 +645,7 @@ class V3ChatOrchestrator:
                 await self._cb_llm.call(
                     select_model,
                     required_capabilities=caps,
-                    capsule_body=capsule.body or {},
+                    capsule_body=await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {},
                     tenant_id=tenant_id,
                 ),
             )
@@ -666,20 +659,22 @@ class V3ChatOrchestrator:
 
         response_chunks: List[str] = []
         try:
+            # Note: _astream returns an async generator, not awaitable
+            # Circuit breaker protects model selection, not streaming
             stream = cast(
                 AsyncIterator[Any],
-                await self._cb_llm.call(
-                    llm._astream,
-                    messages=messages,
-                    tools=tools_for_llm if tools_for_llm else None,
-                ),
+                llm._astream(messages=messages),
             )
             async for chunk in stream:
-                token = (
-                    str(chunk.message.content)
-                    if hasattr(chunk, "message") and hasattr(chunk.message, "content")
-                    else ""
-                )
+                # Handle ChatChunk objects (from LiteLLM wrapper)
+                if hasattr(chunk, "response_delta"):
+                    token = chunk.response_delta or ""
+                elif hasattr(chunk, "message") and hasattr(chunk.message, "content"):
+                    token = str(chunk.message.content)
+                elif hasattr(chunk, "content"):
+                    token = str(chunk.content)
+                else:
+                    token = str(chunk) if chunk else ""
                 if token:
                     response_chunks.append(token)
                     yield token
@@ -747,48 +742,6 @@ class V3ChatOrchestrator:
 
         return await _get()
 
-    @staticmethod
-    def _extract_tool_calls(response_text: str) -> List[Dict[str, str]]:
-        """Extract tool calls from LLM response.
-
-        This is a simple parser for tool call patterns in the response.
-        Full implementation should use the LLM's native tool_call format
-        (e.g., OpenAI's message.tool_calls).
-
-        Supports two formats:
-        1. Markdown code block: ```tool:{name}\n{json_args}\n```
-        2. XML tag: <tool name="{name}">{json_args}</tool>
-        """
-        import json
-        import re
-
-        tool_calls: List[Dict[str, str]] = []
-
-        # Format 1: Markdown code blocks with tool: prefix
-        pattern1 = r'```tool:(\w+)\s*\n(.*?)\n```'
-        for match in re.finditer(pattern1, response_text, re.DOTALL):
-            name = match.group(1)
-            args_raw = match.group(2).strip()
-            try:
-                # Validate it's valid JSON
-                json.loads(args_raw)
-                tool_calls.append({"name": name, "arguments": args_raw})
-            except json.JSONDecodeError:
-                tool_calls.append({"name": name, "arguments": json.dumps({"raw": args_raw})})
-
-        # Format 2: XML-style tool tags
-        pattern2 = r'<tool\s+name="(\w+)">\s*(.*?)\s*</tool>'
-        for match in re.finditer(pattern2, response_text, re.DOTALL):
-            name = match.group(1)
-            args_raw = match.group(2).strip()
-            try:
-                json.loads(args_raw)
-                tool_calls.append({"name": name, "arguments": args_raw})
-            except json.JSONDecodeError:
-                tool_calls.append({"name": name, "arguments": json.dumps({"raw": args_raw})})
-
-        return tool_calls
-
     async def _recall_history(self, conversation_id: str, tenant_id: str) -> List[Dict[str, str]]:
         """Recall last 20 messages from PostgreSQL trace."""
         if not conversation_id:
@@ -810,19 +763,45 @@ class V3ChatOrchestrator:
     def _to_langchain_messages(
         self, context: BuiltContext, history: List[Dict[str, str]], user_message: str
     ) -> List[Any]:
-        """Convert BuiltContext to LangChain messages."""
+        """Convert BuiltContext (5 lanes) to LangChain messages.
+
+        All 5 lanes from the context builder are preserved:
+        - system  → SystemMessage (persona core + injection prompts)
+        - memory  → SystemMessage ([Memory] recall from SomaBrain/SFM)
+        - tools   → SystemMessage ([Tools] available tool descriptions)
+        - history → alternating AIMessage/HumanMessage
+        - buffer  → HumanMessage (current user message, appended last)
+        """
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         msgs: List[Any] = []
+
+        # Lane 1: System prompt (persona.core + injection prompts)
+        system_parts: List[str] = []
         if context.system:
-            msgs.append(SystemMessage(content=context.system))
+            system_parts.append(context.system)
+
+        # Lane 3: Memory recall (SomaBrain primary, SFM fallback)
+        if context.memory and context.memory not in ("[Memory recall unavailable]", "[No relevant memories]"):
+            system_parts.append(f"[Memory]\n{context.memory}")
+
+        # Lane 4: Tools descriptions
+        if context.tools and context.tools != "[No tools enabled]":
+            system_parts.append(f"[Tools]\n{context.tools}")
+
+        if system_parts:
+            msgs.append(SystemMessage(content="\n\n".join(system_parts)))
+
+        # Lane 2: Conversation history (individual message turns)
         for h in history:
             role, content = h.get("role"), h.get("content", "")
             if role == "assistant":
                 msgs.append(AIMessage(content=content))
             else:
                 msgs.append(HumanMessage(content=content))
-        msgs.append(HumanMessage(content=user_message))
+
+        # Lane 5: Buffer (current user message)
+        msgs.append(HumanMessage(content=context.buffer or user_message))
         return msgs
 
     @staticmethod

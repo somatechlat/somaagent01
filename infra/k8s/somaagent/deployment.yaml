@@ -6,8 +6,14 @@ metadata:
   labels:
     app: somaagent
     tier: execution
+    version: "2.0.0"
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: somaagent
@@ -15,38 +21,163 @@ spec:
     metadata:
       labels:
         app: somaagent
+        tier: execution
     spec:
+      serviceAccountName: somaagent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
         - name: somaagent
-          image: somatech/soma-aaas:latest  # Polymorphic: Same image as AAAS
+          image: somatech/soma-agent:2.0.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 9000
+              name: http
+              protocol: TCP
           env:
-            # ---------------------------------------------------------
-            # POLYMORPHIC MODE SWITCH: K8S Cluster Mode
-            # ---------------------------------------------------------
-            - name: SOMA_AAAS_MODE
-              value: "false"
-            # ---------------------------------------------------------
-            - name: AGENT_PORT
-              value: "9000"
+            # Deployment mode (canonical: SA01_DEPLOYMENT_MODE)
+            - name: SA01_DEPLOYMENT_MODE
+              value: "AAAS"
             - name: DJANGO_SETTINGS_MODULE
               value: "services.gateway.settings"
-            # Database Connection (K8s Service DNS)
-            - name: POSTGRES_HOST
-              value: "postgres.shared.svc.cluster.local"
-            - name: REDIS_HOST
-              value: "redis.shared.svc.cluster.local"
-            - name: MILVUS_HOST
-              value: "milvus.shared.svc.cluster.local"
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka.shared.svc.cluster.local:9092"
-            # Internal Bridges (K8s Service DNS)
-            - name: SOMABRAIN_URL
-              value: "http://somabrain.brain.svc.cluster.local:63996"
-            - name: SFM_URL
-              value: "http://somafractalmemory.memory.svc.cluster.local:63901"
-            # Auth
+            # Database (from Secret)
+            - name: SA01_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: somaagent-secrets
+                  key: db-dsn
+            # Redis (from Secret)
+            - name: SA01_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: somaagent-secrets
+                  key: redis-url
+            # Keycloak
             - name: SA01_KEYCLOAK_URL
               value: "http://keycloak.shared.svc.cluster.local:8080"
+            # SomaBrain
+            - name: SA01_SOMA_BASE_URL
+              value: "http://somabrain.brain.svc.cluster.local:63996"
+            # SomaFractalMemory
+            - name: SFM_URL
+              value: "http://somafractalmemory.memory.svc.cluster.local:63901"
+            # OPA
+            - name: SA01_OPA_URL
+              value: "http://opa.shared.svc.cluster.local:8181"
+            # SpiceDB
+            - name: SPICEDB_HOST
+              value: "spicedb.shared.svc.cluster.local"
+            - name: SPICEDB_PORT
+              value: "50051"
+            - name: SPICEDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: somaagent-secrets
+                  key: spicedb-token
+            # Django secret
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: somaagent-secrets
+                  key: django-secret-key
+            # Logging
+            - name: LOG_FORMAT
+              value: "json"
+            - name: LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /api/health/
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health/
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /api/health/
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: somaagent
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: somaagent
+  namespace: agent
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: somaagent-pdb
+  namespace: agent
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: somaagent
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: somaagent-hpa
+  namespace: agent
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: somaagent
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

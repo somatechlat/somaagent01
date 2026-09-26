@@ -1,0 +1,95 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: somaagent-netpol
+  namespace: agent
+spec:
+  podSelector:
+    matchLabels:
+      app: somaagent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 9000
+          protocol: TCP
+    # Allow health checks from K8s
+    - from: []
+      ports:
+        - port: 9000
+          protocol: TCP
+  egress:
+    # Allow DNS
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow PostgreSQL
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: shared
+      ports:
+        - port: 5432
+          protocol: TCP
+    # Allow Redis
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: shared
+      ports:
+        - port: 6379
+          protocol: TCP
+    # Allow Keycloak
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: shared
+      ports:
+        - port: 8080
+          protocol: TCP
+    # Allow OPA
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: shared
+      ports:
+        - port: 8181
+          protocol: TCP
+    # Allow SpiceDB
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: shared
+      ports:
+        - port: 50051
+          protocol: TCP
+    # Allow SomaBrain
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: brain
+      ports:
+        - port: 63996
+          protocol: TCP
+    # Allow SomaFractalMemory
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: memory
+      ports:
+        - port: 63901
+          protocol: TCP
+    # Allow HTTPS (for external LLM providers)
+    - to: []
+      ports:
+        - port: 443
+          protocol: TCP

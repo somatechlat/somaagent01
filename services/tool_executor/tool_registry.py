@@ -52,7 +52,7 @@ class ToolRegistry:
         if not isinstance(capsule, Capsule):
             return
 
-        body = capsule.body or {}
+        body = getattr(capsule, '_cached_body', None) or capsule.body or {}
         persona = body.get("persona", {})
         tools_config = persona.get("tools", {})
         tool_registry = tools_config.get("tool_registry", {})

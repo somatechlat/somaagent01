@@ -150,7 +150,6 @@ const BUILTIN_SCHEMAS: Record<string, SettingsSchema> = {
   },
 };
 
-@customElement('settings-form')
 export class SettingsForm extends LitElement {
   static styles = css`
     :host {
@@ -704,6 +703,11 @@ export class SettingsForm extends LitElement {
         `;
     }
   }
+}
+
+// Guard against double registration (barrel re-exports can cause this)
+if (!customElements.get('settings-form')) {
+  customElements.define('settings-form', SettingsForm);
 }
 
 declare global {

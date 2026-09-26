@@ -225,6 +225,9 @@ class AuthBearer(HttpBearer):
     """Bearer token authentication for Django Ninja.
 
     Supports both Bearer header and httpOnly cookie fallback.
+    Overrides __call__ because Django Ninja's HttpBearer returns None
+    when no Authorization header is present — our cookie fallback never
+    fires without this override.
 
     Usage:
         @router.get("/protected", auth=AuthBearer())
@@ -232,6 +235,15 @@ class AuthBearer(HttpBearer):
             user = request.auth  # TokenPayload
             ...
     """
+
+    def __call__(self, request: HttpRequest) -> Optional[Any]:
+        """Check Authorization header first, then fall back to httpOnly cookie."""
+        auth_value = request.headers.get("Authorization", "")
+        if auth_value.startswith("Bearer "):
+            token = auth_value[7:]
+            return self.authenticate(request, token)
+        # No Bearer header — try cookie fallback
+        return self.authenticate(request, "")
 
     async def authenticate(self, request, token: str) -> TokenPayload | None:
         """Authenticate the bearer token or cookie."""
@@ -250,6 +262,7 @@ class RoleRequired(HttpBearer):
     """Bearer token authentication with role requirement.
 
     Supports both Bearer header and httpOnly cookie fallback.
+    Overrides __call__ for cookie fallback (same pattern as AuthBearer).
 
     Usage:
         @router.get("/admin-only", auth=RoleRequired("admin"))
@@ -263,6 +276,14 @@ class RoleRequired(HttpBearer):
         super().__init__()
         self.required_roles = set(required_roles)
 
+    def __call__(self, request: HttpRequest) -> Optional[Any]:
+        """Check Authorization header first, then fall back to httpOnly cookie."""
+        auth_value = request.headers.get("Authorization", "")
+        if auth_value.startswith("Bearer "):
+            token = auth_value[7:]
+            return self.authenticate(request, token)
+        return self.authenticate(request, "")
+
     async def authenticate(self, request, token: str) -> TokenPayload | None:
         """Authenticate and check roles."""
         try:
@@ -275,7 +296,10 @@ class RoleRequired(HttpBearer):
             # Check if user has at least one required role
             user_roles = set(payload.roles)
             if not user_roles.intersection(self.required_roles):
-                return None
+                raise ForbiddenError(
+                    action="access",
+                    resource=f"endpoint requiring roles: {', '.join(self.required_roles)}",
+                )
 
             return payload
 
@@ -305,8 +329,11 @@ class TenantRequired(HttpBearer):
             _apply_session_cookie(payload, request)
 
             # Tenant ID must be present
-            if not payload.tenant_id:
-                return None
+            if not payload.tenant_id and not payload.tenant:
+                raise ForbiddenError(
+                    action="access",
+                    resource="endpoint requiring tenant context",
+                )
 
             return payload
 

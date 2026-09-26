@@ -68,9 +68,11 @@ class ChatGenerationResult:
         # Handle incomplete opening tag
         if self._raw.startswith("<think>") and "</think>" not in self._raw:
             self.response = ""
+            return ChatChunk(response_delta="", reasoning_delta="")
         else:
             self.response = self._raw
-        return ChatChunk(response_delta="", reasoning_delta="")
+            # Return the delta that was actually added
+            return ChatChunk(response_delta=chunk["response_delta"], reasoning_delta="")
 
     def _process_thinking_chunk(self, chunk: ChatChunk) -> ChatChunk:
         """Process thinking chunk with buffered content."""

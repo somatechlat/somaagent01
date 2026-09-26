@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: somaagent-alerts
+  namespace: agent
+  labels:
+    app: somaagent
+    release: prometheus
+spec:
+  groups:
+    - name: somaagent.rules
+      rules:
+        - alert: SomaAgentDown
+          expr: up{job="somaagent"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "SomaAgent01 is down"
+            description: "SomaAgent01 has been unreachable for more than 1 minute."
+
+        - alert: SomaAgentHighLatency
+          expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="somaagent"}[5m])) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "SomaAgent01 p95 latency > 500ms"
+            description: "SomaAgent01 p95 request latency has exceeded 500ms for 5 minutes."
+
+        - alert: SomaAgentHighErrorRate
+          expr: rate(http_requests_total{job="somaagent",status=~"5.."}[5m]) / rate(http_requests_total{job="somaagent"}[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "SomaAgent01 error rate > 5%"
+            description: "SomaAgent01 has a 5xx error rate above 5% for 5 minutes."
+
+        - alert: SomaAgentCircuitBreakerOpen
+          expr: circuit_breaker_state{job="somaagent",state="open"} > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Circuit breaker open on {{ $labels.name }}"
+            description: "Circuit breaker for {{ $labels.name }} has been open for more than 1 minute."

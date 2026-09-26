@@ -243,10 +243,11 @@ async def validate_reset_token(request, token: str) -> dict:
     summary="Change password (authenticated)",
 )
 async def change_password(request, payload: PasswordChangeRequest) -> dict:
-    """Change password for authenticated user.
+    """Change password for authenticated user via Keycloak.
 
     Requires current password verification.
     """
+    from admin.common.auth import decode_token, get_keycloak_config
 
     if payload.new_password != payload.confirm_password:
         raise BadRequestError("Passwords do not match")
@@ -254,14 +255,88 @@ async def change_password(request, payload: PasswordChangeRequest) -> dict:
     if len(payload.new_password) < 8:
         raise BadRequestError("Password must be at least 8 characters")
 
-    # In production:
-    # 1. Verify current password with Keycloak
-    # 2. Update password in Keycloak
-    # 3. Invalidate all sessions (optional)
+    # Verify current password with Keycloak
+    config = get_keycloak_config()
+    token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
-    logger.info("Password changed for user")
+    # Extract email from auth context
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise BadRequestError("Authentication required")
 
-    return {
-        "success": True,
-        "message": get_message(SuccessCode.PASSWORD_CHANGED),
-    }
+    try:
+        current_user = await decode_token(auth_header[7:])
+    except Exception:
+        raise BadRequestError("Invalid authentication token")
+
+    email = current_user.email
+    if not email:
+        raise BadRequestError("Email not found in token")
+
+    # Verify current password by attempting login
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            verify_resp = await client.post(
+                token_url,
+                data={
+                    "grant_type": "password",
+                    "client_id": config.client_id,
+                    "username": email,
+                    "password": payload.current_password,
+                    "scope": "openid",
+                },
+            )
+            if verify_resp.status_code != 200:
+                raise BadRequestError("Current password is incorrect")
+
+            # Update password via Keycloak admin API
+            admin_token_url = f"{config.server_url}/realms/master/protocol/openid-connect/token"
+            admin_resp = await client.post(
+                admin_token_url,
+                data={
+                    "grant_type": "password",
+                    "client_id": "admin-cli",
+                    "username": "admin",
+                    "password": request.META.get("KEYCLOAK_ADMIN_PASSWORD", ""),
+                },
+            )
+            if admin_resp.status_code != 200:
+                raise BadRequestError("Password change service unavailable")
+
+            admin_token = admin_resp.json()["access_token"]
+
+            # Find user by email
+            users_resp = await client.get(
+                f"{config.server_url}/admin/realms/{config.realm}/users",
+                params={"email": email},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+            if users_resp.status_code != 200 or not users_resp.json():
+                raise BadRequestError("User not found")
+
+            user_id = users_resp.json()[0]["id"]
+
+            # Reset password
+            reset_resp = await client.put(
+                f"{config.server_url}/admin/realms/{config.realm}/users/{user_id}/reset-password",
+                json={
+                    "type": "password",
+                    "value": payload.new_password,
+                    "temporary": False,
+                },
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+            if reset_resp.status_code == 204:
+                logger.info("Password changed for user: %s", email)
+                return {
+                    "success": True,
+                    "message": get_message(SuccessCode.PASSWORD_CHANGED),
+                }
+            else:
+                raise BadRequestError("Password change failed")
+
+    except BadRequestError:
+        raise
+    except Exception as e:
+        logger.error('Password change failed: %s', e)
+        raise BadRequestError("Password change failed")

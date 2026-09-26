@@ -4,25 +4,22 @@ Triad Service Adapters - Factory Functions for Brain and Memory Access.
 This module provides the central factory functions that return the appropriate
 adapter based on deployment mode:
 
-- SOMA_AAAS_MODE=true  → DirectMemoryAdapter (in-process)
-- SOMA_AAAS_MODE=false → HTTPMemoryAdapter (distributed)
+- AAAS mode  → DirectMemoryAdapter (in-process)
+- Standalone → HTTPMemoryAdapter (distributed)
 
 VIBE Compliance:
-- Rule 100: Centralized configuration
+- Rule 100: Centralized configuration via DeploymentMode
 - Rule 2: Real implementations only
 """
 
 from __future__ import annotations
 
 import logging
-import os
 
+from services.common.deployment_mode import DeploymentMode
 from services.common.protocols import MemoryServiceProtocol
 
 logger = logging.getLogger(__name__)
-
-# Deployment mode detection (canonical: SOMA_AAAS_MODE only)
-SOMA_AAAS_MODE = os.environ.get("SOMA_AAAS_MODE", "false").lower() == "true"
 
 
 def get_memory_service(namespace: str = "default") -> MemoryServiceProtocol:
@@ -33,10 +30,10 @@ def get_memory_service(namespace: str = "default") -> MemoryServiceProtocol:
         namespace: Memory namespace for isolation
 
     Returns:
-        - DirectMemoryAdapter if SOMA_AAAS_MODE=true (in-process)
-        - HTTPMemoryAdapter if SOMA_AAAS_MODE=false (distributed)
+        - DirectMemoryAdapter if AAAS mode (in-process)
+        - HTTPMemoryAdapter if Standalone mode (distributed)
     """
-    if SOMA_AAAS_MODE:
+    if DeploymentMode.is_aaas():
         logger.info('Using DirectMemoryAdapter (AAAS in-process mode)')
         from services.common.adapters.memory_direct import get_direct_memory_adapter
 
@@ -52,5 +49,4 @@ def get_memory_service(namespace: str = "default") -> MemoryServiceProtocol:
 __all__ = [
     "get_memory_service",
     "MemoryServiceProtocol",
-    "SOMA_AAAS_MODE",
 ]

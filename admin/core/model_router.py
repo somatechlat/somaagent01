@@ -119,19 +119,24 @@ async def select_model(
     """
     # Try to import Django ORM model
     try:
+        from asgiref.sync import sync_to_async
         from admin.llm.models import LLMModelConfig
 
         # 1. Query active models
         queryset = LLMModelConfig.objects.filter(is_active=True)
 
-        # 2. Filter by tenant if provided
-        if tenant_id:
+        # 2. Filter by tenant if provided and field exists
+        if tenant_id and hasattr(LLMModelConfig, 'tenant_id'):
             queryset = queryset.filter(tenant_id=tenant_id) | queryset.filter(
                 tenant_id__isnull=True
             )
 
-        # Execute query
-        models = list(queryset.order_by("-priority"))
+        # Execute query (async-safe)
+        @sync_to_async
+        def _query_models():
+            return list(queryset.order_by("-priority"))
+
+        models = await _query_models()
 
     except ImportError:
         logger.warning("LLMModelConfig not available, using fallback catalog")

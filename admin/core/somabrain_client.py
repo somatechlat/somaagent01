@@ -149,10 +149,15 @@ class SomaBrainClient:
         if not self._base_url:
             raise SomaClientError("SomaBrain is not configured", status_code=503)
         if self._client is None or self._client.is_closed:
+            from django.conf import settings as django_settings
+            headers = {"Content-Type": "application/json"}
+            token = getattr(django_settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", "")
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
                 timeout=self._timeout,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
         return self._client
 
@@ -190,7 +195,7 @@ class SomaBrainClient:
         if not self._base_url:
             raise SomaClientError("SomaBrain is not configured", status_code=503)
 
-        breaker = get_circuit_breaker("somabrain_http", failure_threshold=5, reset_timeout=30)
+        breaker = get_circuit_breaker("somabrain", failure_threshold=5, reset_timeout=30)
 
         async def _do_request() -> Dict[str, Any]:
             client = await self._ensure_client()

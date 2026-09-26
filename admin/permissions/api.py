@@ -328,16 +328,22 @@ async def check_permission(
     permission: str,
     resource_id: Optional[str] = None,
 ) -> dict:
-    """Check if user has a permission.
+    """Check if user has a permission via real OPA + SpiceDB."""
+    from admin.core.agentiq import UnifiedGate
 
-    Django Architect: SpiceDB query.
-    """
-    # In production: query SpiceDB
+    gate = UnifiedGate()
+    tenant_id = getattr(request.auth, "effective_tenant_id", None) if hasattr(request, "auth") and request.auth else None
+    allowed = await gate.check_endpoint_permission(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        permission=permission,
+    )
     return {
         "user_id": user_id,
         "permission": permission,
-        "allowed": True,
-        "reason": "role_grant",
+        "allowed": allowed,
+        "reason": "unified_gate_check",
+        "resource_id": resource_id,
     }
 
 
@@ -350,12 +356,21 @@ async def get_user_permissions(
     request,
     user_id: str,
 ) -> dict:
-    """Get all permissions for a user.
+    """Get all permissions for a user via SpiceDB."""
+    from admin.common.auth import get_current_user
+    from services.common.spicedb_client import get_spicedb_client
 
-    Security Auditor: Effective permissions.
-    """
+    current_user = get_current_user(request)
+    tenant_id = current_user.effective_tenant_id or "default"
+
+    try:
+        client = await get_spicedb_client()
+        permissions = await client.get_permissions(user_id=user_id, tenant_id=tenant_id)
+    except Exception:
+        permissions = []
+
     return {
         "user_id": user_id,
-        "roles": [],
-        "permissions": [],
+        "roles": current_user.roles,
+        "permissions": permissions,
     }

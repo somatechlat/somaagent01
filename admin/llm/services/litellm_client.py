@@ -88,7 +88,11 @@ class LiteLLMChatWrapper(SimpleChatModel):
         self, model: str, provider: str, model_config: Optional[Any] = None, **kwargs: Any
     ):
         """Initialize the instance."""
-        model_value = f"{provider}/{model}"
+        # Avoid double-prefixing: if model already starts with provider/, don't add it
+        if model.startswith(f"{provider}/"):
+            model_value = model
+        else:
+            model_value = f"{provider}/{model}"
         super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
         self.a0_model_conf = model_config
 

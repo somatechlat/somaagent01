@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: somaagent-monitor
+  namespace: agent
+  labels:
+    app: somaagent
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: somaagent
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

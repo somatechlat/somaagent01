@@ -102,6 +102,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",  # SPA static file serving
     "django.contrib.sessions.middleware.SessionMiddleware",
     "admin.common.middleware.SessionMiddleware",
+    "admin.common.middleware.CSPMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

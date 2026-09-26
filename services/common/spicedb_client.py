@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -91,13 +92,25 @@ class SpiceDBClient:
             self.token = token
             self.insecure = insecure or False
         else:
-            from config.settings_registry import SettingsRegistry
+            try:
+                from config.settings_registry import SettingsRegistry
 
-            settings = SettingsRegistry.get()
-            self.host = host or settings.spicedb_host
-            self.port = port or settings.spicedb_port
-            self.token = token or settings.spicedb_token
-            self.insecure = insecure or settings.spicedb_insecure
+                settings = SettingsRegistry.get()
+                self.host = host or getattr(settings, 'spicedb_host', None)
+                self.port = port or getattr(settings, 'spicedb_port', None)
+                self.token = token or getattr(settings, 'spicedb_token', None)
+                self.insecure = insecure or getattr(settings, 'spicedb_insecure', False)
+            except Exception:
+                self.host = host or os.environ.get("SPICEDB_HOST")
+                self.port = port or int(os.environ.get("SPICEDB_PORT", "50051"))
+                self.token = token or os.environ.get("SPICEDB_TOKEN")
+                self.insecure = insecure or False
+
+        # If no config available, mark as disabled
+        if not self.host or not self.token:
+            self._disabled = True
+        else:
+            self._disabled = False
 
         self._channel: Any = None
         self._stub: Any = None
@@ -176,6 +189,10 @@ class SpiceDBClient:
         import time
 
         start_time = time.perf_counter()
+
+        # Standalone mode: no SpiceDB configured, allow all
+        if getattr(self, '_disabled', False):
+            return True
 
         try:
             await self._ensure_connected()

@@ -15,6 +15,7 @@ import logging
 import httpx
 from jose import jwt, JWTError
 from ninja import Router
+from ninja.responses import Response as NinjaResponse
 
 from admin.aaas.models import Tenant
 from admin.common.messages import ErrorCode, SuccessCode, get_message
@@ -35,7 +36,7 @@ from admin.auth.api_schemas import (
     UserResponse,
 )
 from admin.common.auth import decode_token, get_keycloak_config
-from admin.common.exceptions import BadRequestError, UnauthorizedError
+from admin.common.exceptions import BadRequestError, ServiceUnavailableError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -76,8 +77,8 @@ async def _emit_auth_audit(
 # =============================================================================
 
 
-@router.post("/token", response=TokenResponse)
-async def get_token(request, payload: TokenRequest, response):
+@router.post("/token")
+async def get_token(request, payload: TokenRequest):
     """Get access token via password grant or OAuth code exchange."""
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
@@ -140,15 +141,16 @@ async def get_token(request, payload: TokenRequest, response):
             )
 
             cookie_secure = not settings.DEBUG
-            _set_auth_cookies(response, token_data, session.session_id, cookie_secure)
-
-            return TokenResponse(
-                access_token=token_data["access_token"],
-                refresh_token=token_data.get("refresh_token"),
-                token_type="Bearer",
-                expires_in=token_data.get("expires_in", 900),
-                redirect_path=redirect_path,
-            )
+            data = {
+                "access_token": token_data["access_token"],
+                "refresh_token": token_data.get("refresh_token"),
+                "token_type": "Bearer",
+                "expires_in": token_data.get("expires_in", 900),
+                "redirect_path": redirect_path,
+            }
+            resp_obj = NinjaResponse(data, status=200)
+            _set_auth_cookies(resp_obj, token_data, session.session_id, cookie_secure)
+            return resp_obj
     except httpx.HTTPError as e:
         logger.error("Keycloak communication error: %s", e)
         await _emit_auth_audit(
@@ -159,8 +161,8 @@ async def get_token(request, payload: TokenRequest, response):
         raise UnauthorizedError(message="Authentication service unavailable")
 
 
-@router.post("/refresh", response=TokenResponse)
-async def refresh_token(request, payload: RefreshRequest, response):
+@router.post("/refresh")
+async def refresh_token(request, payload: RefreshRequest):
     """Refresh access token using refresh token."""
     config = get_keycloak_config()
     refresh_token_val = payload.refresh_token or request.COOKIES.get("refresh_token")
@@ -221,14 +223,16 @@ async def refresh_token(request, payload: RefreshRequest, response):
                 session_id = session.session_id
 
             cookie_secure = not settings.DEBUG
-            _set_auth_cookies(response, token_data, session_id, cookie_secure)
-            return TokenResponse(
-                access_token=token_data["access_token"],
-                refresh_token=token_data.get("refresh_token"),
-                token_type="Bearer",
-                expires_in=token_data.get("expires_in", 900),
-                redirect_path="/chat",
-            )
+            data = {
+                "access_token": token_data["access_token"],
+                "refresh_token": token_data.get("refresh_token"),
+                "token_type": "Bearer",
+                "expires_in": token_data.get("expires_in", 900),
+                "redirect_path": "/chat",
+            }
+            resp_obj = NinjaResponse(data, status=200)
+            _set_auth_cookies(resp_obj, token_data, session_id, cookie_secure)
+            return resp_obj
     except httpx.HTTPError as e:
         logger.error("Token refresh error: %s", e)
         await _emit_auth_audit(
@@ -242,15 +246,19 @@ async def refresh_token(request, payload: RefreshRequest, response):
 @router.get("/me", response=UserResponse)
 async def get_current_user(request):
     """Get current authenticated user info."""
+    # Check Authorization header first, then httpOnly cookie fallback
     auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    else:
+        token = request.COOKIES.get("access_token", "")
+    if not token:
         await _emit_auth_audit(
             request,
             action="auth.me_failed",
-            details={"error": "Missing authorization header"},
+            details={"error": "No token in header or cookie"},
         )
         raise UnauthorizedError()
-    token = auth_header[7:]
     try:
         payload = await decode_token(token)
         config = get_keycloak_config()
@@ -281,7 +289,7 @@ async def get_current_user(request):
 
 
 @router.post("/logout")
-async def logout(request, response):
+async def logout(request):
     """Logout and revoke tokens."""
     refresh_token = request.POST.get("refresh_token") or request.COOKIES.get("refresh_token")
     config = get_keycloak_config()
@@ -309,7 +317,7 @@ async def logout(request, response):
 
 
 @router.post("/login")
-async def login_with_email(request, payload: LoginRequest, response):
+async def login_with_email(request, payload: LoginRequest):
     """Login with email and password with account lockout protection."""
     from admin.common.account_lockout import get_lockout_service
     from admin.common.exceptions import ForbiddenError
@@ -378,9 +386,8 @@ async def login_with_email(request, payload: LoginRequest, response):
                 from django.conf import settings
 
                 cookie_secure = not settings.DEBUG
-                _set_auth_cookies(response, token_data, session.session_id, cookie_secure)
 
-                return {
+                data = {
                     "token": token_data["access_token"],
                     "refresh_token": token_data.get("refresh_token"),
                     "session_id": session.session_id,
@@ -393,6 +400,23 @@ async def login_with_email(request, payload: LoginRequest, response):
                     },
                     "redirect_path": redirect_path,
                 }
+                resp_obj = NinjaResponse(data, status=200)
+                access_ttl = token_data.get("expires_in", 900)
+                refresh_ttl = token_data.get("refresh_expires_in", 86400)
+                resp_obj.set_cookie(
+                    "access_token", token_data["access_token"],
+                    max_age=access_ttl, httponly=True, secure=cookie_secure, samesite="Lax",
+                )
+                if token_data.get("refresh_token"):
+                    resp_obj.set_cookie(
+                        "refresh_token", token_data["refresh_token"],
+                        max_age=refresh_ttl, httponly=True, secure=cookie_secure, samesite="Lax",
+                    )
+                resp_obj.set_cookie(
+                    "session_id", session.session_id,
+                    max_age=access_ttl, httponly=True, secure=cookie_secure, samesite="Lax",
+                )
+                return resp_obj
 
             new_status = await lockout_service.record_failed_attempt(payload.email)
             if new_status.is_locked:
@@ -427,9 +451,64 @@ async def login_with_email(request, payload: LoginRequest, response):
 
 @router.post("/register")
 async def register_user(request, payload: RegisterRequest):
-    """Register a new user."""
+    """Register a new user via Keycloak."""
+    config = get_keycloak_config()
     logger.info('User registration: %s', payload.email)
-    return {"success": True, "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT)}
+
+    # Get admin token from Keycloak
+    admin_token_url = f"{config.server_url}/realms/master/protocol/openid-connect/token"
+    users_url = f"{config.server_url}/admin/realms/{config.realm}/users"
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Get admin access token
+            admin_resp = await client.post(
+                admin_token_url,
+                data={
+                    "grant_type": "password",
+                    "client_id": "admin-cli",
+                    "username": "admin",
+                    "password": request.META.get("KEYCLOAK_ADMIN_PASSWORD", ""),
+                },
+            )
+            if admin_resp.status_code != 200:
+                logger.error("Keycloak admin auth failed: %s", admin_resp.status_code)
+                raise ServiceUnavailableError("auth", "Identity service unavailable")
+
+            admin_token = admin_resp.json()["access_token"]
+
+            # Create user in Keycloak
+            create_resp = await client.post(
+                users_url,
+                json={
+                    "username": payload.email,
+                    "email": payload.email,
+                    "firstName": payload.email.split("@")[0],
+                    "enabled": True,
+                    "emailVerified": False,
+                    "credentials": [
+                        {
+                            "type": "password",
+                            "value": payload.password,
+                            "temporary": False,
+                        }
+                    ],
+                },
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+
+            if create_resp.status_code == 201:
+                logger.info("User registered in Keycloak: %s", payload.email)
+                return {"success": True, "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT)}
+            elif create_resp.status_code == 409:
+                raise BadRequestError("User already exists")
+            else:
+                logger.error("Keycloak user creation failed: %s %s", create_resp.status_code, create_resp.text)
+                raise ServiceUnavailableError("auth", "User registration failed")
+
+    except httpx.HTTPError as e:
+        logger.error("Keycloak communication error during registration: %s", e)
+        raise ServiceUnavailableError("auth", "Identity service unavailable")
 
 
 # =============================================================================

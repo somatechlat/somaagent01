@@ -243,6 +243,42 @@ async def get_session_from_request(request: HttpRequest) -> Optional["Session"]:
 
 __all__ = [
     "SessionMiddleware",
+    "CSPMiddleware",
     "get_session_from_request",
     "EXCLUDED_PATHS",
 ]
+
+
+# =============================================================================
+# CONTENT SECURITY POLICY MIDDLEWARE
+# =============================================================================
+
+
+class CSPMiddleware:
+    """Content Security Policy middleware.
+
+    Adds CSP headers to all responses to prevent XSS, clickjacking,
+    and other code injection attacks.
+    """
+
+    CSP_POLICY = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self'; "
+        "connect-src 'self' ws: wss:; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+
+    def __init__(self, get_response):
+        """Initialize middleware."""
+        self.get_response = get_response
+
+    def __call__(self, request):
+        """Add CSP header to response."""
+        response = self.get_response(request)
+        response["Content-Security-Policy"] = self.CSP_POLICY
+        return response

@@ -773,7 +773,7 @@ export class SaasChat extends LitElement {
      */
     private async _loadAgents(): Promise<void> {
         try {
-            const data = await apiClient.get<{ agents: { agent_id: string; name: string; description: string; capsule_id?: string }[]; total: number }>('/agents');
+            const data = await apiClient.get<{ agents: { agent_id: string; name: string; description: string; capsule_id?: string }[]; total: number }>('/agents/');
             const agents = (data.agents || []).map((agent) => ({
                 id: agent.agent_id,
                 name: agent.name,
@@ -810,12 +810,19 @@ export class SaasChat extends LitElement {
         }
 
         const agent = this._agents.find(a => a.id === this._selectedAgentId);
-        if (!agent?.capsule_id) {
-            console.warn('[SaasChat] No capsule_id for selected agent');
+        if (!agent) {
+            console.warn('[SaasChat] No agent selected');
             return;
         }
 
-        this._wsClient = new WebSocketClient({ url: `/ws/v2/chat/${agent.capsule_id}` });
+        // Use capsule_id if available, otherwise fall back to agent_id
+        const wsId = agent.capsule_id || agent.id;
+        if (!wsId) {
+            console.warn('[SaasChat] No capsule_id or agent_id for selected agent');
+            return;
+        }
+
+        this._wsClient = new WebSocketClient({ url: `/ws/v2/chat/${wsId}` });
 
         this._wsClient.on('chat.message', (data) => {
             this._handleIncomingMessage(data as ChatMessage);
