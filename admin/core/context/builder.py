@@ -16,7 +16,7 @@ Performance: 0ms for non-brain operations.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from admin.core.agentiq import derive_all_settings
 from admin.core.context.lanes import get_lane_allocation
@@ -27,53 +27,30 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# tiktoken — accurate token counting for the memory lane
+# ---------------------------------------------------------------------------
+import tiktoken
 
-class BrainClientProtocol(Protocol):
-    """Protocol for SomaBrain client (dependency injection)."""
-
-    async def recall(
-        self,
-        query: str,
-        *,
-        top_k: int = 10,
-        tenant: str | None = None,
-        namespace: str = "wm",
-        universe: str | None = None,
-        tags: List[str] | None = None,
-        tenant_id: str | None = None,
-        limit: int | None = None,
-        memory_type: str | None = None,
-    ) -> List[Dict[str, Any]]:
-        """Recall memories from brain."""
-        ...
+_ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
-class MemoryClientProtocol(Protocol):
-    """Protocol for SomaFractalMemory client (dependency injection)."""
+def _token_count(text: str) -> int:
+    """Accurate LLM token count."""
+    return len(_ENCODING.encode(text))
 
-    def search(
-        self,
-        query: str | list[float],
-        *,
-        top_k: int = 10,
-        tenant: str = "default",
-        namespace: str = "default",
-        filters: dict | None = None,
-    ) -> list[dict]:
-        """Search for similar memories."""
-        ...
 
-    async def search_async(
-        self,
-        query: str | list[float],
-        *,
-        top_k: int = 10,
-        tenant: str = "default",
-        namespace: str = "default",
-        filters: dict | None = None,
-    ) -> list[dict]:
-        """Async search for similar memories."""
-        ...
+# --- Legacy DI surface (deprecated) -----------------------------------------
+#
+# The ONE memory interface is ``services.common.memory_contract.MemoryGateway``.
+# Pass its hits as ``build(..., memory_hits=[...])``. These two names exist only
+# so older tests can inject a SomaBrain/SFM client directly into the builder;
+# they are deliberately NOT protocols, because a second and third Protocol for
+# "recall memories" is exactly the duplication ARCHITECTURE-INVARIANTS §0 bans.
+#
+# Do not type new code against them. Do not implement them. Use MemoryGateway.
+BrainClientProtocol = Any
+MemoryClientProtocol = Any
 
 
 class ContextBuilder:
@@ -83,10 +60,13 @@ class ContextBuilder:
     Uses AgentIQ for token budgeting and lane allocation
     from capsule.body.learned preferences.
 
-    Memory recall hierarchy:
-    1. SomaBrain (cognitive + memory) — PRIMARY
-    2. SomaFractalMemory (pure memory) — FALLBACK when Brain down
-    3. PostgreSQL history — ALWAYS available
+    Memory lane:
+        Fed from ``MemoryGateway.recall()`` via ``build(..., memory_hits=[...])``
+        — ONE read path, hits already merged across both stores and deduped by
+        coord. There is no "brain primary / SFM fallback" hierarchy: SomaBrain's
+        long-term backend IS SomaFractalMemory, so that tiering described a
+        topology that does not exist. PostgreSQL history is a separate lane and
+        is never treated as semantic recall.
     """
 
     def __init__(
@@ -98,8 +78,9 @@ class ContextBuilder:
         Initialize ContextBuilder.
 
         Args:
-            brain_client: Optional SomaBrain client for cognitive memory recall
-            memory_client: Optional SomaFractalMemory client for pure memory fallback
+            brain_client: DEPRECATED legacy DI slot. Prefer
+                ``build(..., memory_hits=...)`` from ``MemoryGateway.recall()``.
+            memory_client: DEPRECATED legacy DI slot. Prefer ``memory_hits``.
         """
         self._brain_client = brain_client
         self._memory_client = memory_client
@@ -110,6 +91,7 @@ class ContextBuilder:
         user_message: str,
         history: Optional[List[Dict[str, str]]] = None,
         budget_override: Optional[Dict[str, int]] = None,
+        memory_hits: Optional[List[Any]] = None,
     ) -> BuiltContext:
         """
         Build context from capsule.body.
@@ -119,6 +101,10 @@ class ContextBuilder:
             user_message: Current user message
             history: Optional conversation history
             budget_override: Optional explicit token budget per lane from SimpleGovernor
+            memory_hits: Optional MemoryGateway.recall() hits (one read path —
+                PLAN-TRIAD-SEAMLESS §1 rule 5). ``None`` falls back to the
+                legacy brain/SFM clients; ``[]`` means recall ran and found
+                nothing.
 
         Returns:
             BuiltContext with all 5 lanes assembled
@@ -152,9 +138,9 @@ class ContextBuilder:
         # 4. Build history lane
         history_str = self._build_history_lane(history or [], token_budget["history"])
 
-        # 5. Build memory lane (async - calls SomaBrain)
+        # 5. Build memory lane (async — gateway hits, else SomaBrain/SFM DI)
         memory_str = await self._build_memory_lane(
-            capsule, user_message, persona, token_budget["memory"]
+            capsule, user_message, persona, token_budget["memory"], memory_hits=memory_hits
         )
 
         # 6. Build tools lane
@@ -219,8 +205,17 @@ class ContextBuilder:
         query: str,
         persona: Dict[str, Any],
         budget: int,
+        memory_hits: Optional[List[Any]] = None,
     ) -> str:
-        """Build memory lane via SomaBrain recall with SomaFractalMemory fallback."""
+        """Build memory lane.
+
+        ``memory_hits`` (MemoryGateway.recall() results) is the one read path
+        (PLAN-TRIAD-SEAMLESS §1 rule 5). When ``None``, fall back to the legacy
+        SomaBrain / SomaFractalMemory DI clients.
+        """
+        if memory_hits is not None:
+            return self._format_memory_hits(memory_hits, budget)
+
         memory_config = persona.get("memory", {})
         recall_limit = memory_config.get("recall_limit", 10)
         threshold = memory_config.get("similarity_threshold", 0.7)
@@ -284,6 +279,38 @@ class ContextBuilder:
 
         return "\n".join(parts) if parts else "[No relevant memories]"
 
+    def _format_memory_hits(self, hits: List[Any], budget: int) -> str:
+        """Format MemoryGateway hits into the memory lane within the token budget.
+
+        Fits as many hits as ``budget`` tokens (tiktoken cl100k) allow.
+        """
+        if not hits:
+            return "[No relevant memories]"
+
+        parts: List[str] = []
+        used = 0
+
+        for hit in hits:
+            text = getattr(hit, "text", None)
+            if text is None and isinstance(hit, dict):
+                text = hit.get("text") or hit.get("content") or ""
+            text = str(text or "").strip()
+            if not text:
+                continue
+
+            line = f"- {text}"
+            cost = _token_count(line)
+            if used + cost > budget:
+                if not parts:
+                    # Even the first hit does not fit — truncate to budget.
+                    truncated = _ENCODING.decode(_ENCODING.encode(line)[: max(1, budget)])
+                    parts.append(truncated)
+                break
+            parts.append(line)
+            used += cost
+
+        return "\n".join(parts) if parts else "[No relevant memories]"
+
     def _build_tools_lane(self, persona: Dict[str, Any], budget: int) -> str:
         """Build tools description lane."""
         tools_config = persona.get("tools", {})
@@ -317,6 +344,7 @@ async def build_context(
     brain_client: Optional[BrainClientProtocol] = None,
     memory_client: Optional[MemoryClientProtocol] = None,
     budget_override: Optional[Dict[str, int]] = None,
+    memory_hits: Optional[List[Any]] = None,
 ) -> BuiltContext:
     """
     Convenience function to build context.
@@ -328,9 +356,11 @@ async def build_context(
         brain_client: Optional SomaBrain client (primary memory recall)
         memory_client: Optional SomaFractalMemory client (fallback when Brain down)
         budget_override: Optional explicit token budget per lane (system, history, memory, tools, buffer)
+        memory_hits: Optional MemoryGateway.recall() hits for the memory lane
+            (one read path). ``None`` keeps the legacy brain/SFM DI fallback.
 
     Returns:
         BuiltContext
     """
     builder = ContextBuilder(brain_client=brain_client, memory_client=memory_client)
-    return await builder.build(capsule, user_message, history, budget_override)
+    return await builder.build(capsule, user_message, history, budget_override, memory_hits=memory_hits)

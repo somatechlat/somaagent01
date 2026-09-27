@@ -12,7 +12,6 @@ from .adapters import (
     ExecutionEnginePort,
     ExecutionLimitsDTO,
     ExecutionResultDTO,
-    MemoryAdapterPort,
     PolicyAdapterPort,
     SecretManagerPort,
     ToolDefinitionDTO,
@@ -33,7 +32,6 @@ __all__ = [
     "MemoryReplicaStorePort",
     "MemoryReplicaRowDTO",
     # Adapter ports
-    "MemoryAdapterPort",
     "PolicyAdapterPort",
     "PolicyRequestDTO",
     "EventBusPort",

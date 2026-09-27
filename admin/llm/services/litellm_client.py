@@ -11,7 +11,9 @@ Split into modules for 650-line compliance:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterator, List, Optional, Tuple, cast
 
 # Core dependencies
@@ -38,11 +40,18 @@ from admin.llm.services.litellm_helpers import (
     apply_rate_limiter,
     apply_rate_limiter_sync,
     get_api_key,
+    get_retry_policy,
+    inject_timeout,
+    prepare_completion_kwargs,
+    retry_backoff_seconds,
+    run_with_retries_async,
+    run_with_retries_sync,
+    to_typed_error,
     turn_off_logging,
 )
 
 # Local imports from split modules
-from admin.llm.services.litellm_schemas import ChatGenerationResult
+from admin.llm.services.litellm_schemas import ChatChunk, ChatGenerationResult
 
 
 # Lazy imports for Django models
@@ -136,13 +145,21 @@ class LiteLLMChatWrapper(SimpleChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> str:
-        """Synchronous completion call."""
+        """Synchronous completion call with timeout and bounded retries."""
         msgs = self._convert_messages(messages)
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
         if completion is None:
             raise LLMNotConfiguredError("LiteLLM completion not available.")
-        resp = completion(
-            model=self.model_name, messages=msgs, stop=stop, **{**self.kwargs, **kwargs}
+        call_kwargs: dict[str, Any] = {**self.kwargs, **kwargs}
+        max_retries, base_delay = get_retry_policy(call_kwargs)
+        call_kwargs, _ = prepare_completion_kwargs(self.model_name, call_kwargs, stream=False)
+        resp = run_with_retries_sync(
+            lambda: completion(
+                model=self.model_name, messages=msgs, stop=stop, **call_kwargs
+            ),
+            max_retries=max_retries,
+            base_delay=base_delay,
+            model=self.model_name,
         )
         parsed = _parse_chunk(resp)
         output = ChatGenerationResult(parsed).output()
@@ -155,23 +172,65 @@ class LiteLLMChatWrapper(SimpleChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
-        """Synchronous streaming completion."""
+        """Synchronous streaming completion with timeout and bounded retries.
+
+        Retries only apply before the first chunk is yielded; once output has
+        been delivered a failure propagates rather than replaying content.
+        """
         msgs = self._convert_messages(messages)
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
         result = ChatGenerationResult()
         if completion is None:
             raise LLMNotConfiguredError("LiteLLM completion not available.")
-        for chunk in completion(
-            model=self.model_name,
-            messages=msgs,
-            stream=True,
-            stop=stop,
-            **{**self.kwargs, **kwargs},
-        ):
-            parsed = _parse_chunk(chunk)
-            output = result.add_chunk(parsed)
-            if output["response_delta"]:
-                yield ChatGenerationChunk(message=AIMessageChunk(content=output["response_delta"]))
+        call_kwargs: dict[str, Any] = {**self.kwargs, **kwargs}
+        max_retries, base_delay = get_retry_policy(call_kwargs)
+        call_kwargs, use_stream = prepare_completion_kwargs(
+            self.model_name, call_kwargs, stream=True
+        )
+        attempt = 0
+        while True:
+            got_any_chunk = False
+            try:
+                if not use_stream:
+                    # Non-stream fallback (Groq + response_format): yield once.
+                    resp = completion(
+                        model=self.model_name, messages=msgs, stop=stop, **call_kwargs
+                    )
+                    parsed = _parse_chunk(resp)
+                    output = result.add_chunk(parsed)
+                    if output["response_delta"]:
+                        yield ChatGenerationChunk(
+                            message=AIMessageChunk(content=output["response_delta"])
+                        )
+                    return
+                for chunk in completion(
+                    model=self.model_name,
+                    messages=msgs,
+                    stream=True,
+                    stop=stop,
+                    **call_kwargs,
+                ):
+                    got_any_chunk = True
+                    parsed = _parse_chunk(chunk)
+                    output = result.add_chunk(parsed)
+                    if output["response_delta"]:
+                        yield ChatGenerationChunk(
+                            message=AIMessageChunk(content=output["response_delta"])
+                        )
+                return
+            except Exception as e:
+                if got_any_chunk:
+                    typed = to_typed_error(e, model=self.model_name)
+                    if typed is e:
+                        raise
+                    raise typed from e
+                if not _is_transient_litellm_error(e) or attempt >= max_retries:
+                    typed = to_typed_error(e, model=self.model_name)
+                    if typed is e:
+                        raise
+                    raise typed from e
+                attempt += 1
+                time.sleep(retry_backoff_seconds(attempt, base_delay, e))
 
     async def _astream(
         self,
@@ -180,24 +239,69 @@ class LiteLLMChatWrapper(SimpleChatModel):
         run_manager: Optional[AsyncCallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> AsyncIterator[ChatGenerationChunk]:
-        """Asynchronous streaming completion."""
+        """Asynchronous streaming completion with timeout and bounded retries.
+
+        Retries only apply before the first chunk is yielded; once output has
+        been delivered a failure propagates rather than replaying content.
+        When Groq is asked for ``response_format`` while streaming, the call
+        drops to a non-stream completion (single chunk out) — see
+        ``prepare_completion_kwargs``.
+        """
         msgs = self._convert_messages(messages)
         await apply_rate_limiter(self.a0_model_conf, str(msgs))
         result = ChatGenerationResult()
         if acompletion is None:
             raise LLMNotConfiguredError("LiteLLM acompletion not available.")
-        response = await acompletion(
-            model=self.model_name,
-            messages=msgs,
-            stream=True,
-            stop=stop,
-            **{**self.kwargs, **kwargs},
+        call_kwargs: dict[str, Any] = {**self.kwargs, **kwargs}
+        max_retries, base_delay = get_retry_policy(call_kwargs)
+        call_kwargs, use_stream = prepare_completion_kwargs(
+            self.model_name, call_kwargs, stream=True
         )
-        async for chunk in response:  # type: ignore
-            parsed = _parse_chunk(chunk)
-            output = result.add_chunk(parsed)
-            if output["response_delta"]:
-                yield ChatGenerationChunk(message=AIMessageChunk(content=output["response_delta"]))
+        attempt = 0
+        while True:
+            got_any_chunk = False
+            try:
+                if not use_stream:
+                    # Non-stream fallback (Groq + response_format): emit once.
+                    resp = await acompletion(
+                        model=self.model_name, messages=msgs, stop=stop, **call_kwargs
+                    )
+                    parsed = _parse_chunk(resp)
+                    output = result.add_chunk(parsed)
+                    if output["response_delta"]:
+                        yield ChatGenerationChunk(
+                            message=AIMessageChunk(content=output["response_delta"])
+                        )
+                    return
+                response = await acompletion(
+                    model=self.model_name,
+                    messages=msgs,
+                    stream=True,
+                    stop=stop,
+                    **call_kwargs,
+                )
+                async for chunk in response:  # type: ignore
+                    got_any_chunk = True
+                    parsed = _parse_chunk(chunk)
+                    output = result.add_chunk(parsed)
+                    if output["response_delta"]:
+                        yield ChatGenerationChunk(
+                            message=AIMessageChunk(content=output["response_delta"])
+                        )
+                return
+            except Exception as e:
+                if got_any_chunk:
+                    typed = to_typed_error(e, model=self.model_name)
+                    if typed is e:
+                        raise
+                    raise typed from e
+                if not _is_transient_litellm_error(e) or attempt >= max_retries:
+                    typed = to_typed_error(e, model=self.model_name)
+                    if typed is e:
+                        raise
+                    raise typed from e
+                attempt += 1
+                await asyncio.sleep(retry_backoff_seconds(attempt, base_delay, e))
 
     async def unified_call(
         self,
@@ -210,9 +314,12 @@ class LiteLLMChatWrapper(SimpleChatModel):
         rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
         **kwargs: Any,
     ) -> Tuple[str, str]:
-        """Unified async call with callbacks for streaming."""
-        import asyncio
+        """Unified async call with callbacks for streaming.
 
+        Retries transient errors only, with exponential backoff + jitter; a
+        failure after output has started returns the partial result instead of
+        replaying it. Retries/timeout policy is shared with the other call paths.
+        """
         turn_off_logging()
         if not messages:
             messages = []
@@ -225,48 +332,62 @@ class LiteLLMChatWrapper(SimpleChatModel):
             self.a0_model_conf, str(msgs_conv), rate_limiter_callback
         )
         call_kwargs: dict[str, Any] = {**self.kwargs, **kwargs}
-        max_retries = int(call_kwargs.pop("a0_retry_attempts", 2))
-        retry_delay_s = float(call_kwargs.pop("a0_retry_delay_seconds", 1.5))
+        max_retries, base_delay = get_retry_policy(call_kwargs)
+        call_kwargs, use_stream = prepare_completion_kwargs(
+            self.model_name, call_kwargs, stream=True
+        )
         result = ChatGenerationResult()
         attempt = 0
+
+        async def _emit(output: ChatChunk) -> None:
+            if output["reasoning_delta"]:
+                if reasoning_callback:
+                    await reasoning_callback(output["reasoning_delta"], result.reasoning)
+                if tokens_callback:
+                    await tokens_callback(
+                        output["reasoning_delta"],
+                        approximate_tokens(output["reasoning_delta"]),
+                    )
+                if limiter:
+                    limiter.add(output=approximate_tokens(output["reasoning_delta"]))
+            if output["response_delta"]:
+                if response_callback:
+                    await response_callback(output["response_delta"], result.response)
+                if tokens_callback:
+                    await tokens_callback(
+                        output["response_delta"],
+                        approximate_tokens(output["response_delta"]),
+                    )
+                if limiter:
+                    limiter.add(output=approximate_tokens(output["response_delta"]))
+
         while True:
             got_any_chunk = False
             try:
+                if not use_stream:
+                    # Non-stream fallback (Groq + response_format): emit once.
+                    resp = await acompletion(
+                        model=self.model_name, messages=msgs_conv, **call_kwargs
+                    )
+                    await _emit(result.add_chunk(_parse_chunk(resp)))
+                    return result.response, result.reasoning
                 _completion = await acompletion(
                     model=self.model_name, messages=msgs_conv, stream=True, **call_kwargs
                 )
                 async for chunk in _completion:  # type: ignore
                     got_any_chunk = True
-                    parsed = _parse_chunk(chunk)
-                    output = result.add_chunk(parsed)
-                    if output["reasoning_delta"]:
-                        if reasoning_callback:
-                            await reasoning_callback(output["reasoning_delta"], result.reasoning)
-                        if tokens_callback:
-                            await tokens_callback(
-                                output["reasoning_delta"],
-                                approximate_tokens(output["reasoning_delta"]),
-                            )
-                        if limiter:
-                            limiter.add(output=approximate_tokens(output["reasoning_delta"]))
-                    if output["response_delta"]:
-                        if response_callback:
-                            await response_callback(output["response_delta"], result.response)
-                        if tokens_callback:
-                            await tokens_callback(
-                                output["response_delta"],
-                                approximate_tokens(output["response_delta"]),
-                            )
-                        if limiter:
-                            limiter.add(output=approximate_tokens(output["response_delta"]))
+                    await _emit(result.add_chunk(_parse_chunk(chunk)))
                 return result.response, result.reasoning
             except Exception as e:
                 if got_any_chunk and _is_transient_litellm_error(e):
                     return result.response, result.reasoning
                 if not _is_transient_litellm_error(e) or attempt >= max_retries:
-                    raise
+                    typed = to_typed_error(e, model=self.model_name)
+                    if typed is e:
+                        raise
+                    raise typed from e
                 attempt += 1
-                await asyncio.sleep(retry_delay_s)
+                await asyncio.sleep(retry_backoff_seconds(attempt, base_delay, e))
 
 
 class AsyncAIChatReplacement:
@@ -315,11 +436,15 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ):
-        """Async call with Gemini compatibility."""
+        """Async call with Gemini compatibility, timeout and bounded retries."""
         await apply_rate_limiter(self._wrapper.a0_model_conf, str(messages))
         try:
             model = kwargs.pop("model", None)
             kwrgs = {**self._wrapper.kwargs, **kwargs}
+            max_retries, base_delay = get_retry_policy(kwrgs)
+            kwrgs, _ = prepare_completion_kwargs(
+                self._wrapper.model_name, kwrgs, stream=False
+            )
             from services.common.llm_compatibility import (
                 fix_gemini_schema,
                 should_apply_gemini_compat,
@@ -335,8 +460,13 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
                 kwrgs["response_format"]["json_schema"] = fix_gemini_schema(
                     kwrgs["response_format"]["json_schema"]
                 )
-            resp = await acompletion(
-                model=self._wrapper.model_name, messages=messages, stop=stop, **kwrgs
+            resp = await run_with_retries_async(
+                lambda: acompletion(
+                    model=self._wrapper.model_name, messages=messages, stop=stop, **kwrgs
+                ),
+                max_retries=max_retries,
+                base_delay=base_delay,
+                model=self._wrapper.model_name,
             )
             from services.common.llm_compatibility import clean_gemini_json_response
 
@@ -380,7 +510,8 @@ class LiteLLMEmbeddingWrapper(Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
-        resp = embedding(model=self.model_name, input=texts, **self.kwargs)
+        call_kwargs = inject_timeout(self.kwargs)
+        resp = embedding(model=self.model_name, input=texts, **call_kwargs)
         return cast(List[List[float]], [
             item.get("embedding") if isinstance(item, dict) else item.embedding
             for item in resp.data
@@ -388,7 +519,8 @@ class LiteLLMEmbeddingWrapper(Embeddings):
 
     def embed_query(self, text: str) -> List[float]:
         apply_rate_limiter_sync(self.a0_model_conf, text)
-        resp = embedding(model=self.model_name, input=[text], **self.kwargs)
+        call_kwargs = inject_timeout(self.kwargs)
+        resp = embedding(model=self.model_name, input=[text], **call_kwargs)
         item = resp.data[0]
         return cast(List[float], item.get("embedding") if isinstance(item, dict) else item.embedding)
 
@@ -438,7 +570,11 @@ class LocalSentenceTransformerWrapper(Embeddings):
 def _get_litellm_chat(
     cls, model_name: str, provider_name: str, model_config: Optional[Any] = None, **kwargs: Any
 ):
-    """Get LiteLLM chat wrapper instance."""
+    """Get LiteLLM chat wrapper instance. Fail-closed on missing key/model."""
+    if not provider_name or not model_name:
+        raise LLMNotConfiguredError(
+            f"Missing model config: provider={provider_name!r} model={model_name!r}."
+        )
     api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
     if api_key in ("None", "NA", None, ""):
         raise LLMNotConfiguredError(f"Invalid API key for provider '{provider_name}'.")
@@ -451,7 +587,11 @@ def _get_litellm_chat(
 def _get_litellm_embedding(
     model_name: str, provider_name: str, model_config: Optional[Any] = None, **kwargs: Any
 ):
-    """Get LiteLLM embedding wrapper instance."""
+    """Get LiteLLM embedding wrapper instance. Fail-closed on missing key/model."""
+    if not provider_name or not model_name:
+        raise LLMNotConfiguredError(
+            f"Missing model config: provider={provider_name!r} model={model_name!r}."
+        )
     if provider_name == "huggingface" and model_name.startswith("sentence-transformers/"):
         provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
         return LocalSentenceTransformerWrapper(

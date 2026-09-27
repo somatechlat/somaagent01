@@ -1,31 +1,38 @@
-"""Sync pending memories to SomaBrain.
+"""Sync pending memories through the MemoryGateway seam.
 
-Processes PendingMemory records that were queued while SomaBrain was
-unavailable and pushes them to the cognitive runtime.
+Processes PendingMemory records that were queued for FAILED store acks only
+(ok=False / timed out) and retries the store named in ``payload.retry_store``.
+
+Retry policy (PLAN-TRIAD-SEAMLESS §1 rule 4):
+- Only stores whose ack failed are retried; a successful ack is never re-written.
+- The retry re-issues ``remember_text()`` with the original ``ts``, which
+  reproduces the same seam coord + SomaBrain key material, so both stores upsert
+  one row (no duplicate memories).
+- The row is marked synced only when the TARGET store's ack is ok.
 
 Usage:
     python manage.py sync_memories --batch-size 100
 """
 
 import logging
-import time
 from typing import Any
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils import timezone
 
 from admin.core.models import PendingMemory
-from admin.core.somabrain_client import SomaBrainClient
 from services.common.circuit_breaker import get_circuit_breaker
 
 logger = logging.getLogger(__name__)
 
+# Legacy rows (pre-seam) targeted SomaBrain when no retry_store was recorded.
+_LEGACY_TARGET_STORE = "somabrain"
+
 
 class Command(BaseCommand):
-    """Sync pending memories to SomaBrain."""
+    """Sync pending memories to the failed store via MemoryGateway."""
 
-    help = "Sync PendingMemory queue to SomaBrain"
+    help = "Sync PendingMemory queue (failed acks only) via MemoryGateway"
 
     def add_arguments(self, parser: Any) -> None:
         """Add command arguments."""
@@ -89,27 +96,52 @@ class Command(BaseCommand):
         )
 
     def _sync_one(self, mem: PendingMemory, *, dry_run: bool = False) -> None:
-        """Sync a single pending memory to SomaBrain."""
+        """Retry ONE failed store through the MemoryGateway seam."""
         import asyncio
 
         if dry_run:
             self.stdout.write(f"  [DRY-RUN] Would sync {mem.idempotency_key}")
             return
 
-        async def _push() -> None:
-            client = await SomaBrainClient.get_async()
-            if client is None:
-                logger.info("SomaBrain not configured; nothing to sync")
-                return
-            await client.remember(
-                payload=mem.payload,
-                tenant=mem.tenant_id,
-                namespace=mem.namespace,
+        # Imported lazily: the orchestrator owns the seam policy
+        # (_require_memory_gateway: explicit-disable skip, else fail-closed).
+        from admin.core.chat_orchestrator import _require_memory_gateway
+
+        payload = mem.payload or {}
+        target_store = str(payload.get("retry_store") or _LEGACY_TARGET_STORE)
+        text = str(payload.get("text") or payload.get("content") or "")
+        kind = str(payload.get("kind") or "episodic")
+        # Original ts reproduces the same coord + key material on retry.
+        ts = payload.get("ts") or None
+        if not text:
+            raise ValueError(f"PendingMemory {mem.idempotency_key} has no text")
+
+        async def _push() -> list[Any]:
+            gateway = _require_memory_gateway()
+            if gateway is None:
+                raise RuntimeError(
+                    "Memory is explicitly disabled by deployment mode but a "
+                    "PendingMemory retry is outstanding — refusing to drop it"
+                )
+            return await gateway.remember_text(
+                text,
+                tenant_id=mem.tenant_id,
+                kind=kind,
+                ts=ts,
+                session_id=payload.get("session_id"),
+                salience=float(payload.get("salience", 0.5) or 0.5),
+                source=str(payload.get("source") or "agent-chat"),
             )
 
-        asyncio.run(_push())
+        acks = asyncio.run(_push())
+        ack_by_store = {ack.store: ack for ack in acks}
+        ack = ack_by_store.get(target_store)
+        if ack is None:
+            raise RuntimeError(f"no ack returned for target store {target_store}")
+        if not ack.ok:
+            raise RuntimeError(f"{target_store} ack failed: {ack.error}")
 
         with transaction.atomic():
             mem.mark_synced()
 
-        self.stdout.write(f"  Synced {mem.idempotency_key}")
+        self.stdout.write(f"  Synced {mem.idempotency_key} -> {target_store}")

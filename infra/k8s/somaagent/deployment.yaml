@@ -87,6 +87,22 @@ spec:
                 secretKeyRef:
                   name: somaagent-secrets
                   key: django-secret-key
+            # Vault (secrets backend, VIBE Rule 164) — in-cluster service, no localhost
+            - name: VAULT_ADDR
+              value: "http://vault.shared.svc.cluster.local:8200"
+            # Model credentials are NOT injected as environment variables.
+            # The agent has full model administration: LLMModelConfig (Django
+            # admin) selects the model, and provider keys are read from Vault at
+            # secret/agent/api_keys/{provider}_api_key by
+            # UnifiedSecretManager.get_provider_key() → get_api_key()
+            # (fail-closed LLMNotConfiguredError). Injecting GROQ_API_KEY here
+            # would be a second, unread source of truth. See secret.example.yaml
+            # for how to seed Vault.
+            #
+            # Default chat model is selected in LLMModelConfig (admin/llm), not
+            # by an environment variable.
+            - name: AAAS_DEFAULT_TENANT_ID
+              value: "cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c"
             # Logging
             - name: LOG_FORMAT
               value: "json"

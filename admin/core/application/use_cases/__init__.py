@@ -7,11 +7,9 @@ Each use case encapsulates one business operation and:
 """
 
 from .conversation import ProcessMessageUseCase
-from .memory import StoreMemoryUseCase
 from .tools import ExecuteToolUseCase
 
 __all__ = [
     "ProcessMessageUseCase",
     "ExecuteToolUseCase",
-    "StoreMemoryUseCase",
 ]

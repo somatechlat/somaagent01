@@ -8,13 +8,23 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import time
 from typing import Any, Awaitable, Callable, TYPE_CHECKING
 
+import httpx
 import litellm
 import openai
 
 from admin.core.helpers.tokens import approximate_tokens
+from admin.llm.exceptions import LLMNotConfiguredError
+from admin.llm.services.litellm_schemas import (
+    ChatChunk,
+    LLMCallError,
+    LLMNonRetryableError,
+    LLMTimeoutError,
+    LLMTransientError,
+)
 
 
 # In-memory rate limiter for per-API-key LLM call throttling.
@@ -79,8 +89,6 @@ RateLimiter = _RateLimiter
 if TYPE_CHECKING:
     from admin.llm.models import ModelConfig
 
-from admin.llm.services.litellm_schemas import ChatChunk
-
 # Module-level state
 rate_limiters: dict[str, RateLimiter] = {}
 api_keys_round_robin: dict[str, int] = {}
@@ -134,10 +142,10 @@ def _get_secret_manager():
 
 
 def get_api_key(service: str) -> str:
-    """Get API key from Vault (single source of truth)."""
+    """Get API key from Vault (single source of truth). Fail-closed on missing key."""
     key = _get_secret_manager().get_provider_key(service.lower())
     if not key:
-        raise RuntimeError(f"Missing API key for provider '{service}' in secret manager")
+        raise LLMNotConfiguredError(f"Missing API key for provider '{service}' in secret manager")
     if "," in key:
         api_keys = [k.strip() for k in key.split(",") if k.strip()]
         api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
@@ -190,6 +198,266 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
         if hasattr(litellm_exceptions, name)
     )
     return isinstance(exc, transient_types + litellm_transient)  # type: ignore[arg-type]
+
+
+# --- Timeout / retry / Groq compat policy (single place for all call paths) ---
+
+DEFAULT_CONNECT_TIMEOUT_S = 10.0
+DEFAULT_READ_TIMEOUT_S = 45.0
+DEFAULT_MAX_RETRIES = 2
+DEFAULT_RETRY_BASE_DELAY_S = 1.5
+RETRY_BACKOFF_CAP_S = 15.0
+RETRY_AFTER_CAP_S = 30.0
+
+
+def _env_float(name: str) -> float | None:
+    """Read a float from an environment variable, or None if unset/invalid."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _positive_or(value: Any, default: float) -> float:
+    """Coerce to a positive float, else return the default."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if number > 0 else default
+
+
+def get_timeout_settings() -> tuple[float, float]:
+    """Resolve (connect_s, read_s) timeouts.
+
+    Precedence: SA01_LLM_CONNECT_TIMEOUT / SA01_LLM_READ_TIMEOUT env vars,
+    then optional settings attributes ``llm_connect_timeout`` / ``llm_read_timeout``,
+    then the defaults (10s connect, 45s read).
+    """
+    connect = _env_float("SA01_LLM_CONNECT_TIMEOUT")
+    read = _env_float("SA01_LLM_READ_TIMEOUT")
+    if connect is None or read is None:
+        try:
+            from admin.core.helpers.settings import get_settings
+
+            stg = get_settings()
+            if connect is None:
+                connect = getattr(stg, "llm_connect_timeout", None)
+            if read is None:
+                read = getattr(stg, "llm_read_timeout", None)
+        except Exception:
+            pass
+    return (
+        _positive_or(connect, DEFAULT_CONNECT_TIMEOUT_S),
+        _positive_or(read, DEFAULT_READ_TIMEOUT_S),
+    )
+
+
+def build_timeout() -> "httpx.Timeout":
+    """Build an httpx timeout with separate connect/read bounds.
+
+    The read bound caps the gap between streamed chunks, so a stalled stream
+    can never hang the caller forever.
+    """
+    connect, read = get_timeout_settings()
+    return httpx.Timeout(connect=connect, read=read, write=read, pool=connect)
+
+
+def inject_timeout(kwargs: dict) -> dict:
+    """Return kwargs with a connect/read timeout set (an explicit timeout wins)."""
+    out = dict(kwargs or {})
+    if out.get("timeout") is None:
+        out["timeout"] = build_timeout()
+    return out
+
+
+def _is_groq_model(model: str) -> bool:
+    """True for Groq-routed model strings (three-segment 'groq/...' form)."""
+    return (model or "").split("/", 1)[0].lower() == "groq"
+
+
+def _requests_tools_or_json(kwargs: dict) -> bool:
+    """True when the request uses tools or JSON/structured output."""
+    return bool(
+        kwargs.get("tools")
+        or kwargs.get("tool_choice")
+        or kwargs.get("functions")
+        or kwargs.get("response_format")
+    )
+
+
+def apply_reasoning_format(model: str, kwargs: dict) -> None:
+    """Force Groq ``reasoning_format="hidden"`` when tools or JSON are requested.
+
+    Groq returns HTTP 400 for ``reasoning_format:"raw"`` combined with tools or
+    JSON output, so 'hidden' is forced in that case; otherwise the caller's
+    choice is left untouched. This is the single enforcement point for all
+    call paths so the rule cannot drift.
+    """
+    if not _is_groq_model(model) or not _requests_tools_or_json(kwargs):
+        return
+    kwargs["reasoning_format"] = "hidden"
+
+
+def prepare_completion_kwargs(model: str, kwargs: dict, *, stream: bool) -> tuple[dict, bool]:
+    """Single place for timeout injection, reasoning_format and Groq stream limits.
+
+    Returns ``(call_kwargs, effective_stream)``. When a Groq model requests both
+    ``response_format`` and streaming, streaming is dropped: Groq rejects
+    ``response_format`` while streaming (HTTP 400), and stripping ``response_format``
+    would silently break the caller's structured-output contract. A single
+    non-stream call preserves it (LiteLLM's fake-stream workaround is version
+    dependent; the explicit fallback is not).
+    """
+    call_kwargs = inject_timeout(kwargs)
+    apply_reasoning_format(model, call_kwargs)
+    if stream and _is_groq_model(model) and call_kwargs.get("response_format"):
+        return call_kwargs, False
+    return call_kwargs, stream
+
+
+def get_retry_policy(kwargs: dict) -> tuple[int, float]:
+    """Pop retry overrides from call kwargs; returns (max_retries, base_delay_s).
+
+    Honors the legacy ``a0_retry_attempts`` / ``a0_retry_delay_seconds`` kwargs.
+    """
+    raw_retries = kwargs.pop("a0_retry_attempts", DEFAULT_MAX_RETRIES)
+    raw_delay = kwargs.pop("a0_retry_delay_seconds", DEFAULT_RETRY_BASE_DELAY_S)
+    try:
+        max_retries = max(0, int(raw_retries))
+    except (TypeError, ValueError):
+        max_retries = DEFAULT_MAX_RETRIES
+    try:
+        base_delay = max(0.0, float(raw_delay))
+    except (TypeError, ValueError):
+        base_delay = DEFAULT_RETRY_BASE_DELAY_S
+    return max_retries, base_delay
+
+
+def _retry_after_seconds(exc: Exception | None) -> float | None:
+    """Extract a Retry-After header value (seconds) from a provider exception."""
+    headers = getattr(getattr(exc, "response", None), "headers", None)
+    if headers is None or not hasattr(headers, "get"):
+        return None
+    raw = headers.get("retry-after")
+    if raw is None:
+        return None
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def retry_backoff_seconds(attempt: int, base_delay: float, exc: Exception | None = None) -> float:
+    """Exponential backoff with jitter for a 1-based retry attempt.
+
+    Jitter is 50-100% of the nominal delay so retries never stampede a
+    rate-limited provider (e.g. Groq free tier 30 RPM). Retry-After, when
+    present, is honored up to RETRY_AFTER_CAP_S.
+    """
+    nominal = min(RETRY_BACKOFF_CAP_S, base_delay * (2 ** (attempt - 1)))
+    delay = nominal * (0.5 + 0.5 * random.random())
+    retry_after = _retry_after_seconds(exc)
+    if retry_after is not None:
+        delay = max(delay, min(retry_after, RETRY_AFTER_CAP_S))
+    return delay
+
+
+def _is_timeout_error(exc: Exception) -> bool:
+    """True when the exception represents a timeout."""
+    if isinstance(exc, TimeoutError):
+        return True
+    if getattr(exc, "status_code", None) == 408:
+        return True
+    timeout_types = tuple(
+        filter(
+            None,
+            (
+                getattr(openai, "APITimeoutError", None),
+                getattr(litellm_exceptions, "Timeout", None),
+            ),
+        )
+    )
+    return bool(timeout_types) and isinstance(exc, timeout_types)
+
+
+def _is_provider_exception(exc: Exception) -> bool:
+    """True when the exception originates from openai/litellm rather than our code."""
+    if getattr(exc, "status_code", None) is not None:
+        return True
+    bases = tuple(
+        filter(
+            None,
+            (
+                getattr(openai, "APIError", None),
+                getattr(litellm_exceptions, "APIError", None),
+                getattr(litellm_exceptions, "GroqException", None),
+            ),
+        )
+    )
+    return bool(bases) and isinstance(exc, bases)
+
+
+def to_typed_error(exc: Exception, *, model: str = "") -> Exception:
+    """Map a provider exception to a clear typed error.
+
+    Timeouts are always typed (they are call-path failures, not bugs). Other
+    unknown (non-provider) exceptions are returned unchanged so genuine bugs
+    are never masked as API failures.
+    """
+    if isinstance(exc, LLMCallError):
+        return exc
+    where = f" (model '{model}')" if model else ""
+    if _is_timeout_error(exc):
+        return LLMTimeoutError(f"LLM call timed out{where}: {exc}")
+    status = getattr(exc, "status_code", None)
+    if not (isinstance(status, int) or _is_provider_exception(exc)):
+        return exc
+    if _is_transient_litellm_error(exc):
+        return LLMTransientError(f"LLM transient error{where}: {exc}")
+    return LLMNonRetryableError(
+        f"LLM request rejected{where}: {exc}",
+        status_code=status if isinstance(status, int) else None,
+    )
+
+
+def run_with_retries_sync(
+    fn: Callable[[], Any], *, max_retries: int, base_delay: float, model: str = ""
+) -> Any:
+    """Run fn() with bounded retries on transient errors only."""
+    attempt = 0
+    while True:
+        try:
+            return fn()
+        except Exception as e:
+            if not _is_transient_litellm_error(e) or attempt >= max_retries:
+                typed = to_typed_error(e, model=model)
+                if typed is e:
+                    raise
+                raise typed from e
+            attempt += 1
+            time.sleep(retry_backoff_seconds(attempt, base_delay, e))
+
+
+async def run_with_retries_async(
+    fn: Callable[[], Awaitable[Any]], *, max_retries: int, base_delay: float, model: str = ""
+) -> Any:
+    """Await fn() with bounded retries on transient errors only."""
+    attempt = 0
+    while True:
+        try:
+            return await fn()
+        except Exception as e:
+            if not _is_transient_litellm_error(e) or attempt >= max_retries:
+                typed = to_typed_error(e, model=model)
+                if typed is e:
+                    raise
+                raise typed from e
+            attempt += 1
+            await asyncio.sleep(retry_backoff_seconds(attempt, base_delay, e))
 
 
 async def apply_rate_limiter(

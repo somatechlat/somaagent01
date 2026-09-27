@@ -39,12 +39,23 @@ def _postgres_available() -> bool:
 
 
 def _llm_available() -> bool:
-    """Check if LLM API key is configured."""
-    return bool(
-        os.environ.get("OPENAI_API_KEY")
-        or os.environ.get("ANTHROPIC_API_KEY")
-        or os.environ.get("OPENROUTER_API_KEY")
-    )
+    """Check whether Vault holds a provider key for any LLM provider.
+
+    Model credentials live in the agent's model administration (Vault
+    ``secret/agent/api_keys/{provider}_api_key``), not in the environment —
+    so this must ask the secret manager, the same way the runtime does.
+    """
+    try:
+        from services.common.unified_secret_manager import UnifiedSecretManager
+
+        manager = UnifiedSecretManager()
+    except Exception:
+        return False
+    for provider in ("groq", "openai", "anthropic", "openrouter"):
+        key = manager.get_provider_key(provider)
+        if key and key not in ("None", "NA"):
+            return True
+    return False
 
 
 @pytest.fixture(autouse=True)

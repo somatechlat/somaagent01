@@ -1,4 +1,4 @@
-"""LiteLLM Schemas - Data classes and TypedDicts for LLM operations.
+"""LiteLLM Schemas - Data classes, TypedDicts and typed errors for LLM operations.
 
 Extracted from litellm_client.py for 650-line compliance.
 """
@@ -13,6 +13,41 @@ class ChatChunk(TypedDict):
 
     response_delta: str
     reasoning_delta: str
+
+
+# --- Typed errors for the LiteLLM call path (fail-closed) ---
+# Config problems (missing key / disabled LLM) raise LLMNotConfiguredError from
+# admin.llm.exceptions; call-time failures raise the types below.
+
+
+class LLMCallError(Exception):
+    """Base class for LLM call failures surfaced by the LiteLLM client."""
+
+
+class LLMNonRetryableError(LLMCallError):
+    """Provider rejected the request (auth, model_not_found, 400, ...).
+
+    Raised immediately: retrying cannot succeed, so no retries are attempted.
+    """
+
+    def __init__(self, message: str, *, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class LLMTransientError(LLMCallError):
+    """Transient provider failure (rate limit / timeout / 5xx / connection).
+
+    Raised only after bounded retries are exhausted.
+    """
+
+
+class LLMTimeoutError(LLMTransientError, TimeoutError):
+    """LLM call exceeded the configured connect/read timeout.
+
+    Also a ``TimeoutError`` so existing ``except asyncio.TimeoutError``
+    degraded-mode handlers keep working.
+    """
 
 
 class ChatGenerationResult:

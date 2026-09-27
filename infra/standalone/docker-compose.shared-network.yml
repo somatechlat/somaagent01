@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# SomaAgent01 — Shared Network Override
+# Attaches the standalone agent stack to the external `soma-stack-net` so it can
+# reach real SomaBrain and SomaFractalMemory (see up-cluster.sh).
+# ═══════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.shared-network.yml up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  somaagent_standalone:
+    networks:
+      - soma-stack-net
+    environment:
+      # Real triad endpoints — service DNS on soma-stack-net (VIBE Rule 91: no localhost)
+      SOMABRAIN_URL: "${SOMABRAIN_URL:-http://somabrain_standalone_app:30101}"
+      SOMAFRACTALMEMORY_URL: "${SOMAFRACTALMEMORY_URL:-http://somafractalmemory-standalone-api:10101}"
+      # Store bearer tokens. REQUIRED — ARCHITECTURE-INVARIANTS §6: never bake a
+      # credential into the image or a committed file. up-cluster.sh exports these
+      # from each store's own .env so the three stacks share one secret per store.
+      SOMA_API_TOKEN: "${SOMA_API_TOKEN:?set SOMA_API_TOKEN to the SomaFractalMemory bearer token}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN to the SomaBrain bearer token}"
+    extra_hosts: [] # shared network provides DNS
+
+  somaagent_vault:
+    networks:
+      - soma-stack-net
+
+  somaagent_postgres:
+    networks:
+      - soma-stack-net
+
+  somaagent_redis:
+    networks:
+      - soma-stack-net
+
+  somaagent_keycloak:
+    networks:
+      - soma-stack-net
+
+  somaagent_webui:
+    networks:
+      - soma-stack-net
+
+networks:
+  somaagent_net:
+    external: false
+  soma-stack-net:
+    external: true
+    name: soma-stack-net

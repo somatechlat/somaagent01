@@ -10,7 +10,6 @@ Feature Flag: SA01_ENABLE_multimodal_capabilities
 from __future__ import annotations
 
 import logging
-import os
 import time
 from typing import Dict, List, Optional
 
@@ -30,14 +29,39 @@ __all__ = ["DalleProvider"]
 logger = logging.getLogger(__name__)
 
 
+def _resolve_provider_key(provider: str) -> Optional[str]:
+    """Resolve a model provider key from the agent's model administration.
+
+    Keys live in Vault at ``secret/agent/api_keys/{provider}_api_key`` and are
+    read through ``UnifiedSecretManager`` — the same path ``get_api_key()``
+    uses for chat models. ``os.environ`` is deliberately NOT consulted: a model
+    credential in the environment is a second, unread source of truth.
+    Returns ``None`` when unconfigured so the caller can fail closed.
+    """
+
+    try:
+        from services.common.unified_secret_manager import UnifiedSecretManager
+
+        key = UnifiedSecretManager().get_provider_key(provider)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Provider key lookup failed for %s: %s", provider, exc)
+        return None
+    if not key or key in ("None", "NA"):
+        return None
+    return key
+
+
 class DalleProvider(MultimodalProvider):
     """Provider for OpenAI DALL-E image generation.
 
     Uses the OpenAI Images API to generate images from text prompts.
     Supports DALL-E 3 with various size and quality options.
 
-    Environment:
-        OPENAI_API_KEY: Required API key
+    Credentials:
+        NOT an environment variable. The key comes from the agent's model
+        administration — Vault ``secret/agent/api_keys`` field
+        ``openai_api_key``, via ``UnifiedSecretManager.get_provider_key()``.
+        Pass ``api_key=`` explicitly only to inject one (tests).
 
     Usage:
         provider = DalleProvider()
@@ -78,11 +102,12 @@ class DalleProvider(MultimodalProvider):
         """Initialize DALL-E provider.
 
         Args:
-            api_key: OpenAI API key. Uses env var if not provided.
+            api_key: OpenAI API key. When omitted it is resolved from the
+                agent's model administration (Vault), never from os.environ.
             model: Model to use (dall-e-3 or dall-e-2).
             timeout_seconds: Request timeout.
         """
-        self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self._api_key = api_key or _resolve_provider_key("openai")
         self._model = model
         self._timeout = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None

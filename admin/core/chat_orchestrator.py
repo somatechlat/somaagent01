@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, AsyncIterator, cast, Dict, List, Optional
 from uuid import uuid4
 
@@ -38,8 +40,14 @@ from admin.core.context import build_context, BuiltContext
 from admin.core.model_router import detect_required_capabilities, select_model, SelectedModel
 from admin.core.permission_matrix import PermissionChecker
 from admin.core.somabrain_client import SomaBrainClient
-from services.common.adapters import get_memory_service
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
+from services.common.memory_contract import (
+    MemoryAck,
+    MemoryConfigurationError,
+    MemoryHit,
+    make_coord,
+)
+from services.common.memory_gateway import build_memory_gateway, get_memory_gateway
 from services.common.health_monitor import get_health_monitor
 from services.common.simple_governor import get_governor
 from services.common.unified_metrics import get_metrics, TurnPhase
@@ -57,6 +65,75 @@ _ENCODING = tiktoken.get_encoding("cl100k_base")
 def _token_count(text: str) -> int:
     """Accurate LLM token count."""
     return len(_ENCODING.encode(text))
+
+
+# ---------------------------------------------------------------------------
+# Memory seam (PLAN-TRIAD-SEAMLESS §1) — one write path, one read path
+# ---------------------------------------------------------------------------
+_MEMORY_STORES = ("somabrain", "somafractalmemory")
+_MEMORY_WRITE_TIMEOUT_S = 10.0
+_memory_gateway_cache: Any = None
+
+
+def _memory_explicitly_disabled() -> bool:
+    """True when the deployment explicitly disables both memory stores.
+
+    Checks the standalone kill-switch pair (SOMABRAIN_ENABLED +
+    FRACTALMEMORY_ENABLED) and the profile flags from
+    config/settings_registry.py (the STANDALONE/DEV profile disables both).
+    """
+    explicitly_off = {"0", "false", "no", "off"}
+    brain = os.environ.get("SOMABRAIN_ENABLED", "").strip().lower()
+    sfm = os.environ.get("FRACTALMEMORY_ENABLED", "").strip().lower()
+    if brain in explicitly_off and sfm in explicitly_off:
+        return True
+    try:
+        from config.settings_registry import SettingsRegistry
+
+        profile = SettingsRegistry.get()
+        if not (
+            getattr(profile, "somabrain_enabled", True)
+            or getattr(profile, "fractalmemory_enabled", True)
+        ):
+            return True
+    except Exception:  # profile load is best-effort; gateway stays fail-closed
+        pass
+    return False
+
+
+def _require_memory_gateway() -> Any:
+    """Return the MemoryGateway, or None when memory is explicitly disabled.
+
+    Fail-closed: when memory is enabled but no store URL is configured
+    (env SOMABRAIN_URL / SFM_URL, else config.settings), raise
+    MemoryConfigurationError — never silently skip a write.
+    """
+    global _memory_gateway_cache
+    if _memory_explicitly_disabled():
+        return None
+    if _memory_gateway_cache is not None:
+        return _memory_gateway_cache
+    try:
+        _memory_gateway_cache = get_memory_gateway()
+        return _memory_gateway_cache
+    except MemoryConfigurationError:
+        # Seam env unset — fall back to the app config path (config/settings.py
+        # resolves the same keys). Still fail-closed if neither configures a URL.
+        from config import settings as django_settings
+
+        brain_url = (getattr(django_settings, "SOMABRAIN_URL", "") or "").strip()
+        sfm_url = (getattr(django_settings, "SOMAFRACTALMEMORY_URL", "") or "").strip()
+        if not brain_url or not sfm_url:
+            raise
+        logger.info(
+            "Memory seam configured from config.settings (somabrain=%s, sfm=%s)",
+            brain_url,
+            sfm_url,
+        )
+        _memory_gateway_cache = build_memory_gateway(
+            somabrain_url=brain_url, sfm_url=sfm_url
+        )
+        return _memory_gateway_cache
 
 
 # ---------------------------------------------------------------------------
@@ -150,15 +227,6 @@ class V3ChatOrchestrator:
             "somabrain", failure_threshold=5, reset_timeout=30.0
         )
         self._cb_llm = get_circuit_breaker("llm", failure_threshold=5, reset_timeout=30.0)
-
-        # SomaFractalMemory adapter — independent from SomaBrain
-        # Used as memory fallback when Brain is unavailable
-        self._sfm_adapter = None
-        try:
-            self._sfm_adapter = get_memory_service(namespace="chat_history")
-            logger.info("V3ChatOrchestrator: SomaFractalMemory adapter initialized")
-        except Exception as exc:
-            logger.warning("V3ChatOrchestrator: SomaFractalMemory not available: %s", exc)
 
     # =================================================================
     # PUBLIC API — Conversation CRUD (from old ConversationService)
@@ -392,17 +460,18 @@ class V3ChatOrchestrator:
             budget_override = gov_decision.lane_budget.to_dict()
 
             # Phase 5: Context Building (5-lane with memory recall)
-            # SomaBrain primary + SomaFractalMemory fallback (independent)
+            # Memory lane is fed by MemoryGateway.recall() — one read path
             history = turn.history or await self._recall_history(
                 turn.conversation_id or "", tenant_id
             )
-            brain_client = await SomaBrainClient.get_async()
+            memory_hits = await self._recall_memories(
+                turn.user_message, tenant_id, capsule
+            )
             context = await build_context(
                 capsule=capsule,
                 user_message=turn.user_message,
                 history=history,
-                brain_client=brain_client,
-                memory_client=self._sfm_adapter,
+                memory_hits=memory_hits,
                 budget_override=budget_override,
             )
             result.context_tokens = context.total_tokens
@@ -512,11 +581,15 @@ class V3ChatOrchestrator:
                 model_id=result.model_used,
                 elapsed_ms=elapsed_ms,
                 token_count_out=_token_count(full_response),
+                salience=brain_confidence,
             )
 
-            # Emit Django signals for outbox publishers
+            # Emit Django signals for outbox publishers.
+            # memory_created is NOT emitted: the MemoryGateway seam is the one
+            # write path (PLAN §1 rule 4) and its outbox (PendingMemory) already
+            # covers failed acks — a second outbox entry would duplicate writes.
             try:
-                from admin.core.signals import conversation_message, memory_created
+                from admin.core.signals import conversation_message
 
                 await sync_to_async(conversation_message.send)(
                     sender=self.__class__,
@@ -524,18 +597,6 @@ class V3ChatOrchestrator:
                     message_id=turn_id,
                     role="assistant",
                     content=full_response,
-                )
-                await sync_to_async(memory_created.send)(
-                    sender=self.__class__,
-                    payload={
-                        "role": "assistant",
-                        "content": full_response,
-                        "conversation_id": turn.conversation_id,
-                        "model": result.model_used,
-                        "latency_ms": elapsed_ms,
-                    },
-                    tenant_id=tenant_id,
-                    namespace="chat_history",
                 )
             except Exception as signal_exc:
                 logger.warning("Signal emission failed: %s", signal_exc)
@@ -609,15 +670,14 @@ class V3ChatOrchestrator:
         )
         budget_override = gov_decision.lane_budget.to_dict()
 
-        # Build context
+        # Build context — memory lane fed by MemoryGateway.recall() (one read path)
         history = turn.history or await self._recall_history(turn.conversation_id or "", tenant_id)
-        brain_client = await SomaBrainClient.get_async()
+        memory_hits = await self._recall_memories(turn.user_message, tenant_id, capsule)
         context = await build_context(
             capsule=capsule,
             user_message=turn.user_message,
             history=history,
-            brain_client=brain_client,
-            memory_client=self._sfm_adapter,
+            memory_hits=memory_hits,
             budget_override=budget_override,
         )
 
@@ -698,9 +758,12 @@ class V3ChatOrchestrator:
             token_count_out=_token_count(full_response),
         )
 
-        # Emit Django signals for outbox publishers
+        # Emit Django signals for outbox publishers.
+        # memory_created is NOT emitted: the MemoryGateway seam is the one
+        # write path (PLAN §1 rule 4) and its outbox (PendingMemory) already
+        # covers failed acks — a second outbox entry would duplicate writes.
         try:
-            from admin.core.signals import conversation_message, memory_created
+            from admin.core.signals import conversation_message
 
             await sync_to_async(conversation_message.send)(
                 sender=self.__class__,
@@ -708,18 +771,6 @@ class V3ChatOrchestrator:
                 message_id=turn_id,
                 role="assistant",
                 content=full_response,
-            )
-            await sync_to_async(memory_created.send)(
-                sender=self.__class__,
-                payload={
-                    "role": "assistant",
-                    "content": full_response,
-                    "conversation_id": turn.conversation_id,
-                    "model": f"{model.provider}/{model.name}",
-                    "latency_ms": elapsed_ms,
-                },
-                tenant_id=tenant_id,
-                namespace="chat_history",
             )
         except Exception as signal_exc:
             logger.warning("Signal emission failed: %s", signal_exc)
@@ -804,63 +855,106 @@ class V3ChatOrchestrator:
         msgs.append(HumanMessage(content=context.buffer or user_message))
         return msgs
 
-    @staticmethod
-    def _make_coordinate(seed: str) -> tuple[float, float, float]:
-        """Generate a deterministic 3D fractal coordinate from a seed string."""
-        import hashlib
-
-        h = hashlib.md5(seed.encode()).hexdigest()
-        return (
-            (int(h[0:8], 16) / 0xFFFFFFFF) * 2 - 1,
-            (int(h[8:16], 16) / 0xFFFFFFFF) * 2 - 1,
-            (int(h[16:24], 16) / 0xFFFFFFFF) * 2 - 1,
-        )
-
-    async def _store_to_sfm(
+    async def _remember_via_gateway(
         self,
-        content: str,
-        conversation_id: str,
+        text: str,
+        *,
         tenant_id: str,
+        session_id: Optional[str],
         namespace: str,
-        metadata: dict,
+        salience: float = 0.5,
+        kind: str = "episodic",
     ) -> None:
-        """Store memory to SomaFractalMemory (independent from SomaBrain)."""
-        adapter = self._sfm_adapter
-        if adapter is None:
+        """ONE write path: MemoryGateway.remember_text() fan-out (PLAN §1 rule 4).
+
+        remember_text() derives the seam coord AND the SomaBrain key material
+        from the same (tenant, kind, ts, text), so both stores upsert one row —
+        never a second coordinate scheme. PendingMemory is queued ONLY for acks
+        with ok=False / timed out; a successful ack is never re-written.
+        """
+        gateway = _require_memory_gateway()
+        if gateway is None:
+            logger.debug(
+                "Memory disabled by deployment mode — skipping store (%s)", namespace
+            )
             return
 
-        coordinate = self._make_coordinate(f"{conversation_id}:{content[:50]}")
-        payload = {
-            "content": content,
-            "conversation_id": conversation_id,
-            **metadata,
-        }
+        stamp = datetime.now(UTC)
+        coord = make_coord(tenant_id, kind, stamp, text)
+        try:
+            acks = await asyncio.wait_for(
+                gateway.remember_text(
+                    text,
+                    tenant_id=tenant_id,
+                    kind=kind,
+                    ts=stamp,
+                    session_id=session_id,
+                    salience=salience,
+                    source="agent-chat",
+                ),
+                timeout=_MEMORY_WRITE_TIMEOUT_S,
+            )
+        except Exception as exc:
+            # Timeout / transport failure: every store unacked → outbox each.
+            logger.warning("MemoryGateway write failed (coord=%s): %s", coord, exc)
+            acks = [
+                MemoryAck(coord=coord, store=store, ok=False, error=str(exc))
+                for store in _MEMORY_STORES
+            ]
+
+        for ack in acks:
+            if ack.ok:
+                continue  # success is final — never queued, never re-written
+            await self._queue_pending_memory(
+                tenant_id=tenant_id,
+                namespace=namespace,
+                payload={
+                    "content": text,
+                    "text": text,
+                    "kind": kind,
+                    "session_id": session_id,
+                    "coord": coord,
+                    "ts": stamp.isoformat(),
+                    "salience": salience,
+                    "source": "agent-chat",
+                    "retry_store": ack.store,
+                    "error": ack.error,
+                },
+            )
+
+    async def _recall_memories(
+        self,
+        query: str,
+        tenant_id: str,
+        capsule: Any,
+    ) -> Optional[List[MemoryHit]]:
+        """One read path: MemoryGateway.recall() feeds the memory lane (PLAN §1 rule 5).
+
+        Returns None when there is no gateway data (memory explicitly disabled
+        or recall unavailable) so the lane renders its fallback sentinel; [] when
+        recall ran and found nothing.
+        """
+        gateway = _require_memory_gateway()
+        if gateway is None:
+            return None
+
+        body = getattr(capsule, "_cached_body", None)
+        if body is None and hasattr(capsule, "async_body"):
+            body = await capsule.async_body()
+        body = body or {}
+        persona = body.get("persona", {}) if isinstance(body, dict) else {}
+        memory_config = persona.get("memory", {}) or {}
+        try:
+            recall_limit = int(memory_config.get("recall_limit", 10) or 10)
+        except (TypeError, ValueError):
+            recall_limit = 10
 
         try:
-            # HTTP adapter has store_async; Direct adapter has store (sync)
-            if hasattr(adapter, "store_async"):
-                await adapter.store_async(
-                    coordinate=coordinate,
-                    payload=payload,
-                    tenant=tenant_id,
-                    namespace=namespace,
-                )
-            else:
-                # Wrap sync store in thread for non-blocking
-                import asyncio
-
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: adapter.store(
-                        coordinate=coordinate,
-                        payload=payload,
-                        tenant=tenant_id,
-                        namespace=namespace,
-                    ),
-                )
-            logger.debug("SFM store OK: %s", conversation_id)
+            hits = await gateway.recall(query=query, k=recall_limit, tenant_id=tenant_id)
+            return list(hits or [])
         except Exception as exc:
-            logger.warning("SFM store failed: %s", exc)
+            logger.warning("MemoryGateway.recall failed: %s", exc)
+            return None
 
     async def _queue_pending_memory(
         self,
@@ -868,17 +962,24 @@ class V3ChatOrchestrator:
         namespace: str,
         payload: Dict[str, Any],
     ) -> None:
-        """Queue memory to PendingMemory for sync when SomaBrain recovers.
+        """Queue one FAILED memory ack to PendingMemory for retry (outbox).
 
+        Idempotency key is derived from the seam coord + target store, so a
+        re-queue collapses into one row and retries cannot multiply memories.
         Best-effort: logs on failure, never blocks the chat turn.
         """
-        from uuid import uuid4
+        import hashlib
 
         from admin.core.models import PendingMemory
         from asgiref.sync import sync_to_async
         from django.db import transaction
 
-        idempotency_key = f"chat:{tenant_id}:{payload.get('conversation_id', '')}:{str(uuid4())[:8]}"
+        coord = str(payload.get("coord") or "")
+        if not coord:
+            material = str(payload.get("text") or payload.get("content") or "")
+            coord = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+        retry_store = str(payload.get("retry_store") or "all")
+        idempotency_key = f"mem:{tenant_id}:{coord}:{retry_store}"
 
         @sync_to_async
         def _create() -> None:
@@ -906,13 +1007,13 @@ class V3ChatOrchestrator:
         model_id: str,
         elapsed_ms: int,
         token_count_out: int,
+        salience: float = 0.5,
     ) -> None:
         """Store user + assistant messages.
 
-        Storage hierarchy:
-        1. PostgreSQL — ALWAYS (persistence layer)
-        2. SomaBrain — PRIMARY (cognitive + memory)
-        3. SomaFractalMemory — FALLBACK (pure memory, independent from Brain)
+        1. PostgreSQL — ALWAYS (persistence layer, Zero Data Loss)
+        2. MemoryGateway.remember_text() — ONE write path, fan-out to both
+           stores with per-store acks; PendingMemory only for failed acks.
         """
         from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
         from django.db import transaction
@@ -929,53 +1030,6 @@ class V3ChatOrchestrator:
                 )
 
         await _store_user()
-
-        # SomaBrain memory (PRIMARY — cognitive + memory)
-        brain_stored = False
-        try:
-            client = await SomaBrainClient.get_async()
-            if client is None:
-                logger.debug("SomaBrain not configured; skipping primary memory store")
-            else:
-                await self._cb_somabrain.call(
-                    client.remember,
-                    payload={
-                        "role": "assistant",
-                        "content": assistant_response,
-                        "conversation_id": conversation_id,
-                        "model": model_id,
-                        "latency_ms": elapsed_ms,
-                    },
-                    tenant=tenant_id,
-                    namespace="chat_history",
-                )
-                brain_stored = True
-        except CircuitBreakerError:
-            logger.warning("SomaBrain circuit OPEN — falling back to SomaFractalMemory + PendingMemory")
-        except Exception as e:
-            logger.warning("SomaBrain store failed: %s — falling back to SomaFractalMemory + PendingMemory", e)
-
-        # SomaFractalMemory fallback (independent from Brain)
-        if not brain_stored:
-            await self._store_to_sfm(
-                content=assistant_response,
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                namespace="chat_history",
-                metadata={"role": "assistant", "model": model_id, "latency_ms": elapsed_ms},
-            )
-            # Queue to PendingMemory for later sync when Brain recovers
-            await self._queue_pending_memory(
-                tenant_id=tenant_id,
-                namespace="chat_history",
-                payload={
-                    "role": "assistant",
-                    "content": assistant_response,
-                    "conversation_id": conversation_id,
-                    "model": model_id,
-                    "latency_ms": elapsed_ms,
-                },
-            )
 
         # Store assistant trace (ALWAYS — Zero Data Loss)
         @sync_to_async
@@ -995,7 +1049,17 @@ class V3ChatOrchestrator:
 
         await _store_assistant()
 
-        # Background: episodic memory (Brain primary → SFM fallback)
+        # ONE memory write path: fan-out to both stores, per-store acks.
+        # PendingMemory is queued only for failed/timed-out acks.
+        await self._remember_via_gateway(
+            assistant_response,
+            tenant_id=tenant_id,
+            session_id=conversation_id or None,
+            namespace="chat_history",
+            salience=salience,
+        )
+
+        # Background: episodic memory (same seam)
         task = asyncio.create_task(
             self._store_episodic_bg(
                 tenant_id=tenant_id,
@@ -1004,6 +1068,7 @@ class V3ChatOrchestrator:
                 conversation_id=conversation_id,
                 model_id=model_id,
                 elapsed_ms=elapsed_ms,
+                salience=salience,
             )
         )
         task.add_done_callback(self._on_background_task_done("_store_episodic_bg"))
@@ -1054,43 +1119,17 @@ class V3ChatOrchestrator:
         conversation_id: str,
         model_id: str,
         elapsed_ms: int,
+        salience: float = 0.5,
     ) -> None:
-        """Non-blocking episodic memory storage.
-
-        Hierarchy: SomaBrain primary → SomaFractalMemory fallback.
-        SFM is independent from Brain and can queue for Brain sync internally.
-        """
+        """Non-blocking episodic memory storage via the MemoryGateway seam."""
         content = f"User: {user_message}\nAssistant: {assistant_response}"
-        brain_stored = False
-
-        try:
-            client = await SomaBrainClient.get_async()
-            if client is None:
-                logger.debug("SomaBrain not configured; skipping episodic memory store")
-            else:
-                await self._cb_somabrain.call(
-                    client.remember,
-                    payload={
-                        "content": content,
-                        "conversation_id": conversation_id,
-                        "model": model_id,
-                        "latency_ms": elapsed_ms,
-                    },
-                    tenant=tenant_id,
-                    namespace="episodic",
-                )
-                brain_stored = True
-        except Exception as e:
-            logger.debug("Episodic Brain store failed: %s", e)
-
-        if not brain_stored:
-            await self._store_to_sfm(
-                content=content,
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                namespace="episodic",
-                metadata={"model": model_id, "latency_ms": elapsed_ms},
-            )
+        await self._remember_via_gateway(
+            content,
+            tenant_id=tenant_id,
+            session_id=conversation_id or None,
+            namespace="episodic",
+            salience=salience,
+        )
 
     async def _load_neuromodulators(self, agent_id: str, user_context: dict) -> None:
         """Load neuromodulator baseline from Capsule."""

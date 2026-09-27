@@ -1,52 +1,33 @@
-"""
-Triad Service Adapters - Factory Functions for Brain and Memory Access.
+"""Triad memory store adapters — the ONLY two store dialects.
 
-This module provides the central factory functions that return the appropriate
-adapter based on deployment mode:
+These implement ``services.common.memory_contract`` against the real HTTP APIs:
 
-- AAAS mode  → DirectMemoryAdapter (in-process)
-- Standalone → HTTPMemoryAdapter (distributed)
+    SFMAdapter        -> SomaFractalMemory   POST /memories, /memories/search,
+                                             DELETE /memories/{coord}
+    SomaBrainAdapter  -> SomaBrain           POST /memory/remember, /memory/recall,
+                                             POST /memory/forget
 
-VIBE Compliance:
-- Rule 100: Centralized configuration via DeploymentMode
-- Rule 2: Real implementations only
+Nothing else may talk to a memory store. Callers go through
+``services.common.memory_gateway.FanoutMemoryGateway`` — never a factory,
+never a third adapter. (See ARCHITECTURE-INVARIANTS.md §0.)
+
+Deleted 2026-09-26 — do not resurrect:
+
+    memory_direct.py / memory_http.py   a parallel adapter stack with zero
+                                        importers, reached only through the
+                                        get_memory_service() factory that also
+                                        had zero importers
+    protocols/__init__.py               BrainServiceProtocol +
+                                        MemoryServiceProtocol, the 3rd/4th
+                                        declaration of one concept
 """
 
 from __future__ import annotations
 
-import logging
+from services.common.adapters.sfm_adapter import SFMAdapter
+from services.common.adapters.somabrain_adapter import SomaBrainAdapter
 
-from services.common.deployment_mode import DeploymentMode
-from services.common.protocols import MemoryServiceProtocol
-
-logger = logging.getLogger(__name__)
-
-
-def get_memory_service(namespace: str = "default") -> MemoryServiceProtocol:
-    """
-    Factory function to get the appropriate Memory service adapter.
-
-    Args:
-        namespace: Memory namespace for isolation
-
-    Returns:
-        - DirectMemoryAdapter if AAAS mode (in-process)
-        - HTTPMemoryAdapter if Standalone mode (distributed)
-    """
-    if DeploymentMode.is_aaas():
-        logger.info('Using DirectMemoryAdapter (AAAS in-process mode)')
-        from services.common.adapters.memory_direct import get_direct_memory_adapter
-
-        return get_direct_memory_adapter(namespace=namespace)
-    else:
-        logger.info('Using HTTPMemoryAdapter (distributed mode)')
-        from services.common.adapters.memory_http import get_http_memory_adapter
-
-        return get_http_memory_adapter(namespace=namespace)
-
-
-# Convenience exports
 __all__ = [
-    "get_memory_service",
-    "MemoryServiceProtocol",
+    "SFMAdapter",
+    "SomaBrainAdapter",
 ]

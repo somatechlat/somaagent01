@@ -72,6 +72,15 @@ spec:
       ports:
         - port: 50051
           protocol: TCP
+    # Allow Vault (secrets backend — model provider keys are read from here,
+    # never from environment variables)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: shared
+      ports:
+        - port: 8200
+          protocol: TCP
     # Allow SomaBrain
     - to:
         - namespaceSelector:

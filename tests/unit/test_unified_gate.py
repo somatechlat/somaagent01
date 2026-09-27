@@ -21,6 +21,12 @@ class TestUnifiedGate:
         capsule = MagicMock()
         capsule.id = "test-capsule-001"
         capsule.tenant_id = "test-tenant-001"
+        # UnifiedGate.check() prefers capsule._cached_body and falls back to
+        # capsule.body. MagicMock auto-vivifies any attribute into a truthy
+        # mock, so _cached_body MUST be pinned to None here — otherwise the
+        # fallback to the real dict below never runs and the scope check
+        # fails closed against a MagicMock instead of this list.
+        capsule._cached_body = None
         capsule.body = {
             "persona": {
                 "tools": {

@@ -32,9 +32,14 @@ services:
       - VAULT_ADDR=http://somaagent_vault:8200
       - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID:?VAULT_DEV_ROOT_TOKEN_ID is required}
       - SA01_JWT_ISSUER_STRICT=false
-      # GROQ_API_KEY and OPENAI_API_KEY come from env_file (.env) — never hardcode secrets (VIBE Rule 164)
+      # MODEL CREDENTIALS DO NOT LIVE IN ENV. The agent has full model
+      # administration: LLMModelConfig (Django admin) selects the model and
+      # UnifiedSecretManager.get_provider_key() reads provider keys from Vault
+      # at secret/agent/api_keys/{provider}_api_key (fail-closed). Never put
+      # GROQ_API_KEY / OPENAI_API_KEY in .env — seed them into Vault instead.
+      # env_file (.env) holds only non-secret deployment config.
       - AAAS_DEFAULT_CHAT_MODEL=groq/openai/gpt-oss-120b
-      - AAAS_DEFAULT_TENANT_ID=cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c
+      - AAAS_DEFAULT_TENANT_ID=${AAAS_DEFAULT_TENANT_ID:?set AAAS_DEFAULT_TENANT_ID}
     ports:
       - "20020:9000" # Agent API
     networks:

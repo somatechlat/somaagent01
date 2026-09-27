@@ -6,8 +6,10 @@ Use cases orchestrate business logic through injected domain ports.
 Use Cases:
     - ProcessMessageUseCase: Main orchestration for message processing
     - BuildContextUseCase: Build LLM context from history and memory
-    - StoreMemoryUseCase: Store conversation events to SomaBrain
     - GenerateResponseUseCase: Generate LLM responses with streaming
+
+Memory storage is NOT a use case here — it goes through the single seam at
+``services.common.memory_gateway.MemoryGateway``.
 """
 
 from .build_context import BuildContextInput, BuildContextOutput, BuildContextUseCase
@@ -24,7 +26,6 @@ from .process_message import (
     ProcessMessageOutput,
     ProcessMessageUseCase,
 )
-from .store_memory import StoreMemoryInput, StoreMemoryOutput, StoreMemoryUseCase
 
 __all__ = [
     # Process Message
@@ -37,10 +38,6 @@ __all__ = [
     "BuildContextUseCase",
     "BuildContextInput",
     "BuildContextOutput",
-    # Store Memory
-    "StoreMemoryUseCase",
-    "StoreMemoryInput",
-    "StoreMemoryOutput",
     # Generate Response
     "GenerateResponseUseCase",
     "GenerateResponseInput",
