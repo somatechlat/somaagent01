@@ -83,7 +83,10 @@ class SpiceDBClient:
         Args:
             host: SpiceDB host. Defaults to SPICEDB_HOST env var.
             port: SpiceDB port. Defaults to SPICEDB_PORT env var.
-            token: Pre-shared key. Defaults to SPICEDB_TOKEN env var.
+            token: Pre-shared key. Defaults to the Vault credential
+                ``spicedb_token`` (VIBE Rule 164) — never an environment
+                variable. A missing key means SpiceDB is disabled, not that it
+                authenticates with an empty string.
             insecure: Use insecure connection (dev only).
         """
         if host and port and token:
@@ -101,16 +104,30 @@ class SpiceDBClient:
                 self.token = token or getattr(settings, "spicedb_token", None)
                 self.insecure = insecure or getattr(settings, "spicedb_insecure", False)
             except Exception:
+                # SettingsRegistry is the single source of truth (Rule 100). If
+                # it cannot be built there is no legitimate second source for a
+                # credential — host and port are topology and may fall back to
+                # ENV, but the token must come from Vault or be absent.
                 self.host = host or os.environ.get("SPICEDB_HOST")
                 self.port = port or int(os.environ.get("SPICEDB_PORT", "50051"))
-                self.token = token or os.environ.get("SPICEDB_TOKEN")
+                try:
+                    from services.common.unified_secret_manager import get_secret_manager
+
+                    self.token = token or get_secret_manager().get_credential("spicedb_token")
+                except Exception:
+                    self.token = token
                 self.insecure = insecure or False
 
+        # Normalise to str with "" as the single "absent" marker. A missing
+        # Vault key arrives as None; that must become "no credential" and never
+        # be handed to grpc as a null token.
+        self.host = self.host if isinstance(self.host, str) else ""
+        self.port = int(self.port) if isinstance(self.port, int) else 50051
+        self.token = self.token if isinstance(self.token, str) else ""
+        self.insecure = bool(self.insecure)
+
         # If no config available, mark as disabled
-        if not self.host or not self.token:
-            self._disabled = True
-        else:
-            self._disabled = False
+        self._disabled = not (self.host and self.token)
 
         self._channel: Any = None
         self._stub: Any = None
@@ -131,7 +148,17 @@ class SpiceDBClient:
             if self.insecure:
                 self._channel = grpc.aio.insecure_channel(target)
             else:
-                # Use secure channel with token auth
+                # Use secure channel with token auth.
+                # Fail closed rather than hand grpc a None/empty token: a
+                # missing pre-shared key means we cannot authenticate, so we
+                # must not pretend to.
+                if not self.token:
+                    raise RuntimeError(
+                        "SpiceDB pre-shared key is missing — set the Vault "
+                        "credential 'spicedb_token' at "
+                        "secret/agent/credentials/spicedb_token. Refusing to "
+                        "open an authenticated channel without it."
+                    )
                 credentials = grpc.ssl_channel_credentials()
                 call_credentials = grpc.access_token_call_credentials(self.token)
                 composite_credentials = grpc.composite_channel_credentials(

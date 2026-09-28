@@ -6,17 +6,24 @@ from django.conf import settings
 
 from config.settings_registry import get_optional_env
 from services.common.api_key_store import ApiKeyStore
-from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.event_bus import (
+    KafkaEventBus,
+    KafkaSettings,
+    resolve_kafka_sasl_password,
+)
 from services.common.publisher import DurablePublisher
 
 # Compatibility attributes for test suite
 JWKS_CACHE: dict = {}
 APP_SETTINGS: dict = {}
-# VIBE SECURITY: JWT secret MUST be explicitly configured. No empty fallback.
-_jwt_secret = get_optional_env("SA01_JWT_SECRET", "")
-if not _jwt_secret:
-    _jwt_secret = None  # Will cause JWT operations to fail-fast if used without config
-JWT_SECRET = _jwt_secret
+# VIBE SECURITY (Rule 164): the JWT signing secret is a credential. It comes
+# from Vault at secret/agent/credentials/jwt_secret — never from the
+# environment. No empty fallback: a missing key means JWT operations fail fast
+# rather than run unsigned.
+from services.common.unified_secret_manager import get_secret_manager
+
+_jwt_secret = get_secret_manager().get_credential("jwt_secret")
+JWT_SECRET = _jwt_secret or None
 _TEMPORAL_CLIENT = None
 _TEMPORAL_LOCK = None
 
@@ -33,7 +40,7 @@ def get_bus() -> KafkaEventBus:
         security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM") or None,
         sasl_username=get_optional_env("KAFKA_SASL_USERNAME") or None,
-        sasl_password=get_optional_env("KAFKA_SASL_PASSWORD") or None,
+        sasl_password=resolve_kafka_sasl_password(),
     )
     return KafkaEventBus(kafka_settings)
 

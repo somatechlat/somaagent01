@@ -28,7 +28,11 @@ from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
 from services.common.degradation_monitor import degradation_monitor
 from services.common.dlq import DeadLetterQueue
-from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.event_bus import (
+    KafkaEventBus,
+    KafkaSettings,
+    resolve_kafka_sasl_password,
+)
 from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
@@ -67,7 +71,7 @@ class ConversationWorkerImpl:
             security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
             sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
             sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-            sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+            sasl_password=resolve_kafka_sasl_password(),
         )
         self.topics = {
             "in": os.environ.get("CONVERSATION_INBOUND", "conversation.inbound"),
@@ -107,9 +111,13 @@ class ConversationWorkerImpl:
             raise ValueError(
                 "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
             )
+        # VIBE Rule 164: the gateway internal token is a credential and comes
+        # from Vault, never from the environment.
+        from services.common.unified_secret_manager import get_secret_manager
+
         self._gen = GenerateResponseUseCase(
             gateway_base=gateway_base,
-            internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
+            internal_token=get_secret_manager().get_credential("gateway_internal_token") or "",
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
             default_model=os.environ.get("SA01_LLM_MODEL")

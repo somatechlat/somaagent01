@@ -194,9 +194,14 @@ def load_config() -> Config:
             "yes",
             "on",
         }
-    internal_token_env = os.getenv("SA01_AUTH_INTERNAL_TOKEN")
-    if internal_token_env:
-        default_cfg_dict["auth"]["internal_token"] = internal_token_env
+    # VIBE Rule 164: the auth internal token is a credential and comes from
+    # Vault, never from the environment. Absent means no internal token is
+    # configured — not that one is an empty string.
+    from services.common.unified_secret_manager import get_secret_manager
+
+    internal_token = get_secret_manager().get_credential("auth_internal_token")
+    if internal_token:
+        default_cfg_dict["auth"]["internal_token"] = internal_token
 
     # Service configuration from environment
     deployment_mode_env = os.getenv("SA01_DEPLOYMENT_MODE")

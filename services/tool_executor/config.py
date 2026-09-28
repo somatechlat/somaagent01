@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 
-from services.common.event_bus import KafkaSettings
+from services.common.event_bus import KafkaSettings, resolve_kafka_sasl_password
 
 if TYPE_CHECKING:
     from admin.core.config.models import Config
@@ -32,7 +32,7 @@ def kafka_settings() -> KafkaSettings:
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-        sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+        sasl_password=resolve_kafka_sasl_password(),
     )
 
 

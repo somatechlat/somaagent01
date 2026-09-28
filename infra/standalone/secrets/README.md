@@ -31,6 +31,16 @@ secrets/
   keycloak_admin_password
   google_client_secret
 
+  # service credentials — optional; each fail-closes its own feature
+  jwt_secret                       # JWT session signing
+  auth_internal_token              # internal service auth
+  gateway_internal_token           # gateway internal auth
+  spicedb_token                    # SpiceDB pre-shared key
+  kafka_sasl_password              # Kafka SASL (PLAINTEXT/mTLS need none)
+  wa_cloud_api_token               # WhatsApp Cloud API
+  wa_cloud_webhook_verify_token    # WhatsApp webhook handshake
+  wa_cloud_app_secret              # WhatsApp webhook signature
+
   # → secret/agent/api_keys/<provider>_api_key  read by get_provider_key()
   groq_api_key            # optional — LLM provider key, one per provider
 ```

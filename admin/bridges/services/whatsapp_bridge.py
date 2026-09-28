@@ -303,7 +303,11 @@ async def test_connection(channel_id: str) -> BridgeControlResult:
         )
 
     if mode == "cloud":
-        token = config.get("api_token") or os.environ.get("WA_CLOUD_API_TOKEN", "")
+        # VIBE Rule 164: channel config may carry the token; otherwise it comes
+        # from Vault. Never from the environment.
+        from services.common.unified_secret_manager import get_secret_manager
+
+        token = config.get("api_token") or get_secret_manager().get_credential("wa_cloud_api_token") or ""
         phone_number_id = config.get("phone_number_id") or os.environ.get(
             "WA_CLOUD_PHONE_NUMBER_ID", ""
         )
@@ -386,7 +390,11 @@ def verify_subscription(
 
     Returns the hub.challenge on success, None on failure (fail-closed).
     """
-    expected = verify_token or os.environ.get("WA_CLOUD_WEBHOOK_VERIFY_TOKEN", "")
+    # VIBE Rule 164: the webhook verify token is a credential and comes from
+    # Vault, never from the environment.
+    from services.common.unified_secret_manager import get_secret_manager
+
+    expected = verify_token or get_secret_manager().get_credential("wa_cloud_webhook_verify_token") or ""
     from services.bridge_worker.drivers.whatsapp import verify_webhook_challenge
 
     return verify_webhook_challenge(mode, token, challenge, expected)
@@ -405,7 +413,11 @@ def handle_cloud_webhook(
     bridge worker ``CloudApiDriver.poll_inbound`` can pick them up.
     Optionally validates X-Hub-Signature-256 when WA_CLOUD_APP_SECRET is set.
     """
-    app_secret = os.environ.get("WA_CLOUD_APP_SECRET", "")
+    # VIBE Rule 164: the app secret is a credential and comes from Vault, never
+    # from the environment.
+    from services.common.unified_secret_manager import get_secret_manager
+
+    app_secret = get_secret_manager().get_credential("wa_cloud_app_secret") or ""
     if app_secret:
         from services.bridge_worker.drivers.whatsapp import verify_cloud_signature
 
@@ -448,7 +460,10 @@ def handle_cloud_webhook(
                     sender_id=from_m,
                     sender_number=from_m,
                     sender_name=(
-                        str(contact.get("profile") or {}).get("name", "")
+                        # Parentheses matter: converting the dict before the
+                        # lookup raises AttributeError, because a str has no
+                        # get. Convert the resolved name instead.
+                        str((contact.get("profile") or {}).get("name", ""))
                         if isinstance(contact, dict)
                         else ""
                     ),

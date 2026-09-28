@@ -16,7 +16,11 @@ import django
 django.setup()
 
 from services.common.delegation_store import DelegationStore
-from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.event_bus import (
+    KafkaEventBus,
+    KafkaSettings,
+    resolve_kafka_sasl_password,
+)
 from services.common.schema_validator import validate_event
 from services.common.tracing import setup_tracing
 
@@ -42,7 +46,7 @@ class DelegationWorker:
                 security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
                 sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-                sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+                sasl_password=resolve_kafka_sasl_password(),
             )
         )
         self.store = DelegationStore()

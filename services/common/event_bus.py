@@ -26,6 +26,26 @@ LOGGER = logging.getLogger(__name__)
 TRACER = trace.get_tracer(__name__)
 
 
+def resolve_kafka_sasl_password() -> Optional[str]:
+    """The Kafka SASL password, from Vault — never from the environment.
+
+    VIBE Rule 164: a SASL password is a credential. The SASL mechanism and
+    username are topology and belong in ENV; the password does not.
+
+    Returns None when there is no such credential, which is the correct value
+    for a broker using PLAINTEXT or mTLS rather than SASL.
+    """
+    try:
+        from services.common.unified_secret_manager import get_secret_manager
+
+        return get_secret_manager().get_credential("kafka_sasl_password")
+    except Exception:
+        # A broker that cannot reach Vault has no password to offer. Callers
+        # treat None as "PLAINTEXT / mTLS" and the connection fails visibly if
+        # SASL was actually required — it never silently falls back to ENV.
+        return None
+
+
 @dataclass
 class KafkaSettings:
     """Kafkasettings class implementation."""
@@ -38,7 +58,7 @@ class KafkaSettings:
 
     @classmethod
     def from_env(cls) -> "KafkaSettings":
-        """Load from centralized SettingsRegistry with env fallback."""
+        """Load from centralized SettingsRegistry with a topology fallback."""
         try:
             from config.settings_registry import SettingsRegistry
 
@@ -51,12 +71,14 @@ class KafkaSettings:
                 sasl_password=settings.kafka_sasl_password or None,
             )
         except Exception:
+            # Topology may fall back to ENV. The password may not — see
+            # resolve_kafka_sasl_password().
             return cls(
                 bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
                 security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
                 sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-                sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+                sasl_password=resolve_kafka_sasl_password(),
             )
 
 

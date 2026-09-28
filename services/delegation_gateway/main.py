@@ -39,7 +39,11 @@ from pydantic import BaseModel
 
 from admin.common.exceptions import NotFoundError
 from services.common.delegation_store import DelegationStore
-from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.event_bus import (
+    KafkaEventBus,
+    KafkaSettings,
+    resolve_kafka_sasl_password,
+)
 from services.common.publisher import DurablePublisher
 from services.common.tracing import setup_tracing
 
@@ -99,7 +103,7 @@ def get_bus() -> KafkaEventBus:
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-        sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+        sasl_password=resolve_kafka_sasl_password(),
     )
     return KafkaEventBus(kafka_settings)
 

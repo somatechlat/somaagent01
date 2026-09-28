@@ -18,6 +18,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional, Type, TypeVar
 
+from services.common.unified_secret_manager import get_secret_manager
+
 LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T", bound="BaseSettings")
@@ -88,7 +90,9 @@ class BaseSettings(ABC):
     # SpiceDB
     spicedb_host: str = field(default="")
     spicedb_port: int = field(default=50051)
-    spicedb_token: str = field(default="")
+    # Absent (None) is meaningful: no pre-shared key means SpiceDB is disabled
+    # for this deployment, not that it authenticates with an empty string.
+    spicedb_token: Optional[str] = field(default=None)
     spicedb_insecure: bool = field(default=False)
 
     # Vault
@@ -106,7 +110,9 @@ class BaseSettings(ABC):
     kafka_security_protocol: str = field(default="PLAINTEXT")
     kafka_sasl_mechanism: str = field(default="")
     kafka_sasl_username: str = field(default="")
-    kafka_sasl_password: str = field(default="")
+    # Absent (None) means the broker uses PLAINTEXT / mTLS — no SASL password
+    # exists to hold. A present value is a credential and comes from Vault.
+    kafka_sasl_password: Optional[str] = field(default=None)
     publish_kafka_timeout_seconds: float = field(default=2.0)
 
     # Requeue store
@@ -185,7 +191,10 @@ class StandaloneSettings(BaseSettings):
             # SpiceDB
             spicedb_host=get_optional_env("SPICEDB_HOST", "localhost"),
             spicedb_port=int(get_optional_env("SPICEDB_PORT", "50051")),
-            spicedb_token=get_optional_env("SPICEDB_TOKEN", "") or None,
+            # VIBE Rule 164: the SpiceDB pre-shared key is a credential. It comes
+            # from Vault, never from the environment. Host and port are topology
+            # and belong in ENV; the key does not.
+            spicedb_token=get_secret_manager().get_credential("spicedb_token"),
             spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
             # Vault
             vault_addr=get_required_env(
@@ -202,7 +211,9 @@ class StandaloneSettings(BaseSettings):
             kafka_security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
             kafka_sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM", ""),
             kafka_sasl_username=get_optional_env("KAFKA_SASL_USERNAME", ""),
-            kafka_sasl_password=get_optional_env("KAFKA_SASL_PASSWORD", "") or None,
+            # VIBE Rule 164: the SASL password is a credential and comes from
+            # Vault. The SASL mechanism/username stay in ENV — they are topology.
+            kafka_sasl_password=get_secret_manager().get_credential("kafka_sasl_password"),
             publish_kafka_timeout_seconds=float(
                 get_optional_env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
             ),
@@ -277,7 +288,10 @@ class AAASSettings(BaseSettings):
             # SpiceDB
             spicedb_host=get_optional_env("SPICEDB_HOST", "localhost"),
             spicedb_port=int(get_optional_env("SPICEDB_PORT", "50051")),
-            spicedb_token=get_optional_env("SPICEDB_TOKEN", "") or None,
+            # VIBE Rule 164: the SpiceDB pre-shared key is a credential. It comes
+            # from Vault, never from the environment. Host and port are topology
+            # and belong in ENV; the key does not.
+            spicedb_token=get_secret_manager().get_credential("spicedb_token"),
             spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
             # Vault
             vault_addr=get_required_env(
@@ -306,7 +320,9 @@ class AAASSettings(BaseSettings):
             kafka_security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
             kafka_sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM", ""),
             kafka_sasl_username=get_optional_env("KAFKA_SASL_USERNAME", ""),
-            kafka_sasl_password=get_optional_env("KAFKA_SASL_PASSWORD", "") or None,
+            # VIBE Rule 164: the SASL password is a credential and comes from
+            # Vault. The SASL mechanism/username stay in ENV — they are topology.
+            kafka_sasl_password=get_secret_manager().get_credential("kafka_sasl_password"),
             publish_kafka_timeout_seconds=float(
                 get_optional_env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
             ),

@@ -407,7 +407,11 @@ class IngestDocumentTool(BaseTool):
                 get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway")
             )
         base = base.rstrip("/")
-        token = os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN")
+        # VIBE Rule 164: the gateway internal token is a credential and comes
+        # from Vault, never from the environment.
+        from services.common.unified_secret_manager import get_secret_manager
+
+        token = get_secret_manager().get_credential("gateway_internal_token")
         if not token:
             from admin.common.messages import ErrorCode, get_message
 

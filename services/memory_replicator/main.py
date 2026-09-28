@@ -23,7 +23,11 @@ from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from services.common.dlq import DeadLetterQueue
 from services.common.dlq_store import DLQStore
-from services.common.event_bus import KafkaEventBus, KafkaSettings
+from services.common.event_bus import (
+    KafkaEventBus,
+    KafkaSettings,
+    resolve_kafka_sasl_password,
+)
 from services.common.tracing import setup_tracing
 from services.memory_replicator.store import MemoryReplicaStore
 
@@ -75,7 +79,7 @@ def _kafka_settings() -> KafkaSettings:
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),
-        sasl_password=os.environ.get("KAFKA_SASL_PASSWORD"),
+        sasl_password=resolve_kafka_sasl_password(),
     )
 
 

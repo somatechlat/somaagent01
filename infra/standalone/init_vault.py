@@ -75,10 +75,24 @@ REQUIRED_CREDENTIALS = (
 # Legitimately absent in a standalone stack with no brain, no external LLM
 # proxy and no Google OAuth. Missing is not fatal; the app fails closed on the
 # specific feature that needs them.
+#
+# The service-credential group below is the same deal: each names a feature
+# that is off or unused in a bare standalone stack (SpiceDB authz, Kafka SASL,
+# JWT sessions, WhatsApp Cloud). A missing key disables or fail-closes exactly
+# that feature — it never defaults to an empty string.
 OPTIONAL_CREDENTIALS = (
     "somabrain_api_key",
     "llm_api_key",
     "google_client_secret",
+    # Service credentials (VIBE Rule 164) — were in ENV before, now Vault-only.
+    "jwt_secret",
+    "auth_internal_token",
+    "gateway_internal_token",
+    "spicedb_token",
+    "kafka_sasl_password",
+    "wa_cloud_api_token",
+    "wa_cloud_webhook_verify_token",
+    "wa_cloud_app_secret",
 )
 
 
