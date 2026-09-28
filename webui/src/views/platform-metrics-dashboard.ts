@@ -358,17 +358,12 @@ export class PlatformMetricsDashboard extends LitElement {
     if (this.pollInterval) clearInterval(this.pollInterval);
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   private async fetchMetrics() {
     this.error = null;
     try {
       const [metricsRes, slaRes] = await Promise.all([
-        fetch('/api/v2/core/observability/snapshot', { headers: this.getAuthHeaders() }),
-        fetch('/api/v2/core/observability/sla', { headers: this.getAuthHeaders() }),
+        fetch('/api/v2/core/observability/snapshot', { credentials: 'include' }),
+        fetch('/api/v2/core/observability/sla', { credentials: 'include' }),
       ]);
 
       if (metricsRes.ok) {

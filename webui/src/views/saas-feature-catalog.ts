@@ -251,16 +251,11 @@ export class SaasFeatureCatalog extends LitElement {
         this.loadFeatures();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadFeatures() {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch('/api/v2/saas/features', { headers: this.getAuthHeaders() });
+            const res = await fetch('/api/v2/saas/features', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 this.features = data.features || [];
@@ -280,7 +275,7 @@ export class SaasFeatureCatalog extends LitElement {
         try {
             const res = await fetch(`/api/v2/saas/features/${feature.id}`, {
                 method: 'PATCH',
-                headers: this.getAuthHeaders(),
+                credentials: 'include',
                 body: JSON.stringify({ is_enabled: !feature.is_enabled }),
             });
             if (res.ok) {

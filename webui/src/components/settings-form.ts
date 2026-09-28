@@ -426,18 +426,13 @@ export class SettingsForm extends LitElement {
       this.permissions.includes('*');
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   private async loadData() {
     this.loading = true;
 
     // Load schema (from URL or builtin)
     if (this.schemaUrl) {
       try {
-        const res = await fetch(this.schemaUrl, { headers: this.getAuthHeaders() });
+        const res = await fetch(this.schemaUrl, { credentials: 'include' });
         if (res.ok) {
           this.schema = await res.json();
         }
@@ -454,7 +449,7 @@ export class SettingsForm extends LitElement {
     // Load values
     const effectiveValuesUrl = this.valuesUrl || `/api/v2/settings/${this.entity}`;
     try {
-      const res = await fetch(effectiveValuesUrl, { headers: this.getAuthHeaders() });
+      const res = await fetch(effectiveValuesUrl, { credentials: 'include' });
       if (res.ok) {
         this.values = await res.json();
       }
@@ -492,7 +487,8 @@ export class SettingsForm extends LitElement {
     try {
       const res = await fetch(effectiveValuesUrl, {
         method: 'PUT',
-        headers: this.getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(this.values),
       });
 

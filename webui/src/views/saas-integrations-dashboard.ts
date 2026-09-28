@@ -207,16 +207,11 @@ export class SaasIntegrationsDashboard extends LitElement {
         this.loadIntegrations();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadIntegrations() {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch('/api/v2/saas/integrations', { headers: this.getAuthHeaders() });
+            const res = await fetch('/api/v2/saas/integrations', { credentials: 'include' });
             if (res.ok) {
                 this.integrations = await res.json();
             } else {
@@ -236,7 +231,7 @@ export class SaasIntegrationsDashboard extends LitElement {
         try {
             const res = await fetch(`/api/v2/saas/integrations/${provider}/test`, {
                 method: 'POST',
-                headers: this.getAuthHeaders(),
+                credentials: 'include',
             });
             const result: TestResult = await res.json();
             this.showToast(result.success ? `${result.message} (${result.latency_ms}ms)` : result.message, result.success ? 'success' : 'error');

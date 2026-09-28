@@ -326,16 +326,11 @@ export class SaasUsageAnalytics extends LitElement {
         this.loadUsageData();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadUsageData() {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch(`/api/v2/saas/billing/usage?period=${this.period}`, { headers: this.getAuthHeaders() });
+            const res = await fetch(`/api/v2/saas/billing/usage?period=${this.period}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 this.usage = data.current || null;

@@ -324,14 +324,13 @@ export class SaasMarketplace extends LitElement {
         this.loading = true;
         this.error = null;
         try {
-            const token = localStorage.getItem('saas_auth_token');
             const params = new URLSearchParams();
             if (this.activeCategory !== 'all') params.set('category', this.activeCategory);
             if (this.searchQuery) params.set('search', this.searchQuery);
             params.set('sort', this.sortBy);
 
             const res = await fetch(`/api/v2/platform/marketplace/templates?${params}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include'
             });
 
             if (res.ok) {
