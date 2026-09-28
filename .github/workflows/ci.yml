@@ -69,7 +69,7 @@ jobs:
       - name: Run unit tests
         env:
           SA01_DEPLOYMENT_MODE: STANDALONE
-          SA01_DB_DSN: postgresql://***REMOVED***@localhost:5432/test
+          SA01_DB_DSN: postgresql://<user>:<password>@localhost:5432/test
           SA01_REDIS_URL: redis://localhost:6379/0
           SA01_KEYCLOAK_URL: http://localhost:20880
           SECRET_KEY: ci-test-secret-key-not-for-production

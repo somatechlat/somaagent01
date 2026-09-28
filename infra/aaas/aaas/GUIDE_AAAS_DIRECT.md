@@ -46,7 +46,7 @@ SAGENTA_HOST=0.0.0.0
 SAGENTA_PORT=9000
 
 # --- SHARED INFRASTRUCTURE (Docker Internal) ---
-SA01_DB_DSN=postgresql://***REMOVED***@somastack_postgres:5432/soma
+SA01_DB_DSN=postgresql://<user>:<password>@somastack_postgres:5432/soma
 SA01_REDIS_URL=redis://somastack_redis:6379/0
 SA01_KAFKA_BOOTSTRAP_SERVERS=somastack_kafka:9092
 ```

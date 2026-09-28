@@ -28,12 +28,14 @@ ls -la .env
 
 - [ ] **Step 2: Create `.env` if missing**
 
-If `.env` does not exist, create it with safe local values:
+If `.env` does not exist, create it with **system configuration only**. Secrets are
+not written to `.env` — they are read from Vault at runtime
+(`secret/agent/credentials/*`, `secret/agent/api_keys/*`):
 ```bash
 cat > .env << 'EOF'
-POSTGRES_PASSWORD=localdev123
-VAULT_DEV_ROOT_TOKEN_ID=***REMOVED***
-SECRET_KEY=***REMOVED***
+# POSTGRES_PASSWORD -> secret/agent/credentials/postgres_password
+# SECRET_KEY        -> secret/agent/credentials/secret_key
+# VAULT token       -> injected at runtime, never stored in this file
 EOF
 ```
 

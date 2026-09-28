@@ -63,7 +63,7 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 
 | Variable | Description | Required | Default |
 | :--- | :--- | :--- | :--- |
-| `SA01_DB_DSN` | Postgres Connection String | Yes | `postgresql://***REMOVED***@host:5432/db` |
+| `SA01_DB_DSN` | Postgres Connection String | Yes | `postgresql://<user>:<password>@host:5432/db` |
 | `SA01_REDIS_URL` | Redis URL | Yes | `redis://host:6379/0` |
 | `SA01_DB_HOST` | PostgreSQL host | No | `postgres` |
 | `SA01_DB_PORT` | PostgreSQL port | No | `5432` |

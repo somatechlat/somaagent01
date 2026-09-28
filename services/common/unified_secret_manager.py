@@ -23,8 +23,10 @@ from services.common.vault_secrets import (
 LOGGER = logging.getLogger(__name__)
 
 # Vault path configuration
-VAULT_API_KEYS_PATH = ***REMOVED***
-VAULT_CREDENTIALS_PATH = ***REMOVED***
+VAULT_API_KEYS_PATH = "agent/api_keys"
+VAULT_CREDENTIALS_PATH = "agent/credentials"
+
+
 class UnifiedSecretManager:
     """Vault-based secret storage."""
 

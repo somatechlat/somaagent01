@@ -35,7 +35,7 @@ In Standalone mode:
 
 ```bash
 SA01_DEPLOYMENT_MODE=STANDALONE
-SA01_DB_DSN=postgresql://***REMOVED***@localhost:5432/somaagent
+SA01_DB_DSN=postgresql://<user>:<password>@localhost:5432/somaagent
 SA01_REDIS_URL=redis://localhost:6379/0
 SA01_SOMA_BASE_URL=http://localhost:30101
 SA01_KEYCLOAK_URL=http://localhost:20880
@@ -53,7 +53,7 @@ In AAAS mode:
 
 ```bash
 SA01_DEPLOYMENT_MODE=AAAS
-SA01_DB_DSN=postgresql://***REMOVED***@localhost:5432/somaagent
+SA01_DB_DSN=postgresql://<user>:<password>@localhost:5432/somaagent
 SA01_REDIS_URL=redis://localhost:6379/0
 SA01_KAFKA_BOOTSTRAP_SERVERS=localhost:20092
 SA01_SOMA_BASE_URL=http://localhost:30101

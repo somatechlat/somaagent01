@@ -248,7 +248,7 @@ docker compose -f docker-compose.aaas.yml down -v
 **SomaAgent01 (Gateway):**
 ```bash
 SA01_DEPLOYMENT_MODE=AAAS
-SA01_DB_DSN=postgresql://***REMOVED***@postgres:5432/somaagent
+SA01_DB_DSN=postgresql://<user>:<password>@postgres:5432/somaagent
 SA01_REDIS_URL=redis://redis:6379/0
 SA01_KEYCLOAK_URL=http://keycloak:8080
 SA01_SOMA_BASE_URL=http://somabrain:9696
@@ -262,7 +262,7 @@ SECRET_KEY=<generated>
 **SomaBrain:**
 ```bash
 SOMABRAIN_MODE=production
-SOMABRAIN_POSTGRES_DSN=postgresql://***REMOVED***@postgres:5432/somabrain
+SOMABRAIN_POSTGRES_DSN=postgresql://<user>:<password>@postgres:5432/somabrain
 SOMABRAIN_REDIS_URL=redis://redis:6379/1
 SOMABRAIN_KAFKA_URL=kafka:9092
 SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://somafractalmemory:10101

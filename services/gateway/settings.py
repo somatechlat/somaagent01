@@ -135,7 +135,7 @@ TEMPLATES = [
 # Parse database DSN from environment (REQUIRED - no hardcoded credentials)
 db_dsn = get_required_env(
     "SA01_DB_DSN",
-    "PostgreSQL database connection (format: postgresql://***REMOVED***@host:port/dbname)",
+    "PostgreSQL database connection (format: postgresql://<user>:<password>@host:port/dbname)",
 )
 
 # Parse DSN components for Django DATABASE config
@@ -144,7 +144,7 @@ db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", 
 if not db_match:
     raise ValueError(
         f"❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
-        f"Expected format: postgresql://***REMOVED***@host:port/dbname. "
+        f"Expected format: postgresql://<user>:<password>@host:port/dbname. "
         f"Received: {db_dsn[:50]}..."
     )
 

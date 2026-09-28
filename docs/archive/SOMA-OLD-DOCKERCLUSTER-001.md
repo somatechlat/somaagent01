@@ -249,14 +249,14 @@ DJANGO_DEBUG=false
 VAULT_ADDR=http://somaagent_vault:8200
 VAULT_MOUNT=secret
 VAULT_PATH_PREFIX=somaagent
-VAULT_DEV_ROOT_TOKEN_ID=***REMOVED***
+# VAULT_DEV_ROOT_TOKEN_ID is NEVER set here — injected at runtime by the deployer.
 # Database
 POSTGRES_HOST=somaagent_postgres
 POSTGRES_PORT=5432
 POSTGRES_DB=somaagent
 POSTGRES_USER=somaagent
-POSTGRES_PASSWORD=***REMOVED***
-SA01_DB_DSN=postgresql://***REMOVED***@somaagent_postgres:5432/somaagent
+# POSTGRES_PASSWORD comes from Vault: secret/agent/credentials/postgres_password
+# SA01_DB_DSN is built at runtime from the topology above — no DSNs in ENV.
 
 # Redis
 REDIS_HOST=somaagent_redis
@@ -267,7 +267,7 @@ SA01_REDIS_URL=redis://somaagent_redis:6379/0
 # Keycloak
 KEYCLOAK_URL=http://somaagent_keycloak:8080
 KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=***REMOVED***
+# KEYCLOAK_ADMIN_PASSWORD comes from Vault: secret/agent/credentials/keycloak_admin_password
 KEYCLOAK_REALM=somaagent
 KEYCLOAK_CLIENT_ID=somaagent-api
 SA01_KEYCLOAK_URL=http://somaagent_keycloak:8080
@@ -279,7 +279,7 @@ SA01_ALLOWED_HOSTS=*
 
 # LLM (standalone mode: set a provider key OR a local base URL)
 SA01_LLM_MODEL=gpt-4o-mini
-OPENAI_API_KEY=***REMOVED***
+# Provider keys come from Vault: secret/agent/api_keys/{provider}_api_key
 # SA01_LLM_BASE_URL=http://host.docker.internal:11434/v1  # for local Ollama
 
 # Worker dependencies

@@ -9,9 +9,11 @@ from dotenv import load_dotenv as _load_dotenv
 from .files import get_abs_path
 
 KEY_AUTH_LOGIN = "AUTH_LOGIN"
-KEY_AUTH_PASSWORD = ***REMOVED***
-KEY_RFC_PASSWORD = ***REMOVED***
-KEY_ROOT_PASSWORD = ***REMOVED***
+KEY_AUTH_PASSWORD = "AUTH_PASSWORD"
+KEY_RFC_PASSWORD = "RFC_PASSWORD"
+KEY_ROOT_PASSWORD = "ROOT_PASSWORD"
+
+
 def load_dotenv():
     """Execute load dotenv."""
 

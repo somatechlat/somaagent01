@@ -26,7 +26,7 @@ if not settings.configured:
     if not db_dsn:
         raise ValueError(
             "❌ Missing required environment variable: SA01_DB_DSN\n"
-            "   Format: postgresql://***REMOVED***@host:port/dbname\n"
+            "   Format: postgresql://<user>:<password>@host:port/dbname\n"
             "   Required for: PostgreSQL database connection"
         )
 
@@ -35,7 +35,7 @@ if not settings.configured:
     if not db_match:
         raise ValueError(
             f"❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
-            f"Expected format: postgresql://***REMOVED***@host:port/dbname. "
+            f"Expected format: postgresql://<user>:<password>@host:port/dbname. "
             f"Received: {db_dsn[:50]}..."
         )
 

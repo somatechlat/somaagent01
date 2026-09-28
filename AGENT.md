@@ -549,7 +549,7 @@ docker compose exec somaagent_standalone python manage.py migrate
 POSTGRES_USER=somaagent
 POSTGRES_PASSWORD=<required>
 POSTGRES_DB=somaagent
-SA01_DB_DSN=postgresql://***REMOVED***@somaagent_postgres:5432/somaagent
+SA01_DB_DSN=postgresql://<user>:<password>@somaagent_postgres:5432/somaagent
 
 # Redis
 SA01_REDIS_URL=redis://somaagent_redis:6379/0
