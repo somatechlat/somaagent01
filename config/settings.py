@@ -177,6 +177,8 @@ DATABASES = {
 
 USE_TZ = True
 TIME_ZONE = "UTC"
+# Operator-configurable locale (SOMA-SETTINGS-MODEL-001.md D-12).
+LANGUAGE_CODE = os.environ.get("SA01_LANGUAGE_CODE", "en-us")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 ROOT_URLCONF = "services.gateway.urls"
@@ -208,9 +210,15 @@ TEMPLATES = [
     },
 ]
 
+# Channel-layer transport. This module is authoritative for standalone/dev
+# deployments; services/gateway/settings.py is authoritative for gateway/
+# production deployments. Both read SA01_CHANNEL_LAYER_BACKEND so an operator
+# can move a deployment onto Redis without editing code (D-14).
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        "BACKEND": os.environ.get(
+            "SA01_CHANNEL_LAYER_BACKEND", "channels.layers.InMemoryChannelLayer"
+        ),
     },
 }
 

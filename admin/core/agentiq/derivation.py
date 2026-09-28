@@ -90,21 +90,33 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
 
 
 def derive_from_knobs(
-    intelligence_level: int = 5,
-    autonomy_level: int = 5,
-    resource_budget: float = 0.10,
+    intelligence_level: int | None = None,
+    autonomy_level: int | None = None,
+    resource_budget: float | None = None,
 ) -> DerivedSettings:
     """
-    Derive settings from raw knob values (for testing).
+    Derive settings from raw knob values.
+
+    Knob defaults resolve through settings (Capsule -> AgentSetting -> Django
+    -> schema default) so they are savable agent behaviour, not magic numbers.
 
     Args:
-        intelligence_level: 1-10
-        autonomy_level: 1-10
-        resource_budget: $/turn
+        intelligence_level: 1-10 (default from AGENTIQ_INTELLIGENCE_LEVEL)
+        autonomy_level: 1-10 (default from AGENTIQ_AUTONOMY_LEVEL)
+        resource_budget: $/turn (default from AGENTIQ_RESOURCE_BUDGET)
 
     Returns:
         DerivedSettings
     """
+    from admin.core.helpers.capsule_settings import resolve_setting
+
+    if intelligence_level is None:
+        intelligence_level = int(resolve_setting("AGENTIQ_INTELLIGENCE_LEVEL", default=5))
+    if autonomy_level is None:
+        autonomy_level = int(resolve_setting("AGENTIQ_AUTONOMY_LEVEL", default=5))
+    if resource_budget is None:
+        resource_budget = float(resolve_setting("AGENTIQ_RESOURCE_BUDGET", default=0.10))
+
     intel = lookup_intelligence(intelligence_level)
     auto = lookup_autonomy(autonomy_level)
     resource = lookup_resource(resource_budget)

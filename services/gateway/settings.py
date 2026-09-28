@@ -167,7 +167,8 @@ DATABASES = {
 }
 
 # Internationalization
-LANGUAGE_CODE = "en-us"
+# Operator-configurable locale (SOMA-SETTINGS-MODEL-001.md D-12).
+LANGUAGE_CODE = os.environ.get("SA01_LANGUAGE_CODE", "en-us")
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
@@ -370,9 +371,15 @@ CACHES = {
 # DJANGO CHANNELS (Redis-backed)
 # =============================================================================
 
+# Channel-layer transport. This module is authoritative for gateway/production
+# deployments; config/settings.py is authoritative for standalone/dev
+# deployments. Both read SA01_CHANNEL_LAYER_BACKEND so an operator can move a
+# deployment onto Redis without editing code (D-14).
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "BACKEND": os.environ.get(
+            "SA01_CHANNEL_LAYER_BACKEND", "channels_redis.core.RedisChannelLayer"
+        ),
         "CONFIG": {"hosts": [REDIS_URL]},
     }
 }

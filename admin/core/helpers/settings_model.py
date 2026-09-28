@@ -40,8 +40,12 @@ class SettingsModel(BaseModel):
     chat_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", ""))
     chat_model_api_base: str = ""
     chat_model_kwargs: Dict[str, Any] = {}
-    chat_model_ctx_length: int = 100000
-    chat_model_ctx_history: float = 0.7
+    chat_model_ctx_length: int = Field(
+        default_factory=lambda: int(_dj("DEFAULT_CHAT_CTX_LENGTH", 100000))
+    )
+    chat_model_ctx_history: float = Field(
+        default_factory=lambda: float(_dj("DEFAULT_CHAT_CTX_HISTORY", 0.7))
+    )
     chat_model_vision: bool = True
     chat_model_rl_requests: int = 0
     chat_model_rl_input: int = 0
@@ -52,8 +56,12 @@ class SettingsModel(BaseModel):
     )
     util_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_NAME", ""))
     util_model_api_base: str = ""
-    util_model_ctx_length: int = 100000
-    util_model_ctx_input: float = 0.7
+    util_model_ctx_length: int = Field(
+        default_factory=lambda: int(_dj("DEFAULT_UTIL_CTX_LENGTH", 100000))
+    )
+    util_model_ctx_input: float = Field(
+        default_factory=lambda: float(_dj("DEFAULT_UTIL_CTX_INPUT", 0.7))
+    )
     util_model_kwargs: Dict[str, Any] = {}
     util_model_rl_requests: int = 0
     util_model_rl_input: int = 0
@@ -83,10 +91,12 @@ class SettingsModel(BaseModel):
     browser_http_headers: Dict[str, str] = {}
 
     # Memory / recall controls — Django settings MEM_* is the authority.
-    memory_recall_enabled: bool = True
-    memory_recall_delayed: bool = False
+    memory_recall_enabled: bool = Field(default_factory=lambda: _dj("MEM_RECALL_ENABLED", True))
+    memory_recall_delayed: bool = Field(default_factory=lambda: _dj("MEM_RECALL_DELAYED", False))
     memory_recall_interval: int = Field(default_factory=lambda: int(_dj("MEM_HISTORY_LIMIT", 20)))
-    memory_recall_history_len: int = 10000
+    memory_recall_history_len: int = Field(
+        default_factory=lambda: int(_dj("MEM_RECALL_HISTORY_LEN", 10000))
+    )
     memory_recall_memories_max_search: int = Field(
         default_factory=lambda: int(_dj("MEM_RECALL_TOP_K", 8))
     )
@@ -99,12 +109,22 @@ class SettingsModel(BaseModel):
     memory_recall_solutions_max_result: int = Field(
         default_factory=lambda: int(_dj("MEM_PROXIMITY_TOP_K", 10))
     )
-    memory_recall_similarity_threshold: float = 0.7
-    memory_recall_query_prep: bool = True
-    memory_recall_post_filter: bool = True
-    memory_memorize_enabled: bool = True
-    memory_memorize_consolidation: bool = True
-    memory_memorize_replace_threshold: float = 0.9
+    memory_recall_similarity_threshold: float = Field(
+        default_factory=lambda: float(_dj("MEM_SIMILARITY_THRESHOLD", 0.7))
+    )
+    memory_recall_query_prep: bool = Field(
+        default_factory=lambda: _dj("MEM_RECALL_QUERY_PREP", True)
+    )
+    memory_recall_post_filter: bool = Field(
+        default_factory=lambda: _dj("MEM_RECALL_POST_FILTER", True)
+    )
+    memory_memorize_enabled: bool = Field(default_factory=lambda: _dj("MEM_MEMORIZE_ENABLED", True))
+    memory_memorize_consolidation: bool = Field(
+        default_factory=lambda: _dj("MEM_MEMORIZE_CONSOLIDATION", True)
+    )
+    memory_memorize_replace_threshold: float = Field(
+        default_factory=lambda: float(_dj("MEM_REPLACE_THRESHOLD", 0.9))
+    )
 
     # Credentials / auth
     api_keys: Dict[str, str] = {}
@@ -113,26 +133,34 @@ class SettingsModel(BaseModel):
     root_password: str = ""
 
     # Agent profile
-    agent_profile: str = "agent0"
-    agent_memory_subdir: str = "default"
-    agent_knowledge_subdir: str = "custom"
+    agent_profile: str = Field(default_factory=lambda: str(_dj("AGENT_PROFILE", "agent0")))
+    agent_memory_subdir: str = Field(
+        default_factory=lambda: str(_dj("AGENT_MEMORY_SUBDIR", "default"))
+    )
+    agent_knowledge_subdir: str = Field(
+        default_factory=lambda: str(_dj("AGENT_KNOWLEDGE_SUBDIR", "custom"))
+    )
 
     # RFC / Docker tunnel defaults
-    rfc_auto_docker: bool = True
-    rfc_url: str = "localhost"
+    rfc_auto_docker: bool = Field(default_factory=lambda: _dj("RFC_AUTO_DOCKER", True))
+    rfc_url: str = Field(default_factory=lambda: str(_dj("RFC_URL", "localhost")))
     rfc_password: str = ""
-    rfc_port_http: int = 55080
-    rfc_port_ssh: int = 55022
+    rfc_port_http: int = Field(default_factory=lambda: int(_dj("RFC_PORT_HTTP", 55080)))
+    rfc_port_ssh: int = Field(default_factory=lambda: int(_dj("RFC_PORT_SSH", 55022)))
 
     # Shell selection
     shell_interface: str = "local"
 
     # Speech / audio settings
-    stt_model_size: str = "base"
-    stt_language: str = "en"
-    stt_silence_threshold: float = 0.3
-    stt_silence_duration: int = 1000
-    stt_waiting_timeout: int = 2000
+    stt_model_size: str = Field(default_factory=lambda: str(_dj("STT_MODEL_SIZE", "base")))
+    stt_language: str = Field(default_factory=lambda: str(_dj("STT_LANGUAGE", "en")))
+    stt_silence_threshold: float = Field(
+        default_factory=lambda: float(_dj("STT_SILENCE_THRESHOLD", 0.3))
+    )
+    stt_silence_duration: int = Field(
+        default_factory=lambda: int(_dj("STT_SILENCE_DURATION", 1000))
+    )
+    stt_waiting_timeout: int = Field(default_factory=lambda: int(_dj("STT_WAITING_TIMEOUT", 2000)))
     speech_provider: str = "browser"
     speech_realtime_enabled: bool = False
     speech_realtime_model: str = Field(default_factory=lambda: _dj("SPEECH_REALTIME_MODEL", ""))
@@ -143,9 +171,13 @@ class SettingsModel(BaseModel):
     tts_kokoro: bool = False
 
     # MCP / A2A
-    mcp_servers: str = '{"mcpServers": {}}'
-    mcp_client_init_timeout: int = 10
-    mcp_client_tool_timeout: int = 120
+    mcp_servers: str = Field(default_factory=lambda: str(_dj("MCP_SERVERS", '{"mcpServers": {}}')))
+    mcp_client_init_timeout: int = Field(
+        default_factory=lambda: int(_dj("MCP_CLIENT_INIT_TIMEOUT", 10))
+    )
+    mcp_client_tool_timeout: int = Field(
+        default_factory=lambda: int(_dj("MCP_CLIENT_TOOL_TIMEOUT", 120))
+    )
     mcp_server_enabled: bool = False
     mcp_server_token: str = ""
     a2a_server_enabled: bool = False
