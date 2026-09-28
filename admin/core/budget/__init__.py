@@ -7,7 +7,7 @@ Applied Personas:
 - PhD Analyst: Metrics registry design
 - QA Engineer: 100% testable, no hardcoding
 - Security Auditor: Fail-closed enforcement
-- Performance Engineer: Redis cache, async Lago
+- Performance Engineer: Redis cache
 - UX Consultant: Clear error messages
 - ISO Documenter: Comprehensive docstrings
 - Django Architect: Django cache integration
@@ -17,7 +17,6 @@ Applied Personas:
 Vibe Coding Rules Compliance:
 - NO mocks, NO stubs, NO placeholders
 - Real Redis cache
-- Real Lago integration
 """
 
 from admin.core.budget.exceptions import BudgetExhaustedError

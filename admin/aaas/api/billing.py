@@ -1,6 +1,6 @@
 """
 Billing API Router
-Billing metrics and invoice management via Lago.
+Billing metrics and invoice management.
 
 Per SRS Section 5.1 - Billing Dashboard.
 """
@@ -27,7 +27,7 @@ router = Router()
 
 @router.get("", response=BillingResponse)
 def get_billing_dashboard(request):
-    """Get complete billing dashboard data from Lago."""
+    """Get complete billing dashboard data."""
     from django.db.models import Count, Q, Sum
 
     # Calculate MRR
@@ -78,36 +78,6 @@ def get_billing_dashboard(request):
         revenue_by_tier=revenue_by_tier,
         recent_invoices=recent_invoices,
     )
-
-
-@router.get("/invoices", response=list[InvoiceOut])
-async def list_invoices(
-    request,
-    status: Optional[str] = None,
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
-):
-    """List all invoices from Lago."""
-    from admin.billing.lago_client import get_lago_client
-
-    try:
-        client = get_lago_client()
-        result = await client.list_invoices(page=page, per_page=per_page, status=status)
-        invoices = result.get("invoices", [])
-        return [
-            InvoiceOut(
-                id=inv.get("lago_id", ""),
-                number=inv.get("number", ""),
-                amount_cents=inv.get("total_amount_cents", 0),
-                currency=inv.get("currency", "USD"),
-                status=inv.get("status", "pending"),
-                created_at=inv.get("created_at", ""),
-            )
-            for inv in invoices
-        ]
-    except Exception as exc:
-        logger.error("Failed to list invoices from Lago: %s", exc)
-        return []
 
 
 @router.get("/usage", response=UsageMetrics)
@@ -213,7 +183,7 @@ def get_tenant_billing(request, tenant_id: str):
     # Calculate next billing date (30 days from created or last billed)
     next_billing = None
     if tenant.tier and tenant.tier.base_price_cents > 0:
-        # Simple: 30 days from creation (real impl would use Stripe/Lago)
+        # Simple: 30 days from creation
         next_billing = (tenant.created_at + timedelta(days=30)).isoformat()
 
     return TenantBillingOut(
@@ -286,50 +256,6 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
         new_tier=new_tier.name,
         prorated_amount_cents=max(0, prorated),
     )
-
-
-@router.get("/tenant/{tenant_id}/invoices", response=list[InvoiceOut])
-async def get_tenant_invoices(
-    request,
-    tenant_id: str,
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
-):
-    """Get invoice history for a specific tenant from Lago."""
-    from admin.billing.lago_client import get_lago_client
-
-    try:
-        tenant = Tenant.objects.get(id=tenant_id)
-    except Tenant.DoesNotExist:
-        from ninja.errors import HttpError
-
-        raise HttpError(404, f"Tenant {tenant_id} not found")
-
-    if not tenant.lago_customer_id:
-        return []
-
-    try:
-        client = get_lago_client()
-        result = await client.list_invoices(
-            page=page,
-            per_page=per_page,
-            customer_external_id=tenant.lago_customer_id,
-        )
-        invoices = result.get("invoices", [])
-        return [
-            InvoiceOut(
-                id=inv.get("lago_id", ""),
-                number=inv.get("number", ""),
-                amount_cents=inv.get("total_amount_cents", 0),
-                currency=inv.get("currency", "USD"),
-                status=inv.get("status", "pending"),
-                created_at=inv.get("created_at", ""),
-            )
-            for inv in invoices
-        ]
-    except Exception as exc:
-        logger.error("Failed to list tenant invoices from Lago: %s", exc)
-        return []
 
 
 class PaymentMethodCreate(BaseModel):

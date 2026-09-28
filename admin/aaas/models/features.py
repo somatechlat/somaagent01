@@ -56,9 +56,6 @@ class AaasFeature(models.Model):
         default=False, help_text="Whether feature has usage-based billing"
     )
 
-    lago_billable_metric_code = models.CharField(
-        max_length=100, blank=True, help_text="Lago billable metric code for usage tracking"
-    )
 
     # UI Configuration
     requires_modal = models.BooleanField(
@@ -113,7 +110,6 @@ class AaasFeature(models.Model):
             "config_schema": self.config_schema,
             "default_settings": self.default_settings,
             "is_billable": self.is_billable,
-            "lago_billable_metric_code": self.lago_billable_metric_code,
             "requires_modal": self.requires_modal,
             "modal_component": self.modal_component,
             "is_active": self.is_active,

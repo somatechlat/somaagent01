@@ -1,6 +1,6 @@
 /**
  * Platform Integrations Dashboard
- * Manage external service connections: Lago, Keycloak, SMTP, OpenAI, S3
+ * Manage external service connections: Keycloak, SMTP, OpenAI, S3
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation

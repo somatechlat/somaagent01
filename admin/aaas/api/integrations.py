@@ -1,6 +1,6 @@
 """
 Platform Integrations API
-Manage external service connections: Lago, Keycloak, SMTP, LLM, Storage.
+Manage external service connections: Keycloak, SMTP, LLM, Storage.
 
 
 - Django Ninja router
@@ -146,7 +146,7 @@ def _mask_secret(secret: str) -> str:
 
 
 # Supported providers list (until we have a dynamic Provider registry)
-SUPPORTED_PROVIDERS = ["lago", "keycloak", "smtp", "openai", "s3"]
+SUPPORTED_PROVIDERS = ["keycloak", "smtp", "openai", "s3"]
 
 
 # =============================================================================
@@ -277,16 +277,7 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
     # ... logic continues below ...
 
     try:
-        if provider == "lago":
-            async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
-                response = await client.get(
-                    f"{config['endpoint']}/organizations",
-                    headers={"Authorization": f"Bearer {config.get('api_key', '')}"},
-                )
-                success = response.status_code == 200
-                message = "Connected to Lago" if success else f"Error: {response.status_code}"
-
-        elif provider == "keycloak":
+        if provider == "keycloak":
             async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
                 response = await client.get(f"{config['endpoint']}/realms/master")
                 success = response.status_code == 200
@@ -356,45 +347,6 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
         message=message,
         latency_ms=round(latency, 2),
     )
-
-
-@router.post("/lago/sync", response=dict)
-async def sync_lago_plans(request) -> dict:
-    """Sync subscription plans with Lago.
-
-    Permission: platform:manage_billing
-    """
-    import httpx
-
-    config = await _get_integration_config("lago")
-    if not config.get("api_key"):
-        return {"success": False, "message": get_message(ErrorCode.LAGO_NOT_CONFIGURED)}
-
-    try:
-        async with httpx.AsyncClient(timeout=slow_httpx_timeout()) as client:
-            # Fetch plans from Lago
-            response = await client.get(
-                f"{config['endpoint']}/plans",
-                headers={"Authorization": f"Bearer {config['api_key']}"},
-            )
-
-            if response.status_code == 200:
-                plans = response.json().get("plans", [])
-                return {
-                    "success": True,
-                    "message": get_message(SuccessCode.LAGO_PLANS_SYNCED, count=len(plans)),
-                    "plans_count": len(plans),
-                    "synced_at": timezone.now().isoformat(),
-                }
-            else:
-                return {
-                    "success": False,
-                    "message": get_message(ErrorCode.LAGO_ERROR, status=response.status_code),
-                }
-
-    except Exception as e:
-        logger.error("Lago sync failed: %s", e)
-        return {"success": False, "message": get_message(ErrorCode.INTERNAL_ERROR)}
 
 
 @router.post("/smtp/test-email", response=dict)

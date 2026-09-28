@@ -15,7 +15,6 @@ from admin.aaas.models.choices import BillingInterval
 class SubscriptionTier(models.Model):
     """Subscription plan/tier definition.
 
-    Integrates with Lago for billing management.
     Each tier defines limits, pricing, and available features.
     """
 
@@ -45,10 +44,6 @@ class SubscriptionTier(models.Model):
         help_text="Billing cycle",
     )
 
-    # Lago Integration
-    lago_plan_code = models.CharField(
-        max_length=100, blank=True, help_text="Lago billing plan code"
-    )
 
     # Limits
     max_agents = models.IntegerField(default=1, help_text="Maximum agents allowed")
@@ -119,7 +114,6 @@ class SubscriptionTier(models.Model):
             "description": self.description,
             "base_price_cents": self.base_price_cents,
             "billing_interval": self.billing_interval,
-            "lago_plan_code": self.lago_plan_code,
             "max_agents": self.max_agents,
             "max_users_per_agent": self.max_users_per_agent,
             "max_monthly_voice_minutes": self.max_monthly_voice_minutes,

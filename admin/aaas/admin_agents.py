@@ -149,11 +149,10 @@ try:
             "metric_code",
             "quantity",
             "unit",
-            "lago_synced_badge",
             "recorded_at",
         ]
-        list_filter = ["metric_code", "lago_synced", "recorded_at", "tenant"]
-        search_fields = ["tenant__name", "lago_event_id", "metric_code"]
+        list_filter = ["metric_code", "recorded_at", "tenant"]
+        search_fields = ["tenant__name", "metric_code"]
         readonly_fields = [
             "id",
             "tenant",
@@ -161,8 +160,6 @@ try:
             "metric_code",
             "quantity",
             "unit",
-            "lago_event_id",
-            "lago_synced",
             "metadata",
             "recorded_at",
             "period_start",
@@ -172,16 +169,6 @@ try:
         list_per_page = 100
         date_hierarchy = "recorded_at"
         list_select_related = ["tenant"]
-
-        @admin.display(description="Lago")
-        def lago_synced_badge(self, obj):
-            if obj.lago_synced:
-                return format_html(
-                    '<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">✓</span>'
-                )
-            return format_html(
-                '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Pending</span>'
-            )
 
         def has_add_permission(self, request):
             return False

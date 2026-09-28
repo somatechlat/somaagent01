@@ -174,7 +174,7 @@ class RevenueByTier(Schema):
 
 
 class InvoiceOut(Schema):
-    """Invoice response schema — maps Lago invoice fields."""
+    """Invoice response schema."""
 
     id: str
     number: str = ""

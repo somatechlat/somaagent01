@@ -32,7 +32,7 @@ _AUDIT_EVENT_TYPES = {
 async def get_dashboard(request):
     """
     Get complete AAAS Super Admin dashboard data.
-    Aggregates data from Lago, PostgreSQL, and internal services.
+    Aggregates data from PostgreSQL and internal services.
     """
     from asgiref.sync import sync_to_async
 

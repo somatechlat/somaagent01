@@ -4,7 +4,7 @@
 Usage tracking and billing integration.
 
 - PM: Usage visibility, billing transparency
-- DevOps: Lago integration, metrics
+- DevOps: usage metrics
 - Security Auditor: Accurate metering
 """
 
@@ -72,69 +72,6 @@ class BillingCycle(BaseModel):
 # =============================================================================
 # ENDPOINTS - Usage Events
 # =============================================================================
-
-
-@router.post(
-    "/events",
-    summary="Record usage event",
-    auth=AuthBearer(),
-)
-async def record_usage_event(
-    request,
-    tenant_id: str,
-    metric: str,
-    quantity: float,
-    metadata: Optional[dict] = None,
-) -> dict:
-    """Record a usage event.
-
-    DevOps: Real-time metering to Lago.
-    """
-    from admin.billing.lago_client import get_lago_client
-
-    event_id = str(uuid4())
-    client = get_lago_client()
-    properties: dict = {"quantity": quantity}
-    if metadata:
-        properties.update(metadata)
-    await client.create_event(
-        transaction_id=event_id,
-        customer_external_id=tenant_id,
-        code=metric,
-        properties=properties,
-    )
-
-    logger.debug("Usage event: %s/%s/%s", tenant_id, metric, quantity)
-
-    return {
-        "event_id": event_id,
-        "tenant_id": tenant_id,
-        "metric": metric,
-        "quantity": quantity,
-        "recorded": True,
-    }
-
-
-@router.post(
-    "/events/batch",
-    summary="Record batch events",
-    auth=AuthBearer(),
-)
-async def record_batch_events(
-    request,
-    events: list[dict],
-) -> dict:
-    """Record multiple usage events.
-
-    DevOps: Batch metering for efficiency.
-    """
-    event_ids = [str(uuid4()) for _ in events]
-
-    return {
-        "event_ids": event_ids,
-        "count": len(events),
-        "recorded": True,
-    }
 
 
 # =============================================================================

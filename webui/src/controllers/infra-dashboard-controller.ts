@@ -77,7 +77,6 @@ export const SERVICE_ICONS: Record<string, string> = {
   temporal: 'schedule',
   qdrant: 'psychology',
   keycloak: 'lock',
-  lago: 'payments',
   somabrain: 'neurology',
   whisper: 'mic',
   kokoro: 'volume_up',

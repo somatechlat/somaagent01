@@ -47,14 +47,7 @@ class Tenant(models.Model):
         max_length=100, blank=True, help_text="Keycloak realm for this tenant"
     )
 
-    # Lago Billing Integration
-    lago_customer_id = models.CharField(
-        max_length=100, blank=True, db_index=True, help_text="Lago customer external ID"
-    )
 
-    lago_subscription_id = models.CharField(
-        max_length=100, blank=True, help_text="Lago subscription external ID"
-    )
 
     # Contact
     billing_email = models.EmailField(blank=True, help_text="Primary billing contact email")
@@ -86,7 +79,6 @@ class Tenant(models.Model):
         indexes = [
             models.Index(fields=["slug"]),
             models.Index(fields=["status"]),
-            models.Index(fields=["lago_customer_id"]),
             models.Index(fields=["-created_at"]),
         ]
         verbose_name = "Tenant"
@@ -107,8 +99,6 @@ class Tenant(models.Model):
             "tier_name": self.tier.name if self.tier else None,
             "status": self.status,
             "keycloak_realm": self.keycloak_realm,
-            "lago_customer_id": self.lago_customer_id,
-            "lago_subscription_id": self.lago_subscription_id,
             "billing_email": self.billing_email,
             "feature_overrides": self.feature_overrides,
             "metadata": self.metadata,

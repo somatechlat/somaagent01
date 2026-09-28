@@ -50,7 +50,7 @@ try:
 
         fieldsets = (
             ("Tier Information", {"fields": ("id", "name", "slug", "description")}),
-            ("Pricing", {"fields": ("base_price_cents", "billing_interval", "lago_plan_code")}),
+            ("Pricing", {"fields": ("base_price_cents", "billing_interval")}),
             (
                 "Limits",
                 {
@@ -111,7 +111,7 @@ try:
             "created_at",
         ]
         list_filter = ["status", "tier", "created_at"]
-        search_fields = ["name", "slug", "billing_email", "lago_customer_id"]
+        search_fields = ["name", "slug", "billing_email"]
         readonly_fields = ["id", "created_at", "updated_at", "user_count", "agent_count"]
         ordering = ["-created_at"]
         list_per_page = 25
@@ -124,8 +124,8 @@ try:
             ("Tenant Information", {"fields": ("id", "name", "slug", "status")}),
             ("Subscription", {"fields": ("tier", "trial_ends_at")}),
             (
-                "Billing (Lago)",
-                {"fields": ("billing_email", "lago_customer_id", "lago_subscription_id")},
+                "Billing",
+                {"fields": ("billing_email",)},
             ),
             (
                 "Authentication (Keycloak)",

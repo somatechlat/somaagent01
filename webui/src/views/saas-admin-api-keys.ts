@@ -97,7 +97,6 @@ export class SaasAdminApiKeys extends LitElement {
         { id: '3', provider: 'Google', keyMasked: 'AIzaSy****...mnop', type: 'llm', status: 'valid', lastUsed: '1h ago' },
         { id: '4', provider: 'Groq', keyMasked: 'gsk_****...qrst', type: 'llm', status: 'expired', lastUsed: '2d ago' },
         { id: '5', provider: 'Serper', keyMasked: '****...xyz', type: 'service', status: 'valid', lastUsed: 'Just now' },
-        { id: '6', provider: 'Lago', keyMasked: 'lago_****...abc', type: 'service', status: 'valid', lastUsed: '1d ago' },
     ];
 
     @state() private _showModal = false;
@@ -200,8 +199,7 @@ export class SaasAdminApiKeys extends LitElement {
                 { label: 'OpenAI', value: 'openai', icon: 'smart_toy' },
                 { label: 'Anthropic', value: 'anthropic', icon: 'psychology' },
                 { label: 'Google', value: 'google', icon: 'search' },
-                { label: 'Serper', value: 'serper', icon: 'search_check' },
-                { label: 'Lago', value: 'lago', icon: 'payments' }
+                { label: 'Serper', value: 'serper', icon: 'search_check' }
             ]}
                     ></saas-select>
 

@@ -4,7 +4,6 @@
  *
  * VIBE COMPLIANT:
  * - Real Lit implementation
- * - Lago API integration placeholders
  * - Minimal white/black design per UI_STYLE_GUIDE.md
  * - NO EMOJIS - Google Material Symbols only
  *

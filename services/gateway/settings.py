@@ -319,10 +319,6 @@ DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
 # Monitoring (AAAS: 63905, K8S: 32905, Local: 9090)
 PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
 
-# Lago Billing
-LAGO_API_URL = os.environ.get("SA01_LAGO_API_URL", "http://localhost:63690/api/v1")
-LAGO_API_KEY = os.environ.get("SA01_LAGO_API_KEY") or None
-
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
 # =============================================================================

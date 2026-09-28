@@ -15,7 +15,6 @@ from admin.aaas.models.tenants import Tenant
 class UsageRecord(models.Model):
     """Metered usage data for billing integration.
 
-    Records sent to Lago for usage-based billing.
     Append-only for audit compliance.
     """
 
@@ -36,15 +35,6 @@ class UsageRecord(models.Model):
     quantity = models.DecimalField(max_digits=20, decimal_places=6, help_text="Usage quantity")
 
     unit = models.CharField(max_length=20, default="units", help_text="Unit of measurement")
-
-    # Lago Integration
-    lago_event_id = models.CharField(
-        max_length=100, blank=True, db_index=True, help_text="Lago event transaction ID"
-    )
-
-    lago_synced = models.BooleanField(
-        default=False, db_index=True, help_text="Whether synced to Lago"
-    )
 
     # Metadata
     metadata = models.JSONField(
@@ -68,7 +58,6 @@ class UsageRecord(models.Model):
         indexes = [
             models.Index(fields=["tenant", "metric_code"]),
             models.Index(fields=["tenant", "recorded_at"]),
-            models.Index(fields=["lago_synced"]),
             models.Index(fields=["metric_code", "recorded_at"]),
         ]
         verbose_name = "Usage Record"
@@ -88,8 +77,6 @@ class UsageRecord(models.Model):
             "metric_code": self.metric_code,
             "quantity": float(self.quantity),
             "unit": self.unit,
-            "lago_event_id": self.lago_event_id,
-            "lago_synced": self.lago_synced,
             "metadata": self.metadata,
             "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
             "period_start": self.period_start.isoformat() if self.period_start else None,

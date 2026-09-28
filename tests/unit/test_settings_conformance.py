@@ -204,7 +204,6 @@ class TestNoSecretsInEnv:
             "SA01_SOMABRAIN_API_KEY",
             "SOMA_API_TOKEN",
             "SA01_LLM_API_KEY",
-            "SA01_LAGO_API_KEY",
             "SA01_KEYCLOAK_CLIENT_SECRET",
             "GOOGLE_CLIENT_SECRET",
         },

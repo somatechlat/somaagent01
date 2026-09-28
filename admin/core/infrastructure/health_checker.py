@@ -80,7 +80,6 @@ class InfrastructureHealthChecker:
             self.check_temporal(),
             self.check_qdrant(),
             self.check_keycloak(),
-            self.check_lago(),
             self.check_somabrain(),
             self.check_whisper(),
             self.check_kokoro(),
@@ -410,43 +409,6 @@ class InfrastructureHealthChecker:
             logger.warning("Keycloak health check failed: %s", e)
             return HealthCheckResult(
                 name="keycloak",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
-            )
-
-    async def check_lago(self) -> HealthCheckResult:
-        """Check Lago billing server."""
-        start = time.time()
-        try:
-            import httpx
-
-            lago_url = getattr(settings, "LAGO_API_URL", "http://localhost:63690/api/v1")
-            url = f"{lago_url}/health"
-
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
-
-            latency = (time.time() - start) * 1000
-
-            if response.status_code == 200:
-                return HealthCheckResult(
-                    name="lago",
-                    status="healthy",
-                    latency_ms=latency,
-                    details={"url": lago_url},
-                )
-            else:
-                return HealthCheckResult(
-                    name="lago",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            logger.warning("Lago health check failed: %s", e)
-            return HealthCheckResult(
-                name="lago",
                 status="degraded",
                 latency_ms=(time.time() - start) * 1000,
                 error=str(e),

@@ -5,14 +5,12 @@ SRS Source: SRS-BUDGET-SYSTEM-2026-01-16 Section 7
 Applied Personas:
 - PhD Developer: Clean decorator pattern
 - Security Auditor: Fail-closed enforcement
-- Performance Engineer: Async Lago recording
 - Django Architect: Request context extraction
 - Django Evangelist: Django-native patterns
 
 Vibe Coding Rules:
 - NO mocks, stubs, or placeholders
 - REAL Redis cache
-- REAL Lago integration
 - REAL error handling
 """
 
@@ -20,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import uuid
 from functools import wraps
 from typing import Any, Callable, cast, Optional, TypeVar
 
@@ -117,9 +114,6 @@ def budget_gate(metric: str = "tokens") -> Callable[[F], F]:
             # POST-ACTION: Record usage
             units_used = _extract_units_used(result, metric)
             increment_usage(tenant_id, metric, units_used)
-
-            # ASYNC: Record to Lago (non-blocking)
-            asyncio.create_task(_record_lago_event(tenant_id, metric_def.lago_code, units_used))
 
             return result
 
@@ -273,42 +267,4 @@ def _is_metric_enabled(tenant_id: str, metric: str) -> bool:
         return True
 
     except KeyError:
-        return False
-
-
-async def _record_lago_event(
-    tenant_id: str,
-    lago_code: str,
-    units: int,
-) -> bool:
-    """Record usage event to Lago (async, non-blocking).
-
-    CRITICAL: This must NEVER block the main flow.
-    Failures are logged but do not affect the operation.
-
-    Args:
-        tenant_id: Tenant identifier
-        lago_code: Lago metric code
-        units: Units to record
-
-    Returns:
-        True if recorded, False on error
-    """
-    try:
-        from admin.billing.lago_client import get_lago_client
-
-        client = get_lago_client()
-        await client.create_event(
-            transaction_id=f"{lago_code}-{uuid.uuid4().hex[:8]}",
-            customer_external_id=tenant_id,
-            code=lago_code,
-            properties={"units": units},
-        )
-        return True
-
-    except ImportError:
-        logger.debug("Lago client not available")
-        return False
-    except Exception as exc:
-        logger.error("Failed to record Lago event: %s", exc)
         return False

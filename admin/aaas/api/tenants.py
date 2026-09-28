@@ -114,7 +114,7 @@ def get_tenant(request, tenant_id: str):
 def create_tenant(request, payload: TenantCreate):
     """
     Provision a new tenant.
-    Creates tenant in database and optionally syncs to Lago.
+    Creates tenant in the database.
     """
     from admin.aaas.models import SubscriptionTier
 
@@ -129,7 +129,7 @@ def create_tenant(request, payload: TenantCreate):
         slug=slugify(payload.name),
         tier=tier,
         status="active",
-        lago_customer_id=None,  # Will be set when synced to Lago
+
         keycloak_realm_id=None,  # Will be set when provisioned in Keycloak
     )
 

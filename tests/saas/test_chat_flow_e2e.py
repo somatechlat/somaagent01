@@ -106,8 +106,6 @@ def clean_cache():
     cache.clear()
 
 
-@pytest.fixture
-def settings():
     """Access centralized Django settings."""
     from django.conf import settings
 
@@ -345,12 +343,7 @@ class TestPhase10MemoryUpdate:
 
 
 class TestPhase11BillingEvent:
-    """Phase 11: Emit billing event to Lago."""
-
-    def test_lago_url_from_settings(self, settings):
-        """Lago URL loaded from centralized settings."""
-        lago_url = getattr(settings, "LAGO_API_URL", None)
-        # In test env may be default, in production from SA01_LAGO_API_URL
+    """Phase 11: Record usage against the budget system."""
 
     def test_usage_recorded(self, test_context: TestContext, clean_cache):
         """Token usage recorded in budget system."""

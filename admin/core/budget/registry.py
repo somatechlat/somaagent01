@@ -28,8 +28,7 @@ class BudgetedMetric:
 
     This dataclass defines a billable metric that can be:
     1. Enforced (pre-action budget check)
-    2. Recorded (post-action Lago event)
-    3. Toggled (per-tenant enable/disable)
+    2. Toggled (per-tenant enable/disable)
 
     Attributes:
         code: Internal metric identifier (e.g., "tokens")
@@ -39,7 +38,6 @@ class BudgetedMetric:
         default_limit: Default limit for Free plan
         cost_per_unit: Cost per unit for billing ($)
         enforce_pre: If True, check BEFORE action (fail-closed)
-        lago_code: Metric code in Lago billing system
         lockable: If False, cannot be disabled by tenant
     """
 
@@ -50,7 +48,6 @@ class BudgetedMetric:
     default_limit: int
     cost_per_unit: float
     enforce_pre: bool
-    lago_code: str
     lockable: bool = True
 
 
@@ -70,7 +67,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=100_000,  # 100K/month
         cost_per_unit=0.00001,  # $0.01/1K
         enforce_pre=True,  # MUST check BEFORE LLM call
-        lago_code="tokens",
         lockable=False,  # Cannot be disabled
     ),
     "tool_calls": BudgetedMetric(
@@ -81,7 +77,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=100,  # 100/month
         cost_per_unit=0.01,  # $0.01/call
         enforce_pre=True,  # MUST check BEFORE tool exec
-        lago_code="tool_calls",
         lockable=False,
     ),
     "images": BudgetedMetric(
@@ -92,7 +87,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=10,  # 10/month
         cost_per_unit=0.04,  # $0.04/image
         enforce_pre=True,  # MUST check BEFORE generation
-        lago_code="images",
         lockable=False,
     ),
     "voice_minutes": BudgetedMetric(
@@ -103,7 +97,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=10,  # 10 min/month
         cost_per_unit=0.06,  # $0.06/min
         enforce_pre=True,
-        lago_code="voice_minutes",
         lockable=False,
     ),
     # -------------------------------------------------------------------------
@@ -117,7 +110,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=10_000,  # 10K/month
         cost_per_unit=0.0001,  # $0.10/1K
         enforce_pre=True,
-        lago_code="api_calls",
         lockable=True,
     ),
     "memory_tokens": BudgetedMetric(
@@ -128,7 +120,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=500_000,  # 500K/month
         cost_per_unit=0.000001,  # $0.001/1K
         enforce_pre=False,  # Record only, don't block
-        lago_code="memory_tokens",
         lockable=True,
     ),
     "vector_ops": BudgetedMetric(
@@ -139,7 +130,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=50_000,  # 50K/month
         cost_per_unit=0.001,  # $1/1K
         enforce_pre=False,  # Milvus ops - record only
-        lago_code="vector_ops",
         lockable=True,
     ),
     "learning": BudgetedMetric(
@@ -150,7 +140,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=100,  # 100/month
         cost_per_unit=0.10,  # $0.10/cycle
         enforce_pre=True,  # Gate brain learning
-        lago_code="learning_credits",
         lockable=True,
     ),
     # -------------------------------------------------------------------------
@@ -164,7 +153,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=10,  # 10GB
         cost_per_unit=0.10,  # $0.10/GB/month
         enforce_pre=False,  # Monitor only
-        lago_code="storage_gb",
         lockable=True,
     ),
     "sessions": BudgetedMetric(
@@ -175,7 +163,6 @@ METRIC_REGISTRY: Dict[str, BudgetedMetric] = {
         default_limit=5,  # 5 concurrent
         cost_per_unit=0.0,  # Included
         enforce_pre=True,  # Limit concurrency
-        lago_code="sessions",
         lockable=True,
     ),
 }

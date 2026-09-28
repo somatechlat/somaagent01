@@ -171,11 +171,6 @@ def create_api() -> NinjaAPI:
     # NEW ROUTERS - 2025-12-24 Session
     # =========================================================================
 
-    # Billing Webhooks (Lago)
-    from admin.billing.webhooks import router as billing_webhooks_router
-
-    safe_add_router("/webhooks", billing_webhooks_router)
-
     # SomaBrain Memory (cognitive memory)
     from admin.somabrain.api_router import router as somabrain_router
 

@@ -48,7 +48,6 @@ class ErrorCode(str, Enum):
     TENANT_QUOTA_EXCEEDED = "tenant_quota_exceeded"
 
     # AAAS - Integrations
-    LAGO_NOT_CONFIGURED = "lago_not_configured"
 
     # Capsule
     CAPSULE_NOT_FOUND = "capsule_not_found"
@@ -104,7 +103,6 @@ class ErrorCode(str, Enum):
     BILLING_SUBSCRIPTION_EXPIRED = "billing_subscription_expired"
 
     # Integrations
-    LAGO_ERROR = "lago_error"
     SMTP_SEND_FAILED = "smtp_send_failed"
     BILLING_INVALID_SIGNATURE = "billing_invalid_signature"
     BILLING_INVALID_JSON = "billing_invalid_json"
@@ -157,7 +155,6 @@ class SuccessCode(str, Enum):
     # AAAS
     TIER_DEACTIVATED = "tier_deactivated"
     FEATURE_REMOVED = "feature_removed"
-    LAGO_PLANS_SYNCED = "lago_plans_synced"
 
     # Capsule
     CAPSULE_CREATED = "capsule_created"
@@ -243,7 +240,6 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     ErrorCode.TENANT_NOT_FOUND: _("Tenant not found"),
     ErrorCode.TENANT_SUSPENDED: _("Your account has been suspended"),
     ErrorCode.TENANT_QUOTA_EXCEEDED: _("Quota exceeded: {resource}"),
-    ErrorCode.LAGO_NOT_CONFIGURED: _("Lago not configured"),
     # Capsule
     ErrorCode.CAPSULE_NOT_FOUND: _("Agent not found"),
     ErrorCode.CAPSULE_INVALID: _("Invalid agent configuration"),
@@ -339,7 +335,6 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     SuccessCode.SESSION_TERMINATED: _("Session terminated"),
     SuccessCode.TEST_EMAIL_SENT: _("Test email sent"),
     # Integrations
-    ErrorCode.LAGO_ERROR: _("Lago error: {status}"),
     ErrorCode.SMTP_SEND_FAILED: _("Failed to send test email"),
     # Success
     SuccessCode.CREATED: _("Successfully created"),
@@ -347,7 +342,6 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     SuccessCode.DELETED: _("Successfully deleted"),
     SuccessCode.TIER_DEACTIVATED: _("Tier '{name}' deactivated"),
     SuccessCode.FEATURE_REMOVED: _("Feature '{feature_code}' removed from tier"),
-    SuccessCode.LAGO_PLANS_SYNCED: _("Synced {count} plans from Lago"),
     SuccessCode.CAPSULE_CREATED: _("Agent created successfully"),
     SuccessCode.CAPSULE_EXPORTED: _("Agent exported successfully"),
     SuccessCode.CAPSULE_IMPORTED: _("Agent imported successfully"),

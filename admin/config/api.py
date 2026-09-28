@@ -338,7 +338,7 @@ async def list_secrets(request) -> dict:
     Security Auditor: Only key names, not values.
     """
     # Return existence check.
-    secrets = ["OPENAI_API_KEY", "LAGO_API_KEY", "SOMABRAIN_TOKEN", "DATABASE_DSN"]
+    secrets = ["OPENAI_API_KEY", "SOMABRAIN_TOKEN", "DATABASE_DSN"]
 
     clean_list = []
     for s in secrets:

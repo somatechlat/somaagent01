@@ -144,7 +144,7 @@ async def get_infrastructure_health(request) -> InfrastructureHealthResponse:
     """Check health of ALL infrastructure services.
 
     VIBE: Real async checks to PostgreSQL, Redis, Temporal, Qdrant,
-    Keycloak, Lago, SomaBrain, Whisper, Kokoro.
+    Keycloak, SomaBrain, Whisper, Kokoro.
 
     DevOps: Returns detailed status for each service.
     """

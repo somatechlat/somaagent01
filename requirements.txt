@@ -71,7 +71,6 @@ pyclamd==0.4.0
 # Agents, tools, and integrations
 browser-use==0.5.11
 fastmcp==2.3.4
-lago-python-client==1.36.0
 fasta2a==0.5.0
 ansio==0.0.1
 duckduckgo-search==6.1.12
