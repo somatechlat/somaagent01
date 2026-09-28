@@ -28,13 +28,13 @@
 |------|-----------|-----|
 | `services/gateway/settings.py` | `ALLOW_INSECURE_AUTH_BYPASS = False` | **REMOVED** — no backdoor flags, period |
 | `admin/core/multimodal.py` | Image gen returned fake `[IMAGE: ...]` URL | **Real OpenAI DALL-E API call** via httpx |
-| `admin/core/billing.py` | `list_invoices` returned `[]` placeholder | **Real Lago API call** via httpx |
+| `admin/core/billing.py` | `list_invoices` returned `[]` placeholder | Replaced with a real external call; module since removed entirely |
 | `admin/sessions/api.py` | `get_session_config` hardcoded values; `update_session_config` no-op | **Redis-backed config** with `get_config()` / `update_config()` |
 | `admin/capsules/api/capsules.py` | Returned `[]` with "Placeholder" docstring | **Real Django ORM query** on `Capsule` model |
 | `admin/quality/api.py` | `critique_asset` had hardcoded `detailed_scores` (0.8, 0.75, 0.7, 0.85) | **Scores derived from content analysis** (word count, structure, code) |
 | `admin/aaas/api/users.py` | `get_user_detail` had mock agent_access, activity_log, sessions | **Real queries**: AgentUser model, AuditLog model, SessionManager Redis |
-| `admin/aaas/api/billing.py` | `get_tenant_invoices` returned `[]`; `add_payment_method` returned fake card "4242" | **Invoices**: real LagoClient; **Payment methods**: stores token ref in metadata, no fake card data |
-| `admin/aaas/api/schemas.py` | `InvoiceOut` schema didn't match Lago API | **Updated** to match Lago fields (number, amount_cents, currency, customer, etc.) |
+| `admin/aaas/api/billing.py` | `get_tenant_invoices` returned `[]`; `add_payment_method` returned fake card "4242" | Fake card data removed; payment methods store a token ref in metadata. Invoices report empty — this system has no invoice source. |
+| `admin/aaas/api/schemas.py` | `InvoiceOut` schema didn't match the external billing API | Simplified once that integration was removed |
 | `admin/auth/invitations.py` | Hardcoded `http://localhost:5173` | **Reads from `settings.FRONTEND_URL`** |
 
 ---
@@ -121,5 +121,5 @@
 - **All P0 security/stability issues resolved** — SQLite eliminated, fail-closed gates, JWT fixes, impersonation secret externalized, circuit breakers added, BrainBridge recall fixed, all placeholder code replaced with real implementations
 - **Chat system unified** — One true 12-phase pipeline, no legacy fragmentation
 - **Session management real** — Redis-backed with persistent config
-- **Billing real** — Lago API integration, no fake card data
+- **Billing honest** — no fake card data; no external billing integration exists in this system
 - **Zero tolerance for placeholders** — Every mock replaced with real code or honest error handling
