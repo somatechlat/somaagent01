@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("aaas", "0004_platformconfig_delete_globaldefault_and_more"),
+        ("aaas", "0001_initial"),
         ("core", "0008_asset_delegationtask_executionrecord_modelprofile_and_more"),
     ]
 

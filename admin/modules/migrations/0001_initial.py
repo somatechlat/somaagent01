@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("aaas", "0004_platformconfig_delete_globaldefault_and_more"),
+        ("aaas", "0001_initial"),
     ]
 
     operations = [

@@ -72,7 +72,7 @@ def map_capsule_tenants_to_fk(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("aaas", "0004_platformconfig_delete_globaldefault_and_more"),
+        ("aaas", "0001_initial"),
         ("core", "0007_remove_capsule_legacy_fields"),
         (
             "llm",
