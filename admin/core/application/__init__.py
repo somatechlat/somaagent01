@@ -1,17 +1,12 @@
-"""Application layer - use cases and application services.
+"""Application layer - use cases.
 
-This layer orchestrates domain operations through ports. It contains:
-- Use cases: Single business operations
-- Application services: Cross-cutting orchestration
-- DTOs: Data transfer objects for input/output
+Each use case encapsulates one business operation and receives its
+dependencies via constructor injection.
 
-The application layer depends on domain ports but NOT on infrastructure.
+Live use cases:
+- ``use_cases.conversation`` - consumed by ``services.conversation_worker``.
 """
 
-from . import dto, services, use_cases
+from . import use_cases
 
-__all__ = [
-    "dto",
-    "services",
-    "use_cases",
-]
+__all__ = ["use_cases"]
