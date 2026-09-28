@@ -187,33 +187,23 @@ class TestNoSecretsInEnv:
         r"|[A-Z0-9_]*TOKEN(?!S)[A-Z0-9_]*)['\"]"
     )
 
-    # Known secret-in-ENV reads awaiting the Vault migration (tracked in
-    # pending-vault-secret-migration.md, owner: secrets/Vault lane). This list
-    # may only shrink — a new entry is drift and fails the suite.
+    # Secret-in-ENV reads awaiting the Vault migration. The migration is
+    # complete: every entry has been converted to
+    # UnifiedSecretManager.get_credential() against
+    # secret/agent/credentials/<snake_case>, and the ENV read deleted.
+    #
+    # The empty sets stay as the sealed guard. This list may only shrink —
+    # any new entry is drift and fails the suite.
+    #
+    # One carve-out, which is NOT a violation and is deliberately absent from
+    # here: services/common/vault_secrets.py reads VAULT_TOKEN /
+    # VAULT_TOKEN_FILE from ENV to authenticate TO Vault. That is the bootstrap
+    # root-of-trust anchor; storing it in Vault would be circular. It is not a
+    # settings-module read and this class does not scan that file.
     PENDING_VAULT_MIGRATION = {
-        "config/settings.py": {
-            "SECRET_KEY",
-            "KEYCLOAK_CLIENT_SECRET",
-            "VAULT_TOKEN",
-            "SOMABRAIN_MEMORY_HTTP_TOKEN",
-            "SOMA_API_TOKEN",
-            "TEST_DB_PASSWORD",
-        },
-        "services/gateway/settings.py": {
-            "SECRET_KEY",
-            "SA01_SOMABRAIN_API_KEY",
-            "SOMA_API_TOKEN",
-            "SA01_LLM_API_KEY",
-            "SA01_KEYCLOAK_CLIENT_SECRET",
-            "GOOGLE_CLIENT_SECRET",
-        },
-        "infra/aaas/unified_settings.py": {
-            "SECRET_KEY",
-            "DJANGO_SECRET_KEY",
-            "SOMA_DB_PASSWORD",
-            "POSTGRES_PASSWORD",
-            "SOMA_API_TOKEN",
-        },
+        "config/settings.py": set(),
+        "services/gateway/settings.py": set(),
+        "infra/aaas/unified_settings.py": set(),
     }
 
     def test_settings_modules_do_not_read_secret_keys_from_env(self):

@@ -8,9 +8,12 @@ import os
 import secrets
 from pathlib import Path
 
+from services.common.unified_secret_manager import get_secret_manager
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(50)
+# Secrets are read from Vault only (VIBE 164), never from ENV.
+SECRET_KEY = get_secret_manager().get_credential("django_secret_key") or secrets.token_urlsafe(50)
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("SA01_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -21,7 +24,7 @@ SA01_DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE")
 KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://localhost:20880")
 KEYCLOAK_REALM = os.environ.get("KEYCLOAK_REALM", "somaagent")
 KEYCLOAK_CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "somaagent-api")
-KEYCLOAK_CLIENT_SECRET = os.environ.get("KEYCLOAK_CLIENT_SECRET", "")
+KEYCLOAK_CLIENT_SECRET = get_secret_manager().get_credential("keycloak_client_secret") or ""
 SA01_KEYCLOAK_URL = KEYCLOAK_URL
 
 # AAAS / Multi-tenancy
@@ -30,8 +33,12 @@ AAAS_DEFAULT_TENANT_ID = os.environ.get(
 )
 
 # Vault
+# VAULT_TOKEN is deliberately NOT mirrored here. It is the bootstrap root
+# credential that vault_secrets.py authenticates TO Vault with — storing it in
+# Vault would be circular, and a settings mirror of it would be a second copy of
+# a secret that does nothing. Read it from ENV or VAULT_TOKEN_FILE at the point
+# of authentication (services/common/vault_secrets.py).
 VAULT_ADDR = os.environ.get("VAULT_ADDR", "http://localhost:20882")
-VAULT_TOKEN = os.environ.get("VAULT_TOKEN")
 VAULT_MOUNT = os.environ.get("VAULT_MOUNT", "secret")
 
 # SomaBrain (cognitive processing + memory conditioning)
@@ -39,11 +46,11 @@ VAULT_MOUNT = os.environ.get("VAULT_MOUNT", "secret")
 # A missing URL or token must surface as MemoryConfigurationError (fail-closed),
 # never as a silent request to localhost with a baked-in credential.
 SOMABRAIN_URL = os.environ.get("SOMABRAIN_URL")
-SOMABRAIN_MEMORY_HTTP_TOKEN = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
+SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential("somabrain_memory_http_token")
 
 # SomaFractalMemory (vector memory storage + semantic search)
 SOMAFRACTALMEMORY_URL = os.environ.get("SOMAFRACTALMEMORY_URL")
-SOMA_API_TOKEN = os.environ.get("SOMA_API_TOKEN")
+SOMA_API_TOKEN = get_secret_manager().get_credential("soma_api_token")
 
 # Shared embedding dimension for the memory seam (ARCHITECTURE-INVARIANTS §2).
 # MEM_EMBED_DIM (here) MUST equal SOMA_VECTOR_DIM (SFM's settings/infra.py).
@@ -156,11 +163,11 @@ INSTALLED_APPS = [
     "admin.voice",
 ]
 
-# Database credentials MUST come from environment - zero hardcoded passwords
+# Database credentials MUST come from Vault - zero hardcoded passwords (VIBE 164)
 # For test collection without a real DB, generate an ephemeral password
 _db_name = os.environ.get("TEST_DB_NAME", "somaagent")
 _db_user = os.environ.get("TEST_DB_USER", "somaagent")
-_db_password = os.environ.get("TEST_DB_PASSWORD") or secrets.token_urlsafe(16)
+_db_password = get_secret_manager().get_credential("test_db_password") or secrets.token_urlsafe(16)
 _db_host = os.environ.get("TEST_DB_HOST", "localhost")
 _db_port = os.environ.get("TEST_DB_PORT", "63932")
 

@@ -17,6 +17,7 @@ from pathlib import Path
 
 # Import environment configuration helpers
 from services.common.env_config import get_optional_env, get_required_env
+from services.common.unified_secret_manager import get_secret_manager
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -30,13 +31,17 @@ IS_DEV_ENV = ENVIRONMENT in {"dev", "development", "local", "test"} or DEPLOYMEN
 }
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY")
+# Secret material comes from Vault only (VIBE 164), never from ENV.
+SECRET_KEY = get_secret_manager().get_credential("django_secret_key")
 if not SECRET_KEY:
     if IS_DEV_ENV:
         # VIBE: No hardcoded secrets — generate ephemeral dev key
         SECRET_KEY = secrets.token_urlsafe(50)
     else:
-        raise ValueError("Missing required environment variable: SECRET_KEY")
+        raise ValueError(
+            "Missing required secret django_secret_key "
+            "(Vault secret/agent/credentials/django_secret_key)"
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
@@ -246,14 +251,16 @@ SOMABRAIN_URL = get_optional_env(
     "SomaBrain cognitive runtime HTTP endpoint",
 )
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
-SOMABRAIN_MEMORY_HTTP_TOKEN = get_optional_env(
-    "SOMABRAIN_MEMORY_HTTP_TOKEN", "", "SomaBrain service bearer token"
-)
+SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential(
+    "somabrain_memory_http_token"
+) or ""
 SOMAFRACTALMEMORY_URL = get_optional_env(
     "SOMAFRACTALMEMORY_URL", "", "SomaFractalMemory store URL (Brain-side only)"
 )
 SOMABRAIN_API_KEY = (
-    os.environ.get("SA01_SOMABRAIN_API_KEY") or os.environ.get("SOMA_API_TOKEN") or None
+    get_secret_manager().get_credential("somabrain_api_key")
+    or get_secret_manager().get_credential("soma_api_token")
+    or None
 )
 
 # ---------------------------------------------------------------------------
@@ -308,7 +315,7 @@ AGENTVOICEVOX_BASE_URL = os.environ.get("SA01_VOICEVOX_URL", "http://localhost:6
 
 # LLM Service
 LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
-LLM_API_KEY = os.environ.get("SA01_LLM_API_KEY", "")
+LLM_API_KEY = get_secret_manager().get_credential("llm_api_key") or ""
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
 
 # Multimodal Services
@@ -326,7 +333,7 @@ PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
 KEYCLOAK_URL = get_required_env("SA01_KEYCLOAK_URL", "Keycloak OIDC identity provider base URL")
 KEYCLOAK_REALM = os.environ.get("SA01_KEYCLOAK_REALM", "somaagent")
 KEYCLOAK_CLIENT_ID = os.environ.get("SA01_KEYCLOAK_CLIENT_ID", "somaagent-api")
-KEYCLOAK_CLIENT_SECRET = os.environ.get("SA01_KEYCLOAK_CLIENT_SECRET") or None
+KEYCLOAK_CLIENT_SECRET = get_secret_manager().get_credential("keycloak_client_secret") or None
 KEYCLOAK_PUBLIC_KEY = os.environ.get("SA01_KEYCLOAK_PUBLIC_KEY", "")
 
 # JWT Settings for Keycloak
@@ -344,11 +351,11 @@ JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "true").lower() == 
 
 
 # =============================================================================
-# GOOGLE OAUTH SETTINGS (Secrets from ENV or Django Secret model)
+# GOOGLE OAUTH SETTINGS (Secrets from Vault)
 # =============================================================================
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET") or None  # From Vault/Secret model
+GOOGLE_CLIENT_SECRET = get_secret_manager().get_credential("google_client_secret") or None
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:5173/auth/callback")
 GOOGLE_JAVASCRIPT_ORIGIN = os.environ.get("GOOGLE_JAVASCRIPT_ORIGIN", "http://localhost:5173")
 
