@@ -28,6 +28,32 @@ interface ModelConfig {
     maxTokens: number;
 }
 
+interface BackendFlag {
+    key: string;
+    enabled: boolean;
+    description?: string;
+}
+
+interface FeatureFlags {
+    voiceEnabled: boolean;
+    memoryEnabled: boolean;
+    toolsEnabled: boolean;
+    mcpEnabled: boolean;
+}
+
+interface BackendFlagsResponse {
+    flags: BackendFlag[];
+    total: number;
+}
+
+/** Frontend toggle name → backend flag name (/api/v2/config/flags). */
+const FEATURE_FLAG_KEYS = {
+    voiceEnabled: 'voice',
+    memoryEnabled: 'memory',
+    toolsEnabled: 'tools',
+    mcpEnabled: 'mcp',
+} as const;
+
 @customElement('saas-settings')
 export class SaasSettings extends LitElement {
     static styles = css`
@@ -485,7 +511,7 @@ export class SaasSettings extends LitElement {
     };
 
     // Feature flags state
-    @state() private _featureFlags = {
+    @state() private _featureFlags: FeatureFlags = {
         voiceEnabled: true,
         memoryEnabled: true,
         toolsEnabled: true,
@@ -833,6 +859,26 @@ export class SaasSettings extends LitElement {
         this._activeTab = tab;
     }
 
+    override async firstUpdated() {
+        await this._loadFeatureFlags();
+    }
+
+    /** Load persisted feature flags so the toggles show real state. */
+    private async _loadFeatureFlags() {
+        try {
+            const response = await apiClient.get<BackendFlagsResponse>('/config/flags');
+            const byKey = new Map((response.flags ?? []).map(f => [f.key, f.enabled]));
+            this._featureFlags = {
+                voiceEnabled: byKey.get(FEATURE_FLAG_KEYS.voiceEnabled) ?? this._featureFlags.voiceEnabled,
+                memoryEnabled: byKey.get(FEATURE_FLAG_KEYS.memoryEnabled) ?? this._featureFlags.memoryEnabled,
+                toolsEnabled: byKey.get(FEATURE_FLAG_KEYS.toolsEnabled) ?? this._featureFlags.toolsEnabled,
+                mcpEnabled: byKey.get(FEATURE_FLAG_KEYS.mcpEnabled) ?? this._featureFlags.mcpEnabled,
+            };
+        } catch (error) {
+            console.error('Failed to load feature flags:', error);
+        }
+    }
+
     private _updateChatModel(field: keyof ModelConfig, value: string | number) {
         this._chatModel = { ...this._chatModel, [field]: value };
         this._isDirty = true;
@@ -854,18 +900,39 @@ export class SaasSettings extends LitElement {
     private async _saveSettings() {
         this._isSaving = true;
         try {
-            // Call Django Ninja API to save settings
-            await apiClient.put('/settings/agent/', {
-                chatModel: this._chatModel,
-                utilityModel: this._utilityModel,
-                featureFlags: this._featureFlags,
-            });
+            await this._saveFeatureFlags();
             this._isDirty = false;
         } catch (error) {
             console.error('Failed to save settings:', error);
         } finally {
             this._isSaving = false;
         }
+    }
+
+    /**
+     * Persist feature flags to the real flag API (/api/v2/config/flags).
+     *
+     * Flags are upserted: PATCH when the flag already exists, POST when it does
+     * not. The API takes key/enabled as query parameters, not a JSON body.
+     */
+    private async _saveFeatureFlags() {
+        const existing = await apiClient.get<BackendFlagsResponse>('/config/flags');
+        const known = new Set((existing.flags ?? []).map(f => f.key));
+
+        const jobs: Promise<unknown>[] = [];
+        for (const [frontendKey, backendKey] of Object.entries(FEATURE_FLAG_KEYS)) {
+            const enabled = this._featureFlags[frontendKey as keyof FeatureFlags];
+            if (known.has(backendKey)) {
+                jobs.push(
+                    apiClient.patch(`/config/flags/${backendKey}?enabled=${enabled}`, {})
+                );
+            } else {
+                jobs.push(
+                    apiClient.post(`/config/flags?key=${backendKey}&enabled=${enabled}`, {})
+                );
+            }
+        }
+        await Promise.all(jobs);
     }
 
     private _exportConfig() {

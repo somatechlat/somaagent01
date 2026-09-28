@@ -4,6 +4,8 @@
  * Manages state, validation, and submission for the SaaS tenant creation wizard.
  */
 
+import { apiClient, ApiError } from '../services/api-client.js';
+
 export interface TenantWizardHost {
     requestUpdate(): void;
     dispatchEvent(event: Event): boolean;
@@ -37,6 +39,23 @@ export interface SubscriptionTier {
     price_cents: number;
     max_agents: number;
     max_users: number;
+}
+
+interface BackendTierOut {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    billing_period: string;
+    limits: {
+        agents: number;
+        users: number;
+        tokens_per_month: number;
+        storage_gb: number;
+    };
+    features: string[];
+    popular: boolean;
+    active_count: number;
 }
 
 export class TenantWizardController {
@@ -105,26 +124,19 @@ export class TenantWizardController {
         }
     }
 
-    private _getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async _loadTiers(): Promise<void> {
         try {
-            const res = await fetch('/api/v2/saas/tiers', { headers: this._getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this._tiers = data.tiers || [];
-            }
+            const data = await apiClient.get<BackendTierOut[]>('/aaas/tiers');
+            this._tiers = data.map(t => ({
+                id: t.id,
+                name: t.name,
+                slug: t.slug,
+                price_cents: Math.round(t.price * 100),
+                max_agents: t.limits.agents,
+                max_users: t.limits.users,
+            }));
         } catch (e) {
-            // Use defaults
-            this._tiers = [
-                { id: 'free', name: 'Free', slug: 'free', price_cents: 0, max_agents: 1, max_users: 3 },
-                { id: 'starter', name: 'Starter', slug: 'starter', price_cents: 2900, max_agents: 5, max_users: 10 },
-                { id: 'team', name: 'Team', slug: 'team', price_cents: 9900, max_agents: 25, max_users: 50 },
-                { id: 'enterprise', name: 'Enterprise', slug: 'enterprise', price_cents: 49900, max_agents: 999, max_users: 999 },
-            ];
+            this._tiers = [];
         }
         this._host.requestUpdate();
     }
@@ -202,11 +214,12 @@ export class TenantWizardController {
         this._host.requestUpdate();
         this._slugCheckTimeout = window.setTimeout(async () => {
             try {
-                const res = await fetch(`/api/v2/saas/tenants/check-slug?slug=${slug}`, { headers: this._getAuthHeaders() });
-                const data = await res.json();
+                const data = await apiClient.get<{ available: boolean; slug: string; suggestions?: string[] }>(
+                    `/aaas/tenants/check-slug?slug=${slug}`
+                );
                 this._slugStatus = data.available ? 'available' : 'taken';
             } catch {
-                this._slugStatus = 'available'; // Assume available on error
+                this._slugStatus = null;
             }
             this._host.requestUpdate();
         }, 300);
@@ -263,44 +276,18 @@ export class TenantWizardController {
         this._host.requestUpdate();
 
         try {
-            const res = await fetch('/api/v2/saas/tenants', {
-                method: 'POST',
-                headers: this._getAuthHeaders(),
-                body: JSON.stringify({
-                    name: this._formData.name,
-                    slug: this._formData.slug,
-                    region: this._formData.region,
-                    compliance_frameworks: this._formData.compliance,
-                    custom_domain: this._formData.domain || null,
-                    tier_id: this._formData.tier_id,
-                    settings: {
-                        auth: {
-                            mfa_enforced: this._formData.mfa_enforced,
-                            allow_social_login: this._formData.allow_social_login,
-                            session_timeout_hours: this._formData.session_timeout_hours,
-                        },
-                        compute: {
-                            allowed_models: this._formData.allowed_models,
-                        },
-                        branding: {
-                            theme: this._formData.theme,
-                            accent_color: this._formData.accent_color,
-                        },
-                    },
-                    admin_email: this._formData.admin_email,
-                }),
+            await apiClient.post('/aaas/tenants', {
+                name: this._formData.name,
+                email: this._formData.admin_email || this._formData.billing_email,
+                tier: this._formData.tier_id,
             });
-
-            if (res.ok) {
-                // Success - redirect to tenants list
-                window.location.href = '/platform/tenants';
-            } else {
-                const data = await res.json();
-                this._error = data.detail || 'Failed to create tenant';
-                this._host.requestUpdate();
-            }
+            window.location.href = '/platform/tenants';
         } catch (e) {
-            this._error = 'Network error. Please try again.';
+            if (e instanceof ApiError) {
+                this._error = e.message;
+            } else {
+                this._error = 'Network error. Please try again.';
+            }
             this._host.requestUpdate();
         } finally {
             this._creating = false;

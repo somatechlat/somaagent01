@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/saas/tenants endpoints
+ * - Uses /api/v2/aaas/tenants endpoints
  * - Real-time slug validation
  * - Per SRS-SAAS-TENANT-CREATION.md
  *
