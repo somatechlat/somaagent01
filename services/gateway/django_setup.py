@@ -34,9 +34,14 @@ if not settings.configured:
     db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
     if not db_match:
         raise ValueError(
-            f"❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
-            f"Expected format: postgresql://<user>:<password>@host:port/dbname. "
-            f"Received: {db_dsn[:50]}..."
+            "❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
+            "Expected format: postgresql://<user>:<password>@host:port/dbname. "
+            # Never echo any slice of the value: it carries the live password.
+            # VIBE Rule 164 — a secret must not reach a log, a traceback or a
+            # container console. Report only the shape of what arrived.
+            f"Received value: has_scheme={db_dsn.startswith(('postgres://', 'postgresql://'))}, "
+            f"has_userinfo_separator={'@' in db_dsn}, length={len(db_dsn)}. "
+            "The value itself is withheld because it carries a credential."
         )
 
     db_user, db_password, db_host, db_port, db_name = db_match.groups()

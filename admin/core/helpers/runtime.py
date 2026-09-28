@@ -183,20 +183,14 @@ def _get_rfc_password() -> str:
     except Exception:
         pass  # Vault not available, fall through
 
-    # Deprecated: .env fallback with security warning
-    password = dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD)
-    if password:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "SECURITY WARNING: RFC password loaded from .env file. "
-            "Migrate to Vault per VIBE Rule 164."
-        )
-        return password
-
+    # VIBE Rule 164: secrets live in Vault only. There is deliberately no
+    # .env fallback here — a fallback is an ENV secret path, which the rule
+    # forbids. Missing Vault state is a fatal misconfiguration, not something
+    # to paper over by reading a file on disk.
     raise RuntimeError(
-        "VIBE Rule 164 VIOLATION: No RFC password configured. "
-        "Set it in Vault (credential:rfc_password) or .env (RFC_PASSWORD)."
+        "VIBE Rule 164: no RFC password available from Vault. "
+        "Store it as credential:rfc_password. "
+        "There is no .env fallback by design."
     )
 
 

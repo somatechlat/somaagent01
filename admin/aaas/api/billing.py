@@ -5,7 +5,10 @@ Billing metrics and invoice management.
 Per SRS Section 5.1 - Billing Dashboard.
 """
 
+import hashlib
+import hmac
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from ninja import Query, Router
@@ -20,6 +23,7 @@ from admin.aaas.api.schemas import (
     UsageMetrics,
 )
 from admin.aaas.models import SubscriptionTier, Tenant
+from admin.common.auth import AuthBearer
 from admin.common.messages import get_message, SuccessCode
 
 router = Router()
@@ -259,30 +263,59 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
 
 
 class PaymentMethodCreate(BaseModel):
-    """Create payment method request."""
+    """Create payment method request.
 
-    token: str  # Stripe token from frontend
+    `token` is the single-use token minted by the client-side provider SDK.
+    It is never stored: only a one-way fingerprint of it is kept.
+    """
+
+    token: str
     set_default: bool = True
 
 
 class PaymentMethodOut(BaseModel):
-    """Payment method response."""
+    """Payment method record.
+
+    Deliberately carries no card details. This system does not talk to a
+    payment provider, so brand, last4 and expiry are unknown; asserting
+    them would be fabrication.
+    """
 
     id: str
-    type: str  # card, bank_account
-    last4: str
-    exp_month: Optional[int] = None
-    exp_year: Optional[int] = None
+    fingerprint: str
+    verified: bool
     is_default: bool = False
+    created_at: str
 
 
-@router.post("/tenant/{tenant_id}/payment-methods")
+def _payment_token_fingerprint(token: str) -> str:
+    """Return a non-reversible fingerprint of a payment token.
+
+    Keyed with SECRET_KEY so the fingerprint cannot be brute-forced back to
+    the token even if the metadata blob leaks. The token itself is never
+    written anywhere — not to the database, not to a response, not to a log.
+    """
+    from django.conf import settings
+
+    return hmac.new(
+        settings.SECRET_KEY.encode("utf-8"),
+        token.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()[:32]
+
+
+@router.post(
+    "/tenant/{tenant_id}/payment-methods",
+    response=PaymentMethodOut,
+    auth=AuthBearer(),
+)
 @transaction.atomic
 async def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
-    """Add a payment method for a tenant.
+    """Record a payment method reference for a tenant.
 
-    Stores the payment provider token reference in tenant metadata.
-    Does NOT fabricate card details — only persists the token reference.
+    Stores only a one-way fingerprint of the provider token in tenant
+    metadata. The raw token is discarded immediately: keeping it would put
+    live payment credential material into a JSON metadata column.
     """
     from ninja.errors import HttpError
 
@@ -291,20 +324,18 @@ async def add_payment_method(request, tenant_id: str, payload: PaymentMethodCrea
     except Tenant.DoesNotExist:
         raise HttpError(404, f"Tenant {tenant_id} not found")
 
-    # Store token reference in tenant metadata (Stripe library not installed)
-    # In production with Stripe: stripe.PaymentMethod.attach(payload.token, customer=tenant.stripe_id)
+    fingerprint = _payment_token_fingerprint(payload.token)
     metadata = tenant.metadata or {}
     payment_methods = metadata.get("payment_methods", [])
 
     pm_ref = {
-        "id": f"pm_ref_{payload.token[:12]}",
-        "token": payload.token,
-        "type": "card",  # Type unknown until verified by payment provider
-        "last4": None,  # Not available without Stripe verification
+        "id": f"pm_ref_{fingerprint[:16]}",
+        "fingerprint": fingerprint,
+        # No payment provider is integrated, so this reference has not been
+        # verified against one. Say so rather than inventing card details.
+        "verified": False,
         "is_default": payload.set_default,
-        "created_at": __import__("datetime")
-        .datetime.now(__import__("datetime").timezone.utc)
-        .isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
     # If setting as default, unset others
@@ -317,8 +348,4 @@ async def add_payment_method(request, tenant_id: str, payload: PaymentMethodCrea
     tenant.metadata = metadata
     tenant.save(update_fields=["metadata", "updated_at"])
 
-    return {
-        "success": True,
-        "message": get_message(SuccessCode.PAYMENT_METHOD_REFERENCE_STORED),
-        "payment_method": pm_ref,
-    }
+    return PaymentMethodOut(**pm_ref)
