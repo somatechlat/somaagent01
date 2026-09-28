@@ -1,1 +1,0 @@
-"""SomaCore Shared Library."""
