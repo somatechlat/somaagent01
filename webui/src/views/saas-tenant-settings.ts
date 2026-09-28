@@ -25,7 +25,6 @@ import type { TenantSettingChangeDetail } from '../components/saas-tenant-genera
 
 import '../components/saas-tenant-general-settings.js';
 import '../components/saas-tenant-security-settings.js';
-import '../components/saas-tenant-api-keys.js';
 
 @customElement('saas-tenant-settings')
 export class SaasTenantSettings extends LitElement {
@@ -316,12 +315,6 @@ export class SaasTenantSettings extends LitElement {
             Features
           </button>
           <button
-            class="tab ${this.activeTab === 'apikeys' ? 'active' : ''}"
-            @click=${() => (this.activeTab = 'apikeys')}
-          >
-            API Keys
-          </button>
-          <button
             class="tab danger ${this.activeTab === 'danger' ? 'active' : ''}"
             @click=${() => (this.activeTab = 'danger')}
           >
@@ -345,9 +338,6 @@ export class SaasTenantSettings extends LitElement {
                 @tenant-setting-change=${this._onSettingChange}
               ></saas-tenant-security-settings>
             `
-          : ''}
-        ${this.activeTab === 'apikeys'
-          ? html`<saas-tenant-api-keys></saas-tenant-api-keys>`
           : ''}
         ${this.activeTab === 'features' ? this._renderFeaturesTab() : ''}
         ${this.activeTab === 'danger' ? this._renderDangerTab() : ''}

@@ -293,12 +293,6 @@ if (app) {
             return;
         }
 
-        if (path === '/platform/features') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-features-view'));
-            return;
-        }
-
         // Audit Log Dashboard
         if (path === '/platform/audit' || path === '/saas/audit') {
             await import('./views/saas-audit-dashboard.js');
@@ -346,28 +340,10 @@ if (app) {
             return;
         }
 
-        if (path === '/mode-select' || path === '/select-mode') {
-            await import('./views/saas-mode-selection.js');
-            app.appendChild(document.createElement('saas-mode-selection'));
-            return;
-        }
-
         // 5. Tenant Admin Routes
         if (path === '/admin/dashboard') {
             await import('./views/saas-tenant-dashboard.js');
             app.appendChild(document.createElement('saas-tenant-dashboard'));
-            return;
-        }
-
-        if (path === '/admin/users') {
-            await import('./views/saas-tenant-users.js');
-            app.appendChild(document.createElement('saas-tenant-users'));
-            return;
-        }
-
-        if (path === '/admin/agents') {
-            await import('./views/saas-tenant-agents.js');
-            app.appendChild(document.createElement('saas-tenant-agents'));
             return;
         }
 
@@ -379,7 +355,7 @@ if (app) {
         }
 
         // Audit Log
-        if (path === '/audit' || path === '/admin/audit' || path === '/platform/audit') {
+        if (path === '/audit' || path === '/admin/audit') {
             await import('./views/saas-audit-log.js');
             app.appendChild(document.createElement('saas-audit-log'));
             return;
@@ -400,14 +376,8 @@ if (app) {
         }
 
         if (path === '/memory') {
-            try {
-                await import('./views/saas-memory-view.js');
-                app.appendChild(document.createElement('saas-memory-view'));
-            } catch {
-                // Fallback to legacy memory
-                await import('./views/saas-memory-view.js');
-                app.appendChild(document.createElement('saas-memory-view'));
-            }
+            await import('./views/saas-memory-view.js');
+            app.appendChild(document.createElement('saas-memory-view'));
             return;
         }
 

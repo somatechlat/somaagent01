@@ -320,9 +320,6 @@ export class SaasAgentHeader extends LitElement {
                     <button class="icon-btn" @click=${() => workspaceStore.setSurface('capsule')} title="Capsule Settings">
                         <span class="material-symbols-outlined">settings</span>
                     </button>
-                    <button class="icon-btn" @click=${() => workspaceStore.setSurface('tools')} title="Tools">
-                        <span class="material-symbols-outlined">build</span>
-                    </button>
                 </div>
             </div>
         `;

@@ -36,7 +36,7 @@ export interface TenantSettings {
   featureOverrides: Record<string, boolean>;
 }
 
-export type SettingsTab = 'general' | 'branding' | 'security' | 'features' | 'apikeys' | 'danger';
+export type SettingsTab = 'general' | 'branding' | 'security' | 'features' | 'danger';
 
 export interface TenantSettingsHost {
   requestUpdate(): void;

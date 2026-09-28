@@ -1,13 +1,13 @@
 /**
  * SomaAgent01 — Right Panel (Agent Toolkit)
- * Surfaces: Capsule, Brain, Tools, Files, Browser, Editor
+ * Surfaces: Capsule, Brain
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { workspaceStore } from '../stores/workspace-store.js';
 
-type SurfaceKey = 'capsule' | 'brain' | 'tools' | 'files' | 'browser' | 'editor';
+type SurfaceKey = 'capsule' | 'brain';
 
 interface SurfaceDef {
     key: SurfaceKey;
@@ -18,10 +18,6 @@ interface SurfaceDef {
 const SURFACES: SurfaceDef[] = [
     { key: 'capsule', icon: 'medication', label: 'Capsule' },
     { key: 'brain', icon: 'neurology', label: 'Brain' },
-    { key: 'tools', icon: 'build', label: 'Tools' },
-    { key: 'files', icon: 'folder', label: 'Files' },
-    { key: 'browser', icon: 'public', label: 'Browser' },
-    { key: 'editor', icon: 'edit', label: 'Editor' },
 ];
 
 @customElement('saas-right-panel')
@@ -167,8 +163,11 @@ export class SaasRightPanel extends LitElement {
         super.connectedCallback();
         workspaceStore.subscribe(() => {
             this._workspaceState = workspaceStore.state;
-            if (this._workspaceState.activeSurface) {
-                this._activeTab = this._workspaceState.activeSurface as SurfaceKey;
+            const s = this._workspaceState.activeSurface;
+            // Only honour surfaces that still exist; persisted values may name
+            // tabs that have since been removed.
+            if (s === 'capsule' || s === 'brain') {
+                this._activeTab = s;
             }
         });
     }
@@ -206,38 +205,6 @@ export class SaasRightPanel extends LitElement {
                 return html`<saas-capsule-editor></saas-capsule-editor>`;
             case 'brain':
                 return html`<saas-brain-panel></saas-brain-panel>`;
-            case 'tools':
-                return html`
-                    <div class="surface-header">Tools & Capabilities</div>
-                    <div class="placeholder">
-                        <div class="placeholder-icon material-symbols-outlined">build</div>
-                        <div>Tool manager coming soon</div>
-                    </div>
-                `;
-            case 'files':
-                return html`
-                    <div class="surface-header">File Browser</div>
-                    <div class="placeholder">
-                        <div class="placeholder-icon material-symbols-outlined">folder</div>
-                        <div>File browser coming soon</div>
-                    </div>
-                `;
-            case 'browser':
-                return html`
-                    <div class="surface-header">Browser</div>
-                    <div class="placeholder">
-                        <div class="placeholder-icon material-symbols-outlined">public</div>
-                        <div>Browser surface coming soon</div>
-                    </div>
-                `;
-            case 'editor':
-                return html`
-                    <div class="surface-header">Editor</div>
-                    <div class="placeholder">
-                        <div class="placeholder-icon material-symbols-outlined">edit</div>
-                        <div>Editor surface coming soon</div>
-                    </div>
-                `;
             default:
                 return html``;
         }

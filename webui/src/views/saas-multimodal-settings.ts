@@ -487,23 +487,6 @@ export class SaasMultimodalSettings extends LitElement {
                   </label>
                 </div>
               </div>
-
-              <!-- Video Generation -->
-              <div class="capability-row" style="opacity: 0.5;">
-                <div class="capability-info">
-                  <div class="capability-name">
-                    Video Generation
-                    <span class="tag tag-enterprise">Enterprise</span>
-                  </div>
-                  <div class="capability-desc">AI video generation (coming soon)</div>
-                </div>
-                <div class="capability-toggle">
-                  <label class="toggle-switch">
-                    <input type="checkbox" .checked=${this.config.video_enabled} disabled>
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
 
