@@ -34,7 +34,6 @@ from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
 from services.common.telemetry import TelemetryPublisher
-from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
@@ -92,9 +91,7 @@ class ConversationWorkerImpl:
         self.budgets = BudgetManager(url=django_settings.REDIS_URL, tenant_config=self.tenants)
         self.policy = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=self.tenants)
         self.enforcer = ConversationPolicyEnforcer(self.policy)
-        self.telemetry = TelemetryPublisher(
-            publisher=self.publisher, store=TelemetryStore.from_env()
-        )
+        self.telemetry = TelemetryPublisher(publisher=self.publisher)
         self.soma = SomaBrainClient.get()
         self.router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
         # Initialize use cases

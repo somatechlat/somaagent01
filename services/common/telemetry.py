@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 from services.common.event_bus import KafkaEventBus
 from services.common.publisher import DurablePublisher
-from services.common.telemetry_store import TelemetryStore
 
 
 class TelemetryPublisher:
@@ -22,7 +21,6 @@ class TelemetryPublisher:
     def __init__(
         self,
         publisher: Optional[DurablePublisher] = None,
-        store: Optional[TelemetryStore] = None,
         bus: Optional[KafkaEventBus] = None,
     ) -> None:
         # prefer provided durable publisher; else wrap provided bus; else create both
@@ -33,7 +31,6 @@ class TelemetryPublisher:
         else:
             event_bus = bus or KafkaEventBus()
             self.publisher = DurablePublisher(bus=event_bus)
-        self.store = store or TelemetryStore()
         self.topics = {
             "llm": "llm.metrics",
             "tool": "tool.metrics",
@@ -86,7 +83,6 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self._publish(self.topics["llm"], event)
-        await self.store.insert_llm(event)
 
     async def emit_tool(
         self,
@@ -113,7 +109,6 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self._publish(self.topics["tool"], event)
-        await self.store.insert_tool(event)
 
     async def emit_budget(
         self,
@@ -140,7 +135,6 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self._publish(self.topics["budget"], event)
-        await self.store.insert_budget(event)
 
     async def emit_escalation_llm(
         self,
@@ -174,4 +168,3 @@ class TelemetryPublisher:
             "metadata": metadata or {},
         }
         await self._publish(self.topics["escalation"], event)
-        await self.store.insert_escalation(event)

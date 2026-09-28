@@ -75,7 +75,7 @@ class ToolExecutor:
         self.sandbox = SandboxManager()
         self.tool_registry = ToolRegistry()
         self.execution_engine = ExecutionEngine(self.sandbox, self.resources)
-        self.telemetry = ToolTelemetryEmitter(publisher=self.publisher, settings=SERVICE_SETTINGS)
+        self.telemetry = ToolTelemetryEmitter(publisher=self.publisher)
         self.soma = SomaBrainClient.get()
         self.streams = get_stream_config()
         self._audit_store: _AuditStore | None = None

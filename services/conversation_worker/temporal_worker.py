@@ -36,7 +36,6 @@ from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
 from services.common.telemetry import TelemetryPublisher
-from services.common.telemetry_store import TelemetryStore
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
@@ -66,7 +65,7 @@ def _build_use_case():
     budgets = BudgetManager(url=django_settings.REDIS_URL, tenant_config=tenants)
     policy_client = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=tenants)
     enforcer = ConversationPolicyEnforcer(policy_client)
-    telemetry = TelemetryPublisher(publisher=publisher, store=TelemetryStore.from_env())
+    telemetry = TelemetryPublisher(publisher=publisher)
     soma = SomaBrainClient.get()
     router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
 

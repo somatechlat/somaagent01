@@ -11,7 +11,6 @@ from typing import Any
 
 from services.common.publisher import DurablePublisher
 from services.common.telemetry import TelemetryPublisher
-from services.common.telemetry_store import TelemetryStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,15 +18,13 @@ LOGGER = logging.getLogger(__name__)
 class ToolTelemetryEmitter:
     """Emits telemetry events for tool executions."""
 
-    def __init__(self, publisher: DurablePublisher, settings: Any) -> None:
+    def __init__(self, publisher: DurablePublisher) -> None:
         """Initialize the telemetry emitter.
 
         Args:
             publisher: DurablePublisher for event publishing.
-            settings: Service settings containing telemetry configuration.
         """
-        telemetry_store = TelemetryStore.from_settings(settings)
-        self._telemetry = TelemetryPublisher(publisher=publisher, store=telemetry_store)
+        self._telemetry = TelemetryPublisher(publisher=publisher)
 
     async def emit_tool_execution(
         self,

@@ -16,7 +16,6 @@ _SUBMODULES = {
     "model_costs",
     "model_profiles",
     "telemetry",
-    "telemetry_store",
     "deployment_mode",
 }
 
