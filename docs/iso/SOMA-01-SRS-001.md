@@ -3,20 +3,24 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 Master Software Requirements Specification |
 | Document Identifier | SOMA-01-SRS-001 |
 | Version | 1.0.0 |
 | Date | 2026-06-15 |
-| Status | Baseline |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Baseline` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial master SRS consolidating 22 domain SRS documents; formalized with requirement IDs and traceability |
 
 ## Normative References

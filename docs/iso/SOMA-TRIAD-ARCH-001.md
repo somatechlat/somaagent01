@@ -3,22 +3,25 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | Soma Triad Architecture Description — Agent / Brain / Memory |
 | Document Identifier | SOMA-TRIAD-ARCH-001 |
 | Version | 2.0.0 |
 | Date | 2026-09-27 |
-| Status | Draft — findings open, remediation plan approved for execution |
+| Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO/IEC/IEEE 42010:2011 — Architecture Description |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 | Related | `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` (normative), `docs/standards/SOMA-STD-CODING-001.md` (engineering law), `docs/project/SOMA-PM-PLAN-TRIAD-001.md` (delivery) |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Draft — findings open, remediation plan approved for execution` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial description. Memory lane verified live. |
 | 2.0.0 | 2026-09-27 | SomaTech Engineering | Rebuilt from full source read of all three repos. Target architecture (§4), remediation plan (§11), scale review (§10) added. Findings register re-opened with source citations. |
 

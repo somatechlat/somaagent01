@@ -3,17 +3,23 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 Verification and Validation Plan |
 | Document Identifier | SOMA-01-VV-001 |
 | Version | 1.0.0 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO/IEC/IEEE 16085:2006 — Systems and Software Engineering — Life Cycle Processes — Risk Management (adapted for V&V) |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
----
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control: Document Control block normalised and this Revision History added. |
 
 ## 1. PURPOSE
 

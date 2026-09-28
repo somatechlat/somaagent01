@@ -3,16 +3,17 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | Soma × Agent Zero — Feature Parity Matrix, UI/UX Development Specification, Code Remediation & Ownership Plan |
 | Document Identifier | SOMA-A0-PARITY-001 |
 | Version | 1.0.0 |
 | Date | 2026-09-27 |
-| Status | **Draft — FOR EXECUTION APPROVAL. No production code until Plan Gate is signed.** |
+| Status | Draft |
 | Author | SomaTech Engineering |
-| Approver | Product Owner (user) |
+| Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO/IEC/IEEE 42010:2011; ISO 9241-210:2019; ISO/IEC 25010:2011 |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 | Related | `SOMA-TRIAD-ARCH-001.md`, `SOMA-ARCH-INVARIANTS-001.md`, `SOMA-UI-SPEC-002.md`, `SOMA-UI-SPEC-001.md`, `SOMA-PM-PLAN-TRIAD-001.md`, `SOMA-STD-CODING-001.md` |
 | Source of truth | Live source of `somaAgent01`, `somabrain`, `somafractalmemory` + `/Users/macbookpro201916i964gb1tb/Downloads/agent-zero-main` |
 | Audience | **Agent swarm** (multi-agent execution). Each work package (WP) is independently assignable. |
@@ -21,6 +22,8 @@
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `**Draft — FOR EXECUTION APPROVAL. No production code until Plan Gate is signed.**` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial: full A0 feature inventory, Soma gap matrix, UI/UX development spec, Capsule-module contract (WhatsApp/Telegram/Email as Capsules), duplicate-code remediation, ownership map, swarm work packages. |
 
 ---

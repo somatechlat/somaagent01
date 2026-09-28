@@ -4,6 +4,28 @@
 
 # SomaAgent01 Deep Repo Analysis
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | SomaAgent01 Deep Repo Analysis |
+| Document Identifier | SOMA-RPT-REPO-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
+
 Date: 2026-01-25
 
 This report reflects a deep scan of code, docs, and infra in the repo. It focuses on architectural overlap, duplicated logic, drift between docs and code, and concrete defects/risks found in the current implementation.

@@ -1,5 +1,27 @@
 # SomaAgent01 — Merged Tasks & Requirements
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | SomaAgent01 — Merged Tasks & Requirements |
+| Document Identifier | SOMA-TASK-MERGED-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
+
 **Document:** SOMA-TASK-MERGED-001.md  
 **Version:** 1.0.0  
 **Date:** 2026-01-03  

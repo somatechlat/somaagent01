@@ -3,15 +3,23 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 v2.0.0 Release Notes |
 | Document Identifier | SOMA-01-RELEASE-001 |
 | Version | 2.0.0 |
-| Release Date | 2026-06-15 |
-| Status | Release Candidate |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
----
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control: Document Control block normalised and this Revision History added. |
 
 ## 1. RELEASE SUMMARY
 

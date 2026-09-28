@@ -1,5 +1,27 @@
 # V3 FLOW MASTER TASK TRACKER — COMPLETE IMPLEMENTATION PLAN
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | V3 FLOW MASTER TASK TRACKER — COMPLETE IMPLEMENTATION PLAN |
+| Document Identifier | SOMA-TASK-FLOW-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
+
 **Project:** SomaAgent01 V3 Flow
 **Last Updated:** 2026-01-16 20:51
 **Status:** 81% COMPLETE (13/16 SRS)

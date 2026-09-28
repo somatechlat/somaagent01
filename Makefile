@@ -9,6 +9,11 @@
 
 .PHONY: help dev dev-worker test check docs-check docs-register migrate build build-standalone up down clean health
 
+# Interpreter for every Python recipe. `python` is not a stable name across
+# machines (many distros ship only `python3`), so the interpreter is a single
+# overridable variable: `make docs-check PYTHON=/path/to/venv/bin/python`.
+PYTHON ?= python3
+
 # Default target
 help:
 	@echo "SomaAgent01 Build System"
@@ -41,11 +46,11 @@ help:
 
 dev:
 	@echo "Starting gateway with hot reload..."
-	DJANGO_SETTINGS_MODULE=services.gateway.settings python -m uvicorn services.gateway.main:django_asgi --reload --host 0.0.0.0 --port 8010
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) -m uvicorn services.gateway.main:django_asgi --reload --host 0.0.0.0 --port 8010
 
 dev-worker:
 	@echo "Starting conversation worker..."
-	DJANGO_SETTINGS_MODULE=services.gateway.settings python -m services.conversation_worker.main
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) -m services.conversation_worker.main
 
 # ============================================================================
 # DOCKER BUILD
@@ -73,23 +78,23 @@ down:
 
 test:
 	@echo "Running tests..."
-	DJANGO_SETTINGS_MODULE=services.gateway.settings python -m pytest tests/ -v
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) -m pytest tests/ -v
 
 check:
 	@echo "Running Django system check..."
-	DJANGO_SETTINGS_MODULE=services.gateway.settings python manage.py check
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) manage.py check
 
 docs-check:
 	@echo "Checking ISO document control & register compliance..."
-	python scripts/check_docs.py
+	$(PYTHON) scripts/check_docs.py
 
 docs-register:
 	@echo "Regenerating document register..."
-	python scripts/gen_register.py
+	$(PYTHON) scripts/gen_register.py
 
 migrate:
 	@echo "Running Django migrations..."
-	DJANGO_SETTINGS_MODULE=services.gateway.settings python manage.py migrate
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) manage.py migrate
 
 # ============================================================================
 # CLEAN
@@ -105,7 +110,7 @@ clean:
 # ============================================================================
 
 health:
-	@curl -s http://localhost:20020/api/health/ | python -m json.tool || echo "Gateway not responding on port 20020"
+	@curl -s http://localhost:20020/api/health/ | $(PYTHON) -m json.tool || echo "Gateway not responding on port 20020"
 
 # ============================================================================
 # INFRASTRUCTURE RESET

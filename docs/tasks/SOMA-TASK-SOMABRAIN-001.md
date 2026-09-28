@@ -1,5 +1,27 @@
 # TASK-SOMABRAIN: L3 Cognitive Engine Integration
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | TASK-SOMABRAIN: L3 Cognitive Engine Integration |
+| Document Identifier | SOMA-TASK-SOMABRAIN-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
+
 **Module:** SomaBrain Integration
 **SRS Source:** SRS-SOMABRAIN-INTEGRATION-2026-01-16
 **Sprint:** 3 (Wave 1)

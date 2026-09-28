@@ -41,14 +41,14 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | Document Identifier | File | Title | Version | Status | Approver | Next Review | Compliance |
 |---|---|---|---|---|---|---|---|
 | SOMA-01-DOCS-002 | docs/iso/DOCUMENT-REGISTER.md | Document Register | 1.0.1 | Draft | — | 2026-12-27 | Compliant |
-| SOMA-STD-INDEX-001 | docs/README.md | Documentation Tree Index | — | — | — | MISSING | Non-compliant |
-| — | docs/architecture/SOMA-ARCH-INVARIANTS-001.md | ARCHITECTURE INVARIANTS — what must be perfect | — | — | — | MISSING | Non-compliant |
-| SOMA-ARCH-REDESIGN-001 | docs/architecture/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Active | — | MISSING | Non-compliant |
+| SOMA-STD-INDEX-001 | docs/README.md | SOMA-STD-INDEX-001 — Documentation Tree Index | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-ARCH-INVARIANTS-001 | docs/architecture/SOMA-ARCH-INVARIANTS-001.md | ARCHITECTURE INVARIANTS — what must be perfect | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-ARCH-REDESIGN-001 | docs/architecture/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-IDREG-001 | docs/design/SOMA-UI-IDREG-001.md | Screen Identifier Allocation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-MOCKUPS-001 | docs/design/SOMA-UI-MOCKUPS-001.md | User Interface Mockups Index | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| — | docs/design/SOMA-UI-PARITY-002.md | PLAN — UI/UX Feature Parity with Agent Zero (clone & better) | — | — | — | MISSING | Non-compliant |
-| SOMA-UI-SPEC-001 | docs/design/SOMA-UI-SPEC-001.md | Soma Agent Definitive UI/UX Specification | 2.0.0 | Baseline | — | MISSING | Non-compliant |
-| SOMA-UI-UX-001 | docs/design/SOMA-UI-SPEC-002.md | Soma Agent UI/UX Complete Specification | 1.0.0 | Baseline | — | MISSING | Non-compliant |
+| SOMA-UI-PARITY-002 | docs/design/SOMA-UI-PARITY-002.md | PLAN — UI/UX Feature Parity with Agent Zero (clone & better) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-UI-SPEC-001 | docs/design/SOMA-UI-SPEC-001.md | Soma Agent Definitive UI/UX Specification | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-UI-SPEC-002 | docs/design/SOMA-UI-SPEC-002.md | Soma Agent UI/UX Complete Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-TEMPLATE-001 | docs/design/SOMA-UI-TEMPLATE-001.md | House ISO Template | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | UI-S-00-chrome | docs/design/mockups/UI-S-00-chrome.md | UI-S-00 — Global Chrome | — | — | — | — | Annex |
 | UI-S-01-soul | docs/design/mockups/UI-S-01-soul.md | UI-S-01 — Soul — persona & system prompt | — | — | — | — | Annex |
@@ -112,89 +112,89 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | UI-X-06-capsule | docs/design/mockups/UI-X-06-capsule.md | UI-X-06 — Capsule | — | — | — | — | Annex |
 | UI-X-07-brain | docs/design/mockups/UI-X-07-brain.md | UI-X-07 — Brain | — | — | — | — | Annex |
 | UI-X-08-desktop | docs/design/mockups/UI-X-08-desktop.md | UI-X-08 — Desktop | — | — | — | — | Annex |
-| SOMA-01-AAAS-001 | docs/iso/SOMA-01-AAAS-001.md | Soma AAAS Deployment Specification | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-ARCH-001 | docs/iso/SOMA-01-ARCH-001.md | SomaAgent01 System Architecture Document | 2.0.0 | Pre-Production | — | MISSING | Non-compliant |
-| SOMA-01-AUDIT-002 | docs/iso/SOMA-01-AUDIT-002.md | SomaAgent01 Code-Verified Deep Audit Report | 2.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-COMPAT-001 | docs/iso/SOMA-01-COMPAT-001.md | Soma Cognitive Triad Version Compatibility Matrix | 1.0.0 | Active | — | MISSING | Non-compliant |
+| SOMA-01-AAAS-001 | docs/iso/SOMA-01-AAAS-001.md | Soma AAAS Deployment Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-ARCH-001 | docs/iso/SOMA-01-ARCH-001.md | SomaAgent01 System Architecture Document | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-AUDIT-002 | docs/iso/SOMA-01-AUDIT-002.md | SomaAgent01 Code-Verified Deep Audit Report | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-COMPAT-001 | docs/iso/SOMA-01-COMPAT-001.md | Soma Cognitive Triad Version Compatibility Matrix | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-DOCS-001 | docs/iso/SOMA-01-DOCS-001.md | Document Control and Traceability Procedure | 1.2.0 | Draft | — | 2026-12-27 | Compliant |
-| SOMA-01-OPS-001 | docs/iso/SOMA-01-OPS-001.md | SomaAgent01 Operations Runbook | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-PROD-001 | docs/iso/SOMA-01-PROD-001.md | SomaAgent01 Production Readiness Assessment | 2.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-QMS-001 | docs/iso/SOMA-01-QMS-001.md | SomaAgent01 Quality Manual | 2.2.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-RELEASE-001 | docs/iso/SOMA-01-RELEASE-001.md | SomaAgent01 v2.0.0 Release Notes | 2.0.0 | Release Candidate | — | MISSING | Non-compliant |
-| SOMA-01-RISK-001 | docs/iso/SOMA-01-RISK-001.md | SomaAgent01 Risk Register | 2.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-SDP-001 | docs/iso/SOMA-01-SDP-001.md | SomaAgent01 Software Development Plan | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-SEC-001 | docs/iso/SOMA-01-SEC-001.md | SomaAgent01 Security Assessment Report | 2.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-01-SRS-001 | docs/iso/SOMA-01-SRS-001.md | SomaAgent01 Master Software Requirements Specification | 1.0.0 | Baseline | — | MISSING | Non-compliant |
+| SOMA-01-OPS-001 | docs/iso/SOMA-01-OPS-001.md | SomaAgent01 Operations Runbook | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-PROD-001 | docs/iso/SOMA-01-PROD-001.md | SomaAgent01 Production Readiness Assessment | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-QMS-001 | docs/iso/SOMA-01-QMS-001.md | SomaAgent01 Quality Manual | 2.2.1 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-RELEASE-001 | docs/iso/SOMA-01-RELEASE-001.md | SomaAgent01 v2.0.0 Release Notes | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-RISK-001 | docs/iso/SOMA-01-RISK-001.md | SomaAgent01 Risk Register | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-SDP-001 | docs/iso/SOMA-01-SDP-001.md | SomaAgent01 Software Development Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-SEC-001 | docs/iso/SOMA-01-SEC-001.md | SomaAgent01 Security Assessment Report | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-SRS-001 | docs/iso/SOMA-01-SRS-001.md | SomaAgent01 Master Software Requirements Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-001 | docs/iso/SOMA-01-UIUX-001.md | User Interface — Screen & Feature Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-002 | docs/iso/SOMA-01-UIUX-002.md | User Interface — Modal & Overlay Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-003 | docs/iso/SOMA-01-UIUX-003.md | User Interface — Component & Module Catalogue | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-004 | docs/iso/SOMA-01-UIUX-004.md | User Interface — Verification & Traceability | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-005 | docs/iso/SOMA-01-UIUX-005.md | User Interface — Settings Parity Matrix | 1.0.0 | Draft | — | 2026-12-27 | Compliant |
-| SOMA-01-VV-001 | docs/iso/SOMA-01-VV-001.md | SomaAgent01 Verification and Validation Plan | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-A0-PARITY-001 | docs/iso/SOMA-A0-PARITY-001.md | Soma × Agent Zero — Feature Parity Matrix, UI/UX Development Specification, Code Remediation & Ownership Plan | 1.0.0 | **Draft — FOR EXECUTION APPROVAL. No production code until Plan Gate is signed.** | Product Owner (user) | MISSING | Non-compliant |
-| SOMA-BRAIN-COMPLIANCE-001 | docs/iso/SOMA-BRAIN-COMPLIANCE-001.md | SomaBrain No-Fakes / No-Bypasses Audit | 1.0.0 | Findings open — remediation in progress | — | MISSING | Non-compliant |
+| SOMA-01-VV-001 | docs/iso/SOMA-01-VV-001.md | SomaAgent01 Verification and Validation Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-A0-PARITY-001 | docs/iso/SOMA-A0-PARITY-001.md | Soma × Agent Zero — Feature Parity Matrix, UI/UX Development Specification, Code Remediation & Ownership Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BRAIN-COMPLIANCE-001 | docs/iso/SOMA-BRAIN-COMPLIANCE-001.md | SOMA-BRAIN-COMPLIANCE-001 — SomaBrain No-Fakes / No-Bypasses Audit | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SETTINGS-MODEL-001 | docs/iso/SOMA-SETTINGS-MODEL-001.md | Soma Settings Model and Configuration Inventory | 1.0.0 | Draft | — | 2026-12-27 | Compliant |
-| SOMA-TRIAD-ARCH-001 | docs/iso/SOMA-TRIAD-ARCH-001.md | Soma Triad Architecture Description — Agent / Brain / Memory | 2.0.0 | Draft — findings open, remediation plan approved for execution | — | MISSING | Non-compliant |
-| SOMA-MOD-ARCH-001 | docs/modules/SOMA-MOD-ARCH-001.md | Soma Agent Modular Architecture — Core vs Optional Modules | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-MOD-SPEC-001 | docs/modules/SOMA-MOD-SPEC-001.md | Soma Agent Module System Technical Specification | 1.0.0 | Baseline | — | MISSING | Non-compliant |
-| — | docs/operations/SOMA-OPS-AAAS-001.md | AAAS Standalone Deployment Guide | — | — | — | MISSING | Non-compliant |
-| — | docs/operations/SOMA-OPS-DEPLOY-001.md | 🚀 Deployment Guide | — | — | — | MISSING | Non-compliant |
-| — | docs/operations/SOMA-OPS-MODES-001.md | Deployment Modes - AAAS vs STANDALONE | — | — | — | MISSING | Non-compliant |
-| — | docs/operations/SOMA-OPS-PLAN-001.md | 🚀 SOMAAGENT01 — COMPLETE DEPLOYMENT PLAN | — | — | — | MISSING | Non-compliant |
-| SOMA-PLN-001 | docs/operations/SOMA-OPS-READINESS-001.md | SomaAgent01 Deployment Readiness Plan | 1.0.0 | Pre-Production | — | MISSING | Non-compliant |
-| — | docs/operations/SOMA-OPS-SOFTMODES-001.md | Software Deployment Modes | — | — | — | MISSING | Non-compliant |
-| SOMA-PM-CHANGE-001 | docs/project/SOMA-PM-CHANGE-001.md | Change Control Log | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-PM-CHARTER-001 | docs/project/SOMA-PM-CHARTER-001.md | Soma Cognitive Triad Project Charter | 1.1.0 | Approved | — | MISSING | Non-compliant |
-| SOMA-PM-CLOSURE-001 | docs/project/SOMA-PM-CLOSURE-001.md | Project Closure Report | 1.0.0 | Final | — | MISSING | Non-compliant |
-| SOMA-PM-COMM-001 | docs/project/SOMA-PM-COMM-001.md | Communication Plan | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-PM-DELIV-001 | docs/project/SOMA-PM-DELIV-001.md | Deliverables Register | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-PM-MILE-001 | docs/project/SOMA-PM-MILE-001.md | Milestone Tracker | 1.0.0 | Active | — | MISSING | Non-compliant |
-| — | docs/project/SOMA-PM-PLAN-TRIAD-001.md | PLAN — Seamless Triad: Agent ↔ SomaBrain ↔ SomaFractalMemory | — | — | — | MISSING | Non-compliant |
-| SOMA-PM-RACI-001 | docs/project/SOMA-PM-RACI-001.md | RACI Matrix (Responsible, Accountable, Consulted, Informed) | 1.0.0 | Active | — | MISSING | Non-compliant |
-| SOMA-SOW-001 | docs/project/SOMA-PM-SOW-001.md | Soma Cognitive Triad — Full Scope of Work | 1.0.0 | Approved | — | MISSING | Non-compliant |
-| SOMA-PM-WBS-001 | docs/project/SOMA-PM-WBS-001.md | Soma Cognitive Triad Work Breakdown Structure | 1.1.0 | Active | — | MISSING | Non-compliant |
-| SOMA-FEAT-MATRIX-001 | docs/reports/SOMA-RPT-FEATMATRIX-001.md | Agent Zero vs Soma Feature Comparison Matrix | 1.0.0 | Active | — | MISSING | Non-compliant |
-| — | docs/reports/SOMA-RPT-INVENTORY-001.md | System Inventory | — | — | — | MISSING | Non-compliant |
-| — | docs/reports/SOMA-RPT-REPO-001.md | SomaAgent01 Deep Repo Analysis | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-AGENTIQ-001.md | SRS-AGENTIQ — Governor Control Loop | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-ARCHPATTERNS-001.md | SRS-ARCHITECTURAL-PATTERNS — Modular Design Patterns | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-BACKUP-001.md | SRS-BACKUP-SYSTEM — Agent Backup & Disaster Recovery | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-BUDGET-001.md | SRS-BUDGET-SYSTEM — Universal Resource Budgeting | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-CAPSULEPORT-001.md | SRS-CAPSULE-PORTABILITY — Agent Portability and Exchange | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-CHATFLOW-001.md | SRS-CHAT-FLOW-MASTER — Complete Agent Architecture with Resilience | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-CONTEXT-001.md | SRS-CONTEXT-BUILDING — Prompt Assembly | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-DATAMODELS-001.md | SRS-DATA-MODELS — Data Models and ORM Schema | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-FEATFLAGS-001.md | SRS-FEATURE-FLAGS — System Feature Toggles | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-LAGOBILLING-001.md | SRS-LAGO-BILLING — Usage Metering & Billing | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-MODELROUTING-001.md | SRS-MODEL-ROUTING — LLM Model Selection | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-MULTIMODAL-001.md | SRS-MULTIMODAL — Image, Audio, and Diagram Generation | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-MULTITENANCY-001.md | SRS-SECURITY-MULTITENANCY — Security and Tenant Isolation | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-PERMISSIONS-001.md | SRS-PERMISSION-MATRIX — Permission Matrix and Role Administration | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-RLM-001.md | SRS-RLM-ENGINE — Recursive Language Model Execution | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-SAASINFRA-001.md | SRS-SAAS-INFRASTRUCTURE — AAAS Deployment Architecture | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-SOMABRAIN-001.md | SRS-SOMABRAIN-INTEGRATION — L3 Cognitive Engine | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-SOVEREIGNTY-001.md | SRS-650-LINE-SOVEREIGNTY — VIBE Rule 245 Enforcement | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-TESTBENCH-001.md | SRS-TEST-WORKBENCH — Cross-Repository Test Audit | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-TESTMODULES-001.md | SRS-TEST-MODULES — Module-Based Test Suite Design | — | — | — | MISSING | Non-compliant |
-| — | docs/requirements/SOMA-SRS-TOOLS-001.md | SRS-TOOL-SYSTEM — Tool Discovery and Execution | — | — | — | MISSING | Non-compliant |
-| — | docs/standards/SOMA-STD-CODING-001.md | Vibe Coding Rules | — | — | — | MISSING | Non-compliant |
-| — | docs/standards/SOMA-STD-TEMPLATE-001.md | SRS-{FEATURE} — {Title} | — | — | — | MISSING | Non-compliant |
-| — | docs/standards/SOMA-STD-TOKEN-001.md | SOMA Token Format Standard (v1.0) | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-AGENTIQ-001.md | TASK-AGENTIQ: Governor Control Loop Implementation | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-CONTEXT-001.md | TASK-CONTEXT-BUILDING: 5-Lane Context Assembly | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-FLOW-001.md | V3 FLOW MASTER TASK TRACKER — COMPLETE IMPLEMENTATION PLAN | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-HANDOFF-001.md | 🤖 AGENT HANDOFF - SomaAgent01 Repository | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-MERGED-001.md | SomaAgent01 — Merged Tasks & Requirements | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-RLM-001.md | TASK-RLM-ENGINE: Recursive Language Model Implementation | — | — | — | MISSING | Non-compliant |
-| — | docs/tasks/SOMA-TASK-SOMABRAIN-001.md | TASK-SOMABRAIN: L3 Cognitive Engine Integration | — | — | — | MISSING | Non-compliant |
+| SOMA-TRIAD-ARCH-001 | docs/iso/SOMA-TRIAD-ARCH-001.md | Soma Triad Architecture Description — Agent / Brain / Memory | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-MOD-ARCH-001 | docs/modules/SOMA-MOD-ARCH-001.md | Soma Agent Modular Architecture — Core vs Optional Modules | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-MOD-SPEC-001 | docs/modules/SOMA-MOD-SPEC-001.md | Soma Agent Module System Technical Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-AAAS-001 | docs/operations/SOMA-OPS-AAAS-001.md | AAAS Standalone Deployment Guide | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-DEPLOY-001 | docs/operations/SOMA-OPS-DEPLOY-001.md | 🚀 Deployment Guide | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-MODES-001 | docs/operations/SOMA-OPS-MODES-001.md | Deployment Modes - AAAS vs STANDALONE | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-PLAN-001 | docs/operations/SOMA-OPS-PLAN-001.md | 🚀 SOMAAGENT01 — COMPLETE DEPLOYMENT PLAN | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-READINESS-001 | docs/operations/SOMA-OPS-READINESS-001.md | SomaAgent01 Deployment Readiness Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-SOFTMODES-001 | docs/operations/SOMA-OPS-SOFTMODES-001.md | Software Deployment Modes | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-CHANGE-001 | docs/project/SOMA-PM-CHANGE-001.md | Change Control Log | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-CHARTER-001 | docs/project/SOMA-PM-CHARTER-001.md | Soma Cognitive Triad Project Charter | 1.1.0 | Approved | — | 2026-12-28 | Compliant |
+| SOMA-PM-CLOSURE-001 | docs/project/SOMA-PM-CLOSURE-001.md | Project Closure Report | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-COMM-001 | docs/project/SOMA-PM-COMM-001.md | Communication Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-DELIV-001 | docs/project/SOMA-PM-DELIV-001.md | Deliverables Register | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-MILE-001 | docs/project/SOMA-PM-MILE-001.md | Milestone Tracker | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-PLAN-TRIAD-001 | docs/project/SOMA-PM-PLAN-TRIAD-001.md | PLAN — Seamless Triad: Agent ↔ SomaBrain ↔ SomaFractalMemory | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-RACI-001 | docs/project/SOMA-PM-RACI-001.md | RACI Matrix (Responsible, Accountable, Consulted, Informed) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-SOW-001 | docs/project/SOMA-PM-SOW-001.md | Soma Cognitive Triad — Full Scope of Work | 1.0.0 | Approved | — | 2026-12-28 | Compliant |
+| SOMA-PM-WBS-001 | docs/project/SOMA-PM-WBS-001.md | Soma Cognitive Triad Work Breakdown Structure | 1.1.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-RPT-FEATMATRIX-001 | docs/reports/SOMA-RPT-FEATMATRIX-001.md | Agent Zero vs Soma Feature Comparison Matrix | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-RPT-INVENTORY-001 | docs/reports/SOMA-RPT-INVENTORY-001.md | System Inventory | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-RPT-REPO-001 | docs/reports/SOMA-RPT-REPO-001.md | SomaAgent01 Deep Repo Analysis | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-AGENTIQ-001 | docs/requirements/SOMA-SRS-AGENTIQ-001.md | SRS-AGENTIQ — Governor Control Loop | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-ARCHPATTERNS-001 | docs/requirements/SOMA-SRS-ARCHPATTERNS-001.md | SRS-ARCHITECTURAL-PATTERNS — Modular Design Patterns | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-BACKUP-001 | docs/requirements/SOMA-SRS-BACKUP-001.md | SRS-BACKUP-SYSTEM — Agent Backup & Disaster Recovery | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-BUDGET-001 | docs/requirements/SOMA-SRS-BUDGET-001.md | SRS-BUDGET-SYSTEM — Universal Resource Budgeting | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-CAPSULEPORT-001 | docs/requirements/SOMA-SRS-CAPSULEPORT-001.md | SRS-CAPSULE-PORTABILITY — Agent Portability and Exchange | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-CHATFLOW-001 | docs/requirements/SOMA-SRS-CHATFLOW-001.md | SRS-CHAT-FLOW-MASTER — Complete Agent Architecture with Resilience | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-CONTEXT-001 | docs/requirements/SOMA-SRS-CONTEXT-001.md | SRS-CONTEXT-BUILDING — Prompt Assembly | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-DATAMODELS-001 | docs/requirements/SOMA-SRS-DATAMODELS-001.md | SRS-DATA-MODELS — Data Models and ORM Schema | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-FEATFLAGS-001 | docs/requirements/SOMA-SRS-FEATFLAGS-001.md | SRS-FEATURE-FLAGS — System Feature Toggles | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-LAGOBILLING-001 | docs/requirements/SOMA-SRS-LAGOBILLING-001.md | SRS-LAGO-BILLING — Usage Metering & Billing | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-MODELROUTING-001 | docs/requirements/SOMA-SRS-MODELROUTING-001.md | SRS-MODEL-ROUTING — LLM Model Selection | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-MULTIMODAL-001 | docs/requirements/SOMA-SRS-MULTIMODAL-001.md | SRS-MULTIMODAL — Image, Audio, and Diagram Generation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-MULTITENANCY-001 | docs/requirements/SOMA-SRS-MULTITENANCY-001.md | SRS-SECURITY-MULTITENANCY — Security and Tenant Isolation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-PERMISSIONS-001 | docs/requirements/SOMA-SRS-PERMISSIONS-001.md | SRS-PERMISSION-MATRIX — Permission Matrix and Role Administration | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-RLM-001 | docs/requirements/SOMA-SRS-RLM-001.md | SRS-RLM-ENGINE — Recursive Language Model Execution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-SAASINFRA-001 | docs/requirements/SOMA-SRS-SAASINFRA-001.md | SRS-SAAS-INFRASTRUCTURE — AAAS Deployment Architecture | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-SOMABRAIN-001 | docs/requirements/SOMA-SRS-SOMABRAIN-001.md | SRS-SOMABRAIN-INTEGRATION — L3 Cognitive Engine | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-SOVEREIGNTY-001 | docs/requirements/SOMA-SRS-SOVEREIGNTY-001.md | SRS-650-LINE-SOVEREIGNTY — VIBE Rule 245 Enforcement | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-TESTBENCH-001 | docs/requirements/SOMA-SRS-TESTBENCH-001.md | SRS-TEST-WORKBENCH — Cross-Repository Test Audit | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-TESTMODULES-001 | docs/requirements/SOMA-SRS-TESTMODULES-001.md | SRS-TEST-MODULES — Module-Based Test Suite Design | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-TOOLS-001 | docs/requirements/SOMA-SRS-TOOLS-001.md | SRS-TOOL-SYSTEM — Tool Discovery and Execution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-STD-CODING-001 | docs/standards/SOMA-STD-CODING-001.md | SOMA-STD-CODING-001 — Vibe Coding Rules | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-STD-TEMPLATE-001 | docs/standards/SOMA-STD-TEMPLATE-001.md | SRS-{FEATURE} — {Title} | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-STD-TOKEN-001 | docs/standards/SOMA-STD-TOKEN-001.md | SOMA Token Format Standard (v1.0) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-AGENTIQ-001 | docs/tasks/SOMA-TASK-AGENTIQ-001.md | TASK-AGENTIQ: Governor Control Loop Implementation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-CONTEXT-001 | docs/tasks/SOMA-TASK-CONTEXT-001.md | TASK-CONTEXT-BUILDING: 5-Lane Context Assembly | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-FLOW-001 | docs/tasks/SOMA-TASK-FLOW-001.md | V3 FLOW MASTER TASK TRACKER — COMPLETE IMPLEMENTATION PLAN | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-HANDOFF-001 | docs/tasks/SOMA-TASK-HANDOFF-001.md | 🤖 AGENT HANDOFF - SomaAgent01 Repository | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-MERGED-001 | docs/tasks/SOMA-TASK-MERGED-001.md | SomaAgent01 — Merged Tasks & Requirements | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-RLM-001 | docs/tasks/SOMA-TASK-RLM-001.md | TASK-RLM-ENGINE: Recursive Language Model Implementation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-TASK-SOMABRAIN-001 | docs/tasks/SOMA-TASK-SOMABRAIN-001.md | TASK-SOMABRAIN: L3 Cognitive Engine Integration | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 
 ## 3. Summary
 
 | Metric | Count |
 |---|---|
-| Registered documents | 155 |
-| Compliant | 11 |
-| Non-compliant (tracked gaps) | 82 |
+| Registered documents | 147 |
+| Compliant | 85 |
+| Non-compliant (tracked gaps) | 0 |
 | Annexes (design artefacts) | 62 |
 
 ## 4. Tracked remediation

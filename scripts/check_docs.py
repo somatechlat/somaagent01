@@ -56,7 +56,7 @@ ID_PATTERNS = {
     "docs/operations": re.compile(r"^SOMA-OPS-[A-Z0-9]+-\d{3}$"),
     "docs/design": re.compile(r"^SOMA-UI-[A-Z0-9]+-\d{3}$"),
     "docs/modules": re.compile(r"^SOMA-MOD-[A-Z0-9]+-\d{3}$"),
-    "docs/project": re.compile(r"^SOMA-PM-[A-Z0-9]+-\d{3}$"),
+    "docs/project": re.compile(r"^SOMA-PM-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{3}$"),
     "docs/standards": re.compile(r"^SOMA-STD-[A-Z0-9]+-\d{3}$"),
     "docs/reports": re.compile(r"^SOMA-RPT-[A-Z0-9]+-\d{3}$"),
     "docs/tasks": re.compile(r"^SOMA-TASK-[A-Z0-9]+-\d{3}$"),

@@ -1,5 +1,26 @@
 # Software Deployment Modes
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | Software Deployment Modes |
+| Document Identifier | SOMA-OPS-SOFTMODES-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
 ## Overview
 
 SomaAgent01 supports two canonical deployment modes across all services:

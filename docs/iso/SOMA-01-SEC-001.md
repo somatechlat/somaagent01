@@ -3,21 +3,24 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 Security Assessment Report |
 | Document Identifier | SOMA-01-SEC-001 |
 | Version | 2.0.0 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Confidential |
-| ISO Reference | ISO/IEC 27001:2022 — Information Security Management Systems |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Active` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2025-12-30 | SomaTech Engineering | Initial security assessment |
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated findings; documented initial remediations |
 | 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; mapped controls to ISO 27001 Annex A; verified security fixes |

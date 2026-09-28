@@ -1,5 +1,27 @@
 # PLAN — UI/UX Feature Parity with Agent Zero (clone & better)
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | PLAN — UI/UX Feature Parity with Agent Zero (clone & better) |
+| Document Identifier | SOMA-UI-PARITY-002 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
+
 **Doc ID:** SOMA-UIUX-PARITY-PLAN-002
 **Date:** 2026-09-27
 **Owner:** somaplanet — UI/UX lane

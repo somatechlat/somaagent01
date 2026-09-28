@@ -3,14 +3,23 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | Agent Zero vs Soma Feature Comparison Matrix |
-| Document Identifier | SOMA-FEAT-MATRIX-001 |
+| Document Identifier | SOMA-RPT-FEATMATRIX-001 |
 | Version | 1.0.0 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
----
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control: Document Control block normalised and this Revision History added. |
 
 ## 1. EXECUTIVE SUMMARY
 

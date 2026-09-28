@@ -3,20 +3,24 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 Software Development Plan |
 | Document Identifier | SOMA-01-SDP-001 |
 | Version | 1.0.0 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO/IEC 12207:2017 — Systems and Software Engineering — Software Life Cycle Processes |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Active` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial Software Development Plan |
 
 ---

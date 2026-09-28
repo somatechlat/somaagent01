@@ -3,13 +3,25 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
+| Document Title | SOMA-BRAIN-COMPLIANCE-001 — SomaBrain No-Fakes / No-Bypasses Audit |
 | Document Identifier | SOMA-BRAIN-COMPLIANCE-001 |
 | Version | 1.0.0 |
 | Date | 2026-09-27 |
-| Status | Findings open — remediation in progress |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 | Related | `SOMA-A0-PARITY-001.md`, `SOMA-TRIAD-ARCH-001.md`, `SOMA-STD-CODING-001.md` |
 | Scope | `somabrain/` production code + tests |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control: Document Control block normalised and this Revision History added. |
 
 ## Rules enforced
 

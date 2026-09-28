@@ -3,18 +3,24 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | Soma Cognitive Triad Work Breakdown Structure |
 | Document Identifier | SOMA-PM-WBS-001 |
 | Version | 1.1.0 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 1.1.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Active` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial WBS |
 | 1.1.0 | 2026-06-15 | SomaTech Engineering | Added full team capacity and cross-repo effort breakdown |
 

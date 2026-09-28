@@ -3,21 +3,24 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 Code-Verified Deep Audit Report |
 | Document Identifier | SOMA-01-AUDIT-002 |
 | Version | 2.0.0 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO 19011:2018 — Guidelines for Auditing Management Systems |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+
+| 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Active` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2025-12-30 | SomaTech Engineering | Initial audit |
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated findings post-initial remediation |
 | 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; corrected audit findings; verified fixes with file:line references |

@@ -3,16 +3,17 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaAgent01 Quality Manual |
 | Document Identifier | SOMA-01-QMS-001 |
-| Version | 2.2.0 |
-| Date | 2026-09-27 |
-| Status | Active |
+| Version | 2.2.1 |
+| Date | 2026-09-28 |
+| Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
@@ -24,6 +25,7 @@
 | 2.1.0 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-DOCS-001 and SOMA-01-DOCS-002 |
 | 2.1.1 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-UIUX-005 (Settings Parity Matrix) |
 | 2.2.0 | 2026-09-28 | SomaTech Engineering | §7 extended to register the full UI/UX suite: SOMA-01-UIUX-001…004 and the three design controls SOMA-UI-MOCKUPS-001, SOMA-UI-IDREG-001, SOMA-UI-TEMPLATE-001. |
+| 2.2.1 | 2026-09-28 | SomaTech Engineering | §7 extended to register the seven ISO-series documents that were in `docs/iso/` but absent from the matrix: SOMA-01-SRS-001, SOMA-01-SDP-001, SOMA-01-VV-001, SOMA-01-OPS-001, SOMA-01-RELEASE-001, SOMA-01-AAAS-001, SOMA-01-COMPAT-001. Closes check rule C-10. |
 
 ---
 
@@ -234,6 +236,13 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | User Interface Mockups Index | SOMA-UI-MOCKUPS-001 | ISO 9001:2015 clause 7.5 | Controlled index of the ASCII wireframe annexes |
 | Screen Identifier Allocation | SOMA-UI-IDREG-001 | ISO 9001:2015 clause 7.5 | Authoritative UI sub-identifier allocation |
 | House ISO Template | SOMA-UI-TEMPLATE-001 | ISO 9001:2015 clause 7.5 | Binding authoring template and honesty rules for the UI/UX suite |
+| Software Requirements Specification | SOMA-01-SRS-001 | ISO 9001:2015 | Normative software requirements for somaAgent01 |
+| Software Development Plan | SOMA-01-SDP-001 | ISO/IEC 12207:2017 | Lifecycle, engineering and support process plan |
+| Verification and Validation Plan | SOMA-01-VV-001 | ISO 9001:2015 | V&V strategy, acceptance criteria and evidence |
+| Operations Runbook | SOMA-01-OPS-001 | ISO 9001:2015 | Operational procedures and incident handling |
+| Release Notes | SOMA-01-RELEASE-001 | ISO 9001:2015 | Released content, known issues and upgrade notes |
+| AAAS Deployment Specification | SOMA-01-AAAS-001 | ISO 9001:2015 | Agent-as-a-Service deployment topology and contract |
+| Cognitive Triad Compatibility Matrix | SOMA-01-COMPAT-001 | ISO 9001:2015 | Supported version combinations across the triad |
 
 ---
 

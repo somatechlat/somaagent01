@@ -1,5 +1,27 @@
 # TASK-RLM-ENGINE: Recursive Language Model Implementation
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | TASK-RLM-ENGINE: Recursive Language Model Implementation |
+| Document Identifier | SOMA-TASK-RLM-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+
+
 **Module:** RLM Engine
 **SRS Source:** SRS-RLM-ENGINE-2026-01-16
 **Sprint:** 9 (Wave 3)
