@@ -7,17 +7,17 @@ repo_name: somaagent01
 nav:
     - Home: README.md
     - Governance:
-        - VIBE Coding Rules: development/VIBE_CODING_RULES.md
+        - VIBE Coding Rules: development/SOMA-STD-CODING-001.md
         - Violations Registry: governance/violations/VIOLATIONS.md
     - Development:
         - Contributing: development/CONTRIBUTING.md
         - Onboarding (Agent): onboarding/ONBOARDING_AGENT.md
         - Agent Tasks: tasks/AGENT_TASKS.md
     - Deployment:
-        - Deployment Guide: deployment/DEPLOYMENT.md
-        - Software Deployment Modes: deployment/SOFTWARE_DEPLOYMENT_MODES.md
+        - Deployment Guide: deployment/SOMA-OPS-DEPLOY-001.md
+        - Software Deployment Modes: deployment/SOMA-OPS-SOFTMODES-001.md
     - Design:
-        - Inventory: design/INVENTORY.md
+        - Inventory: design/SOMA-RPT-INVENTORY-001.md
         - UI Requirements: ui/requirements-ui.md
         - UI Style Guide Extension: ui/UI_STYLE_GUIDE_EXTENSION.md
     - SRS:

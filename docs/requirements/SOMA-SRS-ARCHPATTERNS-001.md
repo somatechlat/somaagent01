@@ -72,8 +72,8 @@ This document specifies the architectural patterns enforced across all SomaAgent
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-DATA-MODELS | 5.1 | `docs/srs/SRS-DATA-MODELS.md` |
-| REF-002 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/srs/SRS-SECURITY-MULTITENANCY.md` |
+| REF-001 | SRS-DATA-MODELS | 5.1 | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` |
+| REF-002 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` |
 | REF-003 | Django Documentation | 5.0 | https://docs.djangoproject.com |
 | REF-004 | Django Ninja Documentation | 1.0 | https://django-ninja.dev |
 | REF-005 | ISO/IEC 25010:2023 | 2023 | Systems and Software Quality Requirements and Evaluation |

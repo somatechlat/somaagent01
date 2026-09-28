@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Document Control and Traceability Procedure |
 | Document Identifier | SOMA-01-DOCS-001 |
-| Version | 1.0.0 |
+| Version | 1.2.0 |
 | Date | 2026-09-27 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -14,7 +14,7 @@
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
 | Next Review | 2026-12-27 |
-| Related | `SOMA-01-QMS-001.md`, `SOMA-A0-PARITY-001.md`, `docs/development/VIBE_CODING_RULES.md` |
+| Related | `SOMA-01-QMS-001.md`, `SOMA-A0-PARITY-001.md`, `docs/standards/SOMA-STD-CODING-001.md` |
 | Source of truth | This document, `docs/iso/DOCUMENT-REGISTER.md`, `scripts/check_docs.py` |
 | Audience | All engineering contributors and any agent acting on this repository |
 
@@ -23,6 +23,8 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial issue. Establishes mandatory document control, identifier scheme, register, and automated compliance check. |
+| 1.1.0 | 2026-09-27 | SomaTech Engineering | §3.3 rewritten as the `SOMA-<DOMAIN>-<TYPE>-<NNN>` scheme with a domain→directory map. Rule C-12 added (filename stem == identifier). Register generation automated via `scripts/gen_register.py`. Documentation tree renamed and reorganised to match. |
+| 1.2.0 | 2026-09-28 | SomaTech Engineering | §3.3.4 added: annexed design artefacts under `docs/design/mockups/` use sub-identifier names, are inventoried as `Compliance = Annex`, and are exempt from C-03…C-09 and C-12. Register summary gained an Annexes row. |
 
 ## Normative References
 
@@ -32,7 +34,7 @@
 | N-2 | ISO 9001:2015 | Clause 7.5 Documented information — control of documents and records |
 | N-3 | SOMA-A0-PARITY-001 | Feature-clone-not-code-clone, Plan Gate, error-honesty rules |
 | N-4 | PLAN-TRIAD-SEAMLESS | W5-3 requires Approver and Next Review on ISO documents |
-| N-5 | docs/development/VIBE_CODING_RULES.md | Standing engineering rules that reference this procedure |
+| N-5 | docs/standards/SOMA-STD-CODING-001.md | Standing engineering rules that reference this procedure |
 
 ---
 
@@ -56,12 +58,21 @@ This procedure closes that gap.
 
 ### 1.2 Scope
 
-Applies to **every** `*.md` file under `docs/`, without exception, including:
+Applies to **every** `*.md` file under `docs/`, without exception. The tree is organised by document domain (see §3.3.1):
 
-- `docs/iso/` — controlled ISO documents (strictest tier)
-- `docs/project/` — plans, charters, work breakdown structures
-- `docs/srs/` — software requirement specifications
-- `docs/architecture/`, `docs/deployment/`, `docs/design/`, `docs/development/`, `docs/reports/`
+| Directory | Holds |
+|---|---|
+| `docs/iso/` | Controlled ISO-tier documents (strictest tier) |
+| `docs/architecture/` | Architecture descriptions and invariants |
+| `docs/requirements/` | Software requirement specifications |
+| `docs/operations/` | Deployment, runbooks, topology diagrams |
+| `docs/design/` | UI/UX specification and wireframes |
+| `docs/modules/` | Capsule Module system specifications |
+| `docs/project/` | Plans, charters, work breakdown structures |
+| `docs/standards/` | Coding rules, templates, format standards |
+| `docs/reports/` | Audits, analyses, comparison matrices |
+| `docs/tasks/` | Task lists, work packages, handoffs |
+| `docs/archive/` | Superseded documents retained for history |
 
 Files outside `docs/` (source code, tests, infrastructure) are out of scope for registration, but any document they reference from `docs/` must itself be registered.
 
@@ -139,13 +150,46 @@ Columns are exactly `Version`, `Date`, `Author`, `Description`. Every released v
 
 ### 3.3 Identifier scheme
 
+Every controlled document is named **by its Document Identifier**:
+
+```
+SOMA-<DOMAIN>-<TYPE>-<NNN>.md
+         │       │      └── zero-padded sequence within (DOMAIN, TYPE)
+         │       └── short uppercase token for the document's subject
+         └── the domain token, which decides the directory
+```
+
+The **filename stem is the Document Identifier**. This is rule **C-12**.
+
+#### 3.3.1 Domain → directory
+
+| Domain | Meaning | Directory | Pattern |
+|---|---|---|---|
+| `01` | Platform ISO-tier controlled document | `docs/iso/` | `SOMA-01-<TYPE>-<NNN>` |
+| — | Secondary series (topic-led) | `docs/iso/` | `SOMA-<TOPIC>-<NNN>` |
+| `ARCH` | Architecture description & invariants | `docs/architecture/` | `SOMA-ARCH-<TYPE>-<NNN>` |
+| `SRS` | Software requirement specification | `docs/requirements/` | `SOMA-SRS-<TOPIC>-<NNN>` |
+| `SEC` | Security assessment & risk | `docs/security/` | `SOMA-SEC-<TOPIC>-<NNN>` |
+| `OPS` | Operations, deployment, runbooks | `docs/operations/` | `SOMA-OPS-<TOPIC>-<NNN>` |
+| `UI` | UI/UX specification & design | `docs/design/` | `SOMA-UI-<TYPE>-<NNN>` |
+| `MOD` | Module system | `docs/modules/` | `SOMA-MOD-<TYPE>-<NNN>` |
+| `PM` | Project management artefact | `docs/project/` | `SOMA-PM-<TYPE>-<NNN>` |
+| `STD` | Standards, conventions, templates | `docs/standards/` | `SOMA-STD-<TOPIC>-<NNN>` |
+| `RPT` | Report, analysis, comparison | `docs/reports/` | `SOMA-RPT-<TOPIC>-<NNN>` |
+| `TASK` | Task list, handoff, work package | `docs/tasks/` | `SOMA-TASK-<TOPIC>-<NNN>` |
+| `OLD` | Superseded / archived document | `docs/archive/` | `SOMA-OLD-<TOPIC>-<NNN>` |
+
+`<TYPE>` and `<TOPIC>` are uppercase `A–Z` and `0–9` only. `<NNN>` is exactly three digits.
+
+Examples: `SOMA-01-QMS-001.md`, `SOMA-SRS-CHATFLOW-001.md`, `SOMA-UI-PARITY-002.md`, `SOMA-PM-WBS-001.md`.
+
+#### 3.3.2 Sub-identifier kinds
+
 | Kind | Pattern | Example |
 |---|---|---|
-| ISO document | `SOMA-01-<TYPE>-<NNN>` | `SOMA-01-UIUX-001` |
-| Secondary series document | `SOMA-<TOPIC>-<NNN>` | `SOMA-A0-PARITY-001` |
-| Project document | `SOMA-PM-<TYPE>-<NNN>` | `SOMA-PM-WBS-001` |
 | Screen | `UI-S-<NN>` | `UI-S-07` |
 | Modal or overlay | `UI-M-<NN>` | `UI-M-02` |
+| Surface | `UI-X-<NN>` | `UI-X-04` |
 | Control | `UI-C-<NNN>` | `UI-C-014` |
 | Action | `UI-A-<NNN>` | `UI-A-022` |
 | User-facing feature | `UI-F-<NNN>` | `UI-F-031` |
@@ -155,7 +199,34 @@ Columns are exactly `Version`, `Date`, `Author`, `Description`. Every released v
 
 Collision control: `SOMA-A0-PARITY-001` already defines `UI-AT-01`…`UI-AT-08`. New user-interface acceptance tests **SHALL** use the `UIX-AT-NN` namespace and cross-reference the `UI-AT-*` series rather than renumbering it.
 
-Filename exception (exactly one): `docs/iso/DOCUMENT-REGISTER.md` is a fixed machine contract — `scripts/check_docs.py` locates it by that path. Its identifier is `SOMA-01-DOCS-002`, which matches the §3.3 pattern but not the filename stem. No other document **SHALL** make this exception.
+#### 3.3.3 Filename exceptions (exactly two)
+
+| File | Identifier | Why it is an exception |
+|---|---|---|
+| `docs/iso/DOCUMENT-REGISTER.md` | `SOMA-01-DOCS-002` | Fixed machine contract — `scripts/check_docs.py` and `scripts/gen_register.py` locate the register by this path. |
+| `docs/README.md` | `SOMA-STD-INDEX-001` | The documentation tree index. `README.md` is the universal repository-index convention and is read before any identifier is known. |
+
+No other document **SHALL** make this exception. `scripts/check_docs.py` rule C-12 enforces the rest.
+
+#### 3.3.4 Annexed design artefacts
+
+Mockups are **annexes**, not standalone controlled documents. They live under `docs/design/mockups/` and are named by sub-identifier:
+
+```
+UI-S-<NN>-<slug>.md     one screen mockup
+UI-X-<NN>-<slug>.md     one surface mockup
+```
+
+Annexes are inventoried in `docs/iso/DOCUMENT-REGISTER.md` with `Compliance = Annex` so that nothing under `docs/` is invisible, but they **SHALL NOT** carry a `## Document Control` or `## Revision History` table of their own. They are governed by the suite's controlled index document, `docs/design/SOMA-UI-MOCKUPS-001.md`, which does carry full document control.
+
+The compliance check enforces exactly two things for an annex:
+
+| Rule | Condition |
+|---|---|
+| C-01 | the annex is listed in the register |
+| C-11 | the filename stem matches `UI-S-<NN>-<slug>` or `UI-X-<NN>-<slug>` |
+
+Rules C-03 … C-09 and C-12 do not apply to annexes.
 
 ### 3.4 Status transitions
 
@@ -195,7 +266,8 @@ The register **SHALL NOT** contain prose analysis. It is data. Interpretation li
 | Artefact | Location | Role |
 |---|---|---|
 | Check script | `scripts/check_docs.py` | Parses the register and every `docs/**/*.md`; emits findings; exits non-zero on failure |
-| Make target | `make docs-check` | Local entry point |
+| Register generator | `scripts/gen_register.py` | Regenerates `docs/iso/DOCUMENT-REGISTER.md` from the tree; the register is derived data, never hand-maintained |
+| Make target | `make docs-check` / `make docs-register` | Local entry point |
 | CI job | `.github/workflows/ci.yml` | Runs the check on every push and pull request |
 
 ### 5.2 Check rules
@@ -215,6 +287,7 @@ The script **SHALL** fail the build on any of:
 | C-09 | A `## Revision History` table is missing or has the wrong columns |
 | C-10 | The register and QMS §7 Document Reference Matrix disagree on the set of ISO-series identifiers |
 | C-11 | A `Document Identifier` does not match the §3.3 pattern for its file location |
+| C-12 | A document's filename stem is not its `Document Identifier` (§3.3.3 exceptions excepted) |
 
 The script **SHALL** report (without failing the build) documents that are registered but non-compliant, so that legacy gaps remain visible rather than hidden.
 
@@ -259,10 +332,10 @@ A feature with no test is `NOT YET`, not omitted.
 | Document | Relationship |
 |---|---|
 | `SOMA-01-QMS-001` §7 | Suite registry. This procedure is registered there. §7 and `DOCUMENT-REGISTER.md` **SHALL** agree (REQ-DOCS-009). |
-| `docs/development/VIBE_CODING_RULES.md` | Carries the standing day-to-day rule. It **SHALL** reference this procedure rather than restate it. |
+| `docs/standards/SOMA-STD-CODING-001.md` | Carries the standing day-to-day rule. It **SHALL** reference this procedure rather than restate it. |
 | `SOMA-A0-PARITY-001` | Supplies the error-honesty and Plan Gate rules that this procedure makes checkable (REQ-DOCS-012, REQ-DOCS-015). |
 
-`VIBE_CODING_RULES.md` historically described documentation as *"ISO-style Documenter (clarity, not enforcement)"*. That statement is superseded: documentation control is now **enforced** by REQ-DOCS-001 through REQ-DOCS-015 and `scripts/check_docs.py`.
+`SOMA-STD-CODING-001.md` historically described documentation as *"ISO-style Documenter (clarity, not enforcement)"*. That statement is superseded: documentation control is now **enforced** by REQ-DOCS-001 through REQ-DOCS-015 and `scripts/check_docs.py`.
 
 ---
 

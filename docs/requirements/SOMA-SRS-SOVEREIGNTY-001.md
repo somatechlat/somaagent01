@@ -67,8 +67,8 @@ This document specifies requirements for enforcing VIBE Rule 245 (Linear Soverei
 |----|----------|---------|----------|
 | REF-001 | VIBE Rule 245 | 1.0 | `docs/standards/VIBE.md` |
 | REF-002 | VIBE Rule 102 | 1.0 | `docs/standards/VIBE.md` |
-| REF-003 | SRS-TEST-MODULES | 1.1 | `docs/srs/SRS-TEST-MODULES.md` |
-| REF-004 | SRS-SAAS-INFRASTRUCTURE | 2.1 | `docs/srs/SRS-SAAS-INFRASTRUCTURE.md` |
+| REF-003 | SRS-TEST-MODULES | 1.1 | `docs/requirements/SOMA-SRS-TESTMODULES-001.md` |
+| REF-004 | SRS-SAAS-INFRASTRUCTURE | 2.1 | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` |
 
 ---
 

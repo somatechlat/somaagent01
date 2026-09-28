@@ -71,7 +71,7 @@ This document specifies the Model Routing subsystem of SomaAgent01, which select
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CHAT-FLOW-MASTER | 3.1 | `docs/srs/SRS-CHAT-FLOW-MASTER.md` |
+| REF-001 | SRS-CHAT-FLOW-MASTER | 3.1 | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` |
 | REF-002 | Model Router | — | `admin/core/model_router.py` |
 | REF-003 | LLM Models | — | `admin/llm/models.py` |
 | REF-004 | SpiceDB Client | — | `services/common/spicedb_client.py` |

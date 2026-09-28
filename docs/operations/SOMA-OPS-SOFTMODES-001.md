@@ -66,7 +66,7 @@ SA01_OPA_URL=http://localhost:20181
 There is no automatic migration path between Standalone and AAAS modes. To migrate:
 
 1. Export data from the standalone database
-2. Set up AAAS infrastructure (see DEPLOYMENT.md)
+2. Set up AAAS infrastructure (see SOMA-OPS-DEPLOY-001.md)
 3. Import data into the AAAS database
 4. Update environment variables
 5. Restart services

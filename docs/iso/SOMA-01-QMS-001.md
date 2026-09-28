@@ -6,7 +6,7 @@
 |-------|-------|
 | Document Title | SomaAgent01 Quality Manual |
 | Document Identifier | SOMA-01-QMS-001 |
-| Version | 2.1.0 |
+| Version | 2.2.0 |
 | Date | 2026-09-27 |
 | Status | Active |
 | Author | SomaTech Engineering |
@@ -22,6 +22,8 @@
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated quality objectives and process map |
 | 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; updated quality metrics; revised improvement plan |
 | 2.1.0 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-DOCS-001 and SOMA-01-DOCS-002 |
+| 2.1.1 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-UIUX-005 (Settings Parity Matrix) |
+| 2.2.0 | 2026-09-28 | SomaTech Engineering | §7 extended to register the full UI/UX suite: SOMA-01-UIUX-001…004 and the three design controls SOMA-UI-MOCKUPS-001, SOMA-UI-IDREG-001, SOMA-UI-TEMPLATE-001. |
 
 ---
 
@@ -33,7 +35,7 @@ SomaTech Engineering is committed to delivering a reliable, secure, and maintain
 
 ### 1.2 VIBE Quality Standard
 
-All development on SomaAgent01 shall adhere to the VIBE (Verification, Integration, Build, Enforcement) coding standard (`docs/development/VIBE_CODING_RULES.md`), which defines the following seven rules:
+All development on SomaAgent01 shall adhere to the VIBE (Verification, Integration, Build, Enforcement) coding standard (`docs/standards/SOMA-STD-CODING-001.md`), which defines the following seven rules:
 
 1. **No mocks, no placeholders, no TODOs** — Production-grade code only; tests use real infrastructure
 2. **Check architecture before coding** — Understand existing patterns before implementing
@@ -110,7 +112,7 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 
 | Control | Implementation | Status |
 |---------|---------------|--------|
-| Coding standards | VIBE rules (`docs/development/VIBE_CODING_RULES.md`) | Implemented |
+| Coding standards | VIBE rules (`docs/standards/SOMA-STD-CODING-001.md`) | Implemented |
 | Django purity | Prohibition lists (SQLAlchemy, FastAPI, React, Qdrant) | Implemented |
 | Architecture review | ARCH document; check before coding | Implemented |
 | Type checking | Pyright configuration (`pyrightconfig.json`) | Implemented (1,402 errors remain) |
@@ -224,6 +226,14 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Quality Manual | SOMA-01-QMS-001 | ISO 9001 | Quality policy, objectives, and processes |
 | Document Control and Traceability Procedure | SOMA-01-DOCS-001 | ISO 9001:2015 clause 7.5 | Control of documented information |
 | Document Register | SOMA-01-DOCS-002 | ISO 9001:2015 clause 7.5 | Authoritative inventory of `docs/**/*.md` |
+| User Interface — Screen & Feature Specification | SOMA-01-UIUX-001 | ISO 9001:2015 clause 7.5 | Master screen, control, action and state specification |
+| User Interface — Modal & Overlay Specification | SOMA-01-UIUX-002 | ISO 9001:2015 clause 7.5 | The three modal patterns and their per-screen inventory |
+| User Interface — Component & Module Catalogue | SOMA-01-UIUX-003 | ISO 9001:2015 clause 7.5 | Components, stores, controllers and the Capsule Module contract |
+| User Interface — Verification & Traceability | SOMA-01-UIUX-004 | ISO 9001:2015 clause 7.5 | RTM, V&V matrix, Playwright coverage and tracked findings |
+| User Interface — Settings Parity Matrix | SOMA-01-UIUX-005 | ISO 9001:2015 clause 7.5 | Setting-to-screen placement and parity mapping |
+| User Interface Mockups Index | SOMA-UI-MOCKUPS-001 | ISO 9001:2015 clause 7.5 | Controlled index of the ASCII wireframe annexes |
+| Screen Identifier Allocation | SOMA-UI-IDREG-001 | ISO 9001:2015 clause 7.5 | Authoritative UI sub-identifier allocation |
+| House ISO Template | SOMA-UI-TEMPLATE-001 | ISO 9001:2015 clause 7.5 | Binding authoring template and honesty rules for the UI/UX suite |
 
 ---
 

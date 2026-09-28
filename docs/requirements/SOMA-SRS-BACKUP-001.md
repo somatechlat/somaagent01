@@ -319,7 +319,7 @@ None.
 | REQ-BKP-013 | History replay | Product backlog | Replay service | `admin/services/replay.py` | `tests/unit/test_replay.py` |
 | REQ-BKP-014 | Full backup bundle generation | DR req | Backup script | `scripts/backup_agent.py` | `tests/integration/test_backup_bundle.py` |
 | REQ-BKP-015 | Manifest with signature | DR req | Backup script | `scripts/backup_agent.py` | `tests/integration/test_backup_manifest.py` |
-| REQ-BKP-016 | DR rebuild runbook | DR req | Documentation | `docs/deployment/dr_runbook.md` | DR drill checklist |
+| REQ-BKP-016 | DR rebuild runbook | DR req | Documentation | `docs/operations/dr_runbook.md` | DR drill checklist |
 
 ### 4.2 Requirement to Test Case Mapping
 

@@ -5,7 +5,7 @@
 **Owner:** somaplanet — UI/UX lane
 **Status:** FOR APPROVAL — no UI production code until Plan Gate is signed (per `SOMA-A0-PARITY-001.md` §0)
 **Benchmark:** Agent Zero `webui/` — 278 files (excl. vendor), 41 plugins (40 with `webui/`), 64 settings files, 24 modals
-**Parent docs:** `docs/iso/SOMA-A0-PARITY-001.md` (feature matrix, §0 gate), `docs/project/PLAN-TRIAD-SEAMLESS.md` (Wave 4 = UI parity)
+**Parent docs:** `docs/iso/SOMA-A0-PARITY-001.md` (feature matrix, §0 gate), `docs/project/SOMA-PM-PLAN-TRIAD-001.md` (Wave 4 = UI parity)
 
 ---
 
@@ -67,7 +67,7 @@ A branch alone does **not** isolate two agents in one checkout. Choose one:
 
 | Lane | Owner | Paths |
 |---|---|---|
-| **UI/UX (me)** | UI/UX | `webui/src/components/**`, `webui/src/views/**`, `webui/src/styles/**`, `webui/src/utils/**`, `webui/index.html`, `webui/public/**`, `docs/project/SOMA-UIUX-*` |
+| **UI/UX (me)** | UI/UX | `webui/src/components/**`, `webui/src/views/**`, `webui/src/styles/**`, `webui/src/utils/**`, `webui/index.html`, `webui/public/**`, `docs/design/SOMA-UI-*` |
 | **Backend wiring (them)** | other agent | `admin/**`, `services/**`, `config/**`, `infra/**`, `webui/src/services/api-client.ts`, `webui/src/services/websocket-client.ts`, `webui/src/stores/*` **fetch/state methods** |
 | **Overlap — coordinate before touching** | both | `saas-right-panel.ts`, `saas-composer.ts`, `saas-chat-workspace.ts`, `saas-chat-input.ts`, `saas-chat-message-list.ts`, `saas-conversation-list.ts`, `saas-glass-modal.ts`, `components/index.ts`, `webui/package.json` |
 
@@ -312,7 +312,9 @@ Existing Soma settings that A0 has **no** equivalent for (keep, and treat as our
 | full-screen-input, image-viewer, markdown | **Full-screen** |
 | scheduler×5, and any destructive confirm | **Dialog** / dedicated route |
 
-Soma today: `saas-glass-modal.ts` (generic shell) + `saas-user-invite-modal.ts` + inline dialogs in `saas-voice-personas.ts`. Keep `saas-glass-modal` as the single Dialog implementation; add Drawer + Full-screen as siblings.
+Soma today: `saas-glass-modal.ts` (generic shell) + inline dialogs in `saas-voice-personas.ts`. Keep `saas-glass-modal` as the single Dialog implementation; add Drawer + Full-screen as siblings.
+
+> Removed 2026-09-27: `saas-user-invite-modal.ts` and `saas-voice-overlay.ts` were deleted as dead code — both were reachable only through `components/index.ts` and their custom-element tags were instantiated zero times (import-graph + tag scan). Reintroduce an invite flow from the modal spec in `SOMA-01-UIUX-002`, not from the deleted file.
 
 ### 4.5 Sidebar (A0: 16 files)
 

@@ -8,7 +8,7 @@
 | Version | 1.0.0 |
 | Date | 2026-09-27 |
 | Status | Findings open — remediation in progress |
-| Related | `SOMA-A0-PARITY-001.md`, `SOMA-TRIAD-ARCH-001.md`, `VIBE_CODING_RULES.md` |
+| Related | `SOMA-A0-PARITY-001.md`, `SOMA-TRIAD-ARCH-001.md`, `SOMA-STD-CODING-001.md` |
 | Scope | `somabrain/` production code + tests |
 
 ## Rules enforced

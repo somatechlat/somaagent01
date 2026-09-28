@@ -14,7 +14,7 @@
 | Classification | Internal |
 | ISO Reference | ISO/IEC 25010 (quality model, category lens) · ISO/IEC 27001:2022 (A.8.9 configuration management) · ISO 9001:2015 (documented information) |
 | Next Review | 2026-12-27 |
-| Related | `SOMA-01-DOCS-001.md`, `SOMA-01-SEC-001.md`, `SOMA-01-ARCH-001.md`, `SOMA-A0-PARITY-001.md`, `docs/development/VIBE_CODING_RULES.md` |
+| Related | `SOMA-01-DOCS-001.md`, `SOMA-01-SEC-001.md`, `SOMA-01-ARCH-001.md`, `SOMA-A0-PARITY-001.md`, `docs/standards/SOMA-STD-CODING-001.md` |
 | Source of truth | This document for the settings *model*; code paths cited per row for *live values* |
 | Audience | All engineering contributors, operators, and any agent acting on somaAgent01 / somabrain / somafractalmemory |
 
@@ -28,7 +28,7 @@
 
 | ID | Reference | Role |
 |---|---|---|
-| N-1 | `docs/development/VIBE_CODING_RULES.md` | Standing engineering rules: no hardcoded product behavior, Vault for secrets, fail-closed |
+| N-1 | `docs/standards/SOMA-STD-CODING-001.md` | Standing engineering rules: no hardcoded product behavior, Vault for secrets, fail-closed |
 | N-2 | `SOMA-01-DOCS-001` | Document control and traceability procedure |
 | N-3 | `SOMA-01-SEC-001` | Security requirements; secret custody |
 | N-4 | `SOMA-01-ARCH-001` | System architecture; memory seam |

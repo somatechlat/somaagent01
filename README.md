@@ -57,12 +57,12 @@ The following documents are referenced in this specification:
 
 | Document | Identifier | Location |
 |----------|------------|----------|
-| SomaAgent01 Comprehensive Audit Report | SOMA-AUDIT-001 | `SOMA_AGENT01_COMPREHENSIVE_AUDIT_REPORT.md` |
-| VIBE Coding Rules | SOMA-STD-001 | `docs/development/VIBE_CODING_RULES.md` |
-| Software Deployment Modes | SOMA-DEP-001 | `docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md` |
-| Deployment Guide | SOMA-DEP-002 | `docs/deployment/DEPLOYMENT.md` |
-| Component Inventory | SOMA-DES-001 | `docs/design/INVENTORY.md` |
-| Software Requirements Specifications | Various | `docs/srs/` |
+| SomaAgent01 Comprehensive Audit Report | SOMA-AUDIT-001 | `docs/archive/SOMA-OLD-AUDIT-001.md` |
+| VIBE Coding Rules | SOMA-STD-001 | `docs/standards/SOMA-STD-CODING-001.md` |
+| Software Deployment Modes | SOMA-DEP-001 | `docs/operations/SOMA-OPS-SOFTMODES-001.md` |
+| Deployment Guide | SOMA-DEP-002 | `docs/operations/SOMA-OPS-DEPLOY-001.md` |
+| Component Inventory | SOMA-DES-001 | `docs/reports/SOMA-RPT-INVENTORY-001.md` |
+| Software Requirements Specifications | Various | `docs/requirements/` |
 
 ---
 
@@ -403,7 +403,7 @@ somaagent01/
 ## 11. Support and References
 
 - Primary documentation: `docs/` directory
-- Audit report: `SOMA_AGENT01_COMPREHENSIVE_AUDIT_REPORT.md`
+- Audit report: `docs/archive/SOMA-OLD-AUDIT-001.md`
 - Issue tracking: [GitHub Issues](https://github.com/somatechlat/somaagent01/issues)
 
 ---

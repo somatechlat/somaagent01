@@ -69,10 +69,10 @@ This document specifies the unified testing standard across the SomaStack Triad 
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-TEST-MODULES | 1.1 | `docs/srs/SRS-TEST-MODULES.md` |
-| REF-002 | SRS-SAAS-INFRASTRUCTURE | 2.1 | `docs/srs/SRS-SAAS-INFRASTRUCTURE.md` |
+| REF-001 | SRS-TEST-MODULES | 1.1 | `docs/requirements/SOMA-SRS-TESTMODULES-001.md` |
+| REF-002 | SRS-SAAS-INFRASTRUCTURE | 2.1 | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` |
 | REF-003 | SomaBrain Integration Test Suite | 1.0 | `tests/integration/test_e2e_real.py` |
-| REF-004 | SRS-CHAT-FLOW-MASTER | 1.0 | `docs/srs/SRS-CHAT-FLOW-MASTER.md` |
+| REF-004 | SRS-CHAT-FLOW-MASTER | 1.0 | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` |
 
 ---
 

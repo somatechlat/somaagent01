@@ -47,12 +47,38 @@ FORBIDDEN_FIELDS = ["Effective Date", "Distribution", "Doc ID", "Document ID", "
 STATUS_VALUES = {"Draft", "In Review", "Approved", "Obsolete"}
 CLASSIFICATION_VALUES = {"Internal", "Confidential"}
 
-# SOMA-01-DOCS-001 §3.3
+# SOMA-01-DOCS-001 §3.3 — directory decides the identifier's domain token.
 ID_PATTERNS = {
-    "docs/iso": re.compile(r"^(SOMA-01-[A-Z]+-\d{3}|SOMA-[A-Z0-9]+-\d{3})$"),
-    "docs/project": re.compile(r"^SOMA-(PM-[A-Z]+-\d{3}|[A-Z0-9]+-\d{3})$"),
-    "docs/srs": re.compile(r"^SRS-[A-Z0-9-]+$"),
+    "docs/iso": re.compile(r"^SOMA-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{3}$"),
+    "docs/architecture": re.compile(r"^SOMA-ARCH-[A-Z0-9]+-\d{3}$"),
+    "docs/requirements": re.compile(r"^SOMA-SRS-[A-Z0-9]+-\d{3}$"),
+    "docs/security": re.compile(r"^SOMA-SEC-[A-Z0-9]+-\d{3}$"),
+    "docs/operations": re.compile(r"^SOMA-OPS-[A-Z0-9]+-\d{3}$"),
+    "docs/design": re.compile(r"^SOMA-UI-[A-Z0-9]+-\d{3}$"),
+    "docs/modules": re.compile(r"^SOMA-MOD-[A-Z0-9]+-\d{3}$"),
+    "docs/project": re.compile(r"^SOMA-PM-[A-Z0-9]+-\d{3}$"),
+    "docs/standards": re.compile(r"^SOMA-STD-[A-Z0-9]+-\d{3}$"),
+    "docs/reports": re.compile(r"^SOMA-RPT-[A-Z0-9]+-\d{3}$"),
+    "docs/tasks": re.compile(r"^SOMA-TASK-[A-Z0-9]+-\d{3}$"),
+    "docs/archive": re.compile(r"^SOMA-OLD-[A-Z0-9]+-\d{3}$"),
 }
+
+# SOMA-01-DOCS-001 §3.3 filename exceptions — fixed machine/global contracts.
+FILENAME_EXCEPTIONS = {
+    "docs/iso/DOCUMENT-REGISTER.md",
+    "docs/README.md",
+}
+
+# SOMA-01-DOCS-001 §3.3.4 — annexed design artefacts. Mockups carry a sub-identifier
+# (UI-S-NN, UI-X-NN) rather than a controlled-document identifier. They are inventoried by
+# the suite's controlled INDEX, not by a Document Control table of their own.
+ANNEX_PREFIX = "docs/design/mockups/"
+ANNEX_ID_RE = re.compile(r"^UI-[SX]-\d{2}-[a-z0-9-]+$")
+
+
+def is_annex(rel_path: str) -> bool:
+    """True for annexed design artefacts (see SOMA-01-DOCS-001 §3.3.4)."""
+    return rel_path.startswith(ANNEX_PREFIX)
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -174,7 +200,7 @@ def parse_register() -> dict[str, dict[str, str]]:
             continue
         if len(cells) < len(header):
             continue
-        row = dict(zip(header, cells))
+        row = dict(zip(header, cells, strict=False))
         path = row.get("File", "").strip("`")
         if path:
             rows[path] = row
@@ -249,6 +275,23 @@ def check(strict: bool) -> int:
         fields = parse_control_table(text)
         has_rh, rh_cols = parse_revision_history(text)
 
+        # Annexes (SOMA-01-DOCS-001 §3.3.4): sub-identifier design artefacts.
+        # They are inventoried in the register but carry no Document Control of their own.
+        if is_annex(r):
+            stem = Path(r).stem
+            if not ANNEX_ID_RE.match(stem):
+                findings.append(
+                    content_finding(
+                        "C-11",
+                        r,
+                        f"annex filename '{stem}' does not match UI-S-<NN>-<slug> / UI-X-<NN>-<slug>",
+                        claim,
+                    )
+                )
+            else:
+                register_ids.add(stem)
+            continue
+
         # C-11 identifier format
         ident = fields.get("Document Identifier", row.get("Document Identifier", "")).strip()
         if ident:
@@ -266,6 +309,19 @@ def check(strict: bool) -> int:
                 )
         elif r.startswith("docs/"):
             noncompliant.append((r, "no Document Identifier"))
+
+        # C-12 filename IS the identifier (declared exceptions excepted)
+        if ident and r not in FILENAME_EXCEPTIONS:
+            stem = Path(r).stem
+            if stem != ident:
+                findings.append(
+                    content_finding(
+                        "C-12",
+                        r,
+                        f"filename stem '{stem}' != Document Identifier '{ident}'",
+                        claim,
+                    )
+                )
 
         if not fields and not row:
             continue
@@ -413,7 +469,9 @@ def check(strict: bool) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--strict", action="store_true", help="also fail on non-compliant registered docs")
+    parser.add_argument(
+        "--strict", action="store_true", help="also fail on non-compliant registered docs"
+    )
     args = parser.parse_args()
     return check(strict=args.strict)
 

@@ -1,6 +1,6 @@
 # SomaAgent01 — Merged Tasks & Requirements
 
-**Document:** TASKS-MERGED-SOMAAGENT01.md  
+**Document:** SOMA-TASK-MERGED-001.md  
 **Version:** 1.0.0  
 **Date:** 2026-01-03  
 **Source:** Merged from all SRS files in somaAgent01

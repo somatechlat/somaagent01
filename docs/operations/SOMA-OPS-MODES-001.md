@@ -79,7 +79,7 @@ def allocate_budget(
 ```
 
 **NO AGENTIQ**: SimpleGovernor (279 lines) replaced AgentIQ (1,300+ lines).  
-**See**: `docs/srs/SRS-UNIFIED-LAYERS-PRODUCTION-READY.md` for migration history.
+**See**: `docs/requirements/SRS-UNIFIED-LAYERS-PRODUCTION-READY.md` for migration history.
 
 ---
 
@@ -423,7 +423,7 @@ docker logs aaas | grep "is_degraded"
 - **SimpleGovernor Implementation**: `services/common/simple_governor.py` (279 lines)
 - **Context Builder**: `admin/core/context/builder.py` (~400 lines)
 - **HealthMonitor**: `services/common/health_monitor.py` (~250 lines)
-- **Migration History**: `docs/srs/SRS-UNIFIED-LAYERS-PRODUCTION-READY.md`
+- **Migration History**: `docs/requirements/SRS-UNIFIED-LAYERS-PRODUCTION-READY.md`
 - **Architecture Diagram**: `docs/architecture/chat_architecture.md`
 - **Component Tests**: `tests/test_deployment_mode_unified.py`
 

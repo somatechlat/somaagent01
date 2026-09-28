@@ -13,7 +13,7 @@
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO/IEC/IEEE 42010:2011 — Architecture Description |
-| Related | `docs/project/ARCHITECTURE-INVARIANTS.md` (normative), `docs/development/VIBE_CODING_RULES.md` (engineering law), `docs/project/PLAN-TRIAD-SEAMLESS.md` (delivery) |
+| Related | `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` (normative), `docs/standards/SOMA-STD-CODING-001.md` (engineering law), `docs/project/SOMA-PM-PLAN-TRIAD-001.md` (delivery) |
 
 ## Revision History
 
@@ -62,8 +62,8 @@ Out of scope: model quality, prompt engineering, capacity procurement.
 | Reference | Role |
 |---|---|
 | ISO/IEC/IEEE 42010:2011 | Architecture description content and structure |
-| `docs/project/ARCHITECTURE-INVARIANTS.md` | Normative invariants; violation is a defect |
-| `docs/development/VIBE_CODING_RULES.md` | Engineering law: no mocks, no stubs, real data only |
+| `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` | Normative invariants; violation is a defect |
+| `docs/standards/SOMA-STD-CODING-001.md` | Engineering law: no mocks, no stubs, real data only |
 
 ### 2.2 Terminology
 
@@ -554,7 +554,7 @@ causes `recall` to raise, not return `[]` *[live]*.
 
 1. `pool.py` — replace `Dict` with an LRU of bounded size (configurable, default 256) with
    idle-timeout eviction and explicit `close()` on eviction.
-2. Declare bounds in `ARCHITECTURE-INVARIANTS.md` and add a metric for pool size / evictions.
+2. Declare bounds in `SOMA-ARCH-INVARIANTS-001.md` and add a metric for pool size / evictions.
 
 ### R-07 · Remove the stale 256 fallback *(F-11)*
 

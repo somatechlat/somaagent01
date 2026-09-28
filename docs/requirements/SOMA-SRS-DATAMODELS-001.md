@@ -74,9 +74,9 @@ This document specifies the data model requirements for the SomaAgent01 platform
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/srs/SRS-SECURITY-MULTITENANCY.md` |
-| REF-002 | SRS-PERMISSION-MATRIX | 1.1 | `docs/srs/SRS-PERMISSION-MATRIX.md` |
-| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/srs/SRS-ARCHITECTURAL-PATTERNS.md` |
+| REF-001 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` |
+| REF-002 | SRS-PERMISSION-MATRIX | 1.1 | `docs/requirements/SOMA-SRS-PERMISSIONS-001.md` |
+| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/requirements/SOMA-SRS-ARCHPATTERNS-001.md` |
 | REF-004 | Django Documentation | 5.0 | https://docs.djangoproject.com |
 
 ---

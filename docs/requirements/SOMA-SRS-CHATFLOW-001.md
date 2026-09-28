@@ -74,9 +74,9 @@ This document specifies the complete agent chat flow architecture for SomaAgent0
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CONTEXT-BUILDING | 5.0 | `docs/srs/SRS-CONTEXT-BUILDING.md` |
-| REF-002 | SRS-MODEL-ROUTING | 1.0 | `docs/srs/SRS-MODEL-ROUTING.md` |
-| REF-003 | SRS-RLM-ENGINE | 5.0 | `docs/srs/SRS-RLM-ENGINE.md` |
+| REF-001 | SRS-CONTEXT-BUILDING | 5.0 | `docs/requirements/SOMA-SRS-CONTEXT-001.md` |
+| REF-002 | SRS-MODEL-ROUTING | 1.0 | `docs/requirements/SOMA-SRS-MODELROUTING-001.md` |
+| REF-003 | SRS-RLM-ENGINE | 5.0 | `docs/requirements/SOMA-SRS-RLM-001.md` |
 | REF-004 | Circuit Breaker Implementation | — | `services/common/circuit_breaker.py` |
 | REF-005 | Degradation Monitor | — | `services/common/degradation_monitor.py` |
 | REF-006 | Health Monitor | — | `services/common/health_monitor.py` |

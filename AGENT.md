@@ -41,8 +41,8 @@ This document covers:
 
 This document does not cover:
 - Detailed API schemas (see `schemas/`)
-- Operational procedures (see `docs/deployment/`)
-- Software requirements specifications (see `docs/srs/`)
+- Operational procedures (see `docs/operations/`)
+- Software requirements specifications (see `docs/requirements/`)
 
 ### 1.3 Intended Audience
 
@@ -57,9 +57,9 @@ This document does not cover:
 | Document | Identifier | Location |
 |----------|------------|----------|
 | Project Overview | SOMA-DOC-001 | `README.md` |
-| Comprehensive Audit Report | SOMA-AUDIT-001 | `SOMA_AGENT01_COMPREHENSIVE_AUDIT_REPORT.md` |
-| VIBE Coding Rules | SOMA-STD-001 | `docs/development/VIBE_CODING_RULES.md` |
-| Deployment Modes | SOMA-DEP-001 | `docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md` |
+| Comprehensive Audit Report | SOMA-AUDIT-001 | `docs/archive/SOMA-OLD-AUDIT-001.md` |
+| VIBE Coding Rules | SOMA-STD-001 | `docs/standards/SOMA-STD-CODING-001.md` |
+| Deployment Modes | SOMA-DEP-001 | `docs/operations/SOMA-OPS-SOFTMODES-001.md` |
 
 ---
 
@@ -584,7 +584,7 @@ SOMA_AAAS_MODE=false
 3. Do not use mocks in tests. Use real Docker infrastructure when available.
 4. Use Django Ninja only. No FastAPI, no SQLAlchemy.
 5. Use Lit 3.x only. No React, no Alpine.js.
-6. Read the audit report (`SOMA_AGENT01_COMPREHENSIVE_AUDIT_REPORT.md`) for true system health assessment.
+6. Read the audit report (`docs/archive/SOMA-OLD-AUDIT-001.md`) for true system health assessment.
 7. Documentation drifts from reality. SRS documents describe intent, not implementation. Trust the code.
 
 ---

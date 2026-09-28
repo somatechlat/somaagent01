@@ -44,7 +44,7 @@ Build and start the standalone Docker Compose stack defined in `infra/standalone
 ## Phase 2 — Test Workbench
 
 ### Target
-Execute the existing test suite according to `docs/srs/SRS-TEST-WORKBENCH.md` and `docs/srs/SRS-TEST-MODULES.md`.
+Execute the existing test suite according to `docs/requirements/SOMA-SRS-TESTBENCH-001.md` and `docs/requirements/SOMA-SRS-TESTMODULES-001.md`.
 
 ### Approach
 1. Run unit tests: `pytest tests/unit/ -v`
@@ -60,7 +60,7 @@ Execute the existing test suite according to `docs/srs/SRS-TEST-WORKBENCH.md` an
 ## Phase 3 — VIBE Compliance Audit
 
 ### Target
-Address the violations documented in `VIOLATIONS_FULL_AUDIT_2026-05-28.md`, focusing on the frontend and services/common/ layers.
+Address the violations documented in `docs/archive/SOMA-OLD-VIOLATIONS-001.md`, focusing on the frontend and services/common/ layers.
 
 ### Approach
 1. Re-run a focused audit on:

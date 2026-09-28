@@ -73,9 +73,9 @@ This document specifies the requirements for the Capsule Portability subsystem o
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-SOMABRAIN-INTEGRATION.md | 5.1 | docs/srs/SRS-SOMABRAIN-INTEGRATION.md |
-| REF-002 | SRS-TOOL-SYSTEM.md | 1.1 | docs/srs/SRS-TOOL-SYSTEM.md |
-| REF-003 | SRS-CHAT-FLOW-MASTER.md | 3.0 | docs/srs/SRS-CHAT-FLOW-MASTER.md |
+| REF-001 | SOMA-SRS-SOMABRAIN-001.md | 5.1 | docs/requirements/SOMA-SRS-SOMABRAIN-001.md |
+| REF-002 | SOMA-SRS-TOOLS-001.md | 1.1 | docs/requirements/SOMA-SRS-TOOLS-001.md |
+| REF-003 | SOMA-SRS-CHATFLOW-001.md | 3.0 | docs/requirements/SOMA-SRS-CHATFLOW-001.md |
 | REF-004 | Capsule Django Model | Current | admin/core/models/core.py |
 | REF-005 | Capsule Export Service | Current | services/capsule_export.py |
 

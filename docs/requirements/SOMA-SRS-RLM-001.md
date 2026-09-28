@@ -72,9 +72,9 @@ This document specifies the Recursive Language Model (RLM) execution engine for 
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CHAT-FLOW-MASTER | 3.1 | `docs/srs/SRS-CHAT-FLOW-MASTER.md` |
-| REF-002 | SRS-CONTEXT-BUILDING | 5.1 | `docs/srs/SRS-CONTEXT-BUILDING.md` |
-| REF-003 | SRS-MODEL-ROUTING | 1.1 | `docs/srs/SRS-MODEL-ROUTING.md` |
+| REF-001 | SRS-CHAT-FLOW-MASTER | 3.1 | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` |
+| REF-002 | SRS-CONTEXT-BUILDING | 5.1 | `docs/requirements/SOMA-SRS-CONTEXT-001.md` |
+| REF-003 | SRS-MODEL-ROUTING | 1.1 | `docs/requirements/SOMA-SRS-MODELROUTING-001.md` |
 | REF-004 | RLM Core | — | `tmp/rlm/rlm/core/rlm.py` |
 | REF-005 | SomaBrain Integration | — | `admin/agents/services/somabrain_integration.py` |
 | REF-006 | Temporal Worker | — | `services/conversation_worker/temporal_worker.py` |

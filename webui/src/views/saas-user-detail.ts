@@ -21,7 +21,6 @@ import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-user-profile-card.js';
 import '../components/saas-permission-guard.js';
-import '../components/saas-tabs.js';
 
 interface UserDetail {
     id: string;

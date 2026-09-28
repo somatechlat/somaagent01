@@ -662,12 +662,12 @@ Most tests use `pytest.mark.skipif(not INFRA_AVAILABLE, ...)` which means:
 |----------|-------|---------|
 | SRS (Specs) | 20 | Detailed, well-structured |
 | Architecture | 1 | SaaS deployment only |
-| Deployment | 2 | DEPLOYMENT_MODES.md missing (AGENT.md references it) |
-| Development | 1 | VIBE_CODING_RULES.md — clear but not enforced |
+| Deployment | 2 | SOMA-OPS-MODES-001.md missing (AGENT.md references it) |
+| Development | 1 | SOMA-STD-CODING-001.md — clear but not enforced |
 | Tasks | 6 | Active task tracking |
 
 **Documentation Drift:**
-- `AGENT.md` says `docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md` exists — **it does NOT**
+- `AGENT.md` says `docs/operations/SOMA-OPS-SOFTMODES-001.md` exists — **it does NOT**
 - `AGENT.md` lists many "Placeholder/Incomplete" items (Sessions API, ChatService, WebSocket Consumer) — some may now be implemented but docs not updated
 - `README.md` says frontend is "React" (line 239) — but VIBE rules say NO React, and actual frontend is Lit
 
@@ -869,7 +869,7 @@ async def recall(self, query_vector: Any, top_k: int = 10) -> List[Dict[str, Any
 
 ### Phase 7: Documentation (Weeks 13-14) — "Truth"
 - [ ] Audit all docs against code — fix drift
-- [ ] Write `SOFTWARE_DEPLOYMENT_MODES.md` (missing file)
+- [ ] Write `SOMA-OPS-SOFTMODES-001.md` (missing file)
 - [ ] Update `README.md` (remove React reference)
 - [ ] Add API documentation with examples
 - [ ] Add runbook for incident response

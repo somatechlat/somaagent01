@@ -22,7 +22,6 @@ import { apiClient } from '../services/api-client.js';
 // Import reusable components
 import '../components/saas-user-profile-card.js';
 import '../components/saas-toggle.js';
-import '../components/saas-toast.js';
 
 interface AdminProfile {
     id: string;

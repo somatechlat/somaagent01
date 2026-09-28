@@ -13,7 +13,7 @@
 | Approver | Product Owner (user) |
 | Classification | Internal |
 | ISO Reference | ISO/IEC/IEEE 42010:2011; ISO 9241-210:2019; ISO/IEC 25010:2011 |
-| Related | `SOMA-TRIAD-ARCH-001.md`, `ARCHITECTURE-INVARIANTS.md`, `SOMA-UI-UX-001.md`, `SOMA-UI-SPEC-001.md`, `PLAN-TRIAD-SEAMLESS.md`, `VIBE_CODING_RULES.md` |
+| Related | `SOMA-TRIAD-ARCH-001.md`, `SOMA-ARCH-INVARIANTS-001.md`, `SOMA-UI-SPEC-002.md`, `SOMA-UI-SPEC-001.md`, `SOMA-PM-PLAN-TRIAD-001.md`, `SOMA-STD-CODING-001.md` |
 | Source of truth | Live source of `somaAgent01`, `somabrain`, `somafractalmemory` + `/Users/macbookpro201916i964gb1tb/Downloads/agent-zero-main` |
 | Audience | **Agent swarm** (multi-agent execution). Each work package (WP) is independently assignable. |
 
@@ -88,9 +88,9 @@ To define, in one place, everything required to:
 | ID | Reference | Role |
 |----|-----------|------|
 | N-1 | `SOMA-TRIAD-ARCH-001.md` §4 invariants T-1…T-8 | Memory lane law |
-| N-2 | `ARCHITECTURE-INVARIANTS.md` | Violations are defects |
-| N-3 | `VIBE_CODING_RULES.md` | No mocks/stubs/fakes; real data only |
-| N-4 | `SOMA-UI-UX-001.md` | Existing screen map (extend, do not discard) |
+| N-2 | `SOMA-ARCH-INVARIANTS-001.md` | Violations are defects |
+| N-3 | `SOMA-STD-CODING-001.md` | No mocks/stubs/fakes; real data only |
+| N-4 | `SOMA-UI-SPEC-002.md` | Existing screen map (extend, do not discard) |
 | N-5 | Agent Zero source `agent-zero-main/` | Feature inventory source |
 | N-6 | ISO 9241-210 | HCD process for UI/UX |
 | N-7 | ISO/IEC 25010 | Product quality model (used as checklist) |
@@ -659,8 +659,8 @@ You are a SomaTech engineer executing ONE work package.
 Read first (paths on disk):
 - docs/iso/SOMA-A0-PARITY-001.md  (this spec — §7.1 findings, §8.2 your WP row)
 - docs/iso/SOMA-TRIAD-ARCH-001.md (invariants T-1…T-8)
-- docs/project/ARCHITECTURE-INVARIANTS.md
-- docs/development/VIBE_CODING_RULES.md
+- docs/architecture/SOMA-ARCH-INVARIANTS-001.md
+- docs/standards/SOMA-STD-CODING-001.md
 
 WP: <ID> <title>
 Depends: <list>

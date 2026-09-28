@@ -1,4 +1,4 @@
-tmp/# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -87,7 +87,6 @@ node_modules/
 CODEXROADMAP.md
 llm-key-new.pem
 .gitignore
-.gitignore
 llm-key.pem
 
 # === VIBE CLEANUP - Added 2024-12-23 ===
@@ -134,3 +133,6 @@ test-results/
 # Playwright CLI artifacts
 .playwright-cli/
 output/playwright/
+
+# Local agent scratch space
+.scratch/

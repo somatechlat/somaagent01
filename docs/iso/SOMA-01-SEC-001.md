@@ -38,14 +38,14 @@ This security assessment evaluates the SomaAgent01 platform against ISO/IEC 2700
 
 | Control | ID | Requirement | Status | Evidence |
 |---------|----|-------------|--------|----------|
-| Policies for information security | A.5.1 | Documented security policies | Partial | VIBE coding rules exist (`docs/development/VIBE_CODING_RULES.md`); no formal ISMS policy |
+| Policies for information security | A.5.1 | Documented security policies | Partial | VIBE coding rules exist (`docs/standards/SOMA-STD-CODING-001.md`); no formal ISMS policy |
 | Roles and responsibilities | A.5.2 | Defined security roles | Partial | `admin/aaas/models.py` defines tenant roles; no formal security role assignments |
 | Segregation of duties | A.5.3 | Duty separation enforced | Partial | Multi-tenant isolation via Django ORM; no formal segregation matrix |
 | Management responsibilities | A.5.4 | Management direction for security | Partial | Documented in audit reports; no formal management review records |
 | Contact with authorities | A.5.5 | Incident reporting procedures | Gap | No documented incident response procedure |
 | Threat intelligence | A.5.7 | Threat monitoring | Gap | No threat intelligence integration |
 | Information security in project management | A.5.8 | Security in SDLC | Partial | Audit process exists; no automated security gates |
-| Inventory of information assets | A.5.9 | Asset inventory | Partial | Component inventory exists (`docs/design/INVENTORY.md`); not maintained as formal asset register |
+| Inventory of information assets | A.5.9 | Asset inventory | Partial | Component inventory exists (`docs/reports/SOMA-RPT-INVENTORY-001.md`); not maintained as formal asset register |
 | Acceptable use of information | A.5.10 | Acceptable use policies | Gap | No formal acceptable use policy |
 | Access control | A.5.15 | Access control policy | Partial | SpiceDB schema defined; RBAC API endpoints partially stubbed |
 | Authentication | A.5.17 | Strong authentication | **Implemented** | Keycloak OIDC, JWT RS256, MFA support |

@@ -75,9 +75,9 @@ This document specifies the security and multi-tenancy requirements for the Soma
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-PERMISSION-MATRIX | 1.0 | `docs/srs/SRS-PERMISSION-MATRIX.md` |
-| REF-002 | SRS-DATA-MODELS | 5.0 | `docs/srs/SRS-DATA-MODELS.md` |
-| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/srs/SRS-ARCHITECTURAL-PATTERNS.md` |
+| REF-001 | SRS-PERMISSION-MATRIX | 1.0 | `docs/requirements/SOMA-SRS-PERMISSIONS-001.md` |
+| REF-002 | SRS-DATA-MODELS | 5.0 | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` |
+| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/requirements/SOMA-SRS-ARCHPATTERNS-001.md` |
 | REF-004 | Keycloak Documentation | 24.0 | https://www.keycloak.org/documentation |
 | REF-005 | SpiceDB Documentation | 1.35 | https://authzed.com/docs |
 | REF-006 | HashiCorp Vault Documentation | 1.17 | https://developer.hashicorp.com/vault/docs |

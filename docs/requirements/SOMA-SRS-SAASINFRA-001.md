@@ -68,8 +68,8 @@ This document specifies the architecture and operational requirements for the SO
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-AGENTIQ | 6.0 | `docs/srs/SRS-AGENTIQ.md` |
-| REF-002 | SRS-SOMABRAIN-INTEGRATION | 1.0 | `docs/srs/SRS-SOMABRAIN-INTEGRATION.md` |
+| REF-001 | SRS-AGENTIQ | 6.0 | `docs/requirements/SOMA-SRS-AGENTIQ-001.md` |
+| REF-002 | SRS-SOMABRAIN-INTEGRATION | 1.0 | `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` |
 | REF-003 | Docker Compose Specification | 3.8 | `infra/aaas/docker-compose.yml` |
 | REF-004 | Supervisor Configuration | 1.0 | `infra/aaas/aaas/supervisord.conf` |
 

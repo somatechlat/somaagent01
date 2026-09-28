@@ -1,5 +1,4 @@
 // Core Views
-export { SaasApp } from './saas-app.js';
 export { SaasLogin } from './saas-login.js';
 export { SaasAuthCallback } from './saas-auth-callback.js';
 export { SaasRegister } from './saas-register.js';

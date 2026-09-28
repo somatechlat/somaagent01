@@ -1,92 +1,205 @@
-# 🧠 SomaAgent01: Enterprise Multi-Agent Cognitive Platform
+# SOMA-STD-INDEX-001 — Documentation Tree Index
 
-![Status](https://img.shields.io/badge/Status-Production%20Ready-green)
-![Framework](https://img.shields.io/badge/Framework-Django%205.0-blue)
-![Architecture](https://img.shields.io/badge/Architecture-Modular%20Monolith-orange)
-![Compliance](https://img.shields.io/badge/VIBE-Compliant-purple)
+| Field | Value |
+|---|---|
+| Document Title | Documentation Tree Index |
+| Document Identifier | SOMA-STD-INDEX-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-27 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-27 |
+| Related | `docs/iso/SOMA-01-DOCS-001.md`, `docs/iso/DOCUMENT-REGISTER.md` |
+| Source of truth | The working tree; inventory is regenerated from it |
+| Audience | All contributors and any agent working in this repository |
+| Scope | Every `*.md` under `docs/` |
 
-**SomaAgent01** is the next-generation **Cognitive Operating System** for enterprise AI. Built on a robust **Django 5.0** foundation, it orchestrates autonomous agents, multimodal perception, and long-term memory into a cohesive swarm intelligence.
+## Revision History
 
----
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial issue. Documentation tree renamed to the `SOMA-<DOMAIN>-<TYPE>-<NNN>` scheme and reorganised by domain. |
 
-## 🌟 Core Capabilities
+## 1. How this tree is organised
 
-### 🤖 Autonomous Swarm Intelligence
--   **Multi-Agent Orchestration**: Coordinate specialized agents (Research, Coding, Analysis) via `admin.orchestrator`.
--   **Hierarchical Delegation**: Agents can delegate sub-tasks to specialized workers or other swarms.
--   **Self-Healing Workflows**: Intelligent error recovery and task retry mechanisms.
+Every document is named by its Document Identifier:
 
-### 🧠 Advanced Cognitive Architecture
--   **SomaBrain™ Integration**: Primary cognitive memory with recall/memorize/learn (`admin.memory`).
--   **SomaFractalMemory™ Fallback**: Independent vector memory that operates WITHOUT SomaBrain. When Brain is down, the agent saves/recalls memories directly from SFM (`services.common.adapters.memory_http`).
--   **RAG & Vector Search**: High-performance knowledge retrieval using Milvus (ONLY — ChromaDB is not used per VIBE Rule 9).
--   **Context Management**: Dynamic context window handling with 5-lane token budgeting. Brain recall primary → SFM search fallback → PostgreSQL history always available.
-
-### 👁️👂 Multimodal Perception
--   **Voice Native**: Real-time Speech-to-Text (STT) and Text-to-Speech (TTS) via `admin.voice`.
--   **Vision Capabilities**: Image analysis, diagram interpretation, and visual QA via `admin.multimodal`.
--   **File Intelligence**: Native parsing of PDF, DOCX, CSV, and code repositories (`admin.files`).
-
-### 🛡️ Enterprise Governance (AAAS)
--   **Multi-Tenancy**: Strict data isolation per tenant (`admin.aaas`).
--   **Capsule Security**: Policy-as-Code enforcement for agent boundaries (`admin.capsules`).
--   **RBAC & Audit**: Granular role-based access control and immutable audit logs.
-
----
-
-## 🏗️ Technical Architecture
-
-SomaAgent01 is engineered as a **Modular Monolith** to combine the simplicity of a single deployment with the scalability of microservices.
-
-### The 17 Core Pillars (`admin/`)
-| App | Function | Description |
-| :--- | :--- | :--- |
-| **Agents** | `admin.agents` | Lifecycle management and prompt engineering. |
-| **Brain** | `admin.memory` | Vector embeddings and semantic recall. |
-| **Voice** | `admin.voice` | ElevenLabs/Deepgram integration layers. |
-| **LLM** | `admin.llm` | Provider-agnostic AI gateway (OpenAI/Anthropic/Gemini). |
-| **Orchestrator** | `admin.orchestrator` | Task graph execution engine. |
-| **Tools** | `admin.tools` | Secure sandbox for code execution and API calls. |
-| **AAAS** | `admin.aaas` | Subscription, billing, and tenant management. |
-| **Gateway** | `services.gateway` | High-performance Django Ninja API Gateway. |
-
----
-
-## 🚀 Deployment
-
-### Quick Start (Docker)
-Get the full stack running in minutes.
-
-```bash
-# 1. Clone
-git clone https://github.com/somatechlat/somaagent01.git
-
-# 2. Configure Environment
-cp .env.example .env
-
-# 3. Launch Stack
-docker compose -f infra/standalone/docker-compose.yml up -d --build
-
-# 4. Access
-# API Docs: http://localhost:20020/api/v2/docs
-# Dashboard: http://localhost:20080/dashboard (frontend)
+```
+SOMA-<DOMAIN>-<TYPE>-<NNN>.md
 ```
 
-### Production Requirements
--   **Database**: PostgreSQL 16+
--   **Cache**: Redis 7+
--   **Vector Store**: Milvus 2.3+ (port 20530 in SomaStack cluster)
--   **Runtime**: Python 3.12+
+The **domain token decides the directory**, and the **filename stem is the identifier**.
+The rules are in `docs/iso/SOMA-01-DOCS-001.md` §3.3 and are enforced by
+`scripts/check_docs.py` (rules `C-01`…`C-12`). Compliance is checked with
+`make docs-check`; the inventory below is regenerated with `make docs-register`.
 
----
+## 2. Directories
 
-## 🛡️ VIBE Coding Standards
+| Directory | Domain | Contents |
+|---|---|---|
+| `docs/iso/` | ``01` / topic` | Controlled ISO-tier documents. The suite's authority: quality manual, procedures, assessments, and the register itself. |
+| `docs/architecture/` | ``ARCH`` | System architecture descriptions and the invariants that must hold. |
+| `docs/requirements/` | ``SRS`` | Software requirement specifications (SRS), one per subsystem or concern. |
+| `docs/operations/` | ``OPS`` | Deployment modes, plans and runbooks. `images/` holds generated topology diagrams. |
+| `docs/design/` | ``UI`` | UI/UX specification, parity plan and wireframes. |
+| `docs/modules/` | ``MOD`` | The Capsule Module system: architecture and technical specification. |
+| `docs/project/` | ``PM`` | Project management artefacts: charter, WBS, RACI, milestones, change log, SOW. |
+| `docs/standards/` | ``STD`` | Coding rules, templates and format standards. These bind day-to-day work. |
+| `docs/reports/` | ``RPT`` | Audits, analyses and comparison matrices. |
+| `docs/tasks/` | ``TASK`` | Task lists, work packages and handoff notes. |
+| `docs/archive/` | ``OLD`` | Superseded plans. Kept for history; do not treat as current. |
 
-This repository adheres to the **VIBE Coding Rules**, ensuring:
-1.  **Zero Legacy**: No deprecated frameworks (FastAPI removed).
-2.  **Zero Mocks**: All tests run against real Docker infrastructure.
-3.  **100% Type Safety**: Strict MyPy/Pyright compliance.
-4.  **Django Native**: Leveraging ORM, Signals, and Apps for all logic.
+## 3. Documents by domain
 
----
-**Maintained by SomaTech LATAM**
+### `docs/iso/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `SOMA-01-DOCS-002` | Document Register | `docs/iso/DOCUMENT-REGISTER.md` |
+| `SOMA-01-AAAS-001` | Soma AAAS Deployment Specification | `docs/iso/SOMA-01-AAAS-001.md` |
+| `SOMA-01-ARCH-001` | SomaAgent01 System Architecture Document | `docs/iso/SOMA-01-ARCH-001.md` |
+| `SOMA-01-AUDIT-002` | SomaAgent01 Code-Verified Deep Audit Report | `docs/iso/SOMA-01-AUDIT-002.md` |
+| `SOMA-COMPAT-001` | Soma Cognitive Triad Version Compatibility Matrix | `docs/iso/SOMA-01-COMPAT-001.md` |
+| `SOMA-01-DOCS-001` | Document Control and Traceability Procedure | `docs/iso/SOMA-01-DOCS-001.md` |
+| `SOMA-01-OPS-001` | SomaAgent01 Operations Runbook | `docs/iso/SOMA-01-OPS-001.md` |
+| `SOMA-01-PROD-001` | SomaAgent01 Production Readiness Assessment | `docs/iso/SOMA-01-PROD-001.md` |
+| `SOMA-01-QMS-001` | SomaAgent01 Quality Manual | `docs/iso/SOMA-01-QMS-001.md` |
+| `SOMA-01-RELEASE-001` | SomaAgent01 v2.0.0 Release Notes | `docs/iso/SOMA-01-RELEASE-001.md` |
+| `SOMA-01-RISK-001` | SomaAgent01 Risk Register | `docs/iso/SOMA-01-RISK-001.md` |
+| `SOMA-01-SDP-001` | SomaAgent01 Software Development Plan | `docs/iso/SOMA-01-SDP-001.md` |
+| `SOMA-01-SEC-001` | SomaAgent01 Security Assessment Report | `docs/iso/SOMA-01-SEC-001.md` |
+| `SOMA-01-SRS-001` | SomaAgent01 Master Software Requirements Specification | `docs/iso/SOMA-01-SRS-001.md` |
+| `SOMA-01-VV-001` | SomaAgent01 Verification and Validation Plan | `docs/iso/SOMA-01-VV-001.md` |
+| `SOMA-A0-PARITY-001` | Soma × Agent Zero — Feature Parity Matrix, UI/UX Development Specification, Code Remediation & Ownership Plan | `docs/iso/SOMA-A0-PARITY-001.md` |
+| `SOMA-BRAIN-COMPLIANCE-001` | SOMA-BRAIN-COMPLIANCE-001 | `docs/iso/SOMA-BRAIN-COMPLIANCE-001.md` |
+| `SOMA-SETTINGS-MODEL-001` | Soma Settings Model and Configuration Inventory | `docs/iso/SOMA-SETTINGS-MODEL-001.md` |
+| `SOMA-TRIAD-ARCH-001` | Soma Triad Architecture Description — Agent / Brain / Memory | `docs/iso/SOMA-TRIAD-ARCH-001.md` |
+
+### `docs/architecture/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `—` | SOMA-ARCH-INVARIANTS-001 | `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` |
+| `SOMA-ARCH-REDESIGN-001` | Enterprise Architecture Redesign | `docs/architecture/SOMA-ARCH-REDESIGN-001.md` |
+
+### `docs/requirements/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `—` | SOMA-SRS-AGENTIQ-001 | `docs/requirements/SOMA-SRS-AGENTIQ-001.md` |
+| `—` | SOMA-SRS-ARCHPATTERNS-001 | `docs/requirements/SOMA-SRS-ARCHPATTERNS-001.md` |
+| `—` | SOMA-SRS-BACKUP-001 | `docs/requirements/SOMA-SRS-BACKUP-001.md` |
+| `—` | SOMA-SRS-BUDGET-001 | `docs/requirements/SOMA-SRS-BUDGET-001.md` |
+| `—` | SOMA-SRS-CAPSULEPORT-001 | `docs/requirements/SOMA-SRS-CAPSULEPORT-001.md` |
+| `—` | SOMA-SRS-CHATFLOW-001 | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` |
+| `—` | SOMA-SRS-CONTEXT-001 | `docs/requirements/SOMA-SRS-CONTEXT-001.md` |
+| `—` | SOMA-SRS-DATAMODELS-001 | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` |
+| `—` | SOMA-SRS-FEATFLAGS-001 | `docs/requirements/SOMA-SRS-FEATFLAGS-001.md` |
+| `—` | SOMA-SRS-LAGOBILLING-001 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` |
+| `—` | SOMA-SRS-MODELROUTING-001 | `docs/requirements/SOMA-SRS-MODELROUTING-001.md` |
+| `—` | SOMA-SRS-MULTIMODAL-001 | `docs/requirements/SOMA-SRS-MULTIMODAL-001.md` |
+| `—` | SOMA-SRS-MULTITENANCY-001 | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` |
+| `—` | SOMA-SRS-PERMISSIONS-001 | `docs/requirements/SOMA-SRS-PERMISSIONS-001.md` |
+| `—` | SOMA-SRS-RLM-001 | `docs/requirements/SOMA-SRS-RLM-001.md` |
+| `—` | SOMA-SRS-SAASINFRA-001 | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` |
+| `—` | SOMA-SRS-SOMABRAIN-001 | `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` |
+| `—` | SOMA-SRS-SOVEREIGNTY-001 | `docs/requirements/SOMA-SRS-SOVEREIGNTY-001.md` |
+| `—` | SOMA-SRS-TESTBENCH-001 | `docs/requirements/SOMA-SRS-TESTBENCH-001.md` |
+| `—` | SOMA-SRS-TESTMODULES-001 | `docs/requirements/SOMA-SRS-TESTMODULES-001.md` |
+| `—` | SOMA-SRS-TOOLS-001 | `docs/requirements/SOMA-SRS-TOOLS-001.md` |
+
+### `docs/operations/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `—` | SOMA-OPS-AAAS-001 | `docs/operations/SOMA-OPS-AAAS-001.md` |
+| `—` | SOMA-OPS-DEPLOY-001 | `docs/operations/SOMA-OPS-DEPLOY-001.md` |
+| `—` | SOMA-OPS-MODES-001 | `docs/operations/SOMA-OPS-MODES-001.md` |
+| `—` | SOMA-OPS-PLAN-001 | `docs/operations/SOMA-OPS-PLAN-001.md` |
+| `—` | SOMA-OPS-SOFTMODES-001 | `docs/operations/SOMA-OPS-SOFTMODES-001.md` |
+
+### `docs/design/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `SOMA-UI-MOCKUPS-001` | Soma Agent Screen Mockups and Wireframes | `docs/design/SOMA-UI-MOCKUPS-001.md` |
+| `—` | SOMA-UI-PARITY-002 | `docs/design/SOMA-UI-PARITY-002.md` |
+| `SOMA-UI-SPEC-001` | Soma Agent Definitive UI/UX Specification | `docs/design/SOMA-UI-SPEC-001.md` |
+| `SOMA-UI-UX-001` | Soma Agent UI/UX Complete Specification | `docs/design/SOMA-UI-SPEC-002.md` |
+
+### `docs/modules/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `SOMA-MOD-ARCH-001` | Soma Agent Modular Architecture — Core vs Optional Modules | `docs/modules/SOMA-MOD-ARCH-001.md` |
+| `SOMA-MOD-SPEC-001` | Soma Agent Module System Technical Specification | `docs/modules/SOMA-MOD-SPEC-001.md` |
+
+### `docs/project/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `SOMA-PM-CHANGE-001` | Change Control Log | `docs/project/SOMA-PM-CHANGE-001.md` |
+| `SOMA-PM-CHARTER-001` | Soma Cognitive Triad Project Charter | `docs/project/SOMA-PM-CHARTER-001.md` |
+| `SOMA-PM-CLOSURE-001` | Project Closure Report | `docs/project/SOMA-PM-CLOSURE-001.md` |
+| `SOMA-PM-COMM-001` | Communication Plan | `docs/project/SOMA-PM-COMM-001.md` |
+| `SOMA-PM-DELIV-001` | Deliverables Register | `docs/project/SOMA-PM-DELIV-001.md` |
+| `SOMA-PM-MILE-001` | Milestone Tracker | `docs/project/SOMA-PM-MILE-001.md` |
+| `—` | SOMA-PM-PLAN-TRIAD-001 | `docs/project/SOMA-PM-PLAN-TRIAD-001.md` |
+| `SOMA-PM-RACI-001` | RACI Matrix (Responsible, Accountable, Consulted, Informed) | `docs/project/SOMA-PM-RACI-001.md` |
+| `SOMA-SOW-001` | Soma Cognitive Triad — Full Scope of Work | `docs/project/SOMA-PM-SOW-001.md` |
+| `SOMA-PM-WBS-001` | Soma Cognitive Triad Work Breakdown Structure | `docs/project/SOMA-PM-WBS-001.md` |
+
+### `docs/standards/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `—` | SOMA-STD-CODING-001 | `docs/standards/SOMA-STD-CODING-001.md` |
+| `—` | SOMA-STD-TEMPLATE-001 | `docs/standards/SOMA-STD-TEMPLATE-001.md` |
+| `—` | SOMA-STD-TOKEN-001 | `docs/standards/SOMA-STD-TOKEN-001.md` |
+
+### `docs/reports/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `SOMA-FEAT-MATRIX-001` | Agent Zero vs Soma Feature Comparison Matrix | `docs/reports/SOMA-RPT-FEATMATRIX-001.md` |
+| `—` | SOMA-RPT-INVENTORY-001 | `docs/reports/SOMA-RPT-INVENTORY-001.md` |
+| `—` | SOMA-RPT-REPO-001 | `docs/reports/SOMA-RPT-REPO-001.md` |
+
+### `docs/tasks/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `—` | SOMA-TASK-AGENTIQ-001 | `docs/tasks/SOMA-TASK-AGENTIQ-001.md` |
+| `—` | SOMA-TASK-CONTEXT-001 | `docs/tasks/SOMA-TASK-CONTEXT-001.md` |
+| `—` | SOMA-TASK-FLOW-001 | `docs/tasks/SOMA-TASK-FLOW-001.md` |
+| `—` | SOMA-TASK-HANDOFF-001 | `docs/tasks/SOMA-TASK-HANDOFF-001.md` |
+| `—` | SOMA-TASK-MERGED-001 | `docs/tasks/SOMA-TASK-MERGED-001.md` |
+| `—` | SOMA-TASK-RLM-001 | `docs/tasks/SOMA-TASK-RLM-001.md` |
+| `—` | SOMA-TASK-SOMABRAIN-001 | `docs/tasks/SOMA-TASK-SOMABRAIN-001.md` |
+
+### `docs/archive/`
+
+| Identifier | Title | File |
+|---|---|---|
+| `—` | SOMA-OLD-DOCKERCLUSTER-001 | `docs/archive/SOMA-OLD-DOCKERCLUSTER-001.md` |
+| `—` | SOMA-OLD-DOCTESTS-001 | `docs/archive/SOMA-OLD-DOCTESTS-001.md` |
+| `—` | SOMA-OLD-DOCTESTS-002 | `docs/archive/SOMA-OLD-DOCTESTS-002.md` |
+| `—` | SOMA-OLD-NOMOCKS-001 | `docs/archive/SOMA-OLD-NOMOCKS-001.md` |
+
+## 4. Where to start
+
+| You want to… | Read |
+|---|---|
+| Know the rules that bind every document | `docs/iso/SOMA-01-DOCS-001.md` |
+| Find a document | `docs/iso/DOCUMENT-REGISTER.md` |
+| Know the quality policy | `docs/iso/SOMA-01-QMS-001.md` |
+| Know the system architecture | `docs/iso/SOMA-01-ARCH-001.md`, `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` |
+| Understand settings and configuration | `docs/iso/SOMA-SETTINGS-MODEL-001.md` |
+| Understand the UI/UX plan | `docs/design/SOMA-UI-PARITY-002.md` |
+| Follow the day-to-day coding rules | `docs/standards/SOMA-STD-CODING-001.md` |
+| Know the triad (Agent / SomaBrain / SomaFractalMemory) | `docs/iso/SOMA-TRIAD-ARCH-001.md` |
+
+End of Document

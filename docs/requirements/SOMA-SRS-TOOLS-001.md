@@ -71,8 +71,8 @@ This document specifies the requirements for the Tool Discovery and Execution su
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CHAT-FLOW-V0.3.md | 0.3 | docs/srs/SRS-CHAT-FLOW-V0.3.md |
-| REF-002 | SRS-BUDGET-SYSTEM.md | 1.0 | docs/srs/SRS-BUDGET-SYSTEM.md |
+| REF-001 | SRS-CHAT-FLOW-V0.3.md | 0.3 | docs/requirements/SRS-CHAT-FLOW-V0.3.md |
+| REF-002 | SOMA-SRS-BUDGET-001.md | 1.0 | docs/requirements/SOMA-SRS-BUDGET-001.md |
 | REF-003 | Capability Model | Current | admin/core/models/core.py |
 | REF-004 | SpiceDB Schema | Current | policy/tool_policy.rego |
 | REF-005 | OPA Policy | Current | policy/soma_development.rego |

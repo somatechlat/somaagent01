@@ -69,11 +69,11 @@ This document specifies the requirements for AgentIQ, the governor control loop 
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-DATA-MODELS | 1.0 | `docs/srs/SRS-DATA-MODELS.md` |
-| REF-002 | SRS-CONTEXT-BUILDING | 1.0 | `docs/srs/SRS-CONTEXT-BUILDING.md` |
-| REF-003 | SRS-MODEL-ROUTING | 1.0 | `docs/srs/SRS-MODEL-ROUTING.md` |
-| REF-004 | SRS-TOOL-SYSTEM | 1.0 | `docs/srs/SRS-TOOL-SYSTEM.md` |
-| REF-005 | SRS-TEST-MODULES | 1.1 | `docs/srs/SRS-TEST-MODULES.md` |
+| REF-001 | SRS-DATA-MODELS | 1.0 | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` |
+| REF-002 | SRS-CONTEXT-BUILDING | 1.0 | `docs/requirements/SOMA-SRS-CONTEXT-001.md` |
+| REF-003 | SRS-MODEL-ROUTING | 1.0 | `docs/requirements/SOMA-SRS-MODELROUTING-001.md` |
+| REF-004 | SRS-TOOL-SYSTEM | 1.0 | `docs/requirements/SOMA-SRS-TOOLS-001.md` |
+| REF-005 | SRS-TEST-MODULES | 1.1 | `docs/requirements/SOMA-SRS-TESTMODULES-001.md` |
 
 ---
 

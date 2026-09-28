@@ -3,7 +3,7 @@
 # SomaAgent01 — Full Code Audit & Documentation Contrast
 
 **Date:** 2026-06-12  
-**Scope:** Full codebase audit (code, not just docs); contrast with `AGENT.md`, `README.md`, `DEPLOYMENT_PLAN.md`, SRS files, and historical audit reports.  
+**Scope:** Full codebase audit (code, not just docs); contrast with `AGENT.md`, `README.md`, `docs/operations/SOMA-OPS-READINESS-001.md`, SRS files, and historical audit reports.  
 **Method:** 6 specialized forensic agents inspected actual source files, plus manual verification.
 
 ---
@@ -41,7 +41,7 @@
 - Many `services/common/*` modules are stubs (`health_monitor`, `event_bus`, `publisher`, `model_profiles`, several stores).
 
 ### Documentation mismatches fixed
-- Removed references to `services/common/chat/*` from `violations.md`, `docs/reports/DEEP_REPO_ANALYSIS.md` (via snapshot note), `docs/tasks/AGENT_HANDOFF_SOMAAGENT01.md`.
+- Removed references to `services/common/chat/*` from `docs/archive/SOMA-OLD-VIBEVIOLATIONS-001.md`, `docs/reports/SOMA-RPT-REPO-001.md` (via snapshot note), `docs/tasks/SOMA-TASK-HANDOFF-001.md`.
 - Updated `AGENT.md` to describe the real 2-pipeline state.
 
 ---
@@ -90,9 +90,9 @@
 - **Default URLs wrong**: `SomaBrainClient` falls back to `host.docker.internal:30101`; docs claim `63996`/`9696`.
 
 ### Documentation updated
-- `docs/srs/SRS-SOMABRAIN-INTEGRATION.md` traceability now points to `aaas/brain.py` and `admin/core/somabrain_client.py`.
-- `docs/srs/SRS-CHAT-FLOW-MASTER.md` updated similarly.
-- `docs/tasks/TASK-RLM-ENGINE.md` updated to remove `admin/agents/services/brain_bridge.py` reference.
+- `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` traceability now points to `aaas/brain.py` and `admin/core/somabrain_client.py`.
+- `docs/requirements/SOMA-SRS-CHATFLOW-001.md` updated similarly.
+- `docs/tasks/SOMA-TASK-RLM-001.md` updated to remove `admin/agents/services/brain_bridge.py` reference.
 
 ---
 
@@ -162,20 +162,20 @@ Actual repository count (excluding `.venv`, `node_modules`, `.git`):
 ### Canonical docs updated
 - `AGENT.md` — OPA/SpiceDB runtime status, rate limiter fail-closed, auth issues fixed, chat architecture corrected to 2 pipelines, BrainBridge.recall() status, data model inventory, gaps updated.
 - `README.md` — security issues struck through and marked fixed, limitations table updated, new frontend blockers added.
-- `DEPLOYMENT_PLAN.md` — maturity/security scores, broken/missing list, short-term actions marked done, WebUI image added.
+- `docs/operations/SOMA-OPS-READINESS-001.md` — maturity/security scores, broken/missing list, short-term actions marked done, WebUI image added.
 
 ### Historical reports preserved with warnings
-- `SOMA_AGENT01_COMPREHENSIVE_AUDIT_REPORT.md`
-- `VIOLATIONS_FULL_AUDIT_2026-05-28.md`
-- `docs/reports/DEEP_REPO_ANALYSIS.md`
+- `docs/archive/SOMA-OLD-AUDIT-001.md`
+- `docs/archive/SOMA-OLD-VIOLATIONS-001.md`
+- `docs/reports/SOMA-RPT-REPO-001.md`
 
 ### Legacy references removed/updated
-- `violations.md` — removed `services/common/chat/*` and `services/common/model_router.py` references.
-- `docs/tasks/TASK-RLM-ENGINE.md` — removed `admin/agents/services/brain_bridge.py` reference.
-- `docs/tasks/AGENT_HANDOFF_SOMAAGENT01.md` — added historical snapshot warning.
-- `docs/srs/SRS-SOMABRAIN-INTEGRATION.md` — traceability updated from `services/common/brain_bridge.py` to `aaas/brain.py` + `admin/core/somabrain_client.py`.
-- `docs/srs/SRS-CHAT-FLOW-MASTER.md` — same traceability update.
-- `docs/srs/SRS-650-LINE-SOVEREIGNTY.md` — marked `admin/conversations/api.py` decomposition as N/A (deleted).
+- `docs/archive/SOMA-OLD-VIBEVIOLATIONS-001.md` — removed `services/common/chat/*` and `services/common/model_router.py` references.
+- `docs/tasks/SOMA-TASK-RLM-001.md` — removed `admin/agents/services/brain_bridge.py` reference.
+- `docs/tasks/SOMA-TASK-HANDOFF-001.md` — added historical snapshot warning.
+- `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` — traceability updated from `services/common/brain_bridge.py` to `aaas/brain.py` + `admin/core/somabrain_client.py`.
+- `docs/requirements/SOMA-SRS-CHATFLOW-001.md` — same traceability update.
+- `docs/requirements/SOMA-SRS-SOVEREIGNTY-001.md` — marked `admin/conversations/api.py` decomposition as N/A (deleted).
 
 ---
 

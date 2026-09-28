@@ -52,7 +52,7 @@ This document specifies the integration between SomaAgent01 and the Lago usage-b
 - Non-blocking retry mechanism for failed events
 
 **Out of scope:**
-- Budget enforcement and limit checking (see [SRS-BUDGET-SYSTEM.md](./SRS-BUDGET-SYSTEM.md))
+- Budget enforcement and limit checking (see [SOMA-SRS-BUDGET-001.md](./SOMA-SRS-BUDGET-001.md))
 - Lago internal plan configuration UI
 - SomaAgent01 chat execution logic
 
@@ -72,7 +72,7 @@ This document specifies the integration between SomaAgent01 and the Lago usage-b
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-BUDGET-SYSTEM | 1.0 | `docs/srs/SRS-BUDGET-SYSTEM.md` |
+| REF-001 | SRS-BUDGET-SYSTEM | 1.0 | `docs/requirements/SOMA-SRS-BUDGET-001.md` |
 | REF-002 | Lago API Reference | Latest | https://getlago.com/docs/api-reference |
 | REF-003 | Docker Compose Lago | 1.0 | `docker-compose.lago.yml` |
 

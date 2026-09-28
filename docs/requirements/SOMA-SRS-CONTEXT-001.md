@@ -67,7 +67,7 @@ This document specifies the ContextBuilding subsystem of SomaAgent01, which asse
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CHAT-FLOW-MASTER | 3.1 | `docs/srs/SRS-CHAT-FLOW-MASTER.md` |
+| REF-001 | SRS-CHAT-FLOW-MASTER | 3.1 | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` |
 | REF-002 | Context Builder | — | `admin/core/context/builder.py` |
 | REF-003 | Lane Allocator | — | `admin/core/context/lanes.py` |
 | REF-004 | Context Models | — | `admin/core/context/models.py` |

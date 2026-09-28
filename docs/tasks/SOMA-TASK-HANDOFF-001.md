@@ -321,7 +321,7 @@ somaagent01/
 
 **Documentation:**
 1. `AGENT.md` - Agent knowledge base
-2. `docs/deployment/DEPLOYMENT_MODES.md` - Deployment modes
+2. `docs/operations/SOMA-OPS-MODES-001.md` - Deployment modes
 3. `docs/README.md` - Project overview
 
 ---

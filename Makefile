@@ -7,7 +7,7 @@
 # Status: Pre-Production
 # ============================================================================
 
-.PHONY: help dev dev-worker test check docs-check migrate build build-standalone up down clean health
+.PHONY: help dev dev-worker test check docs-check docs-register migrate build build-standalone up down clean health
 
 # Default target
 help:
@@ -29,6 +29,7 @@ help:
 	@echo "  make test         - Run tests"
 	@echo "  make check        - Django system check"
 	@echo "  make docs-check   - ISO document control & register compliance"
+	@echo "  make docs-register - Regenerate docs/iso/DOCUMENT-REGISTER.md"
 	@echo "  make migrate      - Run Django migrations"
 	@echo ""
 	@echo "Clean:"
@@ -81,6 +82,10 @@ check:
 docs-check:
 	@echo "Checking ISO document control & register compliance..."
 	python scripts/check_docs.py
+
+docs-register:
+	@echo "Regenerating document register..."
+	python scripts/gen_register.py
 
 migrate:
 	@echo "Running Django migrations..."

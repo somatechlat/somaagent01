@@ -73,10 +73,10 @@ This document specifies the requirements for the multimodal execution subsystem 
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CHAT-FLOW-MASTER.md | 3.0 | docs/srs/SRS-CHAT-FLOW-MASTER.md |
-| REF-002 | SRS-CAPSULE-PORTABILITY.md | 3.0 | docs/srs/SRS-CAPSULE-PORTABILITY.md |
-| REF-003 | SRS-BUDGET-SYSTEM.md | 1.0 | docs/srs/SRS-BUDGET-SYSTEM.md |
-| REF-004 | SRS-FEATURE-FLAGS.md | 1.0 | docs/srs/SRS-FEATURE-FLAGS.md |
+| REF-001 | SOMA-SRS-CHATFLOW-001.md | 3.0 | docs/requirements/SOMA-SRS-CHATFLOW-001.md |
+| REF-002 | SOMA-SRS-CAPSULEPORT-001.md | 3.0 | docs/requirements/SOMA-SRS-CAPSULEPORT-001.md |
+| REF-003 | SOMA-SRS-BUDGET-001.md | 1.0 | docs/requirements/SOMA-SRS-BUDGET-001.md |
+| REF-004 | SOMA-SRS-FEATFLAGS-001.md | 1.0 | docs/requirements/SOMA-SRS-FEATFLAGS-001.md |
 | REF-005 | LLM Model Configuration | Current | admin/core/models/core.py |
 
 ---

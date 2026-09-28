@@ -51,8 +51,8 @@ This document specifies the Feature Toggle system for SomaAgent01. It provides a
 - Credential validation against Vault
 
 **Out of scope:**
-- Budget enforcement (see [SRS-BUDGET-SYSTEM.md](./SRS-BUDGET-SYSTEM.md))
-- Billing plan definitions (see [SRS-LAGO-BILLING.md](./SRS-LAGO-BILLING.md))
+- Budget enforcement (see [SOMA-SRS-BUDGET-001.md](./SOMA-SRS-BUDGET-001.md))
+- Billing plan definitions (see [SOMA-SRS-LAGOBILLING-001.md](./SOMA-SRS-LAGOBILLING-001.md))
 - Chat execution logic
 
 ### 1.3 Definitions
@@ -71,8 +71,8 @@ This document specifies the Feature Toggle system for SomaAgent01. It provides a
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-BUDGET-SYSTEM | 1.0 | `docs/srs/SRS-BUDGET-SYSTEM.md` |
-| REF-002 | SRS-LAGO-BILLING | 1.0 | `docs/srs/SRS-LAGO-BILLING.md` |
+| REF-001 | SRS-BUDGET-SYSTEM | 1.0 | `docs/requirements/SOMA-SRS-BUDGET-001.md` |
+| REF-002 | SRS-LAGO-BILLING | 1.0 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` |
 | REF-003 | Django Documentation | 4.2 | https://docs.djangoproject.com/en/4.2/ |
 
 ---

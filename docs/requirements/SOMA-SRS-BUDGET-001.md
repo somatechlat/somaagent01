@@ -52,7 +52,7 @@ This document specifies the Universal Budget System, a centralized, Django-nativ
 - Per-metric enablement toggles
 
 **Out of scope:**
-- Lago billing engine implementation (see [SRS-LAGO-BILLING.md](./SRS-LAGO-BILLING.md))
+- Lago billing engine implementation (see [SOMA-SRS-LAGOBILLING-001.md](./SOMA-SRS-LAGOBILLING-001.md))
 - Chat/agent execution logic
 - Tenant authentication and authorization
 
@@ -73,7 +73,7 @@ This document specifies the Universal Budget System, a centralized, Django-nativ
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-LAGO-BILLING | 1.0 | `docs/srs/SRS-LAGO-BILLING.md` |
+| REF-001 | SRS-LAGO-BILLING | 1.0 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` |
 | REF-002 | Django Cache Framework | 4.2 | https://docs.djangoproject.com/en/4.2/topics/cache/ |
 | REF-003 | Lago API Documentation | Latest | https://getlago.com/docs/api-reference |
 

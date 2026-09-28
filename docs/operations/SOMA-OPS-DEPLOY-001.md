@@ -48,7 +48,7 @@ SomaStack uses defined port namespaces for all services to enable local developm
 
 Configure these variables in your CI/CD pipeline or `.env` file. For software
 deployment modes (Standalone vs SomaStackClusterMode), see
-`docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md`.
+`docs/operations/SOMA-OPS-SOFTMODES-001.md`.
 
 ### 2.1 Core Deployment Variables
 

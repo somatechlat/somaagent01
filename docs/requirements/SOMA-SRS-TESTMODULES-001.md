@@ -67,10 +67,10 @@ This document specifies the module-based test suite design for the SomaAgent01 s
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-AGENTIQ | 6.0 | `docs/srs/SRS-AGENTIQ.md` |
-| REF-002 | SRS-CHAT-FLOW-MASTER | 1.0 | `docs/srs/SRS-CHAT-FLOW-MASTER.md` |
-| REF-003 | SRS-TEST-WORKBENCH | 1.0 | `docs/srs/SRS-TEST-WORKBENCH.md` |
-| REF-004 | SRS-SAAS-INFRASTRUCTURE | 2.1 | `docs/srs/SRS-SAAS-INFRASTRUCTURE.md` |
+| REF-001 | SRS-AGENTIQ | 6.0 | `docs/requirements/SOMA-SRS-AGENTIQ-001.md` |
+| REF-002 | SRS-CHAT-FLOW-MASTER | 1.0 | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` |
+| REF-003 | SRS-TEST-WORKBENCH | 1.0 | `docs/requirements/SOMA-SRS-TESTBENCH-001.md` |
+| REF-004 | SRS-SAAS-INFRASTRUCTURE | 2.1 | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` |
 
 ---
 

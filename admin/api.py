@@ -50,7 +50,7 @@ Example:
 
 See Also:
     - :doc:`AGENT.md <../AGENT>` for complete architecture overview
-    - :doc:`docs/development/VIBE_CODING_RULES.md <../docs/development/VIBE_CODING_RULES>`
+    - :doc:`docs/standards/SOMA-STD-CODING-001.md <../docs/standards/SOMA-STD-CODING-001>`
 """
 
 from __future__ import annotations

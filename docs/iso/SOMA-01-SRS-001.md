@@ -26,7 +26,7 @@
 | System Architecture | SOMA-01-ARCH-001 | `docs/iso/SOMA-01-ARCH-001.md` |
 | Security Assessment | SOMA-01-SEC-001 | `docs/iso/SOMA-01-SEC-001.md` |
 | Quality Manual | SOMA-01-QMS-001 | `docs/iso/SOMA-01-QMS-001.md` |
-| Domain SRS Documents | Various | `docs/srs/` (22 files) |
+| Domain SRS Documents | Various | `docs/requirements/` (22 files) |
 
 ---
 
@@ -263,7 +263,7 @@ SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orch
 
 ### 6.2 Detailed Traceability
 
-Full traceability from requirement → code file → test file is maintained in the project tracking system. See `docs/srs/` for domain-specific traceability.
+Full traceability from requirement → code file → test file is maintained in the project tracking system. See `docs/requirements/` for domain-specific traceability.
 
 ---
 
@@ -271,20 +271,20 @@ Full traceability from requirement → code file → test file is maintained in 
 
 | Domain SRS | File | Requirements Mapped |
 |-----------|------|---------------------|
-| Chat Flow Master | `docs/srs/SRS-CHAT-FLOW-MASTER.md` | REQ-CHAT-001 through REQ-CHAT-012 |
-| AgentIQ | `docs/srs/SRS-AGENTIQ.md` | REQ-AC-003, REQ-AGENT-002 |
-| Security & Multi-tenancy | `docs/srs/SRS-SECURITY-MULTITENANCY.md` | REQ-AUTH-*, REQ-AC-*, REQ-TENANT-* |
-| Context Building | `docs/srs/SRS-CONTEXT-BUILDING.md` | REQ-CTX-* |
-| SomaBrain Integration | `docs/srs/SRS-SOMABRAIN-INTEGRATION.md` | REQ-MEM-* |
-| Model Routing | `docs/srs/SRS-MODEL-ROUTING.md` | REQ-MODEL-* |
-| Tool System | `docs/srs/SRS-TOOL-SYSTEM.md` | REQ-CHAT-005, REQ-AGENT-004 |
-| Permission Matrix | `docs/srs/SRS-PERMISSION-MATRIX.md` | REQ-AC-* |
-| Budget System | `docs/srs/SRS-BUDGET-SYSTEM.md` | REQ-TENANT-002, REQ-TENANT-003 |
-| Data Models | `docs/srs/SRS-DATA-MODELS.md` | REQ-AGENT-001, REQ-AGENT-003 |
-| Feature Flags | `docs/srs/SRS-FEATURE-FLAGS.md` | REQ-AGENT (config) |
-| SaaS Infrastructure | `docs/srs/SRS-SAAS-INFRASTRUCTURE.md` | REQ-OBS-*, REQ-DEP-* |
-| Multimodal | `docs/srs/SRS-MULTIMODAL.md` | REQ-CHAT (extensions) |
-| Backup System | `docs/srs/SRS-BACKUP-SYSTEM.md` | REQ-REL (data durability) |
+| Chat Flow Master | `docs/requirements/SOMA-SRS-CHATFLOW-001.md` | REQ-CHAT-001 through REQ-CHAT-012 |
+| AgentIQ | `docs/requirements/SOMA-SRS-AGENTIQ-001.md` | REQ-AC-003, REQ-AGENT-002 |
+| Security & Multi-tenancy | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` | REQ-AUTH-*, REQ-AC-*, REQ-TENANT-* |
+| Context Building | `docs/requirements/SOMA-SRS-CONTEXT-001.md` | REQ-CTX-* |
+| SomaBrain Integration | `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` | REQ-MEM-* |
+| Model Routing | `docs/requirements/SOMA-SRS-MODELROUTING-001.md` | REQ-MODEL-* |
+| Tool System | `docs/requirements/SOMA-SRS-TOOLS-001.md` | REQ-CHAT-005, REQ-AGENT-004 |
+| Permission Matrix | `docs/requirements/SOMA-SRS-PERMISSIONS-001.md` | REQ-AC-* |
+| Budget System | `docs/requirements/SOMA-SRS-BUDGET-001.md` | REQ-TENANT-002, REQ-TENANT-003 |
+| Data Models | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` | REQ-AGENT-001, REQ-AGENT-003 |
+| Feature Flags | `docs/requirements/SOMA-SRS-FEATFLAGS-001.md` | REQ-AGENT (config) |
+| SaaS Infrastructure | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` | REQ-OBS-*, REQ-DEP-* |
+| Multimodal | `docs/requirements/SOMA-SRS-MULTIMODAL-001.md` | REQ-CHAT (extensions) |
+| Backup System | `docs/requirements/SOMA-SRS-BACKUP-001.md` | REQ-REL (data durability) |
 
 ---
 

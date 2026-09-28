@@ -70,8 +70,8 @@ This document specifies the requirements for integrating SomaBrain, the Layer 3 
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-CHAT-FLOW-MASTER.md | 3.0 | docs/srs/SRS-CHAT-FLOW-MASTER.md |
-| REF-002 | SRS-CAPSULE-PORTABILITY.md | 3.0 | docs/srs/SRS-CAPSULE-PORTABILITY.md |
+| REF-001 | SOMA-SRS-CHATFLOW-001.md | 3.0 | docs/requirements/SOMA-SRS-CHATFLOW-001.md |
+| REF-002 | SOMA-SRS-CAPSULEPORT-001.md | 3.0 | docs/requirements/SOMA-SRS-CAPSULEPORT-001.md |
 | REF-003 | SomaBrain Service API | 1.0 | `aaas/brain.py` (BrainBridge), `admin/core/somabrain_client.py` (HTTP client) |
 | REF-004 | Django Models | Current | admin/core/models/core.py |
 

@@ -5,7 +5,7 @@
 **Status:** normative — any code that violates an invariant here is a defect, not a style choice.
 
 This is the contract for the triad (somaAgent01 ↔ somabrain ↔ somafractalmemory).
-Companion to `PLAN-TRIAD-SEAMLESS.md` (delivery waves). This document says
+Companion to `SOMA-PM-PLAN-TRIAD-001.md` (delivery waves). This document says
 *what must be exactly right*; the plan says *who builds it and when*.
 
 ---

@@ -14,7 +14,7 @@ Scanned: top-level layout, docs, infra compose files, core service modules, auth
 
 High-signal files reviewed include:
 - `AGENT.md`
-- `docs/README.md`, `docs/deployment/DEPLOYMENT.md`, `docs/deployment/DEPLOYMENT_MODES.md`, `docs/standards/SOMA_TOKEN_FORMAT.md`, `docs/design/INVENTORY.md`
+- `docs/README.md`, `docs/operations/SOMA-OPS-DEPLOY-001.md`, `docs/operations/SOMA-OPS-MODES-001.md`, `docs/standards/SOMA-STD-TOKEN-001.md`, `docs/reports/SOMA-RPT-INVENTORY-001.md`
 - `infra/standalone/docker-compose.yml`, `infra/aaas/docker-compose.yml`
 - `admin/api.py`, `admin/auth/api.py`, `admin/common/auth.py`, `admin/common/session_manager.py`
 - `admin/chat/api/chat.py`, `admin/conversations/api.py`, `admin/core/chat_orchestrator.py`
@@ -39,18 +39,18 @@ The system is a large modular monolith with a gateway service, plus extensive in
 These are concrete mismatches that will mislead implementation, deployment, or onboarding.
 
 1) Missing/incorrect referenced docs and files
-- `AGENT.md` references `docs/development/VIBE_CODING_RULES.md`, but that file does not exist.
+- `AGENT.md` references `docs/standards/SOMA-STD-CODING-001.md`, but that file does not exist.
 - Root `README.md` is empty, while `docs/README.md` is the actual entry point.
-- `docs/README.md` and `docs/deployment/DEPLOYMENT.md` reference `infra/standalone/docker-compose.yml` or `infra/aaas/docker-compose.yml`.
+- `docs/README.md` and `docs/operations/SOMA-OPS-DEPLOY-001.md` reference `infra/standalone/docker-compose.yml` or `infra/aaas/docker-compose.yml`.
 
 2) Port namespace mismatches
-- `docs/deployment/DEPLOYMENT.md` mixes 20xxx and default ports (e.g. Postgres 5432, Redis 6379, Milvus 19530).
+- `docs/operations/SOMA-OPS-DEPLOY-001.md` mixes 20xxx and default ports (e.g. Postgres 5432, Redis 6379, Milvus 19530).
 - `infra/standalone/docker-compose.yml` uses 20xxx ports (e.g. Postgres 20432, Redis 20379).
 - `infra/aaas/docker-compose.yml` uses 63xxx ports (e.g. Postgres 63932, Redis 63979, Milvus 63953).
 This is a major source of confusion for local vs AAAS deployments.
 
 3) Deployment mode taxonomy conflicts
-- `docs/deployment/DEPLOYMENT_MODES.md` uses `SA01_DEPLOYMENT_MODE="AAAS"` or `"STANDALONE"`.
+- `docs/operations/SOMA-OPS-MODES-001.md` uses `SA01_DEPLOYMENT_MODE="AAAS"` or `"STANDALONE"`.
 - `config/settings_registry.py` also supports `STANDALONE` and `AAAS`.
 - `admin/core/management/commands/preflight.py` enforces only `DEV` or `PROD`.
 This is a direct contradiction between docs and runtime validation.
@@ -63,7 +63,7 @@ This is a direct contradiction between docs and runtime validation.
 This creates a split-brain config system where different subsystems cannot be configured consistently.
 
 5) Docs list components/services not present in code
-- `docs/design/INVENTORY.md` lists `services.conversation_worker`, `services.tool_executor`, `services.memory_replicator`, `services.delegation_gateway` but these folders are not in the repo.
+- `docs/reports/SOMA-RPT-INVENTORY-001.md` lists `services.conversation_worker`, `services.tool_executor`, `services.memory_replicator`, `services.delegation_gateway` but these folders are not in the repo.
 - `docs/README.md` cites ChromaDB as a vector store option, but no ChromaDB integration exists in code or infra.
 
 ## Architectural overlap and duplication
@@ -149,13 +149,13 @@ Define the authoritative taxonomy for `SA01_DEPLOYMENT_MODE` (AAAS/STANDALONE vs
 - `config/settings_registry.py`
 - `services/gateway/settings.py`
 - `admin/core/management/commands/preflight.py`
-- docs under `docs/deployment/`
+- docs under `docs/operations/`
 
 4) Resolve placeholder/unfinished code in the live path
 Audit for placeholder logic in production endpoints.
 
 5) Repair docs to match reality
-Update `docs/README.md`, `docs/deployment/DEPLOYMENT.md`, and `docs/design/INVENTORY.md` with:
+Update `docs/README.md`, `docs/operations/SOMA-OPS-DEPLOY-001.md`, and `docs/reports/SOMA-RPT-INVENTORY-001.md` with:
 - Correct compose file locations
 - Actual port namespaces (20xxx vs 63xxx)
 - Actual services that exist

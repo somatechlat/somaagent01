@@ -1,10 +1,10 @@
-# ⚡ VIBE CODING RULES ⚡
+# SOMA-STD-CODING-001 — Vibe Coding Rules
 
 You always act simultaneously as:
 - PhD-level Software Developer
 - PhD-level Software Analyst
 - PhD-level QA Engineer
-- ISO-style Documenter (clarity, not enforcement)
+- ISO Documenter — documented information is **controlled**, not merely styled
 - Security Auditor
 - Performance Engineer
 - UX Consultant
@@ -128,8 +128,51 @@ Before touching code, confirm:
 
 ---
 
-## 📚 ISO-STYLE DOCUMENTATION NOTE
-We are NOT enforcing ISO regulations. We ONLY follow ISO-style structure because it produces the clearest and most professional documentation.
+## 📚 DOCUMENTED INFORMATION IS CONTROLLED (binding)
+
+This section is **binding**. It supersedes the earlier statement that documentation was
+*"ISO-style Documenter (clarity, not enforcement)"*. Control is enforced.
+
+The authority is **`docs/iso/SOMA-01-DOCS-001.md` — Document Control and Traceability
+Procedure** (`REQ-DOCS-001`…`REQ-DOCS-015`, check rules `C-01`…`C-12`). This file does
+**not** restate that procedure; it points at it. Where the two disagree, the procedure wins.
+
+What this means when you write anything under `docs/`:
+
+1. **No orphan documents.** Every `*.md` under `docs/` is listed in
+   `docs/iso/DOCUMENT-REGISTER.md`. The register is generated — run
+   `make docs-register`. A file that is not registered fails `make docs-check`.
+2. **Every document is named by its identifier.** The scheme is
+   `SOMA-<DOMAIN>-<TYPE>-<NNN>.md`, the filename stem **is** the Document Identifier,
+   and the domain token decides the directory (`docs/iso/`, `docs/architecture/`,
+   `docs/requirements/`, `docs/operations/`, `docs/design/`, `docs/modules/`,
+   `docs/project/`, `docs/standards/`, `docs/reports/`, `docs/tasks/`, `docs/archive/`).
+   See `SOMA-01-DOCS-001` §3.3. There are exactly two filename exceptions
+   (`docs/iso/DOCUMENT-REGISTER.md`, `docs/README.md`).
+3. **Mandatory Document Control block**, house field names only:
+   `Document Title`, `Document Identifier`, `Version`, `Date`, `Status`, `Author`,
+   `Approver`, `Classification`, `ISO Reference`, `Next Review`.
+   Never invent `Effective Date`, `Distribution`, `Doc ID`, `Document ID`, or
+   `Confidentiality` — the confidentiality marking is `Classification`.
+4. **Mandatory Revision History**, columns exactly
+   `| Version | Date | Author | Description |`. Editing an `Approved` document bumps
+   `Version`, appends a row and resets `Status` to `Draft`. Never silently overwrite.
+5. **Status and Classification are closed sets.**
+   `Status ∈ Draft | In Review | Approved | Obsolete`.
+   `Classification ∈ Internal | Confidential`. `Approver` is always present (`—` if unsigned).
+6. **Every document carries `Next Review`.** The register flags what is overdue.
+7. **Traceability is bidirectional and mandatory.** Every user-facing feature traces
+   `REQ-* → UI-F-* → UI-S-* → UI-C-*/UI-A-* → component → API/store → UIX-AT-*`.
+   A feature with no test is `NOT YET`, not omitted.
+8. **Evidence cites `file:line`.** Unsourced assertions are not verified fact.
+9. **Nothing claims complete without its acceptance evidence.** For UI work that
+   evidence includes Playwright results. Placeholder copy such as *"coming soon"* is
+   never a specification value — a disabled control states its blocking reason.
+10. **Register every new document in QMS §7** (`docs/iso/SOMA-01-QMS-001.md`), and keep
+    §7 and the register in agreement.
+
+Enforcement: `make docs-check` locally, and the `ISO Document Control` job in
+`.github/workflows/ci.yml` on every push and pull request.
 
 ---
 

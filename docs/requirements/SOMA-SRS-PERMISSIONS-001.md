@@ -78,9 +78,9 @@ This document specifies the role-based access control (RBAC), permission matrix,
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/srs/SRS-SECURITY-MULTITENANCY.md` |
-| REF-002 | SRS-DATA-MODELS | 5.0 | `docs/srs/SRS-DATA-MODELS.md` |
-| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/srs/SRS-ARCHITECTURAL-PATTERNS.md` |
+| REF-001 | SRS-SECURITY-MULTITENANCY | 1.1 | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` |
+| REF-002 | SRS-DATA-MODELS | 5.0 | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` |
+| REF-003 | SRS-ARCHITECTURAL-PATTERNS | 1.0 | `docs/requirements/SOMA-SRS-ARCHPATTERNS-001.md` |
 | REF-004 | SpiceDB Schema Language (Zed) | 1.35 | https://authzed.com/docs |
 
 ---

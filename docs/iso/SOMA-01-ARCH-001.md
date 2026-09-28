@@ -43,8 +43,8 @@ This document covers:
 - Known architectural debt
 
 This document does not cover:
-- Detailed API specifications (see `docs/srs/`)
-- Operational runbooks (see `docs/deployment/`)
+- Detailed API specifications (see `docs/requirements/`)
+- Operational runbooks (see `docs/operations/`)
 - Quality management processes (see SOMA-01-QMS-001)
 
 ### 1.3 Intended Audience
@@ -61,9 +61,9 @@ This document does not cover:
 |----------|------------|----------|
 | System Overview | SOMA-DOC-001 | `README.md` |
 | Agent Knowledge Base | SOMA-DOC-002 | `AGENT.md` |
-| Comprehensive Audit Report | SOMA-AUDIT-001 | `SOMA_AGENT01_COMPREHENSIVE_AUDIT_REPORT.md` |
-| VIBE Coding Rules | SOMA-STD-001 | `docs/development/VIBE_CODING_RULES.md` |
-| Deployment Modes | SOMA-DEP-001 | `docs/deployment/SOFTWARE_DEPLOYMENT_MODES.md` |
+| Comprehensive Audit Report | SOMA-AUDIT-001 | `docs/archive/SOMA-OLD-AUDIT-001.md` |
+| VIBE Coding Rules | SOMA-STD-001 | `docs/standards/SOMA-STD-CODING-001.md` |
+| Deployment Modes | SOMA-DEP-001 | `docs/operations/SOMA-OPS-SOFTMODES-001.md` |
 
 ---
 

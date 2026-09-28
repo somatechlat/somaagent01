@@ -8,7 +8,7 @@
 **Date:** 2026-05-28  
 **Scope:** Entire codebase (~350 Python files, ~90 TypeScript files)  
 **Method:** Manual line-by-line review + grep sweeps + 4 parallel agent deep audits  
-**Rules:** docs/development/VIBE_CODING_RULES.md
+**Rules:** docs/standards/SOMA-STD-CODING-001.md
 
 ---
 
@@ -1129,4 +1129,4 @@ assert plan.id is not None
 ---
 
 *Report generated from line-by-line audit of 440+ source files by 4 parallel agents + manual review.*
-*Full report saved to: `VIOLATIONS_FULL_AUDIT_2026-05-28.md`*
+*Full report saved to: `docs/archive/SOMA-OLD-VIOLATIONS-001.md`*

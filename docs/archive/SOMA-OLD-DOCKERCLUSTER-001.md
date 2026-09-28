@@ -819,7 +819,7 @@ git commit -m "fix(health): handle unconfigured keycloak/somabrain in platform h
 - Modify: `services/gateway/settings.py` (read the SomaBrain URL section)
 - Modify: `infra/k8s/somaagent/deployment.yaml`
 - Modify: `.env.example`
-- Modify: `docs/deployment/DEPLOYMENT_MODES.md`
+- Modify: `docs/operations/SOMA-OPS-MODES-001.md`
 - Test: `SA01_SOMA_BASE_URL=http://somabrain.example.com:9696 .venv/bin/python -c "from django.conf import settings; print(settings.SOMABRAIN_URL)"`
 
 **Why:** `SA01_SOMA_BASE_URL`, `SOMABRAIN_URL`, ports 9696/63996/30101, and `SOMABRAIN_ENABLED` are used inconsistently.
@@ -867,7 +867,7 @@ SOMABRAIN_ENABLED=false
 
 - [ ] **Step 4: Update deployment docs**
 
-In `docs/deployment/DEPLOYMENT_MODES.md`, add a standalone-to-somabrain section:
+In `docs/operations/SOMA-OPS-MODES-001.md`, add a standalone-to-somabrain section:
 
 ```markdown
 ### Connecting Standalone mode to a deployed SomaBrain
@@ -891,7 +891,7 @@ In `docs/deployment/DEPLOYMENT_MODES.md`, add a standalone-to-somabrain section:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/gateway/settings.py infra/k8s/somaagent/deployment.yaml .env.example docs/deployment/DEPLOYMENT_MODES.md
+git add services/gateway/settings.py infra/k8s/somaagent/deployment.yaml .env.example docs/operations/SOMA-OPS-MODES-001.md
 git commit -m "chore(config): standardize SomaBrain URL on SA01_SOMA_BASE_URL"
 ```
 
