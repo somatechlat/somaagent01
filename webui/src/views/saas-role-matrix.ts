@@ -349,19 +349,19 @@ export class SaasRoleMatrix extends LitElement {
     }
 
     private async loadRoles() {
-        const response = await apiClient.get('/platform/roles/') as { roles?: Role[] };
+        const response = await apiClient.get('/permissions/roles') as { roles?: Role[] };
         this.roles = response.roles || [];
     }
 
     private async loadPermissions() {
-        const response = await apiClient.get('/platform/permissions/') as { permissions?: Permission[] };
+        const response = await apiClient.get('/permissions/permissions') as { permissions?: Permission[] };
         this.permissions = response.permissions || [];
     }
 
     private async loadMatrix() {
         const newMatrix = new Map<string, boolean>();
         try {
-            const response = await apiClient.get('/platform/roles/matrix/') as {
+            const response = await apiClient.get('/permissions/granular/granular/matrix') as {
                 grants?: RolePermission[];
             };
             for (const grant of (response.grants || [])) {
@@ -406,7 +406,7 @@ export class SaasRoleMatrix extends LitElement {
                 const [role_id, permission_id] = key.split(':', 2);
                 return { role_id, permission_id, granted };
             });
-            await apiClient.post('/platform/roles/matrix/', { grants });
+            await apiClient.post('/permissions/granular/grants', { grants });
             this.originalMatrix = new Map(this.matrix);
             this.dirty = false;
         } catch {

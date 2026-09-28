@@ -51,6 +51,13 @@ export class SaasBillingInvoicesTable extends LitElement {
       color: var(--saas-text-secondary, #666);
     }
 
+    .invoices-empty {
+      margin: 0;
+      padding: 12px 0;
+      color: var(--aaas-text-muted, #6b7280);
+      font-size: 13px;
+    }
+
     .invoices-table {
       width: 100%;
       border-collapse: collapse;
@@ -140,6 +147,11 @@ export class SaasBillingInvoicesTable extends LitElement {
           <span class="material-symbols-outlined">receipt_long</span>
           Recent Invoices
         </h3>
+        ${this.invoices.length === 0
+          ? html`<p class="invoices-empty">
+              No invoices yet. Invoices appear here once billing generates them.
+            </p>`
+          : html`
         <table class="invoices-table">
           <thead>
             <tr>
@@ -164,7 +176,7 @@ export class SaasBillingInvoicesTable extends LitElement {
             )}
           </tbody>
         </table>
-        <a href="/saas/invoices" class="view-all">View all invoices</a>
+        <a href="/saas/invoices" class="view-all">View all invoices</a>`}
       </div>
     `;
   }

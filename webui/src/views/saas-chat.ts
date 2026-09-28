@@ -1429,7 +1429,7 @@ export class SaasChat extends LitElement {
             // Prefer the settings namespace; fall back to the bridges endpoint
             // that saas-settings-channels uses.
             try {
-                const response = await apiClient.get('/settings/channels');
+                const response = await apiClient.get('/bridges/channels');
                 this._channels = normalize(response);
             } catch {
                 const response = await apiClient.get('/bridges/channels');

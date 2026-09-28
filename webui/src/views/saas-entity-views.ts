@@ -45,7 +45,7 @@ abstract class BaseEntityView extends LitElement {
 
     private async loadPermissions() {
         try {
-            const response = await apiClient.get('/auth/me/permissions') as { permissions?: string[] };
+            const response = await apiClient.get('/auth/me') as { permissions?: string[] };
             this.permissions = response.permissions || [];
         } catch {
             this.permissions = [];

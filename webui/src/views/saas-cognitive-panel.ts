@@ -731,7 +731,7 @@ export class SaasCognitivePanel extends LitElement {
         try {
             // Real SomaBrain Cognitive API — agent-scoped state
             const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
-            const path = agentId ? `/cognitive/state/${agentId}` : '/cognitive/state/';
+            const path = agentId ? `/somabrain/cognitive/state/${agentId}` : '/somabrain/cognitive/state/';
             const response = await apiClient.get(path) as {
                 neuromodulators?: NeuromodulatorLevel[] | Record<string, number>;
                 adaptation_params?: AdaptationParams;
@@ -777,7 +777,8 @@ export class SaasCognitivePanel extends LitElement {
     private async _saveParams() {
         this._isSaving = true;
         try {
-            await apiClient.put('/cognitive/params/', this._params);
+            const _agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
+            await apiClient.patch(`/somabrain/cognitive/params/${_agentId}`, this._params);
             this._isDirty = false;
             this._activityLog = [
                 { message: 'Parameters updated successfully', time: 'Just now', icon: 'check_circle' },
@@ -796,7 +797,7 @@ export class SaasCognitivePanel extends LitElement {
         this._sleepCycleActive = true;
         try {
             const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
-            const path = agentId ? `/cognitive/sleep-cycle/${agentId}` : '/cognitive/sleep-cycle/';
+            const path = agentId ? `/somabrain/cognitive/sleep/${agentId}` : '/somabrain/cognitive/sleep/';
             await apiClient.post(path, {});
             this._activityLog = [
                 { message: 'Sleep cycle initiated', time: 'Just now', icon: 'bedtime' },
@@ -817,7 +818,7 @@ export class SaasCognitivePanel extends LitElement {
 
         try {
             const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
-            const path = agentId ? `/cognitive/adaptation/reset/${agentId}` : '/cognitive/reset/';
+            const path = agentId ? `/somabrain/cognitive/adaptation/reset/${agentId}` : '/somabrain/cognitive/adaptation/reset/';
             await apiClient.post(path, {});
             this._isDirty = false;
             this._activityLog = [

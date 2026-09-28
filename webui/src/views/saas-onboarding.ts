@@ -5,7 +5,7 @@
  * Per AGENT_TASKS.md Phase 2.4: Onboarding wizard UI
  * 
  * 7-Persona Implementation:
- * - architecture Django Architect: /invitations/{token}/accept API
+ * - architecture Django Architect: /auth/register API (Keycloak)
  * - lock Security Auditor: Token validation, secure password
  * - monitoring PM: Smooth onboarding UX
  * - science QA Engineer: Validation, error states
@@ -286,6 +286,7 @@ export class SaasOnboarding extends LitElement {
     @state() private step: 'welcome' | 'profile' | 'password' | 'complete' = 'welcome';
     @state() private firstName = '';
     @state() private lastName = '';
+    @state() private email = '';
     @state() private password = '';
     @state() private confirmPassword = '';
     @state() private acceptTerms = false;
@@ -304,7 +305,11 @@ export class SaasOnboarding extends LitElement {
     }
 
     private _canProceedProfile(): boolean {
-        return this.firstName.trim().length > 0 && this.lastName.trim().length > 0;
+        return (
+            this.firstName.trim().length > 0 &&
+            this.lastName.trim().length > 0 &&
+            /^\S+@\S+\.\S+$/.test(this.email.trim())
+        );
     }
 
     private _canProceedPassword(): boolean {
@@ -321,9 +326,12 @@ export class SaasOnboarding extends LitElement {
         this.error = '';
 
         try {
-            await apiClient.post(`/auth/invitations/${this.token}/accept`, {
-                first_name: this.firstName,
-                last_name: this.lastName,
+            // Real endpoint: POST /api/v2/auth/register (Keycloak user creation).
+            // The invitation-acceptance route this used to call was removed with the
+            // stub invitations router — no Invitation model exists in the system.
+            await apiClient.post('/auth/register', {
+                name: `${this.firstName} ${this.lastName}`.trim(),
+                email: this.email.trim(),
                 password: this.password,
             });
             this.step = 'complete';
@@ -403,6 +411,16 @@ export class SaasOnboarding extends LitElement {
                     placeholder="John"
                     .value=${this.firstName}
                     @input=${(e: Event) => this.firstName = (e.target as HTMLInputElement).value}
+                />
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input
+                    type="email"
+                    placeholder="john@example.com"
+                    .value=${this.email}
+                    @input=${(e: Event) => this.email = (e.target as HTMLInputElement).value}
                 />
             </div>
 

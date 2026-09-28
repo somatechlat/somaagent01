@@ -461,7 +461,7 @@ pytest tests/unit/ -v
 | Login Page | `webui/src/views/saas-login.ts` | Full implementation (888 lines) |
 | Chat View | `webui/src/views/saas-chat.ts` | Full implementation (1063 lines) |
 | Keycloak Service | `webui/src/services/keycloak-service.ts` | Full implementation |
-| Core Models | `admin/core/models.py` | Full implementation |
+| Core Models | `admin/core/models/` | Full implementation (`core.py` is the canonical module) |
 | Rate Limiter | `services/common/rate_limiter.py` | Full; FAIL-CLOSED on Redis error |
 | Circuit Breaker | `services/common/circuit_breaker.py` | Full implementation |
 | Health Monitor | `services/common/health_monitor.py` | Full implementation |
@@ -476,8 +476,8 @@ pytest tests/unit/ -v
 | BrainBridge | `aaas/brain.py` | Direct and HTTP modes implemented; `recall()` implemented for both modes |
 | SpiceDB Client | `services/common/spicedb_client.py` | Real gRPC client; some high-level RBAC API endpoints still return stubs |
 | Policy Client | `services/common/policy_client.py` | Real HTTP OPA client; `UnifiedGate` uses it |
-| Audit Publisher | `admin/core/models.py` OutboxMessage | Outbox exists; not wired to all endpoints |
-| WebSocket Consumer | `services/gateway/consumers/chat.py` | Wired to V3 orchestrator; chat is blocked by frontend WebSocket URL mismatch and missing agent selector |
+| Audit Publisher | `admin/core/models/` `OutboxMessage` | Outbox exists; not wired to all endpoints |
+| WebSocket Consumer | `services/gateway/consumers/chat.py` | Wired to V3 orchestrator. Frontend contract verified: `webui/src/views/saas-chat.ts` connects to `/ws/v2/chat/{agent_id}` and passes `agent_id` (via `capsule_id \|\| agent.id`), matching `services/gateway/routing.py`. Agent selector is present and auto-selects when only one agent exists. |
 | MemoryPort Adapters | `services/common/ports/memory_port.py` | Protocol defined; production adapters implement `MemoryServiceProtocol` instead |
 
 ### 12.3 Gaps
@@ -492,9 +492,10 @@ pytest tests/unit/ -v
 | GAP-006 | Chat system degradation -- wire HealthMonitor and SimpleGovernor into chat | Medium | **Fixed in V3 orchestrator** |
 | GAP-007 | Redis connection pooling -- shared factory | Low | Open |
 | GAP-008 | V3 Chat Orchestrator -- make it the production path | High | **Fixed for WebSocket/REST** |
-| GAP-009 | Chat UI WebSocket contract -- frontend omits `agent_id` | High | Open |
-| GAP-010 | Chat UI agent selector -- no selector when user has multiple agents | High | Open |
+| GAP-009 | Chat UI WebSocket contract -- frontend omits `agent_id` | High | **Fixed** — `saas-chat.ts` sends `agent_id` on `/ws/v2/chat/{agent_id}`; route and consumer both accept it |
+| GAP-010 | Chat UI agent selector -- no selector when user has multiple agents | High | **Fixed** — selector renders when the user has >1 agent, auto-selects when exactly 1 |
 | GAP-011 | SomaBrain URL resolution -- default URL is empty/wrong | High | Open |
+| GAP-012 | API keys settings page -- `/aaas/settings/api-keys` is a real backend route with no UI screen | Medium | Open |
 
 ---
 

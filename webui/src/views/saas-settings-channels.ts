@@ -90,8 +90,8 @@ export class SaasSettingsChannels extends LitElement {
         this._error = '';
         try {
             const [channels, modules] = await Promise.all([
-                apiClient.get('/api/v2/bridges/channels') as Promise<{ channels?: ChannelRow[] } | ChannelRow[]>,
-                apiClient.get('/api/v2/modules') as Promise<{ modules?: ModuleRow[] } | ModuleRow[]>,
+                apiClient.get('/bridges/channels') as Promise<{ channels?: ChannelRow[] } | ChannelRow[]>,
+                apiClient.get('/modules') as Promise<{ modules?: ModuleRow[] } | ModuleRow[]>,
             ]);
             const chList = Array.isArray(channels) ? channels : channels.channels ?? [];
             const modList = Array.isArray(modules) ? modules : modules.modules ?? [];
@@ -124,7 +124,7 @@ export class SaasSettingsChannels extends LitElement {
                     config.allowed_numbers = this._allowed.split(',').map((s) => s.trim()).filter(Boolean);
                 }
             }
-            await apiClient.post('/api/v2/bridges/channels', {
+            await apiClient.post('/bridges/channels', {
                 kind: this._kind,
                 status: 'pending',
                 capsule_id: this._capsuleId || null,
@@ -141,7 +141,7 @@ export class SaasSettingsChannels extends LitElement {
     private async _moduleToggle(name: string, enable: boolean) {
         this._error = '';
         try {
-            await apiClient.post(`/api/v2/modules/${name}/${enable ? 'enable' : 'disable'}`, {});
+            await apiClient.post(`/modules/${name}/${enable ? 'enable' : 'disable'}`, {});
             await this._load();
         } catch (e) {
             this._error = e instanceof Error ? e.message : 'Toggle failed';
@@ -153,7 +153,7 @@ export class SaasSettingsChannels extends LitElement {
         this._notice = '';
         try {
             const res = (await apiClient.post(
-                `/api/v2/bridges/channels/${id}/${action}`,
+                `/bridges/channels/${id}/${action}`,
                 {},
             )) as { message?: string; ok?: boolean };
             this._notice = res?.message || `${action} completed`;
@@ -166,7 +166,7 @@ export class SaasSettingsChannels extends LitElement {
     private async _deleteChannel(id: string) {
         if (!confirm('Delete this channel?')) return;
         try {
-            await apiClient.delete(`/api/v2/bridges/channels/${id}`);
+            await apiClient.delete(`/bridges/channels/${id}`);
             await this._load();
         } catch (e) {
             this._error = e instanceof Error ? e.message : 'Delete failed';

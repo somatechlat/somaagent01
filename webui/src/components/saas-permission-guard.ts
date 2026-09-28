@@ -144,7 +144,7 @@ export class SaasPermissionGuard extends LitElement {
                 this.userPermissions = new Set(JSON.parse(cached));
             } else {
                 // Fetch from Django API
-                const data = await apiClient.get<{ permissions: string[] }>('/auth/permissions');
+                const data = await apiClient.get<{ permissions: string[] }>('/auth/me');
                 this.userPermissions = new Set(data.permissions || []);
                 sessionStorage.setItem('user_permissions', JSON.stringify(data.permissions));
             }

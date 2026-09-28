@@ -139,9 +139,12 @@ export class TenantBillingController {
         this._tenantId = tenantId;
 
         try {
-            const [billingData, invoicesData, usageData, tiersData] = await Promise.all([
+            // No invoice source exists in this system: the external billing
+            // integration was removed, and the former /aaas/billing/.../invoices
+            // route was a stub that always returned []. Invoices are reported
+            // as empty rather than invented.
+            const [billingData, usageData, tiersData] = await Promise.all([
                 apiClient.get<TenantBilling>(`/aaas/billing/tenant/${tenantId}`),
-                apiClient.get<Invoice[]>(`/aaas/billing/tenant/${tenantId}/invoices`),
                 apiClient.get<{
                     tokens_used: number;
                     storage_used_gb: number;
@@ -160,7 +163,7 @@ export class TenantBillingController {
             ]);
 
             this._currentPlan = billingData;
-            this._invoices = Array.isArray(invoicesData) ? invoicesData : [];
+            this._invoices = [];
             this._plans = (tiersData || []).map((tier) => ({
                 id: tier.id,
                 name: tier.name,

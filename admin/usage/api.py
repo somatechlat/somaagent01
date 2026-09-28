@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
@@ -215,27 +214,6 @@ async def get_current_billing(
     )
 
 
-@router.get(
-    "/billing/{tenant_id}/invoices",
-    summary="Get invoices",
-    auth=AuthBearer(),
-)
-async def get_invoices(
-    request,
-    tenant_id: str,
-    limit: int = 12,
-) -> dict:
-    """Get billing invoices.
-
-    PM: Historical billing.
-    """
-    return {
-        "tenant_id": tenant_id,
-        "invoices": [],
-        "total": 0,
-    }
-
-
 # =============================================================================
 # ENDPOINTS - Metrics
 # =============================================================================
@@ -261,50 +239,4 @@ async def list_metrics(request) -> dict:
             {"code": "voice_minutes", "description": "Voice minutes used", "unit": "minutes"},
         ],
         "total": 6,
-    }
-
-
-# =============================================================================
-# ENDPOINTS - Alerts
-# =============================================================================
-
-
-@router.get(
-    "/alerts/{tenant_id}",
-    summary="Get usage alerts",
-    auth=AuthBearer(),
-)
-async def get_usage_alerts(request, tenant_id: str) -> dict:
-    """Get usage alerts for a tenant.
-
-    PM: Proactive notifications.
-    """
-    return {
-        "tenant_id": tenant_id,
-        "alerts": [],
-        "total": 0,
-    }
-
-
-@router.post(
-    "/alerts/{tenant_id}",
-    summary="Configure alert",
-    auth=AuthBearer(),
-)
-async def configure_alert(
-    request,
-    tenant_id: str,
-    metric: str,
-    threshold_percent: int,
-    notification_channels: list[str],
-) -> dict:
-    """Configure a usage alert."""
-    alert_id = str(uuid4())
-
-    return {
-        "alert_id": alert_id,
-        "tenant_id": tenant_id,
-        "metric": metric,
-        "threshold_percent": threshold_percent,
-        "created": True,
     }

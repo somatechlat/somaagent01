@@ -384,7 +384,7 @@ export class SaasPlatformProfile extends LitElement {
 
         this.saving = true;
         try {
-            await apiClient.put('/platform/profile', {
+            await apiClient.put('/aaas/admin/profile', {
                 display_name: this.profile.displayName,
                 session_timeout: this.profile.sessionTimeout,
                 notifications: this.profile.notifications,
