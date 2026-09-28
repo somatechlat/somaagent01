@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from ninja import Router
 from ninja.errors import HttpError
@@ -60,34 +59,37 @@ class ModelInfo(BaseModel):
 # AVAILABLE MODELS
 # =============================================================================
 
+from services.common.memory_contract import get_mem_embed_dim
+
+
 EMBEDDING_MODELS = {
     "text-embedding-ada-002": {
         "name": "text-embedding-ada-002",
-        "dimensions": 1536,
+        "dimensions": get_mem_embed_dim(),
         "max_tokens": 8192,
         "provider": "openai",
     },
     "text-embedding-3-small": {
         "name": "text-embedding-3-small",
-        "dimensions": 1536,
+        "dimensions": get_mem_embed_dim(),
         "max_tokens": 8192,
         "provider": "openai",
     },
     "text-embedding-3-large": {
         "name": "text-embedding-3-large",
-        "dimensions": 3072,
+        "dimensions": get_mem_embed_dim(),
         "max_tokens": 8192,
         "provider": "openai",
     },
     "voyage-large-2": {
         "name": "voyage-large-2",
-        "dimensions": 1024,
+        "dimensions": get_mem_embed_dim(),
         "max_tokens": 16000,
         "provider": "voyage",
     },
     "local-sentence-transformer": {
         "name": "all-MiniLM-L6-v2",
-        "dimensions": 384,
+        "dimensions": get_mem_embed_dim(),
         "max_tokens": 512,
         "provider": "local",
     },
@@ -164,7 +166,9 @@ async def get_batch_status(
     batch_id: str,
 ) -> dict:
     """Get batch embedding status."""
-    raise HttpError(501, "Batch embedding status is not implemented: no async embedding job runner.")
+    raise HttpError(
+        501, "Batch embedding status is not implemented: no async embedding job runner."
+    )
 
 
 # =============================================================================

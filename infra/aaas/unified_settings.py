@@ -314,7 +314,7 @@ SOMABRAIN_DEFAULT_TENANT = os.environ.get("SOMABRAIN_DEFAULT_TENANT", "default")
 
 SOMA_NAMESPACE = os.environ.get("SOMA_NAMESPACE", "default")
 SOMA_MEMORY_NAMESPACE = os.environ.get("SOMA_MEMORY_NAMESPACE", "api_ns")
-SOMA_VECTOR_DIM = int(os.environ.get("SOMA_VECTOR_DIM", "1536"))
+SOMA_VECTOR_DIM = int(os.environ.get("SOMA_VECTOR_DIM", "768"))
 SOMA_API_TOKEN = os.environ.get("SOMA_API_TOKEN")
 
 # =============================================================================
@@ -370,4 +370,4 @@ LOGGING = {
     },
 }
 
-logger.info('AAAS Unified Settings Loaded: MODE=%s', SA01_DEPLOYMENT_MODE)
+logger.info("AAAS Unified Settings Loaded: MODE=%s", SA01_DEPLOYMENT_MODE)

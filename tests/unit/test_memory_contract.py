@@ -1,4 +1,4 @@
-"""Seam memory contract unit tests — PLAN-TRIAD-SEAMLESS.md §1 ("THE SEAM").
+"""Seam memory contract unit tests — SOMA-PM-PLAN-TRIAD-001.md §1 ("THE SEAM").
 
 Proves the single-authority contract in services/common/memory_contract.py and
 the brain-only gateway in services/common/memory_gateway.py:
@@ -21,22 +21,21 @@ Run:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 
 import pytest
 
 from config import settings
 from services.common.memory_contract import (
+    embed_text,
+    get_mem_embed_dim,
+    make_coord,
     MemoryAck,
     MemoryGateway,
     MemoryHit,
     MemoryWrite,
-    embed_text,
-    get_mem_embed_dim,
-    make_coord,
 )
 from services.common.memory_gateway import FanoutMemoryGateway
-
 
 # ---------------------------------------------------------------------------
 # Fake store legs — adapter-shaped, injected into the real gateway
@@ -175,15 +174,23 @@ class TestMemoryGatewayBrainOnly:
 
     def test_gateway_satisfies_protocol(self):
         """FanoutMemoryGateway is a runtime MemoryGateway."""
-        gateway = FanoutMemoryGateway(FakeStore("somabrain"), FakeStore("somafractalmemory"))
+        gateway = FanoutMemoryGateway(FakeStore("somabrain"))
         assert isinstance(gateway, MemoryGateway)
+
+    def test_constructor_rejects_second_store(self):
+        """Brain-only is structural: a second store leg is a hard error.
+
+        The fan-out era accepted (brain, sfm). The seam contract is a single
+        write lane, so a second positional store must not be constructible.
+        """
+        with pytest.raises(TypeError):
+            FanoutMemoryGateway(FakeStore("somabrain"), FakeStore("somafractalmemory"))  # type: ignore[misc]
 
     @pytest.mark.asyncio
     async def test_remember_writes_only_the_brain(self):
-        """remember() yields one MemoryAck (somabrain) and never touches SFM."""
+        """remember() yields one MemoryAck (somabrain) with the shared embedding filled."""
         brain = FakeStore("somabrain")
-        sfm = FakeStore("somafractalmemory")
-        gateway = FanoutMemoryGateway(brain, sfm)
+        gateway = FanoutMemoryGateway(brain)
 
         w = _write()
         acks = await gateway.remember(w)
@@ -197,14 +204,12 @@ class TestMemoryGatewayBrainOnly:
         assert len(brain.writes) == 1
         assert brain.writes[0].coord == w.coord
         assert brain.writes[0].embedding is not None
-        assert len(sfm.writes) == 0
 
     @pytest.mark.asyncio
     async def test_remember_isolates_brain_down(self):
         """Brain down → one ack ok=False with error; must not raise."""
         brain = FakeStore("somabrain", down=True)
-        sfm = FakeStore("somafractalmemory")
-        gateway = FanoutMemoryGateway(brain, sfm)
+        gateway = FanoutMemoryGateway(brain)
 
         w = _write()
         acks = await gateway.remember(w)  # must not raise
@@ -215,7 +220,6 @@ class TestMemoryGatewayBrainOnly:
         assert failed.ok is False
         assert failed.error  # non-empty error carried on the failed ack
         assert failed.coord == w.coord
-        assert len(sfm.writes) == 0
 
     @pytest.mark.asyncio
     async def test_recall_returns_only_brain_hits(self):
@@ -227,11 +231,7 @@ class TestMemoryGatewayBrainOnly:
                 _hit("2.0,0.0,0.0", 0.9, "somabrain", text="brain-high"),
             ],
         )
-        sfm = FakeStore(
-            "somafractalmemory",
-            hits=[_hit("3.0,0.0,0.0", 0.99, "somafractalmemory", text="sfm-only")],
-        )
-        gateway = FanoutMemoryGateway(brain, sfm)
+        gateway = FanoutMemoryGateway(brain)
 
         hits = await gateway.recall("query", k=10, tenant_id="tenant-a")
 
@@ -255,9 +255,7 @@ class TestMemoryGatewayBrainOnly:
                 return self.deleted
 
         brain = ForgetStore("somabrain", deleted=True)
-        sfm = ForgetStore("somafractalmemory", deleted=False)
-        gateway = FanoutMemoryGateway(brain, sfm)
+        gateway = FanoutMemoryGateway(brain)
 
         assert await gateway.forget("1.0,0.0,0.0", "tenant-a") is True
         assert brain.calls == [("1.0,0.0,0.0", "tenant-a")]
-        assert sfm.calls == []
