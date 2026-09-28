@@ -26,11 +26,15 @@ def get_required_env(key: str, service_name: str) -> str:
     """
     value = os.environ.get(key)
     if not value:
+        # No invented example value here. This helper is called for URLs, DSNs,
+        # ports and names alike, and a hardcoded sample shape is wrong for most
+        # of them — telling an operator to set SA01_DB_DSN=http://… sends them
+        # to a format that cannot work. The caller's description carries the
+        # expected format when there is one.
         raise ValueError(
             f"❌ Missing required environment variable: {key}\n"
             f"   Required for: {service_name}\n"
-            f"   Set in: .env file or docker-compose environment section\n"
-            f"   Example: {key}=http://somabrain:9696"
+            f"   Set in: .env file or docker-compose environment section"
         )
     return value
 
