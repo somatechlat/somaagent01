@@ -50,7 +50,6 @@ The rules are in `docs/iso/SOMA-01-DOCS-001.md` §3.3 and are enforced by
 | `docs/standards/` | ``STD`` | Coding rules, templates and format standards. These bind day-to-day work. |
 | `docs/reports/` | ``RPT`` | Audits, analyses and comparison matrices. |
 | `docs/tasks/` | ``TASK`` | Task lists, work packages and handoff notes. |
-| `docs/archive/` | ``OLD`` | Superseded plans. Kept for history; do not treat as current. |
 
 ## 3. Documents by domain
 
@@ -180,14 +179,9 @@ The rules are in `docs/iso/SOMA-01-DOCS-001.md` §3.3 and are enforced by
 | `—` | SOMA-TASK-RLM-001 | `docs/tasks/SOMA-TASK-RLM-001.md` |
 | `—` | SOMA-TASK-SOMABRAIN-001 | `docs/tasks/SOMA-TASK-SOMABRAIN-001.md` |
 
-### `docs/archive/`
 
 | Identifier | Title | File |
 |---|---|---|
-| `—` | SOMA-OLD-DOCKERCLUSTER-001 | `docs/archive/SOMA-OLD-DOCKERCLUSTER-001.md` |
-| `—` | SOMA-OLD-DOCTESTS-001 | `docs/archive/SOMA-OLD-DOCTESTS-001.md` |
-| `—` | SOMA-OLD-DOCTESTS-002 | `docs/archive/SOMA-OLD-DOCTESTS-002.md` |
-| `—` | SOMA-OLD-NOMOCKS-001 | `docs/archive/SOMA-OLD-NOMOCKS-001.md` |
 
 ## 4. Where to start
 

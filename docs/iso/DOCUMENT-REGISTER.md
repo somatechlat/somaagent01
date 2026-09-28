@@ -44,14 +44,6 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-STD-INDEX-001 | docs/README.md | Documentation Tree Index | — | — | — | MISSING | Non-compliant |
 | — | docs/architecture/SOMA-ARCH-INVARIANTS-001.md | ARCHITECTURE INVARIANTS — what must be perfect | — | — | — | MISSING | Non-compliant |
 | SOMA-ARCH-REDESIGN-001 | docs/architecture/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Active | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-AUDIT-001.md | 🔬 SOMAAGENT01 COMPREHENSIVE CODEBASE AUDIT REPORT | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-AUDIT-002.md | SomaAgent01 — Full Code Audit & Documentation Contrast | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-DOCKERCLUSTER-001.md | Docker Cluster Standalone Readiness Implementation Plan | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-DOCTESTS-001.md | Docker, Tests, VIBE, and Refactor Implementation Plan | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-DOCTESTS-002.md | Design: Docker Deployment, Test Workbench, VIBE Compliance, and File Refactoring | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-NOMOCKS-001.md | No-Mocks Agent UI/UX Sync Plan | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-VIBEVIOLATIONS-001.md | VIBE Rule Violations & Architecture Risks (SomaAgent01) | — | — | — | MISSING | Non-compliant |
-| — | docs/archive/SOMA-OLD-VIOLATIONS-001.md | BRUTAL VIBE CODING RULES AUDIT — SOMA Agent 01 | — | — | — | MISSING | Non-compliant |
 | SOMA-UI-IDREG-001 | docs/design/SOMA-UI-IDREG-001.md | Screen Identifier Allocation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-MOCKUPS-001 | docs/design/SOMA-UI-MOCKUPS-001.md | User Interface Mockups Index | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | — | docs/design/SOMA-UI-PARITY-002.md | PLAN — UI/UX Feature Parity with Agent Zero (clone & better) | — | — | — | MISSING | Non-compliant |

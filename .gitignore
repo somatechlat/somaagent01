@@ -136,3 +136,15 @@ output/playwright/
 
 # Local agent scratch space
 .scratch/
+
+# Key material — never commit. Generated locally (see infra/tls/).
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ecdsa*
+id_ed25519*

@@ -146,7 +146,7 @@ What this means when you write anything under `docs/`:
    `SOMA-<DOMAIN>-<TYPE>-<NNN>.md`, the filename stem **is** the Document Identifier,
    and the domain token decides the directory (`docs/iso/`, `docs/architecture/`,
    `docs/requirements/`, `docs/operations/`, `docs/design/`, `docs/modules/`,
-   `docs/project/`, `docs/standards/`, `docs/reports/`, `docs/tasks/`, `docs/archive/`).
+   `docs/project/`, `docs/standards/`, `docs/reports/`, `docs/tasks/`, `docs/reports/`).
    See `SOMA-01-DOCS-001` §3.3. There are exactly two filename exceptions
    (`docs/iso/DOCUMENT-REGISTER.md`, `docs/README.md`).
 3. **Mandatory Document Control block**, house field names only:

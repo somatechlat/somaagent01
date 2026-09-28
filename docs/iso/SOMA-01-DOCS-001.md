@@ -72,7 +72,6 @@ Applies to **every** `*.md` file under `docs/`, without exception. The tree is o
 | `docs/standards/` | Coding rules, templates, format standards |
 | `docs/reports/` | Audits, analyses, comparison matrices |
 | `docs/tasks/` | Task lists, work packages, handoffs |
-| `docs/archive/` | Superseded documents retained for history |
 
 Files outside `docs/` (source code, tests, infrastructure) are out of scope for registration, but any document they reference from `docs/` must itself be registered.
 
@@ -177,7 +176,6 @@ The **filename stem is the Document Identifier**. This is rule **C-12**.
 | `STD` | Standards, conventions, templates | `docs/standards/` | `SOMA-STD-<TOPIC>-<NNN>` |
 | `RPT` | Report, analysis, comparison | `docs/reports/` | `SOMA-RPT-<TOPIC>-<NNN>` |
 | `TASK` | Task list, handoff, work package | `docs/tasks/` | `SOMA-TASK-<TOPIC>-<NNN>` |
-| `OLD` | Superseded / archived document | `docs/archive/` | `SOMA-OLD-<TOPIC>-<NNN>` |
 
 `<TYPE>` and `<TOPIC>` are uppercase `A–Z` and `0–9` only. `<NNN>` is exactly three digits.
 

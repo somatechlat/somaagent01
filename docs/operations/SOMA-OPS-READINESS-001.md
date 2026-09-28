@@ -48,7 +48,6 @@ This plan does not cover:
 |----------|------------|----------|
 | Project Overview | SOMA-DOC-001 | `README.md` |
 | Agent Knowledge Base | SOMA-DOC-002 | `AGENT.md` |
-| Comprehensive Audit Report | SOMA-AUDIT-001 | `docs/archive/SOMA-OLD-AUDIT-001.md` |
 | Standalone Docker Compose | SOMA-INF-001 | `infra/standalone/docker-compose.yml` |
 | Standalone Dockerfile | SOMA-INF-002 | `infra/standalone/Dockerfile` |
 

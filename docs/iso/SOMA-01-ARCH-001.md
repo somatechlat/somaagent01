@@ -61,7 +61,6 @@ This document does not cover:
 |----------|------------|----------|
 | System Overview | SOMA-DOC-001 | `README.md` |
 | Agent Knowledge Base | SOMA-DOC-002 | `AGENT.md` |
-| Comprehensive Audit Report | SOMA-AUDIT-001 | `docs/archive/SOMA-OLD-AUDIT-001.md` |
 | VIBE Coding Rules | SOMA-STD-001 | `docs/standards/SOMA-STD-CODING-001.md` |
 | Deployment Modes | SOMA-DEP-001 | `docs/operations/SOMA-OPS-SOFTMODES-001.md` |
 
