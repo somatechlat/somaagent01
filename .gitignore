@@ -155,3 +155,9 @@ output/playwright/
 id_rsa*
 id_ecdsa*
 id_ed25519*
+
+# Operator-supplied secret material for local Docker seeding.
+# Values are typed/pasted by the operator at deploy time and must never
+# be committed. Only the README (the how-to) stays tracked.
+infra/standalone/secrets/*
+!infra/standalone/secrets/README.md
