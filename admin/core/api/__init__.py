@@ -6,14 +6,12 @@ Pure Django Ninja implementation for admin domain.
 from ninja import Router
 
 from admin.core.api.degradation import router as degradation_router
-from admin.core.api.feature_flags import router as feature_flags_router
 from admin.core.api.general import router as general_router
 from admin.core.api.health import router as health_router
 from admin.core.api.kafka import router as kafka_router
 from admin.core.api.llm import router as llm_router
 from admin.core.api.memory import router as memory_router
 from admin.core.api.migrate import router as migrate_router
-from admin.core.api.observability import router as observability_router
 from admin.core.api.sessions import router as sessions_router
 from admin.core.api.settings_v2 import router as settings_router
 from admin.core.infrastructure.api import router as infrastructure_router
@@ -32,7 +30,5 @@ router.add_router("/migrate", migrate_router)
 router.add_router("/infrastructure", infrastructure_router)  # Rate limits + infra
 router.add_router("/infrastructure/degradation", degradation_router)  # Degradation monitor
 router.add_router("/settings", settings_router)  # Service configuration
-router.add_router("/observability", observability_router)  # Platform metrics
-router.add_router("/flags", feature_flags_router)  # Feature flags
 
 __all__ = ["router"]

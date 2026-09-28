@@ -2,7 +2,7 @@
 Django settings for SomaAgent01 AAAS Admin.
 
 This module is used for Django management commands (makemigrations, migrate, etc.)
-The runtime configuration is in django_setup.py for the gateway.
+This module is the runtime configuration for the gateway.
 
 
 - Zero hardcoded URLs (Rule 16: Dynamic URL Resolution)
@@ -11,8 +11,6 @@ The runtime configuration is in django_setup.py for the gateway.
 """
 
 import os
-import re
-import secrets
 from pathlib import Path
 
 # Import environment configuration helpers
@@ -32,16 +30,17 @@ IS_DEV_ENV = ENVIRONMENT in {"dev", "development", "local", "test"} or DEPLOYMEN
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Secret material comes from Vault only (VIBE 164), never from ENV.
+#
+# No dev exemption. An ephemeral generated key is a fake: it silently
+# invalidates every session on restart and hides the misconfiguration from
+# whoever has to fix it. Missing is a hard failure in every environment.
 SECRET_KEY = get_secret_manager().get_credential("django_secret_key")
 if not SECRET_KEY:
-    if IS_DEV_ENV:
-        # VIBE: No hardcoded secrets — generate ephemeral dev key
-        SECRET_KEY = secrets.token_urlsafe(50)
-    else:
-        raise ValueError(
-            "Missing required secret django_secret_key "
-            "(Vault secret/agent/credentials/django_secret_key)"
-        )
+    raise ValueError(
+        "Missing required secret django_secret_key "
+        "(Vault secret/agent/credentials/django_secret_key). "
+        "It is never generated, never defaulted and never read from ENV."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
@@ -84,7 +83,6 @@ INSTALLED_APPS = [
     "admin.capsules",
     "admin.chat",
     "admin.core",
-    "admin.features",
     "admin.files",
     "admin.filesv2",
     "admin.flink",
@@ -96,7 +94,6 @@ INSTALLED_APPS = [
     "admin.somabrain",
     "admin.notifications",
     "admin.orchestrator",
-    "admin.permissions",
     "admin.aaas",
     "admin.tools",
     "admin.ui",
@@ -137,44 +134,21 @@ TEMPLATES = [
 ]
 
 # Database
-# Parse database DSN from environment (REQUIRED - no hardcoded credentials)
-db_dsn = get_required_env(
-    "SA01_DB_DSN",
-    "PostgreSQL database connection (format: postgresql://<user>:<password>@host:port/dbname)",
-)
+# Topology from ENV, password from Vault. There is no SA01_DB_DSN and there
+# never will be: a connection string embeds the password, so putting one in the
+# environment puts a credential in a file and in the process table. The single
+# place that knows how to reach Postgres is config/settings_registry.py
+# (VIBE Rule 100).
+from config.settings_registry import SettingsRegistry
 
-# Parse DSN components for Django DATABASE config
-# VIBE RULE: PostgreSQL ONLY. NO SQLite fallback under any condition.
-db_match = re.match(r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", db_dsn)
-if not db_match:
-    raise ValueError(
-        "❌ SA01_DB_DSN is not a valid PostgreSQL connection string. "
-        "Expected format: postgresql://<user>:<password>@host:port/dbname. "
-        # Never echo any slice of the value: it carries the live password.
-        # VIBE Rule 164 — a secret must not reach a log, a traceback or a
-        # container console. Report only the shape of what arrived.
-        f"Received value: has_scheme={db_dsn.startswith(('postgres://', 'postgresql://'))}, "
-        f"has_userinfo_separator={'@' in db_dsn}, length={len(db_dsn)}. "
-        "The value itself is withheld because it carries a credential."
-    )
-
-db_user, db_password, db_host, db_port, db_name = db_match.groups()
-db_port = db_port or "5432"
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": db_name,
-        "USER": db_user,
-        "PASSWORD": db_password,
-        "HOST": db_host,
-        "PORT": db_port,
-        "CONN_MAX_AGE": int(os.environ.get("SA01_DB_CONN_MAX_AGE", "60")),
-        "OPTIONS": {
-            "connect_timeout": int(os.environ.get("SA01_DB_CONNECT_TIMEOUT", "10")),
-        },
-    }
+_db = SettingsRegistry.load().django_database_config()
+_db["CONN_MAX_AGE"] = int(os.environ.get("SA01_DB_CONN_MAX_AGE", "60"))
+_db["OPTIONS"] = {
+    "connect_timeout": int(os.environ.get("SA01_DB_CONNECT_TIMEOUT", "10")),
 }
+
+# VIBE RULE: PostgreSQL ONLY. NO SQLite fallback under any condition.
+DATABASES = {"default": _db}
 
 # Internationalization
 # Operator-configurable locale (SOMA-SETTINGS-MODEL-001.md D-12).
@@ -218,8 +192,10 @@ AAAS_DEFAULT_STORAGE_GB = float(os.environ.get("AAAS_DEFAULT_STORAGE_GB", "50.0"
 # INFRASTRUCTURE SETTINGS (for migrated Django Ninja endpoints)
 # =============================================================================
 
-# Database DSN (legacy format - kept for compatibility)
-DATABASE_DSN = db_dsn
+# No DATABASE_DSN setting. A DSN is a password in a string; holding one here as
+# a "legacy compatibility" attribute is how a credential ends up in a repr, a
+# traceback or a settings dump. Django's DATABASES is the only DB handle, and it
+# carries the password as a discrete field from Vault (VIBE Rule 164).
 
 # Redis
 REDIS_URL = get_required_env("SA01_REDIS_URL", "Redis connection for caching and channels")

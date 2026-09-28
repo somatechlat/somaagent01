@@ -118,9 +118,7 @@ def create_api() -> NinjaAPI:
     safe_add_router("/agents", agents_router)
 
     # Features (Migrated to Core Features System)
-    # DISABLED - admin.api.features is a single file, not a package
-    # from admin.api.features import router as features_router
-    # safe_add_router("/features", features_router)
+    # Feature flags admin — removed: unmounted and the package was dead.
 
     # Chat
     from admin.chat.api import router as chat_router
@@ -253,60 +251,45 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/audit", audit_router)
 
-    # Permissions (RBAC)
-    from admin.permissions.api import router as permissions_router
-
-    safe_add_router("/permissions", permissions_router)
+    # Permissions (RBAC) — removed: every handler minted a uuid4 and
+    # returned {"created/updated/deleted": True} without touching Role.
 
     # Sessions (User session management)
     from admin.sessions.api import router as sessions_router
 
     safe_add_router("/sessions", sessions_router)
 
-    # Webhooks (Outbound event delivery)
-    from admin.webhooks.api import router as webhooks_router
+    # Webhooks (Outbound event delivery) — removed: create/rotate_secret
+    # handed back signing secrets that were never stored.
 
-    safe_add_router("/webhooks", webhooks_router)
+    # Tenants (Multi-tenant management) — removed: a second facade over
+    # admin.aaas.models.Tenant with its own incompatible schema. The real
+    # CRUD is /aaas/tenants.
 
-    # Tenants (Multi-tenant management)
-    from admin.tenants.api import router as tenants_router
+    # Usage (Metering and billing) — removed: reported measured zeros over
+    # a real UsageRecord table it never queried.
 
-    safe_add_router("/tenants", tenants_router)
-
-    # Usage (Metering and billing)
-    from admin.usage.api import router as usage_router
-
-    safe_add_router("/usage", usage_router)
-
-    # Users (User management)
-    from admin.users.api import router as users_router
-
-    safe_add_router("/users", users_router)
+    # Users (User management) — removed: delete_user claimed a GDPR
+    # deletion while the account stayed live.
 
     # Files V2 (Enhanced file management)
     from admin.filesv2.api import router as filesv2_router
 
     safe_add_router("/filesv2", filesv2_router)
 
-    # Knowledge (RAG document retrieval)
-    from admin.knowledge.api import router as knowledge_router
-
-    safe_add_router("/knowledge", knowledge_router)
+    # Knowledge (RAG document retrieval) — removed: get_document invented
+    # a document for any id; search returned empty as if it had run.
 
     # Embeddings (Vector generation)
     from admin.embeddings.api import router as embeddings_router
 
     safe_add_router("/embeddings", embeddings_router)
 
-    # Prompts (Prompt templates)
-    from admin.prompts.api import router as prompts_router
+    # Prompts (Prompt templates) — removed: get_prompt returned a canned
+    # template for any id; rollback_version claimed a rollback it never did.
 
-    safe_add_router("/prompts", prompts_router)
-
-    # Models (LLM catalog)
-    from admin.models.api import router as models_router
-
-    safe_add_router("/models", models_router)
+    # Models (LLM catalog) — removed: an unknown model id fell back to
+    # gpt-4o data instead of 404. The real catalog is /llm.
 
     # LLM model settings (LLMModelConfig CRUD, providers, slots, presets) — C5
     from admin.llm.api import router as llm_config_router
@@ -317,25 +300,21 @@ def create_api() -> NinjaAPI:
     # inference path is the V3 chat orchestrator.
     # Feedback (User ratings) — removed: stub-only, submissions were discarded.
 
-    # Metrics (Operational telemetry)
-    from admin.metrics.api import router as metrics_router
-
-    safe_add_router("/metrics", metrics_router)
+    # Metrics (Operational telemetry) — removed: /metrics published a
+    # hardcoded Prometheus payload with invented counters. Fabricated
+    # monitoring is worse than none.
 
     # Logging API (Structured logging)
     from admin.logging_api.api import router as logging_api_router
 
     safe_add_router("/logging", logging_api_router)
 
-    # Traces (Distributed tracing)
-    from admin.traces.api import router as traces_router
+    # Traces (Distributed tracing) — removed: get_trace fabricated a span
+    # tree for any trace id.
 
-    safe_add_router("/traces", traces_router)
-
-    # Auth Config (Hierarchical auth)
-    from admin.auth_config.api import router as auth_config_router
-
-    safe_add_router("/auth-config", auth_config_router)
+    # Auth Config (Hierarchical auth) — removed: update_platform_config
+    # claimed an MFA/OAuth policy change it never persisted, and
+    # test_platform_provider reported success without connecting.
 
     # Secrets (Credential management — Vault-backed provider keys, write-only)
     try:
@@ -344,17 +323,12 @@ def create_api() -> NinjaAPI:
     except ModuleNotFoundError:
         logger.warning("Secrets router not found; /secrets is disabled.")
 
-    # Orchestrator (Workflow coordination)
-    from admin.orchestrator.api import router as orchestrator_router
+    # Orchestrator (Workflow coordination) — removed: fabricated
+    # workflows, runs and pipelines. The real Temporal wiring is
+    # services/delegation_gateway/temporal_worker.py.
 
-    safe_add_router("/orchestrator", orchestrator_router)
-
-    # Granular Permissions (RBAC V2 - Advanced role permissions)
-    # NOTE: /permissions is already mounted at line 286 by admin.permissions.api
-    # This provides granular/advanced endpoints under a separate namespace
-    from admin.permissions.granular import router as granular_permissions_router
-
-    safe_add_router("/permissions/granular", granular_permissions_router)
+    # Granular Permissions (RBAC V2) — removed: same fabricated CRUD as
+    # /permissions; list_custom_roles was the only real reader.
 
     return api
 

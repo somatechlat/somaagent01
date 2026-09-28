@@ -51,19 +51,17 @@ SOMA_AAAS_MODE = os.environ.get("SOMA_AAAS_MODE", "true").lower() == "true"
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
 # VIBE SECURITY: Secret keys MUST come from Vault. No ENV reads, no hardcoded fallbacks.
-import secrets as _secrets
-
 from services.common.unified_secret_manager import get_secret_manager
 
 SECRET_KEY = get_secret_manager().get_credential("django_secret_key")
 if not SECRET_KEY:
-    if SA01_DEPLOYMENT_MODE in ("DEV", "LOCAL", "TEST"):
-        SECRET_KEY = _secrets.token_urlsafe(50)
-    else:
-        raise RuntimeError(
-            "VIBE Rule 164 VIOLATION: SECRET_KEY is REQUIRED in production. "
-            "Set it in Vault at secret/agent/credentials/django_secret_key."
-        )
+    # No mode exemption. Generating an ephemeral key in DEV/LOCAL/TEST is a
+    # bypass: it hides the missing credential and breaks sessions on restart.
+    raise RuntimeError(
+        "VIBE Rule 164 VIOLATION: SECRET_KEY is REQUIRED in every environment. "
+        "Set it in Vault at secret/agent/credentials/django_secret_key. "
+        "It is never generated, never defaulted and never read from ENV."
+    )
 
 # Allowed hosts
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
@@ -145,7 +143,6 @@ INSTALLED_APPS = [
     "admin.capsules",
     "admin.chat",
     "admin.core",
-    "admin.features",
     "admin.files",
     "admin.flink",
     "admin.gateway",
@@ -154,7 +151,6 @@ INSTALLED_APPS = [
     "admin.multimodal",
     "admin.notifications",
     "admin.orchestrator",
-    "admin.permissions",
     "admin.aaas",
     "admin.tools",
     "admin.ui",

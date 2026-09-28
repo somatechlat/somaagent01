@@ -5,7 +5,6 @@ Defaults target the local Docker Compose standalone stack.
 """
 
 import os
-import secrets
 from pathlib import Path
 
 from services.common.unified_secret_manager import get_secret_manager
@@ -13,7 +12,16 @@ from services.common.unified_secret_manager import get_secret_manager
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Secrets are read from Vault only (VIBE 164), never from ENV.
-SECRET_KEY = get_secret_manager().get_credential("django_secret_key") or secrets.token_urlsafe(50)
+# VIBE 4 / 91: no fallback. A missing credential is a hard failure, not a
+# licence to invent one — a fabricated key silently invalidates every session
+# on restart and hides the misconfiguration from whoever has to fix it.
+SECRET_KEY = get_secret_manager().get_credential("django_secret_key")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "VIBE Rule 164 VIOLATION: django_secret_key is missing. "
+        "Set it in Vault at secret/agent/credentials/django_secret_key. "
+        "It is never generated, never defaulted and never read from ENV."
+    )
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("SA01_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -148,14 +156,12 @@ INSTALLED_APPS = [
     "admin.llm",
     "admin.capsules",
     "admin.files",
-    "admin.features",
     "admin.gateway",
     "admin.memory",
     "admin.modules",
     "admin.multimodal",
     "admin.notifications",
     "admin.orchestrator",
-    "admin.permissions",
     "admin.somabrain",
     "admin.tools",
     "admin.ui",
@@ -164,10 +170,18 @@ INSTALLED_APPS = [
 ]
 
 # Database credentials MUST come from Vault - zero hardcoded passwords (VIBE 164)
-# For test collection without a real DB, generate an ephemeral password
 _db_name = os.environ.get("TEST_DB_NAME", "somaagent")
 _db_user = os.environ.get("TEST_DB_USER", "somaagent")
-_db_password = get_secret_manager().get_credential("test_db_password") or secrets.token_urlsafe(16)
+# No ephemeral fallback. A generated password is a fake: no database accepts
+# it, so every connection fails later and far from the real cause. Fail here,
+# naming the Vault path, instead.
+_db_password = get_secret_manager().get_credential("test_db_password")
+if not _db_password:
+    raise RuntimeError(
+        "VIBE Rule 164 VIOLATION: test_db_password is missing. "
+        "Set it in Vault at secret/agent/credentials/test_db_password. "
+        "It is never generated and never read from ENV."
+    )
 _db_host = os.environ.get("TEST_DB_HOST", "localhost")
 _db_port = os.environ.get("TEST_DB_PORT", "63932")
 
