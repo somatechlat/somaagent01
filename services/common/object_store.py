@@ -7,7 +7,7 @@ from Vault ONLY and the resolution is fail-closed:
     secret/agent/credentials/minio_secret_key
 
 resolved through :class:`UnifiedSecretManager.get_credential`. There is no ENV
-fallback, no empty default and no "minioadmin" shim — if either secret is
+fallback, no empty default and no vendor-default credential shim — if either secret is
 missing or Vault is unreachable the object store does not start and the raised
 error names the missing Vault path.
 
