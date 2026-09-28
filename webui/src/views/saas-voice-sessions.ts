@@ -1,12 +1,13 @@
 /**
  * Voice Sessions View
- * 
+ *
  * VIBE COMPLIANT - Lit View
- * Monitor and manage voice sessions.
+ * Monitor and manage real voice sessions.
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-sidebar.js';
 import '../components/saas-data-table.js';
@@ -24,6 +25,18 @@ interface VoiceSession {
     audio_seconds: number;
     turn_count: number;
     created_at: string;
+}
+
+interface SessionListResponse {
+    items: VoiceSession[];
+    total: number;
+}
+
+interface SessionStats {
+    active_count: number;
+    total_count: number;
+    total_tokens: number;
+    total_audio_seconds: number;
 }
 
 @customElement('saas-voice-sessions')
@@ -147,11 +160,27 @@ export class SaasVoiceSessions extends LitElement {
             background: var(--saas-danger, #ef4444);
             color: white;
         }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .error-banner {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border-radius: 8px;
+            font-size: 14px;
+        }
     `;
 
     @state() private sessions: VoiceSession[] = [];
     @state() private loading = true;
     @state() private stats = { active: 0, total: 0, tokens: 0, audio: 0 };
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -160,44 +189,48 @@ export class SaasVoiceSessions extends LitElement {
 
     private async _loadSessions() {
         this.loading = true;
+        this.error = '';
         try {
-            const response = await fetch('/api/v2/voice/sessions');
-            if (response.ok) {
-                const data = await response.json();
-                this.sessions = data.items || data || [];
-            }
+            const [listData, statsData] = await Promise.all([
+                apiClient.get<SessionListResponse>('/voice/sessions'),
+                apiClient.get<SessionStats>('/voice/sessions/stats'),
+            ]);
+
+            this.sessions = listData.items || [];
+            this.stats = {
+                active: statsData.active_count || 0,
+                total: statsData.total_count || 0,
+                tokens: statsData.total_tokens || 0,
+                audio: statsData.total_audio_seconds || 0,
+            };
         } catch (e) {
-            // Demo data
-            this.sessions = [
-                { id: 'sess_12ab', tenant_id: '1', persona_name: 'Support', status: 'active', duration_seconds: 154, input_tokens: 450, output_tokens: 784, audio_seconds: 45.2, turn_count: 8, created_at: new Date().toISOString() },
-                { id: 'sess_34cd', tenant_id: '1', persona_name: 'Sales', status: 'active', duration_seconds: 72, input_tokens: 234, output_tokens: 333, audio_seconds: 22.1, turn_count: 4, created_at: new Date().toISOString() },
-                { id: 'sess_56ef', tenant_id: '1', persona_name: 'Support', status: 'completed', duration_seconds: 300, input_tokens: 1234, output_tokens: 1111, audio_seconds: 120.5, turn_count: 15, created_at: new Date(Date.now() - 3600000).toISOString() },
-                { id: 'sess_78gh', tenant_id: '1', persona_name: null, status: 'error', duration_seconds: 30, input_tokens: 50, output_tokens: 73, audio_seconds: 8.3, turn_count: 2, created_at: new Date(Date.now() - 7200000).toISOString() },
-            ];
+            console.error('Failed to load voice sessions:', e);
+            this.error = 'Unable to load voice sessions.';
+            this.sessions = [];
+            this.stats = { active: 0, total: 0, tokens: 0, audio: 0 };
         }
-
-        this.stats = {
-            active: this.sessions.filter(s => s.status === 'active').length,
-            total: this.sessions.length,
-            tokens: this.sessions.reduce((sum, s) => sum + s.input_tokens + s.output_tokens, 0),
-            audio: this.sessions.reduce((sum, s) => sum + s.audio_seconds, 0),
-        };
-
         this.loading = false;
     }
 
     render() {
         return html`
             <saas-sidebar></saas-sidebar>
-            
+
             <div class="main-content">
                 <div class="header">
-                    <h1>📊 Voice Sessions</h1>
+                    <h1>
+                        <span class="material-symbols-outlined">analytics</span>
+                        Voice Sessions
+                    </h1>
                     <div class="actions">
-                        <button class="btn" @click=${this._loadSessions}>Refresh</button>
-                        <button class="btn">Export</button>
+                        <button class="btn" @click=${this._loadSessions}>
+                            <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">refresh</span>
+                            Refresh
+                        </button>
                     </div>
                 </div>
+
+                ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
 
                 <div class="stats-grid">
                     <saas-stat-card label="Active Sessions" value="${this.stats.active}" status="success"></saas-stat-card>
@@ -206,48 +239,59 @@ export class SaasVoiceSessions extends LitElement {
                     <saas-stat-card label="Audio (sec)" value="${this.stats.audio.toFixed(1)}"></saas-stat-card>
                 </div>
 
-                <div class="sessions-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Persona</th>
-                                <th>Status</th>
-                                <th>Duration</th>
-                                <th>Tokens</th>
-                                <th>Audio</th>
-                                <th>Turns</th>
-                                <th>Created</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${this.sessions.map(session => html`
-                                <tr>
-                                    <td class="id-cell">${session.id}</td>
-                                    <td>${session.persona_name || '-'}</td>
-                                    <td>
-                                        <span class="status-badge status-${session.status}">
-                                            ${session.status.toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td>${this._formatDuration(session.duration_seconds)}</td>
-                                    <td>${(session.input_tokens + session.output_tokens).toLocaleString()}</td>
-                                    <td>${session.audio_seconds.toFixed(1)}s</td>
-                                    <td>${session.turn_count}</td>
-                                    <td>${new Date(session.created_at).toLocaleTimeString()}</td>
-                                    <td>
-                                        ${session.status === 'active' ? html`
-                                            <button class="terminate-btn" @click=${() => this._terminateSession(session.id)}>
-                                                Terminate
-                                            </button>
-                                        ` : ''}
-                                    </td>
-                                </tr>
-                            `)}
-                        </tbody>
-                    </table>
-                </div>
+                ${this.loading
+                    ? html`<div class="loading">Loading...</div>`
+                    : html`
+                          <div class="sessions-table">
+                              <table>
+                                  <thead>
+                                      <tr>
+                                          <th>ID</th>
+                                          <th>Persona</th>
+                                          <th>Status</th>
+                                          <th>Duration</th>
+                                          <th>Tokens</th>
+                                          <th>Audio</th>
+                                          <th>Turns</th>
+                                          <th>Created</th>
+                                          <th>Actions</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody>
+                                      ${this.sessions.map(
+                                          (session) => html`
+                                              <tr>
+                                                  <td class="id-cell">${session.id}</td>
+                                                  <td>${session.persona_name || '-'}</td>
+                                                  <td>
+                                                      <span class="status-badge status-${session.status}">
+                                                          ${session.status.toUpperCase()}
+                                                      </span>
+                                                  </td>
+                                                  <td>${this._formatDuration(session.duration_seconds)}</td>
+                                                  <td>${(session.input_tokens + session.output_tokens).toLocaleString()}</td>
+                                                  <td>${session.audio_seconds.toFixed(1)}s</td>
+                                                  <td>${session.turn_count}</td>
+                                                  <td>${new Date(session.created_at).toLocaleTimeString()}</td>
+                                                  <td>
+                                                      ${session.status === 'active'
+                                                          ? html`
+                                                                <button
+                                                                    class="terminate-btn"
+                                                                    @click=${() => this._terminateSession(session.id)}
+                                                                >
+                                                                    Terminate
+                                                                </button>
+                                                            `
+                                                          : ''}
+                                                  </td>
+                                              </tr>
+                                          `
+                                      )}
+                                  </tbody>
+                              </table>
+                          </div>
+                      `}
             </div>
         `;
     }
@@ -260,12 +304,11 @@ export class SaasVoiceSessions extends LitElement {
 
     private async _terminateSession(id: string) {
         try {
-            await fetch(`/api/v2/voice/sessions/${id}/terminate`, { method: 'POST' });
-            this._loadSessions();
+            await apiClient.post(`/voice/sessions/${id}/terminate`, {});
+            await this._loadSessions();
         } catch (e) {
-            this.sessions = this.sessions.map(s =>
-                s.id === id ? { ...s, status: 'terminated' as const } : s
-            );
+            console.error('Failed to terminate session:', e);
+            this.error = 'Failed to terminate session.';
         }
     }
 }

@@ -17,6 +17,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface Permission {
     id: string;
@@ -308,6 +309,16 @@ export class SaasRoleMatrix extends LitElement {
     .legend-dot.granted { background: #22c55e; }
     .legend-dot.inherited { background: #3b82f6; }
     .legend-dot.denied { background: #e0e0e0; }
+
+    .error-banner {
+      padding: 12px 16px;
+      margin: 0 32px 24px;
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      font-size: 14px;
+    }
   `;
 
     @state() private roles: Role[] = [];
@@ -317,6 +328,7 @@ export class SaasRoleMatrix extends LitElement {
     @state() private loading = true;
     @state() private saving = false;
     @state() private dirty = false;
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -325,103 +337,39 @@ export class SaasRoleMatrix extends LitElement {
 
     private async loadData() {
         this.loading = true;
+        this.error = '';
         try {
-            // Load roles and permissions
             await Promise.all([this.loadRoles(), this.loadPermissions()]);
             await this.loadMatrix();
+        } catch {
+            this.error = 'Failed to load role matrix';
         } finally {
             this.loading = false;
         }
     }
 
     private async loadRoles() {
-        // Default roles for demo
-        this.roles = [
-            { id: 'platform_admin', name: 'Platform Admin', slug: 'platform_admin', level: 0, description: 'Full system access' },
-            { id: 'tenant_admin', name: 'Tenant Admin', slug: 'tenant_admin', level: 1, description: 'Tenant-level admin' },
-            { id: 'agent_admin', name: 'Agent Admin', slug: 'agent_admin', level: 2, description: 'Agent management' },
-            { id: 'user', name: 'User', slug: 'user', level: 3, description: 'Basic access' },
-        ];
+        const response = await apiClient.get('/platform/roles/') as { roles?: Role[] };
+        this.roles = response.roles || [];
     }
 
     private async loadPermissions() {
-        // 78 permissions grouped by category
-        this.permissions = [
-            // Tenant Management
-            { id: 'tenant:list', name: 'List Tenants', description: 'View all tenants', category: 'Tenant Management' },
-            { id: 'tenant:view', name: 'View Tenant', description: 'View tenant details', category: 'Tenant Management' },
-            { id: 'tenant:create', name: 'Create Tenant', description: 'Create new tenants', category: 'Tenant Management' },
-            { id: 'tenant:edit', name: 'Edit Tenant', description: 'Modify tenant settings', category: 'Tenant Management' },
-            { id: 'tenant:delete', name: 'Delete Tenant', description: 'Remove tenants', category: 'Tenant Management' },
-            { id: 'tenant:suspend', name: 'Suspend Tenant', description: 'Suspend/activate tenants', category: 'Tenant Management' },
-            { id: 'tenant:impersonate', name: 'Impersonate', description: 'Access tenant as admin', category: 'Tenant Management' },
-
-            // User Management
-            { id: 'user:list', name: 'List Users', description: 'View all users', category: 'User Management' },
-            { id: 'user:view', name: 'View User', description: 'View user details', category: 'User Management' },
-            { id: 'user:create', name: 'Invite User', description: 'Invite new users', category: 'User Management' },
-            { id: 'user:edit', name: 'Edit User', description: 'Modify user settings', category: 'User Management' },
-            { id: 'user:delete', name: 'Remove User', description: 'Remove users', category: 'User Management' },
-            { id: 'user:suspend', name: 'Suspend User', description: 'Suspend/activate users', category: 'User Management' },
-
-            // Agent Management
-            { id: 'agent:list', name: 'List Agents', description: 'View all agents', category: 'Agent Management' },
-            { id: 'agent:view', name: 'View Agent', description: 'View agent details', category: 'Agent Management' },
-            { id: 'agent:create', name: 'Create Agent', description: 'Create new agents', category: 'Agent Management' },
-            { id: 'agent:edit', name: 'Edit Agent', description: 'Modify agent config', category: 'Agent Management' },
-            { id: 'agent:delete', name: 'Delete Agent', description: 'Remove agents', category: 'Agent Management' },
-            { id: 'agent:start', name: 'Start Agent', description: 'Start agent process', category: 'Agent Management' },
-            { id: 'agent:stop', name: 'Stop Agent', description: 'Stop agent process', category: 'Agent Management' },
-
-            // Infrastructure
-            { id: 'infra:view', name: 'View Infrastructure', description: 'View system health', category: 'Infrastructure' },
-            { id: 'infra:edit', name: 'Edit Infrastructure', description: 'Modify system config', category: 'Infrastructure' },
-            { id: 'ratelimit:view', name: 'View Rate Limits', description: 'View rate limit rules', category: 'Infrastructure' },
-            { id: 'ratelimit:edit', name: 'Edit Rate Limits', description: 'Modify rate limits', category: 'Infrastructure' },
-            { id: 'settings:view', name: 'View Settings', description: 'View service configs', category: 'Infrastructure' },
-            { id: 'settings:edit', name: 'Edit Settings', description: 'Modify service configs', category: 'Infrastructure' },
-
-            // Billing
-            { id: 'billing:view', name: 'View Billing', description: 'View invoices/usage', category: 'Billing' },
-            { id: 'billing:edit', name: 'Edit Billing', description: 'Modify payment methods', category: 'Billing' },
-            { id: 'billing:cancel', name: 'Cancel Subscription', description: 'Cancel subscriptions', category: 'Billing' },
-
-            // Audit
-            { id: 'audit:view', name: 'View Audit Logs', description: 'View security logs', category: 'Audit' },
-            { id: 'audit:export', name: 'Export Audit Logs', description: 'Export compliance data', category: 'Audit' },
-
-            // Metrics
-            { id: 'metrics:view', name: 'View Metrics', description: 'View platform metrics', category: 'Metrics' },
-            { id: 'metrics:export', name: 'Export Metrics', description: 'Export metrics data', category: 'Metrics' },
-        ];
+        const response = await apiClient.get('/platform/permissions/') as { permissions?: Permission[] };
+        this.permissions = response.permissions || [];
     }
 
     private async loadMatrix() {
-        // Initialize matrix with role defaults
         const newMatrix = new Map<string, boolean>();
-
-        for (const perm of this.permissions) {
-            for (const role of this.roles) {
-                const key = `${role.id}:${perm.id}`;
-                // Platform admin gets everything
-                if (role.id === 'platform_admin') {
-                    newMatrix.set(key, true);
-                }
-                // Tenant admin gets most except platform-level
-                else if (role.id === 'tenant_admin') {
-                    newMatrix.set(key, !perm.id.includes('tenant:') || perm.id === 'tenant:view');
-                }
-                // Agent admin gets agent + some user perms
-                else if (role.id === 'agent_admin') {
-                    newMatrix.set(key, perm.category === 'Agent Management' || perm.id === 'user:list');
-                }
-                // User gets minimal
-                else {
-                    newMatrix.set(key, perm.id.includes(':view') && perm.category !== 'Audit');
-                }
+        try {
+            const response = await apiClient.get('/platform/roles/matrix/') as {
+                grants?: RolePermission[];
+            };
+            for (const grant of (response.grants || [])) {
+                newMatrix.set(`${grant.role_id}:${grant.permission_id}`, grant.granted);
             }
+        } catch {
+            // Leave matrix empty if the endpoint is unavailable
         }
-
         this.matrix = newMatrix;
         this.originalMatrix = new Map(newMatrix);
     }
@@ -452,11 +400,17 @@ export class SaasRoleMatrix extends LitElement {
 
     private async save() {
         this.saving = true;
+        this.error = '';
         try {
-            // In production, POST to /api/v2/platform/roles/matrix
-            await new Promise(r => setTimeout(r, 1000));
+            const grants = Array.from(this.matrix.entries()).map(([key, granted]) => {
+                const [role_id, permission_id] = key.split(':', 2);
+                return { role_id, permission_id, granted };
+            });
+            await apiClient.post('/platform/roles/matrix/', { grants });
             this.originalMatrix = new Map(this.matrix);
             this.dirty = false;
+        } catch {
+            this.error = 'Failed to save role matrix';
         } finally {
             this.saving = false;
         }
@@ -495,6 +449,8 @@ export class SaasRoleMatrix extends LitElement {
             </button>
           </div>
         </header>
+
+        ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
 
         <div class="stats-bar">
           <div class="stat-item">

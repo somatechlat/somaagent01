@@ -9,6 +9,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 import '../components/entity-manager.js';
 
 // Base view with shared styles and permission loading
@@ -43,15 +44,12 @@ abstract class BaseEntityView extends LitElement {
     }
 
     private async loadPermissions() {
-        // TODO: Load from auth context or API
-        // For now, grant full permissions for demo
-        this.permissions = [
-            'tenant:list', 'tenant:view', 'tenant:create', 'tenant:edit', 'tenant:delete', 'tenant:suspend', 'tenant:impersonate',
-            'user:list', 'user:view', 'user:create', 'user:edit', 'user:delete', 'user:suspend',
-            'agent:list', 'agent:view', 'agent:create', 'agent:edit', 'agent:delete',
-            'feature:list', 'feature:view', 'feature:edit',
-            'ratelimit:list', 'ratelimit:view', 'ratelimit:edit', 'ratelimit:delete',
-        ];
+        try {
+            const response = await apiClient.get('/auth/me/permissions') as { permissions?: string[] };
+            this.permissions = response.permissions || [];
+        } catch {
+            this.permissions = [];
+        }
     }
 }
 
@@ -65,7 +63,7 @@ export class SaasTenantsView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="tenant"
-          api-base="/api/v2/saas"
+          api-base="/api/v2/aaas"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -83,7 +81,7 @@ export class SaasUsersView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="user"
-          api-base="/api/v2/admin"
+          api-base="/api/v2/aaas/admin"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -101,7 +99,7 @@ export class SaasAgentsView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="agent"
-          api-base="/api/v2/admin"
+          api-base="/api/v2/aaas/admin"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -119,7 +117,7 @@ export class SaasFeaturesView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="feature"
-          api-base="/api/v2/platform"
+          api-base="/api/v2/aaas"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>

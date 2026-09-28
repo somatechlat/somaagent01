@@ -4,6 +4,7 @@
  */
 
 import { createContext } from '@lit/context';
+import { apiClient } from '../services/api-client.js';
 
 export interface AgentProfile {
     id: string;
@@ -29,7 +30,7 @@ export interface AgentState {
         name: string;
         description: string;
         status: 'active' | 'paused' | 'archived' | 'error';
-        iq_level: number;
+        iq_level?: number;
         skin_id?: string;
     } | null;
     profiles: AgentProfile[];
@@ -43,20 +44,10 @@ export const agentContext = createContext<AgentStore>('agent-store');
 export class AgentStore {
     private _state: AgentState = {
         currentAgent: null,
-        profiles: [
-            { id: 'default', name: 'Default', description: 'General purpose assistant', system_prompt: 'You are a helpful assistant.' },
-            { id: 'developer', name: 'Developer', description: 'Code-focused, concise', system_prompt: 'You are an expert software developer. Be concise, write clean code, explain your reasoning.' },
-            { id: 'researcher', name: 'Researcher', description: 'Deep research with citations', system_prompt: 'You are a thorough researcher. Provide citations, explore edge cases, and validate assumptions.' },
-            { id: 'security', name: 'Security Auditor', description: 'Security-focused analysis', system_prompt: 'You are a security analyst. Think like an attacker, identify vulnerabilities, suggest mitigations.' },
-            { id: 'creative', name: 'Creative', description: 'Brainstorming and creative writing', system_prompt: 'You are a creative partner. Brainstorm freely, explore unconventional ideas, and iterate rapidly.' },
-        ],
-        presets: [
-            { id: 'max-power', name: 'Max Power', provider: 'anthropic', model: 'claude-3-opus-20240229', temperature: 0.7, max_tokens: 4096, context_length: 200000 },
-            { id: 'balanced', name: 'Balanced', provider: 'anthropic', model: 'claude-3-sonnet-20240229', temperature: 0.5, max_tokens: 2048, context_length: 200000 },
-            { id: 'cost-efficient', name: 'Cost Efficient', provider: 'openai', model: 'gpt-4o-mini', temperature: 0.3, max_tokens: 1024, context_length: 128000 },
-        ],
-        activeProfileId: 'default',
-        activePresetId: 'balanced',
+        profiles: [],
+        presets: [],
+        activeProfileId: null,
+        activePresetId: null,
     };
 
     private _listeners: Set<() => void> = new Set();
@@ -101,9 +92,21 @@ export class AgentStore {
 
     async loadAgent(agentId: string) {
         try {
-            const { apiClient } = await import('../services/api-client.js');
-            const res = await apiClient.get(`/agents/${agentId}`) as AgentState['currentAgent'];
-            this.setCurrentAgent(res);
+            const res = await apiClient.get('/agents/' + agentId) as {
+                agent_id: string;
+                name: string;
+                description?: string;
+                status: string;
+            };
+            const status = ['active', 'paused', 'archived', 'error'].includes(res.status)
+                ? res.status
+                : 'active';
+            this.setCurrentAgent({
+                id: res.agent_id,
+                name: res.name,
+                description: res.description ?? '',
+                status: status as 'active' | 'paused' | 'archived' | 'error',
+            });
         } catch (e) {
             console.error('[AgentStore] Failed to load agent:', e);
         }

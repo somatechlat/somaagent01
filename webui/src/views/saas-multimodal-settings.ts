@@ -9,13 +9,14 @@
  * - Per SRS-MULTIMODAL.md Section 6
  *
  * 7-Persona Implementation:
- * - 📈 PM: Capability toggles and tier gating
- * - 🏗️ Architect: Provider configuration
- * - 🔒 Security: Quota enforcement messaging
+ * - monitoring PM: Capability toggles and tier gating
+ * - architecture Architect: Provider configuration
+ * - lock Security: Quota enforcement messaging
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface MultimodalConfig {
     image_enabled: boolean;
@@ -47,6 +48,21 @@ interface QuotaUsage {
 @customElement('saas-multimodal-settings')
 export class SaasMultimodalSettings extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: flex;
       height: 100vh;
@@ -291,21 +307,13 @@ export class SaasMultimodalSettings extends LitElement {
         this.loadConfig();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadConfig() {
         if (!this.agentId) return;
         this.loading = true;
         try {
-            const res = await fetch(`/api/v2/agents/${this.agentId}/multimodal-config`, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.config = { ...this.config, ...data.config };
-                this.quotas = data.quotas || this.quotas;
-            }
+            const data = await apiClient.get<{ config?: Partial<MultimodalConfig>; quotas?: QuotaUsage }>(`/agents/${this.agentId}/multimodal-config`);
+            this.config = { ...this.config, ...data.config };
+            this.quotas = data.quotas || this.quotas;
         } catch (e) {
             console.error('Failed to load multimodal config:', e);
         } finally {
@@ -316,15 +324,9 @@ export class SaasMultimodalSettings extends LitElement {
     private async saveConfig() {
         this.saving = true;
         try {
-            const res = await fetch(`/api/v2/agents/${this.agentId || 'current'}/multimodal-config`, {
-                method: 'PUT',
-                headers: this.getAuthHeaders(),
-                body: JSON.stringify(this.config),
-            });
-            if (res.ok) {
-                // Show success toast
-                console.log('Multimodal config saved');
-            }
+            await apiClient.put(`/agents/${this.agentId || 'current'}/multimodal-config`, this.config);
+            // Show success toast
+            console.log('Multimodal config saved');
         } catch (e) {
             console.error('Failed to save:', e);
         } finally {
@@ -352,11 +354,11 @@ export class SaasMultimodalSettings extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">🎨 Multimodal Settings</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">palette</span> Multimodal Settings</h1>
             <p class="header-subtitle">Configure image, diagram, and screenshot generation</p>
           </div>
           <button class="btn btn-primary" ?disabled=${this.saving} @click=${() => this.saveConfig()}>
-            ${this.saving ? 'Saving...' : '💾 Save Changes'}
+            ${this.saving ? 'Saving...' : html`<span class='material-symbols-outlined'>save</span> Save Changes`}
           </button>
         </header>
 
@@ -377,7 +379,7 @@ export class SaasMultimodalSettings extends LitElement {
 
           <!-- Multimodal Capabilities -->
           <div class="section">
-            <div class="section-header">🖼️ Multimodal Capabilities</div>
+            <div class="section-header"><span class="material-symbols-outlined">image</span> Multimodal Capabilities</div>
             <div class="section-content">
               <!-- Image Generation -->
               <div class="capability-row">
@@ -507,7 +509,7 @@ export class SaasMultimodalSettings extends LitElement {
 
           <!-- Vision Settings -->
           <div class="section">
-            <div class="section-header">👁️ Vision Settings (Input)</div>
+            <div class="section-header"><span class="material-symbols-outlined">visibility</span> Vision Settings (Input)</div>
             <div class="section-content">
               <div class="capability-row">
                 <div class="capability-info">
@@ -555,7 +557,7 @@ export class SaasMultimodalSettings extends LitElement {
 
           <!-- Provider Preferences -->
           <div class="section">
-            <div class="section-header">⚙️ Provider Preferences</div>
+            <div class="section-header"><span class="material-symbols-outlined">settings</span> Provider Preferences</div>
             <div class="section-content">
               <div class="provider-grid">
                 <div class="provider-card">

@@ -7,6 +7,8 @@ export { SaasForgotPassword } from './saas-forgot-password.js';
 
 // Platform Views
 export { SaasPlatformDashboard } from './saas-platform-dashboard.js';
+export { PlatformMetricsDashboard } from './platform-metrics-dashboard.js';
+export { SaasNotFound } from './saas-not-found.js';
 export { SaasTenants } from './saas-tenants.js';
 export { SaasModeSelection } from './saas-mode-selection.js';
 export { SaasSettings } from './saas-settings.js';
@@ -22,6 +24,7 @@ export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
 export { SaasAdminModelsList } from './saas-admin-models-list.js';
 export { SaasAdminRolesList } from './saas-admin-roles-list.js';
 export { SaasRoleMatrix } from './saas-role-matrix.js';
+export { SaasPermissions } from './saas-permissions.js';
 
 // Tenant Views
 export { SaasTenantDashboard } from './saas-tenant-dashboard.js';
@@ -38,6 +41,7 @@ export { SaasIntegrationsDashboard } from './saas-integrations-dashboard.js';
 export { SaasMarketplace } from './saas-marketplace.js';
 export { SaasMfaSetup } from './saas-mfa-setup.js';
 export { SaasMultimodalSettings } from './saas-multimodal-settings.js';
+export { SaasMultimodalJobs } from './saas-multimodal-jobs.js';
 export { SaasOnboarding } from './saas-onboarding.js';
 export { SaasPersonalProfile } from './saas-personal-profile.js';
 export { SaasPlatformProfile } from './saas-platform-profile.js';
@@ -56,3 +60,6 @@ export { SaasAgentMetrics } from './saas-agent-metrics.js';
 export { SaasTenantsView, SaasUsersView, SaasAgentsView, SaasFeaturesView } from './saas-entity-views.js';
 export { SaasUserDetail } from './saas-user-detail.js';
 export { SaasTenantWizard } from './saas-tenant-wizard.js';
+export { SaasAgentCapsule } from './saas-agent-capsule.js';
+export { SaasAgentSettings } from './saas-agent-settings.js';
+export { SaasAgentTools } from './saas-agent-tools.js';

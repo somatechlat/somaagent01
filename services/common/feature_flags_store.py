@@ -13,6 +13,8 @@ from services.common.redis_pool import get_async_redis_pool
 
 LOGGER = logging.getLogger(__name__)
 
+AVAILABLE_PROFILES = ["minimal", "standard", "enhanced", "max"]
+
 
 class FeatureFlagsStore:
     """Redis-backed store for feature flags."""
@@ -72,6 +74,10 @@ class FeatureFlagsStore:
             "advanced_analytics",
             "custom_models",
         ]
+
+    async def list_all_profiles(self) -> list[str]:
+        """List all available feature profiles."""
+        return AVAILABLE_PROFILES
 
     async def set_flag(self, tenant: str, flag: str, value: bool) -> bool:
         """Set a single feature flag."""

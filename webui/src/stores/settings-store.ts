@@ -12,6 +12,7 @@ import { createContext } from '@lit/context';
 import { LitElement, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { provide } from '@lit/context';
+import { apiClient, ApiError } from '../services/api-client.js';
 
 export type SettingsTab = 'agent' | 'external' | 'connectivity' | 'system';
 
@@ -116,27 +117,18 @@ export class SaasSettingsProvider extends LitElement {
         this.settingsState = { ...this.settingsState, isLoading: true, error: null };
 
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const response = await fetch('/api/v2/settings/', {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to load settings');
-            }
-
-            const settings = await response.json();
-            const data = { ...DEFAULT_SETTINGS };
+            const settings = await apiClient.get<Array<{ tab: string; data: Record<string, unknown>; version: number }>>('/settings/');
+            const data: SettingsData = { ...DEFAULT_SETTINGS };
             const versions: Record<string, number> = {};
 
             for (const setting of settings) {
-                data[setting.tab as SettingsTab] = { ...data[setting.tab as SettingsTab], ...setting.data };
+                (data as unknown as Record<string, unknown>)[setting.tab] = { ...data[setting.tab as SettingsTab], ...setting.data };
                 versions[setting.tab] = setting.version;
             }
 
             this.settingsState = {
                 ...this.settingsState,
-                data: data as SettingsData,
+                data,
                 versions: versions as Record<SettingsTab, number>,
                 isLoading: false,
             };
@@ -197,27 +189,10 @@ export class SaasSettingsProvider extends LitElement {
         this.settingsState = { ...this.settingsState, isSaving: true, error: null };
 
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const response = await fetch(`/api/v2/settings/${tab}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    data: this.settingsState.data[tab],
-                    version: this.settingsState.versions[tab],
-                }),
+            const result = await apiClient.put<{ version: number }>(`/settings/${tab}`, {
+                data: this.settingsState.data[tab],
+                version: this.settingsState.versions[tab],
             });
-
-            if (!response.ok) {
-                if (response.status === 409) {
-                    throw new Error('Settings were modified elsewhere. Please refresh.');
-                }
-                throw new Error('Failed to save settings');
-            }
-
-            const result = await response.json();
 
             this.settingsState = {
                 ...this.settingsState,
@@ -235,12 +210,16 @@ export class SaasSettingsProvider extends LitElement {
         } catch (error) {
             console.error('Settings save failed:', error);
 
+            const message = error instanceof ApiError && error.status === 409
+                ? 'Settings were modified elsewhere. Please refresh.'
+                : error instanceof Error ? error.message : 'Save failed';
+
             // Rollback optimistic update
             this.settingsState = {
                 ...this.settingsState,
                 data: previousData,
                 isSaving: false,
-                error: error instanceof Error ? error.message : 'Save failed',
+                error: message,
             };
         }
     }
@@ -258,22 +237,14 @@ export class SaasSettingsProvider extends LitElement {
         };
 
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const response = await fetch(`/api/v2/settings/${tab}/reset`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                this.settingsState = {
-                    ...this.settingsState,
-                    versions: {
-                        ...this.settingsState.versions,
-                        [tab]: result.version,
-                    },
-                };
-            }
+            const result = await apiClient.post<{ version: number }>(`/settings/${tab}/reset`, {});
+            this.settingsState = {
+                ...this.settingsState,
+                versions: {
+                    ...this.settingsState.versions,
+                    [tab]: result.version,
+                },
+            };
         } catch (error) {
             console.error('Reset failed:', error);
         }

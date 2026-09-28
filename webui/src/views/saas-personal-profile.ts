@@ -9,12 +9,13 @@
  * - Django Ninja API integration
  *
  * PERSONAS APPLIED:
- * - 🎨 UX Consultant: Clean, focused layout
- * - 🔒 Security Auditor: MFA, sessions
+ * - palette UX Consultant: Clean, focused layout
+ * - lock Security Auditor: MFA, sessions
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 import '../components/saas-toggle.js';
 
@@ -39,6 +40,21 @@ interface UserProfile {
 @customElement('saas-personal-profile')
 export class SaasPersonalProfile extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
       min-height: 100vh;
@@ -239,6 +255,16 @@ export class SaasPersonalProfile extends LitElement {
       padding: var(--saas-spacing-md, 16px) 0;
     }
 
+    .error-banner {
+      padding: 12px 16px;
+      margin-bottom: var(--saas-spacing-lg, 24px);
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: var(--saas-radius-md, 8px);
+      font-size: var(--saas-text-sm, 13px);
+    }
+
     .loading {
       display: flex;
       align-items: center;
@@ -252,6 +278,7 @@ export class SaasPersonalProfile extends LitElement {
     @state() private loading = true;
     @state() private saving = false;
     @state() private dirty = false;
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -260,68 +287,63 @@ export class SaasPersonalProfile extends LitElement {
 
     private async _loadProfile() {
         this.loading = true;
+        this.error = '';
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const res = await fetch('/api/v2/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const data = await apiClient.get<{
+                id: string;
+                email?: string;
+                name?: string;
+                avatar_url?: string;
+            }>('/auth/me');
 
-            if (res.ok) {
-                const data = await res.json();
-                this.profile = {
-                    id: data.id,
-                    email: data.email || '',
-                    displayName: data.name || '',
-                    avatarUrl: data.avatar_url,
-                    theme: 'system',
-                    language: 'en',
-                    timezone: 'America/New_York',
-                    mfaEnabled: true,
-                    activeSessions: 1,
-                    notifications: {
-                        agentReplies: true,
-                        activitySummary: false,
-                        productUpdates: false,
-                    },
-                };
-            } else {
-                this.profile = this._getDemoProfile();
-            }
+            this.profile = {
+                id: data.id,
+                email: data.email || '',
+                displayName: data.name || '',
+                avatarUrl: data.avatar_url,
+                theme: 'system',
+                language: 'en',
+                timezone: 'America/New_York',
+                mfaEnabled: true,
+                activeSessions: 1,
+                notifications: {
+                    agentReplies: true,
+                    activitySummary: false,
+                    productUpdates: false,
+                },
+            };
         } catch (e) {
-            this.profile = this._getDemoProfile();
+            this.error = 'Failed to load profile';
+            this.profile = null;
         } finally {
             this.loading = false;
         }
     }
 
-    private _getDemoProfile(): UserProfile {
-        return {
-            id: 'user-001',
-            email: 'jane@acme.com',
-            displayName: 'Jane User',
-            theme: 'system',
-            language: 'en',
-            timezone: 'America/New_York',
-            mfaEnabled: true,
-            lastPasswordChange: '2025-11-25',
-            activeSessions: 1,
-            notifications: {
-                agentReplies: true,
-                activitySummary: false,
-                productUpdates: false,
-            },
-        };
-    }
-
     private async _saveProfile() {
         if (!this.profile) return;
         this.saving = true;
+        this.error = '';
         try {
-            // Would call PUT /api/v2/profile
-            await new Promise(r => setTimeout(r, 500));
+            await apiClient.put('/auth/me', {
+                name: this.profile.displayName,
+                email: this.profile.email,
+                theme: this.profile.theme,
+                language: this.profile.language,
+                timezone: this.profile.timezone,
+                mfa_enabled: this.profile.mfaEnabled,
+                notifications: this.profile.notifications,
+            });
             this.dirty = false;
             this.dispatchEvent(new CustomEvent('show-toast', {
                 detail: { type: 'success', message: 'Profile saved' },
+                bubbles: true,
+                composed: true,
+            }));
+        } catch (e) {
+            this.error = 'Failed to save profile';
+            this.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { type: 'error', message: 'Failed to save profile' },
                 bubbles: true,
                 composed: true,
             }));
@@ -363,9 +385,11 @@ export class SaasPersonalProfile extends LitElement {
           <h1 class="page-title">My Profile</h1>
         </div>
 
+        ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
+
         <!-- Display Section -->
         <div class="section">
-          <div class="section-header">📝 Display</div>
+          <div class="section-header"><span class="material-symbols-outlined">edit</span> Display</div>
           <div class="section-content">
             <div class="avatar-section">
               <div class="avatar">
@@ -395,16 +419,16 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Preferences Section -->
         <div class="section">
-          <div class="section-header">⚙️ Preferences</div>
+          <div class="section-header"><span class="material-symbols-outlined">settings</span> Preferences</div>
           <div class="section-content">
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Theme</label>
                 <select class="form-input" .value=${this.profile.theme}
                         @change=${(e: Event) => this._updateField('theme', (e.target as HTMLSelectElement).value)}>
-                  <option value="system">◐ System Default</option>
-                  <option value="light">☀️ Light</option>
-                  <option value="dark">🌙 Dark</option>
+                  <option value="system">System Default</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
                 </select>
               </div>
               <div class="form-group">
@@ -435,12 +459,12 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Security Section -->
         <div class="section">
-          <div class="section-header">🔒 Security</div>
+          <div class="section-header"><span class="material-symbols-outlined">lock</span> Security</div>
           <div class="section-content">
             <div class="security-row">
               <div class="security-info">
                 <span class="security-label">Multi-Factor Authentication</span>
-                <span class="security-value">${this.profile.mfaEnabled ? '✅ Enabled (TOTP)' : '❌ Disabled'}</span>
+                <span class="security-value">${this.profile.mfaEnabled ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled (TOTP)` : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}</span>
               </div>
               <button class="btn btn-secondary">Reconfigure</button>
             </div>
@@ -465,7 +489,7 @@ export class SaasPersonalProfile extends LitElement {
 
         <!-- Notifications Section -->
         <div class="section">
-          <div class="section-header">🔔 Notifications</div>
+          <div class="section-header"><span class="material-symbols-outlined">notifications</span> Notifications</div>
           <div class="section-content">
             <div class="toggle-row">
               <span class="toggle-label">Agent replies to my conversations</span>

@@ -184,6 +184,34 @@ class VoiceSessionStats(BaseModel):
 
 
 # =============================================================================
+# LLM CONFIG SCHEMAS (read-only reference to existing LLMModelConfig)
+# =============================================================================
+
+
+class LLMConfigOut(BaseModel):
+    """Reference to an existing LLMModelConfig for persona selection."""
+
+    id: UUID
+    name: str
+    display_name: str
+    provider: str
+    model_type: str
+    is_active: bool
+
+    class Config:
+        """Config class implementation."""
+
+        from_attributes = True
+
+
+class LLMConfigListOut(BaseModel):
+    """List of available LLM configurations."""
+
+    items: list[LLMConfigOut]
+    total: int
+
+
+# =============================================================================
 # VOICE MODEL SCHEMAS
 # =============================================================================
 

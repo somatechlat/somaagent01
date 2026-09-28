@@ -355,31 +355,42 @@ export class SaasTenantDashboard extends LitElement {
             font-size: 13px;
             font-weight: 500;
         }
+
+        .error-banner {
+            padding: 12px 16px;
+            margin: 0 24px 24px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            font-size: 14px;
+        }
     `;
 
     @state() private _tenantName = '';
+    @state() private _error = '';
     @state() private _stats: TenantStats = {
-        agentsUsed: 5, agentsMax: 10,
-        usersUsed: 12, usersMax: 50,
-        tokensUsed: 4200000, tokensMax: 10000000,
-        storageUsedGB: 45, storageMaxGB: 100,
-        monthlyBill: 199,
+        agentsUsed: 0, agentsMax: 0,
+        usersUsed: 0, usersMax: 0,
+        tokensUsed: 0, tokensMax: 0,
+        storageUsedGB: 0, storageMaxGB: 0,
+        monthlyBill: 0,
     };
-    @state() private _agents: Agent[] = [
-        { id: '1', name: 'Support-AI', status: 'running', messagesCount: 1234, lastActive: '2 min ago' },
-        { id: '2', name: 'Sales-Bot', status: 'stopped', messagesCount: 567, lastActive: '1 hour ago' },
-        { id: '3', name: 'Research-AI', status: 'running', messagesCount: 890, lastActive: '5 min ago' },
-    ];
+    @state() private _agents: Agent[] = [];
 
     connectedCallback() {
         super.connectedCallback();
-        this._tenantName = sessionStorage.getItem('saas_tenant_name') || 'Demo Tenant';
+        this._tenantName = sessionStorage.getItem('saas_tenant_name') || '';
         this._loadData();
     }
 
     render() {
-        const tokensPct = (this._stats.tokensUsed / this._stats.tokensMax) * 100;
-        const storagePct = (this._stats.storageUsedGB / this._stats.storageMaxGB) * 100;
+        const tokensPct = this._stats.tokensMax > 0
+            ? (this._stats.tokensUsed / this._stats.tokensMax) * 100
+            : 0;
+        const storagePct = this._stats.storageMaxGB > 0
+            ? (this._stats.storageUsedGB / this._stats.storageMaxGB) * 100
+            : 0;
 
         return html`
             <aside class="sidebar">
@@ -426,20 +437,22 @@ export class SaasTenantDashboard extends LitElement {
                     </button>
                 </header>
 
+                ${this._error ? html`<div class="error-banner">${this._error}</div>` : ''}
+
                 <div class="content">
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-label">Agents</div>
                             <div class="stat-value">${this._stats.agentsUsed}/${this._stats.agentsMax}</div>
                             <div class="stat-bar">
-                                <div class="stat-fill" style="width: ${(this._stats.agentsUsed / this._stats.agentsMax) * 100}%"></div>
+                                <div class="stat-fill" style="width: ${this._pct(this._stats.agentsUsed, this._stats.agentsMax)}%"></div>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Users</div>
                             <div class="stat-value">${this._stats.usersUsed}/${this._stats.usersMax}</div>
                             <div class="stat-bar">
-                                <div class="stat-fill" style="width: ${(this._stats.usersUsed / this._stats.usersMax) * 100}%"></div>
+                                <div class="stat-fill" style="width: ${this._pct(this._stats.usersUsed, this._stats.usersMax)}%"></div>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -519,14 +532,19 @@ export class SaasTenantDashboard extends LitElement {
         `;
     }
 
+    private _pct(used: number, max: number): number {
+        return max > 0 ? (used / max) * 100 : 0;
+    }
+
     private async _loadData() {
+        this._error = '';
         try {
-            const response = await apiClient.get('/admin/dashboard/');
+            const response = await apiClient.get('/aaas/dashboard/');
             const data = response as { stats?: TenantStats; agents?: Agent[] };
             if (data.stats) this._stats = data.stats;
             if (data.agents) this._agents = data.agents;
         } catch {
-            // Demo data already set
+            this._error = 'Failed to load dashboard data';
         }
     }
 }

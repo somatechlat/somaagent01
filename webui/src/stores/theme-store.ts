@@ -12,6 +12,7 @@ import { createContext } from '@lit/context';
 import { LitElement, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { provide } from '@lit/context';
+import { apiClient } from '../services/api-client.js';
 
 export interface Theme {
     id: string;
@@ -120,24 +121,12 @@ export class SaasThemeProvider extends LitElement {
      */
     private async _loadThemes() {
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const response = await fetch('/api/v2/themes/', {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            });
-
-            if (response.ok) {
-                const themes = await response.json();
-                this.themeState = {
-                    ...this.themeState,
-                    availableThemes: [DEFAULT_THEME, ...themes],
-                    isLoading: false,
-                };
-            } else {
-                this.themeState = {
-                    ...this.themeState,
-                    isLoading: false,
-                };
-            }
+            const themes = await apiClient.get<Theme[]>('/themes/');
+            this.themeState = {
+                ...this.themeState,
+                availableThemes: [DEFAULT_THEME, ...themes],
+                isLoading: false,
+            };
         } catch (error) {
             console.error('Failed to load themes:', error);
             this.themeState = {
@@ -200,11 +189,7 @@ export class SaasThemeProvider extends LitElement {
 
         // Track theme application via API
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            await fetch(`/api/v2/themes/${themeId}/apply`, {
-                method: 'POST',
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            });
+            await apiClient.post(`/themes/${themeId}/apply`, {});
         } catch {
             // Non-critical error
         }
@@ -237,28 +222,14 @@ export class SaasThemeProvider extends LitElement {
      */
     async addTheme(theme: Omit<Theme, 'id'>): Promise<Theme | null> {
         try {
-            const token = localStorage.getItem('saas_auth_token');
-            const response = await fetch('/api/v2/themes/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify(theme),
-            });
+            const newTheme = await apiClient.post<Theme>('/themes/', theme);
 
-            if (response.ok) {
-                const newTheme = await response.json() as Theme;
+            this.themeState = {
+                ...this.themeState,
+                availableThemes: [...this.themeState.availableThemes, newTheme],
+            };
 
-                this.themeState = {
-                    ...this.themeState,
-                    availableThemes: [...this.themeState.availableThemes, newTheme],
-                };
-
-                return newTheme;
-            }
-
-            return null;
+            return newTheme;
         } catch (error) {
             console.error('Failed to create theme:', error);
             return null;

@@ -4,18 +4,19 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/infrastructure/ratelimits endpoint
+ * - Uses /api/v2/core/infrastructure/ratelimits endpoint
  * - Permission: infra:ratelimit
  * - Per SRS-INFRASTRUCTURE-ADMIN.md Section 3.2
  *
  * 7-Persona Implementation:
- * - 🔒 Security: Rate limit enforcement
- * - 🏗️ Architect: Redis integration
- * - ⚡ Performance: Quota management
+ * - lock Security: Rate limit enforcement
+ * - architecture Architect: Redis integration
+ * - bolt Performance: Quota management
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface RateLimit {
   key: string;
@@ -37,6 +38,21 @@ interface TierOverride {
 @customElement('saas-rate-limits')
 export class SaasRateLimits extends LitElement {
   static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: flex;
       height: 100vh;
@@ -251,45 +267,24 @@ export class SaasRateLimits extends LitElement {
     this.loadRateLimits();
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token');
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  }
-
   private async loadRateLimits() {
     this.loading = true;
     try {
-      // Correct API endpoint matching admin/ratelimit/api.py
-      const res = await fetch('/api/v2/ratelimit/limits', { headers: this.getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        this.limits = data.limits || [];
-        this.tiers = data.tiers || [];
-      } else {
-        this.loadMockData();
-      }
+      const data = await apiClient.get<{ limits?: any[] }>('/core/infrastructure/ratelimits');
+      this.limits = (data.limits || []).map((l: any) => ({
+        key: l.key,
+        label: l.description || l.key,
+        limit: l.limit,
+        window_seconds: l.window_seconds,
+        policy: l.policy,
+      }));
+      this.tiers = [];
     } catch {
-      this.loadMockData();
+      this.limits = [];
+      this.tiers = [];
     } finally {
       this.loading = false;
     }
-  }
-
-  private loadMockData() {
-    this.limits = [
-      { key: 'api_calls', label: 'API Calls', limit: 1000, window_seconds: 3600, policy: 'HARD' },
-      { key: 'voice_minutes', label: 'Voice Minutes', limit: 60, window_seconds: 86400, policy: 'SOFT' },
-      { key: 'llm_tokens', label: 'LLM Tokens', limit: 100000, window_seconds: 86400, policy: 'SOFT' },
-      { key: 'file_uploads', label: 'File Uploads', limit: 50, window_seconds: 3600, policy: 'HARD' },
-      { key: 'memory_queries', label: 'Memory Queries', limit: 500, window_seconds: 3600, policy: 'SOFT' },
-    ];
-
-    this.tiers = [
-      { tier: 'Free', api_calls: 100, voice_minutes: 0, llm_tokens: 10000, file_uploads: 10, memory_queries: 50 },
-      { tier: 'Starter', api_calls: 1000, voice_minutes: 60, llm_tokens: 100000, file_uploads: 50, memory_queries: 500 },
-      { tier: 'Team', api_calls: 10000, voice_minutes: 500, llm_tokens: 1000000, file_uploads: 500, memory_queries: 5000 },
-      { tier: 'Enterprise', api_calls: null, voice_minutes: null, llm_tokens: null, file_uploads: null, memory_queries: null },
-    ];
   }
 
   private formatWindow(seconds: number): string {
@@ -313,14 +308,16 @@ export class SaasRateLimits extends LitElement {
   private async saveRateLimits() {
     this.saving = true;
     try {
-      const res = await fetch('/api/v2/infrastructure/ratelimits', {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ limits: this.limits, tiers: this.tiers }),
-      });
-      if (res.ok) {
-        console.log('Rate limits saved');
-      }
+      await Promise.all(
+        this.limits.map((limit) =>
+          apiClient.put(`/core/infrastructure/ratelimits/${limit.key}`, {
+            description: limit.label,
+            limit: limit.limit,
+            window_seconds: limit.window_seconds,
+            policy: limit.policy,
+          })
+        )
+      );
     } catch (e) {
       console.error('Failed to save:', e);
     } finally {
@@ -341,7 +338,7 @@ export class SaasRateLimits extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">⚡ Rate Limits</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">bolt</span> Rate Limits</h1>
             <p class="header-subtitle">Configure global rate limits and per-tier overrides</p>
           </div>
           <div class="header-actions">
@@ -349,7 +346,7 @@ export class SaasRateLimits extends LitElement {
               + Add New Limit
             </button>
             <button class="btn btn-primary" ?disabled=${this.saving} @click=${() => this.saveRateLimits()}>
-              ${this.saving ? 'Saving...' : '💾 Save Changes'}
+              ${this.saving ? 'Saving...' : html`<span class='material-symbols-outlined'>save</span> Save Changes`}
             </button>
           </div>
         </header>
@@ -399,7 +396,7 @@ export class SaasRateLimits extends LitElement {
                           </select>
                         </td>
                         <td>
-                          <button class="btn btn-icon" title="Delete">🗑️</button>
+                          <button class="btn btn-icon" title="Delete"><span class="material-symbols-outlined">delete</span></button>
                         </td>
                       </tr>
                     `)}

@@ -11,39 +11,57 @@ Per CANONICAL_USER_JOURNEYS_SRS.md UC-04: Voice Chat.
 
 from __future__ import annotations
 
-import base64
-import logging
 from typing import Optional
+from uuid import UUID
 
-from django.conf import settings
 from ninja import Router
 
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import BadRequestError, ServiceUnavailableError
+from admin.common.exceptions import ServiceUnavailableError
 from admin.voice.schemas import (
+    LLMConfigListOut,
     SynthesizeRequest,
     SynthesizeResponse,
     TranscribeRequest,
     TranscribeResponse,
     VoiceListResponse,
+    VoiceModelListOut,
+    VoicePersonaCreate,
+    VoicePersonaListOut,
+    VoicePersonaOut,
+    VoicePersonaUpdate,
+    VoiceSessionListOut,
+    VoiceSessionStats,
     VoiceStatusResponse,
+)
+from admin.voice.service import (
+    create_persona,
+    delete_persona,
+    get_persona,
+    get_session_stats,
+    get_voice_status,
+    list_llm_configs,
+    list_personas,
+    list_sessions,
+    list_voice_models,
+    list_voices,
+    set_persona_default,
+    synthesize_speech,
+    terminate_session,
+    transcribe_audio,
+    update_persona,
 )
 
 router = Router(tags=["voice"])
-logger = logging.getLogger(__name__)
+
+
+def _tenant_id(request) -> str:
+    """Extract tenant identifier from the incoming request."""
+    return getattr(request, "tenant_id", "default")
 
 
 # =============================================================================
-# CONFIGURATION
-# =============================================================================
-
-WHISPER_URL = getattr(settings, "WHISPER_URL", "http://localhost:9100")
-KOKORO_URL = getattr(settings, "KOKORO_URL", "http://localhost:9200")
-MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
-
-
-# =============================================================================
-# ENDPOINTS
+# SPEECH ENDPOINTS
 # =============================================================================
 
 
@@ -53,7 +71,7 @@ MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
     summary="Transcribe audio to text",
     auth=AuthBearer(),
 )
-async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeResponse:
+async def transcribe_endpoint(request, payload: TranscribeRequest) -> TranscribeResponse:
     """Transcribe audio to text using Whisper.
 
     Per SRS UC-04: POST /api/v2/voice/transcribe
@@ -63,48 +81,7 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
     - Fallback to browser API if unavailable
     - Size and format validation
     """
-    import httpx
-
-    # Decode and validate audio
-    try:
-        audio_bytes = base64.b64decode(payload.audio_base64)
-    except Exception:
-        raise BadRequestError("Invalid base64 audio data")
-
-    if len(audio_bytes) > MAX_AUDIO_SIZE:
-        raise BadRequestError(f"Audio exceeds maximum size of {MAX_AUDIO_SIZE // 1024 // 1024}MB")
-
-    # Call Whisper service
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{WHISPER_URL}/asr",
-                files={"audio": (f"audio.{payload.format}", audio_bytes)},
-                data={
-                    "language": payload.language or "auto",
-                    "output": "json",
-                },
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                return TranscribeResponse(
-                    text=result.get("text", ""),
-                    language=result.get("language", "en"),
-                    duration_seconds=result.get("duration", 0.0),
-                    confidence=result.get("confidence"),
-                    segments=result.get("segments"),
-                )
-            else:
-                logger.error('Whisper error: %s', response.status_code)
-                raise ServiceUnavailableError("whisper", "Transcription service unavailable")
-
-    except httpx.HTTPError as e:
-        logger.error('Whisper connection error: %s', e)
-        # Return degraded response with browser fallback hint
-        raise ServiceUnavailableError(
-            "whisper", "Whisper unavailable - use browser Speech API as fallback"
-        )
+    return await transcribe_audio(payload)
 
 
 @router.post(
@@ -113,7 +90,7 @@ async def transcribe_audio(request, payload: TranscribeRequest) -> TranscribeRes
     summary="Synthesize text to speech",
     auth=AuthBearer(),
 )
-async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeResponse:
+async def synthesize_endpoint(request, payload: SynthesizeRequest) -> SynthesizeResponse:
     """Synthesize text to speech using Kokoro TTS.
 
     Per SRS UC-04: POST /api/v2/voice/synthesize
@@ -123,50 +100,7 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
     - Fallback to browser API if unavailable
     - Multiple voice options
     """
-    import httpx
-
-    if len(payload.text) > 5000:
-        raise BadRequestError("Text exceeds maximum length of 5000 characters")
-
-    if not 0.5 <= payload.speed <= 2.0:
-        raise BadRequestError("Speed must be between 0.5 and 2.0")
-
-    # Call Kokoro TTS service
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{KOKORO_URL}/synthesize",
-                json={
-                    "text": payload.text,
-                    "voice": payload.voice,
-                    "speed": payload.speed,
-                    "format": payload.format,
-                },
-            )
-
-            if response.status_code == 200:
-                audio_bytes = response.content
-                audio_base64 = base64.b64encode(audio_bytes).decode()
-
-                # Estimate duration (rough: 150 words per minute)
-                word_count = len(payload.text.split())
-                duration = (word_count / 150) * 60 / payload.speed
-
-                return SynthesizeResponse(
-                    audio_base64=audio_base64,
-                    format=payload.format,
-                    duration_seconds=duration,
-                    voice_used=payload.voice,
-                )
-            else:
-                logger.error('Kokoro error: %s', response.status_code)
-                raise ServiceUnavailableError("kokoro", "TTS service unavailable")
-
-    except httpx.HTTPError as e:
-        logger.error('Kokoro connection error: %s', e)
-        raise ServiceUnavailableError(
-            "kokoro", "Kokoro TTS unavailable - use browser Speech Synthesis as fallback"
-        )
+    return await synthesize_speech(payload)
 
 
 @router.get(
@@ -175,34 +109,9 @@ async def synthesize_speech(request, payload: SynthesizeRequest) -> SynthesizeRe
     summary="List available voices",
     auth=AuthBearer(),
 )
-async def list_voices(request) -> VoiceListResponse:
-    """List available TTS voices.
-
-    Includes both Kokoro voices and browser fallback voices.
-    """
-    import httpx
-
-    voices = []
-
-    # Try to get Kokoro voices
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{KOKORO_URL}/voices")
-            if response.status_code == 200:
-                voices.extend(response.json().get("voices", []))
-    except Exception:
-        pass
-
-    # Add browser fallback voices
-    voices.extend(
-        [
-            {"id": "browser_default", "name": "Browser Default", "provider": "browser"},
-            {"id": "browser_male", "name": "Browser Male", "provider": "browser"},
-            {"id": "browser_female", "name": "Browser Female", "provider": "browser"},
-        ]
-    )
-
-    return VoiceListResponse(voices=voices)
+async def voices_endpoint(request) -> VoiceListResponse:
+    """List available TTS voices."""
+    return await list_voices()
 
 
 @router.get(
@@ -210,39 +119,9 @@ async def list_voices(request) -> VoiceListResponse:
     response=VoiceStatusResponse,
     summary="Get voice service status",
 )
-async def get_voice_status(request) -> VoiceStatusResponse:
-    """Check status of voice services.
-
-    Used by frontend to determine if browser fallback is needed.
-    """
-    import httpx
-
-    whisper_status = "down"
-    kokoro_status = "down"
-
-    # Check Whisper
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{WHISPER_URL}/health")
-            if response.status_code == 200:
-                whisper_status = "healthy"
-    except Exception:
-        pass
-
-    # Check Kokoro
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{KOKORO_URL}/health")
-            if response.status_code == 200:
-                kokoro_status = "healthy"
-    except Exception:
-        pass
-
-    return VoiceStatusResponse(
-        whisper_status=whisper_status,
-        kokoro_status=kokoro_status,
-        fallback_available=True,  # Browser APIs always available
-    )
+async def status_endpoint(request) -> VoiceStatusResponse:
+    """Check status of voice services."""
+    return await get_voice_status()
 
 
 @router.post(
@@ -271,26 +150,19 @@ async def transcribe_stream(request) -> dict:
 
 
 # =============================================================================
-# VOICE PERSONA CRUD ENDPOINTS (for Lit UI)
+# VOICE PERSONA CRUD ENDPOINTS
 # =============================================================================
 
-from uuid import UUID
 
-from django.db.models import Sum
-from django.shortcuts import get_object_or_404
-
-from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
-from admin.voice.schemas import (
-    VoiceModelListOut,
-    VoiceModelOut,
-    VoicePersonaCreate,
-    VoicePersonaListOut,
-    VoicePersonaOut,
-    VoicePersonaUpdate,
-    VoiceSessionListOut,
-    VoiceSessionOut,
-    VoiceSessionStats,
+@router.get(
+    "/llm-configs",
+    response=LLMConfigListOut,
+    summary="List active LLM configurations",
+    auth=AuthBearer(),
 )
+def list_llm_configs_endpoint(request, model_type: str = "chat"):
+    """List active LLMModelConfig entries for persona LLM selection."""
+    return list_llm_configs(model_type=model_type)
 
 
 @router.get(
@@ -299,50 +171,19 @@ from admin.voice.schemas import (
     summary="List voice personas",
     auth=AuthBearer(),
 )
-def list_personas(request, page: int = 1, page_size: int = 20, active_only: bool = False):
-    """List voice personas for the current tenant.
-
-    Lit UI: aaas-voice-personas.ts uses this endpoint.
-    """
-    # Extract tenant from request (simplified for now)
-    tenant_id = getattr(request, "tenant_id", "default")
-
-    queryset = VoicePersona.objects.filter(tenant_id=tenant_id)
-    if active_only:
-        queryset = queryset.filter(is_active=True)
-
-    total = queryset.count()
-    offset = (page - 1) * page_size
-    personas = queryset.order_by("-created_at")[offset : offset + page_size]
-
-    items = []
-    for p in personas:
-        items.append(
-            VoicePersonaOut(
-                id=p.id,
-                tenant_id=p.tenant_id,
-                name=p.name,
-                description=p.description,
-                voice_id=p.voice_id,
-                voice_speed=p.voice_speed,
-                stt_model=p.stt_model,
-                stt_language=p.stt_language,
-                llm_config_id=p.llm_config_id,
-                llm_config_name=p.llm_config.name if p.llm_config else None,
-                system_prompt=p.system_prompt,
-                temperature=float(p.temperature),
-                max_tokens=p.max_tokens,
-                turn_detection_enabled=p.turn_detection_enabled,
-                turn_detection_threshold=float(p.turn_detection_threshold),
-                silence_duration_ms=p.silence_duration_ms,
-                is_active=p.is_active,
-                is_default=p.is_default,
-                created_at=p.created_at,
-                updated_at=p.updated_at,
-            )
-        )
-
-    return VoicePersonaListOut(items=items, total=total, page=page, page_size=page_size)
+def list_personas_endpoint(
+    request,
+    page: int = 1,
+    page_size: int = 20,
+    active_only: bool = False,
+):
+    """List voice personas for the current tenant."""
+    return list_personas(
+        tenant_id=_tenant_id(request),
+        page=page,
+        page_size=page_size,
+        active_only=active_only,
+    )
 
 
 @router.post(
@@ -351,49 +192,9 @@ def list_personas(request, page: int = 1, page_size: int = 20, active_only: bool
     summary="Create voice persona",
     auth=AuthBearer(),
 )
-def create_persona(request, payload: VoicePersonaCreate):
+def create_persona_endpoint(request, payload: VoicePersonaCreate):
     """Create a new voice persona."""
-    tenant_id = getattr(request, "tenant_id", "default")
-
-    persona = VoicePersona.objects.create(
-        tenant_id=tenant_id,
-        name=payload.name,
-        description=payload.description,
-        voice_id=payload.voice_id,
-        voice_speed=payload.voice_speed,
-        stt_model=payload.stt_model,
-        stt_language=payload.stt_language,
-        llm_config_id=payload.llm_config_id,
-        system_prompt=payload.system_prompt,
-        temperature=payload.temperature,
-        max_tokens=payload.max_tokens,
-        turn_detection_enabled=payload.turn_detection_enabled,
-        turn_detection_threshold=payload.turn_detection_threshold,
-        silence_duration_ms=payload.silence_duration_ms,
-    )
-
-    return VoicePersonaOut(
-        id=persona.id,
-        tenant_id=persona.tenant_id,
-        name=persona.name,
-        description=persona.description,
-        voice_id=persona.voice_id,
-        voice_speed=persona.voice_speed,
-        stt_model=persona.stt_model,
-        stt_language=persona.stt_language,
-        llm_config_id=persona.llm_config_id,
-        llm_config_name=persona.llm_config.name if persona.llm_config else None,
-        system_prompt=persona.system_prompt,
-        temperature=float(persona.temperature),
-        max_tokens=persona.max_tokens,
-        turn_detection_enabled=persona.turn_detection_enabled,
-        turn_detection_threshold=float(persona.turn_detection_threshold),
-        silence_duration_ms=persona.silence_duration_ms,
-        is_active=persona.is_active,
-        is_default=persona.is_default,
-        created_at=persona.created_at,
-        updated_at=persona.updated_at,
-    )
+    return create_persona(tenant_id=_tenant_id(request), payload=payload)
 
 
 @router.get(
@@ -402,33 +203,9 @@ def create_persona(request, payload: VoicePersonaCreate):
     summary="Get voice persona",
     auth=AuthBearer(),
 )
-def get_persona(request, persona_id: UUID):
+def get_persona_endpoint(request, persona_id: UUID):
     """Get a specific voice persona by ID."""
-    tenant_id = getattr(request, "tenant_id", "default")
-    persona = get_object_or_404(VoicePersona, id=persona_id, tenant_id=tenant_id)
-
-    return VoicePersonaOut(
-        id=persona.id,
-        tenant_id=persona.tenant_id,
-        name=persona.name,
-        description=persona.description,
-        voice_id=persona.voice_id,
-        voice_speed=persona.voice_speed,
-        stt_model=persona.stt_model,
-        stt_language=persona.stt_language,
-        llm_config_id=persona.llm_config_id,
-        llm_config_name=persona.llm_config.name if persona.llm_config else None,
-        system_prompt=persona.system_prompt,
-        temperature=float(persona.temperature),
-        max_tokens=persona.max_tokens,
-        turn_detection_enabled=persona.turn_detection_enabled,
-        turn_detection_threshold=float(persona.turn_detection_threshold),
-        silence_duration_ms=persona.silence_duration_ms,
-        is_active=persona.is_active,
-        is_default=persona.is_default,
-        created_at=persona.created_at,
-        updated_at=persona.updated_at,
-    )
+    return get_persona(tenant_id=_tenant_id(request), persona_id=persona_id)
 
 
 @router.put(
@@ -437,38 +214,12 @@ def get_persona(request, persona_id: UUID):
     summary="Update voice persona",
     auth=AuthBearer(),
 )
-def update_persona(request, persona_id: UUID, payload: VoicePersonaUpdate):
+def update_persona_endpoint(request, persona_id: UUID, payload: VoicePersonaUpdate):
     """Update a voice persona."""
-    tenant_id = getattr(request, "tenant_id", "default")
-    persona = get_object_or_404(VoicePersona, id=persona_id, tenant_id=tenant_id)
-
-    # Update only provided fields
-    update_data = payload.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(persona, field, value)
-    persona.save()
-
-    return VoicePersonaOut(
-        id=persona.id,
-        tenant_id=persona.tenant_id,
-        name=persona.name,
-        description=persona.description,
-        voice_id=persona.voice_id,
-        voice_speed=persona.voice_speed,
-        stt_model=persona.stt_model,
-        stt_language=persona.stt_language,
-        llm_config_id=persona.llm_config_id,
-        llm_config_name=persona.llm_config.name if persona.llm_config else None,
-        system_prompt=persona.system_prompt,
-        temperature=float(persona.temperature),
-        max_tokens=persona.max_tokens,
-        turn_detection_enabled=persona.turn_detection_enabled,
-        turn_detection_threshold=float(persona.turn_detection_threshold),
-        silence_duration_ms=persona.silence_duration_ms,
-        is_active=persona.is_active,
-        is_default=persona.is_default,
-        created_at=persona.created_at,
-        updated_at=persona.updated_at,
+    return update_persona(
+        tenant_id=_tenant_id(request),
+        persona_id=persona_id,
+        payload=payload,
     )
 
 
@@ -477,13 +228,9 @@ def update_persona(request, persona_id: UUID, payload: VoicePersonaUpdate):
     summary="Delete voice persona",
     auth=AuthBearer(),
 )
-def delete_persona(request, persona_id: UUID):
+def delete_persona_endpoint(request, persona_id: UUID):
     """Delete a voice persona."""
-    tenant_id = getattr(request, "tenant_id", "default")
-    persona = get_object_or_404(VoicePersona, id=persona_id, tenant_id=tenant_id)
-    persona.delete()
-    from admin.common.messages import SuccessCode, get_message
-    return {"success": True, "message": get_message(SuccessCode.PERSONA_DELETED, persona_id=str(persona_id))}
+    return delete_persona(tenant_id=_tenant_id(request), persona_id=persona_id)
 
 
 @router.post(
@@ -491,24 +238,13 @@ def delete_persona(request, persona_id: UUID):
     summary="Set persona as default",
     auth=AuthBearer(),
 )
-def set_persona_default(request, persona_id: UUID):
+def set_persona_default_endpoint(request, persona_id: UUID):
     """Set a persona as the default for the tenant."""
-    tenant_id = getattr(request, "tenant_id", "default")
-
-    # Clear existing defaults
-    VoicePersona.objects.filter(tenant_id=tenant_id, is_default=True).update(is_default=False)
-
-    # Set new default
-    persona = get_object_or_404(VoicePersona, id=persona_id, tenant_id=tenant_id)
-    persona.is_default = True
-    persona.save()
-
-    from admin.common.messages import SuccessCode, get_message
-    return {"success": True, "message": get_message(SuccessCode.PERSONA_SET_DEFAULT, name=persona.name)}
+    return set_persona_default(tenant_id=_tenant_id(request), persona_id=persona_id)
 
 
 # =============================================================================
-# VOICE SESSION ENDPOINTS (for Lit UI)
+# VOICE SESSION ENDPOINTS
 # =============================================================================
 
 
@@ -518,44 +254,19 @@ def set_persona_default(request, persona_id: UUID):
     summary="List voice sessions",
     auth=AuthBearer(),
 )
-def list_sessions(request, page: int = 1, page_size: int = 50, status: Optional[str] = None):
-    """List voice sessions for the current tenant.
-
-    Lit UI: aaas-voice-sessions.ts uses this endpoint.
-    """
-    tenant_id = getattr(request, "tenant_id", "default")
-
-    queryset = VoiceSession.objects.filter(tenant_id=tenant_id)
-    if status:
-        queryset = queryset.filter(status=status)
-
-    total = queryset.count()
-    offset = (page - 1) * page_size
-    sessions = queryset.select_related("persona").order_by("-created_at")[
-        offset : offset + page_size
-    ]
-
-    items = []
-    for s in sessions:
-        items.append(
-            VoiceSessionOut(
-                id=s.id,
-                tenant_id=s.tenant_id,
-                persona_id=s.persona_id,
-                persona_name=s.persona.name if s.persona else None,
-                user_id=s.user_id,
-                status=s.status,
-                duration_seconds=float(s.duration_seconds),
-                input_tokens=s.input_tokens,
-                output_tokens=s.output_tokens,
-                audio_seconds=float(s.audio_seconds),
-                turn_count=s.turn_count,
-                created_at=s.created_at,
-                ended_at=s.ended_at,
-            )
-        )
-
-    return VoiceSessionListOut(items=items, total=total, page=page, page_size=page_size)
+def list_sessions_endpoint(
+    request,
+    page: int = 1,
+    page_size: int = 50,
+    status: Optional[str] = None,
+):
+    """List voice sessions for the current tenant."""
+    return list_sessions(
+        tenant_id=_tenant_id(request),
+        page=page,
+        page_size=page_size,
+        status=status,
+    )
 
 
 @router.get(
@@ -564,24 +275,9 @@ def list_sessions(request, page: int = 1, page_size: int = 50, status: Optional[
     summary="Get session stats",
     auth=AuthBearer(),
 )
-def get_session_stats(request):
+def get_session_stats_endpoint(request):
     """Get aggregated session statistics."""
-    tenant_id = getattr(request, "tenant_id", "default")
-
-    active_count = VoiceSession.objects.filter(tenant_id=tenant_id, status="active").count()
-    total_count = VoiceSession.objects.filter(tenant_id=tenant_id).count()
-
-    agg = VoiceSession.objects.filter(tenant_id=tenant_id).aggregate(
-        total_tokens=Sum("input_tokens") + Sum("output_tokens"),
-        total_audio=Sum("audio_seconds"),
-    )
-
-    return VoiceSessionStats(
-        active_count=active_count,
-        total_count=total_count,
-        total_tokens=agg["total_tokens"] or 0,
-        total_audio_seconds=float(agg["total_audio"] or 0),
-    )
+    return get_session_stats(tenant_id=_tenant_id(request))
 
 
 @router.post(
@@ -589,26 +285,13 @@ def get_session_stats(request):
     summary="Terminate voice session",
     auth=AuthBearer(),
 )
-def terminate_session(request, session_id: UUID):
+def terminate_session_endpoint(request, session_id: UUID):
     """Terminate an active voice session."""
-    from django.utils import timezone
-
-    tenant_id = getattr(request, "tenant_id", "default")
-    session = get_object_or_404(VoiceSession, id=session_id, tenant_id=tenant_id)
-
-    if session.status != "active":
-        raise BadRequestError(f"Session is not active (status: {session.status})")
-
-    session.status = "terminated"
-    session.ended_at = timezone.now()
-    session.save()
-
-    from admin.common.messages import SuccessCode, get_message
-    return {"success": True, "message": get_message(SuccessCode.SESSION_TERMINATED, session_id=str(session_id))}
+    return terminate_session(tenant_id=_tenant_id(request), session_id=session_id)
 
 
 # =============================================================================
-# VOICE MODEL ENDPOINTS (TTS voices)
+# VOICE MODEL ENDPOINTS
 # =============================================================================
 
 
@@ -618,27 +301,6 @@ def terminate_session(request, session_id: UUID):
     summary="List TTS voice models",
     auth=AuthBearer(),
 )
-def list_voice_models(request, active_only: bool = True):
+def list_voice_models_endpoint(request, active_only: bool = True):
     """List available TTS voice models."""
-    queryset = VoiceModel.objects.all()
-    if active_only:
-        queryset = queryset.filter(is_active=True)
-
-    models = queryset.order_by("provider", "name")
-
-    items = [
-        VoiceModelOut(
-            id=m.id,
-            name=m.name,
-            provider=m.provider,
-            voice_id=m.voice_id,
-            language=m.language,
-            gender=m.gender,
-            description=m.description,
-            is_active=m.is_active,
-            is_default=m.is_default,
-        )
-        for m in models
-    ]
-
-    return VoiceModelListOut(items=items, total=len(items))
+    return list_voice_models(active_only=active_only)

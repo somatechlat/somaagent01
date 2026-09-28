@@ -16,12 +16,12 @@ interface SurfaceDef {
 }
 
 const SURFACES: SurfaceDef[] = [
-    { key: 'capsule', icon: '💊', label: 'Capsule' },
-    { key: 'brain', icon: '🧠', label: 'Brain' },
-    { key: 'tools', icon: '🔧', label: 'Tools' },
-    { key: 'files', icon: '📁', label: 'Files' },
-    { key: 'browser', icon: '🌐', label: 'Browser' },
-    { key: 'editor', icon: '📝', label: 'Editor' },
+    { key: 'capsule', icon: 'medication', label: 'Capsule' },
+    { key: 'brain', icon: 'neurology', label: 'Brain' },
+    { key: 'tools', icon: 'build', label: 'Tools' },
+    { key: 'files', icon: 'folder', label: 'Files' },
+    { key: 'browser', icon: 'public', label: 'Browser' },
+    { key: 'editor', icon: 'edit', label: 'Editor' },
 ];
 
 @customElement('saas-right-panel')
@@ -30,6 +30,21 @@ export class SaasRightPanel extends LitElement {
     @state() private _workspaceState = workspaceStore.state;
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: flex;
             height: 100%;
@@ -173,7 +188,7 @@ export class SaasRightPanel extends LitElement {
                             @click=${() => this._selectTab(s.key)}
                             title="${s.label}"
                         >
-                            ${s.icon}
+                            <span class="material-symbols-outlined tab-icon">${s.icon}</span>
                             <span class="tab-tooltip">${s.label}</span>
                         </button>
                     `)}
@@ -195,7 +210,7 @@ export class SaasRightPanel extends LitElement {
                 return html`
                     <div class="surface-header">Tools & Capabilities</div>
                     <div class="placeholder">
-                        <div class="placeholder-icon">🔧</div>
+                        <div class="placeholder-icon material-symbols-outlined">build</div>
                         <div>Tool manager coming soon</div>
                     </div>
                 `;
@@ -203,7 +218,7 @@ export class SaasRightPanel extends LitElement {
                 return html`
                     <div class="surface-header">File Browser</div>
                     <div class="placeholder">
-                        <div class="placeholder-icon">📁</div>
+                        <div class="placeholder-icon material-symbols-outlined">folder</div>
                         <div>File browser coming soon</div>
                     </div>
                 `;
@@ -211,7 +226,7 @@ export class SaasRightPanel extends LitElement {
                 return html`
                     <div class="surface-header">Browser</div>
                     <div class="placeholder">
-                        <div class="placeholder-icon">🌐</div>
+                        <div class="placeholder-icon material-symbols-outlined">public</div>
                         <div>Browser surface coming soon</div>
                     </div>
                 `;
@@ -219,7 +234,7 @@ export class SaasRightPanel extends LitElement {
                 return html`
                     <div class="surface-header">Editor</div>
                     <div class="placeholder">
-                        <div class="placeholder-icon">📝</div>
+                        <div class="placeholder-icon material-symbols-outlined">edit</div>
                         <div>Editor surface coming soon</div>
                     </div>
                 `;

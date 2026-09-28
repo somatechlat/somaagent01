@@ -12,6 +12,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 import '../components/saas-glass-modal.js';
 import '../components/saas-status-badge.js';
 
@@ -19,12 +20,12 @@ interface Tenant {
     id: string;
     name: string;
     slug: string;
-    plan: 'starter' | 'professional' | 'enterprise';
+    tier: string;
     status: 'active' | 'trial' | 'suspended' | 'pending';
     agents: number;
     users: number;
     mrr: number;
-    createdAt: string;
+    created_at: string;
     logoUrl?: string;
 }
 
@@ -37,6 +38,22 @@ export class SaasTenants extends LitElement {
             background: var(--saas-bg-page, #f5f5f5);
             color: var(--saas-text-primary, #1a1a1a);
             font-family: var(--saas-font-sans);
+        }
+
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
         }
 
         * { box-sizing: border-box; }
@@ -276,18 +293,25 @@ export class SaasTenants extends LitElement {
         }
     `;
 
-    @state() private _tenants: Tenant[] = [
-        { id: '1', name: 'Acme Corporation', slug: 'acme-corp', plan: 'enterprise', status: 'active', agents: 45, users: 1240, mrr: 4500, createdAt: '2024-01-15' },
-        { id: '2', name: 'TechStart Inc', slug: 'techstart', plan: 'professional', status: 'active', agents: 32, users: 890, mrr: 3200, createdAt: '2024-02-20' },
-        { id: '3', name: 'Global Services', slug: 'global-svc', plan: 'enterprise', status: 'active', agents: 28, users: 756, mrr: 2800, createdAt: '2024-03-10' },
-        { id: '4', name: 'Digital Labs', slug: 'digital-labs', plan: 'starter', status: 'trial', agents: 5, users: 45, mrr: 0, createdAt: '2024-11-01' },
-        { id: '5', name: 'Enterprise Co', slug: 'enterprise-co', plan: 'professional', status: 'active', agents: 18, users: 432, mrr: 1800, createdAt: '2024-05-22' },
-        { id: '6', name: 'CloudOps Ltd', slug: 'cloudops', plan: 'starter', status: 'pending', agents: 0, users: 3, mrr: 0, createdAt: '2024-12-20' },
-    ];
-
+    @state() private _tenants: Tenant[] = [];
     @state() private _filter: 'all' | 'active' | 'trial' | 'suspended' = 'all';
     @state() private _selectedTenant: Tenant | null = null;
     @state() private _showModal = false;
+
+    connectedCallback() {
+        super.connectedCallback();
+        this._loadTenants();
+    }
+
+    private async _loadTenants() {
+        try {
+            const data = await apiClient.get<{ items?: Tenant[] }>('/aaas/tenants/');
+            this._tenants = data.items || [];
+        } catch (e) {
+            console.error('Failed to load tenants:', e);
+            this._tenants = [];
+        }
+    }
 
     render() {
         const filteredTenants = this._filter === 'all'
@@ -303,7 +327,7 @@ export class SaasTenants extends LitElement {
                 <div class="header-actions">
                     <input type="text" class="search-input" placeholder="Search tenants...">
                     <button class="btn-primary" @click=${this._openCreateModal}>
-                        <span>+</span> New Tenant
+                        <span class="material-symbols-outlined">add</span> New Tenant
                     </button>
                 </div>
             </header>
@@ -333,7 +357,7 @@ export class SaasTenants extends LitElement {
                                 size="sm"
                             >${tenant.status}</saas-status-badge>
                         </div>
-                        <span class="plan-badge ${tenant.plan}">${tenant.plan}</span>
+                        <span class="plan-badge ${tenant.tier}">${tenant.tier}</span>
                         <div class="card-stats">
                             <div class="stat">
                                 <div class="stat-value">${tenant.agents}</div>
@@ -369,7 +393,7 @@ export class SaasTenants extends LitElement {
                         </div>
                         <div class="modal-section">
                             <div class="modal-section-title">Plan</div>
-                            <div class="modal-section-value">${this._selectedTenant.plan}</div>
+                            <div class="modal-section-value">${this._selectedTenant.tier}</div>
                         </div>
                         <div class="modal-section">
                             <div class="modal-section-title">Agents</div>
@@ -385,7 +409,7 @@ export class SaasTenants extends LitElement {
                         </div>
                         <div class="modal-section">
                             <div class="modal-section-title">Created</div>
-                            <div class="modal-section-value">${this._selectedTenant.createdAt}</div>
+                            <div class="modal-section-value">${this._selectedTenant.created_at}</div>
                         </div>
                     </div>
                 ` : ''}

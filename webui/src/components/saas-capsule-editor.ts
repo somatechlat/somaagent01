@@ -14,6 +14,21 @@ export class SaasCapsuleEditor extends LitElement {
     @state() private _neuromodulators = { dopamine: 0.72, serotonin: 0.95, noradrenaline: 0.18, acetylcholine: 0.51 };
 
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
         :host {
             display: block;
         }
@@ -327,7 +342,7 @@ export class SaasCapsuleEditor extends LitElement {
                     <label class="field-label">Constitution</label>
                     <input type="text" value="default-constitution-v1" readonly />
                 </div>
-                <div style="font-size:13px;color:var(--aaas-success);margin-top:8px;">✓ Certified (Ed25519)</div>
+                <div style="font-size:13px;color:var(--aaas-success);margin-top:8px;"><span class="material-symbols-outlined">check_circle</span> Certified (Ed25519)</div>
             </div>
         `;
     }
@@ -354,10 +369,10 @@ export class SaasCapsuleEditor extends LitElement {
             ${this._activeTab === 'governance' ? this._renderGovernance() : ''}
 
             <div class="actions">
-                <button class="btn btn-primary">💾 Save Draft</button>
-                <button class="btn btn-secondary">✅ Certify</button>
-                <button class="btn btn-secondary">📤 Export</button>
-                <button class="btn btn-danger">🗑 Archive</button>
+                <button class="btn btn-primary"><span class="material-symbols-outlined">save</span> Save Draft</button>
+                <button class="btn btn-secondary"><span class="material-symbols-outlined">check_circle</span> Certify</button>
+                <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Export</button>
+                <button class="btn btn-danger"><span class="material-symbols-outlined">delete</span> Archive</button>
             </div>
         `;
     }

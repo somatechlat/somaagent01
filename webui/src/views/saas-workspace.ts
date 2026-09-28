@@ -25,6 +25,22 @@ export class SaasWorkspace extends LitElement {
             font-family: var(--aaas-font-sans, 'Inter', sans-serif);
         }
 
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
         .workspace {
             display: flex;
             width: 100%;
@@ -172,7 +188,7 @@ export class SaasWorkspace extends LitElement {
                         @mousedown=${this._onResizeStart}
                     ></div>
                     <div class="panel-toggle" @click=${this._togglePanel} title="Toggle Toolkit">
-                        ${this._rightPanelOpen ? '»' : '«'}
+                        <span class="material-symbols-outlined">${this._rightPanelOpen ? 'panel_close' : 'panel_open'}</span>
                     </div>
                     <div class="panel-content">
                         ${this._rightPanelOpen ? html`<saas-right-panel></saas-right-panel>` : ''}

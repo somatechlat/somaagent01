@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses existing /api/v2/saas/audit endpoints
+ * - Uses existing /api/v2/aaas/audit endpoints
  * - Permission-aware (audit:view)
  * - Light theme, minimal, professional
  * - Material Symbols icons
@@ -19,6 +19,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface AuditLogEntry {
     id: string;
@@ -313,11 +314,6 @@ export class SaasAuditDashboard extends LitElement {
         this.loadData();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadData() {
         this.loading = true;
         try {
@@ -339,34 +335,22 @@ export class SaasAuditDashboard extends LitElement {
         if (this.actionFilter) params.set('action', this.actionFilter);
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
 
-        const res = await fetch(`/api/v2/saas/audit?${params}`, { headers: this.getAuthHeaders() });
-        if (res.ok) {
-            const data = await res.json();
-            this.logs = data.items || [];
-            this.total = data.total || 0;
-        }
+        const data = await apiClient.get<{ items?: AuditLogEntry[]; total?: number }>(`/aaas/audit?${params}`);
+        this.logs = data.items || [];
+        this.total = data.total || 0;
     }
 
     private async fetchStats() {
-        const res = await fetch('/api/v2/saas/audit/stats', { headers: this.getAuthHeaders() });
-        if (res.ok) {
-            this.stats = await res.json();
-        }
+        this.stats = await apiClient.get<AuditStats>('/aaas/audit/stats');
     }
 
     private async fetchFilters() {
-        const [actionsRes, typesRes] = await Promise.all([
-            fetch('/api/v2/saas/audit/actions', { headers: this.getAuthHeaders() }),
-            fetch('/api/v2/saas/audit/resource-types', { headers: this.getAuthHeaders() }),
+        const [actionsData, typesData] = await Promise.all([
+            apiClient.get<{ actions?: string[] }>('/aaas/audit/actions'),
+            apiClient.get<{ resource_types?: string[] }>('/aaas/audit/resource-types'),
         ]);
-        if (actionsRes.ok) {
-            const data = await actionsRes.json();
-            this.actions = data.actions || [];
-        }
-        if (typesRes.ok) {
-            const data = await typesRes.json();
-            this.resourceTypes = data.resource_types || [];
-        }
+        this.actions = actionsData.actions || [];
+        this.resourceTypes = typesData.resource_types || [];
     }
 
     private async exportCsv() {
@@ -374,7 +358,7 @@ export class SaasAuditDashboard extends LitElement {
         if (this.actionFilter) params.set('action', this.actionFilter);
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
 
-        window.location.href = `/api/v2/saas/audit/export?${params}`;
+        window.location.href = `/api/v2/aaas/audit/export?${params}`;
     }
 
     private getActionBadgeClass(action: string): string {

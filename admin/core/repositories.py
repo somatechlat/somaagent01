@@ -103,17 +103,6 @@ class RepositoryManager:
         """Get Capability manager for tool registry."""
         return Capability.objects
 
-    # --- PENDING MIGRATIONS ---
-
-    def get_attachments_store(self) -> Any:
-        """Attachments documentation pending final schema definition."""
-        raise NotImplementedError("AttachmentsStore migration to Django is in progress.")
-
-    def get_export_job_store(self) -> Any:
-        """Export system pending final Django integration."""
-        raise NotImplementedError("ExportJobStore migration to Django is in progress.")
-
-
 # Global instance
 _repository_manager: Optional[RepositoryManager] = None
 

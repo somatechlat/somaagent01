@@ -8,10 +8,10 @@ from ninja import Router
 from admin.agents.api.agents import router as agents_router
 from admin.agents.api.core import (
     get_multimodal_config,
-    MultimodalConfig,
     router as core_router,
     update_multimodal_config,
 )
+from admin.agents.api.schemas import MultimodalConfig
 
 # Master router for agents domain
 router = Router(tags=["agents"])

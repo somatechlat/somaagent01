@@ -1,93 +1,28 @@
-"""Session Manager for Redis-backed user sessions."""
+"""Session Manager for Redis-backed user sessions.
+
+This module exposes a high-level facade over session storage
+(:mod:`admin.common.session_store`) and session security
+(:mod:`admin.common.session_security`).
+"""
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import uuid
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from typing import Optional
 
-import redis.asyncio as redis
-from prometheus_client import Counter, Gauge, Histogram
+from admin.common.session_security import PermissionResolver
+from admin.common.session_store import (
+    ACTIVE_SESSIONS,
+    RedisSessionStore,
+    SESSION_CREATED,
+    SESSION_DELETED,
+    SESSION_OPERATION_DURATION,
+    SESSION_RETRIEVED,
+    Session,
+)
 
 logger = logging.getLogger(__name__)
-
-# =============================================================================
-# PROMETHEUS METRICS
-# =============================================================================
-
-SESSION_CREATED = Counter(
-    "session_created_total",
-    "Total sessions created",
-    labelnames=("tenant_id",),
-)
-SESSION_RETRIEVED = Counter(
-    "session_retrieved_total",
-    "Total session retrievals",
-    labelnames=("result",),
-)
-SESSION_DELETED = Counter(
-    "session_deleted_total",
-    "Total sessions deleted",
-    labelnames=("reason",),
-)
-ACTIVE_SESSIONS = Gauge(
-    "active_sessions",
-    "Current active sessions estimate",
-)
-SESSION_OPERATION_DURATION = Histogram(
-    "session_operation_duration_seconds",
-    "Session operation duration",
-    labelnames=("operation",),
-)
-
-
-# =============================================================================
-# DATA CLASSES
-# =============================================================================
-
-
-@dataclass
-class Session:
-    """User session data stored in Redis.
-
-    Per design.md Section 5.1 Session Creation.
-    """
-
-    session_id: str
-    user_id: str
-    tenant_id: str
-    email: str
-    roles: list[str] = field(default_factory=list)
-    permissions: list[str] = field(default_factory=list)
-    created_at: str = ""
-    last_activity: str = ""
-    ip_address: str = ""
-    user_agent: str = ""
-
-    def __post_init__(self):
-        """Execute post init  ."""
-
-        if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).isoformat()
-        if not self.last_activity:
-            self.last_activity = self.created_at
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for Redis storage."""
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "Session":
-        """Create Session from dictionary."""
-        return cls(**data)
-
-    def update_activity(self) -> None:
-        """Update last_activity timestamp."""
-        self.last_activity = datetime.now(timezone.utc).isoformat()
 
 
 # =============================================================================
@@ -110,14 +45,9 @@ class SessionManager:
     """
 
     SESSION_TTL = 900  # 15 minutes per design.md
-    SESSION_PREFIX = "session:"
-    CONFIG_KEY = "session:config:global"
-    DEFAULT_CONFIG = {
-        "session_timeout_minutes": 15,
-        "max_sessions_per_user": 5,
-        "require_mfa_reauthentication": True,
-        "session_cookie_secure": True,
-    }
+    SESSION_PREFIX = RedisSessionStore.SESSION_PREFIX
+    CONFIG_KEY = RedisSessionStore.CONFIG_KEY
+    DEFAULT_CONFIG = RedisSessionStore.DEFAULT_CONFIG
 
     def __init__(
         self,
@@ -134,54 +64,42 @@ class SessionManager:
             from config.settings_registry import SettingsRegistry
 
             settings = SettingsRegistry.get()
-            self.redis_url = redis_url or settings.redis_url
+            resolved_redis_url = redis_url or settings.redis_url
         except Exception:
-            self.redis_url = redis_url or os.getenv("REDIS_URL")
+            resolved_redis_url = redis_url or os.getenv("REDIS_URL")
 
-            if not self.redis_url:
-
+            if not resolved_redis_url:
                 raise ValueError("REDIS_URL is required")
+
+        self.redis_url = resolved_redis_url
         self.session_ttl = session_ttl
-        self._redis: Optional[redis.Redis] = None
-        self._connected = False
+        self._store = RedisSessionStore(
+            redis_url=resolved_redis_url,
+            session_ttl=session_ttl,
+        )
+        self._security = PermissionResolver()
 
     async def connect(self) -> None:
         """Connect to Redis."""
-        if not self._connected:
-            self._redis = redis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-            )
-            await self._redis.ping()
-            self._connected = True
-            logger.info('SessionManager connected to Redis: %s', self.redis_url)
+        await self._store.connect()
 
     async def close(self) -> None:
         """Close Redis connection."""
-        if self._redis:
-            await self._redis.close()
-            self._connected = False
-            logger.info("SessionManager disconnected from Redis")
-
-    async def _ensure_connected(self) -> None:
-        """Ensure Redis connection is established."""
-        if not self._connected:
-            await self.connect()
+        await self._store.close()
 
     def _make_key(self, user_id: str, session_id: str) -> str:
         """Build Redis key for session.
 
         Format: session:{user_id}:{session_id}
         """
-        return f"{self.SESSION_PREFIX}{user_id}:{session_id}"
+        return self._store._make_key(user_id, session_id)
 
     def _make_user_pattern(self, user_id: str) -> str:
         """Build Redis key pattern for all user sessions.
 
         Format: session:{user_id}:*
         """
-        return f"{self.SESSION_PREFIX}{user_id}:*"
+        return self._store._make_user_pattern(user_id)
 
     async def create_session(
         self,
@@ -212,35 +130,22 @@ class SessionManager:
         Returns:
             Created Session object
         """
-        await self._ensure_connected()
-        assert self._redis is not None
+        import uuid
 
-        with SESSION_OPERATION_DURATION.labels("create").time():
-            session_id = str(uuid.uuid4())
+        session_id = str(uuid.uuid4())
+        session = Session(
+            session_id=session_id,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            email=email,
+            roles=roles,
+            permissions=permissions,
+            ip_address=ip_address,
+            user_agent=user_agent[:500] if user_agent else "",  # Truncate long user agents
+        )
 
-            session = Session(
-                session_id=session_id,
-                user_id=user_id,
-                tenant_id=tenant_id,
-                email=email,
-                roles=roles,
-                permissions=permissions,
-                ip_address=ip_address,
-                user_agent=user_agent[:500] if user_agent else "",  # Truncate long user agents
-            )
-
-            key = self._make_key(user_id, session_id)
-
-            await self._redis.setex(
-                key,
-                self.session_ttl,
-                json.dumps(session.to_dict()),
-            )
-
-            SESSION_CREATED.labels(tenant_id).inc()
-            logger.info('Session created: user=%s, session=%s, tenant=%s, ttl=%ss', user_id, session_id, tenant_id, self.session_ttl)
-
-            return session
+        await self._store.create(session)
+        return session
 
     async def get_session(self, user_id: str, session_id: str) -> Optional[Session]:
         """Retrieve session from Redis.
@@ -252,27 +157,7 @@ class SessionManager:
         Returns:
             Session if found and valid, None otherwise
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        with SESSION_OPERATION_DURATION.labels("get").time():
-            key = self._make_key(user_id, session_id)
-
-            data = await self._redis.get(key)
-
-            if data is None:
-                SESSION_RETRIEVED.labels("not_found").inc()
-                logger.debug('Session not found: %s', key)
-                return None
-
-            try:
-                session = Session.from_dict(json.loads(data))
-                SESSION_RETRIEVED.labels("found").inc()
-                return session
-            except (json.JSONDecodeError, TypeError, KeyError) as e:
-                SESSION_RETRIEVED.labels("invalid").inc()
-                logger.warning('Invalid session data for %s: %s', key, e)
-                return None
+        return await self._store.get(user_id, session_id)
 
     async def get_session_by_id(self, session_id: str) -> Optional[Session]:
         """Retrieve session by session_id only (scans for user_id).
@@ -285,26 +170,7 @@ class SessionManager:
         Returns:
             Session if found, None otherwise
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        with SESSION_OPERATION_DURATION.labels("get_by_id").time():
-            # Scan for matching session
-            pattern = f"{self.SESSION_PREFIX}*:{session_id}"
-
-            async for key in self._redis.scan_iter(match=pattern, count=100):
-                data = await self._redis.get(key)
-                if data:
-                    try:
-                        session = Session.from_dict(json.loads(data))
-                        if session.session_id == session_id:
-                            SESSION_RETRIEVED.labels("found").inc()
-                            return session
-                    except (json.JSONDecodeError, TypeError, KeyError):
-                        continue
-
-            SESSION_RETRIEVED.labels("not_found").inc()
-            return None
+        return await self._store.get_by_id(session_id)
 
     async def update_activity(self, user_id: str, session_id: str) -> bool:
         """Update last_activity and extend TTL.
@@ -320,31 +186,7 @@ class SessionManager:
         Returns:
             True if session was updated, False if not found
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        with SESSION_OPERATION_DURATION.labels("update_activity").time():
-            key = self._make_key(user_id, session_id)
-
-            data = await self._redis.get(key)
-            if data is None:
-                return False
-
-            try:
-                session = Session.from_dict(json.loads(data))
-                session.update_activity()
-
-                # Update with extended TTL
-                await self._redis.setex(
-                    key,
-                    self.session_ttl,
-                    json.dumps(session.to_dict()),
-                )
-
-                return True
-            except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning('Failed to update session %s: %s', key, e)
-                return False
+        return await self._store.update_activity(user_id, session_id)
 
     async def delete_session(self, user_id: str, session_id: str) -> bool:
         """Delete session from Redis.
@@ -356,20 +198,7 @@ class SessionManager:
         Returns:
             True if session was deleted, False if not found
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        with SESSION_OPERATION_DURATION.labels("delete").time():
-            key = self._make_key(user_id, session_id)
-
-            deleted = await self._redis.delete(key)
-
-            if deleted:
-                SESSION_DELETED.labels("explicit").inc()
-                logger.info('Session deleted: %s', key)
-                return True
-
-            return False
+        return await self._store.delete(user_id, session_id)
 
     async def delete_user_sessions(self, user_id: str) -> int:
         """Delete all sessions for a user.
@@ -385,24 +214,7 @@ class SessionManager:
         Returns:
             Number of sessions deleted
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        with SESSION_OPERATION_DURATION.labels("delete_all").time():
-            pattern = self._make_user_pattern(user_id)
-
-            deleted_count = 0
-            keys_to_delete = []
-
-            async for key in self._redis.scan_iter(match=pattern, count=100):
-                keys_to_delete.append(key)
-
-            if keys_to_delete:
-                deleted_count = await self._redis.delete(*keys_to_delete)
-                SESSION_DELETED.labels("bulk").inc(deleted_count)
-                logger.info('Deleted %s sessions for user %s', deleted_count, user_id)
-
-            return deleted_count
+        return await self._store.delete_user_sessions(user_id)
 
     async def count_user_sessions(self, user_id: str) -> int:
         """Count active sessions for a user.
@@ -413,58 +225,15 @@ class SessionManager:
         Returns:
             Number of active sessions
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        pattern = self._make_user_pattern(user_id)
-        count = 0
-
-        async for _ in self._redis.scan_iter(match=pattern, count=100):
-            count += 1
-
-        return count
+        return await self._store.count_user_sessions(user_id)
 
     async def list_sessions(self, user_id: str) -> list[Session]:
         """List all active sessions for a user."""
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        sessions: list[Session] = []
-        pattern = self._make_user_pattern(user_id)
-
-        async for key in self._redis.scan_iter(match=pattern, count=100):
-            data = await self._redis.get(key)
-            if not data:
-                continue
-            try:
-                sessions.append(Session.from_dict(json.loads(data)))
-            except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning('Invalid session data for %s: %s', key, e)
-                continue
-
-        return sessions
+        return await self._store.list_sessions(user_id)
 
     async def list_all_sessions(self, limit: int = 100) -> list[Session]:
         """List active sessions across all users (admin use)."""
-        await self._ensure_connected()
-        assert self._redis is not None
-
-        sessions: list[Session] = []
-        pattern = f"{self.SESSION_PREFIX}*"
-
-        async for key in self._redis.scan_iter(match=pattern, count=100):
-            if len(sessions) >= limit:
-                break
-            data = await self._redis.get(key)
-            if not data:
-                continue
-            try:
-                sessions.append(Session.from_dict(json.loads(data)))
-            except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning('Invalid session data for %s: %s', key, e)
-                continue
-
-        return sessions
+        return await self._store.list_all_sessions(limit)
 
     async def get_config(self) -> dict:
         """Read session configuration from Redis.
@@ -472,19 +241,7 @@ class SessionManager:
         Returns:
             Dict with session configuration. Falls back to DEFAULT_CONFIG.
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-        data = await self._redis.get(self.CONFIG_KEY)
-        if data:
-            try:
-                stored = json.loads(data)
-                # Merge with defaults to ensure all keys present
-                config = dict(self.DEFAULT_CONFIG)
-                config.update(stored)
-                return config
-            except json.JSONDecodeError:
-                logger.warning("Invalid session config in Redis, using defaults")
-        return dict(self.DEFAULT_CONFIG)
+        return await self._store.get_config()
 
     async def update_config(self, updates: dict) -> dict:
         """Update session configuration in Redis.
@@ -498,9 +255,7 @@ class SessionManager:
         Returns:
             Updated configuration dict.
         """
-        await self._ensure_connected()
-        assert self._redis is not None
-        current = await self.get_config()
+        current = await self._store.get_config()
 
         # Only allow known keys
         allowed = set(self.DEFAULT_CONFIG.keys())
@@ -514,9 +269,10 @@ class SessionManager:
         if "session_timeout_minutes" in updates:
             new_ttl = int(updates["session_timeout_minutes"]) * 60
             self.session_ttl = new_ttl
+            self._store.session_ttl = new_ttl
             logger.info("Session TTL updated to %s seconds", new_ttl)
 
-        await self._redis.set(self.CONFIG_KEY, json.dumps(current))
+        await self._store.update_config(current)
         logger.info("Session config updated: %s", current)
         return current
 
@@ -541,36 +297,7 @@ class SessionManager:
         Returns:
             List of permission strings
         """
-        permissions = set()
-        try:
-            from config.settings_registry import SettingsRegistry
-
-            settings = SettingsRegistry.get()
-            fail_open = settings.sa01_authz_fail_open
-        except Exception:
-            fail_open = os.getenv("SA01_AUTHZ_FAIL_OPEN", "false").lower() in {"1", "true", "yes", "on"}
-
-        # Try SpiceDB first
-        try:
-            from services.common.spicedb_client import get_spicedb_client
-
-            spicedb = await get_spicedb_client()
-            spicedb_permissions = await spicedb.get_permissions(user_id, tenant_id)
-            permissions.update(spicedb_permissions)
-            logger.debug('SpiceDB permissions resolved: user=%s, permissions=%s', user_id, spicedb_permissions)
-        except Exception as e:
-            # Fail closed by default. Role fallback requires explicit override.
-            if fail_open:
-                logger.warning('SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: %s', e)
-            else:
-                logger.error('SpiceDB unavailable and fail-open disabled; returning no derived permissions: %s', e)
-                return []
-
-        # Add role-based permissions as fallback/supplement
-        role_permissions = self._get_permissions_for_roles(roles)
-        permissions.update(role_permissions)
-
-        return list(permissions)
+        return await self._security.resolve_permissions(user_id, tenant_id, roles)
 
     def _get_permissions_for_roles(self, roles: list[str]) -> list[str]:
         """Get permissions based on roles.
@@ -579,50 +306,7 @@ class SessionManager:
         - Role hierarchy: admin > developer > trainer > user
         - Each role inherits lower role permissions
         """
-        permissions = set()
-
-        role_permission_map = {
-            "admin": [
-                "view",
-                "use",
-                "develop",
-                "train",
-                "administrate",
-                "manage",
-                "agents:create",
-                "agents:delete",
-                "agents:configure",
-                "users:manage",
-                "tenants:manage",
-            ],
-            "developer": [
-                "view",
-                "use",
-                "develop",
-                "train",
-                "agents:create",
-                "agents:configure",
-            ],
-            "trainer": [
-                "view",
-                "use",
-                "train",
-                "agents:train",
-            ],
-            "user": [
-                "view",
-                "use",
-                "conversations:create",
-                "conversations:view",
-            ],
-        }
-
-        for role in roles:
-            role_lower = role.lower()
-            if role_lower in role_permission_map:
-                permissions.update(role_permission_map[role_lower])
-
-        return list(permissions)
+        return self._security._get_permissions_for_roles(roles)
 
     async def get_accessible_agents(
         self,
@@ -640,20 +324,7 @@ class SessionManager:
         Returns:
             List of agent IDs
         """
-        try:
-            from services.common.spicedb_client import get_spicedb_client
-
-            spicedb = await get_spicedb_client()
-            agent_ids = await spicedb.lookup_resources(
-                user_id=user_id,
-                resource_type="agent",
-                permission="view",
-            )
-            logger.debug('Accessible agents resolved: user=%s, count=%s', user_id, len(agent_ids))
-            return agent_ids
-        except Exception as e:
-            logger.warning('SpiceDB lookup failed, returning empty list: %s', e)
-            return []
+        return await self._security.get_accessible_agents(user_id)
 
 
 # =============================================================================
@@ -678,6 +349,11 @@ async def get_session_manager() -> SessionManager:
 
 
 __all__ = [
+    "ACTIVE_SESSIONS",
+    "SESSION_CREATED",
+    "SESSION_DELETED",
+    "SESSION_OPERATION_DURATION",
+    "SESSION_RETRIEVED",
     "Session",
     "SessionManager",
     "get_session_manager",

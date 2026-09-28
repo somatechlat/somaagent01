@@ -10,13 +10,14 @@
  * - Reusable component composition
  *
  * PERSONAS APPLIED:
- * - 🔒 Security Auditor: MFA, sessions
- * - 🎨 UX Consultant: Clean profile layout
- * - 🏗️ Django Architect: API integration
+ * - lock Security Auditor: MFA, sessions
+ * - palette UX Consultant: Clean profile layout
+ * - architecture Django Architect: API integration
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 // Import reusable components
 import '../components/saas-user-profile-card.js';
@@ -47,6 +48,21 @@ interface AdminProfile {
 @customElement('saas-platform-profile')
 export class SaasPlatformProfile extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
       min-height: 100vh;
@@ -320,34 +336,43 @@ export class SaasPlatformProfile extends LitElement {
     private async _loadProfile() {
         this.loading = true;
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/v2/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const data = await apiClient.get<{
+                id: string;
+                email?: string;
+                name?: string;
+                username?: string;
+                avatar_url?: string;
+                role: string;
+                roles?: string[];
+                permissions?: string[];
+                mfa_enabled?: boolean;
+                last_login?: string;
+                session_timeout?: number;
+                active_sessions?: number;
+                api_key_count?: number;
+                notifications?: AdminProfile['notifications'];
+            }>('/auth/me');
 
-            if (res.ok) {
-                const data = await res.json();
-                this.profile = {
-                    id: data.id,
-                    email: data.email || '',
-                    displayName: data.name || data.username || '',
-                    avatarUrl: data.avatar_url,
-                    role: data.role,
-                    roles: data.roles || [],
-                    permissions: data.permissions || [],
-                    mfaEnabled: data.mfa_enabled ?? true,
-                    lastLogin: data.last_login,
-                    sessionTimeout: data.session_timeout ?? 30,
-                    activeSessions: data.active_sessions ?? 1,
-                    apiKeyCount: data.api_key_count ?? 0,
-                    notifications: data.notifications || {
-                        criticalAlerts: true,
-                        billingEvents: true,
-                        weeklyDigest: false,
-                        marketing: false,
-                    },
-                };
-            }
+            this.profile = {
+                id: data.id,
+                email: data.email || '',
+                displayName: data.name || data.username || '',
+                avatarUrl: data.avatar_url,
+                role: data.role,
+                roles: data.roles || [],
+                permissions: data.permissions || [],
+                mfaEnabled: data.mfa_enabled ?? true,
+                lastLogin: data.last_login,
+                sessionTimeout: data.session_timeout ?? 30,
+                activeSessions: data.active_sessions ?? 1,
+                apiKeyCount: data.api_key_count ?? 0,
+                notifications: data.notifications || {
+                    criticalAlerts: true,
+                    billingEvents: true,
+                    weeklyDigest: false,
+                    marketing: false,
+                },
+            };
         } catch (e) {
             console.error('Failed to load profile:', e);
         } finally {
@@ -360,29 +385,19 @@ export class SaasPlatformProfile extends LitElement {
 
         this.saving = true;
         try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch('/api/v2/platform/profile', {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    display_name: this.profile.displayName,
-                    session_timeout: this.profile.sessionTimeout,
-                    notifications: this.profile.notifications,
-                }),
+            await apiClient.put('/platform/profile', {
+                display_name: this.profile.displayName,
+                session_timeout: this.profile.sessionTimeout,
+                notifications: this.profile.notifications,
             });
 
-            if (res.ok) {
-                this.dirty = false;
-                // Show success toast
-                this.dispatchEvent(new CustomEvent('show-toast', {
-                    detail: { type: 'success', message: 'Profile updated successfully' },
-                    bubbles: true,
-                    composed: true,
-                }));
-            }
+            this.dirty = false;
+            // Show success toast
+            this.dispatchEvent(new CustomEvent('show-toast', {
+                detail: { type: 'success', message: 'Profile updated successfully' },
+                bubbles: true,
+                composed: true,
+            }));
         } catch (e) {
             console.error('Failed to save profile:', e);
         } finally {
@@ -437,7 +452,7 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Personal Information -->
         <div class="section">
-          <div class="section-title">📝 Personal Information</div>
+          <div class="section-title"><span class="material-symbols-outlined">edit</span> Personal Information</div>
           
           <div class="avatar-section">
             <div class="avatar-preview">
@@ -476,12 +491,12 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Security -->
         <div class="section">
-          <div class="section-title">🔒 Security</div>
+          <div class="section-title"><span class="material-symbols-outlined">lock</span> Security</div>
           
           <div class="security-item">
             <div class="security-info">
               <span class="security-label">Multi-Factor Authentication</span>
-              <span class="security-value">${this.profile.mfaEnabled ? 'Enabled ✓' : 'Disabled'}</span>
+              <span class="security-value">${this.profile.mfaEnabled ? html`Enabled <span class='material-symbols-outlined'>check_circle</span>` : 'Disabled'}</span>
             </div>
             <button class="btn-secondary">Reconfigure</button>
           </div>
@@ -526,7 +541,7 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Platform Access -->
         <div class="section">
-          <div class="section-title">🛡️ Platform Access</div>
+          <div class="section-title"><span class="material-symbols-outlined">shield</span> Platform Access</div>
           
           <div class="access-grid">
             <div class="access-item">
@@ -548,7 +563,7 @@ export class SaasPlatformProfile extends LitElement {
 
         <!-- Notification Preferences -->
         <div class="section">
-          <div class="section-title">🔔 Notification Preferences</div>
+          <div class="section-title"><span class="material-symbols-outlined">notifications</span> Notification Preferences</div>
           
           <div class="notification-item">
             <span class="notification-label">Critical alerts (downtime, security)</span>

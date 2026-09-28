@@ -205,9 +205,6 @@ class KeycloakService {
         }
 
         this.token = null;
-        localStorage.removeItem('saas_keycloak_token');
-        localStorage.removeItem('saas_auth_token');
-        localStorage.removeItem('saas_user');
         sessionStorage.removeItem('saas_auth_state');
         sessionStorage.removeItem('saas_auth_nonce');
     }

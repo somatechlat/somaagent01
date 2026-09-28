@@ -139,7 +139,6 @@ async def check_keycloak() -> ServiceHealth:
 
 async def check_kafka() -> ServiceHealth:
     """Check Kafka message broker health."""
-    # For now, assume healthy if configured
     kafka_hosts = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None)
     if not kafka_hosts:
         return ServiceHealth(
@@ -148,12 +147,30 @@ async def check_kafka() -> ServiceHealth:
             message="Not configured",
             last_check=timezone.now().isoformat(),
         )
-    return ServiceHealth(
-        name="Kafka",
-        status="healthy",
-        message="Configured",
-        last_check=timezone.now().isoformat(),
-    )
+
+    start = datetime.now()
+    try:
+        from services.common.event_bus import KafkaEventBus, KafkaSettings
+
+        kafka_bus = KafkaEventBus(KafkaSettings.from_env())
+        try:
+            await kafka_bus.healthcheck()
+            latency = (datetime.now() - start).total_seconds() * 1000
+            return ServiceHealth(
+                name="Kafka",
+                status="healthy",
+                latency_ms=round(latency, 2),
+                last_check=timezone.now().isoformat(),
+            )
+        finally:
+            await kafka_bus.close()
+    except Exception as exc:
+        return ServiceHealth(
+            name="Kafka",
+            status="down",
+            message=f"{type(exc).__name__}: {exc}",
+            last_check=timezone.now().isoformat(),
+        )
 
 
 async def check_somabrain() -> ServiceHealth:

@@ -313,7 +313,7 @@ export class SaasTenantUsers extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this._tenantName = sessionStorage.getItem('saas_tenant_name') || 'Demo Tenant';
+        this._tenantName = sessionStorage.getItem('saas_tenant_name') || '';
         this._loadUsers();
     }
 
@@ -452,17 +452,11 @@ export class SaasTenantUsers extends LitElement {
 
     private async _loadUsers() {
         try {
-            const response = await apiClient.get('/admin/users/');
+            const response = await apiClient.get('/aaas/admin/users/');
             const data = response as { users?: User[] };
             if (data.users) this._users = data.users;
         } catch {
-            this._users = [
-                { id: '1', email: 'jane@company.com', name: 'Jane Smith', role: 'sysadmin', status: 'active', lastActive: '2 min ago' },
-                { id: '2', email: 'bob@company.com', name: 'Bob Johnson', role: 'admin', status: 'active', lastActive: '1 hour ago' },
-                { id: '3', email: 'alice@company.com', name: 'Alice Williams', role: 'developer', status: 'active', lastActive: '30 min ago' },
-                { id: '4', email: 'john@company.com', name: 'John Doe', role: 'trainer', status: 'invited', lastActive: 'Never' },
-                { id: '5', email: 'mary@company.com', name: 'Mary Brown', role: 'member', status: 'active', lastActive: 'Yesterday' },
-            ];
+            this._users = [];
         }
     }
 
@@ -471,7 +465,7 @@ export class SaasTenantUsers extends LitElement {
         const roleEl = this.shadowRoot?.getElementById('inviteRole') as HTMLSelectElement;
 
         try {
-            await apiClient.post('/admin/users/', { email: emailEl.value, role: roleEl.value });
+            await apiClient.post('/aaas/admin/users/', { email: emailEl.value, role: roleEl.value });
             this._showModal = false;
             await this._loadUsers();
         } catch (error) {

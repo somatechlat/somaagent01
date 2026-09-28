@@ -12,7 +12,7 @@
  * Usage:
  * <entity-manager
  *   entity="tenant"
- *   api-base="/api/v2/saas"
+ *   api-base="/api/v2/aaas"
  *   .columns=${tenantColumns}
  *   .permissions=${userPermissions}
  * />
@@ -20,6 +20,7 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 import type { TableColumn } from './saas-data-table.js';
 import type { ActionItem } from './saas-action-menu.js';
 import './saas-data-table.js';
@@ -350,21 +351,17 @@ export class EntityManager extends LitElement {
             this.permissions.includes(`${this.entity}:*`);
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('saas_auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    private apiPath(suffix: string): string {
+        const base = this.apiBase.replace(/^\/api\/v2/, '');
+        return `${base}/${suffix}`;
     }
 
     async fetchData() {
         this.loading = true;
         try {
-            const url = `${this.apiBase}/${this.entity}s`;
-            const res = await fetch(url, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const json = await res.json();
-                // Handle both array and { items: [...] } responses
-                this.data = Array.isArray(json) ? json : (json.items || json.data || []);
-            }
+            const json = await apiClient.get<Record<string, unknown>[] | { items?: Record<string, unknown>[]; data?: Record<string, unknown>[] }>(this.apiPath(`${this.entity}s`));
+            // Handle both array and { items: [...] } responses
+            this.data = Array.isArray(json) ? json : (json.items || json.data || []);
         } catch (err) {
             console.error(`Failed to fetch ${this.entity}s:`, err);
         } finally {
@@ -430,13 +427,8 @@ export class EntityManager extends LitElement {
 
     private async deleteEntity(id: string) {
         try {
-            const res = await fetch(`${this.apiBase}/${this.entity}s/${id}`, {
-                method: 'DELETE',
-                headers: this.getAuthHeaders(),
-            });
-            if (res.ok) {
-                this.data = this.data.filter(item => item.id !== id);
-            }
+            await apiClient.delete(this.apiPath(`${this.entity}s/${id}`));
+            this.data = this.data.filter(item => item.id !== id);
         } catch (err) {
             console.error(`Failed to delete ${this.entity}:`, err);
         }

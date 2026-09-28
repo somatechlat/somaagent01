@@ -18,12 +18,24 @@ from admin.aaas.models import Agent, Tenant
 router = Router()
 
 
+# Mapping of AuditLog action prefixes to dashboard event types and messages.
+_AUDIT_EVENT_TYPES = {
+    "tenant.": ("tenant_event", "Tenant activity"),
+    "agent.": ("agent_event", "Agent activity"),
+    "user.": ("user_event", "User activity"),
+    "impersonation.": ("security_event", "Security activity"),
+    "tier.": ("billing_event", "Billing activity"),
+}
+
+
 @router.get("", response=DashboardResponse)
-def get_dashboard(request):
+async def get_dashboard(request):
     """
     Get complete AAAS Super Admin dashboard data.
     Aggregates data from Lago, PostgreSQL, and internal services.
     """
+    from asgiref.sync import sync_to_async
+
     # Real database queries
     total_tenants = Tenant.objects.count()
     active_tenants = Tenant.objects.filter(status="active").count()
@@ -76,14 +88,30 @@ def get_dashboard(request):
         for t in top_tenants_qs
     ]
 
-    recent_events = [
-        RecentEvent(
-            id="1",
-            type="tenant_created",
-            message="New tenant signed up",
-            timestamp="2024-01-15T10:30:00Z",
-        )
-    ]
+    from admin.aaas.models import AuditLog
+
+    @sync_to_async
+    def _recent_events():
+        events = []
+        for audit in AuditLog.objects.order_by("-created_at")[:10]:
+            event_type = "platform_event"
+            message = audit.action
+            for prefix, (evt_type, evt_msg) in _AUDIT_EVENT_TYPES.items():
+                if audit.action and audit.action.startswith(prefix):
+                    event_type = evt_type
+                    message = f"{evt_msg}: {audit.action}"
+                    break
+            events.append(
+                RecentEvent(
+                    id=str(audit.id),
+                    type=event_type,
+                    message=message,
+                    timestamp=audit.created_at.isoformat() if audit.created_at else "",
+                )
+            )
+        return events
+
+    recent_events = await _recent_events()
 
     return DashboardResponse(
         metrics=metrics,

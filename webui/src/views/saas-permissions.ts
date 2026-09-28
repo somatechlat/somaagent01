@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 // Components imported dynamically as needed
 
 // Interface Definitions based on API
@@ -45,6 +46,21 @@ export class SaasPermissions extends LitElement {
   @state() checking = false;
 
   static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: block;
       height: 100vh;
@@ -232,27 +248,17 @@ export class SaasPermissions extends LitElement {
   async fetchData() {
     try {
       this.loading = true;
-      const token = localStorage.getItem('auth_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
 
       // Parallel fetch
-      const [rolesRes, permsRes] = await Promise.all([
-        fetch('/api/v2/permissions/roles', { headers }),
-        fetch('/api/v2/permissions/permissions', { headers }),
+      const [rolesData, permsData] = await Promise.all([
+        apiClient.get<{ roles: Role[] }>('/permissions/roles'),
+        apiClient.get<{ permissions: Permission[] }>('/permissions/permissions'),
       ]);
-
-      if (!rolesRes.ok || !permsRes.ok) throw new Error('Failed to fetch data');
-
-      const rolesData = await rolesRes.json();
-      const permsData = await permsRes.json();
 
       this.roles = rolesData.roles;
       this.permissions = permsData.permissions;
     } catch (err: any) {
-      this.error = err.message;
+      this.error = err.message || 'Failed to fetch data';
     } finally {
       this.loading = false;
     }
@@ -265,20 +271,10 @@ export class SaasPermissions extends LitElement {
     this.checkResult = null;
 
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch('/api/v2/permissions/check', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: this.checkUserId,
-          permission: this.checkPermission
-        })
+      const data = await apiClient.post<{ allowed: boolean; reason: string }>('/permissions/check', {
+        user_id: this.checkUserId,
+        permission: this.checkPermission
       });
-
-      const data = await res.json();
       this.checkResult = data;
     } catch (err) {
       this.checkResult = { allowed: false, reason: 'API Error' };
@@ -380,7 +376,7 @@ export class SaasPermissions extends LitElement {
                 ${this.roles.map(role => html`
                   <td style="text-align:center;">
                     ${this.hasPermission(role, perm)
-        ? html`<span class="check-mark">✓</span>`
+        ? html`<span class="material-symbols-outlined check-mark">check_circle</span>`
         : html`<span class="dash-mark">-</span>`}
                   </td>
                 `)}

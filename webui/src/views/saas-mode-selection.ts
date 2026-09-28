@@ -63,6 +63,16 @@ export class SaasModeSelection extends LitElement {
             -webkit-font-smoothing: antialiased;
         }
 
+        .error-banner {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
         .container {
             width: 100%;
             max-width: 800px;
@@ -416,8 +426,9 @@ export class SaasModeSelection extends LitElement {
     @state() private _tenants: Tenant[] = [];
     @state() private _searchQuery = '';
     @state() private _isLoading = false;
-    @state() private _userName = 'Admin User';
-    @state() private _userEmail = 'admin@somatech.dev';
+    @state() private _error = '';
+    @state() private _userName = '';
+    @state() private _userEmail = '';
 
     async connectedCallback() {
         super.connectedCallback();
@@ -451,6 +462,8 @@ export class SaasModeSelection extends LitElement {
                     <div class="user-greeting">Signed in as</div>
                     <div class="user-name">${this._userName} (${this._userEmail})</div>
                 </div>
+
+                ${this._error ? html`<div class="error-banner">${this._error}</div>` : ''}
 
                 <!-- Mode Selection -->
                 <div class="mode-grid">
@@ -545,30 +558,22 @@ export class SaasModeSelection extends LitElement {
 
     private async _loadUserAndTenants() {
         this._isLoading = true;
+        this._error = '';
 
         try {
-            // Load user from localStorage
-            const userStr = localStorage.getItem('saas_user');
+            // Load user from sessionStorage
+            const userStr = sessionStorage.getItem('saas_user');
             if (userStr) {
                 const user = JSON.parse(userStr);
-                this._userName = user.name || 'Admin User';
-                this._userEmail = user.email || 'admin@somatech.dev';
+                this._userName = user.name || '';
+                this._userEmail = user.email || '';
             }
 
-            try {
-                const response = await apiClient.get('/saas/tenants/') as { tenants?: Tenant[] };
-                if (response.tenants) {
-                    this._tenants = response.tenants;
-                }
-            } catch {
-                // Demo data if API not available
-                this._tenants = [
-                    { id: '1', name: 'Acme Corporation', slug: 'acme', tier: 'enterprise', agentCount: 12, userCount: 45, status: 'active' },
-                    { id: '2', name: 'TechStart Inc', slug: 'techstart', tier: 'team', agentCount: 5, userCount: 18, status: 'active' },
-                    { id: '3', name: 'Globex Industries', slug: 'globex', tier: 'starter', agentCount: 2, userCount: 8, status: 'active' },
-                    { id: '4', name: 'Demo Company', slug: 'demo', tier: 'free', agentCount: 1, userCount: 3, status: 'active' },
-                ];
-            }
+            const response = await apiClient.get('/aaas/tenants/') as { tenants?: Tenant[] };
+            this._tenants = response.tenants || [];
+        } catch {
+            this._error = 'Failed to load tenants';
+            this._tenants = [];
         } finally {
             this._isLoading = false;
         }
@@ -607,8 +612,7 @@ export class SaasModeSelection extends LitElement {
     }
 
     private _logout() {
-        localStorage.removeItem('saas_auth_token');
-        localStorage.removeItem('saas_user');
+        sessionStorage.removeItem('saas_user');
         sessionStorage.removeItem('saas_mode');
         sessionStorage.removeItem('saas_tenant_id');
         window.location.href = '/login';

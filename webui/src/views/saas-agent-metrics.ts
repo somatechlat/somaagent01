@@ -9,13 +9,14 @@
  * - Per SRS-METRICS-DASHBOARDS.md Section 3.2
  *
  * 7-Persona Implementation:
- * - 📈 PM: Usage tracking, quota visualization
- * - 🏦 CFO: Cost breakdown, budget tracking
- * - 🏗️ Architect: Real-time metric aggregation
+ * - monitoring PM: Usage tracking, quota visualization
+ * - account_balance CFO: Cost breakdown, budget tracking
+ * - architecture Architect: Real-time metric aggregation
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 
 interface UsageMetric {
     label: string;
@@ -43,6 +44,21 @@ interface CostBreakdown {
 @customElement('saas-agent-metrics')
 export class SaasAgentMetrics extends LitElement {
     static styles = css`
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
     :host {
       display: flex;
       height: 100vh;
@@ -193,12 +209,58 @@ export class SaasAgentMetrics extends LitElement {
       background: #0d0d0d;
       border-radius: 8px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: flex-end;
+      justify-content: space-around;
+      padding: 16px;
+      gap: 12px;
       color: #666;
     }
 
+    .bar-chart-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      min-width: 40px;
+    }
+
+    .bar-chart-bar {
+      width: 100%;
+      max-width: 60px;
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+    }
+
+    .bar-chart-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    .bar-chart-value {
+      font-size: 11px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+
     .loading { display: flex; justify-content: center; align-items: center; padding: 60px; color: #666; }
+
+    .error-banner {
+      padding: 12px 16px;
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
 
     @media (max-width: 1200px) {
       .usage-grid { grid-template-columns: repeat(2, 1fr); }
@@ -210,56 +272,29 @@ export class SaasAgentMetrics extends LitElement {
     @state() private usage: UsageMetric[] = [];
     @state() private agents: AgentUsage[] = [];
     @state() private costs: CostBreakdown[] = [];
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
         this.loadMetrics();
     }
 
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    }
-
     private async loadMetrics() {
         this.loading = true;
+        this.error = '';
         try {
-            // Try to fetch from real API
-            const res = await fetch('/api/v2/observability/tenant-usage', { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.usage = data.usage || [];
-                this.agents = data.agents || [];
-                this.costs = data.costs || [];
-            } else {
-                this.loadMockData();
-            }
-        } catch {
-            this.loadMockData();
+            const data = await apiClient.get<{ usage?: UsageMetric[]; agents?: AgentUsage[]; costs?: CostBreakdown[] }>('/observability/tenant-usage');
+            this.usage = data.usage || [];
+            this.agents = data.agents || [];
+            this.costs = data.costs || [];
+        } catch (e) {
+            this.error = 'Unable to load metrics. Please try again later.';
+            this.usage = [];
+            this.agents = [];
+            this.costs = [];
         } finally {
             this.loading = false;
         }
-    }
-
-    private loadMockData() {
-        this.usage = [
-            { label: 'API Calls', current: 52345, limit: 100000, unit: '', percentage: 52 },
-            { label: 'LLM Tokens', current: 523000, limit: 1000000, unit: 'K', percentage: 52 },
-            { label: 'Images', current: 312, limit: 500, unit: '', percentage: 62 },
-            { label: 'Voice Minutes', current: 245, limit: 500, unit: 'min', percentage: 49 },
-        ];
-
-        this.agents = [
-            { id: '1', name: 'Support-AI', requests: 23456, tokens: 245000, images: 156, voice_minutes: 120 },
-            { id: '2', name: 'Sales-Bot', requests: 18234, tokens: 178000, images: 98, voice_minutes: 80 },
-            { id: '3', name: 'Internal-AI', requests: 10655, tokens: 100000, images: 58, voice_minutes: 45 },
-        ];
-
-        this.costs = [
-            { category: 'LLM Tokens', amount: 156.78, details: 'GPT-4o: $120, Claude: $36.78' },
-            { category: 'Images', amount: 12.48, details: 'DALLE 3 @ $0.04/image' },
-            { category: 'Voice', amount: 24.50, details: 'Whisper + Kokoro' },
-        ];
     }
 
     private getProgressClass(percentage: number): string {
@@ -272,6 +307,31 @@ export class SaasAgentMetrics extends LitElement {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
         return num.toLocaleString();
+    }
+
+    private _renderUsageBarChart() {
+        if (this.usage.length === 0) {
+            return html`
+                <div class="chart-container" style="align-items: center; justify-content: center;">
+                    No usage data available
+                </div>
+            `;
+        }
+        const max = Math.max(...this.usage.map(u => u.current || 0), 1);
+        return html`
+            <div class="chart-container">
+                ${this.usage.map(u => {
+                    const height = Math.max((u.current / max) * 100, 4);
+                    return html`
+                        <div class="bar-chart-item" title="${u.label}: ${u.current}">
+                            <div class="bar-chart-value">${this.formatNumber(u.current)}</div>
+                            <div class="bar-chart-bar" style="height: ${height}%"></div>
+                            <div class="bar-chart-label">${u.label}</div>
+                        </div>
+                    `;
+                })}
+            </div>
+        `;
     }
 
     private get totalCost(): number {
@@ -287,13 +347,14 @@ export class SaasAgentMetrics extends LitElement {
       <main class="main">
         <header class="header">
           <div>
-            <h1 class="header-title">📊 Agent Metrics</h1>
+            <h1 class="header-title"><span class="material-symbols-outlined">bar_chart</span> Agent Metrics</h1>
             <p class="header-subtitle">Usage and cost breakdown for your agents</p>
           </div>
           <input type="month" class="date-range" value="2025-12">
         </header>
 
         <div class="content">
+          ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
           ${this.loading ? html`<div class="loading">Loading metrics...</div>` : html`
             <!-- Usage Summary -->
             <div class="usage-grid">
@@ -363,9 +424,7 @@ export class SaasAgentMetrics extends LitElement {
             <div class="section">
               <div class="section-header">Usage Trend (Last 30 Days)</div>
               <div class="section-content">
-                <div class="chart-container">
-                  📈 Connect to Prometheus/Grafana for real-time charts
-                </div>
+                ${this._renderUsageBarChart()}
               </div>
             </div>
           `}
