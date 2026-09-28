@@ -98,7 +98,7 @@ Build the **best AI agent in the world** — a modular, enterprise-grade cogniti
 |---|------|-------------|
 | 5.1 | Implement auth.keycloak module (OIDC, realm, login) | Keycloak auth works |
 | 5.2 | Implement auth.ldap module (LDAP bind, search) | LDAP auth works |
-| 5.3 | Implement billing module (Lago integration, usage tracking) | Billing works |
+| 5.3 | Implement usage tracking and budget enforcement (`admin/core/budget/`) | Usage is metered and limits are enforced |
 | 5.4 | Implement audit module (event logging, log viewer) | Audit works |
 | 5.5 | Implement secrets.vault module (read/write secrets) | Vault works |
 | 5.6 | Build admin dashboard (tenants, users, agents, billing) | Admin page renders |

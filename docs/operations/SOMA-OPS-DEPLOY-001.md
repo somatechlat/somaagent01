@@ -112,8 +112,6 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 | `SA01_CHAT_PROVIDER` | Chat model provider (openrouter/openai) | No | `openrouter` (code default) |
 | `OPENAI_API_KEY` | OpenAI API key | Yes | - |
 | `ANTHROPIC_API_KEY` | Anthropic API key | No | - |
-| `LAGO_API_URL` | Billing (Lago) API URL | No | `http://lago:3000` |
-| `LAGO_API_KEY` | Lago API key | No | - |
 | `SMTP_HOST` | Email server host | No | `smtp.sendgrid.net` |
 | `SMTP_PORT` | Email server port | No | `587` |
 | `SMTP_USER` | Email username | No | - |

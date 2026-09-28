@@ -61,7 +61,7 @@ Bring the Soma Cognitive Triad (SomaAgent01 + SomaBrain + SomaFractalMemory) fro
 ### 1.5 Business Case
 - **Market Need**: Enterprise customers need autonomous AI agents with persistent memory, cognitive reasoning, and multi-tenant isolation
 - **Competitive Advantage**: The Soma Triad's biologically-inspired architecture (HRR vectors, neuromodulation, sleep consolidation) is unique in the market
-- **Revenue Model**: AAAS subscription tiers (Starter, Pro, Enterprise) with per-tenant billing via Lago integration
+- **Revenue Model**: AAAS subscription tiers (Starter, Pro, Enterprise) with per-tenant usage metering and plan limits
 
 ---
 

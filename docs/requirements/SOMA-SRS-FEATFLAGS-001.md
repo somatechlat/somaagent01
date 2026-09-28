@@ -74,7 +74,6 @@ This document specifies the Feature Toggle system for SomaAgent01. It provides a
 
 **Out of scope:**
 - Budget enforcement (see [SOMA-SRS-BUDGET-001.md](./SOMA-SRS-BUDGET-001.md))
-- Billing plan definitions (see [SOMA-SRS-LAGOBILLING-001.md](./SOMA-SRS-LAGOBILLING-001.md))
 - Chat execution logic
 
 ### 1.3 Definitions
@@ -94,7 +93,6 @@ This document specifies the Feature Toggle system for SomaAgent01. It provides a
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
 | REF-001 | SRS-BUDGET-SYSTEM | 1.0 | `docs/requirements/SOMA-SRS-BUDGET-001.md` |
-| REF-002 | SRS-LAGO-BILLING | 1.0 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` |
 | REF-003 | Django Documentation | 4.2 | https://docs.djangoproject.com/en/4.2/ |
 
 ---
@@ -103,7 +101,7 @@ This document specifies the Feature Toggle system for SomaAgent01. It provides a
 
 ### 2.1 Product Perspective
 
-The Feature Toggle system is a cross-cutting capability within SomaAgent01. It is evaluated at request time to determine whether a tenant may access a given feature. It depends on the tenant's plan (from Lago/subscription), credential availability (from Vault), and explicit toggle state (from cache).
+The Feature Toggle system is a cross-cutting capability within SomaAgent01. It is evaluated at request time to determine whether a tenant may access a given feature. It depends on the tenant's plan tier (from `admin/aaas/models/tiers.py`), credential availability (from Vault), and explicit toggle state (from cache).
 
 ### 2.2 Product Functions
 
@@ -137,7 +135,7 @@ The Feature Toggle system is a cross-cutting capability within SomaAgent01. It i
 |----|------------------------|-------------------|
 | AD-001 | Vault is available for credential storage. | Credential-gated features cannot be enabled. |
 | AD-002 | Django cache is available for toggle state storage. | Toggle overrides cannot be persisted. |
-| AD-003 | Plan data is resolvable per tenant (from Lago or local cache). | Plan-locked features cannot be evaluated. |
+| AD-003 | Plan data is resolvable per tenant (from `Tenant.tier`, cached locally). | Plan-locked features cannot be evaluated. |
 
 ---
 
@@ -166,8 +164,7 @@ The Feature Toggle system is a cross-cutting capability within SomaAgent01. It i
 
 | Feature | Code | Default | Dependencies | Credentials | Min Plan |
 |---------|------|---------|--------------|-------------|----------|
-| Billing | `billing` | OFF | None | `LAGO_API_URL`, `LAGO_API_KEY` | None |
-| Budgeting | `budgeting` | OFF | `billing` | None | None |
+| Budgeting | `budgeting` | OFF | None | None | None |
 | Memory | `memory` | ON | None | None | None |
 | Learning | `learning` | OFF | `memory` | None | Starter |
 | Tools | `tools` | ON | None | None | None |
@@ -175,7 +172,6 @@ The Feature Toggle system is a cross-cutting capability within SomaAgent01. It i
 | Images | `images` | OFF | None | `OPENAI_API_KEY` | Starter |
 | Vision | `vision` | OFF | None | `OPENAI_API_KEY` | Starter |
 | RLM | `rlm` | OFF | `memory` | None | Team |
-| Webhooks | `webhooks` | OFF | `billing` | `LAGO_WEBHOOK_SECRET` | None |
 | MCP | `mcp` | OFF | `tools` | None | Team |
 
 **Rationale:** A centralized registry prevents scattered feature checks across the codebase.
@@ -278,7 +274,6 @@ The Agent Settings UI shall display core features as read-only and optional feat
 |-----------|----------|--------|----------------|
 | Django Cache | Redis protocol | Key/value | Redis AUTH |
 | Vault | HTTPS | JSON | Vault token |
-| Lago (plan data) | HTTPS | JSON | `LAGO_API_KEY` |
 
 **Cache Keys**
 

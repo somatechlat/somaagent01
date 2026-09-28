@@ -218,7 +218,7 @@ Agent Zero is a **personal AI agent framework** with 2,972 files, 42 plugins, 75
 | S-06 | OPA policy engine | Enterprise policy |
 | S-07 | Prometheus + OpenTelemetry observability | Production monitoring |
 | S-08 | K8s production manifests (HPA, PDB, netpol) | Production deployment |
-| S-09 | Billing integration (Lago) | Enterprise billing |
+| S-09 | Usage metering & budget enforcement | Enterprise usage limits |
 | S-10 | Circuit breaker pattern | Production resilience |
 | S-11 | ISO-compliant documentation (9 standards) | Enterprise compliance |
 | S-12 | Transactional outbox pattern | Data reliability |

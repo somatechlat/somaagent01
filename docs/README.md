@@ -119,7 +119,7 @@ The rules are in `docs/iso/SOMA-01-DOCS-001.md` §3.3 and are enforced by
 | `—` | SOMA-SRS-CONTEXT-001 | `docs/requirements/SOMA-SRS-CONTEXT-001.md` |
 | `—` | SOMA-SRS-DATAMODELS-001 | `docs/requirements/SOMA-SRS-DATAMODELS-001.md` |
 | `—` | SOMA-SRS-FEATFLAGS-001 | `docs/requirements/SOMA-SRS-FEATFLAGS-001.md` |
-| `—` | SOMA-SRS-LAGOBILLING-001 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` |
+| Withdrawn | SOMA-SRS-LAGOBILLING-001 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` — **WITHDRAWN**: the external billing integration this specified does not exist in this system. Retained as a tombstone only. |
 | `—` | SOMA-SRS-MODELROUTING-001 | `docs/requirements/SOMA-SRS-MODELROUTING-001.md` |
 | `—` | SOMA-SRS-MULTIMODAL-001 | `docs/requirements/SOMA-SRS-MULTIMODAL-001.md` |
 | `—` | SOMA-SRS-MULTITENANCY-001 | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` |

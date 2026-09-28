@@ -244,7 +244,7 @@ API-wired but unverified** — their Tested counts are 0 or 1, which is the hone
 | UI-F-060 | User management | UI-S-22 | UI-C-100 prov. (data table) | `webui/src/views/saas-entity-views.ts` | `/api/v2/users` | UIX-AT-20 |
 | UI-F-061 | Roles & role matrix | UI-S-23 | UI-C-101…102 prov. | `webui/src/views/saas-admin-roles-list.ts`, `webui/src/views/saas-role-matrix.ts` | roles API | UIX-AT-20 |
 | UI-F-062 | Permissions | UI-S-24 | UI-C-103 prov. | `webui/src/views/saas-permissions.ts` | permissions API | UIX-AT-20 |
-| UI-F-063 | Billing & subscriptions | UI-S-25, UI-S-26 | UI-C-104 prov. | `webui/src/views/saas-tenant-billing.ts`, `webui/src/views/saas-subscriptions.ts` | Lago billing API | UIX-AT-20 |
+| UI-F-063 | Billing & subscriptions | UI-S-25, UI-S-26 | UI-C-104 prov. | `webui/src/views/saas-tenant-billing.ts`, `webui/src/views/saas-subscriptions.ts` | Local usage/budget API (`/aaas/billing/*`, `/usage/*`) | UIX-AT-20 |
 | UI-F-064 | Usage analytics | UI-S-27 | — (read-only meters) | `webui/src/views/saas-usage-analytics.ts` | usage API | UIX-AT-20 |
 | UI-F-065 | Tier builder | UI-S-28 | UI-C-105 prov. (tier editor) | `webui/src/views/saas-tier-builder.ts` | tiers API | UIX-AT-20 |
 | UI-F-066 | Login | UI-S-29 | UI-C-106…107 prov. (email, password) | `webui/src/views/saas-login.ts` | `/api/v2/auth/token`, `/api/v2/auth/login` | UIX-AT-01 (xref UI-AT-01) |

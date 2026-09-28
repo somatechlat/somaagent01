@@ -66,7 +66,7 @@
 | 8 | SRS-MODEL-ROUTING | 8 | `admin/core/model_router.py` | 220 | ✅ DONE |
 | 9 | SRS-MULTIMODAL | 8 | `admin/core/multimodal.py` | 230 | ✅ DONE |
 | 11 | SRS-CHAT-FLOW-MASTER | 9 | `admin/core/chat_orchestrator.py` | 215 | ✅ DONE |
-| 12 | SRS-LAGO-BILLING | 9 | `admin/core/billing.py` | 220 | ✅ DONE |
+| 12 | SRS-BUDGET-SYSTEM | 9 | `admin/core/budget/limits.py` | 220 | ✅ DONE |
 | 13 | SRS-SOMABRAIN-INTEGRATION | 3 | `admin/somabrain/` | 400+ | ✅ DONE |
 | 14 | **SRS-BUDGET-SYSTEM** | 10 | `admin/core/budget/` | 950 | ✅ DONE |
 | 15 | **SRS-FEATURE-FLAGS** | 11 | `admin/core/features/` | 1300 | ✅ DONE |
@@ -86,7 +86,6 @@
 | `admin/core/budget/limits.py` | Plan limits | 60 |
 | `admin/core/budget/cache.py` | Redis cache | 50 |
 | `admin/core/budget/exceptions.py` | BudgetExhaustedError | 40 |
-| `admin/core/budget/lago.py` | Lago event publishing | 70 |
 
 ### Tasks
 
@@ -100,7 +99,7 @@
   - Check cache `budget:{tenant_id}:{metric}`
   - Compare against plan limit
   - Raise `BudgetExhaustedError(402)` if exceeded
-  - Async emit Lago event after success
+  - Record usage against tenant budget counters after success
 
 - [ ] **TASK 10.3**: Integrate with chat_orchestrator.py Phase 2
   ```python
@@ -233,7 +232,7 @@
 | `admin/core/permission_matrix.py` | PERMISSION | 270 | ✅ |
 | `admin/core/chat_orchestrator.py` | CHAT-FLOW | 215 | ✅ |
 | `admin/core/multimodal.py` | MULTIMODAL | 230 | ✅ |
-| `admin/core/billing.py` | LAGO-BILLING | 220 | ✅ |
+| `admin/core/budget/limits.py` | BUDGET | 220 | ✅ |
 
 ### 🔴 FILES TO CREATE (12 files, ~900 lines)
 
@@ -245,7 +244,6 @@
 | `admin/core/budget/limits.py` | BUDGET | 60 |
 | `admin/core/budget/cache.py` | BUDGET | 50 |
 | `admin/core/budget/exceptions.py` | BUDGET | 40 |
-| `admin/core/budget/lago.py` | BUDGET | 70 |
 | `admin/core/features/__init__.py` | FEATURES | 25 |
 | `admin/core/features/registry.py` | FEATURES | 150 |
 | `admin/core/features/check.py` | FEATURES | 80 |

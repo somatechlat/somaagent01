@@ -40,7 +40,7 @@
 | `auth.sso` | SAML/SSO | Auth | OFF | — | — | SAML authentication |
 | `authz.opa` | OPA Policy Engine | Authz | OFF | — | — | Policy evaluation |
 | `authz.spicedb` | SpiceDB | Authz | OFF | — | — | Zanzibar permissions |
-| `billing` | Billing | Enterprise | OFF | PostgreSQL, auth.keycloak | — | Lago integration, usage tracking |
+| `billing` | Billing | Enterprise | OFF | PostgreSQL, auth.keycloak | — | Usage tracking, invoicing |
 | `secrets.vault` | Vault Secrets | Enterprise | OFF | — | — | Secret management |
 | `events.kafka` | Kafka Events | Enterprise | OFF | — | — | Event streaming |
 | `workflows.temporal` | Temporal Workflows | Enterprise | OFF | — | — | Workflow orchestration |
@@ -178,7 +178,7 @@ SOMA_PROFILE=standalone|enterprise|full|custom
 SOMA_MODULES=billing,auth.keycloak,audit
 
 # Module-specific config
-SOMA_BILLING_LAGO_URL=http://lago:3000
+SOMA_BILLING_API_URL=http://billing:3000
 SOMA_KEYCLOAK_URL=http://keycloak:8080
 SOMA_OPA_URL=http://opa:8181
 SOMA_SPICEDB_HOST=spicedb
@@ -223,11 +223,11 @@ POST /api/v2/settings/modules/profile      → Apply a profile preset
       "locked": false,
       "version": "1.0.0",
       "health": null,
-      "description": "Lago integration, usage tracking, invoicing",
+      "description": "Usage tracking, invoicing",
       "dependencies": ["core.auth", "auth.keycloak"],
       "config_schema": {
-        "lago_url": {"type": "string", "required": true},
-        "lago_api_key": {"type": "string", "required": true, "secret": true}
+        "billing_api_url": {"type": "string", "required": true},
+        "billing_api_key": {"type": "string", "required": true, "secret": true}
       }
     }
   ],
@@ -275,7 +275,7 @@ class BillingModule(Module):
     conflicts_with = []
 
     async def initialize(self) -> None:
-        """Set up database tables, connect to Lago API."""
+        """Set up database tables, connect to the billing API."""
         from .service import BillingService
         self._service = BillingService()
         await self._service.connect()
@@ -291,13 +291,13 @@ class BillingModule(Module):
         await self._service.stop_metering()
 
     async def health_check(self) -> ModuleHealth:
-        """Check Lago API connectivity."""
+        """Check billing API connectivity."""
         try:
             ok = await self._service.ping()
             return ModuleHealth(
                 healthy=ok,
                 state=ModuleState.RUNNING if ok else ModuleState.DEGRADED,
-                message="Lago API reachable" if ok else "Lago API unreachable",
+                message="Billing API reachable" if ok else "Billing API unreachable",
             )
         except Exception as e:
             return ModuleHealth(

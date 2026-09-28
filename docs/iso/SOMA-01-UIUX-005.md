@@ -337,7 +337,6 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 | 14 | `SA01_JWT_SECRET` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
 | 15 | `GOOGLE_CLIENT_SECRET` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
 | 16 | `SA01_LLM_API_KEY` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
-| 17 | `SA01_LAGO_API_KEY` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
 | 18 | `SA01_GATEWAY_INTERNAL_TOKEN` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
 | 19 | `SPICEDB_TOKEN` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
 | 20 | `SOMA_REGISTRY_PRIVATE_KEY` | UI-S-29 | Platform | Platform | secret-masked | L4-secret | L4 Vault-owned secret — value never rendered; rotate in Vault | new |
@@ -574,7 +573,6 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 | 6 | `SA01_MERMAID_CLI_URL` | UI-S-27 | Platform | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 7 | `SA01_IMAGE_GEN_URL` | UI-S-27 | Platform | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 8 | `SA01_DIAGRAM_URL` | UI-S-27 | Platform | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
-| 9 | `SA01_LAGO_API_URL` | UI-S-27 | Platform | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 10 | `KEYCLOAK_URL / SA01_KEYCLOAK_URL` | UI-S-32 | Platform | Platform | URL text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only; settings-form keycloak.url is the field (settings-form.ts:114) | ro |
 | 11 | `KEYCLOAK_REALM / SA01_KEYCLOAK_REALM` | UI-S-32 | Platform | Platform | text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | ro |
 | 12 | `KEYCLOAK_CLIENT_ID / SA01_KEYCLOAK_CLIENT_ID` | UI-S-32 | Platform | Platform | text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | ro |

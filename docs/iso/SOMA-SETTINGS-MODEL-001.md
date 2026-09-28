@@ -170,7 +170,7 @@ Ten categories. Constants live in `admin/core/helpers/capsule_settings.py:20-42`
 | C7 | **UI** | Theme, locale/language, presentation preferences. | L2 (`UISetting`) |
 | C8 | **GOVERNANCE** | Quotas, budgets, tier limits, tenant identity, constitutional rules, permission maps. | L1 (platform quotas) / L2 (Constitution, per-agent) |
 | C9 | **OBSERVABILITY** | Metrics endpoints/bindings, logging level/format, tracing/OTLP, health probes. | L1 |
-| C10 | **INTEGRATION** | Bridges (WhatsApp/Telegram/voice), billing (Lago), OAuth clients, external renderers, MCP/A2A surface. | L1 (endpoints) / L2 (per-agent enablement) |
+| C10 | **INTEGRATION** | Bridges (WhatsApp/Telegram/voice), OAuth clients, external renderers, MCP/A2A surface. | L1 (endpoints) / L2 (per-agent enablement) |
 
 Mapping to external models (informative): C1↔25010 performance/compatibility substrate;
 C2↔27001 A.8; C3–C6↔functional suitability / agent behaviour; C8↔27001 A.5–A.6 governance;
@@ -374,7 +374,6 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `SA01_JWT_SECRET` | Vault | str | Gateway JWT secret | No | `services/gateway/providers.py` |
 | `GOOGLE_CLIENT_SECRET` | Vault | str | Google OAuth client secret | No | `services/gateway/settings.py:352` |
 | `SA01_LLM_API_KEY` | Vault | str | Internal LLM service API key | No | `services/gateway/settings.py:308` |
-| `SA01_LAGO_API_KEY` | Vault | str | Lago billing API key | No | `services/gateway/settings.py:321` |
 | `SA01_GATEWAY_INTERNAL_TOKEN` | Vault | str | Internal worker→gateway token | No | `services/conversation_worker/main.py` |
 | `SPICEDB_TOKEN` | Vault | str | SpiceDB token | No | `config/settings_registry.py:188` |
 | `SOMA_REGISTRY_PRIVATE_KEY` | Vault | str | Registry Ed25519 private key | No | `services/registry_service.py` |
@@ -614,7 +613,6 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `SA01_MERMAID_CLI_URL` | Env | str | Mermaid CLI URL | No | `services/gateway/settings.py:312` |
 | `SA01_IMAGE_GEN_URL` | Env | str | Image generation endpoint | No | `services/gateway/settings.py:313` |
 | `SA01_DIAGRAM_URL` | Env | str | Diagram render endpoint | No | `services/gateway/settings.py:314` |
-| `SA01_LAGO_API_URL` | Env | str | Lago billing API URL | No | `services/gateway/settings.py:320` |
 | `KEYCLOAK_URL` / `SA01_KEYCLOAK_URL` | Env | str | Keycloak base URL | No | `config/settings.py:21`, `services/gateway/settings.py:327` |
 | `KEYCLOAK_REALM` / `SA01_KEYCLOAK_REALM` | Env | str | Keycloak realm | No | `config/settings.py:22`, `services/gateway/settings.py:328` |
 | `KEYCLOAK_CLIENT_ID` / `SA01_KEYCLOAK_CLIENT_ID` | Env | str | Keycloak client id | No | `config/settings.py:23`, `services/gateway/settings.py:329` |

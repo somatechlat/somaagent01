@@ -165,7 +165,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-SRS-CONTEXT-001 | docs/requirements/SOMA-SRS-CONTEXT-001.md | SRS-CONTEXT-BUILDING — Prompt Assembly | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-DATAMODELS-001 | docs/requirements/SOMA-SRS-DATAMODELS-001.md | SRS-DATA-MODELS — Data Models and ORM Schema | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-FEATFLAGS-001 | docs/requirements/SOMA-SRS-FEATFLAGS-001.md | SRS-FEATURE-FLAGS — System Feature Toggles | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-SRS-LAGOBILLING-001 | docs/requirements/SOMA-SRS-LAGOBILLING-001.md | SRS-LAGO-BILLING — Usage Metering & Billing | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-LAGOBILLING-001 | docs/requirements/SOMA-SRS-LAGOBILLING-001.md | SRS-LAGO-BILLING — Usage Metering & Billing | 1.0.0 | **WITHDRAWN** | — | 2026-09-28 | Withdrawn — feature does not exist in this system; tombstone only |
 | SOMA-SRS-MODELROUTING-001 | docs/requirements/SOMA-SRS-MODELROUTING-001.md | SRS-MODEL-ROUTING — LLM Model Selection | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-MULTIMODAL-001 | docs/requirements/SOMA-SRS-MULTIMODAL-001.md | SRS-MULTIMODAL — Image, Audio, and Diagram Generation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-MULTITENANCY-001 | docs/requirements/SOMA-SRS-MULTITENANCY-001.md | SRS-SECURITY-MULTITENANCY — Security and Tenant Isolation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |

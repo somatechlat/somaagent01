@@ -242,12 +242,12 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | REQ-050 | The SomaBrain Client shall have AAAS Direct tests verifying `memorize()` persists to vector store. | Must | Test | Draft |
 | REQ-051 | The SomaBrain Client shall have AAAS Direct tests verifying `learn()` updates `capsule.body.learned`. | Must | Test | Draft |
 
-#### 3.1.10 Billing (Lago)
+#### 3.1.10 Budget & Usage
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-052 | The Billing module shall have AAAS Direct tests verifying billing events are sent to Lago after requests. | Must | Test | Draft |
-| REQ-053 | The Billing module shall have AAAS Direct tests verifying tenant subscription tier is resolved from Lago. | Must | Test | Draft |
+| REQ-052 | The budget module shall have AAAS Direct tests verifying usage is recorded against tenant counters after requests. | Must | Test | Draft |
+| REQ-053 | The budget module shall have AAAS Direct tests verifying the tenant plan tier resolves from the local `Tenant.tier` relation. | Must | Test | Draft |
 
 #### 3.1.11 Permission Matrix
 
@@ -296,7 +296,6 @@ The test suite interfaces with pytest for execution and the following real servi
 | Redis | TCP | RESP | Password |
 | Milvus | gRPC/HTTP | Protobuf/JSON | Token |
 | SpiceDB | gRPC | Protobuf | Preshared Key |
-| Lago API | HTTP/1.1 | JSON | API Key |
 
 ---
 
@@ -331,7 +330,7 @@ The test suite interfaces with pytest for execution and the following real servi
 | REQ-019 | Phase 8 tool execution | SRS-TOOL-SYSTEM | `admin/core/tools/` | `admin/core/tools/` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-020 | Phase 9 multimodal handling | SRS-MULTIMODAL | `admin/core/multimodal.py` | `admin/core/multimodal.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-021 | Phase 10 memory update | SRS-SOMABRAIN-INTEGRATION | `admin/core/somabrain_client.py` | `admin/core/somabrain_client.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
-| REQ-022 | Phase 11 billing event | SRS-LAGO-BILLING | `admin/core/billing.py` | `admin/core/billing.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
+| REQ-022 | Phase 11 usage recording | SRS-BUDGET-SYSTEM | `admin/core/budget/limits.py` | `admin/core/budget/limits.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-023 | Phase 12 response delivery | SRS-CHAT-FLOW-MASTER | `admin/core/chat_orchestrator.py` | `admin/core/chat_orchestrator.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-024 | Budget starts at zero | SRS-BUDGET-SYSTEM | `admin/core/budget/` | `admin/core/budget/` | `tests/unit/test_budget_system.py` |
 | REQ-030 | Core features enabled | SRS-FEATURE-FLAGS | `admin/core/features/` | `admin/core/features/` | `tests/unit/test_features_system.py` |
@@ -339,7 +338,7 @@ The test suite interfaces with pytest for execution and the following real servi
 | REQ-040 | Image generation budget check | SRS-MULTIMODAL | `admin/core/multimodal.py` | `admin/core/multimodal.py` | `tests/aaas_direct/multimodal/test_multimodal_aaas.py` |
 | REQ-043 | Tool registry discovery | SRS-TOOL-SYSTEM | `admin/core/tools/` | `admin/core/tools/` | `tests/unit/test_tool_system_unit.py` |
 | REQ-048 | SomaBrain direct import | SRS-SOMABRAIN-INTEGRATION | `admin/core/somabrain_client.py` | `admin/core/somabrain_client.py` | `tests/aaas_direct/somabrain/test_somabrain_client_aaas.py` |
-| REQ-052 | Lago event emission | SRS-LAGO-BILLING | `admin/core/billing.py` | `admin/core/billing.py` | `tests/aaas_direct/billing/test_billing_aaas.py` |
+| REQ-052 | Usage counter increment | SRS-BUDGET-SYSTEM | `admin/core/budget/limits.py` | `admin/core/budget/limits.py` | `tests/aaas_direct/budget/test_budget_aaas.py` |
 | REQ-054 | Permission inheritance | SRS-PERMISSION-MATRIX | `admin/core/permission_matrix.py` | `admin/core/permission_matrix.py` | `tests/unit/test_permission_matrix_unit.py` |
 
 ### 4.2 Requirement to Test Case Mapping
@@ -354,7 +353,7 @@ The test suite interfaces with pytest for execution and the following real servi
 | REQ-035 | TC-ROUTER-001 | Unit test | Task classified into correct complexity bucket |
 | REQ-043 | TC-TOOLS-001 | Unit test | All tools discoverable via registry |
 | REQ-048 | TC-BRAIN-001 | AAAS Direct | Client mode equals "direct" in AAAS context |
-| REQ-052 | TC-BILLING-001 | AAAS Direct | Lago event payload valid and accepted |
+| REQ-052 | TC-BILLING-001 | AAAS Direct | Usage counter incremented by exact amount |
 | REQ-054 | TC-PERM-001 | Unit test | Child role inherits parent permissions |
 
 ---

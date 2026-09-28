@@ -204,8 +204,8 @@ The data model layer is the persistence foundation of SomaAgent01. All business 
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-DM-021 | The system shall define a `SubscriptionTier` model with fields: `id` (UUID, PK), `name`, `slug` (unique), `base_price_cents`, `lago_plan_code`, `max_agents`, `max_users_per_agent`, `max_monthly_voice_minutes`, `max_monthly_api_calls`, `feature_defaults` (JSON). | Must | Inspection | Approved |
-| REQ-DM-022 | The system shall define a `Tenant` model with fields: `id` (UUID, PK), `name`, `slug` (unique), `tier` (FK to SubscriptionTier), `status`, `keycloak_realm`, `lago_customer_id`, `lago_subscription_id`, `feature_overrides` (JSON). | Must | Inspection | Approved |
+| REQ-DM-021 | The system shall define a `SubscriptionTier` model with fields: `id` (UUID, PK), `name`, `slug` (unique), `base_price_cents`, `billing_interval`, `max_agents`, `max_users_per_agent`, `max_monthly_voice_minutes`, `max_monthly_api_calls`, `feature_defaults` (JSON). | Must | Inspection | Approved |
+| REQ-DM-022 | The system shall define a `Tenant` model with fields: `id` (UUID, PK), `name`, `slug` (unique), `tier` (FK to SubscriptionTier), `status`, `keycloak_realm`, `billing_email`, `feature_overrides` (JSON). | Must | Inspection | Approved |
 | REQ-DM-023 | The system shall define a `TenantUser` model with fields: `id` (UUID, PK), `tenant` (FK), `user_id` (UUID), `email`, `role`, `is_active`. | Must | Inspection | Approved |
 | REQ-DM-024 | The system shall define an `Agent` model with fields: `id` (UUID, PK), `tenant` (FK), `name`, `slug`, `status`, `config` (JSON), `feature_settings` (JSON), `primary_capsule` (FK), `skin_id`. | Must | Inspection | Approved |
 | REQ-DM-025 | The system shall define an `AgentUser` model linking users to agents with a role field. | Must | Inspection | Approved |
@@ -313,7 +313,6 @@ No direct user interface requirements are specified in this document.
 | PostgreSQL | TCP / SSL | SQL / Django ORM | Username / password + SSL |
 | Milvus | gRPC / REST | Protobuf / JSON | Token |
 | Kafka | TCP / SASL_SSL | Avro / JSON | SASL/SCRAM |
-| Billing API (Lago) | HTTPS / REST | JSON | API key |
 
 #### 3.3.3 Hardware Interfaces
 

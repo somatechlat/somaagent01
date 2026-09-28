@@ -466,8 +466,8 @@ SOMA AGENT SCREENS
 │                                                                  │
 │  ENTERPRISE                                                      │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ 💳 Billing (Lago)           ○ Disabled    [▶ Enable]    │    │
-│  │    Requires: PostgreSQL, Lago API                         │    │
+│  │ 💳 Billing                   ○ Disabled    [▶ Enable]    │    │
+│  │    Requires: PostgreSQL                                   │    │
 │  │    Provides: Usage tracking, invoicing                    │    │
 │  ├─────────────────────────────────────────────────────────┤    │
 │  │ 🔑 Vault Secrets            ○ Disabled    [▶ Enable]    │    │

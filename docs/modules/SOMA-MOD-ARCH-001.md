@@ -72,7 +72,7 @@
 
 | Module | ID | Default | Requires |
 |--------|----|---------|----------|
-| **Billing** | `billing` | OFF | PostgreSQL, Lago API |
+| **Billing** | `billing` | OFF | PostgreSQL |
 | **LDAP/AD Auth** | `auth.ldap` | OFF | LDAP server |
 | **SSO/SAML** | `auth.sso` | OFF | SAML IdP |
 | **Keycloak** | `auth.keycloak` | OFF | Keycloak server |
@@ -144,7 +144,7 @@ The admin settings page shows all modules with toggle switches:
 │  └── SpiceDB                        ○ Disabled    [Enable]   │
 │                                                              │
 │  ENTERPRISE                                                  │
-│  ├── Billing (Lago)                 ○ Disabled    [Enable]   │
+│  ├── Billing                       ○ Disabled    [Enable]   │
 │  ├── Vault Secrets                  ○ Disabled    [Enable]   │
 │  ├── Audit Logging                  ○ Disabled    [Enable]   │
 │  └── Analytics                      ○ Disabled    [Enable]   │

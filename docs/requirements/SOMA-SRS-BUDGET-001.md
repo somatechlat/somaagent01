@@ -61,7 +61,7 @@
 
 ### 1.1 Purpose
 
-This document specifies the Universal Budget System, a centralized, Django-native pattern for enforcing resource limits across the entire SOMA Stack. It provides a single decorator-based gate, a generic metric registry, and async usage recording to Lago.
+This document specifies the Universal Budget System, a centralized, Django-native pattern for enforcing resource limits across the entire SOMA Stack. It provides a single decorator-based gate, a generic metric registry, and post-enforcement usage recording in Django cache.
 
 ### 1.2 Scope
 
@@ -70,11 +70,10 @@ This document specifies the Universal Budget System, a centralized, Django-nativ
 - Budget gate decorator (`admin/core/budget/gate.py`)
 - Plan limit resolution (`admin/core/budget/limits.py`)
 - Usage tracking via Django cache (Redis)
-- Async Lago event emission
+- Post-enforcement usage recording
 - Per-metric enablement toggles
 
 **Out of scope:**
-- Lago billing engine implementation (see [SOMA-SRS-LAGOBILLING-001.md](./SOMA-SRS-LAGOBILLING-001.md))
 - Chat/agent execution logic
 - Tenant authentication and authorization
 
@@ -82,7 +81,7 @@ This document specifies the Universal Budget System, a centralized, Django-nativ
 
 | Term | Definition |
 |------|------------|
-| **BudgetedMetric** | Immutable definition of a budgeted resource (code, unit, tier, limit, cost, Lago mapping). |
+| **BudgetedMetric** | Immutable definition of a budgeted resource (code, name, unit, tier, limit, cost, enforcement flag, lockable flag). |
 | **Budget Gate** | The `@budget_gate` decorator that enforces limits before and after function execution. |
 | **Tenant** | An isolated customer workspace identified by `tenant_id`. |
 | **Plan** | A subscription tier (Free, Starter, Team, Enterprise) that determines limits. |
@@ -95,9 +94,7 @@ This document specifies the Universal Budget System, a centralized, Django-nativ
 
 | ID | Document | Version | Location |
 |----|----------|---------|----------|
-| REF-001 | SRS-LAGO-BILLING | 1.0 | `docs/requirements/SOMA-SRS-LAGOBILLING-001.md` |
 | REF-002 | Django Cache Framework | 4.2 | https://docs.djangoproject.com/en/4.2/topics/cache/ |
-| REF-003 | Lago API Documentation | Latest | https://getlago.com/docs/api-reference |
 
 ---
 
@@ -105,17 +102,17 @@ This document specifies the Universal Budget System, a centralized, Django-nativ
 
 ### 2.1 Product Perspective
 
-The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately after authentication and before capsule loading. It integrates with Django cache (Redis) for fast counter storage and with the Lago external billing service for async usage recording. The system is deployed as part of the `admin/core/budget/` package within SomaAgent01.
+The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately after authentication and before capsule loading. It integrates with Django cache (Redis) for fast counter storage. There is no external billing service: usage is metered and enforced entirely inside SomaAgent01. The system is deployed as part of the `admin/core/budget/` package within SomaAgent01.
 
 ### 2.2 Product Functions
 
 | ID | Function | Description |
 |----|----------|-------------|
-| FUNC-001 | Metric Registration | Define budgeted metrics in a centralized registry with units, tiers, and Lago mappings. |
+| FUNC-001 | Metric Registration | Define budgeted metrics in a centralized registry with units, tiers, and cost per unit. |
 | FUNC-002 | Budget Enforcement | Intercept protected operations via `@budget_gate` to enforce pre- and post-action limits. |
 | FUNC-003 | Plan Limit Resolution | Resolve per-tenant limits based on subscribed plan tier. |
 | FUNC-004 | Usage Recording | Increment monthly usage counters in Django cache after successful execution. |
-| FUNC-005 | Async Billing Events | Emit non-blocking usage events to Lago for invoice generation. |
+| FUNC-005 | Usage Recording | Record post-enforcement usage against the tenant's counters. |
 | FUNC-006 | Metric Toggle Management | Enable or disable individual metrics at platform or tenant level. |
 
 ### 2.3 User Characteristics
@@ -132,7 +129,6 @@ The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately a
 |----|------------|-------------|
 | CON-001 | Django Cache | All usage counters and toggle states must use `django.core.cache` (Redis backend). |
 | CON-002 | Fail-Closed | Budget exceeded or gate failure must result in a 402 error; never allow unrestricted usage. |
-| CON-003 | Lago Code Mapping | Each metric `code` must map to an existing Lago `billable_metric_code`. |
 | CON-004 | Async Safety | The decorator must be compatible with async view functions. |
 
 ### 2.5 Assumptions and Dependencies
@@ -140,7 +136,7 @@ The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately a
 | ID | Assumption / Dependency | Impact if Invalid |
 |----|------------------------|-------------------|
 | AD-001 | Redis is available as the Django cache backend. | Usage counters and toggles cannot be evaluated; gate fails closed (402). |
-| AD-002 | Lago external service is reachable for async event recording. | Billing events are lost; retry queue must handle recovery. |
+| AD-002 | Django cache (Redis) is reachable for counter storage. | Usage cannot be recorded; the gate stays fail-closed. |
 | AD-003 | `tenant_id` is present on the request object passed to gated functions. | Gate cannot resolve tenant-specific limits; falls back to unknown defaults. |
 
 ---
@@ -157,33 +153,37 @@ The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately a
 | REQ-BGT-002 | For metrics with `enforce_pre=True`, the gate shall check the tenant's current monthly usage against the plan limit before executing the wrapped function. | Must | Test | Draft |
 | REQ-BGT-003 | If pre-enforcement detects usage >= limit, the system shall raise `BudgetExhaustedError` with HTTP status 402 and halt execution. | Must | Test | Draft |
 | REQ-BGT-004 | After successful execution, the gate shall record actual usage by incrementing the tenant's monthly counter in Django cache. | Must | Test | Draft |
-| REQ-BGT-005 | The gate shall emit usage events to Lago asynchronously and non-blocking after post-enforcement recording. | Must | Test | Draft |
+| REQ-BGT-005 | The gate shall record usage non-blocking after post-enforcement recording. | Must | Test | Draft |
 
 **Rationale:** Centralized enforcement ensures consistent limit checking across all SOMA components without duplicating logic.
 
-**Dependencies:** REQ-BGT-001 depends on REQ-BGT-006 (registry); REQ-BGT-005 depends on REF-001 (Lago integration).
+**Dependencies:** REQ-BGT-001 depends on REQ-BGT-006 (registry); REQ-BGT-005 depends on REQ-BGT-004 (usage recording).
 
 #### 3.1.2 Metric Registry
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-BGT-006 | The system shall maintain a `METRIC_REGISTRY` (`admin/core/budget/registry.py`) defining each metric by code, name, unit, tier, default limit, cost per unit, pre-enforcement flag, Lago code, default enabled state, and lockable flag. | Must | Inspection | Draft |
-| REQ-BGT-007 | Adding a new metric shall require only registry entry, plan limit entry, and Lago billable metric creation; no changes to `gate.py` shall be required. | Should | Test | Draft |
+| REQ-BGT-006 | The system shall maintain a `METRIC_REGISTRY` (`admin/core/budget/registry.py`) defining each metric by code, name, unit, tier, default limit, cost per unit, pre-enforcement flag, and lockable flag. | Must | Inspection | Draft |
+| REQ-BGT-007 | Adding a new metric shall require only a registry entry and a plan limit entry; no changes to `gate.py` shall be required. | Should | Test | Draft |
 
 **Complete Metric Catalog**
 
-| Code | Name | Unit | Tier | Default | $/Unit | Pre | Lago Code | Default Enabled | Lockable |
-|------|------|------|------|---------|--------|-----|-----------|-----------------|----------|
-| `tokens` | LLM Tokens | count | critical | 100,000 | 0.0001 | Yes | `tokens` | True | True |
-| `tool_calls` | Tool Executions | count | critical | 1,000 | 0.01 | Yes | `tool_calls` | True | True |
-| `images` | Image Generations | count | critical | 100 | 0.04 | Yes | `image_generations` | True | True |
-| `voice_minutes` | Voice Minutes | minutes | critical | 60 | 0.006 | Yes | `voice_minutes` | True | True |
-| `api_calls` | API Requests | count | important | 10,000 | 0.00 | Yes | `api_calls` | True | False |
-| `memory_tokens` | Memory Storage | tokens | important | 500,000 | 0.0001 | Yes | `memory_tokens` | True | False |
-| `vector_ops` | Vector Operations | count | important | 50,000 | 0.001 | No | `vector_ops` | True | False |
-| `learning` | Learning Cycles | count | important | 100 | 0.10 | Yes | `learning_credits` | True | False |
-| `storage_gb` | File Storage | gb | monitor | 10 | 0.10 | No | `storage_gb` | False | False |
-| `sessions` | Concurrent Sessions | count | monitor | 5 | 0.00 | Yes | `sessions` | False | False |
+Values below are taken from `METRIC_REGISTRY` in `admin/core/budget/registry.py`, which is the single source of truth.
+
+| Code | Name | Unit | Tier | Default Limit | $/Unit | Enforce Pre | Lockable |
+|------|------|------|------|---------------|--------|-------------|----------|
+| `tokens` | Tokens | tokens | critical | 100,000 | 0.00001 | Yes | No |
+| `tool_calls` | Tool Calls | count | critical | 100 | 0.01 | Yes | No |
+| `images` | Image Generations | count | critical | 10 | 0.04 | Yes | No |
+| `voice_minutes` | Voice Minutes | minutes | critical | 10 | 0.06 | Yes | No |
+| `api_calls` | API Calls | count | important | 10,000 | 0.0001 | Yes | Yes |
+| `memory_tokens` | Memory Tokens | tokens | important | 500,000 | 0.000001 | No | Yes |
+| `vector_ops` | Vector Operations | count | important | 50,000 | 0.001 | No | Yes |
+| `learning` | Learning Cycles | count | important | 100 | 0.10 | Yes | Yes |
+| `storage_gb` | File Storage | gb | monitor | 10 | 0.10 | No | Yes |
+| `sessions` | Concurrent Sessions | count | monitor | 5 | 0.00 | Yes | Yes |
+
+`Lockable = No` means the tenant cannot disable the metric. `Enforce Pre = Yes` means the gate is checked before the action runs.
 
 **Rationale:** A generic registry avoids hard-coding metrics in the gate logic.
 
@@ -257,7 +257,7 @@ The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately a
 | ID | Requirement | Target | Verification |
 |----|-------------|--------|--------------|
 | NFR-BGT-PERF-001 | Pre-enforcement budget check latency | <= 10 ms | Load test |
-| NFR-BGT-PERF-002 | Post-enforcement Lago event overhead | <= 5 ms | Load test |
+| NFR-BGT-PERF-002 | Post-enforcement usage recording overhead | <= 5 ms | Load test |
 
 #### 3.2.2 Security
 
@@ -270,7 +270,7 @@ The Universal Budget System sits at Phase 2 of the SOMA chat flow, immediately a
 
 | ID | Requirement | Target | Verification |
 |----|-------------|--------|--------------|
-| NFR-BGT-REL-001 | Lago event recording failures shall not block the primary operation. | 100% | Fault injection |
+| NFR-BGT-REL-001 | Usage recording failures shall not block the primary operation. | 100% | Fault injection |
 | NFR-BGT-REL-002 | Monthly counter cache TTL shall be >= 35 days. | 35 days | Inspection |
 
 #### 3.2.4 Scalability
@@ -299,7 +299,6 @@ The Agent Settings UI shall display core metrics as read-only (lockable) and all
 | Interface | Protocol | Format | Authentication |
 |-----------|----------|--------|----------------|
 | Django Cache | Redis protocol | Key/value | Redis AUTH |
-| Lago Events API | HTTPS | JSON | `LAGO_API_KEY` header |
 
 **Cache Key Patterns**
 
@@ -322,7 +321,6 @@ None.
 | ID | Constraint | Source |
 |----|------------|--------|
 | DC-BGT-001 | Implementation must use `django.core.cache` for all usage and toggle storage. | Architecture decision |
-| DC-BGT-002 | Metric `lago_code` values must match existing Lago `billable_metric_code` values. | REF-003 |
 
 ---
 
@@ -336,7 +334,7 @@ None.
 | REQ-BGT-002 | Pre-enforcement check | Product backlog | `gate.py` | `admin/core/budget/gate.py` | `tests/unit/test_budget_gate.py` |
 | REQ-BGT-003 | 402 on limit exceeded | Product backlog | `exceptions.py` | `admin/core/budget/exceptions.py` | `tests/unit/test_budget_gate.py` |
 | REQ-BGT-004 | Post-usage recording | Product backlog | `gate.py` | `admin/core/budget/gate.py` | `tests/unit/test_budget_gate.py` |
-| REQ-BGT-005 | Async Lago events | REF-001 | `gate.py` | `admin/core/budget/gate.py` | `tests/integration/test_budget_lago.py` |
+| REQ-BGT-005 | Non-blocking usage recording | Product backlog | `gate.py` | `admin/core/budget/gate.py` | `tests/unit/test_budget_gate.py` |
 | REQ-BGT-006 | Metric registry | Product backlog | `registry.py` | `admin/core/budget/registry.py` | `tests/unit/test_budget_registry.py` |
 | REQ-BGT-007 | Add metrics without gate changes | Product backlog | `registry.py` | `admin/core/budget/registry.py` | `tests/unit/test_budget_registry.py` |
 | REQ-BGT-008 | Plan limit resolution | Product backlog | `limits.py` | `admin/core/budget/limits.py` | `tests/unit/test_budget_limits.py` |
@@ -357,7 +355,7 @@ None.
 | REQ-BGT-002 | TC-BGT-002 | Unit test | Request blocked when usage >= limit for pre-enforced metric. |
 | REQ-BGT-003 | TC-BGT-003 | Unit test | `BudgetExhaustedError` raised with status 402. |
 | REQ-BGT-004 | TC-BGT-004 | Unit test | Cache counter incremented by exact usage after execution. |
-| REQ-BGT-005 | TC-BGT-005 | Integration test | Lago event task created without blocking response. |
+| REQ-BGT-005 | TC-BGT-005 | Unit test | Usage recorded without blocking the response. |
 | REQ-BGT-006 | TC-BGT-006 | Inspection | All 10 metrics defined in registry with correct fields. |
 | REQ-BGT-007 | TC-BGT-007 | Unit test | New metric added to registry and limits works without gate changes. |
 | REQ-BGT-008 | TC-BGT-008 | Unit test | Limit resolves to plan-specific value. |

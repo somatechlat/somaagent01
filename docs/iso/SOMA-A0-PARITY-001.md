@@ -735,7 +735,7 @@ Execution is 23 P0 parity items, 7 remediation waves, and 30+ work packages, del
 | `admin/orchestrator/api.py:201-217` | Temporal start commented; fake `running` | **IMPLEMENT** or 501 |
 | `admin/completions/api.py:108-125` | canned `"Hello! I'm an AI assistant..."` | **DELETE** — fake LLM forbidden |
 | `admin/embeddings/api.py:113-125` | zero-vectors `[0.0]*dim` | **IMPLEMENT** via `embed_text` / provider |
-| `admin/core/billing.py:98,156` | echo dicts, “call Lago in production” | **DELETE** — use `admin/billing/lago_client.py` |
+| `admin/core/billing.py` | echo dicts, “call the billing API in production” | **DELETED** — file removed entirely; this system has no billing integration |
 | `admin/auth/api_sso.py:46-53` | LDAP bind not performed | **IMPLEMENT** ldap3 or 501 |
 | `admin/analytics/api.py` | empty aggregates | **IMPLEMENT** or 501 |
 | `admin/multimodal/execution.py:300,423` | Playwright “in production” stubs | **IMPLEMENT** |
@@ -776,7 +776,7 @@ Execution is 23 P0 parity items, 7 remediation waves, and 30+ work packages, del
 
 | Module | Status | Action |
 |--------|--------|--------|
-| Billing (Lago) | **REAL** `admin/billing/lago_client.py` + webhooks | Keep; delete core stub |
+| Billing | **NONE** — this system has no billing integration | Nothing to keep; both the stub and the external client were removed |
 | OPA | **REAL** `services/common/policy_client.py` | Keep |
 | SpiceDB | **REAL** `services/common/spicedb_client.py` | Keep |
 | Vault | **REAL** `vault_secrets.py` + compose | Keep |

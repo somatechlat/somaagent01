@@ -177,7 +177,7 @@ The multimodal subsystem executes during Phase 9 (Tools + Multimodal) of the 13-
 | REQ-MM-008 | The system shall load the tenant's capsule using tenant_id to retrieve allowed_models and AgentIQ settings. | Must | Test | Approved |
 | REQ-MM-009 | The system shall retrieve provider API keys from Vault using a tenant-scoped path (secret/tenant/{tenant_id}/api_keys). | Must | Test | Approved |
 | REQ-MM-010 | The system shall check budget limits using a tenant-scoped cache key (budget:{tenant_id}:{metric}:{period}). | Must | Test | Approved |
-| REQ-MM-011 | The system shall record billing events to Lago with the tenant_id in the external_subscription_id field. | Must | Test | Approved |
+| REQ-MM-011 | The system shall record usage for billable actions against the tenant's budget counters. | Must | Test | Approved |
 
 **Rationale:** Tenant isolation prevents cross-tenant data leakage and ensures proper per-tenant billing and quota enforcement.
 
@@ -247,7 +247,6 @@ The multimodal subsystem executes during Phase 9 (Tools + Multimodal) of the 13-
 | OpenAI Audio API | HTTPS/JSON | JSON / binary | Bearer (API key from Vault) |
 | Anthropic Messages API | HTTPS/JSON | JSON | Bearer (API key from Vault) |
 | Vault KV Secrets | HTTPS/JSON | JSON | Vault token |
-| Lago Events API | HTTPS/JSON | JSON | Lago API key |
 | Redis Budget Cache | RESP | Key-value | Redis AUTH |
 | Internal Mermaid Service | HTTP/JSON | SVG/PNG | None (internal) |
 
@@ -284,7 +283,7 @@ None.
 | REQ-MM-008 | Tenant capsule load | Multitenancy | admin/core/models/core.py | services/gateway/main.py | tests/integration/test_tenant_capsule.py |
 | REQ-MM-009 | Tenant-scoped Vault secrets | Security | services/common/adapters/vault.py | services/common/adapters/vault.py | tests/integration/test_vault_tenant.py |
 | REQ-MM-010 | Tenant-scoped budget check | Budget System | services/common/budget_cache.py | services/common/budget_cache.py | tests/unit/test_budget_tenant.py |
-| REQ-MM-011 | Lago billing with tenant_id | Billing | services/common/billing.py | services/common/billing.py | tests/integration/test_lago_events.py |
+| REQ-MM-011 | Usage recorded per tenant | Budget | `admin/core/budget/limits.py` | `admin/core/budget/limits.py` | `tests/unit/test_budget_limits.py` |
 | REQ-MM-012 | Feature flag enforcement | Feature Flags | admin/api/features.py | services/tool_executor/multimodal_executor.py | tests/unit/test_feature_flags.py |
 | REQ-MM-013 | Budget gate enforcement | Budget System | services/common/budget_cache.py | services/tool_executor/multimodal_executor.py | tests/unit/test_budget_gate.py |
 | REQ-MM-014 | Provider execution | Execution | services/multimodal/base_provider.py | services/multimodal/dalle_provider.py | tests/integration/test_image_generate.py |
