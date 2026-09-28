@@ -78,7 +78,8 @@ def _build_use_case():
         internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
         publisher=publisher,
         outbound_topic=os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
-        default_model=os.environ.get("SA01_LLM_MODEL") or "",  # REQUIRED - no hardcoded default per VIBE
+        default_model=os.environ.get("SA01_LLM_MODEL")
+        or "",  # REQUIRED - no hardcoded default per VIBE
     )
     proc = ProcessMessageUseCase(
         session_repo=store,

@@ -25,7 +25,9 @@ KEYCLOAK_CLIENT_SECRET = os.environ.get("KEYCLOAK_CLIENT_SECRET", "")
 SA01_KEYCLOAK_URL = KEYCLOAK_URL
 
 # AAAS / Multi-tenancy
-AAAS_DEFAULT_TENANT_ID = os.environ.get("AAAS_DEFAULT_TENANT_ID", "cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c")
+AAAS_DEFAULT_TENANT_ID = os.environ.get(
+    "AAAS_DEFAULT_TENANT_ID", "cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c"
+)
 
 # Vault
 VAULT_ADDR = os.environ.get("VAULT_ADDR", "http://localhost:20882")

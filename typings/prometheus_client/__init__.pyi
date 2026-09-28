@@ -1,6 +1,6 @@
 """Type stubs for prometheus_client to fix Pyright compatibility."""
 
-from typing import Any, Callable, Optional, Sequence, TypeVar
+from typing import Any, Callable, Sequence, TypeVar
 
 T = TypeVar("T")
 

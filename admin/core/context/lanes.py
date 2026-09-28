@@ -78,9 +78,10 @@ async def get_lane_allocation(capsule: "Capsule") -> LaneAllocation:
     Returns:
         LaneAllocation with normalized percentages
     """
-    from asgiref.sync import sync_to_async
 
-    body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or (await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {})
+    body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or (
+        await capsule.async_body() if hasattr(capsule, "async_body") else capsule.body or {}
+    )
 
     # Try brain-learned preferences first
     learned = body.get("learned", {})

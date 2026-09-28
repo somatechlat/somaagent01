@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from admin.modules.manifest import (
-    ModuleManifest,
     discover_module_dirs,
     load_default_config,
     load_module_dir,
+    ModuleManifest,
     parse_manifest,
 )
 

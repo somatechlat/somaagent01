@@ -18,9 +18,9 @@ from pydantic import BaseModel
 from admin.chat.models import Conversation, Message
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError, ServiceError
+from admin.common.messages import get_message, SuccessCode
 from admin.common.responses import paginated_response
 from admin.core.models import Session
-from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 router = Router(tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -241,7 +241,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
                 },
             )
         except Exception as e:
-            logger.warning('Agent session init failed (non-critical): %s', e)
+            logger.warning("Agent session init failed (non-critical): %s", e)
 
         title = payload.title or f"Conversation {conversation.id[:8]}"
 
@@ -252,6 +252,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
             def update_title():
                 """Execute update title."""
                 from django.db import transaction
+
                 with transaction.atomic():
                     Conversation.objects.filter(id=conversation.id).update(title=payload.title)
 
@@ -269,7 +270,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
         ).model_dump()
 
     except Exception as e:
-        logger.error('Conversation creation failed: %s', e)
+        logger.error("Conversation creation failed: %s", e)
         raise ServiceError(f"Failed to create conversation: {e}")
 
 
@@ -408,9 +409,7 @@ async def export_conversation(request, conversation_id: str) -> dict:
             return None
         if user.sub and str(conv.user_id) != user.sub:
             return None
-        msgs = list(
-            Message.objects.filter(conversation=conv).order_by("created_at")
-        )
+        msgs = list(Message.objects.filter(conversation=conv).order_by("created_at"))
         return conv, msgs
 
     loaded = await _load()
@@ -647,5 +646,5 @@ async def get_chat_session(request, session_id: str) -> dict:
     except NotFoundError:
         raise
     except Exception as exc:
-        logger.error('Session error: %s', exc)
+        logger.error("Session error: %s", exc)
         raise ServiceError(f"session_error: {type(exc).__name__}")

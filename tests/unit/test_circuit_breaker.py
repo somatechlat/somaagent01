@@ -5,6 +5,7 @@ CLOSED → OPEN → HALF_OPEN → CLOSED.
 """
 
 import asyncio
+
 import pytest
 
 
@@ -15,6 +16,7 @@ class TestCircuitBreaker:
     def breaker(self):
         """Create a circuit breaker with low threshold for testing."""
         from services.common.circuit_breaker import get_circuit_breaker, reset_all_circuit_breakers
+
         reset_all_circuit_breakers()
         return get_circuit_breaker("test", failure_threshold=3, reset_timeout=0.1)
 
@@ -22,6 +24,7 @@ class TestCircuitBreaker:
     async def test_starts_closed(self, breaker):
         """Circuit breaker starts in CLOSED state."""
         from services.common.circuit_breaker import CircuitState
+
         assert breaker.state == CircuitState.CLOSED
 
     @pytest.mark.asyncio
@@ -39,7 +42,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_failures_open_circuit(self, breaker):
         """Repeated failures open the circuit."""
-        from services.common.circuit_breaker import CircuitState, CircuitBreakerError
+        from services.common.circuit_breaker import CircuitBreakerError, CircuitState
 
         async def fail():
             raise ValueError("test error")
@@ -123,6 +126,7 @@ class TestCircuitBreaker:
     async def test_registry(self):
         """get_circuit_breaker returns same instance for same name."""
         from services.common.circuit_breaker import get_circuit_breaker, reset_all_circuit_breakers
+
         reset_all_circuit_breakers()
 
         b1 = get_circuit_breaker("registry_test")

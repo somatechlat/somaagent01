@@ -96,9 +96,7 @@ def register_hook(
     """Register ``handler`` for ``hook``. Raises on unknown hook names."""
 
     if hook not in KNOWN_HOOKS:
-        raise UnknownHookError(
-            f"unknown hook '{hook}'; known hooks: {', '.join(KNOWN_HOOKS)}"
-        )
+        raise UnknownHookError(f"unknown hook '{hook}'; known hooks: {', '.join(KNOWN_HOOKS)}")
     if not callable(handler):
         raise TypeError("hook handler must be callable")
     registration = HookRegistration(hook=hook, module=module, handler=handler)

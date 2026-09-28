@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List, Mapping, Optional
 
+from admin.core.somabrain_client import SomaClientError  # noqa: E402
 from admin.core.somabrain_memory import _SomaBrainMemoryClient
 
 
@@ -170,7 +171,9 @@ class _SomaBrainChatClient(_SomaBrainMemoryClient):
             Created/updated persona
         """
         req_headers = {"If-Match": etag} if etag else None
-        return await self._request("PUT", f"/personas/{persona_id}", json=persona_data, headers=req_headers)
+        return await self._request(
+            "PUT", f"/personas/{persona_id}", json=persona_data, headers=req_headers
+        )
 
     # =========================================================================
     # COGNITIVE OPERATIONS

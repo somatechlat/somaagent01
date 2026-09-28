@@ -19,10 +19,10 @@ from admin.core.chat_orchestrator import (
     ChatTurn,
     V3ChatOrchestrator,
 )
-from admin.core.models import Capsule, PendingMemory
+from admin.core.models import Capsule
 from admin.core.permission_matrix import (
-    PermissionCheckResult,
     PermissionChecker,
+    PermissionCheckResult,
     PermissionLevel,
 )
 
@@ -73,7 +73,9 @@ def _create_test_tier() -> Any:
     """Create a SubscriptionTier for tests."""
     from admin.aaas.models import SubscriptionTier
 
-    return SubscriptionTier.objects.create(name="Test Tier", slug=f"test-tier-{uuid.uuid4().hex[:8]}")
+    return SubscriptionTier.objects.create(
+        name="Test Tier", slug=f"test-tier-{uuid.uuid4().hex[:8]}"
+    )
 
 
 def _create_test_tenant(tier: Any) -> Any:
@@ -307,4 +309,3 @@ async def test_stream_turn_yields_tokens():
     assert len(tokens) > 0
     full_response = "".join(tokens)
     assert full_response
-

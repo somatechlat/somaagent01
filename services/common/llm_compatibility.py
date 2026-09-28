@@ -10,12 +10,10 @@ SRS Reference: Multi-provider LLM support
 
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, Optional
 
 import dirtyjson
-from langchain_google_genai import ChatGoogleGenerativeAI as ChatGoogle
-
-import os
 
 __all__ = [
     "fix_gemini_schema",

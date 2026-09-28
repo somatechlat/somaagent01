@@ -226,7 +226,11 @@ class KafkaEventBus:
                 LOGGER.info(
                     "Restarting Kafka consumer in %ss",
                     backoff_seconds,
-                    extra={"topic": topic, "group_id": group_id, "backoff_seconds": backoff_seconds},
+                    extra={
+                        "topic": topic,
+                        "group_id": group_id,
+                        "backoff_seconds": backoff_seconds,
+                    },
                 )
                 await asyncio.sleep(backoff_seconds)
 

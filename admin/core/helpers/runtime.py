@@ -175,6 +175,7 @@ def _get_rfc_password() -> str:
     # Try Vault first (VIBE Rule 164)
     try:
         from services.common.unified_secret_manager import get_secret_manager
+
         sm = get_secret_manager()
         vault_password = sm.get_credential("rfc_password")
         if vault_password:
@@ -186,6 +187,7 @@ def _get_rfc_password() -> str:
     password = dotenv.get_dotenv_value(dotenv.KEY_RFC_PASSWORD)
     if password:
         import logging
+
         logging.getLogger(__name__).warning(
             "SECURITY WARNING: RFC password loaded from .env file. "
             "Migrate to Vault per VIBE Rule 164."

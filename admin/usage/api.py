@@ -104,7 +104,7 @@ async def record_usage_event(
         properties=properties,
     )
 
-    logger.debug('Usage event: %s/%s/%s', tenant_id, metric, quantity)
+    logger.debug("Usage event: %s/%s/%s", tenant_id, metric, quantity)
 
     return {
         "event_id": event_id,

@@ -172,7 +172,7 @@ async def create_rate_limit(
     defaults["ratelimits"].append(new_rule)
     await gd.asave()
 
-    logger.info('Rate limit created: %s', payload.name)
+    logger.info("Rate limit created: %s", payload.name)
 
     return {
         "name": payload.name,
@@ -297,7 +297,7 @@ async def update_quotas(
 
     PM: Adjust limits based on subscription tier.
     """
-    logger.info('Quotas updated for tenant: %s', tenant_id)
+    logger.info("Quotas updated for tenant: %s", tenant_id)
 
     return {
         "tenant_id": tenant_id,
@@ -361,7 +361,7 @@ async def block_ip(
 
     Security Auditor: Manual block for abuse.
     """
-    logger.warning('IP blocked: %s, reason: %s', ip_address, reason)
+    logger.warning("IP blocked: %s, reason: %s", ip_address, reason)
 
     return {
         "ip_address": ip_address,
@@ -377,7 +377,7 @@ async def block_ip(
 )
 async def unblock_ip(request, ip_address: str) -> dict:
     """Unblock an IP address."""
-    logger.info('IP unblocked: %s', ip_address)
+    logger.info("IP unblocked: %s", ip_address)
 
     return {
         "ip_address": ip_address,

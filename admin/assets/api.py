@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
-from admin.common.messages import ErrorCode, SuccessCode, get_message
+from admin.common.messages import get_message, SuccessCode
 
 router = Router(tags=["assets"])
 logger = logging.getLogger(__name__)
@@ -129,6 +129,7 @@ async def upload_asset(
 
     # Store asset in the real Asset model
     from asgiref.sync import sync_to_async
+
     from admin.core.models.core import Asset
 
     tenant_id = str(getattr(request.auth, "effective_tenant_id", "") or "default")
@@ -163,7 +164,7 @@ async def upload_asset(
         },
     )
 
-    logger.info('Asset uploaded: %s, hash: %s...', asset_id, content_hash[:16])
+    logger.info("Asset uploaded: %s, hash: %s...", asset_id, content_hash[:16])
 
     return AssetUploadResponse(
         asset_id=asset_id,
@@ -186,13 +187,16 @@ async def get_asset(request, asset_id: str) -> dict:
     Per Phase 7.2: Asset retrieval
     """
     from asgiref.sync import sync_to_async
+
     from admin.core.models.core import Asset
 
     @sync_to_async
     def _get():
-        return Asset.objects.filter(id=asset_id).values(
-            "id", "mime_type", "content_size_bytes", "original_filename", "checksum_sha256"
-        ).first()
+        return (
+            Asset.objects.filter(id=asset_id)
+            .values("id", "mime_type", "content_size_bytes", "original_filename", "checksum_sha256")
+            .first()
+        )
 
     asset = await _get()
     if asset is None:
@@ -231,6 +235,7 @@ async def list_assets(
 ) -> AssetListResponse:
     """List assets with optional filtering."""
     from asgiref.sync import sync_to_async
+
     from admin.core.models.core import Asset
 
     tenant_id = str(getattr(request.auth, "effective_tenant_id", "") or "default")
@@ -299,7 +304,9 @@ async def get_provenance(request, asset_id: str) -> ProvenanceChainResponse:
 
     PhD Dev: Immutable provenance chain for audit compliance.
     """
-    raise HttpError(501, "Provenance chain is not implemented: no immutable provenance store is wired.")
+    raise HttpError(
+        501, "Provenance chain is not implemented: no immutable provenance store is wired."
+    )
 
 
 @router.post(
@@ -343,6 +350,7 @@ async def verify_asset(request, asset_id: str) -> dict:
     Security Auditor: Tamper detection.
     """
     from asgiref.sync import sync_to_async
+
     from admin.core.models.core import Asset
 
     @sync_to_async
@@ -382,6 +390,7 @@ async def _record_provenance(
     Writes to the Provenance model (append-only data lineage).
     """
     from asgiref.sync import sync_to_async
+
     from admin.core.models.core import Provenance
 
     record_id = str(uuid4())
@@ -398,7 +407,7 @@ async def _record_provenance(
 
     await _create()
 
-    logger.debug('Provenance recorded: %s %s by %s', asset_id, action, actor)
+    logger.debug("Provenance recorded: %s %s by %s", asset_id, action, actor)
 
     return {
         "record_id": record_id,

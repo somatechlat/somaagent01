@@ -15,11 +15,11 @@ from admin.common.session_security import PermissionResolver
 from admin.common.session_store import (
     ACTIVE_SESSIONS,
     RedisSessionStore,
+    Session,
     SESSION_CREATED,
     SESSION_DELETED,
     SESSION_OPERATION_DURATION,
     SESSION_RETRIEVED,
-    Session,
 )
 
 logger = logging.getLogger(__name__)

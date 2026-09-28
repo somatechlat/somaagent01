@@ -37,9 +37,7 @@ class SettingsModel(BaseModel):
     chat_model_provider: str = Field(
         default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
     )
-    chat_model_name: str = Field(
-        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", "")
-    )
+    chat_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", ""))
     chat_model_api_base: str = ""
     chat_model_kwargs: Dict[str, Any] = {}
     chat_model_ctx_length: int = 100000
@@ -52,9 +50,7 @@ class SettingsModel(BaseModel):
     util_model_provider: str = Field(
         default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_PROVIDER", "openrouter")
     )
-    util_model_name: str = Field(
-        default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_NAME", "")
-    )
+    util_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_NAME", ""))
     util_model_api_base: str = ""
     util_model_ctx_length: int = 100000
     util_model_ctx_input: float = 0.7
@@ -66,9 +62,7 @@ class SettingsModel(BaseModel):
     embed_model_provider: str = Field(
         default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_PROVIDER", "huggingface")
     )
-    embed_model_name: str = Field(
-        default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_NAME", "")
-    )
+    embed_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_NAME", ""))
     embed_model_api_base: str = ""
     embed_model_kwargs: Dict[str, Any] = {}
     embed_model_rl_requests: int = 0
@@ -79,9 +73,7 @@ class SettingsModel(BaseModel):
     browser_model_provider: str = Field(
         default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
     )
-    browser_model_name: str = Field(
-        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", "")
-    )
+    browser_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", ""))
     browser_model_api_base: str = ""
     browser_model_vision: bool = True
     browser_model_rl_requests: int = 0
@@ -93,9 +85,7 @@ class SettingsModel(BaseModel):
     # Memory / recall controls — Django settings MEM_* is the authority.
     memory_recall_enabled: bool = True
     memory_recall_delayed: bool = False
-    memory_recall_interval: int = Field(
-        default_factory=lambda: int(_dj("MEM_HISTORY_LIMIT", 20))
-    )
+    memory_recall_interval: int = Field(default_factory=lambda: int(_dj("MEM_HISTORY_LIMIT", 20)))
     memory_recall_history_len: int = 10000
     memory_recall_memories_max_search: int = Field(
         default_factory=lambda: int(_dj("MEM_RECALL_TOP_K", 8))
@@ -145,12 +135,8 @@ class SettingsModel(BaseModel):
     stt_waiting_timeout: int = 2000
     speech_provider: str = "browser"
     speech_realtime_enabled: bool = False
-    speech_realtime_model: str = Field(
-        default_factory=lambda: _dj("SPEECH_REALTIME_MODEL", "")
-    )
-    speech_realtime_voice: str = Field(
-        default_factory=lambda: _dj("SPEECH_REALTIME_VOICE", "")
-    )
+    speech_realtime_model: str = Field(default_factory=lambda: _dj("SPEECH_REALTIME_MODEL", ""))
+    speech_realtime_voice: str = Field(default_factory=lambda: _dj("SPEECH_REALTIME_VOICE", ""))
     speech_realtime_endpoint: str = Field(
         default_factory=lambda: _dj("SPEECH_REALTIME_ENDPOINT", "")
     )

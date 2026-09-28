@@ -6,7 +6,7 @@ Pyright reads the TYPE_CHECKING block, causing "Annotated is not callable".
 These stubs override the type-checking view to match the runtime behavior.
 """
 
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 

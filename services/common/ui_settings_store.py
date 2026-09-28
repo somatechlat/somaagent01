@@ -45,7 +45,7 @@ class UiSettingsStore:
             try:
                 return json.loads(data)
             except json.JSONDecodeError as e:
-                LOGGER.error('Failed to decode UI settings: %s', e)
+                LOGGER.error("Failed to decode UI settings: %s", e)
                 return {}
         return {}
 

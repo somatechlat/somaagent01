@@ -115,7 +115,8 @@ class ConversationWorkerImpl:
             internal_token=os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN", ""),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=os.environ.get("SA01_LLM_MODEL") or "",  # REQUIRED - no hardcoded default per VIBE
+            default_model=os.environ.get("SA01_LLM_MODEL")
+            or "",  # REQUIRED - no hardcoded default per VIBE
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,
@@ -151,7 +152,9 @@ class ConversationWorkerImpl:
         # Handle system config updates (Feature Flag Reload)
         if event_type == "system.config_update":
             tenant = event.get("tenant", "default")
-            LOGGER.info('Received config update for tenant %s. Reloading worker configuration...', tenant)
+            LOGGER.info(
+                "Received config update for tenant %s. Reloading worker configuration...", tenant
+            )
             await self._reload_config(tenant)
             return
 
@@ -169,7 +172,7 @@ class ConversationWorkerImpl:
             )
         )
         if not result.success:
-            LOGGER.warning('Failed: %s', result.error, extra={"session_id": sid})
+            LOGGER.warning("Failed: %s", result.error, extra={"session_id": sid})
 
     async def _reload_config(self, tenant: str) -> None:
         """Reload configuration and dependencies in response to a config update.

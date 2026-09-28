@@ -235,7 +235,11 @@ class SimpleGovernor:
 
         for service in critical_services:
             if not health_check_result.get(service, True):
-                logger.warning('Service %s is unhealthy - entering degraded mode', service, extra={"service": service})
+                logger.warning(
+                    "Service %s is unhealthy - entering degraded mode",
+                    service,
+                    extra={"service": service},
+                )
                 return True
 
         return False

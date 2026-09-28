@@ -120,13 +120,14 @@ async def select_model(
     # Try to import Django ORM model
     try:
         from asgiref.sync import sync_to_async
+
         from admin.llm.models import LLMModelConfig
 
         # 1. Query active models
         queryset = LLMModelConfig.objects.filter(is_active=True)
 
         # 2. Filter by tenant if provided and field exists
-        if tenant_id and hasattr(LLMModelConfig, 'tenant_id'):
+        if tenant_id and hasattr(LLMModelConfig, "tenant_id"):
             queryset = queryset.filter(tenant_id=tenant_id) | queryset.filter(
                 tenant_id__isnull=True
             )

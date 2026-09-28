@@ -82,9 +82,7 @@ async def recall_memories(request, payload: MemoryRecallIn) -> dict:
     gateway = await _gateway()
     tenant_id = _tenant(request)
     try:
-        hits = await gateway.recall(
-            payload.query, max(1, min(payload.top_k, 50)), tenant_id
-        )
+        hits = await gateway.recall(payload.query, max(1, min(payload.top_k, 50)), tenant_id)
     except Exception as exc:  # noqa: BLE001
         raise ServiceError(f"Memory recall failed: {exc}") from exc
     memories = [

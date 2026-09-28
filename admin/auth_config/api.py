@@ -19,7 +19,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.messages import ErrorCode, SuccessCode, get_message
+from admin.common.messages import get_message, SuccessCode
 
 router = Router(tags=["auth-config"])
 logger = logging.getLogger(__name__)
@@ -200,7 +200,7 @@ async def add_platform_provider(
     """
     provider_id = str(uuid4())
 
-    logger.info('Platform provider added: %s', name)
+    logger.info("Platform provider added: %s", name)
 
     return OAuthProvider(
         provider_id=provider_id,
@@ -236,7 +236,7 @@ async def test_platform_provider(request, provider_id: str) -> dict:
 )
 async def remove_platform_provider(request, provider_id: str) -> dict:
     """Remove platform OAuth provider."""
-    logger.warning('Platform provider removed: %s', provider_id)
+    logger.warning("Platform provider removed: %s", provider_id)
 
     return {
         "provider_id": provider_id,
@@ -279,7 +279,7 @@ async def update_platform_mfa(
 
     Security Auditor: MFA enforcement.
     """
-    logger.info('Platform MFA policy updated: required=%s', required)
+    logger.info("Platform MFA policy updated: required=%s", required)
 
     return {
         "updated": True,
@@ -350,7 +350,7 @@ async def add_tenant_provider(
     """
     provider_id = str(uuid4())
 
-    logger.info('Tenant %s provider added: %s', tenant_id, name)
+    logger.info("Tenant %s provider added: %s", tenant_id, name)
 
     return OAuthProvider(
         provider_id=provider_id,
@@ -428,7 +428,7 @@ async def reset_tenant_config(request, tenant_id: str) -> dict:
 
     PM: Revert customizations.
     """
-    logger.info('Tenant %s reset to platform defaults', tenant_id)
+    logger.info("Tenant %s reset to platform defaults", tenant_id)
 
     return {
         "tenant_id": tenant_id,

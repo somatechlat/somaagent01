@@ -11,7 +11,6 @@ VIBE COMPLIANT:
 
 from __future__ import annotations
 
-import asyncio
 import importlib
 import os
 from types import SimpleNamespace
@@ -224,11 +223,10 @@ class TestHealthMonitorDeploymentMode:
             def standalone_check():
                 try:
                     import somabrain  # noqa: F401
+
                     return HealthCheck(healthy=True, latency_ms=15.0)
                 except ImportError:
-                    return HealthCheck(
-                        healthy=False, latency_ms=0.0, error="Module not found"
-                    )
+                    return HealthCheck(healthy=False, latency_ms=0.0, error="Module not found")
 
             monitor.register_health_checker("somabrain", standalone_check)
             await monitor._check_service("somabrain", standalone_check)

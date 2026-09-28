@@ -16,7 +16,6 @@ from typing import Optional
 from uuid import uuid4
 
 from asgiref.sync import sync_to_async
-from django.db.models import Count, Q
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
@@ -233,10 +232,11 @@ async def get_current_usage(request) -> UsageReport:
 
     PM: Billing-relevant usage data.
     """
+    from django.db.models import Sum
+
     from admin.aaas.models import Agent
     from admin.aaas.models.usage import UsageRecord
     from admin.chat.models import Conversation, Message
-    from django.db.models import Sum
 
     now = timezone.now()
     period_start = now.replace(day=1, hour=0, minute=0, second=0)
@@ -285,8 +285,9 @@ async def get_usage_history(
 
     PM: Trend analysis for capacity planning.
     """
-    from admin.aaas.models.usage import UsageRecord
     from django.db.models import Sum
+
+    from admin.aaas.models.usage import UsageRecord
 
     @sync_to_async
     def _history():
@@ -364,15 +365,12 @@ async def get_tenant_analytics(
         return {
             "tenant_id": tenant_id,
             "active_agents": Agent.objects.filter(tenant_id=tenant_id, status="active").count(),
-            "active_users": TenantUser.objects.filter(
-                tenant_id=tenant_id, is_active=True
-            ).count(),
+            "active_users": TenantUser.objects.filter(tenant_id=tenant_id, is_active=True).count(),
             "conversations_24h": Conversation.objects.filter(
                 tenant_id=tenant_id, created_at__gte=since
             ).count(),
             "messages_24h": Message.objects.filter(
-                conversation_id__in=Conversation.objects.filter(tenant_id=tenant_id)
-                .values("id"),
+                conversation_id__in=Conversation.objects.filter(tenant_id=tenant_id).values("id"),
                 created_at__gte=since,
             ).count(),
             "api_calls_24h": 0,  # Requires metrics backend
@@ -419,9 +417,9 @@ async def get_all_tenants_analytics(
                         tenant_id=tenant.id, created_at__gte=since
                     ).count(),
                     "messages_24h": Message.objects.filter(
-                        conversation_id__in=Conversation.objects.filter(
-                            tenant_id=tenant.id
-                        ).values("id"),
+                        conversation_id__in=Conversation.objects.filter(tenant_id=tenant.id).values(
+                            "id"
+                        ),
                         created_at__gte=since,
                     ).count(),
                     "api_calls_24h": 0,  # Requires metrics backend
@@ -505,9 +503,9 @@ async def get_all_agents_analytics(
                         agent_id=agent.id, created_at__gte=since
                     ).count(),
                     "messages_24h": Message.objects.filter(
-                        conversation_id__in=Conversation.objects.filter(
-                            agent_id=agent.id
-                        ).values("id"),
+                        conversation_id__in=Conversation.objects.filter(agent_id=agent.id).values(
+                            "id"
+                        ),
                         created_at__gte=since,
                     ).count(),
                     "avg_response_time_ms": 0.0,  # Requires metrics backend
@@ -583,7 +581,11 @@ async def get_infrastructure_metrics(request) -> dict:
         except Exception as exc:
             services["somabrain"] = {"status": "down", "latency_ms": None, "error": str(exc)}
     else:
-        services["somabrain"] = {"status": "unknown", "latency_ms": None, "error": "SOMABRAIN_URL not configured"}
+        services["somabrain"] = {
+            "status": "unknown",
+            "latency_ms": None,
+            "error": "SOMABRAIN_URL not configured",
+        }
 
     # Django itself is running because we are responding
     services["django"] = {"status": "healthy", "latency_ms": 0.0}

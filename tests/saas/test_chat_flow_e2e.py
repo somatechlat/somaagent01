@@ -53,6 +53,7 @@ pytestmark = [
 # DJANGO CONFIGURATION (From Centralized Settings - Rule 91)
 # =============================================================================
 
+
 @pytest.fixture(scope="session", autouse=True)
 def django_setup():
     """Configure Django from centralized settings.
@@ -63,6 +64,7 @@ def django_setup():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
     import django
+
     django.setup()
 
 
@@ -70,9 +72,11 @@ def django_setup():
 # TEST FIXTURES (Real Data)
 # =============================================================================
 
+
 @dataclass
 class TestContext:
     """Complete test context for E2E verification."""
+
     tenant_id: str
     user_id: str
     capsule_id: str
@@ -96,6 +100,7 @@ def test_context() -> TestContext:
 def clean_cache():
     """Clear cache before/after test."""
     from django.core.cache import cache
+
     cache.clear()
     yield
     cache.clear()
@@ -105,12 +110,14 @@ def clean_cache():
 def settings():
     """Access centralized Django settings."""
     from django.conf import settings
+
     return settings
 
 
 # =============================================================================
 # PHASE 1: TENANT RESOLUTION
 # =============================================================================
+
 
 class TestPhase1TenantResolution:
     """Phase 1: Resolve tenant from authentication token."""
@@ -131,6 +138,7 @@ class TestPhase1TenantResolution:
 # =============================================================================
 # PHASE 2: CAPSULE LOAD
 # =============================================================================
+
 
 class TestPhase2CapsuleLoad:
     """Phase 2: Load agent capsule configuration."""
@@ -165,6 +173,7 @@ class TestPhase2CapsuleLoad:
 # PHASE 3: BUDGET GATE
 # =============================================================================
 
+
 class TestPhase3BudgetGate:
     """Phase 3: Verify budget availability before processing."""
 
@@ -178,6 +187,7 @@ class TestPhase3BudgetGate:
     def test_budget_check_fails_when_exhausted(self, test_context: TestContext, clean_cache):
         """Exhausted budget blocks request."""
         from django.core.cache import cache
+
         from admin.core.budget.limits import check_budget_available
 
         cache.set(f"limit:{test_context.tenant_id}:tokens", 100)
@@ -190,6 +200,7 @@ class TestPhase3BudgetGate:
 # =============================================================================
 # PHASE 4: AGENTIQ DERIVATION
 # =============================================================================
+
 
 class TestPhase4AgentIQDerivation:
     """Phase 4: Derive agent settings from capsule knobs."""
@@ -224,6 +235,7 @@ class TestPhase4AgentIQDerivation:
 # PHASE 5: CONTEXT BUILDING
 # =============================================================================
 
+
 class TestPhase5ContextBuilding:
     """Phase 5: Assemble context from multiple lanes."""
 
@@ -245,6 +257,7 @@ class TestPhase5ContextBuilding:
 # PHASE 6: MODEL SELECTION
 # =============================================================================
 
+
 class TestPhase6ModelSelection:
     """Phase 6: Select appropriate LLM model."""
 
@@ -260,6 +273,7 @@ class TestPhase6ModelSelection:
 # PHASE 7: LLM INFERENCE
 # =============================================================================
 
+
 class TestPhase7LLMInference:
     """Phase 7: Execute LLM completion."""
 
@@ -267,9 +281,7 @@ class TestPhase7LLMInference:
         """LLM response has required structure."""
         response = {
             "id": "chatcmpl-123",
-            "choices": [
-                {"message": {"role": "assistant", "content": "Acknowledged."}}
-            ],
+            "choices": [{"message": {"role": "assistant", "content": "Acknowledged."}}],
             "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
         }
 
@@ -281,6 +293,7 @@ class TestPhase7LLMInference:
 # =============================================================================
 # PHASE 8: TOOL EXECUTION
 # =============================================================================
+
 
 class TestPhase8ToolExecution:
     """Phase 8: Execute requested tools."""
@@ -300,6 +313,7 @@ class TestPhase8ToolExecution:
 # PHASE 9: MULTIMODAL HANDLING
 # =============================================================================
 
+
 class TestPhase9MultimodalHandling:
     """Phase 9: Process multimodal requests."""
 
@@ -315,6 +329,7 @@ class TestPhase9MultimodalHandling:
 # PHASE 10: MEMORY UPDATE
 # =============================================================================
 
+
 class TestPhase10MemoryUpdate:
     """Phase 10: Store interaction in memory."""
 
@@ -327,6 +342,7 @@ class TestPhase10MemoryUpdate:
 # =============================================================================
 # PHASE 11: BILLING EVENT
 # =============================================================================
+
 
 class TestPhase11BillingEvent:
     """Phase 11: Emit billing event to Lago."""
@@ -351,6 +367,7 @@ class TestPhase11BillingEvent:
 # PHASE 12: RESPONSE DELIVERY
 # =============================================================================
 
+
 class TestPhase12ResponseDelivery:
     """Phase 12: Deliver response to client."""
 
@@ -372,6 +389,7 @@ class TestPhase12ResponseDelivery:
 # FULL GOLDEN PATH TEST (Run AFTER all phases pass)
 # =============================================================================
 
+
 class TestGoldenPathE2E:
     """Complete 12-Phase Golden Path verification."""
 
@@ -386,7 +404,6 @@ class TestGoldenPathE2E:
             get_tenant_plan,
             increment_usage,
         )
-        from admin.core.features.check import is_feature_enabled
 
         # PHASE 1: Tenant Resolution
         tenant_id = test_context.tenant_id
@@ -436,4 +453,4 @@ class TestGoldenPathE2E:
         # GOLDEN PATH COMPLETE
         print(f"✅ Golden Path Complete: {tenant_id}")
         print(f"   Tokens Used: {recorded}")
-        print(f"   Settings Verified: Rule 91 Compliant")
+        print("   Settings Verified: Rule 91 Compliant")

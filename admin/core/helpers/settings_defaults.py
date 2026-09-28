@@ -122,7 +122,10 @@ def _env_or_db(env_key: str, agent_id: str, db_key: str, default: str = "") -> s
         pass
     # Topology keys (URLs/hosts/ports) may come from env (L3).
     env_val = os.environ.get(env_key)
-    if env_val and any(tok in db_key.lower() or tok in env_key.lower() for tok in ("url", "host", "port", "endpoint", "base")):
+    if env_val and any(
+        tok in db_key.lower() or tok in env_key.lower()
+        for tok in ("url", "host", "port", "endpoint", "base")
+    ):
         return env_val
     return default
 

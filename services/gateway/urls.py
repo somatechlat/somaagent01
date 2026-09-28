@@ -12,8 +12,8 @@ from django.contrib import admin
 from django.http import FileResponse, JsonResponse
 from django.urls import path, re_path
 
+from admin.common.messages import ErrorCode, get_message
 from services.gateway.api_router import api
-from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 
 def health_check(request):

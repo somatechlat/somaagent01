@@ -263,8 +263,7 @@ async def get_tenant_limits(request, tenant_id: str) -> dict:
     """
     raise HttpError(
         501,
-        "Tenant limits are not implemented on this endpoint: "
-        "no limit store is wired.",
+        "Tenant limits are not implemented on this endpoint: " "no limit store is wired.",
     )
 
 

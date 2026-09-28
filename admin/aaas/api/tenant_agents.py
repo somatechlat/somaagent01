@@ -218,7 +218,7 @@ def create_agent(
         },
     )
 
-    logger.info('Agent created: %s (%s)', payload.name, agent.id)
+    logger.info("Agent created: %s (%s)", payload.name, agent.id)
 
     return api_response(_agent_to_schema(agent).model_dump(), message="Agent created")
 
@@ -270,7 +270,7 @@ def update_agent(
     agent.config = config
     agent.save()
 
-    logger.info('Agent updated: %s', agent_id)
+    logger.info("Agent updated: %s", agent_id)
 
     return api_response(_agent_to_schema(agent).model_dump(), message="Agent updated")
 
@@ -291,7 +291,7 @@ def delete_agent(
         raise NotFoundError("agent", agent_id)
 
     agent.delete()
-    logger.info('Agent deleted: %s', agent_id)
+    logger.info("Agent deleted: %s", agent_id)
 
     return api_response({"agent_id": agent_id}, message="Agent deleted")
 
@@ -313,7 +313,7 @@ def start_agent(
 
     agent.status = AgentStatus.ACTIVE
     agent.save()
-    logger.info('Agent started: %s', agent_id)
+    logger.info("Agent started: %s", agent_id)
 
     return api_response({"agent_id": agent_id, "status": "active"}, message="Agent started")
 
@@ -335,7 +335,7 @@ def stop_agent(
 
     agent.status = AgentStatus.PAUSED
     agent.save()
-    logger.info('Agent stopped: %s', agent_id)
+    logger.info("Agent stopped: %s", agent_id)
 
     return api_response({"agent_id": agent_id, "status": "paused"}, message="Agent stopped")
 

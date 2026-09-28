@@ -215,9 +215,7 @@ class SuccessCode(str, Enum):
 # I18N-Ready Messages using Django gettext_lazy
 MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     # Generic
-    ErrorCode.FRONTEND_NOT_BUILT: _(
-        "Frontend not built. Run: cd webui && npm run build"
-    ),
+    ErrorCode.FRONTEND_NOT_BUILT: _("Frontend not built. Run: cd webui && npm run build"),
     ErrorCode.INTERNAL_ERROR: _("An unexpected error occurred"),
     ErrorCode.INVALID_REQUEST: _("The request payload is invalid"),
     ErrorCode.UNAUTHORIZED: _("Authentication required"),
@@ -309,9 +307,7 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
         "Vault is unreachable at {addr} in production mode. All system secrets must be stored in Vault."
     ),
     # Files
-    ErrorCode.FILE_SIZE_EXCEEDED: _(
-        "File size exceeds declared size"
-    ),
+    ErrorCode.FILE_SIZE_EXCEEDED: _("File size exceeds declared size"),
     # Rate Limit
     ErrorCode.RATE_LIMIT_NOT_FOUND: _("Rate limit policy '{key}' not found"),
     ErrorCode.RATE_LIMIT_INVALID_POLICY: _("Invalid policy. Must be one of: {policies}"),
@@ -379,9 +375,7 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     SuccessCode.API_KEY_SAVE_WARNING: _("Save this key now - it cannot be retrieved again"),
     SuccessCode.API_KEY_REVOKED: _("API key {key_id} revoked"),
     SuccessCode.BACKUP_CODE_ACCEPTED: _("Backup code accepted"),
-    SuccessCode.VERIFICATION_EMAIL_SENT: _(
-        "Verification email sent. Please check your inbox."
-    ),
+    SuccessCode.VERIFICATION_EMAIL_SENT: _("Verification email sent. Please check your inbox."),
     SuccessCode.VOICE_WEBSOCKET_CONNECTED: _(
         "Voice WebSocket connected. Send 'start_session' to begin."
     ),

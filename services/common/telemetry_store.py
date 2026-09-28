@@ -65,6 +65,7 @@ class TelemetryStore:
         """
         try:
             from django.conf import settings as django_settings
+
             return cls(django_settings)
         except Exception:
             logger.exception("Failed to load Django settings for TelemetryStore")

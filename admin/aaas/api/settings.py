@@ -21,7 +21,7 @@ from admin.aaas.api.schemas import (
     SsoConfig,
     SsoTestResponse,
 )
-from admin.common.messages import ErrorCode, SuccessCode, get_message
+from admin.common.messages import ErrorCode, get_message, SuccessCode
 
 router = Router()
 
@@ -107,7 +107,9 @@ def revoke_api_key(request, key_id: str):
         api_key.save()
         return MessageResponse(message=get_message(SuccessCode.API_KEY_REVOKED, key_id=key_id))
     except ApiKey.DoesNotExist:
-        return MessageResponse(message=get_message(ErrorCode.API_KEY_NOT_FOUND, key_id=key_id), success=False)
+        return MessageResponse(
+            message=get_message(ErrorCode.API_KEY_NOT_FOUND, key_id=key_id), success=False
+        )
 
 
 # =============================================================================
@@ -162,6 +164,7 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 
     if updated_model is None:
         from django.http import Http404
+
         raise Http404(f"Model {model_id} not found")
 
     gd.defaults = defaults
@@ -221,6 +224,7 @@ def update_role(request, role_id: str, payload: RoleUpdate):
 
     if updated_role is None:
         from django.http import Http404
+
         raise Http404(f"Role {role_id} not found")
 
     gd.save()

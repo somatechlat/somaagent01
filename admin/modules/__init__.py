@@ -6,6 +6,6 @@ hooks. See ``admin.modules.manifest`` for the ``module.yaml`` contract and
 ``admin.modules.hooks`` for the orchestrator hook registry.
 """
 
-from admin.modules.manifest import ModuleManifest, load_module_yaml
+from admin.modules.manifest import load_module_yaml, ModuleManifest
 
 __all__ = ["ModuleManifest", "load_module_yaml"]

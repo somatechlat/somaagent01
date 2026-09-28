@@ -15,24 +15,35 @@ def backfill_capsule_persona_config(apps, schema_editor):
             if capsule.resource_limits:
                 persona_config["memory"] = {
                     "recall_limit": capsule.resource_limits.get("recall_limit", 10),
-                    "similarity_threshold": capsule.resource_limits.get("similarity_threshold", 0.7),
+                    "similarity_threshold": capsule.resource_limits.get(
+                        "similarity_threshold", 0.7
+                    ),
                 }
             # Set default knobs
-            persona_config.setdefault("knobs", {
-                "intelligence_level": 5,
-                "autonomy_level": 5,
-                "resource_budget": 0.10,
-            })
+            persona_config.setdefault(
+                "knobs",
+                {
+                    "intelligence_level": 5,
+                    "autonomy_level": 5,
+                    "resource_budget": 0.10,
+                },
+            )
             # Set default memory if not already set
-            persona_config.setdefault("memory", {
-                "recall_limit": 10,
-                "similarity_threshold": 0.7,
-            })
+            persona_config.setdefault(
+                "memory",
+                {
+                    "recall_limit": 10,
+                    "similarity_threshold": 0.7,
+                },
+            )
             # Set default prompts
-            persona_config.setdefault("prompts", {
-                "injection_prompts": [],
-                "tool_prompts": {},
-            })
+            persona_config.setdefault(
+                "prompts",
+                {
+                    "injection_prompts": [],
+                    "tool_prompts": {},
+                },
+            )
             capsule.persona_config = persona_config
         # Set default memory_pointer if empty
         if not capsule.memory_pointer:
@@ -58,9 +69,14 @@ def backfill_capsule_persona_config(apps, schema_editor):
                 "acetylcholine": 0.5,
                 "last_synced_at": None,
             }
-        capsule.save(update_fields=[
-            "persona_config", "memory_pointer", "tool_policy", "neuromodulator_state"
-        ])
+        capsule.save(
+            update_fields=[
+                "persona_config",
+                "memory_pointer",
+                "tool_policy",
+                "neuromodulator_state",
+            ]
+        )
 
 
 def reverse_backfill(apps, schema_editor):

@@ -232,7 +232,7 @@ class AccountLockoutService:
         attempts_count = results[0]
         LOGIN_ATTEMPTS.labels("failure").inc()
 
-        logger.info('Failed login attempt: email=%s, attempts=%s', email, attempts_count)
+        logger.info("Failed login attempt: email=%s, attempts=%s", email, attempts_count)
 
         # Check if should lock
         if attempts_count >= self.config.max_attempts:
@@ -245,7 +245,12 @@ class AccountLockoutService:
             )
 
             ACCOUNT_LOCKOUTS.inc()
-            logger.warning('Account locked: email=%s, attempts=%s, duration=%ss', email, attempts_count, self.config.lockout_duration)
+            logger.warning(
+                "Account locked: email=%s, attempts=%s, duration=%ss",
+                email,
+                attempts_count,
+                self.config.lockout_duration,
+            )
 
             return LockoutStatus(
                 is_locked=True,
@@ -278,7 +283,7 @@ class AccountLockoutService:
         await self._redis.delete(attempts_key)
 
         LOGIN_ATTEMPTS.labels("success").inc()
-        logger.debug('Successful login, cleared attempts: email=%s', email)
+        logger.debug("Successful login, cleared attempts: email=%s", email)
 
     async def clear_lockout(self, email: str) -> bool:
         """Manually clear lockout (admin action).
@@ -304,7 +309,7 @@ class AccountLockoutService:
         cleared = results[0] > 0
 
         if cleared:
-            logger.info('Lockout cleared by admin: email=%s', email)
+            logger.info("Lockout cleared by admin: email=%s", email)
 
         return cleared
 

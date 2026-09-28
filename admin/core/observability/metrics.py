@@ -160,9 +160,9 @@ def measure_duration(metric_name: str):
                     if metric_name == "sse_message":
                         sse_message_duration.labels(message_type=func.__name__).observe(duration)
                     elif metric_name == "gateway_request":
-                        gateway_request_duration.labels(method="GET", endpoint=func.__name__).observe(
-                            duration
-                        )
+                        gateway_request_duration.labels(
+                            method="GET", endpoint=func.__name__
+                        ).observe(duration)
                     elif metric_name == "database_query":
                         db_query_duration.labels(operation=func.__name__).observe(duration)
                     elif metric_name == "auth_check":
@@ -184,9 +184,9 @@ def measure_duration(metric_name: str):
                     if metric_name == "sse_message":
                         sse_message_duration.labels(message_type=func.__name__).observe(duration)
                     elif metric_name == "gateway_request":
-                        gateway_request_duration.labels(method="GET", endpoint=func.__name__).observe(
-                            duration
-                        )
+                        gateway_request_duration.labels(
+                            method="GET", endpoint=func.__name__
+                        ).observe(duration)
                 except Exception:
                     logger.warning("Failed to record metric", exc_info=True)
 

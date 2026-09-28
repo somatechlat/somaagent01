@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -131,7 +130,7 @@ class RedisSessionStore:
             )
             await self._redis.ping()
             self._connected = True
-            logger.info('RedisSessionStore connected to Redis: %s', self.redis_url)
+            logger.info("RedisSessionStore connected to Redis: %s", self.redis_url)
 
     async def close(self) -> None:
         """Close Redis connection."""
@@ -173,7 +172,7 @@ class RedisSessionStore:
             )
             SESSION_CREATED.labels(session.tenant_id).inc()
             logger.info(
-                'Session created: user=%s, session=%s, tenant=%s, ttl=%ss',
+                "Session created: user=%s, session=%s, tenant=%s, ttl=%ss",
                 session.user_id,
                 session.session_id,
                 session.tenant_id,
@@ -191,7 +190,7 @@ class RedisSessionStore:
 
             if data is None:
                 SESSION_RETRIEVED.labels("not_found").inc()
-                logger.debug('Session not found: %s', key)
+                logger.debug("Session not found: %s", key)
                 return None
 
             try:
@@ -200,7 +199,7 @@ class RedisSessionStore:
                 return session
             except (json.JSONDecodeError, TypeError, KeyError) as e:
                 SESSION_RETRIEVED.labels("invalid").inc()
-                logger.warning('Invalid session data for %s: %s', key, e)
+                logger.warning("Invalid session data for %s: %s", key, e)
                 return None
 
     async def get_by_id(self, session_id: str) -> Optional[Session]:
@@ -249,7 +248,7 @@ class RedisSessionStore:
                 )
                 return True
             except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning('Failed to update session %s: %s', key, e)
+                logger.warning("Failed to update session %s: %s", key, e)
                 return False
 
     async def delete(self, user_id: str, session_id: str) -> bool:
@@ -263,7 +262,7 @@ class RedisSessionStore:
 
             if deleted:
                 SESSION_DELETED.labels("explicit").inc()
-                logger.info('Session deleted: %s', key)
+                logger.info("Session deleted: %s", key)
                 return True
 
             return False
@@ -284,7 +283,7 @@ class RedisSessionStore:
             if keys_to_delete:
                 deleted_count = await self._redis.delete(*keys_to_delete)
                 SESSION_DELETED.labels("bulk").inc(deleted_count)
-                logger.info('Deleted %s sessions for user %s', deleted_count, user_id)
+                logger.info("Deleted %s sessions for user %s", deleted_count, user_id)
 
             return deleted_count
 
@@ -316,7 +315,7 @@ class RedisSessionStore:
             try:
                 sessions.append(Session.from_dict(json.loads(data)))
             except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning('Invalid session data for %s: %s', key, e)
+                logger.warning("Invalid session data for %s: %s", key, e)
                 continue
 
         return sessions
@@ -338,7 +337,7 @@ class RedisSessionStore:
             try:
                 sessions.append(Session.from_dict(json.loads(data)))
             except (json.JSONDecodeError, TypeError, KeyError) as e:
-                logger.warning('Invalid session data for %s: %s', key, e)
+                logger.warning("Invalid session data for %s: %s", key, e)
                 continue
 
         return sessions

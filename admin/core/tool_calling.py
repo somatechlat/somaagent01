@@ -110,9 +110,7 @@ def build_assistant_tool_message(tool_calls: List[Any]) -> Any:
     calls = []
     for tc in tool_calls:
         args = tc.arguments if isinstance(tc.arguments, dict) else {}
-        calls.append(
-            {"id": tc.id, "name": tc.name, "args": args, "type": "tool_call"}
-        )
+        calls.append({"id": tc.id, "name": tc.name, "args": args, "type": "tool_call"})
     return AIMessage(content="", tool_calls=calls)
 
 
@@ -158,9 +156,7 @@ async def execute_tool_call(
         return {}, False, get_message(ErrorCode.TOOL_EXECUTION_TIMEOUT)
     except Exception as exc:
         logger.warning("Tool %s failed: %s", name, exc)
-        return {}, False, get_message(
-            ErrorCode.TOOL_EXECUTION_FAILED, name=name, error=str(exc)
-        )
+        return {}, False, get_message(ErrorCode.TOOL_EXECUTION_FAILED, name=name, error=str(exc))
     return result if isinstance(result, dict) else {"result": result}, True, None
 
 
@@ -361,10 +357,7 @@ async def run_tool_loop(
 
         # Next iteration: the model sees the tool results and continues.
 
-    yield (
-        "\n[Tool loop stopped: maximum tool iterations "
-        f"({max_iterations}) reached]"
-    )
+    yield ("\n[Tool loop stopped: maximum tool iterations " f"({max_iterations}) reached]")
 
 
 __all__ = [

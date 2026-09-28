@@ -18,7 +18,6 @@ from ninja import Router
 from ninja.responses import Response as NinjaResponse
 
 from admin.aaas.models import Tenant
-from admin.common.messages import ErrorCode, SuccessCode, get_message
 from admin.auth.api_helpers import (
     determine_redirect_path,
     get_highest_role,
@@ -32,12 +31,12 @@ from admin.auth.api_schemas import (
     RefreshRequest,
     RegisterRequest,
     TokenRequest,
-    TokenResponse,
     UserResponse,
 )
 from admin.common.auth import decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError, UnauthorizedError
-from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
+from admin.common.messages import get_message, SuccessCode
+from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -121,8 +120,6 @@ async def get_token(request, payload: TokenRequest):
             redirect_path = determine_redirect_path(token_payload)
             await update_last_login(token_payload)
 
-            from django.conf import settings
-
             from admin.common.session_manager import get_session_manager
 
             session_manager = await get_session_manager()
@@ -160,7 +157,10 @@ async def get_token(request, payload: TokenRequest):
         await _emit_auth_audit(
             request,
             action="auth.token_failed",
-            details={"error": "Authentication service unavailable", "grant_type": payload.grant_type},
+            details={
+                "error": "Authentication service unavailable",
+                "grant_type": payload.grant_type,
+            },
         )
         raise UnauthorizedError(message="Authentication service unavailable")
 
@@ -193,13 +193,14 @@ async def refresh_token(request, payload: RefreshRequest):
                 await _emit_auth_audit(
                     request,
                     action="auth.refresh_failed",
-                    details={"error": "Invalid or expired refresh token", "status_code": resp.status_code},
+                    details={
+                        "error": "Invalid or expired refresh token",
+                        "status_code": resp.status_code,
+                    },
                 )
                 raise UnauthorizedError(message="Invalid or expired refresh token")
             token_data = resp.json()
             token_payload = await decode_token(token_data["access_token"])
-
-            from django.conf import settings
 
             from admin.common.session_manager import get_session_manager
 
@@ -311,11 +312,14 @@ async def logout(request):
         pass
 
     # Clear auth cookies
+    from django.http import JsonResponse
+
+    response = JsonResponse({"success": True})
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     response.delete_cookie("session_id")
 
-    return {"success": True}
+    return response
 
 
 # =============================================================================
@@ -390,15 +394,11 @@ async def login_with_email(request, payload: LoginRequest):
                     user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
 
-                from django.conf import settings
-
                 # Secure cookies only on real HTTPS. Local HTTP (Docker/dev)
                 # must use Secure=False or browsers drop the session and /chat
                 # bounces to login.
                 fwd_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "")
-                cookie_secure = bool(
-                    request.is_secure() or fwd_proto.lower() == "https"
-                )
+                cookie_secure = bool(request.is_secure() or fwd_proto.lower() == "https")
 
                 data = {
                     "token": token_data["access_token"],
@@ -417,17 +417,29 @@ async def login_with_email(request, payload: LoginRequest):
                 access_ttl = token_data.get("expires_in", 900)
                 refresh_ttl = token_data.get("refresh_expires_in", 86400)
                 resp_obj.set_cookie(
-                    "access_token", token_data["access_token"],
-                    max_age=access_ttl, httponly=True, secure=cookie_secure, samesite="Lax",
+                    "access_token",
+                    token_data["access_token"],
+                    max_age=access_ttl,
+                    httponly=True,
+                    secure=cookie_secure,
+                    samesite="Lax",
                 )
                 if token_data.get("refresh_token"):
                     resp_obj.set_cookie(
-                        "refresh_token", token_data["refresh_token"],
-                        max_age=refresh_ttl, httponly=True, secure=cookie_secure, samesite="Lax",
+                        "refresh_token",
+                        token_data["refresh_token"],
+                        max_age=refresh_ttl,
+                        httponly=True,
+                        secure=cookie_secure,
+                        samesite="Lax",
                     )
                 resp_obj.set_cookie(
-                    "session_id", session.session_id,
-                    max_age=access_ttl, httponly=True, secure=cookie_secure, samesite="Lax",
+                    "session_id",
+                    session.session_id,
+                    max_age=access_ttl,
+                    httponly=True,
+                    secure=cookie_secure,
+                    samesite="Lax",
                 )
                 return resp_obj
 
@@ -436,7 +448,10 @@ async def login_with_email(request, payload: LoginRequest):
                 await _emit_auth_audit(
                     request,
                     action="auth.login_failed",
-                    details={"error": "Account locked after failed attempt", "retry_after": new_status.retry_after},
+                    details={
+                        "error": "Account locked after failed attempt",
+                        "retry_after": new_status.retry_after,
+                    },
                     actor_email=payload.email,
                 )
                 raise ForbiddenError(
@@ -466,7 +481,7 @@ async def login_with_email(request, payload: LoginRequest):
 async def register_user(request, payload: RegisterRequest):
     """Register a new user via Keycloak."""
     config = get_keycloak_config()
-    logger.info('User registration: %s', payload.email)
+    logger.info("User registration: %s", payload.email)
 
     # Get admin token from Keycloak
     admin_token_url = f"{config.server_url}/realms/master/protocol/openid-connect/token"
@@ -512,11 +527,18 @@ async def register_user(request, payload: RegisterRequest):
 
             if create_resp.status_code == 201:
                 logger.info("User registered in Keycloak: %s", payload.email)
-                return {"success": True, "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT)}
+                return {
+                    "success": True,
+                    "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT),
+                }
             elif create_resp.status_code == 409:
                 raise BadRequestError("User already exists")
             else:
-                logger.error("Keycloak user creation failed: %s %s", create_resp.status_code, create_resp.text)
+                logger.error(
+                    "Keycloak user creation failed: %s %s",
+                    create_resp.status_code,
+                    create_resp.text,
+                )
                 raise ServiceUnavailableError("auth", "User registration failed")
 
     except httpx.HTTPError as e:
@@ -585,9 +607,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         "iss": "somaagent-impersonation",
         "jti": str(uuid4()),
     }
-    impersonation_token = jwt.encode(
-        impersonation_claims, impersonation_secret, algorithm="HS256"
-    )
+    impersonation_token = jwt.encode(impersonation_claims, impersonation_secret, algorithm="HS256")
 
     @sync_to_async
     def create_audit():
@@ -607,7 +627,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         )
 
     audit = await create_audit()
-    logger.warning('IMPERSONATION: User %s impersonating tenant %s', current_user.sub, tenant.id)
+    logger.warning("IMPERSONATION: User %s impersonating tenant %s", current_user.sub, tenant.id)
     return ImpersonationResponse(
         access_token=impersonation_token,
         expires_in=3600,

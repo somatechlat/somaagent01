@@ -18,8 +18,8 @@ django_asgi_app = get_asgi_application()
 
 # Import channels routing after Django setup
 try:
-    from channels.routing import ProtocolTypeRouter, URLRouter
     from channels.auth import AuthMiddlewareStack
+    from channels.routing import ProtocolTypeRouter, URLRouter
 
     # Import WebSocket routes from Agent
     try:

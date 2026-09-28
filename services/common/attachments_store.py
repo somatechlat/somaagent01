@@ -6,7 +6,7 @@ VIBE COMPLIANT: Uses Django ORM exclusively.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 from uuid import UUID
 
 from services.common.store_base import BaseStore

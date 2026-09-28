@@ -410,7 +410,9 @@ class Capsule(models.Model):
             "governance": {
                 "constitution_ref": self.constitution_ref,
                 "opa_policies": self.persona_config.get("governance", {}).get("opa_policies", {}),
-                "spicedb_relations": self.persona_config.get("governance", {}).get("spicedb_relations", {}),
+                "spicedb_relations": self.persona_config.get("governance", {}).get(
+                    "spicedb_relations", {}
+                ),
             },
             "resource_limits": self.resource_limits,
             "memory_pointer": self.memory_pointer,
@@ -757,7 +759,6 @@ class AgentSetting(models.Model):
 
 # Import SensorOutbox so Django detects it for migrations
 from admin.core.sensors.outbox import SensorOutbox  # noqa: E402, F401
-
 
 # =============================================================================
 # ASSET MODELS (replaces asset_store.py)

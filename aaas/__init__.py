@@ -30,8 +30,6 @@ Configuration:
 
 from __future__ import annotations
 
-import logging
-
 # VIBE Rule 100: Use centralized config
 from config import get_settings
 

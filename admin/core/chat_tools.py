@@ -18,14 +18,16 @@ def discover_tools(tool_registry: Optional[Any]) -> List[Dict[str, Any]]:
             handler = tool_def.handler
             schema = handler.input_schema() if handler else None
             if schema:
-                tools_for_llm.append({
-                    "type": "function",
-                    "function": {
-                        "name": tool_def.name,
-                        "description": tool_def.description or tool_def.name,
-                        "parameters": schema,
+                tools_for_llm.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": tool_def.name,
+                            "description": tool_def.description or tool_def.name,
+                            "parameters": schema,
+                        },
                     }
-                })
+                )
     return tools_for_llm
 
 
@@ -43,7 +45,7 @@ def extract_tool_calls(response_text: str) -> List[Dict[str, str]]:
     tool_calls: List[Dict[str, str]] = []
 
     # Format 1: Markdown code blocks with tool: prefix
-    pattern1 = r'```tool:(\w+)\s*\n(.*?)\n```'
+    pattern1 = r"```tool:(\w+)\s*\n(.*?)\n```"
     for match in re.finditer(pattern1, response_text, re.DOTALL):
         name = match.group(1)
         args_raw = match.group(2).strip()
@@ -111,9 +113,7 @@ class ChatToolManager:
         """Extract tool calls from an LLM response."""
         return extract_tool_calls(response_text)
 
-    async def run_extracted(
-        self, response_text: str
-    ) -> Tuple[List[str], List[str]]:
+    async def run_extracted(self, response_text: str) -> Tuple[List[str], List[str]]:
         """Extract and execute any tool calls found in the response."""
         tool_calls = self.extract_from_response(response_text)
         return await execute_tools(tool_calls, self._tool_registry)

@@ -128,7 +128,7 @@ class SensorOutbox(models.Model):
             # Store reference to SomaBrain location
             self.last_error = f"brain_ref:{brain_ref}"
         self.save(update_fields=["synced", "synced_at", "payload", "last_error", "updated_at"])
-        logger.debug('Event %s synced, payload cleared', self.event_id)
+        logger.debug("Event %s synced, payload cleared", self.event_id)
 
     def mark_failed(self, error: str, max_retries: int = 10) -> None:
         """Mark event as failed, schedule retry or dead letter."""
@@ -137,12 +137,14 @@ class SensorOutbox(models.Model):
 
         if self.retry_count >= max_retries:
             self.dead_letter = True
-            logger.warning('Event %s sent to dead letter after %s retries', self.event_id, max_retries)
+            logger.warning(
+                "Event %s sent to dead letter after %s retries", self.event_id, max_retries
+            )
         else:
             # Exponential backoff: 2^retry_count minutes
             delay = timedelta(minutes=min(2**self.retry_count, 60))
             self.next_retry_at = timezone.now() + delay
-            logger.debug('Event %s scheduled for retry at %s', self.event_id, self.next_retry_at)
+            logger.debug("Event %s scheduled for retry at %s", self.event_id, self.next_retry_at)
 
         self.save(
             update_fields=[
@@ -190,7 +192,9 @@ class SensorOutbox(models.Model):
         return cls.objects.filter(dead_letter=True).count()
 
     @classmethod
-    def check_scaling_threshold(cls, target_service: str = "somabrain", threshold: int = 1000) -> dict:
+    def check_scaling_threshold(
+        cls, target_service: str = "somabrain", threshold: int = 1000
+    ) -> dict:
         """Check if pending outbox count exceeds scaling threshold.
 
         Args:
@@ -224,5 +228,5 @@ class SensorOutbox(models.Model):
             synced=True,
             synced_at__lt=cutoff,
         ).delete()
-        logger.info('Cleaned up %s synced events older than %s days', deleted, older_than_days)
+        logger.info("Cleaned up %s synced events older than %s days", deleted, older_than_days)
         return deleted

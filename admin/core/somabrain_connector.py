@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional
 
 from services.common.circuit_breaker import CircuitState, get_circuit_breaker

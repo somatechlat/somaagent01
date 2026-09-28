@@ -54,7 +54,12 @@ async def check_rate_limit(
         )
 
         if not result.allowed:
-            logger.warning('Rate limit exceeded: ip=%s, endpoint=%s, retry_after=%s', ip_address, endpoint, result.retry_after)
+            logger.warning(
+                "Rate limit exceeded: ip=%s, endpoint=%s, retry_after=%s",
+                ip_address,
+                endpoint,
+                result.retry_after,
+            )
             raise RateLimitError(
                 message="Too many requests. Please wait.",
                 retry_after=result.retry_after,
@@ -64,7 +69,7 @@ async def check_rate_limit(
         raise
     except Exception as e:
         # Fail closed on rate limiter errors
-        logger.error('Rate limiter error (failing closed): %s', e)
+        logger.error("Rate limiter error (failing closed): %s", e)
         raise RateLimitError(
             message="Service temporarily unavailable. Please try again later.",
             retry_after=60,

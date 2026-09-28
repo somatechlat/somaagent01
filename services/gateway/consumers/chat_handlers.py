@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from asgiref.sync import sync_to_async
@@ -14,18 +13,13 @@ from admin.common.exceptions import UnauthorizedError, ValidationError
 from admin.core.chat_orchestrator import ChatTurn, get_chat_orchestrator
 from admin.core.somabrain_client import SomaBrainClient
 from services.gateway.consumers.chat_utils import (
-    MSG_CHAT,
+    _metrics,
     MSG_CHAT_DELTA,
     MSG_CHAT_DONE,
-    MSG_CHAT_LEGACY,
-    MSG_CHAT_SEND,
-    MSG_FEEDBACK,
-    MSG_PING,
     MSG_PONG,
     MSG_TITLE_UPDATE,
     MSG_TYPING,
     WSMessage,
-    _metrics,
 )
 
 logger = logging.getLogger(__name__)

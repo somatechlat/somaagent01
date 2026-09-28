@@ -156,6 +156,4 @@ def ensure_default_tools(registry: Any) -> None:
         if hasattr(registry, "get") and registry.get(name) is not None:
             continue
         if hasattr(registry, "register"):
-            registry.register(
-                handler, description=DEFAULT_TOOL_DESCRIPTIONS.get(name) or name
-            )
+            registry.register(handler, description=DEFAULT_TOOL_DESCRIPTIONS.get(name) or name)

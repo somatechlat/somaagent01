@@ -10,12 +10,12 @@ import logging
 from typing import Optional
 
 from ninja import Query, Router
-from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import UnauthorizedError
-from admin.common.messages import ErrorCode, SuccessCode, get_message
+from admin.common.messages import ErrorCode, get_message, SuccessCode
+from admin.core.somabrain_client import SomaBrainError
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
@@ -129,8 +129,12 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
         return {"memories": items, "query": payload.query}
 
     except SomaBrainError as e:
-        logger.error('Memory search failed: %s', e)
-        return {"memories": [], "query": payload.query, "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE)}
+        logger.error("Memory search failed: %s", e)
+        return {
+            "memories": [],
+            "query": payload.query,
+            "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE),
+        }
 
 
 @router.get(
@@ -172,7 +176,7 @@ async def get_recent_memories(
         return {"memories": items}
 
     except Exception as e:
-        logger.error('Get recent failed: %s', e)
+        logger.error("Get recent failed: %s", e)
         return {"memories": [], "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE)}
 
 
@@ -215,7 +219,7 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
 
     except SomaBrainError as e:
         # ZDL: degraded mode — Kafka WAL queue, replayed by memory-replicator.
-        logger.warning('SomaBrain unavailable, queueing memory to Kafka WAL: %s', e)
+        logger.warning("SomaBrain unavailable, queueing memory to Kafka WAL: %s", e)
         from services.common.degraded_memory_queue import publish_degraded_memory
 
         queued = await publish_degraded_memory(
@@ -260,7 +264,11 @@ async def delete_memory(request, memory_id: str) -> dict:
     return {
         "success": success,
         "memory_id": memory_id,
-        "message": get_message(SuccessCode.MEMORY_DELETED) if success else get_message(ErrorCode.MEMORY_DELETE_FAILED),
+        "message": (
+            get_message(SuccessCode.MEMORY_DELETED)
+            if success
+            else get_message(ErrorCode.MEMORY_DELETE_FAILED)
+        ),
     }
 
 

@@ -212,7 +212,9 @@ def create_feature_flag(request: HttpRequest, payload: FeatureFlagCreate):
     """
     if payload.key in _FLAGS_STORE:
         raise ConflictError(
-            get_message(ErrorCode.VALIDATION_ERROR, details=f"Feature flag already exists: {payload.key}"),
+            get_message(
+                ErrorCode.VALIDATION_ERROR, details=f"Feature flag already exists: {payload.key}"
+            ),
             resource="feature flag",
         )
 

@@ -16,27 +16,103 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from django.conf import settings
-
 LOGGER = logging.getLogger(__name__)
 
 # Built-in provider catalog (Agent Zero `conf/model_providers.yaml` parity).
 # ``key_env`` is documentation only — runtime keys come from Vault.
 PROVIDER_CATALOG: List[Dict[str, Any]] = [
-    {"id": "groq", "label": "Groq", "litellm_provider": "groq", "kind": "chat", "api_base": "https://api.groq.com/openai/v1"},
-    {"id": "openai", "label": "OpenAI", "litellm_provider": "openai", "kind": "chat", "api_base": "https://api.openai.com/v1"},
-    {"id": "anthropic", "label": "Anthropic", "litellm_provider": "anthropic", "kind": "chat", "api_base": "https://api.anthropic.com"},
-    {"id": "google", "label": "Google Gemini", "litellm_provider": "gemini", "kind": "chat", "api_base": ""},
-    {"id": "openrouter", "label": "OpenRouter", "litellm_provider": "openrouter", "kind": "chat", "api_base": "https://openrouter.ai/api/v1"},
-    {"id": "ollama", "label": "Ollama (local)", "litellm_provider": "ollama", "kind": "chat", "api_base": "http://127.0.0.1:11434"},
-    {"id": "azure", "label": "Azure OpenAI", "litellm_provider": "azure", "kind": "chat", "api_base": ""},
-    {"id": "bedrock", "label": "AWS Bedrock", "litellm_provider": "bedrock", "kind": "chat", "api_base": ""},
+    {
+        "id": "groq",
+        "label": "Groq",
+        "litellm_provider": "groq",
+        "kind": "chat",
+        "api_base": "https://api.groq.com/openai/v1",
+    },
+    {
+        "id": "openai",
+        "label": "OpenAI",
+        "litellm_provider": "openai",
+        "kind": "chat",
+        "api_base": "https://api.openai.com/v1",
+    },
+    {
+        "id": "anthropic",
+        "label": "Anthropic",
+        "litellm_provider": "anthropic",
+        "kind": "chat",
+        "api_base": "https://api.anthropic.com",
+    },
+    {
+        "id": "google",
+        "label": "Google Gemini",
+        "litellm_provider": "gemini",
+        "kind": "chat",
+        "api_base": "",
+    },
+    {
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "litellm_provider": "openrouter",
+        "kind": "chat",
+        "api_base": "https://openrouter.ai/api/v1",
+    },
+    {
+        "id": "ollama",
+        "label": "Ollama (local)",
+        "litellm_provider": "ollama",
+        "kind": "chat",
+        "api_base": "http://127.0.0.1:11434",
+    },
+    {
+        "id": "azure",
+        "label": "Azure OpenAI",
+        "litellm_provider": "azure",
+        "kind": "chat",
+        "api_base": "",
+    },
+    {
+        "id": "bedrock",
+        "label": "AWS Bedrock",
+        "litellm_provider": "bedrock",
+        "kind": "chat",
+        "api_base": "",
+    },
     {"id": "xai", "label": "xAI", "litellm_provider": "xai", "kind": "chat", "api_base": ""},
-    {"id": "deepseek", "label": "DeepSeek", "litellm_provider": "deepseek", "kind": "chat", "api_base": ""},
-    {"id": "mistral", "label": "Mistral", "litellm_provider": "mistral", "kind": "chat", "api_base": ""},
-    {"id": "fireworks", "label": "Fireworks", "litellm_provider": "fireworks", "kind": "chat", "api_base": ""},
-    {"id": "huggingface", "label": "HuggingFace", "litellm_provider": "huggingface", "kind": "embedding", "api_base": ""},
-    {"id": "other", "label": "OpenAI-compatible", "litellm_provider": "openai", "kind": "chat", "api_base": ""},
+    {
+        "id": "deepseek",
+        "label": "DeepSeek",
+        "litellm_provider": "deepseek",
+        "kind": "chat",
+        "api_base": "",
+    },
+    {
+        "id": "mistral",
+        "label": "Mistral",
+        "litellm_provider": "mistral",
+        "kind": "chat",
+        "api_base": "",
+    },
+    {
+        "id": "fireworks",
+        "label": "Fireworks",
+        "litellm_provider": "fireworks",
+        "kind": "chat",
+        "api_base": "",
+    },
+    {
+        "id": "huggingface",
+        "label": "HuggingFace",
+        "litellm_provider": "huggingface",
+        "kind": "embedding",
+        "api_base": "",
+    },
+    {
+        "id": "other",
+        "label": "OpenAI-compatible",
+        "litellm_provider": "openai",
+        "kind": "chat",
+        "api_base": "",
+    },
 ]
 
 SLOT_NAMES = ("chat", "utility", "embedding", "vision", "browser", "voice")
@@ -213,9 +289,7 @@ class CapsuleModelManager:
         # Ollama and some local endpoints do not need a key.
         needs_key = provider not in ("ollama", "lm_studio", "other")
         if needs_key and not api_key:
-            raise ModelNotConfigured(
-                f"Missing API key for provider '{provider}' in secret manager"
-            )
+            raise ModelNotConfigured(f"Missing API key for provider '{provider}' in secret manager")
 
         return ModelSlot(
             slot=slot,

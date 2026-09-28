@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from services.common.store_base import BaseStore
 
@@ -35,9 +35,7 @@ class SomaBrainOutcomesStore(BaseStore[MultimodalOutcome]):
         """Schema managed by Django migrations."""
         pass
 
-    async def fetch_outcomes(
-        self, step_type: str, limit: int = 100
-    ) -> list[MultimodalOutcome]:
+    async def fetch_outcomes(self, step_type: str, limit: int = 100) -> list[MultimodalOutcome]:
         """Fetch recent multimodal outcomes for a step type."""
         from admin.core.models import MultimodalOutcome as OutcomeModel
 
@@ -118,9 +116,7 @@ class SomaBrainOutcomesStore(BaseStore[MultimodalOutcome]):
         )
         return record
 
-    async def update(
-        self, identifier: str, changes: Dict[str, Any]
-    ) -> Optional[MultimodalOutcome]:
+    async def update(self, identifier: str, changes: Dict[str, Any]) -> Optional[MultimodalOutcome]:
         """Update an outcome."""
         from admin.core.models import MultimodalOutcome as OutcomeModel
 

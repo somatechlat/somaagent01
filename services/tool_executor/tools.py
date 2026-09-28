@@ -72,6 +72,7 @@ class EchoTool(BaseTool):
         text = args.get("text")
         if not isinstance(text, str):
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="text"))
         return {"message": text}
 
@@ -143,10 +144,12 @@ class CodeExecutionTool(BaseTool):
         language = args.get("language", "python").lower()
         if language != "python":
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_INVALID_ARGUMENT, arg="language"))
         code = args.get("code")
         if not isinstance(code, str) or not code.strip():
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="code"))
 
         def _execute() -> dict[str, Any]:
@@ -218,14 +221,17 @@ class FileReadTool(BaseTool):
         path_arg = args.get("path")
         if not isinstance(path_arg, str):
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="path"))
         base_dir = Path(os.environ.get("TOOL_WORK_DIR", "work_dir")).resolve()
         target = (base_dir / path_arg).resolve()
         if not str(target).startswith(str(base_dir)):
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_PATH_NOT_ALLOWED))
         if not target.exists() or not target.is_file():
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_FILE_NOT_FOUND, path=path_arg))
         content = await asyncio.to_thread(target.read_text)
         return {"path": str(target), "content": content}
@@ -258,6 +264,7 @@ class HttpFetchTool(BaseTool):
         url = args.get("url")
         if not isinstance(url, str) or not url.startswith("http"):
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_URL_INVALID))
         timeout = float(args.get("timeout", 10.0))
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -299,11 +306,13 @@ class CanvasAppendTool(BaseTool):
         session_id = args.get("session_id")
         if not isinstance(session_id, str) or not session_id:
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="session_id"))
         pane = args.get("pane", "default")
         content = args.get("content")
         if content is None:
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="content"))
         metadata = args.get("metadata") or {}
         persona_id = args.get("persona_id")
@@ -311,6 +320,7 @@ class CanvasAppendTool(BaseTool):
         canvas_url = os.environ.get("CANVAS_SERVICE_URL")
         if not canvas_url:
             from admin.common.messages import ErrorCode, get_message
+
             raise RuntimeError(get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="canvas"))
         endpoint = f"{canvas_url.rstrip('/')}/v1/canvas/event"
         payload = {
@@ -384,17 +394,26 @@ class IngestDocumentTool(BaseTool):
         # Strict contract: attachment ingestion must be by ID only
         if not (isinstance(attachment_id, str) and attachment_id.strip()):
             from admin.common.messages import ErrorCode, get_message
-            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="attachment_id"))
+
+            raise ToolExecutionError(
+                get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="attachment_id")
+            )
 
         base = os.environ.get("SA01_GATEWAY_BASE")
         if not base:
             from admin.common.messages import ErrorCode, get_message
-            raise ToolExecutionError(get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway"))
+
+            raise ToolExecutionError(
+                get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway")
+            )
         base = base.rstrip("/")
         token = os.environ.get("SA01_GATEWAY_INTERNAL_TOKEN")
         if not token:
             from admin.common.messages import ErrorCode, get_message
-            raise ToolExecutionError(get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway_token"))
+
+            raise ToolExecutionError(
+                get_message(ErrorCode.TOOL_SERVICE_NOT_CONFIGURED, service="gateway_token")
+            )
         url = f"{base}/internal/attachments/{attachment_id}/binary"
         headers = {"X-Internal-Token": token}
         if tenant_header:
@@ -406,6 +425,7 @@ class IngestDocumentTool(BaseTool):
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 404:
                     from admin.common.messages import ErrorCode, get_message
+
                     raise ToolExecutionError(get_message(ErrorCode.TOOL_ATTACHMENT_NOT_FOUND))
                 resp.raise_for_status()
                 data = resp.content
@@ -424,6 +444,7 @@ class IngestDocumentTool(BaseTool):
                 raise
             LOGGER.error("Attachment fetch failed", extra={"error": str(exc)})
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_ATTACHMENT_FETCH_FAILED))
 
         text = ""
@@ -460,10 +481,12 @@ class IngestDocumentTool(BaseTool):
         except Exception as exc:
             LOGGER.error("Ingestion failed", extra={"error": str(exc)})
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_INGESTION_FAILED))
 
         if not text:
             from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_EXTRACTION_FAILED))
 
         return {

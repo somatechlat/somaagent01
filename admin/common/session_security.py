@@ -65,13 +65,23 @@ class PermissionResolver:
             spicedb = await get_spicedb_client()
             spicedb_permissions = await spicedb.get_permissions(user_id, tenant_id)
             permissions.update(spicedb_permissions)
-            logger.debug('SpiceDB permissions resolved: user=%s, permissions=%s', user_id, spicedb_permissions)
+            logger.debug(
+                "SpiceDB permissions resolved: user=%s, permissions=%s",
+                user_id,
+                spicedb_permissions,
+            )
         except Exception as e:
             # Fail closed by default. Role fallback requires explicit override.
             if fail_open:
-                logger.warning('SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: %s', e)
+                logger.warning(
+                    "SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: %s",
+                    e,
+                )
             else:
-                logger.error('SpiceDB unavailable and fail-open disabled; returning no derived permissions: %s', e)
+                logger.error(
+                    "SpiceDB unavailable and fail-open disabled; returning no derived permissions: %s",
+                    e,
+                )
                 return []
 
         # Add role-based permissions as fallback/supplement
@@ -157,10 +167,10 @@ class PermissionResolver:
                 resource_type="agent",
                 permission="view",
             )
-            logger.debug('Accessible agents resolved: user=%s, count=%s', user_id, len(agent_ids))
+            logger.debug("Accessible agents resolved: user=%s, count=%s", user_id, len(agent_ids))
             return agent_ids
         except Exception as e:
-            logger.warning('SpiceDB lookup failed, returning empty list: %s', e)
+            logger.warning("SpiceDB lookup failed, returning empty list: %s", e)
             return []
 
 

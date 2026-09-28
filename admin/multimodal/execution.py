@@ -172,7 +172,7 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
     try:
         api_key = sm.get_provider_key(model_config.provider)
     except Exception as e:
-        logger.error('Vault error: %s', e)
+        logger.error("Vault error: %s", e)
         raise ServiceUnavailableError("openai", "Could not retrieve API key from Vault")
 
     if not api_key:
@@ -216,11 +216,11 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
                     created_at=timezone.now().isoformat(),
                 )
             else:
-                logger.error('DALL-E error: %s - %s', response.status_code, response.text)
+                logger.error("DALL-E error: %s - %s", response.status_code, response.text)
                 raise ServiceUnavailableError("openai", f"Provider error: {response.status_code}")
 
     except httpx.HTTPError as e:
-        logger.error('Provider connection error: %s', e)
+        logger.error("Provider connection error: %s", e)
         raise ServiceUnavailableError("openai", "Image generation service unavailable")
 
 
@@ -271,11 +271,11 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
                     created_at=timezone.now().isoformat(),
                 )
             else:
-                logger.error('Mermaid error: %s - %s', response.status_code, response.text)
+                logger.error("Mermaid error: %s - %s", response.status_code, response.text)
                 raise ServiceUnavailableError("mermaid", "Mermaid rendering failed")
 
     except httpx.HTTPError as e:
-        logger.error('Mermaid service unreachable: %s', e)
+        logger.error("Mermaid service unreachable: %s", e)
         # Fail closed (Vibe Rule 124 - Real Infra Only)
         raise ServiceUnavailableError("mermaid", "Mermaid service unreachable")
 

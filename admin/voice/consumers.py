@@ -24,7 +24,8 @@ from typing import Optional
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
-from admin.common.messages import ErrorCode, SuccessCode, get_message
+
+from admin.common.messages import get_message, SuccessCode
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +105,10 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                     "message": get_message(SuccessCode.VOICE_WEBSOCKET_CONNECTED),
                 }
             )
-            logger.info('Voice WS connected: %s', self.state.session_id)
+            logger.info("Voice WS connected: %s", self.state.session_id)
 
         except Exception as e:
-            logger.error('Voice WS connection error: %s', e)
+            logger.error("Voice WS connection error: %s", e)
             await self.close(code=4000)
 
     async def disconnect(self, close_code):
@@ -116,7 +117,12 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             self.processing_task.cancel()
 
         if self.state:
-            logger.info('Voice WS disconnected: %s, duration=%.1fs, turns=%s', self.state.session_id, self.state.audio_seconds, self.state.turn_count)
+            logger.info(
+                "Voice WS disconnected: %s, duration=%.1fs, turns=%s",
+                self.state.session_id,
+                self.state.audio_seconds,
+                self.state.turn_count,
+            )
             # Persist session to database via Django ORM
             await self._persist_session_end()
 
@@ -141,7 +147,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                 )
 
         except Exception as e:
-            logger.error('Voice WS error: %s', e)
+            logger.error("Voice WS error: %s", e)
             await self.send_json({"type": "error", "message": str(e)})
 
     async def _handle_start_session(self, content):
@@ -167,7 +173,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         )
 
         await self._send_status("listening")
-        logger.info('Voice session started: %s, persona=%s', self.state.session_id, persona_id)
+        logger.info("Voice session started: %s, persona=%s", self.state.session_id, persona_id)
 
     async def _create_session_record(self):
         """Create VoiceSession record in database."""
@@ -187,10 +193,10 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                 status="active",
                 started_at=self.state.start_time,
             )
-            logger.debug('VoiceSession created: %s', self.state.session_id)
+            logger.debug("VoiceSession created: %s", self.state.session_id)
         except Exception as e:
             # Non-fatal - log and continue
-            logger.warning('Failed to create VoiceSession record: %s', e)
+            logger.warning("Failed to create VoiceSession record: %s", e)
 
     async def _persist_session_end(self):
         """Update VoiceSession record on disconnect."""
@@ -212,10 +218,10 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                 input_tokens=self.state.input_tokens,
                 output_tokens=self.state.output_tokens,
             )
-            logger.debug('VoiceSession updated: %s', self.state.session_id)
+            logger.debug("VoiceSession updated: %s", self.state.session_id)
         except Exception as e:
             # Non-fatal - log and continue
-            logger.warning('Failed to update VoiceSession record: %s', e)
+            logger.warning("Failed to update VoiceSession record: %s", e)
 
     async def _handle_audio_chunk(self, content):
         """Process incoming audio chunk."""
@@ -232,7 +238,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             self.state.audio_seconds += len(audio_bytes) / (16000 * 2)
 
         except Exception as e:
-            logger.error('Audio decode error: %s', e)
+            logger.error("Audio decode error: %s", e)
             return
 
         # Check if we have enough audio for VAD/processing
@@ -291,11 +297,11 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                     result = response.json()
                     return result.get("text", "").strip()
                 else:
-                    logger.error('Whisper API error: %s', response.status_code)
+                    logger.error("Whisper API error: %s", response.status_code)
                     return ""
 
         except Exception as e:
-            logger.error('Transcription error: %s', e)
+            logger.error("Transcription error: %s", e)
             # Graceful degradation - return empty on error
             return ""
 
@@ -339,7 +345,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                     response_text = "I'm having trouble processing that right now."
 
         except Exception as e:
-            logger.error('LLM response error: %s', e)
+            logger.error("LLM response error: %s", e)
             response_text = "I'm sorry, I couldn't process your request."
 
         self.state.output_tokens += len(response_text.split())
@@ -348,7 +354,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         try:
             await self._stream_tts_audio(response_text)
         except Exception as e:
-            logger.error('TTS error: %s', e)
+            logger.error("TTS error: %s", e)
 
         await self.send_json(
             {
@@ -411,7 +417,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
-        logger.info('Voice session ended: %s', self.state.session_id)
+        logger.info("Voice session ended: %s", self.state.session_id)
 
     async def _handle_interrupt(self, content):
         """Handle user interrupt (barge-in)."""
@@ -419,7 +425,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             self.state.is_speaking = False
             await self.send_json({"type": "interrupted"})
             await self._send_status("listening")
-            logger.info('Voice interrupted: %s', self.state.session_id)
+            logger.info("Voice interrupted: %s", self.state.session_id)
 
     async def _send_status(self, status: str):
         """Send status update to client."""

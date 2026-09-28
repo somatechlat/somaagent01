@@ -197,9 +197,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if not self.agent_id:
                 # No agent in URL: use user's first active agent
                 agent = await sync_to_async(
-                    lambda: AgentModel.objects.filter(
-                        tenant_id=self.tenant_id, status="active"
-                    ).select_related("primary_capsule").first(),
+                    lambda: AgentModel.objects.filter(tenant_id=self.tenant_id, status="active")
+                    .select_related("primary_capsule")
+                    .first(),
                     thread_sensitive=True,
                 )()
                 if agent:
@@ -215,7 +215,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 # agent_id is an Agent UUID, not Capsule — look up via Agent
                 agent = await sync_to_async(
                     lambda: AgentModel.objects.filter(id=self.agent_id)
-                    .select_related("primary_capsule").first(),
+                    .select_related("primary_capsule")
+                    .first(),
                     thread_sensitive=True,
                 )()
                 if agent and agent.primary_capsule:
@@ -227,7 +228,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 return
 
             # Phase 2.5: Pre-cache capsule body (avoids SynchronousOnlyOperation)
-            if hasattr(self.capsule, 'async_body'):
+            if hasattr(self.capsule, "async_body"):
                 self.capsule._cached_body = await self.capsule.async_body()
             else:
                 self.capsule._cached_body = self.capsule.body or {}
@@ -302,12 +303,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         "agent_id": self.agent_id,
                         "session_id": self.session_id,
                         "iq_tier": self.iq.model_tier if self.iq else None,
-                        "tools_available": len(list(self.tool_registry.list())) if self.tool_registry else 0,
+                        "tools_available": (
+                            len(list(self.tool_registry.list())) if self.tool_registry else 0
+                        ),
                     },
                 ).to_dict()
             )
 
-            logger.info('WebSocket connected: user=%s, agent=%s', self.user_id, self.agent_id)
+            logger.info("WebSocket connected: user=%s, agent=%s", self.user_id, self.agent_id)
 
         except UnauthorizedError:
             logger.warning("WebSocket auth failed: unauthorized")
@@ -334,8 +337,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # Pull adapted neuromodulator state from Brain
         if self.capsule:
             try:
-                from admin.core.somabrain_client import SomaBrainClient
                 from asgiref.sync import sync_to_async
+
+                from admin.core.somabrain_client import SomaBrainClient
 
                 brain_client = await SomaBrainClient.get_async()
                 if brain_client:
@@ -361,7 +365,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # Track disconnection
         _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").dec()
 
-        logger.info('WebSocket disconnected: user=%s, code=%s', self.user_id, close_code)
+        logger.info("WebSocket disconnected: user=%s, code=%s", self.user_id, close_code)
 
     async def receive_json(self, content: dict, **kwargs):
         """Handle incoming WebSocket message.
@@ -426,7 +430,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # 1. Subprotocol auth (P3-04 preferred)
         for proto in self.scope.get("subprotocols", []):
             if proto.startswith("soma-auth."):
-                token = proto[len("soma-auth."):]
+                token = proto[len("soma-auth.") :]
                 break
 
         # 2. Query string fallback
@@ -473,11 +477,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             self.tenant_id = payload.tenant_id
             self.session_id = cookies.get("session_id")
 
-            logger.debug('WebSocket authenticated: user=%s', self.user_id)
+            logger.debug("WebSocket authenticated: user=%s", self.user_id)
             return True
 
         except UnauthorizedError as e:
-            logger.warning('WebSocket auth failed: %s', e)
+            logger.warning("WebSocket auth failed: %s", e)
             return False
         except Exception:
             logger.exception("WebSocket auth failed: unexpected exception")
@@ -535,8 +539,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # Get V3 Chat Orchestrator and stream response
             from admin.core.chat_orchestrator import (
                 ChatTurn,
-                ToolStreamEvent,
                 get_chat_orchestrator,
+                ToolStreamEvent,
             )
 
             orchestrator = await get_chat_orchestrator()
@@ -598,9 +602,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                             },
                         ).to_dict()
                     )
-                    _metrics.WEBSOCKET_MESSAGES.labels(
-                        direction="outbound", type=item.type
-                    ).inc()
+                    _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=item.type).inc()
                     continue
 
                 token_count += 1
@@ -664,29 +666,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         if msg_type == MSG_CHAT_PAUSE:
             self._paused = True
-            await self._send_json(
-                WSMessage(type="chat.paused", payload={"paused": True})
-            )
+            await self._send_json(WSMessage(type="chat.paused", payload={"paused": True}))
             return
 
         if msg_type == MSG_CHAT_RESUME:
             self._paused = False
-            await self._send_json(
-                WSMessage(type="chat.paused", payload={"paused": False})
-            )
+            await self._send_json(WSMessage(type="chat.paused", payload={"paused": False}))
             return
 
         if msg_type == MSG_CHAT_NUDGE:
             nudge_text = payload.get("content") or payload.get("text") or "Please continue."
             if self.is_streaming:
                 self._nudge_queue.append(nudge_text)
-                await self._send_json(
-                    WSMessage(type="chat.nudged", payload={"queued": True})
-                )
+                await self._send_json(WSMessage(type="chat.nudged", payload={"queued": True}))
             else:
-                await self._send_error(
-                    "No running turn to nudge", code="not_streaming"
-                )
+                await self._send_error("No running turn to nudge", code="not_streaming")
             return
 
         if msg_type == MSG_CHAT_STOP:
@@ -694,9 +688,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 self._turn_task.cancel()
                 self._stop_requested = True
             self._paused = False
-            await self._send_json(
-                WSMessage(type="chat.stopped", payload={"stopped": True})
-            )
+            await self._send_json(WSMessage(type="chat.stopped", payload={"stopped": True}))
             return
 
         if msg_type == MSG_CHAT_RESET:
@@ -705,9 +697,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             self._nudge_queue.clear()
             if self._turn_task and not self._turn_task.done():
                 self._turn_task.cancel()
-            await self._send_json(
-                WSMessage(type="chat.reset", payload={"ok": True})
-            )
+            await self._send_json(WSMessage(type="chat.reset", payload={"ok": True}))
             return
 
         if msg_type == MSG_TOOL_APPROVAL:

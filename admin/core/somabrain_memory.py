@@ -19,10 +19,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from admin.core.somabrain_base import _SomaBrainBaseClient
-
 # Integration: BrainBridge (Compliant Triad Architecture)
 from aaas.brain import brain as BrainBridge
+from admin.core.somabrain_base import _SomaBrainBaseClient
+
 HAS_BRIDGE = True
 
 
@@ -97,7 +97,7 @@ class _SomaBrainMemoryClient(_SomaBrainBaseClient):
                     "memory_id": resp.get("id"),
                 }
             except Exception as e:
-                LOGGER.error('Direct remember failed, falling back to HTTP: %s', e)
+                LOGGER.error("Direct remember failed, falling back to HTTP: %s", e)
                 pass
 
         if coord is not None:
@@ -188,7 +188,11 @@ class _SomaBrainMemoryClient(_SomaBrainBaseClient):
             body["memory_type"] = memory_type
 
         # DIRECT MODE CHECK (Triad Compliant)
-        if HAS_BRIDGE and BrainBridge is not None and getattr(BrainBridge, "mode", None) == "direct":
+        if (
+            HAS_BRIDGE
+            and BrainBridge is not None
+            and getattr(BrainBridge, "mode", None) == "direct"
+        ):
             try:
                 # Use compliant BrainBridge
                 results = await BrainBridge.recall(query=query, top_k=top_k)
@@ -201,14 +205,12 @@ class _SomaBrainMemoryClient(_SomaBrainBaseClient):
                             "coordinate": m.get("coordinate", [0.0, 0.0, 0.0]),
                             "payload": m.get("payload", {}),
                             "score": m.get("score", 0.0),
-                            "created_at": datetime.now(
-                                timezone.utc
-                            ).isoformat(),  # if missing
+                            "created_at": datetime.now(timezone.utc).isoformat(),  # if missing
                         }
                     )
                 return memories
             except Exception as e:
-                LOGGER.error('Direct recall failed, falling back to HTTP: %s', e)
+                LOGGER.error("Direct recall failed, falling back to HTTP: %s", e)
                 pass
 
         result = await self._request("POST", "/memory/recall", json=body)

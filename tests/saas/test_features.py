@@ -41,6 +41,7 @@ def django_setup():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
     import django
+
     django.setup()
 
 
@@ -54,6 +55,7 @@ def tenant_id() -> str:
 def clean_cache():
     """Clear cache before/after test."""
     from django.core.cache import cache
+
     cache.clear()
     yield
     cache.clear()
@@ -77,6 +79,7 @@ class TestFeatureIntegration:
     def test_redis_override_enables_feature(self, tenant_id: str, clean_cache):
         """Verify Redis override forces feature ON."""
         from django.core.cache import cache
+
         from admin.core.features.check import is_feature_enabled
 
         assert not is_feature_enabled(tenant_id, "web_browsing")
@@ -89,6 +92,7 @@ class TestFeatureIntegration:
     def test_redis_override_disables_feature(self, tenant_id: str, clean_cache):
         """Verify Redis override forces feature OFF."""
         from django.core.cache import cache
+
         from admin.core.features.check import is_feature_enabled
 
         assert is_feature_enabled(tenant_id, "chat")
@@ -101,6 +105,7 @@ class TestFeatureIntegration:
     def test_dependency_chain_enforcement(self, tenant_id: str, clean_cache):
         """Verify dependencies are checked."""
         from django.core.cache import cache
+
         from admin.core.features.check import is_feature_enabled
 
         cache.set(f"feature:override:{tenant_id}:learning", "true")
@@ -130,8 +135,8 @@ class TestFeatureGateIntegration:
 
     def test_gate_denies_access(self, tenant_id: str):
         """Verify gate raises FeatureDisabledError when disabled."""
-        from admin.core.features.gate import require_feature
         from admin.core.features.exceptions import FeatureDisabledError
+        from admin.core.features.gate import require_feature
 
         @require_feature("voice_cloning")
         def protected_view(request):

@@ -54,9 +54,7 @@ class ExecutionEngine:
         except (TypeError, ValueError):
             self._circuit_reset_timeout = 30.0
         try:
-            self._tool_timeout_seconds = float(
-                os.environ.get("SA01_TOOL_TIMEOUT_SECONDS", "30")
-            )
+            self._tool_timeout_seconds = float(os.environ.get("SA01_TOOL_TIMEOUT_SECONDS", "30"))
         except (TypeError, ValueError):
             self._tool_timeout_seconds = 30.0
         self._tool_breakers: dict[str, Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]] = {}

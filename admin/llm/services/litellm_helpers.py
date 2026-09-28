@@ -581,9 +581,7 @@ def _parse_chunk(chunk: Any) -> "ChatChunk":
         else getattr(delta, "reasoning_content", "")
     )
 
-    parsed: "ChatChunk" = ChatChunk(
-        reasoning_delta=reasoning_delta, response_delta=response_delta
-    )
+    parsed: "ChatChunk" = ChatChunk(reasoning_delta=reasoning_delta, response_delta=response_delta)
     tool_call_deltas = _extract_tool_call_deltas(delta, message)
     if tool_call_deltas:
         parsed["tool_call_deltas"] = tool_call_deltas

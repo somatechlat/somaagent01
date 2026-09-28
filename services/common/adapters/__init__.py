@@ -5,7 +5,7 @@ SomaBrainAdapter -> SomaBrain  POST /memory/remember|recall|forget
 SomaBrain is the sole bridge to somafractalmemory (T-1). Nothing else may
 talk to a memory store. Callers go through
 ``services.common.memory_gateway.FanoutMemoryGateway`` — never a factory,
-never a second adapter. (See ARCHITECTURE-INVARIANTS.md §0.)
+never a second adapter. (See SOMA-ARCH-INVARIANTS-001.md §0.)
 
 Deleted 2026-09-26 — do not resurrect:
 

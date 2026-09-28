@@ -73,7 +73,11 @@ class A2aTerminationResponse(BaseModel):
     workflow_id: str
 
 
-@router.post("/a2a/terminate/{workflow_id}", response=A2aTerminationResponse, summary="Terminate A2A workflow")
+@router.post(
+    "/a2a/terminate/{workflow_id}",
+    response=A2aTerminationResponse,
+    summary="Terminate A2A workflow",
+)
 async def terminate_a2a(workflow_id: str) -> A2aTerminationResponse:
     """Cancel a running A2A workflow."""
     from services.gateway.providers import get_temporal_client
@@ -184,9 +188,9 @@ async def revoke_key(request: HttpRequest, key_id: str) -> dict:
     from admin.aaas.models.profiles import ApiKey
 
     tenant_id = request.headers.get("X-Tenant-Id", "")
-    updated = await sync_to_async(
-        ApiKey.objects.filter(id=key_id, tenant_id=tenant_id).update
-    )(is_active=False)
+    updated = await sync_to_async(ApiKey.objects.filter(id=key_id, tenant_id=tenant_id).update)(
+        is_active=False
+    )
 
     if not updated:
         raise NotFoundError("key", key_id)

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
-from services.common.rate_limiter import RedisRateLimiter, get_rate_limiter
+from services.common.rate_limiter import get_rate_limiter, RedisRateLimiter
 
 
 @pytest.fixture
@@ -47,6 +45,7 @@ async def test_get_rate_limiter_uses_sa01_redis_url(monkeypatch, clean_limiter_s
     expected_url = "redis://factory-redis.example:6379/2"
     monkeypatch.setenv("SA01_REDIS_URL", expected_url)
     monkeypatch.delenv("REDIS_URL", raising=False)
+
     # Avoid opening a real Redis connection in a unit test.
     async def _noop_connect(self) -> None:
         return None

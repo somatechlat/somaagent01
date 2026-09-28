@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import time
 from typing import Any, Dict, Optional
 
 LOGGER = logging.getLogger(__name__)
+
 
 def _wal_topic() -> str:
     from services.common.memory_contract import get_memory_setting
@@ -50,7 +50,7 @@ async def publish_degraded_memory(
     Returns ``{"queued": bool, "channel": "kafka", "id": str}``.
     Raises when Kafka is unreachable (fail-closed — never a silent drop).
     """
-    from services.common.memory_contract import MemoryWrite, get_memory_setting
+    from services.common.memory_contract import get_memory_setting, MemoryWrite
 
     if not tenant_id or tenant_id.strip().lower() in {"", "default", "standalone", "none", "null"}:
         raise ValueError("tenant_id is required for degraded memory queue (T-5 fail-closed)")

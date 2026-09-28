@@ -237,7 +237,11 @@ class ServiceHealth(models.Model):
         return f"{self.display_name or self.service_name}: {self.status}"
 
     def update_status(
-        self, status: str, latency_ms: float | None = None, details: dict | None = None, error: str | None = None
+        self,
+        status: str,
+        latency_ms: float | None = None,
+        details: dict | None = None,
+        error: str | None = None,
     ):
         """Update the health status."""
         self.status = status

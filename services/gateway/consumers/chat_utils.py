@@ -6,7 +6,6 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from asgiref.sync import sync_to_async
@@ -86,9 +85,9 @@ class ChatUtilsMixin:
 
             @sync_to_async
             def _load_history():
-                qs = MessageModel.objects.filter(
-                    conversation_id=self.conversation_id
-                ).order_by("-created_at")[:20]
+                qs = MessageModel.objects.filter(conversation_id=self.conversation_id).order_by(
+                    "-created_at"
+                )[:20]
                 return [
                     {"role": m.role, "content": getattr(m, "content", None) or ""}
                     for m in reversed(list(qs))

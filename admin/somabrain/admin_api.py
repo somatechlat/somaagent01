@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
-from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
+from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 router = Router(tags=["admin"])
 logger = logging.getLogger(__name__)
@@ -196,7 +196,9 @@ async def service_action(
     if payload.action not in valid_actions:
         raise BadRequestError(f"Invalid action. Must be one of: {valid_actions}")
 
-    logger.warning('ADMIN ACTION: %s service %s (force=%s)', payload.action, service_name, payload.force)
+    logger.warning(
+        "ADMIN ACTION: %s service %s (force=%s)", payload.action, service_name, payload.force
+    )
 
     raise HttpError(501, "Service action is not implemented: no process manager is wired.")
 
@@ -314,6 +316,8 @@ async def update_features(request, flags: dict) -> dict:
     """
     require_admin(request)
 
-    logger.warning('ADMIN ACTION: Feature flags updated: %s', flags)
+    logger.warning("ADMIN ACTION: Feature flags updated: %s", flags)
 
-    raise HttpError(501, "Feature flag persistence is not implemented: use /config feature-flag API.")
+    raise HttpError(
+        501, "Feature flag persistence is not implemented: use /config feature-flag API."
+    )

@@ -16,8 +16,8 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.common.messages import ErrorCode, get_message
 from admin.common.exceptions import NotFoundError
+from admin.common.messages import ErrorCode, get_message
 from admin.core.models import FeatureFlag as FeatureFlagModel
 
 router = Router(tags=["config"])
@@ -253,7 +253,7 @@ async def update_feature_flag(
     if count == 0:
         raise NotFoundError("flag", key)
 
-    logger.info('Feature flag %s set to %s', key, enabled)
+    logger.info("Feature flag %s set to %s", key, enabled)
     return {
         "key": key,
         "enabled": enabled,

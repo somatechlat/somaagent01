@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, AsyncIterator, Awaitable, Callable, Iterator, List, Optional, Tuple, cast
+from typing import Any, AsyncIterator, Awaitable, Callable, cast, Iterator, List, Optional, Tuple
 
 # Core dependencies
 import litellm
@@ -65,6 +65,7 @@ def _get_model_config():
     from admin.llm.models import ModelConfig
 
     return ModelConfig
+
 
 # Dedicated logger for LLM call tracing
 llm_logger = logging.getLogger("somaagent01.llm")
@@ -159,9 +160,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
         max_retries, base_delay = get_retry_policy(call_kwargs)
         call_kwargs, _ = prepare_completion_kwargs(self.model_name, call_kwargs, stream=False)
         resp = run_with_retries_sync(
-            lambda: completion(
-                model=self.model_name, messages=msgs, stop=stop, **call_kwargs
-            ),
+            lambda: completion(model=self.model_name, messages=msgs, stop=stop, **call_kwargs),
             max_retries=max_retries,
             base_delay=base_delay,
             model=self.model_name,
@@ -468,9 +467,7 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
             model = kwargs.pop("model", None)
             kwrgs = {**self._wrapper.kwargs, **kwargs}
             max_retries, base_delay = get_retry_policy(kwrgs)
-            kwrgs, _ = prepare_completion_kwargs(
-                self._wrapper.model_name, kwrgs, stream=False
-            )
+            kwrgs, _ = prepare_completion_kwargs(self._wrapper.model_name, kwrgs, stream=False)
             from services.common.llm_compatibility import (
                 fix_gemini_schema,
                 should_apply_gemini_compat,
@@ -538,17 +535,22 @@ class LiteLLMEmbeddingWrapper(Embeddings):
         apply_rate_limiter_sync(self.a0_model_conf, " ".join(texts))
         call_kwargs = inject_timeout(self.kwargs)
         resp = embedding(model=self.model_name, input=texts, **call_kwargs)
-        return cast(List[List[float]], [
-            item.get("embedding") if isinstance(item, dict) else item.embedding
-            for item in resp.data
-        ])
+        return cast(
+            List[List[float]],
+            [
+                item.get("embedding") if isinstance(item, dict) else item.embedding
+                for item in resp.data
+            ],
+        )
 
     def embed_query(self, text: str) -> List[float]:
         apply_rate_limiter_sync(self.a0_model_conf, text)
         call_kwargs = inject_timeout(self.kwargs)
         resp = embedding(model=self.model_name, input=[text], **call_kwargs)
         item = resp.data[0]
-        return cast(List[float], item.get("embedding") if isinstance(item, dict) else item.embedding)
+        return cast(
+            List[float], item.get("embedding") if isinstance(item, dict) else item.embedding
+        )
 
 
 class LocalSentenceTransformerWrapper(Embeddings):

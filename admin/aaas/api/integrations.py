@@ -22,7 +22,8 @@ from typing import Optional
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
-from admin.common.messages import ErrorCode, SuccessCode, get_message
+
+from admin.common.messages import ErrorCode, get_message, SuccessCode
 from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -250,7 +251,7 @@ async def update_integration(
     platform_config.defaults["integrations"] = integrations
     await platform_config.asave()
 
-    logger.info('Integration %s updated by user', provider)
+    logger.info("Integration %s updated by user", provider)
 
     return await get_integration(request, provider)
 
@@ -386,10 +387,13 @@ async def sync_lago_plans(request) -> dict:
                     "synced_at": timezone.now().isoformat(),
                 }
             else:
-                return {"success": False, "message": get_message(ErrorCode.LAGO_ERROR, status=response.status_code)}
+                return {
+                    "success": False,
+                    "message": get_message(ErrorCode.LAGO_ERROR, status=response.status_code),
+                }
 
     except Exception as e:
-        logger.error('Lago sync failed: %s', e)
+        logger.error("Lago sync failed: %s", e)
         return {"success": False, "message": get_message(ErrorCode.INTERNAL_ERROR)}
 
 
@@ -411,7 +415,10 @@ async def send_test_email(request, to_email: str) -> dict:
             recipient_list=[to_email],
             fail_silently=False,
         )
-        return {"success": True, "message": get_message(SuccessCode.TEST_EMAIL_SENT, to_email=to_email)}
+        return {
+            "success": True,
+            "message": get_message(SuccessCode.TEST_EMAIL_SENT, to_email=to_email),
+        }
     except Exception as e:
-        logger.error('Test email failed: %s', e)
+        logger.error("Test email failed: %s", e)
         return {"success": False, "message": get_message(ErrorCode.SMTP_SEND_FAILED)}

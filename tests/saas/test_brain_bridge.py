@@ -42,6 +42,7 @@ def django_setup():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
 
     import django
+
     django.setup()
 
 
@@ -57,6 +58,7 @@ class TestSomaBrainClientConfiguration:
     def test_client_uses_settings_url(self):
         """Verify client gets URL from Django settings (Rule 91)."""
         from django.conf import settings
+
         from admin.core.somabrain_client import SomaBrainClient
 
         client = SomaBrainClient()
@@ -114,6 +116,7 @@ class TestSomaBrainDirectImport:
         try:
             # This is the AAAS Direct import
             from somabrain.cognitive import CognitiveCore
+
             assert CognitiveCore is not None
 
             # Mark as direct mode available
@@ -129,6 +132,7 @@ class TestSomaBrainDirectImport:
         """Verify admin.somabrain module exists for bridge."""
         try:
             from admin.somabrain import core_brain
+
             # Check for actual exports: router, act function, schemas
             assert hasattr(core_brain, "router") or hasattr(core_brain, "act")
         except ImportError:

@@ -34,7 +34,7 @@ class MemoryReplicatorService(BaseService):
 
     async def startup(self) -> None:
         """Initialize memory replicator service and start the worker."""
-        LOGGER.info('Starting %s service', self.service_name)
+        LOGGER.info("Starting %s service", self.service_name)
 
         try:
             # Import the MemoryReplicator from the original module
@@ -46,15 +46,15 @@ class MemoryReplicatorService(BaseService):
             # Start the worker as a background task
             self.worker_task = asyncio.create_task(self.worker.start())
 
-            LOGGER.info('%s service startup completed', self.service_name)
+            LOGGER.info("%s service startup completed", self.service_name)
 
         except Exception as exc:
-            LOGGER.error('Failed to start %s service: %s', self.service_name, exc)
+            LOGGER.error("Failed to start %s service: %s", self.service_name, exc)
             raise
 
     async def shutdown(self) -> None:
         """Clean up memory replicator service resources."""
-        LOGGER.info('Shutting down %s service', self.service_name)
+        LOGGER.info("Shutting down %s service", self.service_name)
 
         try:
             # Cancel the worker task
@@ -71,10 +71,10 @@ class MemoryReplicatorService(BaseService):
                 # but we can add them if needed
                 pass
 
-            LOGGER.info('%s service shutdown completed', self.service_name)
+            LOGGER.info("%s service shutdown completed", self.service_name)
 
         except Exception as exc:
-            LOGGER.error('Error during %s service shutdown: %s', self.service_name, exc)
+            LOGGER.error("Error during %s service shutdown: %s", self.service_name, exc)
 
     async def _start(self) -> None:
         """Orchestrator lifecycle hook — delegates to startup."""

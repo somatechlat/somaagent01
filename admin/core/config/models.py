@@ -304,13 +304,13 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def validate_config(self) -> Config:
-#         """Cross-field validation."""
-#         # Validate that required auth settings are present if auth is required
-#         if self.auth.auth_required:
-#             if not any([self.auth.jwt_secret, self.auth.jwt_public_key, self.auth.jwt_jwks_url]):
-#                 raise ValueError(
-#                     "At least one of jwt_secret, jwt_public_key, or jwt_jwks_url is required when auth_required=True"
-#                 )
+        #         """Cross-field validation."""
+        #         # Validate that required auth settings are present if auth is required
+        #         if self.auth.auth_required:
+        #             if not any([self.auth.jwt_secret, self.auth.jwt_public_key, self.auth.jwt_jwks_url]):
+        #                 raise ValueError(
+        #                     "At least one of jwt_secret, jwt_public_key, or jwt_jwks_url is required when auth_required=True"
+        #                 )
 
         return self
 

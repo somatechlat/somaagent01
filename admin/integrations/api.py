@@ -155,7 +155,7 @@ async def create_integration(
         return obj
 
     obj = await _create()
-    logger.info('Integration created: %s (%s)', name, provider)
+    logger.info("Integration created: %s (%s)", name, provider)
 
     return {
         "integration_id": str(obj.id),
@@ -235,7 +235,7 @@ async def delete_integration(
     if count == 0:
         raise NotFoundError("integration", integration_id)
 
-    logger.info('Integration deleted: %s', integration_id)
+    logger.info("Integration deleted: %s", integration_id)
 
     return {
         "integration_id": integration_id,
@@ -347,8 +347,7 @@ async def check_health(
     """
     raise HttpError(
         501,
-        "Integration health check is not implemented: "
-        "no provider health probe is wired.",
+        "Integration health check is not implemented: " "no provider health probe is wired.",
     )
 
 

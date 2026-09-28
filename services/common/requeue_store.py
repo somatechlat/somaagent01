@@ -74,7 +74,9 @@ class RequeueStore:
             from config.settings_registry import SettingsRegistry
 
             registry = SettingsRegistry.get()
-            prefix = getattr(settings, "policy_requeue_prefix", None) or registry.policy_requeue_prefix
+            prefix = (
+                getattr(settings, "policy_requeue_prefix", None) or registry.policy_requeue_prefix
+            )
         except Exception:
             prefix = getattr(settings, "policy_requeue_prefix", None) or os.environ.get(
                 "POLICY_REQUEUE_PREFIX"

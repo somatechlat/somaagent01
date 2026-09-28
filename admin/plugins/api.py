@@ -17,8 +17,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.modules import hooks as hooks_module
-from admin.modules import registry as module_registry
+from admin.modules import hooks as hooks_module, registry as module_registry
 
 router = Router(tags=["plugins"])
 logger = logging.getLogger(__name__)

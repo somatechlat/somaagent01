@@ -16,14 +16,14 @@ from unittest import TestCase
 
 import pytest
 
+from admin.core.budget.limits import PLAN_LIMITS
 from admin.core.budget.registry import (
-    METRIC_REGISTRY,
     BudgetedMetric,
     get_metric,
     list_critical_metrics,
     list_metrics,
+    METRIC_REGISTRY,
 )
-from admin.core.budget.limits import PLAN_LIMITS
 
 
 class TestMetricRegistry(TestCase):

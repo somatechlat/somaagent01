@@ -8,7 +8,6 @@ Uses UnifiedSecretManager (HashiCorp Vault) — VIBE Rule 164.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from ninja import Router, Schema
 from ninja.errors import HttpError

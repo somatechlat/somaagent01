@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from config.settings_registry import get_optional_env
 from django.conf import settings
 
+from config.settings_registry import get_optional_env
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import KafkaEventBus, KafkaSettings
 from services.common.publisher import DurablePublisher

@@ -114,8 +114,9 @@ class ExecutionTracker:
         **kwargs: Any,
     ) -> None:
         """Complete an execution attempt."""
-        from admin.core.models import ExecutionRecord as ExecutionRecordModel
         from django.utils import timezone
+
+        from admin.core.models import ExecutionRecord as ExecutionRecordModel
 
         record = await ExecutionRecordModel.objects.filter(id=execution_id).afirst()
         if not record:

@@ -9,7 +9,6 @@ eliminating HTTP overhead for brain operations.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -48,7 +47,7 @@ class BrainBridge:
 
     def _init_direct(self) -> None:
         """Initialize direct in-process access to SomaBrain."""
-        logger.info('BrainBridge: Initializing DIRECT mode (in-process)')
+        logger.info("BrainBridge: Initializing DIRECT mode (in-process)")
         try:
             # Import SomaBrain directly
             from somabrain.agent_memory import encode_memory, recall_memory
@@ -60,10 +59,10 @@ class BrainBridge:
                 import somabrain_rs
 
                 self._rust_available = True
-                logger.info('Rust core loaded: %s', dir(somabrain_rs))
+                logger.info("Rust core loaded: %s", dir(somabrain_rs))
             except ImportError:
                 self._rust_available = False
-                logger.warning('Rust core not available, using Python fallback')
+                logger.warning("Rust core not available, using Python fallback")
 
             # Initialize quantum layer
             self._quantum = QuantumLayer(HRRConfig())
@@ -73,15 +72,15 @@ class BrainBridge:
             self._normalize = normalize_vector
 
             self._mode = "direct"
-            logger.info('BrainBridge: Direct mode initialized')
+            logger.info("BrainBridge: Direct mode initialized")
 
         except ImportError as e:
-            logger.error('Failed to import SomaBrain: %s', e)
+            logger.error("Failed to import SomaBrain: %s", e)
             raise RuntimeError(f"SomaBrain not available in aaas: {e}")
 
     def _init_http(self) -> None:
         """Initialize HTTP client for distributed mode."""
-        logger.info('BrainBridge: Initializing HTTP mode (distributed)')
+        logger.info("BrainBridge: Initializing HTTP mode (distributed)")
 
         import httpx
 
@@ -91,12 +90,13 @@ class BrainBridge:
         _settings = get_settings()
         # Use settings.SOMABRAIN_URL if available, else fallback to localhost:9696 (standalone default)
         from django.conf import settings as django_settings
+
         self._base_url = getattr(django_settings, "SOMABRAIN_URL", "") or "http://localhost:9696"
-        logger.info('BrainBridge HTTP mode -> %s', self._base_url)
+        logger.info("BrainBridge HTTP mode -> %s", self._base_url)
 
         self._client = httpx.AsyncClient(base_url=self._base_url, timeout=30.0)
         self._mode = "http"
-        logger.info('BrainBridge: HTTP mode initialized -> %s', self._base_url)
+        logger.info("BrainBridge: HTTP mode initialized -> %s", self._base_url)
 
     @property
     def mode(self) -> str:
@@ -207,10 +207,10 @@ class BrainBridge:
                 result = await store_memory_item(content, **kwargs)
                 return result
             except ImportError:
-                logger.error('Failed to import somabrain.agent_memory.store_memory_item')
+                logger.error("Failed to import somabrain.agent_memory.store_memory_item")
                 raise
             except Exception as e:
-                logger.error('Direct memory store failed: %s', e)
+                logger.error("Direct memory store failed: %s", e)
                 raise
         else:
             # HTTP Fallback
@@ -238,7 +238,7 @@ class BrainBridge:
                     self._engines[tenant_id] = AdaptationEngine(tenant_id=tenant_id)
                 return self._engines[tenant_id].apply_feedback(utility=utility, reward=reward)
             except Exception as e:
-                logger.error('[GMD] Direct feedback failed: %s', e)
+                logger.error("[GMD] Direct feedback failed: %s", e)
                 return False
         else:
             logger.warning("[GMD] apply_feedback() in HTTP mode - use async version")
@@ -263,7 +263,7 @@ class BrainBridge:
                 )
                 return resp.json().get("ok", False)
             except Exception as e:
-                logger.error('[GMD] HTTP feedback failed: %s', e)
+                logger.error("[GMD] HTTP feedback failed: %s", e)
                 return False
 
     # =========================================================================
@@ -289,7 +289,7 @@ class BrainBridge:
                     "acetylcholine": state.acetylcholine,
                 }
             except Exception as e:
-                logger.error('[GMD] Direct get_neuromodulators failed: %s', e)
+                logger.error("[GMD] Direct get_neuromodulators failed: %s", e)
         return {"dopamine": 0.5, "serotonin": 0.5, "noradrenaline": 0.5, "acetylcholine": 0.5}
 
     def set_neuromodulators(self, tenant_id: str, **levels) -> None:
@@ -305,9 +305,9 @@ class BrainBridge:
                     self._neuromod = PerTenantNeuromodulators()
                 state = NeuromodState(**levels)
                 self._neuromod.set_state(tenant_id, state)
-                logger.info('[GMD] Neuromodulators set for tenant %s', tenant_id[:8])
+                logger.info("[GMD] Neuromodulators set for tenant %s", tenant_id[:8])
             except Exception as e:
-                logger.error('[GMD] Direct set_neuromodulators failed: %s', e)
+                logger.error("[GMD] Direct set_neuromodulators failed: %s", e)
 
     async def set_neuromodulators_async(
         self, tenant_id: str, persona_id: str, neuromodulators: Dict[str, float]
@@ -326,7 +326,7 @@ class BrainBridge:
                     },
                 )
             except Exception as e:
-                logger.error('[GMD] HTTP set_neuromodulators failed: %s', e)
+                logger.error("[GMD] HTTP set_neuromodulators failed: %s", e)
 
 
 # Lazy singleton — only instantiates on first attribute access

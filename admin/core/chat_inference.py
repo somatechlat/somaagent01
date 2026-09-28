@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncIterator, cast, Dict, List, Optional
 
-from admin.core.model_router import detect_required_capabilities, select_model, SelectedModel
 from admin.core.chat_context import to_langchain_messages
 from admin.core.context import BuiltContext
-from services.common.circuit_breaker import CircuitBreakerError
+from admin.core.model_router import detect_required_capabilities, select_model, SelectedModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +27,7 @@ class ChatInferenceEngine:
         tenant_id: str,
     ) -> SelectedModel:
         """Select the best model for the turn."""
-        caps = detect_required_capabilities(
-            message=user_message, attachments=attachments
-        )
+        caps = detect_required_capabilities(message=user_message, attachments=attachments)
         return cast(
             SelectedModel,
             await self._cb_llm.call(

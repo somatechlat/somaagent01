@@ -83,9 +83,7 @@ class ProvenanceRecorder(BaseStore[ProvenanceRecord]):
             rework_count=record.rework_count,
         )
 
-    async def update(
-        self, identifier: str, changes: Dict[str, Any]
-    ) -> Optional[ProvenanceRecord]:
+    async def update(self, identifier: str, changes: Dict[str, Any]) -> Optional[ProvenanceRecord]:
         """Update a provenance record."""
         from admin.core.models import Provenance
 

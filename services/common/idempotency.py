@@ -71,9 +71,7 @@ def generate_for_memory_payload(
         default_tenant = settings.sa01_tenant_id
     except Exception:
         default_tenant = os.environ.get("SA01_TENANT_ID", "default")
-    tenant = (
-        payload.get("tenant") or meta.get("tenant") or default_tenant
-    )
+    tenant = payload.get("tenant") or meta.get("tenant") or default_tenant
     try:
         from config.settings_registry import SettingsRegistry
 
@@ -81,12 +79,7 @@ def generate_for_memory_payload(
         default_ns = settings.sa01_memory_namespace
     except Exception:
         default_ns = os.environ.get("SA01_MEMORY_NAMESPACE", "wm")
-    ns = (
-        payload.get("namespace")
-        or meta.get("namespace")
-        or namespace
-        or default_ns
-    )
+    ns = payload.get("namespace") or meta.get("namespace") or namespace or default_ns
     session_id = str(payload.get("session_id") or meta.get("session_id") or "")
     role = str(payload.get("role") or meta.get("role") or "event")
     ts = (

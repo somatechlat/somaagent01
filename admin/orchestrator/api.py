@@ -131,7 +131,7 @@ async def create_workflow(
     """
     workflow_id = str(uuid4())
 
-    logger.info('Workflow created: %s (%s)', name, workflow_id)
+    logger.info("Workflow created: %s (%s)", name, workflow_id)
 
     return Workflow(
         workflow_id=workflow_id,
@@ -169,7 +169,7 @@ async def get_workflow(request, workflow_id: str) -> Workflow:
 )
 async def delete_workflow(request, workflow_id: str) -> dict:
     """Delete a workflow."""
-    logger.warning('Workflow deleted: %s', workflow_id)
+    logger.warning("Workflow deleted: %s", workflow_id)
 
     return {
         "workflow_id": workflow_id,
@@ -225,7 +225,7 @@ async def get_run(request, run_id: str) -> WorkflowRun:
 )
 async def cancel_run(request, run_id: str) -> dict:
     """Cancel a running workflow."""
-    logger.warning('Workflow run cancelled: %s', run_id)
+    logger.warning("Workflow run cancelled: %s", run_id)
 
     return {
         "run_id": run_id,
@@ -271,7 +271,7 @@ async def coordinate_agents(
     """
     coordination_id = str(uuid4())
 
-    logger.info('Agent coordination started: %s', coordination_id)
+    logger.info("Agent coordination started: %s", coordination_id)
 
     return {
         "coordination_id": coordination_id,

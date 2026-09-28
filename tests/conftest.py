@@ -15,6 +15,7 @@ Test Structure:
 
 import os
 import secrets as _secrets
+
 import pytest
 
 # ===========================================================================
@@ -28,9 +29,7 @@ AAAS_ENV = {
     "SA01_DB_USER": "soma",
     "SA01_DB_PASSWORD": os.environ.get("TEST_DB_PASSWORD", ""),
     "SA01_DB_NAME": "somaagent",
-    "SA01_DB_DSN": os.environ.get(
-        "TEST_DB_DSN", "postgresql://soma@localhost:63932/somaagent"
-    ),
+    "SA01_DB_DSN": os.environ.get("TEST_DB_DSN", "postgresql://soma@localhost:63932/somaagent"),
     # Redis (somastack_redis)
     "SA01_REDIS_URL": "redis://localhost:63979/0",
     # Milvus (somastack_milvus)
@@ -65,6 +64,7 @@ def _apply_env(env_dict: dict) -> None:
 # PYTEST CONFIGURATION
 # ===========================================================================
 
+
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line("markers", "aaas: AAAS mode tests (requires Docker infra)")
@@ -82,6 +82,7 @@ def configure_test_environment(request):
 
     # Setup Django (settings module configured via pytest.ini)
     import django
+
     django.setup()
 
 
@@ -103,10 +104,12 @@ def standalone_mode():
 # INFRASTRUCTURE HEALTH CHECKS
 # ===========================================================================
 
+
 @pytest.fixture(scope="session")
 def postgres_available():
     """Check if PostgreSQL is available."""
     import socket
+
     host = os.environ.get("SA01_DB_HOST", "localhost")
     port = int(os.environ.get("SA01_DB_PORT", "63932"))
     try:
@@ -120,6 +123,7 @@ def postgres_available():
 def milvus_available():
     """Check if Milvus is available."""
     import socket
+
     host = os.environ.get("MILVUS_HOST", "localhost")
     port = int(os.environ.get("MILVUS_PORT", "63953"))
     try:
@@ -133,6 +137,7 @@ def milvus_available():
 def redis_available():
     """Check if Redis is available."""
     import socket
+
     try:
         with socket.create_connection(("localhost", 63979), timeout=2):
             return True
@@ -144,6 +149,7 @@ def redis_available():
 def somabrain_available():
     """Check if SomaBrain API is available."""
     import socket
+
     try:
         with socket.create_connection(("localhost", 63996), timeout=2):
             return True

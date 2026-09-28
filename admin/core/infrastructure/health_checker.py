@@ -156,7 +156,7 @@ class InfrastructureHealthChecker:
                 },
             )
         except Exception as e:
-            logger.error('PostgreSQL health check failed: %s', e)
+            logger.error("PostgreSQL health check failed: %s", e)
             return HealthCheckResult(
                 name="postgresql",
                 status="down",
@@ -200,7 +200,7 @@ class InfrastructureHealthChecker:
                 error="redis package not installed",
             )
         except Exception as e:
-            logger.warning('Redis health check failed: %s', e)
+            logger.warning("Redis health check failed: %s", e)
             return HealthCheckResult(
                 name="redis",
                 status="degraded",
@@ -242,7 +242,7 @@ class InfrastructureHealthChecker:
                 error=f"Kafka module not available: {e}",
             )
         except Exception as e:
-            logger.warning('Kafka health check failed: %s', e)
+            logger.warning("Kafka health check failed: %s", e)
             return HealthCheckResult(
                 name="kafka",
                 status="degraded",
@@ -291,7 +291,7 @@ class InfrastructureHealthChecker:
                     error=f"HTTP {response.status_code}",
                 )
         except Exception as e:
-            logger.warning('Flink health check failed: %s', e)
+            logger.warning("Flink health check failed: %s", e)
             return HealthCheckResult(
                 name="flink",
                 status="degraded",
@@ -329,7 +329,7 @@ class InfrastructureHealthChecker:
                     error=f"HTTP {response.status_code}",
                 )
         except Exception as e:
-            logger.warning('Temporal health check failed: %s', e)
+            logger.warning("Temporal health check failed: %s", e)
             return HealthCheckResult(
                 name="temporal",
                 status="degraded",
@@ -370,7 +370,7 @@ class InfrastructureHealthChecker:
                     error=f"HTTP {response.status_code}",
                 )
         except Exception as e:
-            logger.warning('Qdrant health check failed: %s', e)
+            logger.warning("Qdrant health check failed: %s", e)
             return HealthCheckResult(
                 name="qdrant",
                 status="degraded",
@@ -407,7 +407,7 @@ class InfrastructureHealthChecker:
                     error=f"HTTP {response.status_code}",
                 )
         except Exception as e:
-            logger.warning('Keycloak health check failed: %s', e)
+            logger.warning("Keycloak health check failed: %s", e)
             return HealthCheckResult(
                 name="keycloak",
                 status="degraded",
@@ -444,7 +444,7 @@ class InfrastructureHealthChecker:
                     error=f"HTTP {response.status_code}",
                 )
         except Exception as e:
-            logger.warning('Lago health check failed: %s', e)
+            logger.warning("Lago health check failed: %s", e)
             return HealthCheckResult(
                 name="lago",
                 status="degraded",
@@ -485,7 +485,7 @@ class InfrastructureHealthChecker:
                     error=f"HTTP {response.status_code}",
                 )
         except Exception as e:
-            logger.warning('SomaBrain health check failed: %s', e)
+            logger.warning("SomaBrain health check failed: %s", e)
             return HealthCheckResult(
                 name="somabrain",
                 status="degraded",

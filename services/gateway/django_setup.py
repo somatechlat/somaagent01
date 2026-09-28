@@ -12,8 +12,9 @@ import os
 import re
 import secrets
 
-from config.settings_registry import get_optional_env
 from django.conf import settings
+
+from config.settings_registry import get_optional_env
 
 # =============================================================================
 # 1. DJANGO CONFIGURATION (must be before any Django imports)

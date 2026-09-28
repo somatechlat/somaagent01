@@ -91,11 +91,15 @@ class CircuitBreaker:
         self._last_failure_time: float = 0.0
         self._lock = asyncio.Lock()
 
-        logger.info("CircuitBreaker '%s' initialized", config.name, extra={
+        logger.info(
+            "CircuitBreaker '%s' initialized",
+            config.name,
+            extra={
                 "cb_name": config.name,
                 "failure_threshold": config.failure_threshold,
                 "reset_timeout": config.reset_timeout,
-            })
+            },
+        )
 
     @property
     def state(self) -> CircuitState:
@@ -103,7 +107,11 @@ class CircuitBreaker:
         if self._state == CircuitState.OPEN:
             elapsed = time.monotonic() - self._last_failure_time
             if elapsed >= self.config.reset_timeout:
-                logger.info("Circuit '%s' transitioning to HALF_OPEN", self.config.name, extra={"cb_name": self.config.name, "open_duration": elapsed})
+                logger.info(
+                    "Circuit '%s' transitioning to HALF_OPEN",
+                    self.config.name,
+                    extra={"cb_name": self.config.name, "open_duration": elapsed},
+                )
                 self._state = CircuitState.HALF_OPEN
 
         return self._state
@@ -143,7 +151,11 @@ class CircuitBreaker:
 
             # Fast-fail if circuit is open
             if current_state == CircuitState.OPEN:
-                logger.debug("Circuit '%s' is OPEN - fast-failing", self.config.name, extra={"cb_name": self.config.name, "failures": self._failure_count})
+                logger.debug(
+                    "Circuit '%s' is OPEN - fast-failing",
+                    self.config.name,
+                    extra={"cb_name": self.config.name, "failures": self._failure_count},
+                )
                 raise CircuitBreakerError(
                     self.config.name,
                     f"Circuit OPEN after {self._failure_count} failures",
@@ -159,7 +171,11 @@ class CircuitBreaker:
                     # Success in HALF_OPEN means circuit recovers
                     self._state = CircuitState.CLOSED
                     self._failure_count = 0
-                    logger.info("Circuit '%s' CLOSED after successful probe", self.config.name, extra={"cb_name": self.config.name})
+                    logger.info(
+                        "Circuit '%s' CLOSED after successful probe",
+                        self.config.name,
+                        extra={"cb_name": self.config.name},
+                    )
                 elif self._state == CircuitState.CLOSED:
                     # Success in CLOSED decreases failure count slowly
                     self._failure_count = max(0, self._failure_count - 1)
@@ -170,7 +186,11 @@ class CircuitBreaker:
 
         except self.config.expected_exceptions as e:
             # Failure - open circuit if threshold reached
-            logger.warning("Circuit '%s' call failed", self.config.name, extra={"cb_name": self.config.name, "error": type(e).__name__})
+            logger.warning(
+                "Circuit '%s' call failed",
+                self.config.name,
+                extra={"cb_name": self.config.name, "error": type(e).__name__},
+            )
 
             async with self._lock:
                 self._failure_count += 1
@@ -179,14 +199,22 @@ class CircuitBreaker:
                 if self._state == CircuitState.HALF_OPEN:
                     # Failure in HALF_OPEN means back to OPEN
                     self._state = CircuitState.OPEN
-                    logger.warning("Circuit '%s' re-OPENED after failed probe", self.config.name, extra={"cb_name": self.config.name, "failures": self._failure_count})
+                    logger.warning(
+                        "Circuit '%s' re-OPENED after failed probe",
+                        self.config.name,
+                        extra={"cb_name": self.config.name, "failures": self._failure_count},
+                    )
                 elif self._state == CircuitState.CLOSED:
                     if self._failure_count >= self.config.failure_threshold:
                         self._state = CircuitState.OPEN
-                        logger.error("Circuit '%s' OPENED", self.config.name, extra={
+                        logger.error(
+                            "Circuit '%s' OPENED",
+                            self.config.name,
+                            extra={
                                 "cb_name": self.config.name,
                                 "failures": self._failure_count,
-                            })
+                            },
+                        )
 
             raise
 
@@ -200,7 +228,11 @@ class CircuitBreaker:
         self._success_count = 0
         self._last_failure_time = 0.0
 
-        logger.info("Circuit '%s' manually reset to CLOSED", self.config.name, extra={"cb_name": self.config.name})
+        logger.info(
+            "Circuit '%s' manually reset to CLOSED",
+            self.config.name,
+            extra={"cb_name": self.config.name},
+        )
 
     def force_open(self) -> None:
         """Force circuit to OPEN state.
@@ -210,7 +242,9 @@ class CircuitBreaker:
         self._state = CircuitState.OPEN
         self._last_failure_time = time.monotonic()
 
-        logger.warning("Circuit '%s' forced OPEN", self.config.name, extra={"cb_name": self.config.name})
+        logger.warning(
+            "Circuit '%s' forced OPEN", self.config.name, extra={"cb_name": self.config.name}
+        )
 
     def is_open(self, partition_key: Optional[str] = None) -> bool:
         """Check if circuit is currently open.
@@ -266,7 +300,11 @@ def reset_all_circuit_breakers() -> None:
     for breaker in _circuit_breakers.values():
         breaker.reset()
 
-    logger.info('Reset all %s circuit breakers', _circuit_breakers.__len__(), extra={"count": len(_circuit_breakers)})
+    logger.info(
+        "Reset all %s circuit breakers",
+        _circuit_breakers.__len__(),
+        extra={"count": len(_circuit_breakers)},
+    )
 
 
 def get_all_circuit_breaker_states() -> dict[str, str]:
@@ -295,6 +333,7 @@ def circuit_breaker(
     Returns a decorator that wraps a function with a new CircuitBreaker.
     The breaker is NOT registered in the global registry.
     """
+
     def decorator(func: Callable) -> Callable:
         cb = CircuitBreaker(
             config=CircuitBreakerConfig(

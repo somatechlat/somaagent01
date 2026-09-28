@@ -251,12 +251,18 @@ class TelegramBotDriver:
         return self._client
 
     async def _call(
-        self, method: str, payload: Optional[Dict[str, Any]] = None, *, timeout: float = _SEND_TIMEOUT
+        self,
+        method: str,
+        payload: Optional[Dict[str, Any]] = None,
+        *,
+        timeout: float = _SEND_TIMEOUT,
     ) -> Dict[str, Any]:
         try:
             resp = await self._http().post(self._url(method), json=payload or {}, timeout=timeout)
         except httpx.HTTPError as exc:
-            raise BridgeSendError(f"telegram {method} transport error: {exc}", retryable=True) from exc
+            raise BridgeSendError(
+                f"telegram {method} transport error: {exc}", retryable=True
+            ) from exc
         data = _safe_json(resp)
         if resp.status_code != 200 or not data.get("ok", False):
             # 429 / 5xx retryable; 400 (bad request) and 401/403 (bad token) not.
@@ -276,7 +282,9 @@ class TelegramBotDriver:
         if not self.token:
             raise TelegramConfigError("telegram bot token missing — fail-closed")
         if self.mode not in {"poll", "webhook"}:
-            raise TelegramConfigError(f"unknown telegram bridge mode '{self.mode}' (expected poll|webhook)")
+            raise TelegramConfigError(
+                f"unknown telegram bridge mode '{self.mode}' (expected poll|webhook)"
+            )
         self._http()
         me = await self.get_me()
         self._bot_id = str(me.get("id") or "")
@@ -347,13 +355,17 @@ class TelegramBotDriver:
             "allowed_updates": ["message", "callback_query"],
         }
         try:
-            resp = await self._http().post(self._url("getUpdates"), json=payload, timeout=_POLL_TIMEOUT + timeout)
+            resp = await self._http().post(
+                self._url("getUpdates"), json=payload, timeout=_POLL_TIMEOUT + timeout
+            )
         except httpx.HTTPError as exc:
             logger.warning("telegram getUpdates failed: %s", exc)
             return []
         data = _safe_json(resp)
         if resp.status_code != 200 or not data.get("ok", False):
-            logger.warning("telegram getUpdates status %s: %s", resp.status_code, data.get("description"))
+            logger.warning(
+                "telegram getUpdates status %s: %s", resp.status_code, data.get("description")
+            )
             return []
         updates = data.get("result") or []
         if not isinstance(updates, list) or not updates:
@@ -375,9 +387,7 @@ class TelegramBotDriver:
             uid = int(item.get("update_id") or 0)
             if uid > max_update_id:
                 max_update_id = uid
-            env = map_update_to_envelope(
-                item, bot_id=self._bot_id, bot_username=self._bot_username
-            )
+            env = map_update_to_envelope(item, bot_id=self._bot_id, bot_username=self._bot_username)
             if env is not None:
                 envelopes.append(env)
         # Advance offset so a crashed consumer does not loop on the same batch
@@ -493,7 +503,9 @@ class TelegramBotDriver:
                     reply_int = _as_int_or_none(payload.reply_to)
                     if reply_int is not None:
                         data["reply_to_message_id"] = reply_int
-                resp = await self._http().post(self._url(method), data=data, files=files, timeout=_SEND_TIMEOUT)
+                resp = await self._http().post(
+                    self._url(method), data=data, files=files, timeout=_SEND_TIMEOUT
+                )
         except OSError as exc:
             raise BridgeSendError(f"telegram media not readable: {exc}", retryable=False) from exc
         result = _safe_json(resp)
@@ -511,7 +523,9 @@ class TelegramBotDriver:
         if paused or not chat_id:
             return
         try:
-            await self._call("sendChatAction", {"chat_id": chat_id, "action": "typing"}, timeout=_HEALTH_TIMEOUT)
+            await self._call(
+                "sendChatAction", {"chat_id": chat_id, "action": "typing"}, timeout=_HEALTH_TIMEOUT
+            )
         except Exception:  # noqa: BLE001 — typing is best-effort
             pass
 
@@ -640,9 +654,7 @@ def map_update_to_envelope(
             "chat_type": chat_type,
             "username": username,
             "entities": msg.get("entities") or msg.get("caption_entities") or [],
-            "reply_to_message_id": str(
-                (msg.get("reply_to_message") or {}).get("message_id") or ""
-            ),
+            "reply_to_message_id": str((msg.get("reply_to_message") or {}).get("message_id") or ""),
             "raw_update": update,
         },
     )
@@ -655,9 +667,7 @@ def _detect_media(msg: Dict[str, Any]) -> str:
     return ""
 
 
-def _addressing_flags(
-    msg: Dict[str, Any], *, bot_id: str, bot_username: str
-) -> tuple[bool, bool]:
+def _addressing_flags(msg: Dict[str, Any], *, bot_id: str, bot_username: str) -> tuple[bool, bool]:
     """mentioned_me / replied_to_me — A0 group gating inputs."""
     text = str(msg.get("text") or msg.get("caption") or "")
     mentioned = False
@@ -687,7 +697,11 @@ def _addressing_flags(
     if isinstance(reply_from, dict) and reply_from:
         if bot_id and str(reply_from.get("id") or "") == str(bot_id):
             replied = True
-        elif bot_username and str(reply_from.get("username") or "").lstrip("@").lower() == bot_username.lstrip("@").lower():
+        elif (
+            bot_username
+            and str(reply_from.get("username") or "").lstrip("@").lower()
+            == bot_username.lstrip("@").lower()
+        ):
             replied = True
     return mentioned, replied
 

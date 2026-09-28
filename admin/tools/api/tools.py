@@ -50,9 +50,7 @@ async def list_tools() -> dict:
     Queries the canonical Capability model.
     """
     capabilities = await sync_to_async(list)(
-        Capability.objects.filter(is_enabled=True).values(
-            "name", "description", "schema"
-        )
+        Capability.objects.filter(is_enabled=True).values("name", "description", "schema")
     )
 
     tools: list[dict] = []
@@ -90,9 +88,7 @@ async def list_catalog() -> list[dict]:
 @router.put("/catalog/{name}", response=ToolCatalogItem, summary="Upsert tool catalog entry")
 async def upsert_catalog_item(name: str, item: ToolCatalogItem) -> dict:
     """Create or update a tool catalog entry."""
-    capability, _created = await sync_to_async(
-        Capability.objects.update_or_create
-    )(
+    capability, _created = await sync_to_async(Capability.objects.update_or_create)(
         name=name,
         defaults={
             "description": item.description or "",

@@ -103,7 +103,9 @@ class ContextBuilder:
         """
         from asgiref.sync import sync_to_async
 
-        body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or (await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {})
+        body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or (
+            await capsule.async_body() if hasattr(capsule, "async_body") else capsule.body or {}
+        )
         persona = body.get("persona", {})
 
         # 1. Derive settings from AgentIQ (0ms)
@@ -324,4 +326,6 @@ async def build_context(
         BuiltContext
     """
     builder = ContextBuilder(brain_client=brain_client)
-    return await builder.build(capsule, user_message, history, budget_override, memory_hits=memory_hits)
+    return await builder.build(
+        capsule, user_message, history, budget_override, memory_hits=memory_hits
+    )

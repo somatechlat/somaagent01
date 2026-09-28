@@ -21,8 +21,8 @@ from typing import Any, cast, Dict, List, Optional
 import httpx
 from django.conf import settings
 
+from admin.core.somabrain_client import SomaBrainClient  # noqa: E402
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -188,7 +188,9 @@ class _SomaBrainBaseClient:
         async def _do_request() -> Dict[str, Any]:
             client = await self._ensure_client()
             request_headers = headers or {}
-            response = await client.request(method, path, json=json, params=params, headers=request_headers)
+            response = await client.request(
+                method, path, json=json, params=params, headers=request_headers
+            )
             response.raise_for_status()
             return response.json()
 

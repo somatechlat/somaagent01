@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 from urllib.parse import parse_qs
 
 from admin.common.auth import decode_token
@@ -32,7 +31,7 @@ class ChatAuthMixin:
         # 1. Subprotocol auth (P3-04 preferred)
         for proto in self.scope.get("subprotocols", []):
             if proto.startswith("soma-auth."):
-                token = proto[len("soma-auth."):]
+                token = proto[len("soma-auth.") :]
                 break
 
         # 2. Query string fallback

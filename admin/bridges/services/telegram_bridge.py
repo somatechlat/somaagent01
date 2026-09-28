@@ -78,13 +78,9 @@ def _require_channel(channel_id: str) -> Any:
 def _require_binding(channel: Any) -> None:
     """Fail-closed on missing tenant or capsule (T-5 / BR-09)."""
     if not getattr(channel, "tenant_id", None):
-        raise TelegramBridgeError(
-            f"channel {channel.id} has no tenant binding — refuse to start"
-        )
+        raise TelegramBridgeError(f"channel {channel.id} has no tenant binding — refuse to start")
     if not getattr(channel, "capsule_id", None):
-        raise TelegramBridgeError(
-            f"channel {channel.id} has no capsule binding — refuse to start"
-        )
+        raise TelegramBridgeError(f"channel {channel.id} has no capsule binding — refuse to start")
 
 
 def _channel_config(channel: Any) -> Dict[str, Any]:
@@ -168,13 +164,21 @@ async def start(channel_id: str) -> BridgeControlResult:
         _set_status(channel_id, "error", str(exc))
         return BridgeControlResult(False, "error", f"telegram start failed: {exc}")
 
-    data: Dict[str, Any] = {"mode": mode, "bot_username": driver._bot_username, "bot_id": driver._bot_id}
+    data: Dict[str, Any] = {
+        "mode": mode,
+        "bot_username": driver._bot_username,
+        "bot_id": driver._bot_id,
+    }
 
     if mode == "webhook":
-        webhook_url = str(config.get("webhook_url") or os.environ.get("TG_WEBHOOK_URL") or "").strip()
+        webhook_url = str(
+            config.get("webhook_url") or os.environ.get("TG_WEBHOOK_URL") or ""
+        ).strip()
         if not webhook_url:
             await driver.stop()
-            _set_status(channel_id, "error", "webhook mode requires config.webhook_url / TG_WEBHOOK_URL")
+            _set_status(
+                channel_id, "error", "webhook mode requires config.webhook_url / TG_WEBHOOK_URL"
+            )
             return BridgeControlResult(
                 False,
                 "error",
@@ -325,9 +329,7 @@ def handle_webhook(
     row_id = _store_inbound(channel=channel, envelope=env)
     if row_id is None:
         return BridgeControlResult(True, "duplicate", "update already stored")
-    return BridgeControlResult(
-        True, "accepted", "stored inbound message", {"inbound_id": row_id}
-    )
+    return BridgeControlResult(True, "accepted", "stored inbound message", {"inbound_id": row_id})
 
 
 def _fetch_bot_identity_sync(channel: Any) -> Optional[Dict[str, Any]]:
@@ -364,9 +366,12 @@ def _fetch_bot_identity_sync(channel: Any) -> Optional[Dict[str, Any]]:
 def _store_inbound(*, channel: Any, envelope: Any) -> Optional[str]:
     from admin.bridges.models import InboundMessage
 
-    if envelope.external_id and InboundMessage.objects.filter(
-        channel_id=channel.id, external_id=envelope.external_id
-    ).exists():
+    if (
+        envelope.external_id
+        and InboundMessage.objects.filter(
+            channel_id=channel.id, external_id=envelope.external_id
+        ).exists()
+    ):
         return None
 
     row = InboundMessage.objects.create(
@@ -374,9 +379,7 @@ def _store_inbound(*, channel: Any, envelope: Any) -> Optional[str]:
         external_id=envelope.external_id or "",
         direction="inbound",
         payload=envelope.to_payload(),
-        attachments=[
-            {"path": u, "media_type": envelope.media_type} for u in envelope.media_urls
-        ],
+        attachments=[{"path": u, "media_type": envelope.media_type} for u in envelope.media_urls],
     )
     return str(row.id)
 

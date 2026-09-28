@@ -64,7 +64,11 @@ class RedisRateLimiter:
     ):
         """Initialize the instance."""
 
-        self.redis_url = redis_url or os.getenv("SA01_REDIS_URL") or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.redis_url = (
+            redis_url
+            or os.getenv("SA01_REDIS_URL")
+            or os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        )
         self.default_limit = default_limit
         self.default_window_seconds = default_window_seconds
         self.key_prefix = key_prefix
@@ -79,7 +83,7 @@ class RedisRateLimiter:
             # Test connection
             await self._redis.ping()
             self._connected = True
-            LOGGER.info('Redis rate limiter connected: %s', self.redis_url)
+            LOGGER.info("Redis rate limiter connected: %s", self.redis_url)
 
     async def close(self) -> None:
         """Close Redis connection.
@@ -184,7 +188,7 @@ class RedisRateLimiter:
             )
 
         except Exception as e:
-            LOGGER.error('Rate limit check failed: %s', e)
+            LOGGER.error("Rate limit check failed: %s", e)
             # VIBE SECURITY: Fail-closed on Redis errors.
             RATE_LIMIT_REQUESTS.labels(tenant_id, "error").inc()
 
@@ -206,7 +210,7 @@ class RedisRateLimiter:
         key = ":".join(key_parts)
 
         await self._redis.delete(key)
-        LOGGER.info('Rate limit reset for %s', key)
+        LOGGER.info("Rate limit reset for %s", key)
 
 
 # Preconfigured limits per CANONICAL_REQUIREMENTS.md

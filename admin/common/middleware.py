@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
+from admin.common.messages import ErrorCode, get_message
 from admin.common.session_manager import get_session_manager, SessionManager
-from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +133,12 @@ class SessionMiddleware:
         except Exception as e:
             logger.warning("JWT validation failed: %s", e)
             try:
-                from asgiref.sync import sync_to_async
-                from admin.aaas.models import AuditLog
                 from uuid import uuid4
+
+                from asgiref.sync import sync_to_async
+
+                from admin.aaas.models import AuditLog
+
                 await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
                     actor_id="anonymous",
                     actor_email="",
@@ -150,7 +153,10 @@ class SessionMiddleware:
             except Exception as audit_exc:
                 logger.warning("Auth audit logging failed: %s", audit_exc)
             return JsonResponse(
-                {"error": "invalid_token", "message": get_message(ErrorCode.AUTH_INVALID_OR_EXPIRED_TOKEN)},
+                {
+                    "error": "invalid_token",
+                    "message": get_message(ErrorCode.AUTH_INVALID_OR_EXPIRED_TOKEN),
+                },
                 status=401,
             )
 
@@ -166,9 +172,12 @@ class SessionMiddleware:
             if session is None:
                 logger.warning("Session not found: user=%s, session=%s", claims.sub, session_id)
                 try:
-                    from asgiref.sync import sync_to_async
-                    from admin.aaas.models import AuditLog
                     from uuid import uuid4
+
+                    from asgiref.sync import sync_to_async
+
+                    from admin.aaas.models import AuditLog
+
                     await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
                         actor_id=str(claims.sub),
                         actor_email="",

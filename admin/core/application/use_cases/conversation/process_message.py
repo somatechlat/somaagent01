@@ -24,8 +24,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from admin.common.messages import ErrorCode, get_message
 from services.common.job_planner import JobPlanner, PlanValidationError
-from admin.common.messages import ErrorCode, SuccessCode, get_message
 
 LOGGER = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ class ProcessMessageUseCase:
             await self._session_repo.append_event(session_id, {"type": "user", **event})
         except Exception as e:
             if "UniqueViolation" not in str(type(e).__name__):
-                LOGGER.warning('Failed to store user event: %s', e)
+                LOGGER.warning("Failed to store user event: %s", e)
 
         # Step 3: Store to memory (best effort)
         await self._store_user_memory(event, session_id, tenant, enriched_metadata)
@@ -450,5 +450,5 @@ class ProcessMessageUseCase:
             LOGGER.warning("Invalid multimodal plan: %s", e.errors)
             return response_text
         except Exception as e:
-            LOGGER.warning('Failed to process multimodal plan: %s', e)
+            LOGGER.warning("Failed to process multimodal plan: %s", e)
             return response_text

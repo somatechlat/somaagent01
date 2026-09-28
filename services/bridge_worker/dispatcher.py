@@ -252,9 +252,7 @@ def evaluate_inbound(
             return DispatchDecision(False, "group messages disabled (allow_group=false)")
         # A0: skip unless mentioned or replied-to the bot.
         if not msg.mentioned_me and not msg.replied_to_me:
-            return DispatchDecision(
-                False, "group message not addressed to bot (no mention/reply)"
-            )
+            return DispatchDecision(False, "group message not addressed to bot (no mention/reply)")
 
     return DispatchDecision(True)
 
@@ -507,13 +505,9 @@ class BridgeDispatcher:
         tenant_id = getattr(self.channel, "tenant_id", None)
         capsule_id = getattr(self.channel, "capsule_id", None)
         if not tenant_id:
-            raise RuntimeError(
-                f"channel {self.channel_id} has no tenant binding — fail-closed"
-            )
+            raise RuntimeError(f"channel {self.channel_id} has no tenant binding — fail-closed")
         if not capsule_id:
-            raise RuntimeError(
-                f"channel {self.channel_id} has no capsule binding — fail-closed"
-            )
+            raise RuntimeError(f"channel {self.channel_id} has no capsule binding — fail-closed")
         from admin.core.models import Capsule
 
         capsule = Capsule.objects.select_related("tenant").filter(id=capsule_id).first()
@@ -618,14 +612,10 @@ class BridgeDispatcher:
                 external_id=msg.external_id or "",
                 direction="inbound",
                 payload=msg.to_payload(),
-                attachments=[
-                    {"path": u, "media_type": msg.media_type} for u in msg.media_urls
-                ],
+                attachments=[{"path": u, "media_type": msg.media_type} for u in msg.media_urls],
             )
             if processed:
-                InboundMessage.objects.filter(id=row.id).update(
-                    processed_at=timezone.now()
-                )
+                InboundMessage.objects.filter(id=row.id).update(processed_at=timezone.now())
             return str(row.id)
 
         return await _run()
@@ -640,9 +630,7 @@ class BridgeDispatcher:
         def _run() -> None:
             from admin.bridges.models import InboundMessage
 
-            InboundMessage.objects.filter(id=inbound_id).update(
-                processed_at=timezone.now()
-            )
+            InboundMessage.objects.filter(id=inbound_id).update(processed_at=timezone.now())
 
         await _run()
 
@@ -685,13 +673,9 @@ class BridgeDispatcher:
         """Process one inbound message. Returns a result dict (never raises for
         policy skips; raises only on fail-closed binding violations)."""
         if not is_bridge_enabled(self.kind):
-            logger.info(
-                "bridge_%s disabled — skipping inbound on %s", self.kind, self.channel_id
-            )
+            logger.info("bridge_%s disabled — skipping inbound on %s", self.kind, self.channel_id)
             # Claim any pre-stored cloud row so it is not re-polled forever.
-            await self._mark_processed(
-                str((msg.raw or {}).get("inbound_message_id") or "")
-            )
+            await self._mark_processed(str((msg.raw or {}).get("inbound_message_id") or ""))
             return {"status": "skipped", "reason": "feature_disabled"}
 
         binding = self._require_binding()
@@ -701,9 +685,7 @@ class BridgeDispatcher:
         decision = evaluate_inbound(msg, self.config, self.driver)
         if not decision.accept:
             logger.info("inbound rejected (%s) on %s", decision.reason, self.channel_id)
-            await self._mark_processed(
-                str((msg.raw or {}).get("inbound_message_id") or "")
-            )
+            await self._mark_processed(str((msg.raw or {}).get("inbound_message_id") or ""))
             return {"status": "rejected", "reason": decision.reason}
 
         session = await self._get_or_create_session(msg)
@@ -726,8 +708,7 @@ class BridgeDispatcher:
         composed = f"{channel_ctx}\n\n{envelope}"
 
         attachments = [
-            {"path": u, "media_type": msg.media_type, "source": self.kind}
-            for u in msg.media_urls
+            {"path": u, "media_type": msg.media_type, "source": self.kind} for u in msg.media_urls
         ]
 
         # Typing indicator (A0 handler starts typing before communicate).

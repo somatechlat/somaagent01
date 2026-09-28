@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
-from services.common.http_timeouts import httpx_timeout
 
+from services.common.http_timeouts import httpx_timeout
 from services.common.tenant_config import TenantConfig
 
 LOGGER = logging.getLogger(__name__)
@@ -38,9 +38,7 @@ class PolicyClient:
         """Initialize the instance."""
 
         default_base_url = (
-            base_url
-            or os.environ.get("SA01_POLICY_URL")
-            or os.environ.get("SA01_OPA_URL")
+            base_url or os.environ.get("SA01_POLICY_URL") or os.environ.get("SA01_OPA_URL")
         )
         if not default_base_url:
             # Standalone mode: no OPA configured, allow all
@@ -63,8 +61,7 @@ class PolicyClient:
             _base = _base[: -len("/v1/data/soma")]
         self.base_url = _base
         self.data_path = (
-            os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow")
-            or "/v1/data/soma/allow"
+            os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"
         )
         self._client = httpx.AsyncClient(timeout=httpx_timeout())
         self.cache_ttl = float(os.environ.get("SA01_POLICY_CACHE_TTL", "2") or "2")
@@ -80,7 +77,7 @@ class PolicyClient:
             request: The request.
         """
         # Standalone mode: no OPA configured, allow all
-        if getattr(self, '_disabled', False):
+        if getattr(self, "_disabled", False):
             return True
 
         payload = {

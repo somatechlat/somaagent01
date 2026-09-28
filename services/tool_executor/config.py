@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 def _get_config() -> "Config":
     from admin.core.config.registry import get_config
+
     return get_config()
 
 

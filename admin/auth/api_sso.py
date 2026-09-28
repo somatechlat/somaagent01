@@ -10,8 +10,8 @@ import logging
 from ninja import Router
 
 from admin.auth.api_schemas import SSOConfigRequest, SSOTestRequest
-from admin.common.messages import ErrorCode, SuccessCode, get_message
-from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
+from admin.common.messages import ErrorCode, get_message, SuccessCode
+from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["SSO"])
@@ -41,7 +41,9 @@ async def test_sso_connection(request, payload: SSOTestRequest):
                     }
                 return {
                     "success": False,
-                    "detail": get_message(ErrorCode.SSO_OIDC_DISCOVERY_FAILED, status_code=response.status_code),
+                    "detail": get_message(
+                        ErrorCode.SSO_OIDC_DISCOVERY_FAILED, status_code=response.status_code
+                    ),
                 }
 
         elif provider == "ldap" or provider == "ad":
@@ -72,10 +74,13 @@ async def test_sso_connection(request, payload: SSOTestRequest):
             }
 
         else:
-            return {"success": False, "detail": get_message(ErrorCode.SSO_UNKNOWN_PROVIDER, provider=provider)}
+            return {
+                "success": False,
+                "detail": get_message(ErrorCode.SSO_UNKNOWN_PROVIDER, provider=provider),
+            }
 
     except Exception as e:
-        logger.error('SSO test error: %s', e)
+        logger.error("SSO test error: %s", e)
         return {"success": False, "detail": get_message(ErrorCode.SSO_TEST_FAILED, error=str(e))}
 
 

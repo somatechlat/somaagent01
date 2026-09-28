@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import httpx
+
 from services.common.http_timeouts import httpx_timeout
 
 

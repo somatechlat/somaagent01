@@ -13,6 +13,7 @@ VIBE Compliance:
 from __future__ import annotations
 
 import logging
+
 from django.contrib import admin
 from django.urls import include, path
 from ninja import NinjaAPI
@@ -35,10 +36,10 @@ unified_api = NinjaAPI(
 # =============================================================================
 
 try:
+    from admin.aaas.api import router as aaas_router
     from admin.agents.api import router as agents_router
     from admin.chat.api import router as chat_router
     from admin.core.api import router as core_router
-    from admin.aaas.api import router as aaas_router
     from admin.gateway.api import router as gateway_router
 
     unified_api.add_router("/agents/", agents_router, tags=["agents"])
@@ -47,7 +48,7 @@ try:
     unified_api.add_router("/aaas/", aaas_router, tags=["aaas"])
     unified_api.add_router("/gateway/", gateway_router, tags=["gateway"])
 except ImportError as e:
-    logger.info('Agent routers not available: %s', e)
+    logger.info("Agent routers not available: %s", e)
 
 # =============================================================================
 # MOUNT BRAIN ROUTERS
@@ -60,24 +61,24 @@ try:
     for router in getattr(brain_api, "_routers", []):
         unified_api.add_router("/brain/", router, tags=["brain"])
 except ImportError as e:
-    logger.info('Brain routers not available: %s', e)
+    logger.info("Brain routers not available: %s", e)
 
 # =============================================================================
 # MOUNT MEMORY ROUTERS
 # =============================================================================
 
 try:
-    from somafractalmemory.api.routers.memory import router as memory_router
     from somafractalmemory.api.routers.graph import router as graph_router
-    from somafractalmemory.api.routers.search import router as search_router
     from somafractalmemory.api.routers.health import router as health_router
+    from somafractalmemory.api.routers.memory import router as memory_router
+    from somafractalmemory.api.routers.search import router as search_router
 
     unified_api.add_router("/memory/", memory_router, tags=["memory"])
     unified_api.add_router("/memory/graph/", graph_router, tags=["memory-graph"])
     unified_api.add_router("/memory/search/", search_router, tags=["memory-search"])
     unified_api.add_router("/memory/", health_router, tags=["memory-health"])
 except ImportError as e:
-    logger.info('Memory routers not available: %s', e)
+    logger.info("Memory routers not available: %s", e)
 
 # =============================================================================
 # HEALTH ENDPOINT

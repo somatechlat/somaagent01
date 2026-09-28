@@ -9,13 +9,13 @@ Django Architect: Async-first design with caching.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, TYPE_CHECKING, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from admin.core.models import Capsule
 
-from services.common.policy_client import PolicyClient, PolicyRequest, get_policy_client
-from services.common.spicedb_client import SpiceDBClient, get_spicedb_client
+from services.common.policy_client import get_policy_client, PolicyClient, PolicyRequest
+from services.common.spicedb_client import SpiceDBClient
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,11 @@ class UnifiedGate:
             persona = body.get("persona", {}) if isinstance(body, dict) else {}
             tools_config = persona.get("tools", {}) if isinstance(persona, dict) else {}
             scope_allowed = self._check_scope(
-                tools_config.get("enabled_capabilities", []) if isinstance(tools_config, dict) else [],
+                (
+                    tools_config.get("enabled_capabilities", [])
+                    if isinstance(tools_config, dict)
+                    else []
+                ),
                 action,
                 resource,
             )
@@ -180,9 +184,7 @@ class UnifiedGate:
         VIBE SECURITY: FAIL-CLOSED. Missing user_id or any error = DENY.
         """
         if not user_id:
-            logger.warning(
-                "SpiceDB check requires user_id (FAIL-CLOSED): action=%s", action
-            )
+            logger.warning("SpiceDB check requires user_id (FAIL-CLOSED): action=%s", action)
             return False
 
         try:

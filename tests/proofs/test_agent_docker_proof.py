@@ -1,3 +1,6 @@
+import logging
+
+logger = logging.getLogger(__name__)
 """Proof of Life Verification for SomaAgent01 Docker Deployment.
 
 Target: http://localhost:20020
@@ -7,13 +10,12 @@ Verifies:
 3. Settings configuration (Confirming Brain URL)
 """
 
-import pytest
-import requests
-import time
 import os
-import json
+
+import requests
 
 AGENT_URL = os.environ.get("AGENT_URL", "http://127.0.0.1:20020")
+
 
 def test_agent_health_check():
     """Verify service reports healthy."""
@@ -25,6 +27,7 @@ def test_agent_health_check():
     assert data["status"] == "ok"
     assert data["service"] == "somaagent-gateway"
 
+
 def test_agent_api_docs():
     """Verify API is serving docs (Django Ninja)."""
     url = f"{AGENT_URL}/api/v2/docs"
@@ -32,6 +35,7 @@ def test_agent_api_docs():
     resp = requests.get(url)
     assert resp.status_code == 200
     assert "swagger" in resp.text.lower() or "somaagent" in resp.text.lower()
+
 
 def test_agent_brain_config():
     """Verify Agent is configured to talk to Brain."""
@@ -62,6 +66,7 @@ def test_agent_brain_config():
         # Don't fail the whole test if this endpoint is just missing/auth-protected
         pass
 
+
 if __name__ == "__main__":
     try:
         test_agent_health_check()
@@ -69,5 +74,5 @@ if __name__ == "__main__":
         test_agent_brain_config()
         logger.info("✅ AGENT PROOFS PASSED")
     except Exception as e:
-        logger.info('PROOF FAILED: %s', e)
+        logger.info("PROOF FAILED: %s", e)
         exit(1)

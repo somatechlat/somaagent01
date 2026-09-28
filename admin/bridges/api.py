@@ -214,7 +214,9 @@ def get_channel(request, channel_id: str) -> dict:
     return _channel_to_dict(obj)
 
 
-@router.patch("/channels/{channel_id}", response=ChannelOut, summary="Update channel", auth=AuthBearer())
+@router.patch(
+    "/channels/{channel_id}", response=ChannelOut, summary="Update channel", auth=AuthBearer()
+)
 def update_channel(request, channel_id: str, payload: ChannelUpdate) -> dict:
     """Update channel fields (tenant-scoped)."""
 

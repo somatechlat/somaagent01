@@ -324,7 +324,9 @@ def _resolve_test_model(provider: str, model: Optional[str], model_id: Optional[
             # LiteLLM often expects provider/model; prefer raw name when already prefixed
             if "/" in obj.name and not obj.name.startswith(obj.provider):
                 return obj.name
-            return f"{obj.provider}/{obj.name}" if not obj.name.startswith(obj.provider) else obj.name
+            return (
+                f"{obj.provider}/{obj.name}" if not obj.name.startswith(obj.provider) else obj.name
+            )
     configs = _load_provider_configs()
     cfg = configs.get(provider, {})
     if cfg.get("model_name"):
@@ -376,7 +378,9 @@ def list_providers(request) -> list[ProviderOut]:
     return result
 
 
-@router.put("/providers/{provider_id}", response=ProviderOut, auth=AuthBearer(), summary="Update provider")
+@router.put(
+    "/providers/{provider_id}", response=ProviderOut, auth=AuthBearer(), summary="Update provider"
+)
 def update_provider(request, provider_id: str, body: ProviderUpdate) -> ProviderOut:
     """Enable/disable provider, set base URL and default model name."""
     configs = _load_provider_configs()
@@ -476,7 +480,9 @@ def get_model(request, model_id: str) -> ModelOut:
     return _model_to_out(obj)
 
 
-@router.patch("/models/{model_id}", response=ModelOut, auth=AuthBearer(), summary="Update model config")
+@router.patch(
+    "/models/{model_id}", response=ModelOut, auth=AuthBearer(), summary="Update model config"
+)
 def update_model(request, model_id: str, body: ModelPatch) -> ModelOut:
     obj = _get_llm_model(model_id)
     if obj is None:
@@ -643,7 +649,9 @@ def create_preset(request, body: PresetIn) -> PresetOut:
     )
 
 
-@router.post("/presets/{preset_id}/apply", response=SlotsOut, auth=AuthBearer(), summary="Apply preset")
+@router.post(
+    "/presets/{preset_id}/apply", response=SlotsOut, auth=AuthBearer(), summary="Apply preset"
+)
 def apply_preset(request, preset_id: str, capsule_id: Optional[str] = None) -> SlotsOut:
     """Load a preset into the active slots (Capsule or tenant defaults)."""
     presets = _load_presets()

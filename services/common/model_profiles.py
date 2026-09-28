@@ -35,9 +35,7 @@ class ModelProfileStore(BaseStore[ModelProfile]):
         """Create a store from the environment."""
         return cls()
 
-    async def get(
-        self, role: str, deployment_mode: str = "standard"
-    ) -> Optional[ModelProfile]:
+    async def get(self, role: str, deployment_mode: str = "standard") -> Optional[ModelProfile]:
         """Get profile for role + deployment_mode."""
         from admin.core.models import ModelProfile as ModelProfileModel
 
@@ -85,9 +83,7 @@ class ModelProfileStore(BaseStore[ModelProfile]):
             config=obj.config,
         )
 
-    async def update(
-        self, identifier: str, changes: Dict[str, Any]
-    ) -> Optional[ModelProfile]:
+    async def update(self, identifier: str, changes: Dict[str, Any]) -> Optional[ModelProfile]:
         """Update a model profile."""
         from admin.core.models import ModelProfile as ModelProfileModel
 

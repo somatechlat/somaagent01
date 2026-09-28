@@ -16,9 +16,10 @@ import logging
 import uuid
 from typing import Optional
 
-from admin.common.messages import ErrorCode, SuccessCode, get_message
 from django.conf import settings
 from ninja import Router
+
+from admin.common.messages import ErrorCode, get_message, SuccessCode
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Files V2"])
@@ -195,7 +196,7 @@ def create_upload_url(
         }
 
     except Exception as e:
-        logger.exception('S3 presigned URL error: %s', e)
+        logger.exception("S3 presigned URL error: %s", e)
         # Fallback for local dev
         return {
             "file_id": file_id,
@@ -226,7 +227,7 @@ def upload_local(request, file_id: str, file: UploadedFile = File(...)):
     except FileModel.DoesNotExist:
         return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
     except Exception as e:
-        logger.exception('Local upload failed: %s', e)
+        logger.exception("Local upload failed: %s", e)
         return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500
 
 
@@ -281,5 +282,5 @@ def get_download_url(request, file_id: str):
     except File.DoesNotExist:
         return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
     except Exception as e:
-        logger.exception('S3 download URL error: %s', e)
+        logger.exception("S3 download URL error: %s", e)
         return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500

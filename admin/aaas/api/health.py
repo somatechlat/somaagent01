@@ -18,7 +18,8 @@ from django.db import connection
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
-from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
+
+from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 router = Router(tags=["health"])
 logger = logging.getLogger(__name__)

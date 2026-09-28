@@ -13,7 +13,7 @@ native Django Model Managers (for core persistence entities).
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 # --- CORE DJANGO MODELS (The source of truth for persistence) ---
 from admin.core.models import (
@@ -102,6 +102,7 @@ class RepositoryManager:
     def get_capability_store(self):
         """Get Capability manager for tool registry."""
         return Capability.objects
+
 
 # Global instance
 _repository_manager: Optional[RepositoryManager] = None

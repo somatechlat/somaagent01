@@ -84,13 +84,9 @@ def _require_channel(channel_id: str) -> Any:
 def _require_binding(channel: Any) -> None:
     """Fail-closed on missing tenant or capsule (T-5 / BR-09)."""
     if not getattr(channel, "tenant_id", None):
-        raise WhatsAppBridgeError(
-            f"channel {channel.id} has no tenant binding — refuse to start"
-        )
+        raise WhatsAppBridgeError(f"channel {channel.id} has no tenant binding — refuse to start")
     if not getattr(channel, "capsule_id", None):
-        raise WhatsAppBridgeError(
-            f"channel {channel.id} has no capsule binding — refuse to start"
-        )
+        raise WhatsAppBridgeError(f"channel {channel.id} has no capsule binding — refuse to start")
 
 
 def _channel_config(channel: Any) -> Dict[str, Any]:
@@ -121,11 +117,7 @@ def _sidecar_command(config: Dict[str, Any]) -> Optional[List[str]]:
     if explicit:
         return str(explicit).split()
     # Default: node bridge.js inside WA_BRIDGE_SIDECAR_DIR (or the A0 layout).
-    sidecar_dir = (
-        config.get("sidecar_dir")
-        or os.environ.get("WA_BRIDGE_SIDECAR_DIR")
-        or ""
-    )
+    sidecar_dir = config.get("sidecar_dir") or os.environ.get("WA_BRIDGE_SIDECAR_DIR") or ""
     bridge_js = Path(sidecar_dir) / "bridge.js" if sidecar_dir else None
     if bridge_js is None or not bridge_js.is_file():
         return None
@@ -271,8 +263,7 @@ async def _ensure_sidecar(channel: Any, config: Dict[str, Any]) -> BridgeControl
     return BridgeControlResult(
         False,
         "error",
-        "baileys sidecar not reachable and WA_BRIDGE_SIDECAR_CMD/DIR not set "
-        f"(tried {url})",
+        "baileys sidecar not reachable and WA_BRIDGE_SIDECAR_CMD/DIR not set " f"(tried {url})",
         {"url": url},
     )
 
@@ -427,11 +418,7 @@ def handle_cloud_webhook(
     channel = _require_channel(channel_id)
     _require_binding(channel)
 
-    entries = (
-        (body.get("entry") or [])
-        if isinstance(body, dict)
-        else []
-    )
+    entries = (body.get("entry") or []) if isinstance(body, dict) else []
     stored: List[str] = []
     for entry in entries:
         for change in entry.get("changes") or []:
@@ -460,9 +447,11 @@ def handle_cloud_webhook(
                     chat_id=from_m,
                     sender_id=from_m,
                     sender_number=from_m,
-                    sender_name=str(contact.get("profile") or {}).get("name", "")
-                    if isinstance(contact, dict)
-                    else "",
+                    sender_name=(
+                        str(contact.get("profile") or {}).get("name", "")
+                        if isinstance(contact, dict)
+                        else ""
+                    ),
                     is_group=is_group,
                     body=text,
                     has_media=msg_type != "text",
@@ -493,9 +482,7 @@ def _store_inbound(
 ) -> Optional[str]:
     from admin.bridges.models import InboundMessage
 
-    if InboundMessage.objects.filter(
-        channel_id=channel.id, external_id=external_id
-    ).exists():
+    if InboundMessage.objects.filter(channel_id=channel.id, external_id=external_id).exists():
         return None
 
     row = InboundMessage.objects.create(

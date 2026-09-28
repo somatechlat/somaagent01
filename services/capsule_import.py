@@ -189,18 +189,23 @@ def import_capsule(
                 # Tool policy (v2)
                 tool_policy=hands.get("tool_policy", {}),
                 # Memory pointer — remap tenant
-                memory_pointer={
-                    **memory_pointer,
-                    "tenant": tenant,  # Always remap to target tenant
-                    "namespace": f"agent_imported_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_chat_history",
-                } if memory_pointer else {
-                    "tenant": tenant,
-                    "namespace": f"agent_imported_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_chat_history",
-                    "recall_limit": 10,
-                    "similarity_threshold": 0.7,
-                },
+                memory_pointer=(
+                    {
+                        **memory_pointer,
+                        "tenant": tenant,  # Always remap to target tenant
+                        "namespace": f"agent_imported_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_chat_history",
+                    }
+                    if memory_pointer
+                    else {
+                        "tenant": tenant,
+                        "namespace": f"agent_imported_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_chat_history",
+                        "recall_limit": 10,
+                        "similarity_threshold": 0.7,
+                    }
+                ),
                 # Neuromodulator state
-                neuromodulator_state=neuromodulator_state or {
+                neuromodulator_state=neuromodulator_state
+                or {
                     "dopamine": 0.5,
                     "serotonin": 0.6,
                     "norepinephrine": 0.4,

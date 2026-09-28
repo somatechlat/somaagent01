@@ -56,15 +56,11 @@ class Command(BaseCommand):
         # Only run if SomaBrain circuit is closed
         cb = get_circuit_breaker("somabrain")
         if cb and cb.is_open():
-            self.stdout.write(
-                self.style.WARNING("SomaBrain circuit is OPEN — skipping sync")
-            )
+            self.stdout.write(self.style.WARNING("SomaBrain circuit is OPEN — skipping sync"))
             return
 
         pending = list(
-            PendingMemory.objects.filter(synced=False)
-            .order_by("created_at")
-            [:batch_size]
+            PendingMemory.objects.filter(synced=False).order_by("created_at")[:batch_size]
         )
 
         if not pending:

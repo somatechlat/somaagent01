@@ -97,8 +97,9 @@ class ChatContextManager:
         self, agent_id: str, user_id: str, tenant_id: str, title: Optional[str] = None
     ) -> ConversationSummary:
         """Create a new conversation."""
-        from admin.chat.models import Conversation as ConversationModel
         from django.db import transaction
+
+        from admin.chat.models import Conversation as ConversationModel
 
         @sync_to_async
         def _create() -> ConversationSummary:
@@ -181,9 +182,7 @@ class ChatContextManager:
 
         return await _list()
 
-    async def recall_history(
-        self, conversation_id: str, tenant_id: str
-    ) -> List[Dict[str, str]]:
+    async def recall_history(self, conversation_id: str, tenant_id: str) -> List[Dict[str, str]]:
         """Recall last 20 messages from PostgreSQL trace."""
         if not conversation_id:
             return []
@@ -257,10 +256,13 @@ class ChatContextManager:
         """
         from uuid import uuid4
 
-        from admin.core.models import PendingMemory
         from django.db import transaction
 
-        idempotency_key = f"chat:{tenant_id}:{payload.get('conversation_id', '')}:{str(uuid4())[:8]}"
+        from admin.core.models import PendingMemory
+
+        idempotency_key = (
+            f"chat:{tenant_id}:{payload.get('conversation_id', '')}:{str(uuid4())[:8]}"
+        )
 
         @sync_to_async
         def _create() -> None:
@@ -342,8 +344,9 @@ class ChatContextManager:
         2. SomaBrain — PRIMARY (cognitive + memory)
         3. SomaFractalMemory — FALLBACK (pure memory, independent from Brain)
         """
-        from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
         from django.db import transaction
+
+        from admin.chat.models import Conversation as ConversationModel, Message as MessageModel
 
         # Store user message trace (ALWAYS — Zero Data Loss)
         @sync_to_async
@@ -379,9 +382,13 @@ class ChatContextManager:
                 )
                 brain_stored = True
         except CircuitBreakerError:
-            logger.warning("SomaBrain circuit OPEN — falling back to SomaFractalMemory + PendingMemory")
+            logger.warning(
+                "SomaBrain circuit OPEN — falling back to SomaFractalMemory + PendingMemory"
+            )
         except Exception as e:
-            logger.warning("SomaBrain store failed: %s — falling back to SomaFractalMemory + PendingMemory", e)
+            logger.warning(
+                "SomaBrain store failed: %s — falling back to SomaFractalMemory + PendingMemory", e
+            )
 
         # SomaFractalMemory fallback (independent from Brain)
         if not brain_stored:
@@ -418,7 +425,9 @@ class ChatContextManager:
                     model=model_id,
                 )
                 ConversationModel.objects.filter(id=conversation_id).update(
-                    message_count=MessageModel.objects.filter(conversation_id=conversation_id).count()
+                    message_count=MessageModel.objects.filter(
+                        conversation_id=conversation_id
+                    ).count()
                 )
 
         await _store_assistant()

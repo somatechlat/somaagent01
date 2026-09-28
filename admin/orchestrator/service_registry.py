@@ -95,7 +95,7 @@ class ServiceRegistry:
             )
         )
 
-        LOGGER.info('Loaded %s services into registry', len(self.services))
+        LOGGER.info("Loaded %s services into registry", len(self.services))
 
     def register(self, service: ServiceDefinition) -> None:
         """Register a service definition."""
@@ -109,7 +109,7 @@ class ServiceRegistry:
                 raise ValueError(f"Service {service.name} depends on unknown service: {dep}")
 
         self.services[service.name] = service
-        LOGGER.debug('Registered service: %s', service.name)
+        LOGGER.debug("Registered service: %s", service.name)
 
     def get_service(self, name: str) -> Optional[ServiceDefinition]:
         """Get a service definition by name."""

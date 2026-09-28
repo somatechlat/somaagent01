@@ -28,8 +28,9 @@ from typing import Awaitable, Optional, TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
-    from admin.core.helpers.config import Config  # type: ignore[import]
+    from admin.core.helpers.config import Config
     from admin.llm.models import LLMModelConfig
+    from admin.voice.models import VoiceModel, VoicePersona, VoiceSession  # type: ignore[import]
 
 import httpx
 from django.conf import settings
@@ -38,7 +39,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError
-from admin.common.messages import SuccessCode, get_message
+from admin.common.messages import get_message, SuccessCode
 from admin.voice.schemas import (
     LLMConfigListOut,
     LLMConfigOut,
@@ -58,6 +59,7 @@ from admin.voice.schemas import (
     VoiceSessionStats,
     VoiceStatusResponse,
 )
+
 from .audio_capture import AudioCapture
 from .metrics import record_error, VOICE_SESSION_DURATION_SECONDS, VOICE_SESSIONS_TOTAL
 from .provider_selector import _BaseClient, get_provider_client
@@ -76,10 +78,10 @@ _voice_models: tuple[type, type, type] | None = None
 
 def _get_voice_models() -> tuple[type, type, type]:
     """Lazy import voice models to avoid AppRegistryNotReady during app loading."""
-    VoiceModel, VoicePersona, VoiceSession = _get_voice_models()
     global _voice_models
     if _voice_models is None:
         from admin.voice.models import VoiceModel, VoicePersona, VoiceSession
+
         _voice_models = (VoiceModel, VoicePersona, VoiceSession)
     return _voice_models
 
@@ -214,7 +216,7 @@ def _voice_model_to_out(model: VoiceModel) -> VoiceModelOut:
 
 def _llm_config_to_out(config: LLMModelConfig) -> LLMConfigOut:
     """Map an LLMModelConfig ORM instance to its API schema."""
-    from admin.llm.models import LLMModelConfig
+
     return LLMConfigOut(
         id=config.id,
         name=config.name,
@@ -233,9 +235,7 @@ async def transcribe_audio(payload: TranscribeRequest) -> TranscribeResponse:
         raise BadRequestError("Invalid base64 audio data")
 
     if len(audio_bytes) > MAX_AUDIO_SIZE:
-        raise BadRequestError(
-            f"Audio exceeds maximum size of {MAX_AUDIO_SIZE // 1024 // 1024}MB"
-        )
+        raise BadRequestError(f"Audio exceeds maximum size of {MAX_AUDIO_SIZE // 1024 // 1024}MB")
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -366,6 +366,7 @@ async def get_voice_status() -> VoiceStatusResponse:
 def list_llm_configs(model_type: str = "chat") -> LLMConfigListOut:
     """List active LLMModelConfig entries for persona LLM selection."""
     from admin.llm.models import LLMModelConfig
+
     queryset = LLMModelConfig.objects.filter(is_active=True)
     if model_type:
         queryset = queryset.filter(model_type=model_type)

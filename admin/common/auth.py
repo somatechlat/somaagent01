@@ -8,9 +8,10 @@ from __future__ import annotations
 import logging
 import time
 from functools import lru_cache
-from typing import Any
+from typing import Any, Optional
 
 import httpx
+from django.http import HttpRequest
 from jose import jwt, JWTError
 from ninja.security import HttpBearer
 from pydantic import BaseModel
@@ -149,7 +150,7 @@ class JWKSCache:
                     self._cache = response.json()
                     self._expires_at = time.time() + self._ttl
                 except httpx.HTTPError as e:
-                    logger.error('Failed to fetch JWKS: %s', e)
+                    logger.error("Failed to fetch JWKS: %s", e)
                     if not self._cache:
                         raise UnauthorizedError("Unable to verify token")
         return self._cache
@@ -212,7 +213,7 @@ async def decode_token(token: str) -> TokenPayload:
         return TokenPayload(**payload)
 
     except JWTError as e:
-        logger.warning('JWT decode error: %s', e)
+        logger.warning("JWT decode error: %s", e)
         raise UnauthorizedError("Invalid or expired token")
 
 

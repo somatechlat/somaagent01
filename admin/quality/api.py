@@ -165,7 +165,9 @@ async def evaluate_quality(
             if s.score < DEFAULT_QUALITY_THRESHOLD
         ]
 
-    logger.info('Quality evaluation %s: %.2f (%s)', evaluation_id, overall, 'PASS' if passed else 'FAIL')
+    logger.info(
+        "Quality evaluation %s: %.2f (%s)", evaluation_id, overall, "PASS" if passed else "FAIL"
+    )
 
     return QualityEvaluationResponse(
         evaluation_id=evaluation_id,
@@ -305,7 +307,7 @@ async def execute_with_retry(
             if score >= policy.quality_threshold:
                 success = True
                 final_output = output
-                logger.info('Retry %s: succeeded on attempt %s', execution_id, attempts)
+                logger.info("Retry %s: succeeded on attempt %s", execution_id, attempts)
             else:
                 errors.append(
                     f"Attempt {attempts}: quality {score:.2f} < threshold {policy.quality_threshold}"
@@ -323,7 +325,7 @@ async def execute_with_retry(
 
         except Exception as e:
             errors.append(f"Attempt {attempts}: {str(e)}")
-            logger.warning('Retry %s: attempt %s failed: %s', execution_id, attempts, e)
+            logger.warning("Retry %s: attempt %s failed: %s", execution_id, attempts, e)
 
     total_duration = (time.time() - start_time) * 1000
 
@@ -471,7 +473,7 @@ Respond with ONLY a JSON object in this format:
                     )
 
     except Exception as e:
-        logger.error('Quality evaluation error: %s', e)
+        logger.error("Quality evaluation error: %s", e)
         raise HttpError(502, f"Quality evaluation unavailable: {e}")
 
     raise HttpError(502, "Quality evaluation failed: LLM returned no parsable score.")
@@ -547,7 +549,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
             else:
                 return {"result": "error", "type": operation_type, "status": response.status_code}
     except Exception as e:
-        logger.error('Operation %s failed: %s', operation_type, e)
+        logger.error("Operation %s failed: %s", operation_type, e)
         raise
 
 

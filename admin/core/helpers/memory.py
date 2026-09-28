@@ -7,14 +7,10 @@ import logging
 import os
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Mapping, Sequence
+from typing import Any, Dict, List, Sequence, TYPE_CHECKING
 
 from langchain_core.documents import Document
-
 from simpleeval import simple_eval
-
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent import Agent  # type: ignore[import]

@@ -1,3 +1,6 @@
+import logging
+
+logger = logging.getLogger(__name__)
 """Quick Test: SimpleGovernor Budget Allocation (GOV-002)
 
 Minimal standalone test without Django dependencies.

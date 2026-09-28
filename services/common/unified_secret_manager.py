@@ -58,9 +58,7 @@ class UnifiedSecretManager:
         try:
             import urllib.request
 
-            req = urllib.request.Request(
-                f"{self._vault_addr}/v1/sys/health", method="GET"
-            )
+            req = urllib.request.Request(f"{self._vault_addr}/v1/sys/health", method="GET")
             with urllib.request.urlopen(req, timeout=5) as resp:
                 # Vault returns 200, 429, 472, 473 for various healthy/reachable states
                 return resp.status in (200, 429, 472, 473)

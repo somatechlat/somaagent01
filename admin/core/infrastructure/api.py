@@ -155,7 +155,9 @@ async def create_rate_limit(
     # Validate policy enum
     if payload.policy not in [e.value for e in EnforcementPolicy]:
         return {
-            "error": get_message(ErrorCode.RATE_LIMIT_INVALID_POLICY, policies=[e.value for e in EnforcementPolicy]),
+            "error": get_message(
+                ErrorCode.RATE_LIMIT_INVALID_POLICY, policies=[e.value for e in EnforcementPolicy]
+            ),
             "created": False,
         }
 
@@ -184,7 +186,7 @@ async def create_rate_limit(
     if error:
         return {"error": error, "created": False}
 
-    logger.info('Rate limit policy created: %s', payload.key)
+    logger.info("Rate limit policy created: %s", payload.key)
 
     return {"limit": result, "created": True}
 
@@ -223,7 +225,10 @@ async def update_rate_limit(
             policy.window_seconds = payload.window_seconds
         if payload.policy is not None:
             if payload.policy not in [e.value for e in EnforcementPolicy]:
-                return None, get_message(ErrorCode.RATE_LIMIT_INVALID_POLICY, policies=[e.value for e in EnforcementPolicy])
+                return None, get_message(
+                    ErrorCode.RATE_LIMIT_INVALID_POLICY,
+                    policies=[e.value for e in EnforcementPolicy],
+                )
             policy.policy = payload.policy
         if payload.tier_overrides is not None:
             policy.tier_overrides = payload.tier_overrides
@@ -240,7 +245,7 @@ async def update_rate_limit(
     if error:
         return {"error": error, "updated": False}
 
-    logger.info('Rate limit policy updated: %s', key)
+    logger.info("Rate limit policy updated: %s", key)
 
     # Sync to Redis for runtime enforcement
     try:
@@ -248,9 +253,9 @@ async def update_rate_limit(
 
         limiter = await get_rate_limiter()
         await limiter.reset(key)  # Clear existing counter to apply new limits
-        logger.debug('Rate limit synced to Redis: %s', key)
+        logger.debug("Rate limit synced to Redis: %s", key)
     except Exception as e:
-        logger.warning('Redis sync failed for %s: %s', key, e)
+        logger.warning("Redis sync failed for %s: %s", key, e)
 
     return {"limit": result, "updated": True}
 
@@ -282,7 +287,7 @@ async def delete_rate_limit(request, key: str) -> dict:
     if not deleted:
         return {"error": get_message(ErrorCode.RATE_LIMIT_NOT_FOUND, key=key), "deleted": False}
 
-    logger.warning('Rate limit policy deleted: %s', key)
+    logger.warning("Rate limit policy deleted: %s", key)
 
     return {"key": key, "deleted": True}
 
@@ -379,7 +384,7 @@ async def seed_rate_limits(request) -> dict:
 
     created, skipped = await _seed()
 
-    logger.info('Rate limits seeded: %s, skipped: %s', created, skipped)
+    logger.info("Rate limits seeded: %s, skipped: %s", created, skipped)
 
     return {
         "created": created,

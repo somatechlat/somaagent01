@@ -19,8 +19,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from admin.common.auth import AuthBearer
-from admin.modules import hooks as hooks_module
-from admin.modules import registry as module_registry
+from admin.modules import hooks as hooks_module, registry as module_registry
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["modules"])

@@ -1,6 +1,6 @@
 """Seam-proof end-to-end: one chat turn → memory in BOTH stores → next-turn recall.
 
-Proves the Wave 1 exit criteria of PLAN-TRIAD-SEAMLESS.md §1 ("THE SEAM")
+Proves the Wave 1 exit criteria of SOMA-PM-PLAN-TRIAD-001.md §1 ("THE SEAM")
 against REAL services (no mocks of production code):
 
   STEP 1  Send a chat turn containing a unique marker through the
@@ -301,11 +301,10 @@ async def _run_story(stack: SeamStack) -> SeamStory:
     """Run turn 1 → probe both stores → run turn 2. Gathers evidence only."""
 
     import admin.core.chat_orchestrator as orchestrator_module
+    from admin.aaas.models import SubscriptionTier, Tenant
     from admin.chat.models import Conversation
     from admin.core.chat_orchestrator import ChatTurn, V3ChatOrchestrator
     from admin.core.models import Capsule
-
-    from admin.aaas.models import SubscriptionTier, Tenant
 
     marker = f"SEAM-{uuid.uuid4().hex}"
 
@@ -343,8 +342,7 @@ async def _run_story(stack: SeamStack) -> SeamStory:
         user_id="seam-user",
         tenant_id=str(tenant.id),
         user_message=(
-            f"Remember this secret codeword: {marker}. "
-            "Repeat the secret codeword back to me."
+            f"Remember this secret codeword: {marker}. " "Repeat the secret codeword back to me."
         ),
         conversation_id=str(conversation.id),
     )
@@ -434,7 +432,10 @@ def _marker_in_probe(probe: StoreProbe, marker: str) -> bool:
 
 
 @pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
-@pytest.mark.skipif(not _llm_available(), reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)")
+@pytest.mark.skipif(
+    not _llm_available(),
+    reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
+)
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_step1_chat_turn_carries_marker_through_public_entry(seam_stack):
@@ -451,7 +452,10 @@ async def test_step1_chat_turn_carries_marker_through_public_entry(seam_stack):
 
 
 @pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
-@pytest.mark.skipif(not _llm_available(), reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)")
+@pytest.mark.skipif(
+    not _llm_available(),
+    reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
+)
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_step2_marker_reachable_in_somafractalmemory(seam_stack):
@@ -473,7 +477,10 @@ async def test_step2_marker_reachable_in_somafractalmemory(seam_stack):
 
 
 @pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
-@pytest.mark.skipif(not _llm_available(), reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)")
+@pytest.mark.skipif(
+    not _llm_available(),
+    reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
+)
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_step3_marker_reachable_in_somabrain(seam_stack):
@@ -495,7 +502,10 @@ async def test_step3_marker_reachable_in_somabrain(seam_stack):
 
 
 @pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
-@pytest.mark.skipif(not _llm_available(), reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)")
+@pytest.mark.skipif(
+    not _llm_available(),
+    reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
+)
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_step4_second_turn_memory_lane_recalls_marker(seam_stack):
@@ -504,8 +514,7 @@ async def test_step4_second_turn_memory_lane_recalls_marker(seam_stack):
     story = await _story(seam_stack)
 
     assert story.turn2_phase_completed >= 8, (
-        "STEP 4: second turn did not complete "
-        f"(phase_completed={story.turn2_phase_completed})"
+        "STEP 4: second turn did not complete " f"(phase_completed={story.turn2_phase_completed})"
     )
     assert story.marker in story.memory_lane, (
         "STEP 4: the marker does not appear in the second turn's memory lane — "

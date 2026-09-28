@@ -24,10 +24,10 @@ from typing import Any, cast, Dict, List, Mapping, Optional
 import httpx
 from django.conf import settings
 
-from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
-
 # Integration: BrainBridge (Compliant Triad Architecture)
 from aaas.brain import brain as BrainBridge
+from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
+
 HAS_BRIDGE = True
 
 
@@ -150,6 +150,7 @@ class SomaBrainClient:
             raise SomaClientError("SomaBrain is not configured", status_code=503)
         if self._client is None or self._client.is_closed:
             from django.conf import settings as django_settings
+
             headers = {"Content-Type": "application/json"}
             token = getattr(django_settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", "")
             if token:
@@ -312,7 +313,7 @@ class SomaBrainClient:
                     "memory_id": resp.get("id"),
                 }
             except Exception as e:
-                LOGGER.error('Direct remember failed, falling back to HTTP: %s', e)
+                LOGGER.error("Direct remember failed, falling back to HTTP: %s", e)
                 pass
 
         if coord is not None:
@@ -403,7 +404,11 @@ class SomaBrainClient:
             body["memory_type"] = memory_type
 
         # DIRECT MODE CHECK (Triad Compliant)
-        if HAS_BRIDGE and BrainBridge is not None and getattr(BrainBridge, "mode", None) == "direct":
+        if (
+            HAS_BRIDGE
+            and BrainBridge is not None
+            and getattr(BrainBridge, "mode", None) == "direct"
+        ):
             try:
                 # Use compliant BrainBridge
                 results = await BrainBridge.recall(query=query, top_k=top_k)
@@ -416,14 +421,12 @@ class SomaBrainClient:
                             "coordinate": m.get("coordinate", [0.0, 0.0, 0.0]),
                             "payload": m.get("payload", {}),
                             "score": m.get("score", 0.0),
-                            "created_at": datetime.now(
-                                timezone.utc
-                            ).isoformat(),  # if missing
+                            "created_at": datetime.now(timezone.utc).isoformat(),  # if missing
                         }
                     )
                 return memories
             except Exception as e:
-                LOGGER.error('Direct recall failed, falling back to HTTP: %s', e)
+                LOGGER.error("Direct recall failed, falling back to HTTP: %s", e)
                 pass
 
         result = await self._request("POST", "/memory/recall", json=body)
@@ -559,12 +562,16 @@ class SomaBrainClient:
             "persona": persona_id,
             "neuromodulators": neuromodulators,
         }
-        return await self._request("POST", "/neuromod/adjust", json={
-            "dopamine": neuromodulators.get("dopamine"),
-            "serotonin": neuromodulators.get("serotonin"),
-            "noradrenaline": neuromodulators.get("noradrenaline"),
-            "acetylcholine": neuromodulators.get("acetylcholine"),
-        })
+        return await self._request(
+            "POST",
+            "/neuromod/adjust",
+            json={
+                "dopamine": neuromodulators.get("dopamine"),
+                "serotonin": neuromodulators.get("serotonin"),
+                "noradrenaline": neuromodulators.get("noradrenaline"),
+                "acetylcholine": neuromodulators.get("acetylcholine"),
+            },
+        )
 
     # =========================================================================
     # PERSONA OPERATIONS
@@ -609,7 +616,9 @@ class SomaBrainClient:
             Created/updated persona
         """
         req_headers = {"If-Match": etag} if etag else None
-        return await self._request("PUT", f"/persona/{persona_id}", json=persona_data, headers=req_headers)
+        return await self._request(
+            "PUT", f"/persona/{persona_id}", json=persona_data, headers=req_headers
+        )
 
     # =========================================================================
     # COGNITIVE OPERATIONS

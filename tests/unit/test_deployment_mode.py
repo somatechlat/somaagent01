@@ -4,9 +4,6 @@ Tests the canonical deployment mode resolution with priority chain:
 SA01_DEPLOYMENT_MODE > SOMA_AAAS_MODE > DEV default.
 """
 
-import os
-import pytest
-
 
 class TestDeploymentMode:
     """Test DeploymentMode singleton behavior."""
@@ -18,6 +15,7 @@ class TestDeploymentMode:
 
         # Reset singleton
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
@@ -31,6 +29,7 @@ class TestDeploymentMode:
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "AAAS")
 
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
@@ -43,6 +42,7 @@ class TestDeploymentMode:
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "STANDALONE")
 
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
@@ -56,6 +56,7 @@ class TestDeploymentMode:
         monkeypatch.setenv("SOMA_AAAS_MODE", "true")
 
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
@@ -68,6 +69,7 @@ class TestDeploymentMode:
         monkeypatch.setenv("SOMA_AAAS_MODE", "true")
 
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
@@ -79,6 +81,7 @@ class TestDeploymentMode:
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "aaas")
 
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
@@ -90,6 +93,7 @@ class TestDeploymentMode:
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "INVALID_MODE")
 
         from services.common.deployment_mode import DeploymentMode
+
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 

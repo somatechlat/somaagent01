@@ -14,7 +14,7 @@ in ``docs/iso/SOMA-SETTINGS-MODEL-001.md``.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
 # ISO-style categories (normative — keep in sync with SOMA-SETTINGS-MODEL-001).
 CATEGORY_INFRA = "INFRA"

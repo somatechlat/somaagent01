@@ -458,15 +458,15 @@ def build_whatsapp_driver(
         return BaileysSidecarDriver(base_url=base_url, channel_config=cfg)
     if mode == "cloud":
         token = str(cfg.get("api_token") or _env("WA_CLOUD_API_TOKEN"))
-        phone_number_id = str(
-            cfg.get("phone_number_id") or _env("WA_CLOUD_PHONE_NUMBER_ID")
-        )
+        phone_number_id = str(cfg.get("phone_number_id") or _env("WA_CLOUD_PHONE_NUMBER_ID"))
         return CloudApiDriver(
             channel_id=channel_id,
             token=token,
             phone_number_id=phone_number_id,
             api_version=str(cfg.get("api_version") or _env("WA_CLOUD_API_VERSION", "v21.0")),
-            api_base=str(cfg.get("api_base") or _env("WA_CLOUD_API_BASE", "https://graph.facebook.com")),
+            api_base=str(
+                cfg.get("api_base") or _env("WA_CLOUD_API_BASE", "https://graph.facebook.com")
+            ),
         )
     raise ValueError(f"unknown WhatsApp bridge mode '{mode}' (expected baileys|cloud)")
 

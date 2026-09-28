@@ -137,7 +137,7 @@ async def create_role(
     """
     role_id = str(uuid4())
 
-    logger.info('Role created: %s (%s)', name, role_id)
+    logger.info("Role created: %s (%s)", name, role_id)
 
     return {
         "role_id": role_id,
@@ -281,7 +281,7 @@ async def assign_role(
     """
     assignment_id = str(uuid4())
 
-    logger.info('Role assigned: %s -> %s', role_id, user_id)
+    logger.info("Role assigned: %s -> %s", role_id, user_id)
 
     return {
         "assignment_id": assignment_id,
@@ -304,7 +304,7 @@ async def remove_assignment(
 
     Security Auditor: Permission revocation.
     """
-    logger.info('Role assignment removed: %s', assignment_id)
+    logger.info("Role assignment removed: %s", assignment_id)
 
     return {
         "assignment_id": assignment_id,
@@ -332,7 +332,11 @@ async def check_permission(
     from admin.core.agentiq import UnifiedGate
 
     gate = UnifiedGate()
-    tenant_id = getattr(request.auth, "effective_tenant_id", None) if hasattr(request, "auth") and request.auth else None
+    tenant_id = (
+        getattr(request.auth, "effective_tenant_id", None)
+        if hasattr(request, "auth") and request.auth
+        else None
+    )
     allowed = await gate.check_endpoint_permission(
         user_id=user_id,
         tenant_id=tenant_id,

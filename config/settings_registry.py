@@ -50,7 +50,7 @@ def get_required_env(
         )
 
     if allow_dev_default:
-        LOGGER.warning('[DEV MODE] Using default for %s. Set this in production!', var_name)
+        LOGGER.warning("[DEV MODE] Using default for %s. Set this in production!", var_name)
         return dev_default
 
     raise RuntimeError(f"Environment variable {var_name} is required but not set.")
@@ -164,7 +164,7 @@ class StandaloneSettings(BaseSettings):
     @classmethod
     def load(cls) -> "StandaloneSettings":
         """Load Standalone settings from environment."""
-        LOGGER.info('Loading STANDALONE configuration...')
+        LOGGER.info("Loading STANDALONE configuration...")
 
         return cls(
             deployment_mode="STANDALONE",
@@ -254,7 +254,7 @@ class AAASSettings(BaseSettings):
     @classmethod
     def load(cls) -> "AAASSettings":
         """Load AAAS settings from environment."""
-        LOGGER.info('Loading AAAS configuration...')
+        LOGGER.info("Loading AAAS configuration...")
 
         aaas_mode_raw = get_optional_env("SOMA_AAAS_MODE", "true").lower()
 
@@ -361,7 +361,7 @@ class SettingsRegistry:
 
         mode = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE").upper()
 
-        LOGGER.info('SettingsRegistry: Loading configuration for mode=%s', mode)
+        LOGGER.info("SettingsRegistry: Loading configuration for mode=%s", mode)
 
         if mode == "STANDALONE":
             cls._instance = StandaloneSettings.load()
@@ -369,7 +369,7 @@ class SettingsRegistry:
             cls._instance = AAASSettings.load()
         elif mode == "DEV":
             # DEV mode defaults to Standalone for simplicity
-            LOGGER.info('DEV mode detected, using Standalone config')
+            LOGGER.info("DEV mode detected, using Standalone config")
             cls._instance = StandaloneSettings.load()
         elif mode == "PROD":
             # PROD mode requires explicit AAAS or STANDALONE
@@ -384,7 +384,7 @@ class SettingsRegistry:
                 "Valid values: STANDALONE, AAAS, DEV, PROD"
             )
 
-        LOGGER.info('SettingsRegistry: Configuration loaded successfully')
+        LOGGER.info("SettingsRegistry: Configuration loaded successfully")
         return cls._instance
 
     @classmethod

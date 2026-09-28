@@ -160,7 +160,9 @@ def delete_tier(request, tier_id: str):
     # Check if any tenants are using this tier
     active_tenants = Tenant.objects.filter(tier=tier, status="active").count()
     if active_tenants > 0:
-        logger.warning('Attempted to delete tier %s with %s active tenants', tier.id, active_tenants)
+        logger.warning(
+            "Attempted to delete tier %s with %s active tenants", tier.id, active_tenants
+        )
         return MessageResponse(
             message=get_message(ErrorCode.TIER_ACTIVE_TENANTS, count=active_tenants),
             success=False,
@@ -168,5 +170,5 @@ def delete_tier(request, tier_id: str):
 
     tier.is_active = False
     tier.save()
-    logger.info('Tier %s deactivated', tier.id)
+    logger.info("Tier %s deactivated", tier.id)
     return MessageResponse(message=get_message(SuccessCode.TIER_DEACTIVATED, name=tier.name))

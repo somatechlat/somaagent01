@@ -251,7 +251,9 @@ SOMABRAIN_MEMORY_HTTP_TOKEN = get_optional_env(
 SOMAFRACTALMEMORY_URL = get_optional_env(
     "SOMAFRACTALMEMORY_URL", "", "SomaFractalMemory store URL (Brain-side only)"
 )
-SOMABRAIN_API_KEY = os.environ.get("SA01_SOMABRAIN_API_KEY") or os.environ.get("SOMA_API_TOKEN") or None
+SOMABRAIN_API_KEY = (
+    os.environ.get("SA01_SOMABRAIN_API_KEY") or os.environ.get("SOMA_API_TOKEN") or None
+)
 
 # ---------------------------------------------------------------------------
 # MEMORY TOOLS / SEAM — fully configurable (Django settings is the authority).

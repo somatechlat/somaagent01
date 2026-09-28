@@ -41,7 +41,7 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
         ValueError: If capsule.body is malformed
     """
     # Extract knobs from capsule.body (use cached body if available)
-    body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or capsule.body or {}
+    body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or capsule.body or {}
     persona = body.get("persona", {})
     knobs = persona.get("knobs", {})
 

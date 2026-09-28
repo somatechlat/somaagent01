@@ -15,13 +15,13 @@ import pytest
 from django.core.cache import cache
 
 from admin.core.features.check import is_feature_enabled
-from admin.core.features.registry import FEATURE_REGISTRY
 
 # Configure Django for unit tests if not already done (via conftest?)
 # But my conftest in root was removed!
 # I need to configure settings here or ensure it runs with minimal settings.
 # I'll rely on the fact that I'll run this with a specific configuration if needed,
 # or add a minimal setup fixture here.
+
 
 @pytest.fixture(autouse=True)
 def setup_django_settings():
@@ -45,10 +45,12 @@ def setup_django_settings():
     yield
     cache.clear()
 
+
 def test_core_feature_enabled_default():
     """Verify chat is enabled."""
     # Chat is core
     assert is_feature_enabled("any-tenant", "chat")
+
 
 def test_tier_restriction():
     """Verify high tier feature disabled for implicit free tier."""
@@ -64,6 +66,7 @@ def test_tier_restriction():
     # So it should default to "free" safely via exception handling.
     assert not is_feature_enabled("any-tenant", "voice_cloning")
 
+
 def test_memory_override():
     """Test override mechanism with LocMemCache."""
     tenant = "test_tenant"
@@ -74,6 +77,7 @@ def test_memory_override():
     cache.set(f"feature:override:{tenant}:web_browsing", "true")
 
     assert is_feature_enabled(tenant, "web_browsing")
+
 
 def test_dependency_logic():
     """Test dependency resolution."""

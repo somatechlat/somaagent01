@@ -12,11 +12,11 @@ Usage:
 """
 
 from config.settings_registry import (
+    AAASSettings,
     BaseSettings,
     get_optional_env,
     get_required_env,
     get_settings,
-    AAASSettings,
     SettingsRegistry,
     StandaloneSettings,
 )

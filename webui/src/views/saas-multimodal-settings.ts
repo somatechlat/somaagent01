@@ -6,7 +6,7 @@
  * - Lit 3.x implementation
  * - Uses /api/v2/agents/{id}/multimodal-config endpoint
  * - Permission: agent:update, agent:configure_*
- * - Per SRS-MULTIMODAL.md Section 6
+ * - Per SOMA-SRS-MULTIMODAL-001.md Section 6
  *
  * 7-Persona Implementation:
  * - monitoring PM: Capability toggles and tier gating

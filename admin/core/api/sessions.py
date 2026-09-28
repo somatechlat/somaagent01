@@ -137,6 +137,7 @@ def _create_or_update_session(session_id: str, persona_id: Optional[str], tenant
 def _append_event(session_id: str, event_data: dict):
     """Append event to session."""
     from django.db import transaction
+
     with transaction.atomic():
         session = Session.objects.filter(session_id=session_id).first()
         if not session:
@@ -219,7 +220,9 @@ async def get_session(session_id: str) -> SessionDetailResponse:
 
 
 @router.get("/{session_id}/history", response=SessionHistoryResponse, summary="Get session history")
-async def session_history(session_id: str, limit: int = Query(100, ge=1, le=500)) -> SessionHistoryResponse:
+async def session_history(
+    session_id: str, limit: int = Query(100, ge=1, le=500)
+) -> SessionHistoryResponse:
     """Return session history events."""
     events = await _get_session_events(session_id, limit)
     if events is None:
@@ -307,7 +310,11 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
     return {"session_id": session_id, "event_id": event_id, "workflow_id": workflow_id}
 
 
-@router.post("/terminate/{workflow_id}", response=TerminationResponse, summary="Terminate conversation workflow")
+@router.post(
+    "/terminate/{workflow_id}",
+    response=TerminationResponse,
+    summary="Terminate conversation workflow",
+)
 async def terminate_conversation(workflow_id: str) -> TerminationResponse:
     """Cancel a running conversation workflow."""
     from services.gateway import providers
