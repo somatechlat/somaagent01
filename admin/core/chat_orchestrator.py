@@ -25,10 +25,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Any, AsyncIterator, cast, Dict, List, Optional, Union
 from uuid import uuid4
 
@@ -41,19 +40,19 @@ from admin.core.model_router import detect_required_capabilities, select_model, 
 from admin.core.permission_matrix import PermissionChecker
 from admin.core.somabrain_client import SomaBrainClient
 from admin.core.tool_calling import (
+    run_tool_loop,
     TOOL_EVENT_DONE,
     ToolStreamEvent,
-    run_tool_loop,
 )
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
+from services.common.health_monitor import get_health_monitor
 from services.common.memory_contract import (
+    make_coord,
     MemoryAck,
     MemoryConfigurationError,
     MemoryHit,
-    make_coord,
 )
 from services.common.memory_gateway import build_memory_gateway, get_memory_gateway
-from services.common.health_monitor import get_health_monitor
 from services.common.simple_governor import get_governor
 from services.common.unified_metrics import get_metrics, TurnPhase
 
@@ -108,6 +107,8 @@ def _history_timeout() -> float:
     if _HISTORY_RECALL_TIMEOUT_S is None:
         _HISTORY_RECALL_TIMEOUT_S = float(_mem_setting("MEM_HISTORY_TIMEOUT_S", 2.5))
     return _HISTORY_RECALL_TIMEOUT_S
+
+
 _memory_gateway_cache: Any = None
 
 
@@ -243,8 +244,9 @@ class V3ChatOrchestrator:
         self, agent_id: str, user_id: str, tenant_id: str, title: Optional[str] = None
     ) -> ConversationSummary:
         """Create a new conversation."""
-        from admin.chat.models import Conversation as ConversationModel
         from django.db import transaction
+
+        from admin.chat.models import Conversation as ConversationModel
 
         @sync_to_async
         def _create() -> ConversationSummary:
@@ -335,8 +337,9 @@ class V3ChatOrchestrator:
         self, agent_id: str, conversation_id: str, user_context: dict
     ) -> Dict[str, Any]:
         """Initialize agent session with neuromodulator loading."""
-        from admin.core.models import Session as SessionModel
         from django.db import transaction
+
+        from admin.core.models import Session as SessionModel
 
         @sync_to_async
         def _create() -> Dict[str, Any]:
@@ -386,13 +389,17 @@ class V3ChatOrchestrator:
                 raise ValueError("Capsule not provided in ChatTurn")
 
             # Pre-fetch capsule body in async context (avoids SynchronousOnlyOperation)
-            capsule._cached_body = await capsule.async_body() if hasattr(capsule, 'async_body') else capsule.body or {}
+            capsule._cached_body = (
+                await capsule.async_body() if hasattr(capsule, "async_body") else capsule.body or {}
+            )
 
             result.phase_completed = 2
 
             tenant_id = str(capsule.tenant_id) if capsule.tenant_id else turn.tenant_id
             turn_metrics = self._metrics.record_turn_start(
-                turn_id=turn_id, tenant_id=tenant_id, user_id=turn.user_id,
+                turn_id=turn_id,
+                tenant_id=tenant_id,
+                user_id=turn.user_id,
                 agent_id=str(capsule.id),
             )
 
@@ -429,9 +436,7 @@ class V3ChatOrchestrator:
                 self._metrics.record_turn_phase(turn_id, TurnPhase.HEALTH_CHECKED)
 
             # SomaBrain context evaluation (cognitive co-processor)
-            brain_confidence = float(
-                _mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", 0.5)
-            )
+            brain_confidence = float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", 0.5))
             suggested_tools: List[str] = []
             try:
                 brain_client = await SomaBrainClient.get_async()
@@ -542,23 +547,23 @@ class V3ChatOrchestrator:
 
             tools_for_llm: List[Dict[str, Any]] = list(default_tool_definitions())
             seen_tools = {
-                t.get("function", {}).get("name")
-                for t in tools_for_llm
-                if isinstance(t, dict)
+                t.get("function", {}).get("name") for t in tools_for_llm if isinstance(t, dict)
             }
             if turn.tool_registry:
                 for tool_def in turn.tool_registry.list():
                     handler = tool_def.handler
                     schema = handler.input_schema() if handler else None
                     if schema and tool_def.name not in seen_tools:
-                        tools_for_llm.append({
-                            "type": "function",
-                            "function": {
-                                "name": tool_def.name,
-                                "description": tool_def.description or tool_def.name,
-                                "parameters": schema,
+                        tools_for_llm.append(
+                            {
+                                "type": "function",
+                                "function": {
+                                    "name": tool_def.name,
+                                    "description": tool_def.description or tool_def.name,
+                                    "parameters": schema,
+                                },
                             }
-                        })
+                        )
                         seen_tools.add(tool_def.name)
 
             # Degraded mode: drop optional tools (memory kit remains).
@@ -751,9 +756,7 @@ class V3ChatOrchestrator:
 
         caps = detect_required_capabilities(message=turn.user_message, attachments=turn.attachments)
         body_task = (
-            capsule.async_body()
-            if hasattr(capsule, "async_body")
-            else asyncio.sleep(0, result={})
+            capsule.async_body() if hasattr(capsule, "async_body") else asyncio.sleep(0, result={})
         )
         history_task = (
             asyncio.sleep(0, result=turn.history)
@@ -768,10 +771,10 @@ class V3ChatOrchestrator:
             return await client.get_neuromodulators(tenant_id=tenant_id)
 
         history, memory_hits, body, neuro = await asyncio.gather(
-            asyncio.wait_for(history_task, timeout=_HISTORY_RECALL_TIMEOUT_S),
+            asyncio.wait_for(history_task, timeout=_history_timeout()),
             asyncio.wait_for(
                 self._recall_memories(turn.user_message, tenant_id, capsule),
-                timeout=_MEMORY_RECALL_TIMEOUT_S,
+                timeout=_recall_timeout(),
             ),
             asyncio.wait_for(body_task, timeout=2.0),
             asyncio.wait_for(_neuro_task(), timeout=2.0),
@@ -789,7 +792,7 @@ class V3ChatOrchestrator:
         if isinstance(neuro, dict) and iq is not None:
             try:
                 if hasattr(iq, "apply_neuromodulators"):
-                    iq.apply_neuromodulators(neuro)
+                    iq.apply_neuromodulators(neuro)  # type: ignore[attr-defined]
                 else:
                     for k, v in neuro.items():
                         if hasattr(iq, k) and isinstance(v, (int, float)):
@@ -819,14 +822,16 @@ class V3ChatOrchestrator:
                 handler = tool_def.handler
                 schema = handler.input_schema() if handler else None
                 if schema and tool_def.name not in seen_tools:
-                    tools_for_llm.append({
-                        "type": "function",
-                        "function": {
-                            "name": tool_def.name,
-                            "description": tool_def.description or tool_def.name,
-                            "parameters": schema,
+                    tools_for_llm.append(
+                        {
+                            "type": "function",
+                            "function": {
+                                "name": tool_def.name,
+                                "description": tool_def.description or tool_def.name,
+                                "parameters": schema,
+                            },
                         }
-                    })
+                    )
                     seen_tools.add(tool_def.name)
 
         tools_for_llm = select_tools_for_mode(
@@ -931,30 +936,39 @@ class V3ChatOrchestrator:
         return await _get()
 
     async def _recall_history(self, conversation_id: str, tenant_id: str) -> List[Dict[str, str]]:
-        """Recall conversation turns from SomaBrain (T-1). Agent PG is not the store."""
+        """Recall THIS conversation's turns only (T-1 via SomaBrain).
+
+        Session-scoped filter is mandatory: a semantic hit from another chat
+        must never be injected as history (that makes every new chat replay
+        the same answers). Unscoped hits are dropped, not guessed.
+        """
         if not conversation_id:
             return []
         try:
-            hits = await self._recall_memories(
-                f"conversation:{conversation_id}", tenant_id, None
+            gateway = _require_memory_gateway()
+            hits = await gateway.recall(
+                query=f"session:{conversation_id}",
+                k=int(_mem_setting("MEM_HISTORY_LIMIT", 20) or 20),
+                tenant_id=tenant_id,
             )
-            if not hits:
-                return []
-            messages: List[Dict[str, str]] = []
-            for h in hits:
-                payload = getattr(h, "payload", None)
-                text = getattr(h, "text", "") or (
-                    payload.get("text") if isinstance(payload, dict) else ""
-                )
-                role = (
-                    payload.get("role") if isinstance(payload, dict) else None
-                ) or "user"
-                if text:
-                    messages.append({"role": str(role), "content": str(text)})
-            return messages
         except Exception as exc:
             logger.warning("SomaBrain history recall failed: %s", exc)
             return []
+
+        messages: List[Dict[str, str]] = []
+        for h in hits or []:
+            sid = getattr(h, "session_id", None)
+            if not sid or str(sid) != str(conversation_id):
+                continue
+            role = (getattr(h, "role", None) or "user").strip().lower()
+            if role not in ("user", "assistant"):
+                continue
+            text = getattr(h, "text", "") or ""
+            if not text:
+                continue
+            messages.append({"role": role, "content": str(text)})
+        # Oldest first so the LLM sees a real turn order.
+        return messages
 
     def _to_langchain_messages(
         self, context: BuiltContext, history: List[Dict[str, str]], user_message: str
@@ -978,7 +992,10 @@ class V3ChatOrchestrator:
             system_parts.append(context.system)
 
         # Lane 3: Memory recall (SomaBrain only — T-1, no SFM from agent)
-        if context.memory and context.memory not in ("[Memory recall unavailable]", "[No relevant memories]"):
+        if context.memory and context.memory not in (
+            "[Memory recall unavailable]",
+            "[No relevant memories]",
+        ):
             system_parts.append(f"[Memory]\n{context.memory}")
 
         # Lane 4: Tools descriptions
@@ -1009,6 +1026,7 @@ class V3ChatOrchestrator:
         namespace: str,
         salience: Optional[float] = None,
         kind: Optional[str] = None,
+        role: Optional[str] = None,
     ) -> List[MemoryAck]:
         """ONE write path: MemoryGateway.remember_text() fan-out (PLAN §1 rule 4).
 
@@ -1017,7 +1035,7 @@ class V3ChatOrchestrator:
         never a second coordinate scheme. PendingMemory is queued ONLY for acks
         with ok=False / timed out; a successful ack is never re-written.
         """
-        from services.common.memory_contract import MemoryWrite, get_memory_setting
+        from services.common.memory_contract import get_memory_setting, MemoryWrite
 
         if salience is None:
             salience = float(MemoryWrite.model_fields["salience"].default)
@@ -1040,6 +1058,7 @@ class V3ChatOrchestrator:
                     session_id=session_id,
                     salience=salience,
                     source="agent-chat",
+                    role=role,
                 ),
                 timeout=_write_timeout(),
             )
@@ -1071,9 +1090,7 @@ class V3ChatOrchestrator:
                     error=ack.error,
                 )
             except Exception as qexc:
-                logger.error(
-                    "Kafka degraded queue failed for coord=%s: %s", coord, qexc
-                )
+                logger.error("Kafka degraded queue failed for coord=%s: %s", coord, qexc)
         return acks
 
     async def _recall_memories(
@@ -1125,13 +1142,14 @@ class V3ChatOrchestrator:
         PendingMemory rows when SomaBrain is unreachable (degraded sync queue).
         """
         # ONE write path: SomaBrain via MemoryGateway.
-        # Failed acks are queued to PendingMemory inside _remember_via_gateway.
+        # Failed acks are queued to Kafka WAL inside _remember_via_gateway.
         await self._remember_via_gateway(
             user_message,
             tenant_id=tenant_id,
             session_id=conversation_id or None,
             namespace="chat_history",
             salience=salience,
+            role="user",
         )
         await self._remember_via_gateway(
             assistant_response,
@@ -1139,6 +1157,7 @@ class V3ChatOrchestrator:
             session_id=conversation_id or None,
             namespace="chat_history",
             salience=salience,
+            role="assistant",
         )
 
         # Background: episodic memory (same seam)

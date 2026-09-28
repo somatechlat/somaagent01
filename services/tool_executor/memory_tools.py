@@ -10,7 +10,7 @@ algorithm: WM/LTM + scoring), not a local fake.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from services.common.memory_contract import get_memory_setting
 from services.tool_executor.tools import BaseTool, ToolExecutionError
@@ -20,19 +20,12 @@ LOGGER = logging.getLogger(__name__)
 
 def _require_tenant(args: Dict[str, Any]) -> str:
     """Fail-closed tenant. Never accepts 'default' / empty (T-5)."""
-    tenant = (
-        args.get("tenant_id")
-        or args.get("tenant")
-        or args.get("tenantId")
-        or ""
-    )
+    tenant = args.get("tenant_id") or args.get("tenant") or args.get("tenantId") or ""
     if not isinstance(tenant, str) or not tenant.strip():
         raise ToolExecutionError("tenant_id is required for memory tools")
     t = tenant.strip()
     if t.lower() in {"default", "standalone", "none", "null", "public"}:
-        raise ToolExecutionError(
-            "tenant_id must be the real capsule tenant (not a placeholder)"
-        )
+        raise ToolExecutionError("tenant_id must be the real capsule tenant (not a placeholder)")
     return t
 
 
@@ -82,29 +75,27 @@ class MemoryRecallTool(BaseTool):
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         query = args.get("query") or args.get("text") or ""
-        if not isinstance(query, str) or not query.strip():
-            raise ToolExecutionError("query is required for memory_recall")
         tenant_id = _require_tenant(args)
         try:
             top_k = int(
-                args.get("top_k")
-                or args.get("limit")
-                or get_memory_setting("MEM_RECALL_TOP_K", 8)
+                args.get("top_k") or args.get("limit") or get_memory_setting("MEM_RECALL_TOP_K", 8)
             )
         except (TypeError, ValueError):
             top_k = int(get_memory_setting("MEM_RECALL_TOP_K", 8))
         top_k = max(1, min(top_k, 50))
+        # Empty probe = list this tenant's memories (SomaBrain ranked); not an error.
+        probe = query.strip() or str(get_memory_setting("MEM_PROXIMITY_WILDCARD", "*"))
 
         gateway = _memory_gateway()
         try:
-            hits = await gateway.recall(query.strip(), top_k, tenant_id)
+            hits = await gateway.recall(probe, top_k, tenant_id)
         except Exception as exc:  # noqa: BLE001
             LOGGER.exception("memory_recall failed")
             raise ToolExecutionError(f"memory_recall failed: {exc}") from exc
 
         results = [_hit_to_dict(h) for h in (hits or [])]
         return {
-            "query": query,
+            "query": probe,
             "tenant_id": tenant_id,
             "count": len(results),
             "memories": results,
@@ -118,7 +109,7 @@ class MemoryRecallTool(BaseTool):
                 "top_k": {"type": "integer", "minimum": 1, "maximum": 50},
                 "tenant_id": {"type": "string"},
             },
-            "required": ["query", "tenant_id"],
+            "required": ["tenant_id"],
             "additionalProperties": True,
         }
 
@@ -129,7 +120,6 @@ class MemorySaveTool(BaseTool):
     name = "memory_save"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        from services.common.memory_contract import MemoryWrite
 
         text = args.get("text") or args.get("content") or ""
         if not isinstance(text, str) or not text.strip():
@@ -240,8 +230,6 @@ class MemoryProximityTool(BaseTool):
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         query = args.get("query") or args.get("text") or ""
         coord = args.get("coord") or args.get("coordinate") or ""
-        if not query and not coord:
-            raise ToolExecutionError("query or coord is required for memory_proximity")
         tenant_id = _require_tenant(args)
         try:
             top_k = int(
@@ -255,7 +243,14 @@ class MemoryProximityTool(BaseTool):
 
         # Coord proximity is expressed as a recall query including the coord
         # material so Brain's scorer can rank nearby rows.
-        probe = (query or "").strip() or f"coord:{coord}"
+        # Empty probe = list this tenant's memories (SomaBrain ranked); not an error.
+        if query.strip():
+            probe = query.strip()
+        elif coord.strip():
+            probe = f"coord:{coord.strip()}"
+        else:
+            probe = str(get_memory_setting("MEM_PROXIMITY_WILDCARD", "*"))
+
         gateway = _memory_gateway()
         try:
             hits = await gateway.recall(probe, top_k, tenant_id)
@@ -265,7 +260,9 @@ class MemoryProximityTool(BaseTool):
 
         results = [_hit_to_dict(h) for h in (hits or [])]
         # Stable sort by score desc when present
-        results.sort(key=lambda r: (r.get("score") is not None, r.get("score") or 0.0), reverse=True)
+        results.sort(
+            key=lambda r: (r.get("score") is not None, r.get("score") or 0.0), reverse=True
+        )
         return {
             "probe": probe,
             "coord": coord or None,

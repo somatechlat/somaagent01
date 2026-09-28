@@ -23,19 +23,19 @@ localhost fallback.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Any, Union
 
 import httpx
 from pydantic import BaseModel, Field
 
 from services.common.memory_contract import (
+    get_memory_setting,
     MemoryAck,
     MemoryConfigurationError,
     MemoryHit,
     MemoryRecallUnavailable,
     MemoryWrite,
-    get_memory_setting,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -135,7 +135,9 @@ class SomaBrainAdapter:
         headers["X-Soma-Fast-Ack"] = "true"
         return headers
 
-    async def remember(self, w: MemoryWrite, *, key_material: str | None = None) -> MemoryAck:
+    async def remember(
+        self, w: MemoryWrite, *, key_material: str | None = None, role: str | None = None
+    ) -> MemoryAck:
         """Store one memory via POST /memory/remember. Returns a failed ack, never raises.
 
         ``key_material`` (from ``memory_contract.coord_key_material``) makes the
@@ -158,6 +160,8 @@ class SomaBrainAdapter:
         }
         if w.session_id is not None:
             value["session_id"] = w.session_id
+        if role:
+            value["role"] = str(role)
         if w.embedding is not None:
             # Precomputed vector (PLAN §1 rule 2); the brain composes its own
             # payload today (api/memory/helpers.py _compose_memory_payload) and
@@ -249,9 +253,7 @@ class SomaBrainAdapter:
             LOGGER.warning("SomaBrain forget failed for coord=%s: %s", coord, exc)
             return False
         if not payload.ok:
-            LOGGER.info(
-                "SomaBrain forget: coord=%s not deleted (%s)", coord, payload.error
-            )
+            LOGGER.info("SomaBrain forget: coord=%s not deleted (%s)", coord, payload.error)
         return bool(payload.ok)
 
     @staticmethod
@@ -277,12 +279,16 @@ class SomaBrainAdapter:
                 return None
         score = item.get("score")
         created = payload.get("created_at")
+        session_id = payload.get("session_id") or item.get("session_id")
+        role = payload.get("role") or item.get("role")
         return MemoryHit(
             text=text,
             coord=coord,
             score=float(score) if isinstance(score, (int, float)) else 0.0,
             store="somabrain",
             created_at=str(created) if created else "",
+            session_id=str(session_id) if session_id else None,
+            role=str(role) if role else None,
         )
 
     async def close(self) -> None:

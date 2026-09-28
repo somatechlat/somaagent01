@@ -7,18 +7,18 @@ Remember / recall / forget all go through SomaBrainAdapter (T-1).
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Callable
 
 from services.common.adapters.somabrain_adapter import SomaBrainAdapter
 from services.common.memory_contract import (
-    MemoryAck,
-    MemoryHit,
-    MemoryWrite,
     coord_key_material,
     embed_text,
     get_mem_embed_dim,
     make_coord,
+    MemoryAck,
+    MemoryHit,
+    MemoryWrite,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -67,13 +67,14 @@ class FanoutMemoryGateway:
         session_id: str | None = None,
         salience: float = 0.5,
         source: str = "agent-chat",
+        role: str | None = None,
     ) -> list[MemoryAck]:
         """Write through SomaBrain with seam coordinate convergence (T-1)."""
         stamp = ts if ts is not None else datetime.now(UTC)
         material = coord_key_material(tenant_id, kind, stamp, text)
         w = MemoryWrite(
             text=text,
-            kind=kind,
+            kind=kind,  # type: ignore[arg-type]
             tenant_id=tenant_id,
             session_id=session_id,
             coord=make_coord(tenant_id, kind, stamp, text),
@@ -82,7 +83,7 @@ class FanoutMemoryGateway:
             source=source,
         )
         try:
-            ack = await self._brain.remember(w, key_material=material)
+            ack = await self._brain.remember(w, key_material=material, role=role)
         except Exception as exc:
             LOGGER.warning("Memory write to somabrain failed: %s", exc)
             ack = MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))

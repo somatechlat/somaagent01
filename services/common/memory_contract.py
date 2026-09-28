@@ -1,6 +1,6 @@
 """Seam memory contract — single authority for the triad memory interface.
 
-Implements PLAN-TRIAD-SEAMLESS.md section 1 ("THE SEAM"): models, coordinate
+Implements SOMA-PM-PLAN-TRIAD-001.md section 1 ("THE SEAM"): models, coordinate
 scheme, embedding helper and the MemoryGateway protocol. Both store adapters
 speak this contract; nothing else may define a second coordinate scheme or
 embedding dialect.
@@ -24,10 +24,10 @@ from __future__ import annotations
 import hashlib
 import os
 import re
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Any, Literal, Protocol, runtime_checkable
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # Universe scope used by SomaBrain's key→coord derivation when the caller does
 # not set one (somabrain/memory/client/serialization.py:186 → "real").
@@ -83,6 +83,10 @@ class MemoryHit(BaseModel):
     score: float
     store: MemoryStoreName
     created_at: str
+    # Session/conversation scope — used to keep chat history session-local.
+    # Never treat unrelated semantic hits as conversation turns.
+    session_id: str | None = None
+    role: str | None = None
 
 
 class MemoryAck(BaseModel):
