@@ -8,6 +8,7 @@ Settings API - Django Ninja endpoints for service configuration
 - 10 personas in mind (especially DevOps Engineer, Security Specialist)
 """
 
+import logging
 import os
 from typing import Optional
 
@@ -17,6 +18,13 @@ from pydantic import BaseModel
 
 from admin.common.exceptions import ServiceError, ValidationError
 from admin.common.messages import ErrorCode, get_message
+from services.common import publisher as publisher_mod
+from services.common.authorization import authorize
+
+LOGGER = logging.getLogger("settings_v2")
+
+# Audit topic for settings writes (Kafka, durable publisher).
+SETTINGS_CHANGED_TOPIC = "settings.changed"
 
 router = Router(tags=["Settings"])
 
@@ -153,11 +161,16 @@ def get_settings(request: HttpRequest, entity: str):
 
 
 @router.put("/{entity}", response=SettingsUpdateResponse, summary="Update service settings")
-def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRequest):
+async def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRequest):
     """
     Update settings for a service entity.
-    Stores in database for persistence.
+
+    Every write is OPA-gated (fail-closed: an evaluation error denies) and
+    emits a ``settings.changed`` audit event through the durable publisher.
     """
+    # Gate first — no unauthenticated probing of validation errors.
+    await authorize(request, action="settings:write", resource="settings")
+
     # Validate entity
     if entity not in DEFAULT_SETTINGS:
         raise ValidationError(
@@ -169,12 +182,41 @@ def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRe
     merged = {**DEFAULT_SETTINGS.get(entity, {}), **payload.values}
 
     # Save to database
-    if save_settings_to_db(entity, merged):
-        return SettingsUpdateResponse(success=True, entity=entity, message="Settings saved")
-    else:
+    if not save_settings_to_db(entity, merged):
         raise ServiceError(
             get_message(ErrorCode.INTERNAL_ERROR),
             details={"entity": entity},
+        )
+
+    # Audit event — the save is committed; a broker outage must not flip the
+    # result to failure. The durable publisher owns retries.
+    await _emit_settings_changed(request, entity, list(payload.values.keys()))
+
+    return SettingsUpdateResponse(success=True, entity=entity, message="Settings saved")
+
+
+async def _emit_settings_changed(request: HttpRequest, entity: str, changed_keys: list) -> None:
+    """Publish the settings.changed audit event; never fail the write on outage."""
+    tenant = request.headers.get("X-Tenant-Id", "default")
+    event = {
+        "type": "settings.changed",
+        "entity": entity,
+        "changed_keys": changed_keys,
+        "tenant": tenant,
+    }
+    try:
+        publisher = await publisher_mod.get_durable_publisher()
+        if publisher is None:
+            LOGGER.error(
+                "settings.changed not emitted: durable publisher unavailable",
+                extra={"entity": entity, "tenant": tenant},
+            )
+            return
+        await publisher.publish(SETTINGS_CHANGED_TOPIC, event, tenant=tenant)
+    except Exception as exc:
+        LOGGER.error(
+            "settings.changed emit failed after successful save",
+            extra={"entity": entity, "tenant": tenant, "error": str(exc)},
         )
 
 
