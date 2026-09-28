@@ -28,10 +28,17 @@ ENV/
 .venv
 .env/
 
-# Environment files
+# Environment files — secrets live in Vault, never in a committed file.
+# Matched at any depth, and deliberately broad: a stray `.env.production` or
+# `foo.env` must not become a paste-and-push. Examples stay tracked.
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+!.env.example
+!.env.template
+.env.bak
+.env.new
+.env.old
 
 # IDE
 .vscode/
