@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/saas/integrations endpoints
+ * - Uses /api/v2/aaas/integrations endpoints
  * - Permission-aware (platform:view_settings, platform:manage_settings)
  * - Per SRS-SAAS-INTEGRATIONS.md
  */
@@ -211,7 +211,7 @@ export class SaasIntegrationsDashboard extends LitElement {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch('/api/v2/saas/integrations', { credentials: 'include' });
+            const res = await fetch('/api/v2/aaas/integrations', { credentials: 'include' });
             if (res.ok) {
                 this.integrations = await res.json();
             } else {
@@ -229,7 +229,7 @@ export class SaasIntegrationsDashboard extends LitElement {
     private async testConnection(provider: string) {
         this.testing = provider;
         try {
-            const res = await fetch(`/api/v2/saas/integrations/${provider}/test`, {
+            const res = await fetch(`/api/v2/aaas/integrations/${provider}/test`, {
                 method: 'POST',
                 credentials: 'include',
             });

@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/saas/billing/usage endpoints
+ * - Uses /api/v2/aaas/billing/usage endpoints
  * - Permission-aware (billing:view)
  * - Light theme, minimal, professional
  * 
@@ -330,7 +330,7 @@ export class SaasUsageAnalytics extends LitElement {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch(`/api/v2/saas/billing/usage?period=${this.period}`, { credentials: 'include' });
+            const res = await fetch(`/api/v2/aaas/billing/usage?period=${this.period}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 this.usage = data.current || null;

@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/saas/features endpoints
+ * - Uses /api/v2/aaas/features endpoints
  * - Permission: platform:manage_features
  * - Per SRS-FEATURE-CATALOG.md Section 10
  *
@@ -255,10 +255,24 @@ export class SaasFeatureCatalog extends LitElement {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch('/api/v2/saas/features', { credentials: 'include' });
+            const res = await fetch('/api/v2/aaas/features', { credentials: 'include' });
             if (res.ok) {
-                const data = await res.json();
-                this.features = data.features || [];
+                // GET /aaas/features returns a bare list of FeatureOut rows
+                // (enabled, not is_enabled). Map to the view shape here.
+                const rows = await res.json();
+                this.features = (Array.isArray(rows) ? rows : (rows.features ?? [])).map(
+                    (f: Record<string, unknown>): Feature => ({
+                        id: String(f.id ?? ''),
+                        code: String(f.code ?? ''),
+                        name: String(f.name ?? ''),
+                        description: String(f.description ?? ''),
+                        category: String(f.category ?? 'other'),
+                        is_billable: Boolean(f.is_billable),
+                        is_enabled: Boolean(f.enabled ?? f.is_enabled),
+                        tiers: Array.isArray(f.tiers) ? (f.tiers as string[]) : [],
+                        created_at: String(f.created_at ?? ''),
+                    })
+                );
             } else {
                 this.features = [];
                 this.error = `Failed to load features (HTTP ${res.status})`;
@@ -273,7 +287,7 @@ export class SaasFeatureCatalog extends LitElement {
 
     private async toggleFeature(feature: Feature) {
         try {
-            const res = await fetch(`/api/v2/saas/features/${feature.id}`, {
+            const res = await fetch(`/api/v2/aaas/features/${feature.id}`, {
                 method: 'PATCH',
                 credentials: 'include',
                 body: JSON.stringify({ is_enabled: !feature.is_enabled }),
