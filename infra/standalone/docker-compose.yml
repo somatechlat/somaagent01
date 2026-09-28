@@ -4,6 +4,27 @@
 # Agent-Only deployment without SomaBrain or FractalMemory dependencies.
 # - Naming: somaagent_*
 # - Ports: 20xxx (Strict Isolation from AAAS 63xxx)
+#
+# SECRET CONTRACT (VIBE Rule 164) — read this before editing:
+#
+#   * No secret value is written in this file, in .env, or in any file under
+#     version control. .env carries non-secret deployment topology only.
+#   * The application reads every secret from Vault via UnifiedSecretManager:
+#       secret/agent/credentials/<snake_case>       get_credential()
+#       secret/agent/api_keys/<provider>_api_key    get_provider_key()
+#     Keys are seeded by init_vault.py from ./secrets/ (gitignored).
+#   * Two containers cannot read Vault and need a password at first init —
+#     postgres and keycloak. They get it as a Docker secret (a mounted file),
+#     never as an environment variable in this file.
+#   * VAULT_TOKEN is the one deliberate exception. It is the bootstrap root
+#     credential that authenticates TO Vault, so it cannot itself live in Vault.
+#     It is injected for the deployer's process and the app container only.
+#     It is not in .env and not in git.
+#
+# LOCAL LIMITATIONS vs production — deliberate, named, and documented in
+# README.md §"Local limitations". In short: Vault runs in dev mode, Keycloak and
+# Vault run in dev/start-dev mode, and there is no TLS or external secret store.
+# Everything else matches the production shape.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 networks:
@@ -14,6 +35,12 @@ volumes:
   somaagent_postgres_data:
   somaagent_redis_data:
 
+# Deployer-supplied secret FILES. See ./secrets/README.md. Gitignored.
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  keycloak_admin_password:
+    file: ./secrets/keycloak_admin_password
 
 services:
   # ===========================================================================
@@ -25,29 +52,52 @@ services:
       context: ../../
       dockerfile: infra/standalone/Dockerfile
     env_file:
+      # Non-secret deployment topology ONLY. No passwords, no tokens, no DSNs.
       - .env
     environment:
       - SA01_DEPLOYMENT_MODE=STANDALONE
       - SOMA_AAAS_MODE=false
+      # Vault is the only source of secrets for this container.
       - VAULT_ADDR=http://somaagent_vault:8200
-      - VAULT_TOKEN=${VAULT_DEV_ROOT_TOKEN_ID:?VAULT_DEV_ROOT_TOKEN_ID is required}
+      # Bootstrap root credential — see the header. Injected, never stored.
+      - VAULT_TOKEN=${VAULT_TOKEN:?export VAULT_TOKEN before 'docker compose up'}
       - SA01_JWT_ISSUER_STRICT=false
       # MODEL CREDENTIALS DO NOT LIVE IN ENV. The agent has full model
       # administration: LLMModelConfig (Django admin) selects the model and
       # UnifiedSecretManager.get_provider_key() reads provider keys from Vault
       # at secret/agent/api_keys/{provider}_api_key (fail-closed). Never put
-      # GROQ_API_KEY / OPENAI_API_KEY in .env — seed them into Vault instead.
-      # env_file (.env) holds only non-secret deployment config.
+      # GROQ_API_KEY / OPENAI_API_KEY here — seed them with init_vault.py.
       - AAAS_DEFAULT_CHAT_MODEL=groq/openai/gpt-oss-120b
       - AAAS_DEFAULT_TENANT_ID=${AAAS_DEFAULT_TENANT_ID:?set AAAS_DEFAULT_TENANT_ID}
       # Real triad memory lane (T-1). Brain is the sole writer; SFM is the store.
-      # Tokens come from .env / up-cluster.sh — never bake into the image.
+      # The tokens these need are in Vault at
+      #   secret/agent/credentials/soma_api_token
+      #   secret/agent/credentials/somabrain_memory_http_token
+      # and are read there by services/gateway/settings.py. They are deliberately
+      # NOT passed here.
       - SOMABRAIN_ENABLED=true
       - SOMABRAIN_URL=${SOMABRAIN_URL:-http://host.docker.internal:30101}
       - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:-http://host.docker.internal:10101}
-      - SOMA_API_TOKEN=${SOMA_API_TOKEN:?set SOMA_API_TOKEN}
-      - SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}
       - MEM_EMBED_DIM=${MEM_EMBED_DIM:-768}
+      # Database topology — parts, not a DSN. A DSN embeds the password.
+      - SA01_DB_HOST=somaagent_postgres
+      - SA01_DB_PORT=5432
+      - SA01_DB_NAME=somaagent
+      - SA01_DB_USER=somaagent
+    # LOCAL LIMITATION, and the only place a password-bearing DSN is formed:
+    # services/gateway/settings.py currently assembles its DATABASES block by
+    # parsing SA01_DB_DSN. Until that read is converted to build the connection
+    # from the topology above plus
+    # secret/agent/credentials/postgres_password (tracked, needs the settings
+    # lane), the DSN is composed here from the mounted Docker secret. It exists
+    # only in this container's process environment, for the life of the
+    # process. It is never in this file, never in .env, never in git, and never
+    # on the host. The command lives in a mounted script rather than an inline
+    # `sh -c` string so that no compose `$$` escaping sits between us and a
+    # correct DSN.
+    entrypoint: [ "/bin/sh", "/deploy/entrypoint-app.sh" ]
+    secrets:
+      - postgres_password
     ports:
       - "20020:9000" # Agent API
     networks:
@@ -55,15 +105,19 @@ services:
     volumes:
       - ../../admin:/app/admin
       - ../../services:/app/services
-      - ../../core:/app/core
       - ../../config:/app/config
       - ../../manage.py:/app/manage.py
       - ../../soma-compatibility.json:/app/soma-compatibility.json
+      - ./entrypoint-app.sh:/deploy/entrypoint-app.sh:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       somaagent_vault:
         condition: service_healthy
+      # The app reads secrets from Vault at import time. Seeding must have
+      # finished before the process starts, or every get_credential() is None.
+      somaagent_vault_init:
+        condition: service_completed_successfully
       somaagent_postgres:
         condition: service_healthy
       somaagent_redis:
@@ -80,16 +134,19 @@ services:
   # ===========================================================================
   # 2. VAULT (Secrets Management - VIBE Rule 164)
   # ===========================================================================
+  # LOCAL LIMITATION: dev mode. The root token is set by VAULT_DEV_ROOT_TOKEN_ID
+  # and secrets live in memory, so a container restart loses them and
+  # init_vault.py must run again. Production runs an unsealed Vault with
+  # AppRole / Kubernetes auth and a real seal.
   somaagent_vault:
     container_name: somaagent_vault
     image: hashicorp/vault:1.15
     ports:
       - "20882:8200"
     environment:
-      # VAULT_DEV_ROOT_TOKEN_ID must be set in .env
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
       VAULT_ADDR: "http://127.0.0.1:8200"
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:?VAULT_DEV_ROOT_TOKEN_ID is required}
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:?export VAULT_TOKEN before 'docker compose up'}
     cap_add:
       - IPC_LOCK
     networks:
@@ -101,6 +158,33 @@ services:
       retries: 5
 
   # ===========================================================================
+  # 2b. VAULT SEEDER (one-shot)
+  # ===========================================================================
+  # Runs init_vault.py, which copies deployer-supplied values from ./secrets/
+  # into Vault at the paths the application reads. Idempotent; exits non-zero
+  # if a required secret file is absent, which is what makes the stack fail
+  # closed rather than boot with a missing credential. Stdlib only — secret
+  # values travel as bytes from file to HTTP body and never through a shell.
+  somaagent_vault_init:
+    container_name: somaagent_vault_init
+    image: python:3.11-alpine
+    working_dir: /work
+    volumes:
+      - ./init_vault.py:/work/init_vault.py:ro
+      - ./secrets:/work/secrets:ro
+    environment:
+      VAULT_ADDR: http://somaagent_vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:?export VAULT_TOKEN before 'docker compose up'}
+      SECRETS_DIR: /work/secrets
+    entrypoint: [ "python3", "/work/init_vault.py" ]
+    networks:
+      - somaagent_net
+    depends_on:
+      somaagent_vault:
+        condition: service_healthy
+    restart: "no"
+
+  # ===========================================================================
   # 3. POSTGRESQL (Database)
   # ===========================================================================
   somaagent_postgres:
@@ -108,14 +192,18 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: somaagent
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: somaagent
+      # The official image reads *_FILE variants. Password arrives as a mounted
+      # Docker secret — never as an environment variable in this file.
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     command:
       - "postgres"
       - "-c"
       - "shared_buffers=128MB"
       - "-c"
       - "max_connections=100"
+    secrets:
+      - postgres_password
     ports:
       - "20432:5432"
     volumes:
@@ -131,6 +219,8 @@ services:
   # ===========================================================================
   # 4. REDIS (Cache)
   # ===========================================================================
+  # LOCAL LIMITATION: no auth. Production sets an ACL / requirepass, with the
+  # password in Vault. Standalone Redis is on the isolated bridge network only.
   somaagent_redis:
     container_name: somaagent_redis
     image: redis:7.2-alpine
@@ -150,17 +240,30 @@ services:
   # ===========================================================================
   # 5. KEYCLOAK (Identity - Optional for Standalone)
   # ===========================================================================
+  # LOCAL LIMITATION: `start-dev`. Production runs `start --optimized` behind
+  # TLS with a real hostname.
+  #
+  # LOCAL LIMITATION: Keycloak documents KC_DB_PASSWORD and KEYCLOAK_ADMIN_PASSWORD
+  # but ships no _FILE variant for either (keycloak.org/server/configuration).
+  # The entrypoint below reads the mounted Docker secrets and exports them into
+  # the process environment of THIS container only. The values are never in this
+  # file, never in .env and never in git. The exec line is the upstream image's
+  # own start-dev invocation.
   somaagent_keycloak:
     container_name: somaagent_keycloak
     image: quay.io/keycloak/keycloak:24.0
-    command: start-dev
+    entrypoint: [ "/bin/sh", "/deploy/entrypoint-keycloak.sh" ]
     environment:
+      # KEYCLOAK_ADMIN is a username, not a secret.
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:?KEYCLOAK_ADMIN is required}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://somaagent_postgres:5432/somaagent
       KC_DB_USERNAME: somaagent
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    secrets:
+      - postgres_password
+      - keycloak_admin_password
+    volumes:
+      - ./entrypoint-keycloak.sh:/deploy/entrypoint-keycloak.sh:ro
     ports:
       - "20880:8080"
     networks:
