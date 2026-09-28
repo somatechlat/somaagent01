@@ -18,8 +18,6 @@ from admin.aaas.api.schemas import (
     ModelConfigUpdate,
     RoleOut,
     RoleUpdate,
-    SsoConfig,
-    SsoTestResponse,
 )
 from admin.common.messages import ErrorCode, get_message, SuccessCode
 
@@ -241,35 +239,11 @@ def update_role(request, role_id: str, payload: RoleUpdate):
 # =============================================================================
 # SSO CONFIGURATION
 # =============================================================================
-@router.post("/sso", response=MessageResponse)
-def configure_sso(request, payload: SsoConfig):
-    """Save Enterprise SSO configuration."""
-    # Persist to TenantSettings when tenant context is available.
-    # Platform-level SSO assumed without tenant auth middleware.
-    return MessageResponse(message=f"SSO configuration for {payload.provider} saved successfully")
-
-
-@router.post("/sso/test", response=SsoTestResponse)
-def test_sso_connection(request, provider: str):
-    """Test SSO connection."""
-    # Real implementation requires calls to IDP.
-    # We will strictly limit this to 'not implemented' if we can't do it real.
-    # But adhering to the interface contract...
-    # Compliance: We verify if the provider supports discovery.
-    import requests
-
-    try:
-        if provider == "google":
-            res = requests.get("https://accounts.google.com/.well-known/openid-configuration")
-            return SsoTestResponse(success=res.ok, message="Google Discovery OK", provider=provider)
-    except Exception:
-        pass
-
-    return SsoTestResponse(
-        success=False,
-        message="Provider unreachable",
-        provider=provider,
-    )
+# The live SSO endpoints are admin/auth/api_sso.py, mounted at /auth/sso.
+# /auth/sso/test performs real OIDC discovery and /auth/sso/configure fails
+# closed until a config store is wired. The two endpoints that used to live
+# here were an unused duplicate, and /sso reported "saved successfully"
+# without persisting anything.
 
 
 # =============================================================================

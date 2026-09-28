@@ -347,27 +347,6 @@ class RoleUpdate(Schema):
 
 
 # =============================================================================
-# SSO SCHEMAS
-# =============================================================================
-class SsoConfig(Schema):
-    """SSO configuration."""
-
-    provider: str  # 'okta', 'azure_ad', 'google'
-    client_id: str
-    client_secret: str
-    domain: Optional[str] = None
-    tenant_id: Optional[str] = None
-
-
-class SsoTestResponse(Schema):
-    """SSO connection test response."""
-
-    success: bool
-    message: str
-    provider: str
-
-
-# =============================================================================
 # COMMON SCHEMAS
 # =============================================================================
 class MessageResponse(Schema):
