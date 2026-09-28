@@ -5,7 +5,6 @@ from importlib import import_module
 from typing import Any
 
 _SUBMODULES = {
-    "chat_schemas",
     "circuit_breaker",
     "degradation_monitor",
     "unified_metrics",
