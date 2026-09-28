@@ -263,13 +263,6 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/permissions", permissions_router)
 
-    # API Keys (Programmatic access)
-    try:
-        apikeys_module = importlib.import_module("admin.apikeys.api")
-        safe_add_router("/apikeys", apikeys_module.router)
-    except ModuleNotFoundError:
-        logger.warning("API keys router not found; /apikeys is disabled.")
-
     # Sessions (User session management)
     from admin.sessions.api import router as sessions_router
 
@@ -325,15 +318,9 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/llm", llm_config_router)
 
-    # Completions (LLM inference)
-    from admin.completions.api import router as completions_router
-
-    safe_add_router("/completions", completions_router)
-
-    # Feedback (User ratings)
-    from admin.feedback.api import router as feedback_router
-
-    safe_add_router("/feedback", feedback_router)
+    # Completions (LLM inference) — removed: every endpoint was 501, the real
+    # inference path is the V3 chat orchestrator.
+    # Feedback (User ratings) — removed: stub-only, submissions were discarded.
 
     # Metrics (Operational telemetry)
     from admin.metrics.api import router as metrics_router
@@ -361,11 +348,6 @@ def create_api() -> NinjaAPI:
         safe_add_router("/secrets", secrets_module.router)
     except ModuleNotFoundError:
         logger.warning("Secrets router not found; /secrets is disabled.")
-
-    # Scheduler (Job scheduling)
-    from admin.scheduler.api import router as scheduler_router
-
-    safe_add_router("/scheduler", scheduler_router)
 
     # Orchestrator (Workflow coordination)
     from admin.orchestrator.api import router as orchestrator_router

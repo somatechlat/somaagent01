@@ -146,15 +146,6 @@ BUILTIN_MODULES: tuple[BuiltinModule, ...] = (
         always_enabled=True,
         feature_flag="",
     ),
-    BuiltinModule(
-        name="mod_scheduler",
-        title="Scheduler",
-        version="1.0.0",
-        description="Job scheduling and recurring tasks",
-        settings_sections=("developer",),
-        always_enabled=False,
-        feature_flag="scheduler",
-    ),
 )
 
 
