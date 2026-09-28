@@ -18,6 +18,7 @@ from django.db import connection
 from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
+from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 router = Router(tags=["health"])
 logger = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ async def check_keycloak() -> ServiceHealth:
     start = datetime.now()
     keycloak_url = settings.KEYCLOAK_URL  # VIBE: No fallback - fail fast
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             response = await client.get(f"{keycloak_url}/health/ready")
         latency = (datetime.now() - start).total_seconds() * 1000
         if response.status_code == 200:
@@ -160,7 +161,7 @@ async def check_somabrain() -> ServiceHealth:
     start = datetime.now()
     somabrain_url = settings.SOMABRAIN_URL  # VIBE: No fallback - fail fast
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             response = await client.get(f"{somabrain_url}/health")
         latency = (datetime.now() - start).total_seconds() * 1000
         if response.status_code == 200:

@@ -366,6 +366,7 @@ export class SaasTierBuilder extends LitElement {
 
     @state() private tiers: SubscriptionTier[] = [];
     @state() private loading = true;
+    @state() private error: string | null = null;
     @state() private showModal = false;
     @state() private editingTier: Partial<SubscriptionTier> | null = null;
 
@@ -381,57 +382,21 @@ export class SaasTierBuilder extends LitElement {
 
     private async loadTiers() {
         this.loading = true;
+        this.error = null;
         try {
             const res = await fetch('/api/v2/saas/tiers', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 this.tiers = await res.json();
             } else {
-                // Demo data
-                this.tiers = this.getMockTiers();
+                this.tiers = [];
+                this.error = `Failed to load tiers (HTTP ${res.status})`;
             }
         } catch (e) {
-            this.tiers = this.getMockTiers();
+            this.tiers = [];
+            this.error = 'Failed to load tiers';
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockTiers(): SubscriptionTier[] {
-        return [
-            {
-                id: '1',
-                name: 'Starter',
-                slug: 'starter',
-                price: 0,
-                billing_period: 'month',
-                limits: { agents: 1, users: 3, tokens_per_month: 10000, storage_gb: 1 },
-                features: ['Basic Chat', 'Email Support'],
-                popular: false,
-                active_count: 156,
-            },
-            {
-                id: '2',
-                name: 'Professional',
-                slug: 'professional',
-                price: 49,
-                billing_period: 'month',
-                limits: { agents: 5, users: 10, tokens_per_month: 100000, storage_gb: 10 },
-                features: ['SSE Streaming', 'Memory System', 'Voice', 'Priority Support'],
-                popular: true,
-                active_count: 89,
-            },
-            {
-                id: '3',
-                name: 'Enterprise',
-                slug: 'enterprise',
-                price: 199,
-                billing_period: 'month',
-                limits: { agents: 50, users: 100, tokens_per_month: 1000000, storage_gb: 100 },
-                features: ['Unlimited Agents', 'Custom Models', 'SLA', 'Dedicated Support', 'On-Prem Option'],
-                popular: false,
-                active_count: 23,
-            },
-        ];
     }
 
     private openNewTierModal() {
@@ -488,6 +453,7 @@ export class SaasTierBuilder extends LitElement {
 
         <div class="content">
           ${this.loading ? html`<div class="loading">Loading tiers...</div>` : html`
+            ${this.error ? html`<div class="loading">${this.error}</div>` : nothing}
             <div class="tiers-grid">
               ${this.tiers.map(tier => html`
                 <div class="tier-card ${tier.popular ? 'popular' : ''}">

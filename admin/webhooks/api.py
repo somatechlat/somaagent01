@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -261,16 +262,7 @@ async def test_webhook(
 
     DevOps: Verify connectivity.
     """
-    delivery_id = str(uuid4())
-
-    # In production: async task to deliver
-
-    return {
-        "webhook_id": webhook_id,
-        "delivery_id": delivery_id,
-        "event_type": event_type,
-        "status": "sent",
-    }
+    raise HttpError(501, "Webhook test delivery is not implemented: no delivery worker is wired.")
 
 
 # =============================================================================

@@ -45,7 +45,7 @@ test('Login and chat via browser', async ({ page }) => {
         const textarea = page.locator('textarea').first();
         if (await textarea.count() > 0) {
             await textarea.click();
-            await page.keyboard.type('Hello! What model are you?', { delay: 20 });
+            await page.keyboard.type('What model are you?', { delay: 20 });
             await page.keyboard.press('Enter');
             console.log('Message sent');
             await page.waitForTimeout(15000);

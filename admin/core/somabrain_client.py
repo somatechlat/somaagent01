@@ -77,7 +77,7 @@ class SomaBrainClient:
     def __init__(
         self,
         base_url: Optional[str] = None,
-        timeout: float = 30.0,
+        timeout: float = 5.0,
     ) -> None:
         """Initialize SomaBrain client.
 
@@ -197,15 +197,23 @@ class SomaBrainClient:
 
         breaker = get_circuit_breaker("somabrain", failure_threshold=5, reset_timeout=30)
 
-        async def _do_request() -> Dict[str, Any]:
+        async def _do_request() -> httpx.Response:
+            """Execute request. Only 5xx/transport failures trip the breaker.
+
+            4xx are client errors (bad path/payload) — they must not open the
+            shared SomaBrain circuit and starve memory/recall.
+            """
             client = await self._ensure_client()
             request_headers = headers or {}
-            response = await client.request(method, path, json=json, params=params, headers=request_headers)
-            response.raise_for_status()
-            return response.json()
+            response = await client.request(
+                method, path, json=json, params=params, headers=request_headers
+            )
+            if response.status_code >= 500:
+                response.raise_for_status()
+            return response
 
         try:
-            return cast(Dict[str, Any], await breaker.call(_do_request))
+            response = cast(httpx.Response, await breaker.call(_do_request))
         except CircuitBreakerError as e:
             LOGGER.error("SomaBrain circuit breaker OPEN", extra={"path": path, "error": str(e)})
             raise SomaClientError(
@@ -213,7 +221,7 @@ class SomaBrainClient:
             ) from e
         except httpx.HTTPStatusError as e:
             LOGGER.error(
-                "SomaBrain HTTP error",
+                "SomaBrain server error",
                 extra={"path": path, "status": e.response.status_code},
             )
             raise SomaClientError(
@@ -223,6 +231,21 @@ class SomaBrainClient:
         except httpx.RequestError as e:
             LOGGER.error("SomaBrain connection error", extra={"path": path, "error": str(e)})
             raise SomaClientError(f"Connection error: {e}") from e
+
+        if response.status_code >= 400:
+            # 4xx — fail-closed to caller, but do not trip the breaker.
+            LOGGER.warning(
+                "SomaBrain client error (no circuit trip)",
+                extra={"path": path, "status": response.status_code},
+            )
+            raise SomaClientError(
+                f"HTTP {response.status_code}: {response.text}",
+                status_code=response.status_code,
+            )
+        try:
+            return cast(Dict[str, Any], response.json())
+        except Exception:
+            return {}
 
     # =========================================================================
     # MEMORY OPERATIONS
@@ -416,7 +439,7 @@ class SomaBrainClient:
         memory_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Delete memory by coordinate.
+        """Delete memory by coordinate via brain ``POST /memory/forget``.
 
         Args:
             coordinate: Memory coordinate to delete
@@ -427,10 +450,11 @@ class SomaBrainClient:
         """
         effective_coordinate = coordinate if coordinate else memory_id
         effective_tenant = tenant_id or tenant
-        body = {"coordinate": effective_coordinate}
+        body: Dict[str, Any] = {"coord": effective_coordinate}
         if effective_tenant:
             body["tenant"] = effective_tenant
-        return await self._request("DELETE", "/memory/forget", json=body)
+            body["tenant_id"] = effective_tenant
+        return await self._request("POST", "/memory/forget", json=body)
 
     # =========================================================================
     # CONTEXT OPERATIONS
@@ -448,7 +472,7 @@ class SomaBrainClient:
         Returns:
             Context evaluation response with memories and scores
         """
-        return await self._request("POST", "/v1/context/evaluate", json=request)
+        return await self._request("POST", "/context/evaluate", json=request)
 
     async def get_adaptation_state(
         self,
@@ -512,7 +536,7 @@ class SomaBrainClient:
         params: Dict[str, Any] = {"tenant": tenant_id}
         if persona_id:
             params["persona"] = persona_id
-        return await self._request("GET", "/neuromodulators", params=params)
+        return await self._request("GET", "/neuromod/state", params=params)
 
     async def update_neuromodulators(
         self,
@@ -535,7 +559,12 @@ class SomaBrainClient:
             "persona": persona_id,
             "neuromodulators": neuromodulators,
         }
-        return await self._request("PUT", "/neuromodulators", json=body)
+        return await self._request("POST", "/neuromod/adjust", json={
+            "dopamine": neuromodulators.get("dopamine"),
+            "serotonin": neuromodulators.get("serotonin"),
+            "noradrenaline": neuromodulators.get("noradrenaline"),
+            "acetylcholine": neuromodulators.get("acetylcholine"),
+        })
 
     # =========================================================================
     # PERSONA OPERATIONS
@@ -550,7 +579,7 @@ class SomaBrainClient:
         Returns:
             Persona data
         """
-        return await self._request("GET", f"/personas/{persona_id}")
+        return await self._request("GET", f"/persona/{persona_id}")
 
     async def delete_persona(self, persona_id: str) -> Dict[str, Any]:
         """Delete persona by ID.
@@ -561,7 +590,7 @@ class SomaBrainClient:
         Returns:
             Deletion confirmation
         """
-        return await self._request("DELETE", f"/personas/{persona_id}")
+        return await self._request("DELETE", f"/persona/{persona_id}")
 
     async def put_persona(
         self,
@@ -580,7 +609,7 @@ class SomaBrainClient:
             Created/updated persona
         """
         req_headers = {"If-Match": etag} if etag else None
-        return await self._request("PUT", f"/personas/{persona_id}", json=persona_data, headers=req_headers)
+        return await self._request("PUT", f"/persona/{persona_id}", json=persona_data, headers=req_headers)
 
     # =========================================================================
     # COGNITIVE OPERATIONS
@@ -658,7 +687,7 @@ class SomaBrainClient:
             body["ttl_seconds"] = ttl_seconds
         if trace_id:
             body["trace_id"] = trace_id
-        return await self._request("POST", "/brain/sleep", json=body)
+        return await self._request("POST", "/sleep/brain/mode", json=body)
 
     async def sleep_status(self) -> Dict[str, Any]:
         """Get current sleep status.
@@ -666,7 +695,7 @@ class SomaBrainClient:
         Returns:
             Sleep status with current state and metrics
         """
-        return await self._request("GET", "/brain/sleep/status")
+        return await self._request("GET", "/sleep/state")
 
     async def micro_diag(self) -> Dict[str, Any]:
         """Get microcircuit diagnostics (admin mode).
@@ -674,7 +703,7 @@ class SomaBrainClient:
         Returns:
             Diagnostic information
         """
-        return await self._request("GET", "/admin/micro/diag")
+        return await self._request("GET", "/cognitive/micro/diag")
 
     # =========================================================================
     # HEALTH CHECK
@@ -726,6 +755,21 @@ class SomaBrainClient:
             result = await self._request("GET", "/health")
             return result.get("status") == "ok" or result.get("ready", False)
         except SomaClientError:
+            return False
+
+    async def ping(self, timeout: float = 3.0) -> bool:
+        """Cheap connector ping used by SomaBrainConnector health.
+
+        Does not trip the circuit on 404 of optional resources; only
+        transport failures count as down.
+        """
+        import asyncio
+
+        try:
+            await asyncio.wait_for(self._request("GET", "/health"), timeout=timeout)
+            return True
+        except Exception as exc:  # noqa: BLE001 — ping is best-effort signal
+            LOGGER.debug("SomaBrain connector ping failed: %s", exc)
             return False
 
     async def get_recent(

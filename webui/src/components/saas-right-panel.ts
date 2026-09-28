@@ -51,7 +51,7 @@ export class SaasRightPanel extends LitElement {
             padding: 8px 0;
             gap: 4px;
             border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-sidebar, #0a0a0a);
+            background: var(--aaas-bg-sidebar, #ffffff);
         }
 
         .tab-btn {
@@ -65,7 +65,7 @@ export class SaasRightPanel extends LitElement {
             font-size: 16px;
             background: transparent;
             border: none;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             transition: all 150ms ease;
             position: relative;
         }
@@ -136,7 +136,7 @@ export class SaasRightPanel extends LitElement {
             align-items: center;
             justify-content: center;
             height: 200px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             font-size: 13px;
             text-align: center;
             gap: 8px;

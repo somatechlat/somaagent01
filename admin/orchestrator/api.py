@@ -17,6 +17,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -196,27 +197,7 @@ async def run_workflow(
 
     DevOps: Temporal workflow trigger.
     """
-    run_id = str(uuid4())
-
-    # In production: Start Temporal workflow
-    # client = await Client.connect(TEMPORAL_HOST)
-    # handle = await client.start_workflow(
-    #     OrchestratorWorkflow.run,
-    #     input_data,
-    #     id=run_id,
-    #     task_queue=TASK_QUEUE,
-    # )
-
-    logger.info('Workflow started: %s -> %s', workflow_id, run_id)
-
-    return WorkflowRun(
-        run_id=run_id,
-        workflow_id=workflow_id,
-        status="running",
-        current_step=1,
-        total_steps=5,
-        started_at=timezone.now().isoformat(),
-    )
+    raise HttpError(501, "Workflow execution is not implemented: no Temporal client is wired.")
 
 
 @router.get(

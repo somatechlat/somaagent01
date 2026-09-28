@@ -21,7 +21,7 @@
         "recall": "/api/v1/memory/recall",
         "remember": "/api/v1/memory/store",
         "context_evaluate": "/v1/context/evaluate",
-        "neuromodulators": "/v1/neuromodulators",
+        "neuromodulators": "/neuromod/state",
         "reward": "/v1/learning/reward"
       }
     },

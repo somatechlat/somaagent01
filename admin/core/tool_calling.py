@@ -1,0 +1,383 @@
+"""Native function-calling loop — Phase 9 tool execution (work package C1).
+
+Wires model ``tool_calls`` to the real ToolRegistry runtime (Echo, Timestamp,
+CodeExecution, FileRead, HttpFetch, CanvasAppend, IngestDocument) and surfaces
+a tool timeline for the chat stream.
+
+VIBE COMPLIANT:
+- Native function-calling API only — tool calls are NEVER regex-parsed
+  out of model text.
+- Capsule ``tool_policy`` (auto_execute / approval_required / denied) is
+  honoured on every call; approval_required fails closed until an approval
+  channel exists.
+- Real ToolRegistry execution with bounded per-tool timeout.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import time
+from dataclasses import dataclass
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
+
+from admin.common.messages import ErrorCode, get_message
+
+logger = logging.getLogger(__name__)
+
+# Cap the model→tool→model loop (Phase 9) so a runaway tool chain cannot
+# pin a turn forever.
+MAX_TOOL_ITERATIONS = 8
+TOOL_EXEC_TIMEOUT_S = 30.0
+_TOOL_RESULT_MAX_CHARS = 12_000
+
+# Tool timeline event types — mirrored by the WS chat protocol
+# (services/gateway/consumers/chat.py) so the UI can render a tool timeline.
+TOOL_EVENT_CALL = "tool.call"
+TOOL_EVENT_DELTA = "tool.delta"
+TOOL_EVENT_DONE = "tool.done"
+TOOL_EVENT_APPROVAL = "tool.approval_request"
+
+
+@dataclass
+class ToolStreamEvent:
+    """Tool-calling timeline event yielded by the chat stream.
+
+    Consumers forward these as ``tool.*`` WebSocket messages (CH-11).
+    """
+
+    type: str
+    payload: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ToolPolicy:
+    """Capsule ``tool_policy`` snapshot: auto_execute / approval_required / denied."""
+
+    auto_execute: Tuple[str, ...] = ()
+    approval_required: Tuple[str, ...] = ()
+    denied: Tuple[str, ...] = ()
+
+    def decision(self, tool_name: str) -> str:
+        """Return the execution decision for ``tool_name``.
+
+        Unlisted tools prefer auto_execute (C1: approval channel not wired
+        yet); explicitly denied / approval_required lists still win.
+        """
+        if tool_name in self.denied:
+            return "denied"
+        if tool_name in self.approval_required:
+            return "approval_required"
+        return "auto_execute"
+
+
+def resolve_tool_policy(capsule: Any) -> ToolPolicy:
+    """Read the capsule tool_policy JSON (model field, body fallback)."""
+    policy = getattr(capsule, "tool_policy", None)
+    if not isinstance(policy, dict):
+        policy = {}
+    if not policy:
+        body = getattr(capsule, "_cached_body", None) or {}
+        if isinstance(body, dict):
+            nested = body.get("persona", {}).get("tools", {}).get("tool_policy", {})
+            if isinstance(nested, dict):
+                policy = nested
+
+    def _names(key: str) -> Tuple[str, ...]:
+        raw = policy.get(key) or []
+        if not isinstance(raw, (list, tuple)):
+            return ()
+        return tuple(str(name) for name in raw)
+
+    return ToolPolicy(
+        auto_execute=_names("auto_execute"),
+        approval_required=_names("approval_required"),
+        denied=_names("denied"),
+    )
+
+
+def _truncate_result(text: str, limit: int = _TOOL_RESULT_MAX_CHARS) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"\n[truncated {len(text) - limit} chars]"
+
+
+def build_assistant_tool_message(tool_calls: List[Any]) -> Any:
+    """Build the assistant message carrying the model's native tool_calls."""
+    from langchain_core.messages import AIMessage
+
+    calls = []
+    for tc in tool_calls:
+        args = tc.arguments if isinstance(tc.arguments, dict) else {}
+        calls.append(
+            {"id": tc.id, "name": tc.name, "args": args, "type": "tool_call"}
+        )
+    return AIMessage(content="", tool_calls=calls)
+
+
+def build_tool_result_message(
+    tool_call_id: str,
+    result: Dict[str, Any],
+    ok: bool,
+    error: Optional[str] = None,
+) -> Any:
+    """Build the tool result message bound to ``tool_call_id``."""
+    from langchain_core.messages import ToolMessage
+
+    payload: Dict[str, Any] = {"ok": ok, "result": result}
+    if error:
+        payload["error"] = error
+    return ToolMessage(
+        content=_truncate_result(json.dumps(payload, default=str)),
+        tool_call_id=tool_call_id,
+    )
+
+
+async def execute_tool_call(
+    tool_registry: Any,
+    name: str,
+    arguments: Dict[str, Any],
+    *,
+    timeout_s: float = TOOL_EXEC_TIMEOUT_S,
+) -> Tuple[Dict[str, Any], bool, Optional[str]]:
+    """Execute one tool call via the per-capsule ToolRegistry.
+
+    Returns ``(result, ok, error)``. Unknown tools and argument-shape errors
+    fail closed with a model-visible error instead of raising.
+    """
+    definition = tool_registry.get(name) if tool_registry else None
+    if definition is None:
+        return {}, False, get_message(ErrorCode.TOOL_NOT_FOUND, name=name)
+    if not isinstance(arguments, dict):
+        return {}, False, get_message(ErrorCode.TOOL_INVALID_ARGUMENT, arg="arguments")
+    try:
+        result = await asyncio.wait_for(definition.run(arguments), timeout=timeout_s)
+    except asyncio.TimeoutError:
+        logger.warning("Tool %s timed out after %.1fs", name, timeout_s)
+        return {}, False, get_message(ErrorCode.TOOL_EXECUTION_TIMEOUT)
+    except Exception as exc:
+        logger.warning("Tool %s failed: %s", name, exc)
+        return {}, False, get_message(
+            ErrorCode.TOOL_EXECUTION_FAILED, name=name, error=str(exc)
+        )
+    return result if isinstance(result, dict) else {"result": result}, True, None
+
+
+def _chunk_text(chunk: Any) -> str:
+    """Extract text from a stream chunk (ChatGenerationChunk / ChatChunk / str)."""
+    if isinstance(chunk, str):
+        return chunk
+    if hasattr(chunk, "response_delta"):
+        return chunk.response_delta or ""
+    if hasattr(chunk, "message") and hasattr(chunk.message, "content"):
+        content = chunk.message.content
+        return content if isinstance(content, str) else str(content or "")
+    if hasattr(chunk, "content"):
+        content = chunk.content
+        return content if isinstance(content, str) else str(content or "")
+    return str(chunk) if chunk else ""
+
+
+async def run_tool_loop(
+    *,
+    llm: Any,
+    messages: List[Any],
+    tools_for_llm: List[Dict[str, Any]],
+    tool_registry: Any,
+    capsule: Any,
+    max_iterations: int = MAX_TOOL_ITERATIONS,
+) -> AsyncIterator[Union[str, ToolStreamEvent]]:
+    """Run the native function-calling loop until a final response (or cap).
+
+    Yields text tokens and ToolStreamEvent items. ``messages`` is mutated in
+    place (assistant tool_calls + tool results appended) so the caller's
+    conversation trace reflects the full tool timeline.
+
+    Every LLM round passes ``tools=tools_for_llm`` through to LiteLLM —
+    native function calling only, never regex parsing.
+    """
+    from admin.llm.services.litellm_schemas import (
+        ToolCallDeltasChunk,
+        ToolCallsChunk,
+    )
+
+    policy = resolve_tool_policy(capsule)
+
+    for iteration in range(1, max_iterations + 1):
+        response_text: List[str] = []
+        pending_tool_calls: List[Any] = []
+        seen_call_keys: set[str] = set()
+
+        stream = llm._astream(messages=messages, tools=tools_for_llm or None)
+        async for chunk in stream:
+            if isinstance(chunk, ToolCallsChunk):
+                pending_tool_calls = list(chunk.tool_calls)
+                continue
+            if isinstance(chunk, ToolCallDeltasChunk):
+                for delta in chunk.deltas:
+                    # Index is the stable assembly key (matches
+                    # ToolCallAccumulator); id may be absent on arg fragments.
+                    key = f"idx:{delta.index}"
+                    if key not in seen_call_keys:
+                        seen_call_keys.add(key)
+                        yield ToolStreamEvent(
+                            type=TOOL_EVENT_CALL,
+                            payload={
+                                "iteration": iteration,
+                                "index": delta.index,
+                                "tool_call_id": delta.id,
+                                "name": delta.name,
+                            },
+                        )
+                    if delta.arguments:
+                        yield ToolStreamEvent(
+                            type=TOOL_EVENT_DELTA,
+                            payload={
+                                "iteration": iteration,
+                                "index": delta.index,
+                                "tool_call_id": delta.id,
+                                "arguments_delta": delta.arguments,
+                            },
+                        )
+                continue
+            token = _chunk_text(chunk)
+            if token:
+                response_text.append(token)
+                yield token
+
+        if not pending_tool_calls:
+            # Final response — the model is done.
+            return
+
+        # Phase 9: real tool execution against the capsule ToolRegistry.
+        messages.append(build_assistant_tool_message(pending_tool_calls))
+        for tc in pending_tool_calls:
+            name = tc.name
+            args = tc.arguments if isinstance(tc.arguments, dict) else {}
+            # Memory tools: ALWAYS use the Capsule tenant. Never accept LLM
+            # "default" / empty — that is cross-tenant mixing (T-5).
+            if name.startswith("memory_") and isinstance(args, dict):
+                cap_tenant = getattr(capsule, "tenant_id", None)
+                if cap_tenant:
+                    args = {**args, "tenant_id": str(cap_tenant)}
+                elif str(args.get("tenant_id") or "").strip().lower() in (
+                    "",
+                    "default",
+                    "standalone",
+                    "none",
+                ):
+                    args = {**args, "tenant_id": ""}  # tool raises fail-closed
+            started = time.perf_counter()
+            decision = policy.decision(name)
+            display_args = args if isinstance(args, dict) else {}
+
+            if decision == "approval_required":
+                yield ToolStreamEvent(
+                    type=TOOL_EVENT_APPROVAL,
+                    payload={
+                        "iteration": iteration,
+                        "tool_call_id": tc.id,
+                        "name": name,
+                        "arguments": display_args,
+                    },
+                )
+                # No approval channel yet — fail-closed skip with a
+                # user-visible error (approval branch is structured here so
+                # C2 can wire a real approve/deny round-trip).
+                error = get_message(ErrorCode.TOOL_EXECUTION_DENIED)
+                yield ToolStreamEvent(
+                    type=TOOL_EVENT_DONE,
+                    payload={
+                        "iteration": iteration,
+                        "tool_call_id": tc.id,
+                        "name": name,
+                        "arguments": display_args,
+                        "result": None,
+                        "ok": False,
+                        "error": error,
+                        "duration_ms": 0,
+                        "status": "approval_required",
+                    },
+                )
+                messages.append(build_tool_result_message(tc.id, {}, False, error))
+                continue
+
+            if decision == "denied":
+                error = get_message(ErrorCode.TOOL_POLICY_DENIED)
+                yield ToolStreamEvent(
+                    type=TOOL_EVENT_DONE,
+                    payload={
+                        "iteration": iteration,
+                        "tool_call_id": tc.id,
+                        "name": name,
+                        "arguments": display_args,
+                        "result": None,
+                        "ok": False,
+                        "error": error,
+                        "duration_ms": 0,
+                        "status": "denied",
+                    },
+                )
+                messages.append(build_tool_result_message(tc.id, {}, False, error))
+                continue
+
+            if args is None:
+                error = get_message(ErrorCode.TOOL_INVALID_ARGUMENT, arg="arguments")
+                yield ToolStreamEvent(
+                    type=TOOL_EVENT_DONE,
+                    payload={
+                        "iteration": iteration,
+                        "tool_call_id": tc.id,
+                        "name": name,
+                        "arguments": {},
+                        "result": None,
+                        "ok": False,
+                        "error": error,
+                        "duration_ms": 0,
+                        "status": "invalid_arguments",
+                    },
+                )
+                messages.append(build_tool_result_message(tc.id, {}, False, error))
+                continue
+
+            result, ok, error = await execute_tool_call(tool_registry, name, args)
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            yield ToolStreamEvent(
+                type=TOOL_EVENT_DONE,
+                payload={
+                    "iteration": iteration,
+                    "tool_call_id": tc.id,
+                    "name": name,
+                    "arguments": args,
+                    "result": result,
+                    "ok": ok,
+                    "error": error,
+                    "duration_ms": duration_ms,
+                    "status": "executed" if ok else "error",
+                },
+            )
+            messages.append(build_tool_result_message(tc.id, result, ok, error))
+
+        # Next iteration: the model sees the tool results and continues.
+
+    yield (
+        "\n[Tool loop stopped: maximum tool iterations "
+        f"({max_iterations}) reached]"
+    )
+
+
+__all__ = [
+    "MAX_TOOL_ITERATIONS",
+    "TOOL_EVENT_APPROVAL",
+    "TOOL_EVENT_CALL",
+    "TOOL_EVENT_DELTA",
+    "TOOL_EVENT_DONE",
+    "ToolPolicy",
+    "ToolStreamEvent",
+    "build_assistant_tool_message",
+    "build_tool_result_message",
+    "execute_tool_call",
+    "resolve_tool_policy",
+    "run_tool_loop",
+]

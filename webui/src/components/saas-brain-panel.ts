@@ -66,7 +66,7 @@ export class SaasBrainPanel extends LitElement {
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             margin-bottom: 14px;
         }
 
@@ -122,7 +122,7 @@ export class SaasBrainPanel extends LitElement {
 
         .neuro-status {
             font-size: 10px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             min-width: 50px;
             text-align: right;
         }
@@ -168,7 +168,7 @@ export class SaasBrainPanel extends LitElement {
 
         .btn-primary {
             background: var(--aaas-accent, #e8e4dc);
-            color: var(--aaas-bg-void, #0a0a0a);
+            color: var(--aaas-bg-void, #f5f5f5);
         }
 
         .btn-primary:hover {
@@ -191,7 +191,7 @@ export class SaasBrainPanel extends LitElement {
 
         .field-label {
             font-size: 12px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             margin-bottom: 6px;
             display: block;
         }

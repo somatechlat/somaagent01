@@ -1,24 +1,24 @@
-"""Plugins API - Extensibility system.
+"""Plugins API — legacy surface delegated to the Capsule Module host (WP D1).
 
-
-Plugin management for extending agent capabilities.
-
-- PhD Dev: Plugin architecture, hooks
-- Security Auditor: Plugin sandboxing, permissions
-- PM: Plugin marketplace
+The real module host lives in ``admin.modules`` and is served under
+``/api/v2/modules``. These endpoints are kept as a compatibility layer over
+the same DB-backed registry so clients hitting ``/api/v2/plugins`` observe the
+same real state (no hardcoded lists). Install/marketplace remain 501 — there is
+no remote plugin registry.
 """
 
 from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.modules import hooks as hooks_module
+from admin.modules import registry as module_registry
 
 router = Router(tags=["plugins"])
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class Plugin(BaseModel):
-    """Plugin definition."""
+    """Plugin definition (mapped from Capsule Module rows)."""
 
     plugin_id: str
     name: str
@@ -65,6 +65,23 @@ class PluginHook(BaseModel):
     parameters: dict
 
 
+def _module_to_plugin(module: dict) -> dict:
+    """Map a Module dict onto the legacy Plugin schema."""
+
+    status = "enabled" if module.get("enabled") else "disabled"
+    return {
+        "plugin_id": module["name"],
+        "name": module["title"],
+        "version": module["version"],
+        "description": module.get("description") or None,
+        "author": "soma",
+        "category": "tools",
+        "status": status,
+        "permissions": module.get("permissions") or [],
+        "installed_at": module.get("created_at") or "",
+    }
+
+
 # =============================================================================
 # ENDPOINTS - Plugin Management
 # =============================================================================
@@ -80,26 +97,21 @@ async def list_plugins(
     status: Optional[str] = None,
     category: Optional[str] = None,
 ) -> dict:
-    """List installed plugins.
+    """List installed plugins (delegates to Capsule Module registry)."""
 
-    PM: View installed extensions.
-    """
-    return {
-        "plugins": [
-            Plugin(
-                plugin_id="1",
-                name="Web Search Tool",
-                version="1.0.0",
-                description="Search the web from chat",
-                author="SomaTech",
-                category="tools",
-                status="enabled",
-                permissions=["network", "storage"],
-                installed_at=timezone.now().isoformat(),
-            ).dict(),
-        ],
-        "total": 1,
-    }
+    try:
+        modules = module_registry.list_modules()
+    except Exception as exc:
+        logger.exception("plugin list failed")
+        raise HttpError(500, f"plugin registry error: {exc}") from exc
+
+    items = []
+    for module in modules:
+        plugin = _module_to_plugin(module)
+        if status and plugin["status"] != status:
+            continue
+        items.append(plugin)
+    return {"plugins": items, "total": len(items)}
 
 
 @router.post(
@@ -115,15 +127,7 @@ async def install_plugin(
 
     Security Auditor: Validate and sandbox.
     """
-    plugin_id = str(uuid4())
-
-    logger.info('Plugin installation started: %s', source)
-
-    return {
-        "plugin_id": plugin_id,
-        "source": source,
-        "status": "installing",
-    }
+    raise HttpError(501, "Plugin install is not implemented: no plugin registry host.")
 
 
 @router.get(
@@ -134,16 +138,11 @@ async def install_plugin(
 )
 async def get_plugin(request, plugin_id: str) -> Plugin:
     """Get plugin details."""
-    return Plugin(
-        plugin_id=plugin_id,
-        name="Example Plugin",
-        version="1.0.0",
-        author="system",
-        category="tools",
-        status="enabled",
-        permissions=[],
-        installed_at=timezone.now().isoformat(),
-    )
+    try:
+        module = module_registry.get_module(plugin_id)
+    except module_registry.ModuleNotFound as exc:
+        raise HttpError(404, str(exc)) from exc
+    return Plugin(**_module_to_plugin(module))
 
 
 @router.post(
@@ -152,13 +151,17 @@ async def get_plugin(request, plugin_id: str) -> Plugin:
     auth=AuthBearer(),
 )
 async def enable_plugin(request, plugin_id: str) -> dict:
-    """Enable a plugin."""
-    logger.info('Plugin enabled: %s', plugin_id)
+    """Enable a plugin (real module registry state)."""
 
-    return {
-        "plugin_id": plugin_id,
-        "status": "enabled",
-    }
+    try:
+        module = module_registry.set_module_enabled(plugin_id, True)
+    except module_registry.FeatureDisabledError as exc:
+        raise HttpError(409, str(exc)) from exc
+    except module_registry.AlwaysEnabledError as exc:
+        raise HttpError(409, str(exc)) from exc
+    except module_registry.ModuleNotFound as exc:
+        raise HttpError(404, str(exc)) from exc
+    return {"plugin_id": plugin_id, "enabled": module["enabled"]}
 
 
 @router.post(
@@ -167,13 +170,15 @@ async def enable_plugin(request, plugin_id: str) -> dict:
     auth=AuthBearer(),
 )
 async def disable_plugin(request, plugin_id: str) -> dict:
-    """Disable a plugin."""
-    logger.info('Plugin disabled: %s', plugin_id)
+    """Disable a plugin (real module registry state)."""
 
-    return {
-        "plugin_id": plugin_id,
-        "status": "disabled",
-    }
+    try:
+        module = module_registry.set_module_enabled(plugin_id, False)
+    except module_registry.AlwaysEnabledError as exc:
+        raise HttpError(409, str(exc)) from exc
+    except module_registry.ModuleNotFound as exc:
+        raise HttpError(404, str(exc)) from exc
+    return {"plugin_id": plugin_id, "enabled": module["enabled"]}
 
 
 @router.delete(
@@ -186,12 +191,7 @@ async def uninstall_plugin(request, plugin_id: str) -> dict:
 
     Security Auditor: Clean removal, revoke permissions.
     """
-    logger.info('Plugin uninstalled: %s', plugin_id)
-
-    return {
-        "plugin_id": plugin_id,
-        "uninstalled": True,
-    }
+    raise HttpError(501, "Plugin uninstall is not implemented: no plugin registry host.")
 
 
 # =============================================================================
@@ -205,12 +205,13 @@ async def uninstall_plugin(request, plugin_id: str) -> dict:
     auth=AuthBearer(),
 )
 async def get_plugin_config(request, plugin_id: str) -> dict:
-    """Get plugin configuration."""
-    return {
-        "plugin_id": plugin_id,
-        "config": {},
-        "schema": {},
-    }
+    """Get plugin configuration (from the Module registry)."""
+
+    try:
+        module = module_registry.get_module(plugin_id)
+    except module_registry.ModuleNotFound as exc:
+        raise HttpError(404, str(exc)) from exc
+    return {"name": module["name"], "config": module["config"]}
 
 
 @router.patch(
@@ -223,11 +224,13 @@ async def update_plugin_config(
     plugin_id: str,
     config: dict,
 ) -> dict:
-    """Update plugin configuration."""
-    return {
-        "plugin_id": plugin_id,
-        "updated": True,
-    }
+    """Update plugin configuration (from the Module registry)."""
+
+    try:
+        module = module_registry.update_module_config(plugin_id, config)
+    except module_registry.ModuleNotFound as exc:
+        raise HttpError(404, str(exc)) from exc
+    return {"name": module["name"], "config": module["config"]}
 
 
 # =============================================================================
@@ -241,32 +244,15 @@ async def update_plugin_config(
     auth=AuthBearer(),
 )
 async def list_hooks(request) -> dict:
-    """List available plugin hooks.
+    """List available plugin hooks (orchestrator hook registry)."""
 
-    PhD Dev: Extension points for plugins.
-    """
     return {
-        "hooks": [
-            PluginHook(
-                hook_id="pre_message",
-                name="Pre-Message Processing",
-                description="Called before message is sent to agent",
-                parameters={"message": "str", "context": "dict"},
-            ).dict(),
-            PluginHook(
-                hook_id="post_response",
-                name="Post-Response Processing",
-                description="Called after agent generates response",
-                parameters={"response": "str", "metadata": "dict"},
-            ).dict(),
-            PluginHook(
-                hook_id="tool_call",
-                name="Tool Execution",
-                description="Register custom tools",
-                parameters={"tool_name": "str", "args": "dict"},
-            ).dict(),
-        ],
-        "total": 3,
+        "hooks": {
+            "known": list(hooks_module.KNOWN_HOOKS),
+            "reserved": list(hooks_module.RESERVED_HOOKS),
+            "registrations": hooks_module.list_registrations(),
+        },
+        "total": len(hooks_module.KNOWN_HOOKS),
     }
 
 
@@ -288,22 +274,4 @@ async def browse_marketplace(
 
     PM: Discover new plugins.
     """
-    return {
-        "plugins": [
-            {
-                "name": "web-search",
-                "version": "1.2.0",
-                "description": "Search the web",
-                "downloads": 5420,
-                "rating": 4.5,
-            },
-            {
-                "name": "code-runner",
-                "version": "2.0.0",
-                "description": "Execute code snippets",
-                "downloads": 3200,
-                "rating": 4.8,
-            },
-        ],
-        "total": 2,
-    }
+    raise HttpError(501, "Plugin marketplace is not implemented: no real registry.")

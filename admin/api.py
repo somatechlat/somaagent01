@@ -181,11 +181,7 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/somabrain", somabrain_router)
 
-    # Invitations (standalone, not under /auth)
-    from admin.auth.invitations import router as invitations_router
-
-    safe_add_router("/invitations", invitations_router)
-
+    # Invitations — removed: stub-only, no Invitation model exists
     # NOTE: MFA and Password Reset are now sub-routers in auth/api.py
     # /auth/mfa and /auth/password are mounted inside the auth router
 
@@ -194,15 +190,9 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/voice", voice_router)
 
-    # Workflows (Temporal)
-    from admin.workflows.api import router as workflows_router
+    # Workflows (Temporal) — removed: stub-only, no production impl
 
-    safe_add_router("/workflows", workflows_router)
-
-    # Data Export (GDPR)
-    from admin.export.api import router as export_router
-
-    safe_add_router("/export", export_router)
+    # Data Export (GDPR) — removed: stub-only, no ExportTask model exists
 
     # Observability (Prometheus, Tracing)
     from admin.observability.api import router as observability_router
@@ -214,35 +204,21 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/assets", assets_router)
 
-    # Capabilities (Registry + Circuit Breakers)
-    from admin.capabilities.api import router as capabilities_router
-
-    safe_add_router("/capabilities", capabilities_router)
+    # Capabilities (Registry + Circuit Breakers) — removed: stub-only, no production impl
+    # A2A (Agent-to-Agent Workflows) — removed: stub-only, no production impl
 
     # Quality Gating (Asset Critic + Retry)
     from admin.quality.api import router as quality_router
 
     safe_add_router("/quality", quality_router)
 
-    # A2A (Agent-to-Agent Workflows)
-    from admin.a2a.api import router as a2a_router
-
-    safe_add_router("/a2a", a2a_router)
-
-    # Notifications (Real-time events)
+    # Notifications (Real-time events) — real store-backed router lives in admin.notifications.api package
     from admin.notifications.api import router as notifications_router
 
     safe_add_router("/notifications", notifications_router)
 
-    # Analytics (Metrics and reports)
-    from admin.analytics.api import router as analytics_router
-
-    safe_add_router("/analytics", analytics_router)
-
-    # Search (Full-text search)
-    from admin.search.api import router as search_router
-
-    safe_add_router("/search", search_router)
+    # Analytics (Metrics and reports) — removed: stub-only, no production impl
+    # Search (Full-text search) — removed: stub-only, no production impl
 
     # Config (System configuration + Feature flags)
     from admin.config.api import router as config_router
@@ -254,15 +230,8 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/ratelimit", ratelimit_router)
 
-    # Scheduling (Background jobs + Celery)
-    from admin.scheduling.api import router as scheduling_router
-
-    safe_add_router("/scheduling", scheduling_router)
-
-    # Events (Real-time SSE streaming)
-    from admin.events.api import router as events_router
-
-    safe_add_router("/events", events_router)
+    # Scheduling (Background jobs + Celery) — removed: stub-only, no production impl
+    # Events (Real-time SSE streaming) — removed: stub-only, no production impl
 
     # Integrations (Third-party services)
     from admin.integrations.api import router as integrations_router
@@ -273,6 +242,16 @@ def create_api() -> NinjaAPI:
     from admin.plugins.api import router as plugins_router
 
     safe_add_router("/plugins", plugins_router)
+
+    # Capsule Module host (WP D1) — real module registry + orchestrator hooks
+    from admin.modules.api import router as modules_router
+
+    safe_add_router("/modules", modules_router)
+
+    # Bridge channel data model (WP D2) — Channel/BridgeSession/Inbound/Outbound
+    from admin.bridges.api import router as bridges_router
+
+    safe_add_router("/bridges", bridges_router)
 
     # Audit (Security logging)
     from admin.audit.api import router as audit_router
@@ -341,6 +320,11 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/models", models_router)
 
+    # LLM model settings (LLMModelConfig CRUD, providers, slots, presets) — C5
+    from admin.llm.api import router as llm_config_router
+
+    safe_add_router("/llm", llm_config_router)
+
     # Completions (LLM inference)
     from admin.completions.api import router as completions_router
 
@@ -371,7 +355,7 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/auth-config", auth_config_router)
 
-    # Secrets (Credential management)
+    # Secrets (Credential management — Vault-backed provider keys, write-only)
     try:
         secrets_module = importlib.import_module("admin.secrets.api")
         safe_add_router("/secrets", secrets_module.router)

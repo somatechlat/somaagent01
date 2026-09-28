@@ -45,10 +45,24 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
     persona = body.get("persona", {})
     knobs = persona.get("knobs", {})
 
-    # Get the 3 control knobs with safe defaults
-    intelligence_level: int = knobs.get("intelligence_level", 5)
-    autonomy_level: int = knobs.get("autonomy_level", 5)
-    resource_budget: float = knobs.get("resource_budget", 0.10)
+    # The 3 control knobs — Capsule / Django settings authority (no magic numbers).
+    from admin.core.helpers.capsule_settings import resolve_setting
+
+    intelligence_level: int = int(
+        knobs.get("intelligence_level")
+        if knobs.get("intelligence_level") is not None
+        else resolve_setting("AGENTIQ_INTELLIGENCE_LEVEL", capsule=capsule, default=5)
+    )
+    autonomy_level: int = int(
+        knobs.get("autonomy_level")
+        if knobs.get("autonomy_level") is not None
+        else resolve_setting("AGENTIQ_AUTONOMY_LEVEL", capsule=capsule, default=5)
+    )
+    resource_budget: float = float(
+        knobs.get("resource_budget")
+        if knobs.get("resource_budget") is not None
+        else resolve_setting("AGENTIQ_RESOURCE_BUDGET", capsule=capsule, default=0.10)
+    )
 
     # Lookup derivations from tables
     intel = lookup_intelligence(intelligence_level)

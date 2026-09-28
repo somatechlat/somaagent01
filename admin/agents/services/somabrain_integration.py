@@ -110,8 +110,9 @@ async def store_memory(
     """Store memory in SomaBrain with proper metadata."""
     soma_client = _get_agent_soma_client(agent)
     if soma_client is None:
-        LOGGER.debug("SomaBrain not configured; skipping store_memory")
-        return None
+        raise RuntimeError(
+            "SomaBrain client is required for store_memory (no bypass)"
+        )
     try:
         memory_payload = {
             "value": {

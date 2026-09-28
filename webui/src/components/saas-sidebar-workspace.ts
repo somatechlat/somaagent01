@@ -33,7 +33,7 @@ export class SaasSidebarWorkspace extends LitElement {
             flex-direction: column;
             width: 260px;
             flex-shrink: 0;
-            background: var(--aaas-bg-sidebar, #0a0a0a);
+            background: var(--aaas-bg-sidebar, #ffffff);
             border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             height: 100%;
         }
@@ -49,7 +49,7 @@ export class SaasSidebarWorkspace extends LitElement {
         .brand-icon {
             width: 28px;
             height: 28px;
-            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #6b6b6b));
+            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #999999));
             border-radius: var(--aaas-radius-md, 8px);
             display: flex;
             align-items: center;
@@ -66,7 +66,7 @@ export class SaasSidebarWorkspace extends LitElement {
 
         .brand-version {
             font-size: 10px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             margin-left: auto;
             padding: 2px 6px;
             background: var(--aaas-bg-hover, #141414);
@@ -125,7 +125,7 @@ export class SaasSidebarWorkspace extends LitElement {
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
         }
 
         .agent-list {
@@ -193,7 +193,7 @@ export class SaasSidebarWorkspace extends LitElement {
 
         .activity-time {
             font-size: 11px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             margin-top: 2px;
         }
 
@@ -209,7 +209,7 @@ export class SaasSidebarWorkspace extends LitElement {
             width: 30px;
             height: 30px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #6b6b6b));
+            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #999999));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -230,7 +230,7 @@ export class SaasSidebarWorkspace extends LitElement {
 
         .user-role {
             font-size: 11px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
         }
 
         .user-actions {
@@ -247,7 +247,7 @@ export class SaasSidebarWorkspace extends LitElement {
             border-radius: var(--aaas-radius-sm, 4px);
             background: transparent;
             border: none;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             cursor: pointer;
             font-size: 14px;
             transition: all 150ms ease;
@@ -339,7 +339,9 @@ export class SaasSidebarWorkspace extends LitElement {
                     <div class="user-role">SaaS Admin</div>
                 </div>
                 <div class="user-actions">
-                    <button class="user-action-btn" title="Theme" @click=${() => document.documentElement.toggleAttribute('data-theme-light')}>
+                    <button class="user-action-btn" title="Toggle dark/light theme" @click=${() => {
+                        import('../services/theme-boot.js').then((m) => m.toggleTheme());
+                    }}>
                         ◐
                     </button>
                     <button class="user-action-btn" title="Logout" @click=${() => this._navigate('/logout')}>

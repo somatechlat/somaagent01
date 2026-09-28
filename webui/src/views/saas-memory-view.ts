@@ -21,11 +21,44 @@ export interface Memory {
     tags: string[];
     score: number;
     timestamp: string;
+    coord?: string;
     metadata?: Record<string, unknown>;
 }
 
 type MemoryFilter = 'all' | 'conversation' | 'fact' | 'episode' | 'semantic';
 type MemorySort = 'newest' | 'oldest' | 'relevance';
+
+type SomaMemoryHit = {
+    text?: string;
+    content?: string | Record<string, unknown>;
+    coord?: string;
+    score?: number;
+    store?: string;
+    created_at?: string;
+    kind?: string;
+};
+
+function mapSomaHit(raw: SomaMemoryHit, index: number): Memory {
+    const payloadContent = typeof raw.content === 'object' && raw.content !== null ? raw.content : null;
+    const text =
+        raw.text ||
+        (typeof raw.content === 'string' ? raw.content : '') ||
+        (payloadContent ? String((payloadContent as Record<string, unknown>).text ?? (payloadContent as Record<string, unknown>).content ?? '') : '');
+    const kind = String(raw.kind || (payloadContent as Record<string, unknown> | null)?.kind || 'episodic');
+    const type: Memory['type'] =
+        kind === 'semantic' || kind === 'fact' ? 'semantic' :
+        kind === 'episode' || kind === 'episodic' ? 'episode' :
+        kind === 'conversation' ? 'conversation' : 'fact';
+    return {
+        id: raw.coord || `mem-${index}`,
+        type,
+        content: text,
+        tags: [],
+        score: typeof raw.score === 'number' ? raw.score : 0,
+        timestamp: raw.created_at || new Date().toISOString(),
+        coord: raw.coord,
+    };
+}
 
 @customElement('saas-memory-view')
 export class SaasMemoryView extends LitElement {
@@ -662,54 +695,18 @@ export class SaasMemoryView extends LitElement {
         this._isLoading = true;
 
         try {
-            // Call SomaBrain API - GET /api/v2/memory/
-            const response = await apiClient.get('/memory/') as { memories?: Memory[]; total?: number };
-            if (response.memories) {
-                this._memories = response.memories;
-                this._totalCount = response.total || this._memories.length;
-            } else {
-                // Demo data if API not available
-                this._memories = [
-                    {
-                        id: '1',
-                        type: 'conversation',
-                        content: 'User discussed PostgreSQL database optimization strategies including indexing, query planning, and connection pooling.',
-                        summary: 'PostgreSQL optimization discussion',
-                        tags: ['database', 'postgresql', 'optimization'],
-                        score: 0.92,
-                        timestamp: new Date().toISOString(),
-                    },
-                    {
-                        id: '2',
-                        type: 'fact',
-                        content: 'The production database is hosted on AWS RDS with 16GB RAM and 500GB storage.',
-                        tags: ['infrastructure', 'aws', 'database'],
-                        score: 0.88,
-                        timestamp: new Date(Date.now() - 86400000).toISOString(),
-                    },
-                    {
-                        id: '3',
-                        type: 'episode',
-                        content: 'Resolved a critical outage on Dec 20th by increasing connection pool size from 50 to 200.',
-                        tags: ['incident', 'resolution', 'database'],
-                        score: 0.95,
-                        timestamp: new Date(Date.now() - 172800000).toISOString(),
-                    },
-                    {
-                        id: '4',
-                        type: 'semantic',
-                        content: 'Docker containers provide isolation and reproducibility for application deployments.',
-                        tags: ['docker', 'containers', 'devops'],
-                        score: 0.78,
-                        timestamp: new Date(Date.now() - 259200000).toISOString(),
-                    },
-                ];
-                this._totalCount = this._memories.length;
-            }
+            // SomaBrain-backed list via Agent API — GET /api/v2/memory/
+            const response = await apiClient.get('/memory/') as {
+                memories?: SomaMemoryHit[];
+                total?: number;
+            };
+            const hits = Array.isArray(response?.memories) ? response.memories : [];
+            this._memories = hits.map(mapSomaHit);
+            this._totalCount = response.total || this._memories.length;
         } catch (error) {
             console.error('Failed to load memories:', error);
-            // Fallback to empty
             this._memories = [];
+            this._totalCount = 0;
         } finally {
             this._isLoading = false;
         }
@@ -733,14 +730,14 @@ export class SaasMemoryView extends LitElement {
 
         this._isLoading = true;
         try {
-            // Call SomaBrain /recall endpoint
-            const response = await apiClient.post('/memory/recall/', {
+            // SomaBrain semantic recall via Agent API
+            const response = await apiClient.post('/memory/recall', {
                 query: this._searchQuery,
-                limit: 50,
-            }) as { memories?: Memory[] };
-            if (response.memories) {
-                this._memories = response.memories;
-            }
+                top_k: 50,
+            }) as { memories?: SomaMemoryHit[] };
+            const hits = Array.isArray(response?.memories) ? response.memories : [];
+            this._memories = hits.map(mapSomaHit);
+            this._totalCount = this._memories.length;
         } catch (error) {
             console.error('Search failed:', error);
         } finally {
@@ -750,11 +747,8 @@ export class SaasMemoryView extends LitElement {
 
     private _setFilter(filter: MemoryFilter) {
         this._filter = filter;
-        // Filter loaded memories
         if (filter === 'all') {
-            this._loadMemories();
-        } else {
-            // Would call API with filter param
+            void this._loadMemories();
         }
     }
 
@@ -784,10 +778,16 @@ export class SaasMemoryView extends LitElement {
 
     private async _deleteMemory(e: Event, memory: Memory) {
         e.stopPropagation();
+        if (!memory.coord) {
+            console.error('Cannot delete memory without coord');
+            return;
+        }
         if (confirm('Delete this memory?')) {
             try {
-                await apiClient.delete(`/memory/${memory.id}/`);
+                // SomaBrain forget — POST /api/v2/memory/forget
+                await apiClient.post('/memory/forget', { coord: memory.coord });
                 this._memories = this._memories.filter(m => m.id !== memory.id);
+                this._totalCount = this._memories.length;
             } catch (error) {
                 console.error('Failed to delete memory:', error);
             }

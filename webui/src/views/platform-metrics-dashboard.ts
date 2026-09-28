@@ -341,6 +341,7 @@ export class PlatformMetricsDashboard extends LitElement {
   @state() private metrics: MetricSnapshot | null = null;
   @state() private sla: SLAStatus[] = [];
   @state() private loading = true;
+  @state() private error: string | null = null;
   @state() private activeTab: 'overview' | 'llm' | 'tools' | 'memory' | 'sla' = 'overview';
   @state() private lastRefresh: Date | null = null;
 
@@ -363,6 +364,7 @@ export class PlatformMetricsDashboard extends LitElement {
   }
 
   private async fetchMetrics() {
+    this.error = null;
     try {
       const [metricsRes, slaRes] = await Promise.all([
         fetch('/api/v2/core/observability/snapshot', { headers: this.getAuthHeaders() }),
@@ -372,78 +374,26 @@ export class PlatformMetricsDashboard extends LitElement {
       if (metricsRes.ok) {
         this.metrics = await metricsRes.json();
       } else {
-        // Generate mock data for demo
-        this.metrics = this.getMockMetrics();
+        this.metrics = null;
+        this.error = `Failed to load metrics (HTTP ${metricsRes.status})`;
       }
 
       if (slaRes.ok) {
         this.sla = await slaRes.json();
       } else {
-        this.sla = this.getMockSLA();
+        this.sla = [];
+        if (!this.error) this.error = `Failed to load SLA (HTTP ${slaRes.status})`;
       }
 
       this.lastRefresh = new Date();
     } catch (err) {
       console.error('Failed to fetch metrics:', err);
-      this.metrics = this.getMockMetrics();
-      this.sla = this.getMockSLA();
+      this.metrics = null;
+      this.sla = [];
+      this.error = 'Failed to load metrics';
     } finally {
       this.loading = false;
     }
-  }
-
-  private getMockMetrics(): MetricSnapshot {
-    return {
-      gateway: {
-        requests_total: 1247892,
-        requests_per_minute: 156,
-        latency_p50_ms: 45,
-        latency_p95_ms: 120,
-        latency_p99_ms: 450,
-        error_rate: 0.02,
-      },
-      llm: {
-        calls_total: 45600,
-        input_tokens_total: 45200000,
-        output_tokens_total: 12800000,
-        avg_latency_ms: 1200,
-        cost_estimate_usd: 3245.67,
-        models: {
-          'gpt-4o': { calls: 32000, tokens: 42000000 },
-          'claude-3.5': { calls: 13600, tokens: 16000000 },
-        },
-      },
-      tools: {
-        executions_total: 89000,
-        success_rate: 0.97,
-        avg_duration_ms: 350,
-        by_tool: {
-          'browser_agent': { calls: 23000, success_rate: 0.95, avg_ms: 450 },
-          'code_execute': { calls: 31000, success_rate: 0.99, avg_ms: 234 },
-          'image_gen': { calls: 12000, success_rate: 0.96, avg_ms: 3400 },
-          'web_search': { calls: 23000, success_rate: 0.98, avg_ms: 1200 },
-        },
-      },
-      memory: {
-        operations_total: 567000,
-        wal_lag_seconds: 0.5,
-        persistence_avg_ms: 15,
-        policy_decisions: 234000,
-      },
-      system: {
-        uptime_seconds: 1847293,
-        cpu_percent: 23,
-        memory_bytes: 4831838208,
-      },
-    };
-  }
-
-  private getMockSLA(): SLAStatus[] {
-    return [
-      { name: 'API Availability', target: 99.9, actual: 99.95, status: 'ok' },
-      { name: 'LLM Latency < 5s', target: 99.0, actual: 99.8, status: 'ok' },
-      { name: 'Memory Durability', target: 99.99, actual: 100, status: 'ok' },
-    ];
   }
 
   private formatNumber(n: number): string {
@@ -509,6 +459,7 @@ export class PlatformMetricsDashboard extends LitElement {
 
         <div class="content">
           ${this.loading ? html`<div class="loading">Loading metrics...</div>` : nothing}
+          ${this.error ? html`<div class="loading">${this.error}</div>` : nothing}
           ${!this.loading && this.activeTab === 'overview' ? this.renderOverview() : nothing}
           ${!this.loading && this.activeTab === 'llm' ? this.renderLLM() : nothing}
           ${!this.loading && this.activeTab === 'tools' ? this.renderTools() : nothing}

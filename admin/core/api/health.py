@@ -37,6 +37,34 @@ class HealthResponse(BaseModel):
     components: dict[str, ComponentHealth]
 
 
+class BrainConnectorHealth(BaseModel):
+    """Agent SomaBrain connector health (UI banner source)."""
+
+    connected: bool
+    circuit: str
+    base_url: str
+    last_success_at: Optional[float] = None
+    last_error: Optional[str] = None
+    latency_ms: Optional[float] = None
+
+
+@router.get(
+    "/brain-connector",
+    response=BrainConnectorHealth,
+    summary="SomaBrain connector health (circuit + ping)",
+)
+async def brain_connector_health(request) -> BrainConnectorHealth:
+    """Health of the agent's SomaBrain connector.
+
+    This is what the chat availability banner reflects — the connector
+    circuit state, not a raw SomaBrain probe from the browser.
+    """
+    from admin.core.somabrain_connector import get_soma_brain_connector
+
+    health = await get_soma_brain_connector().health()
+    return BrainConnectorHealth(**health.to_dict())
+
+
 class ReadinessResponse(BaseModel):
     """Readiness check response."""
 

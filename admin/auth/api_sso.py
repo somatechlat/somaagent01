@@ -11,6 +11,7 @@ from ninja import Router
 
 from admin.auth.api_schemas import SSOConfigRequest, SSOTestRequest
 from admin.common.messages import ErrorCode, SuccessCode, get_message
+from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["SSO"])
@@ -31,7 +32,7 @@ async def test_sso_connection(request, payload: SSOTestRequest):
                 return {"success": False, "detail": get_message(ErrorCode.SSO_ISSUER_URL_REQUIRED)}
 
             discovery_url = f"{issuer_url.rstrip('/')}/.well-known/openid-configuration"
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
                 response = await client.get(discovery_url)
                 if response.status_code == 200:
                     return {
@@ -47,16 +48,28 @@ async def test_sso_connection(request, payload: SSOTestRequest):
             server_url = config.get("server_url", "")
             if not server_url:
                 return {"success": False, "detail": get_message(ErrorCode.SSO_SERVER_URL_REQUIRED)}
+            # Fail closed: no LDAP bind is performed here. Never report a
+            # validated directory without a real bind.
             return {
-                "success": True,
-                "message": get_message(SuccessCode.SSO_LDAP_VALIDATED, server_url=server_url),
+                "success": False,
+                "detail": (
+                    "LDAP/AD validation is not implemented: no directory bind "
+                    "is performed by this endpoint."
+                ),
             }
 
         elif provider in ["okta", "azure", "ping", "onelogin"]:
             domain = config.get("domain") or config.get("tenant_id") or config.get("subdomain")
             if not domain:
                 return {"success": False, "detail": get_message(ErrorCode.SSO_DOMAIN_REQUIRED)}
-            return {"success": True, "message": get_message(SuccessCode.SSO_PROVIDER_VALIDATED, provider=provider.title())}
+            # Fail closed: no IdP round-trip is performed here.
+            return {
+                "success": False,
+                "detail": (
+                    f"{provider} validation is not implemented: "
+                    "no IdP connection test is performed by this endpoint."
+                ),
+            }
 
         else:
             return {"success": False, "detail": get_message(ErrorCode.SSO_UNKNOWN_PROVIDER, provider=provider)}
@@ -69,8 +82,14 @@ async def test_sso_connection(request, payload: SSOTestRequest):
 @router.post("/configure")
 async def configure_sso(request, payload: SSOConfigRequest):
     """Save SSO provider configuration."""
-    logger.info('SSO configured: provider=%s', payload.provider)
-    return {"success": True, "message": get_message(SuccessCode.SSO_CONFIGURED, provider=payload.provider)}
+    # Fail closed: no config store is wired to this endpoint yet.
+    return {
+        "success": False,
+        "detail": (
+            "SSO configuration persistence is not implemented: "
+            "no configuration store is wired to this endpoint."
+        ),
+    }
 
 
 __all__ = ["router"]

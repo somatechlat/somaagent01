@@ -12,16 +12,24 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 
 router = Router(tags=["tools"])
 logger = logging.getLogger(__name__)
+
+
+async def _load_registry():
+    """Build a ToolRegistry populated with the real built-in tools."""
+    from services.tool_executor.tool_registry import ToolRegistry
+
+    registry = ToolRegistry()
+    await registry.load_all_tools()
+    return registry
 
 
 # =============================================================================
@@ -57,51 +65,6 @@ class ToolExecution(BaseModel):
 
 
 # =============================================================================
-# AVAILABLE TOOLS
-# =============================================================================
-
-SYSTEM_TOOLS = {
-    "web_search": {
-        "name": "Web Search",
-        "description": "Search the web for information",
-        "category": "web",
-        "provider": "system",
-        "parameters": {"query": "string", "num_results": "int"},
-    },
-    "url_fetch": {
-        "name": "URL Fetch",
-        "description": "Fetch content from a URL",
-        "category": "web",
-        "provider": "system",
-        "parameters": {"url": "string"},
-    },
-    "code_execute": {
-        "name": "Code Execution",
-        "description": "Execute code in sandbox",
-        "category": "code",
-        "provider": "system",
-        "parameters": {"code": "string", "language": "string"},
-        "requires_approval": True,
-    },
-    "file_read": {
-        "name": "File Read",
-        "description": "Read file contents",
-        "category": "file",
-        "provider": "system",
-        "parameters": {"path": "string"},
-    },
-    "file_write": {
-        "name": "File Write",
-        "description": "Write content to file",
-        "category": "file",
-        "provider": "system",
-        "parameters": {"path": "string", "content": "string"},
-        "requires_approval": True,
-    },
-}
-
-
-# =============================================================================
 # ENDPOINTS - Tool Registry
 # =============================================================================
 
@@ -121,18 +84,21 @@ async def list_tools(
 
     PhD Dev: Tool catalog.
     """
-    tools = [
-        Tool(
-            tool_id=tool_id,
-            name=tool["name"],
-            description=tool["description"],
-            category=tool["category"],
-            provider=tool["provider"],
-            parameters=tool["parameters"],
-            requires_approval=tool.get("requires_approval", False),
-        ).dict()
-        for tool_id, tool in SYSTEM_TOOLS.items()
-    ]
+    registry = await _load_registry()
+    tools = []
+    for definition in registry.list():
+        schema = definition.handler.input_schema() or {}
+        tools.append(
+            Tool(
+                tool_id=definition.name,
+                name=definition.name,
+                description=definition.description or "",
+                category="custom",
+                provider="system",
+                parameters=schema,
+                requires_approval=False,
+            ).dict()
+        )
 
     return {
         "tools": tools,
@@ -159,19 +125,7 @@ async def register_tool(
 
     PhD Dev: Custom tool creation.
     """
-    tool_id = str(uuid4())
-
-    logger.info('Tool registered: %s (%s)', name, tool_id)
-
-    return Tool(
-        tool_id=tool_id,
-        name=name,
-        description=description,
-        category=category,
-        provider=provider,
-        parameters=parameters,
-        requires_approval=requires_approval,
-    )
+    raise HttpError(501, "Custom tool registration is not implemented: no persistent tool store.")
 
 
 @router.get(
@@ -182,24 +136,19 @@ async def register_tool(
 )
 async def get_tool(request, tool_id: str) -> Tool:
     """Get tool details."""
-    if tool_id in SYSTEM_TOOLS:
-        tool = SYSTEM_TOOLS[tool_id]
-        return Tool(
-            tool_id=tool_id,
-            name=tool["name"],
-            description=tool["description"],
-            category=tool["category"],
-            provider=tool["provider"],
-            parameters=tool["parameters"],
-        )
+    registry = await _load_registry()
+    definition = registry.get(tool_id)
+    if definition is None:
+        raise HttpError(404, f"Tool '{tool_id}' not found")
 
+    schema = definition.handler.input_schema() or {}
     return Tool(
-        tool_id=tool_id,
-        name="Unknown",
-        description="",
+        tool_id=definition.name,
+        name=definition.name,
+        description=definition.description or "",
         category="custom",
-        provider="custom",
-        parameters={},
+        provider="system",
+        parameters=schema,
     )
 
 
@@ -215,10 +164,7 @@ async def update_tool(
     requires_approval: Optional[bool] = None,
 ) -> dict:
     """Update tool settings."""
-    return {
-        "tool_id": tool_id,
-        "updated": True,
-    }
+    raise HttpError(501, "Tool settings update is not implemented: no persistent tool store.")
 
 
 @router.delete(
@@ -228,12 +174,7 @@ async def update_tool(
 )
 async def delete_tool(request, tool_id: str) -> dict:
     """Delete a custom tool."""
-    logger.warning('Tool deleted: %s', tool_id)
-
-    return {
-        "tool_id": tool_id,
-        "deleted": True,
-    }
+    raise HttpError(501, "Tool deletion is not implemented: no persistent tool store.")
 
 
 # =============================================================================
@@ -258,16 +199,17 @@ async def execute_tool(
     PhD Dev: Tool invocation.
     DevOps: Execution limits.
     """
-    execution_id = str(uuid4())
+    registry = await _load_registry()
+    definition = registry.get(tool_id)
+    if definition is None:
+        raise HttpError(404, f"Tool '{tool_id}' not found")
 
-    logger.info('Tool execution: %s (%s)', tool_id, execution_id)
-
-    # In production: queue or execute based on approval requirements
-
+    result = await definition.run(parameters)
     return {
-        "execution_id": execution_id,
+        "execution_id": f"{tool_id}:{agent_id}:{conversation_id}",
         "tool_id": tool_id,
-        "status": "pending",
+        "status": "success",
+        "output": result,
     }
 
 
@@ -282,15 +224,7 @@ async def get_execution(
     execution_id: str,
 ) -> ToolExecution:
     """Get execution status."""
-    return ToolExecution(
-        execution_id=execution_id,
-        tool_id="web_search",
-        agent_id="agent-1",
-        conversation_id="conv-1",
-        status="success",
-        input_params={},
-        started_at=timezone.now().isoformat(),
-    )
+    raise HttpError(501, "Execution history is not implemented: no execution store.")
 
 
 @router.post(
@@ -306,12 +240,7 @@ async def approve_execution(
 
     Security Auditor: Human-in-the-loop.
     """
-    logger.info('Execution approved: %s', execution_id)
-
-    return {
-        "execution_id": execution_id,
-        "status": "approved",
-    }
+    raise HttpError(501, "Execution approval is not implemented: no execution store.")
 
 
 @router.post(
@@ -325,12 +254,7 @@ async def reject_execution(
     reason: str,
 ) -> dict:
     """Reject a pending execution."""
-    logger.info('Execution rejected: %s', execution_id)
-
-    return {
-        "execution_id": execution_id,
-        "status": "rejected",
-    }
+    raise HttpError(501, "Execution rejection is not implemented: no execution store.")
 
 
 # =============================================================================
@@ -367,16 +291,7 @@ async def register_mcp_server(
     url: Optional[str] = None,
 ) -> dict:
     """Register an MCP server."""
-    server_id = str(uuid4())
-
-    logger.info('MCP server registered: %s', name)
-
-    return {
-        "server_id": server_id,
-        "name": name,
-        "transport": transport,
-        "registered": True,
-    }
+    raise HttpError(501, "MCP server registration is not implemented: no MCP client host.")
 
 
 @router.get(

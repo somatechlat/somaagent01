@@ -94,7 +94,6 @@ class GenerateResponseInput:
     temperature: float = 0.7
     max_tokens: int = 2048
     base_url: Optional[str] = None
-    analysis_metadata: Dict[str, Any] = field(default_factory=dict)
     base_metadata: Dict[str, Any] = field(default_factory=dict)
     tools_enabled: bool = False
 
@@ -322,7 +321,6 @@ class GenerateResponseUseCase:
             metadata = dict(input_data.base_metadata)
             metadata["source"] = "llm"
             metadata["status"] = "streaming"
-            metadata["analysis"] = input_data.analysis_metadata
             metadata["stream_index"] = stream_index
 
             event = {

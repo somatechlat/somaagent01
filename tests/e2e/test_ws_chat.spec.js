@@ -59,7 +59,7 @@ test.describe('WebSocket Chat E2E', () => {
                             ws.send(JSON.stringify({
                                 type: 'chat.message',
                                 payload: {
-                                    content: 'Hello! What can you help me with?',
+                                    content: 'What can you help me with?',
                                     conversation_id: params.convId,
                                 },
                             }));

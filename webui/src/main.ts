@@ -16,6 +16,10 @@ import './views/index';
 
 // Import styles
 import './styles/tokens.css';
+import './styles/material-symbols.css';
+
+// Theme: light default + dark toggle (localStorage)
+import './services/theme-boot.js';
 
 // Routing logic
 const app = document.getElementById('app');
@@ -48,7 +52,8 @@ if (app) {
 
         if (path === '/login') {
             if (isAuthenticated) {
-                window.history.replaceState(null, '', '/saas/dashboard');
+                // Home is the chat workspace
+                window.history.replaceState(null, '', '/chat');
                 renderRoute();
                 return;
             }
@@ -83,6 +88,13 @@ if (app) {
 
         // Clear app content before rendering new view
         app.innerHTML = '';
+
+        // Home `/` is the chat workspace (product hero).
+        if (path === '/' || path === '' || path === '/index.html') {
+            await import('./views/saas-chat.js');
+            app.appendChild(document.createElement('saas-chat'));
+            return;
+        }
 
         // 3. SAAS Routes
         if (path === '/saas/dashboard' || path === '/saas' || path === '/platform') {
@@ -375,7 +387,7 @@ if (app) {
 
 
 
-        if (path === '/chat') {
+        if (path === '/chat' || path === '/chat/' || path.startsWith('/chat/') || path === '/saas/chat') {
             await import('./views/saas-chat.js');
             app.appendChild(document.createElement('saas-chat'));
             return;
@@ -396,6 +408,18 @@ if (app) {
                 await import('./views/saas-memory-view.js');
                 app.appendChild(document.createElement('saas-memory-view'));
             }
+            return;
+        }
+
+        if (path === '/settings/models' || path === '/agent/models') {
+            await import('./views/saas-settings-models.js');
+            app.appendChild(document.createElement('saas-settings-models'));
+            return;
+        }
+
+        if (path === '/settings/channels' || path === '/agent/channels') {
+            await import('./views/saas-settings-channels.js');
+            app.appendChild(document.createElement('saas-settings-channels'));
             return;
         }
 
@@ -439,9 +463,9 @@ if (app) {
 
 
 
-        // Default: New SAAS Dashboard
-        await import('./views/saas-platform-dashboard.js');
-        app.appendChild(document.createElement('saas-platform-dashboard'));
+        // Default: chat workspace (never an admin dashboard as home)
+        await import('./views/saas-chat.js');
+        app.appendChild(document.createElement('saas-chat'));
     };
 
     // Initial Render

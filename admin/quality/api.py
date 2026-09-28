@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -401,11 +402,7 @@ async def update_thresholds(request, thresholds: dict) -> dict:
 
     Security Auditor: Admin only.
     """
-    # In production: persist to database
-    return {
-        "updated": True,
-        "thresholds": thresholds,
-    }
+    raise HttpError(501, "Threshold persistence is not implemented: no settings store is wired.")
 
 
 # =============================================================================
@@ -475,9 +472,9 @@ Respond with ONLY a JSON object in this format:
 
     except Exception as e:
         logger.error('Quality evaluation error: %s', e)
+        raise HttpError(502, f"Quality evaluation unavailable: {e}")
 
-    # Graceful degradation
-    return QualityScore(criterion=criterion, score=0.7, feedback="Evaluation unavailable")
+    raise HttpError(502, "Quality evaluation failed: LLM returned no parsable score.")
 
 
 def _generate_critique(

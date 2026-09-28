@@ -103,7 +103,7 @@ export class SaasWelcomeDashboard extends LitElement {
 
         .action-desc {
             font-size: 12px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
         }
 
         .health-section {
@@ -163,7 +163,7 @@ export class SaasWelcomeDashboard extends LitElement {
 
         .health-value {
             font-size: 12px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             min-width: 80px;
             text-align: right;
         }

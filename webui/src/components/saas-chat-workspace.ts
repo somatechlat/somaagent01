@@ -1,15 +1,34 @@
 /**
  * SomaAgent01 — Chat Workspace Wrapper
- * Embeds existing saas-chat functionality within the workspace layout
+ * Embeds real chat streaming within the workspace layout.
+ *
+ * Transport: REST `POST /api/v2/chat/conversations/{id}/messages` (sync mode,
+ * admin/chat/api/chat.py). No placeholder replies — failures surface as
+ * system messages.
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
+import type { ComposerSendDetail } from './saas-composer.js';
+import type { ToolCallStep } from './saas-tool-timeline.js';
+import './saas-message.js';
+import './saas-composer.js';
+
+interface WorkspaceMessage {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: string;
+    tools?: ToolCallStep[];
+}
 
 @customElement('saas-chat-workspace')
 export class SaasChatWorkspace extends LitElement {
     @state() private _hasConversation = false;
-    @state() private _messages: Array<{role: string; content: string}> = [];
+    @state() private _messages: WorkspaceMessage[] = [];
+    @state() private _isStreaming = false;
+    @state() private _conversationId = '';
+    @state() private _agentId = '';
 
     static styles = css`
         :host {
@@ -17,7 +36,7 @@ export class SaasChatWorkspace extends LitElement {
             flex-direction: column;
             flex: 1;
             min-height: 0;
-            background: var(--aaas-bg-void, #0a0a0a);
+            background: var(--aaas-bg-void, #f5f5f5);
         }
 
         .chat-area {
@@ -35,51 +54,6 @@ export class SaasChatWorkspace extends LitElement {
             gap: 16px;
         }
 
-        .message {
-            display: flex;
-            gap: 12px;
-            max-width: 85%;
-        }
-
-        .message.user {
-            align-self: flex-end;
-            flex-direction: row-reverse;
-        }
-
-        .message-bubble {
-            padding: 12px 16px;
-            border-radius: var(--aaas-radius-lg, 12px);
-            font-size: 14px;
-            line-height: 1.6;
-            word-wrap: break-word;
-        }
-
-        .message.user .message-bubble {
-            background: var(--aaas-bg-active, #1a1a1a);
-            color: var(--aaas-text-primary, #ffffff);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.assistant .message-bubble {
-            background: var(--aaas-bg-card, #1e1e1e);
-            color: var(--aaas-text-primary, #ffffff);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-bottom-left-radius: 4px;
-        }
-
-        .message-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
-            background: var(--aaas-bg-hover, #141414);
-        }
-
         .typing-indicator {
             display: flex;
             align-items: center;
@@ -91,7 +65,7 @@ export class SaasChatWorkspace extends LitElement {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: var(--aaas-text-muted, #6b6b6b);
+            background: var(--aaas-text-muted, #999999);
             animation: typingBounce 1.4s ease-in-out infinite;
         }
 
@@ -102,48 +76,96 @@ export class SaasChatWorkspace extends LitElement {
             0%, 60%, 100% { transform: translateY(0); }
             30% { transform: translateY(-6px); }
         }
-
-        .confidence-bar {
-            height: 3px;
-            background: var(--aaas-bg-hover, #141414);
-            border-radius: var(--aaas-radius-full, 9999px);
-            margin-top: 8px;
-            overflow: hidden;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            border-radius: var(--aaas-radius-full, 9999px);
-            transition: width 500ms ease;
-        }
     `;
 
     connectedCallback() {
         super.connectedCallback();
-        this.addEventListener('send-message', ((e: CustomEvent) => {
-            this._hasConversation = true;
-            this._messages.push({ role: 'user', content: e.detail.text });
-            this.requestUpdate();
-            setTimeout(() => {
-                this._messages.push({ 
-                    role: 'assistant', 
-                    content: 'I received your message. This is a placeholder response while the WebSocket integration is being connected.' 
-                });
-                this.requestUpdate();
-            }, 1500);
+
+        this.addEventListener('send-message', ((e: CustomEvent<ComposerSendDetail>) => {
+            void this._handleSend(e.detail);
         }) as EventListener);
 
         this.addEventListener('clear-chat', () => {
             this._messages = [];
             this._hasConversation = false;
-            this.requestUpdate();
+            this._conversationId = '';
         });
 
         this.addEventListener('new-conversation', () => {
             this._messages = [];
             this._hasConversation = true;
-            this.requestUpdate();
+            this._conversationId = '';
         });
+    }
+
+    private _pushSystem(content: string) {
+        this._messages = [...this._messages, {
+            role: 'system',
+            content,
+            timestamp: new Date().toISOString(),
+        }];
+        this._hasConversation = true;
+    }
+
+    private async _ensureConversation(): Promise<string | null> {
+        if (this._conversationId) return this._conversationId;
+        try {
+            const data = await apiClient.post<{ id?: string }>('/chat/conversations', {
+                agent_id: this._agentId || undefined,
+            });
+            const id = data?.id ?? null;
+            if (id) {
+                this._conversationId = id;
+                return id;
+            }
+            this._pushSystem('Failed to create conversation');
+            return null;
+        } catch (err) {
+            console.error('[SaasChatWorkspace] create conversation failed', err);
+            this._pushSystem('Failed to create conversation');
+            return null;
+        }
+    }
+
+    private async _handleSend(detail: ComposerSendDetail) {
+        const text = (detail?.text ?? '').trim();
+        if (!text && (!detail.attachments || detail.attachments.length === 0)) return;
+        if (this._isStreaming) {
+            this._pushSystem('Still finishing the previous turn — try again shortly');
+            return;
+        }
+
+        this._hasConversation = true;
+        this._messages = [...this._messages, {
+            role: 'user',
+            content: text,
+            timestamp: new Date().toISOString(),
+        }];
+
+        this._isStreaming = true;
+        try {
+            const conversationId = await this._ensureConversation();
+            if (!conversationId) {
+                this._isStreaming = false;
+                return;
+            }
+
+            const response = await apiClient.post<{ content?: string; model?: string }>(
+                `/chat/conversations/${conversationId}/messages`,
+                { content: text, stream: false },
+            );
+
+            this._messages = [...this._messages, {
+                role: 'assistant',
+                content: response?.content ?? '',
+                timestamp: new Date().toISOString(),
+            }];
+        } catch (err) {
+            console.error('[SaasChatWorkspace] send failed', err);
+            this._pushSystem('Message failed — the chat API is unavailable');
+        } finally {
+            this._isStreaming = false;
+        }
     }
 
     render() {
@@ -152,34 +174,37 @@ export class SaasChatWorkspace extends LitElement {
                 <div style="flex:1;overflow:auto;">
                     <saas-welcome-dashboard></saas-welcome-dashboard>
                 </div>
-                <saas-composer></saas-composer>
+                <saas-composer .busy=${this._isStreaming}></saas-composer>
             `;
         }
 
         return html`
             <div class="chat-area">
                 <div class="messages">
-                    ${this._messages.map(m => html`
-                        <div class="message ${m.role}">
-                            <div class="message-avatar">${m.role === 'user' ? '👤' : '🤖'}</div>
-                            <div class="message-bubble">
-                                ${m.content}
-                                ${m.role === 'assistant' ? html`
-                                    <div class="confidence-bar">
-                                        <div class="confidence-fill" style="width:94%;background:var(--aaas-success,#22c55e)"></div>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
+                    ${this._messages.map((m) => html`
+                        <saas-message
+                            message-role=${m.role}
+                            .text=${m.content}
+                            .timestamp=${m.timestamp}
+                            .tools=${m.tools ?? []}
+                        ></saas-message>
                     `)}
-                    <div class="typing-indicator" style="display:none">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                    </div>
+                    ${this._isStreaming ? html`
+                        <div class="typing-indicator">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
-            <saas-composer></saas-composer>
+            <saas-composer .busy=${this._isStreaming}></saas-composer>
         `;
+    }
+}
+
+declare global {
+    interface HTMLElementTagNameMap {
+        'saas-chat-workspace': SaasChatWorkspace;
     }
 }

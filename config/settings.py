@@ -56,6 +56,68 @@ MEM_HTTP_TIMEOUT = float(os.environ.get("MEM_HTTP_TIMEOUT", "5.0"))
 SFM_NAMESPACE = os.environ.get("SFM_NAMESPACE", "api_ns")
 SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE", "default")
 
+# ---------------------------------------------------------------------------
+# MEMORY TOOLS / SEAM — fully configurable. No hardcoded tool parameters.
+# Read via services.common.memory_contract.get_memory_setting().
+# ---------------------------------------------------------------------------
+MEM_RECALL_TOP_K = int(os.environ.get("MEM_RECALL_TOP_K", "8"))
+MEM_PROXIMITY_TOP_K = int(os.environ.get("MEM_PROXIMITY_TOP_K", "10"))
+MEM_HISTORY_LIMIT = int(os.environ.get("MEM_HISTORY_LIMIT", "20"))
+MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
+MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
+MEM_DEFAULT_SALIENCE = float(os.environ.get("MEM_DEFAULT_SALIENCE", "0.5"))
+MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
+MEM_WRITE_TIMEOUT_S = float(os.environ.get("MEM_WRITE_TIMEOUT_S", "10.0"))
+MEM_RECALL_TIMEOUT_S = float(os.environ.get("MEM_RECALL_TIMEOUT_S", "2.5"))
+MEM_HISTORY_TIMEOUT_S = float(os.environ.get("MEM_HISTORY_TIMEOUT_S", "2.5"))
+
+# Degraded-mode Kafka queue (memory-replicator replay → SomaBrain).
+MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
+MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
+
+# Cognitive / tool feedback rewards (SomaBrain FeedbackRequest.utility).
+TOOL_REWARD_SUCCESS = float(os.environ.get("TOOL_REWARD_SUCCESS", "1.0"))
+TOOL_REWARD_FAILURE = float(os.environ.get("TOOL_REWARD_FAILURE", "0.0"))
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = float(
+    os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", "0.5")
+)
+
+# ---------------------------------------------------------------------------
+# LLM / HTTP / MODEL runtime tunables — Django settings is the authority.
+# ---------------------------------------------------------------------------
+LLM_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_LLM_CONNECT_TIMEOUT", "5.0"))
+LLM_READ_TIMEOUT_S = float(os.environ.get("SA01_LLM_READ_TIMEOUT", "15.0"))
+LLM_MAX_RETRIES = int(os.environ.get("SA01_LLM_MAX_RETRIES", "1"))
+LLM_RETRY_BASE_DELAY_S = float(os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S", "0.4"))
+LLM_RETRY_BACKOFF_CAP_S = float(os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S", "2.0"))
+LLM_RETRY_AFTER_CAP_S = float(os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S", "3.0"))
+
+HTTP_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_HTTP_CONNECT_TIMEOUT", "5.0"))
+HTTP_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_READ_TIMEOUT", "10.0"))
+HTTP_SLOW_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT", "30.0"))
+
+DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
+DEFAULT_CHAT_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
+DEFAULT_CHAT_MODEL_NAME = os.environ.get("SA01_DEFAULT_CHAT_MODEL_NAME", "")
+DEFAULT_UTIL_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_UTIL_MODEL_PROVIDER", "openrouter")
+DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
+DEFAULT_EMBED_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_EMBED_MODEL_PROVIDER", "huggingface")
+DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
+
+# Circuit breaker knobs (SomaBrain / external service resilience).
+CB_FAILURE_THRESHOLD = int(os.environ.get("CB_FAILURE_THRESHOLD", "5"))
+CB_RESET_TIMEOUT_S = float(os.environ.get("CB_RESET_TIMEOUT_S", "30.0"))
+
+# Speech realtime (endpoint is topology → env/URL).
+SPEECH_REALTIME_MODEL = os.environ.get("SPEECH_REALTIME_MODEL", "")
+SPEECH_REALTIME_VOICE = os.environ.get("SPEECH_REALTIME_VOICE", "")
+SPEECH_REALTIME_ENDPOINT = os.environ.get("SPEECH_REALTIME_ENDPOINT", "")
+
+# AgentIQ knobs (Capsule-overridable; see SOMA-SETTINGS-MODEL-001 §7.2).
+AGENTIQ_INTELLIGENCE_LEVEL = int(os.environ.get("AGENTIQ_INTELLIGENCE_LEVEL", "5"))
+AGENTIQ_AUTONOMY_LEVEL = int(os.environ.get("AGENTIQ_AUTONOMY_LEVEL", "5"))
+AGENTIQ_RESOURCE_BUDGET = float(os.environ.get("AGENTIQ_RESOURCE_BUDGET", "0.10"))
+
 # Redis
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "20379"))
@@ -71,6 +133,7 @@ INSTALLED_APPS = [
     "channels",
     "admin.core",
     "admin.aaas",
+    "admin.bridges",
     "admin.chat",
     "admin.agents",
     "admin.llm",
@@ -79,6 +142,7 @@ INSTALLED_APPS = [
     "admin.features",
     "admin.gateway",
     "admin.memory",
+    "admin.modules",
     "admin.multimodal",
     "admin.notifications",
     "admin.orchestrator",

@@ -10,25 +10,25 @@
 
 :root {
     /* ==========================================================================
-       COLORS - Background
+       COLORS - Background (LIGHT default — never dark-first)
        ========================================================================== */
-    --aaas-bg-void: #0f172a;
-    --aaas-bg-base: #1e293b;
-    --aaas-surface: rgba(30, 41, 59, 0.85);
-    --aaas-surface-hover: rgba(51, 65, 85, 0.9);
+    --aaas-bg-void: #f5f5f5;
+    --aaas-bg-base: #ffffff;
+    --aaas-surface: rgba(255, 255, 255, 0.9);
+    --aaas-surface-hover: rgba(250, 250, 250, 0.95);
 
     /* ==========================================================================
        COLORS - Text
        ========================================================================== */
-    --aaas-text-main: #e2e8f0;
-    --aaas-text-dim: #64748b;
-    --aaas-text-bright: #f8fafc;
+    --aaas-text-main: #1a1a1a;
+    --aaas-text-dim: #666666;
+    --aaas-text-bright: #111111;
 
     /* ==========================================================================
        COLORS - Accent
        ========================================================================== */
-    --aaas-accent: #94a3b8;
-    --aaas-accent-hover: #cbd5e1;
+    --aaas-accent: #1a1a1a;
+    --aaas-accent-hover: #333333;
 
     /* ==========================================================================
        COLORS - Semantic
@@ -41,9 +41,9 @@
     /* ==========================================================================
        COLORS - Borders
        ========================================================================== */
-    --aaas-border-color: rgba(255, 255, 255, 0.05);
-    --aaas-border-hover: rgba(255, 255, 255, 0.1);
-    --aaas-glass-border: rgba(255, 255, 255, 0.08);
+    --aaas-border-color: rgba(0, 0, 0, 0.08);
+    --aaas-border-hover: rgba(0, 0, 0, 0.14);
+    --aaas-glass-border: rgba(0, 0, 0, 0.08);
 
     /* ==========================================================================
        TYPOGRAPHY
@@ -278,13 +278,12 @@ h6 {
 }
 
 /* ==========================================================================
-   SOMATECH DARK THEME — Primary Brand Theme
-   Ecuadorian AI. Enterprise. Dark-first.
+   SOMATECH DARK THEME — opt-in only via [data-theme="dark"]
+   Default is light. Never put :root in this selector.
    ========================================================================== */
 
 [data-theme="dark"],
-.dark-theme,
-:root {
+.dark-theme {
     /* Backgrounds — Deep void palette */
     --aaas-bg-void: #0a0a0a;
     --aaas-bg-page: #0a0a0a;
@@ -295,10 +294,10 @@ h6 {
     --aaas-surface: #141414;
     --aaas-surface-hover: #1a1a1a;
 
-    /* Text — Crisp hierarchy */
+    /* Text — Crisp hierarchy (muted meets WCAG AA on #0a0a0a for small text) */
     --aaas-text-primary: #ffffff;
     --aaas-text-secondary: #a1a1a1;
-    --aaas-text-muted: #6b6b6b;
+    --aaas-text-muted: #8b8b8b;
     --aaas-text-inverse: #0a0a0a;
     --aaas-text-main: #ffffff;
     --aaas-text-dim: #6b6b6b;

@@ -867,7 +867,15 @@ export class SaasLogin extends LitElement {
             }
 
             const result = await response.json();
-            // Auth token is stored in httpOnly cookie by backend; do not cache locally.
+            // Cookie is httpOnly for API calls. WS auth needs the raw JWT in
+            // Sec-WebSocket-Protocol (JS cannot read httpOnly cookies).
+            if (result?.token) {
+                try {
+                    sessionStorage.setItem('saas_ws_token', result.token);
+                } catch {
+                    /* ignore quota */
+                }
+            }
             if (result.user) {
                 localStorage.setItem('saas_user', JSON.stringify(result.user));
             }

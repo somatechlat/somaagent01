@@ -94,7 +94,6 @@ async def test_build_context_returns_all_five_lanes():
         user_message="Hello",
         history=[{"role": "user", "content": "Previous message"}],
         brain_client=None,
-        memory_client=None,
     )
 
     assert isinstance(context, BuiltContext)
@@ -130,7 +129,6 @@ async def test_build_context_respects_token_budget():
         user_message=long_message,
         history=long_history,
         brain_client=None,
-        memory_client=None,
         budget_override=budget_override,
     )
 
@@ -175,7 +173,6 @@ async def test_memory_lane_includes_recalled_memories_when_brain_available():
         user_message="Tell me about pineapples",
         history=[],
         brain_client=client,
-        memory_client=None,
     )
 
     assert "pineapples" in context.memory or "[No relevant memories]" in context.memory
@@ -196,7 +193,6 @@ async def test_memory_lane_fallback_when_brain_unavailable():
         user_message="Hello",
         history=[{"role": "user", "content": "Previous message"}],
         brain_client=None,
-        memory_client=None,
     )
 
     assert "[Memory recall unavailable]" in context.memory

@@ -12,6 +12,7 @@ import logging
 from typing import Optional
 
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -165,11 +166,7 @@ async def validate_mfa_login(request, payload: MFAVerifyRequest) -> dict:
 )
 async def get_mfa_status(request) -> MFAStatusResponse:
     """Get current MFA status for the user."""
-    # In production: query user record
-    return MFAStatusResponse(
-        mfa_enabled=False,
-        mfa_type=None,
-    )
+    raise HttpError(501, "MFA status is not implemented: user record store is not wired.")
 
 
 @router.post(

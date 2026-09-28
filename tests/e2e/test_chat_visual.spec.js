@@ -49,7 +49,7 @@ test('full chat UI flow', async ({ page, request }) => {
         console.log(`  Textarea: disabled=${disabled}, placeholder="${placeholder}"`);
 
         if (!disabled) {
-            await textarea.fill('Hello! What can you help me with?');
+            await textarea.fill('What can you help me with?');
             await page.screenshot({ path: '/tmp/soma_03_typed.png', fullPage: true });
             console.log('✓ Message typed!');
 
@@ -70,7 +70,7 @@ test('full chat UI flow', async ({ page, request }) => {
                 // Check textarea again
                 const disabled2 = await textarea.evaluate(e => e.disabled);
                 if (!disabled2) {
-                    await textarea.fill('Hello! What can you help me with?');
+                    await textarea.fill('What can you help me with?');
                     await page.keyboard.press('Enter');
                     await page.waitForTimeout(15000);
                     await page.screenshot({ path: '/tmp/soma_04_response.png', fullPage: true });

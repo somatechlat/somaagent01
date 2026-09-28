@@ -37,6 +37,7 @@ from admin.auth.api_schemas import (
 )
 from admin.common.auth import decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError, UnauthorizedError
+from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -84,7 +85,7 @@ async def get_token(request, payload: TokenRequest):
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             if payload.grant_type == "authorization_code" and payload.code:
                 resp = await client.post(
                     token_url,
@@ -140,7 +141,10 @@ async def get_token(request, payload: TokenRequest):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
-            cookie_secure = not settings.DEBUG
+            cookie_secure = bool(
+                request.is_secure()
+                or request.META.get("HTTP_X_FORWARDED_PROTO", "").lower() == "https"
+            )
             data = {
                 "access_token": token_data["access_token"],
                 "refresh_token": token_data.get("refresh_token"),
@@ -176,7 +180,7 @@ async def refresh_token(request, payload: RefreshRequest):
 
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             resp = await client.post(
                 token_url,
                 data={
@@ -222,7 +226,10 @@ async def refresh_token(request, payload: RefreshRequest):
                 )
                 session_id = session.session_id
 
-            cookie_secure = not settings.DEBUG
+            cookie_secure = bool(
+                request.is_secure()
+                or request.META.get("HTTP_X_FORWARDED_PROTO", "").lower() == "https"
+            )
             data = {
                 "access_token": token_data["access_token"],
                 "refresh_token": token_data.get("refresh_token"),
@@ -262,7 +269,7 @@ async def get_current_user(request):
     try:
         payload = await decode_token(token)
         config = get_keycloak_config()
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             resp = await client.get(
                 f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/userinfo",
                 headers={"Authorization": f"Bearer {token}"},
@@ -295,7 +302,7 @@ async def logout(request):
     config = get_keycloak_config()
     logout_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/logout"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             if refresh_token:
                 await client.post(
                     logout_url, data={"client_id": config.client_id, "refresh_token": refresh_token}
@@ -349,7 +356,7 @@ async def login_with_email(request, payload: LoginRequest):
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             resp = await client.post(
                 token_url,
                 data={
@@ -385,7 +392,13 @@ async def login_with_email(request, payload: LoginRequest):
 
                 from django.conf import settings
 
-                cookie_secure = not settings.DEBUG
+                # Secure cookies only on real HTTPS. Local HTTP (Docker/dev)
+                # must use Secure=False or browsers drop the session and /chat
+                # bounces to login.
+                fwd_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "")
+                cookie_secure = bool(
+                    request.is_secure() or fwd_proto.lower() == "https"
+                )
 
                 data = {
                     "token": token_data["access_token"],
@@ -460,7 +473,7 @@ async def register_user(request, payload: RegisterRequest):
     users_url = f"{config.server_url}/admin/realms/{config.realm}/users"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             # Get admin access token
             admin_resp = await client.post(
                 admin_token_url,
@@ -610,7 +623,11 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 
 
 def _set_auth_cookies(response, token_data: dict, session_id: str, secure: bool):
-    """Set authentication cookies on response."""
+    """Set authentication cookies on response.
+
+    ``secure`` must be False on plain HTTP (localhost Docker) or browsers
+    drop the session and /chat redirects to login.
+    """
     access_ttl = token_data.get("expires_in", 900)
     refresh_ttl = token_data.get("refresh_expires_in", 86400)
     response.set_cookie(
@@ -643,9 +660,7 @@ def _set_auth_cookies(response, token_data: dict, session_id: str, secure: bool)
 from admin.auth.api_oauth import router as oauth_router
 from admin.auth.api_sso import router as sso_router
 from admin.auth.mfa import router as mfa_router
-from admin.auth.password_reset import router as password_reset_router
 
 router.add_router("/sso", sso_router)
 router.add_router("/oauth", oauth_router)
 router.add_router("/mfa", mfa_router)
-router.add_router("/password", password_reset_router)

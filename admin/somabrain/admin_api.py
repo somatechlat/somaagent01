@@ -15,10 +15,12 @@ from typing import Optional
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
+from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 router = Router(tags=["admin"])
 logger = logging.getLogger(__name__)
@@ -92,9 +94,10 @@ def require_admin(request) -> None:
 
     Security Auditor: Critical access control.
     """
-    # In production: check request.auth.has_permission("admin")
-    # For now, allow all authenticated users
-    pass
+    from admin.core.permissions import has_permission
+
+    if not has_permission(request.auth, "admin"):
+        raise BadRequestError("Admin permission required")
 
 
 # =============================================================================
@@ -129,7 +132,7 @@ async def list_services(request) -> ServiceListResponse:
         "Kafka": "http://localhost:9092/health",
     }
 
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
         for name, endpoint in service_endpoints.items():
             try:
                 response = await client.get(endpoint)
@@ -167,16 +170,7 @@ async def get_service_status(request, service_name: str) -> ServiceInfo:
     Per Phase 6.4: get_service_status()
     """
     require_admin(request)
-
-    # In production: query service directly
-    return ServiceInfo(
-        name=service_name,
-        status="running",
-        healthy=True,
-        uptime_seconds=86400.0,
-        version="1.0.0",
-        last_check=timezone.now().isoformat(),
-    )
+    raise HttpError(501, "Service status is not implemented: no service registry is wired.")
 
 
 @router.post(
@@ -204,16 +198,7 @@ async def service_action(
 
     logger.warning('ADMIN ACTION: %s service %s (force=%s)', payload.action, service_name, payload.force)
 
-    # In production: execute via systemd/docker/k8s
-    # subprocess.run(["systemctl", payload.action, service_name])
-
-    return ServiceActionResponse(
-        service=service_name,
-        action=payload.action,
-        success=True,
-        message=f"Service {service_name} {payload.action}ed successfully",
-        timestamp=timezone.now().isoformat(),
-    )
+    raise HttpError(501, "Service action is not implemented: no process manager is wired.")
 
 
 # =============================================================================
@@ -292,13 +277,7 @@ async def sleep_status_all(request) -> dict:
     Per Phase 6.4: sleep_status_all()
     """
     require_admin(request)
-
-    # In production: query all agents
-    return {
-        "agents": [],
-        "total_sleeping": 0,
-        "total_awake": 0,
-    }
+    raise HttpError(501, "Sleep status is not implemented: no agent store is wired.")
 
 
 # =============================================================================
@@ -318,17 +297,7 @@ async def get_features(request) -> FeatureFlags:
     Per Phase 6.4: get_features()
     """
     require_admin(request)
-
-    return FeatureFlags(
-        features={
-            "voice_enabled": True,
-            "mfa_required": False,
-            "memory_sync": True,
-            "cognitive_threads": True,
-            "admin_impersonation": True,
-            "lago_billing": True,
-        }
-    )
+    raise HttpError(501, "Feature flags are not implemented here: use /config feature-flag API.")
 
 
 @router.patch(
@@ -347,9 +316,4 @@ async def update_features(request, flags: dict) -> dict:
 
     logger.warning('ADMIN ACTION: Feature flags updated: %s', flags)
 
-    # In production: persist to database
-    return {
-        "success": True,
-        "updated_flags": flags,
-        "timestamp": timezone.now().isoformat(),
-    }
+    raise HttpError(501, "Feature flag persistence is not implemented: use /config feature-flag API.")

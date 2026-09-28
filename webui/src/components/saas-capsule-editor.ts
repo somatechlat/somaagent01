@@ -32,7 +32,7 @@ export class SaasCapsuleEditor extends LitElement {
 
         .capsule-name {
             font-size: 13px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             font-weight: 400;
         }
 
@@ -49,7 +49,7 @@ export class SaasCapsuleEditor extends LitElement {
             border-radius: var(--aaas-radius-md, 8px);
             font-size: 12px;
             font-weight: 500;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             cursor: pointer;
             transition: all 150ms ease;
             border: none;
@@ -75,7 +75,7 @@ export class SaasCapsuleEditor extends LitElement {
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             margin-bottom: 12px;
         }
 
@@ -140,7 +140,7 @@ export class SaasCapsuleEditor extends LitElement {
 
         .slider-value {
             font-size: 12px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             min-width: 40px;
             text-align: right;
             font-variant-numeric: tabular-nums;
@@ -161,7 +161,7 @@ export class SaasCapsuleEditor extends LitElement {
 
         .neuro-name {
             font-size: 12px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             margin-bottom: 8px;
         }
 
@@ -206,7 +206,7 @@ export class SaasCapsuleEditor extends LitElement {
 
         .btn-primary {
             background: var(--aaas-accent, #e8e4dc);
-            color: var(--aaas-bg-void, #0a0a0a);
+            color: var(--aaas-bg-void, #f5f5f5);
         }
 
         .btn-primary:hover {

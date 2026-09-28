@@ -1,13 +1,15 @@
 """Process message use case.
 
 This use case orchestrates the complete message processing pipeline:
-1. Validate and analyze incoming message
-2. Check policy enforcement
-3. Store user message to memory
-4. Build context for LLM
-5. Generate response
-6. Store assistant response to memory
-7. Publish response event
+1. Check policy enforcement
+2. Store user message to memory (SomaBrain)
+3. Recall memory via SomaBrain semantic search
+4. Generate response
+5. Store assistant response to memory
+6. Publish response event
+
+Understanding/intent is never keyword- or regex-classified here. The LLM
+understands the message natively; SomaBrain supplies cognitive memory.
 
 All dependencies are injected via constructor following Clean Architecture.
 """
@@ -62,66 +64,6 @@ class ProcessMessageOutput:
     error: Optional[str] = None
 
 
-@dataclass
-class AnalysisResult:
-    """Message analysis result."""
-
-    intent: str
-    sentiment: str
-    tags: List[str]
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Execute to dict."""
-
-        return {"intent": self.intent, "sentiment": self.sentiment, "tags": self.tags}
-
-
-class MessageAnalyzer:
-    """Analyze message intent, sentiment, and tags."""
-
-    def analyze(self, message: str) -> AnalysisResult:
-        """Execute analyze.
-
-        Args:
-            message: The message.
-        """
-
-        text = message.strip()
-        lower = text.lower()
-
-        # Intent detection
-        if not text:
-            intent = "empty"
-        elif lower.startswith(("how", "what", "why", "when", "where", "who")) or text.endswith("?"):
-            intent = "question"
-        elif any(kw in lower for kw in ["create", "build", "implement", "write"]):
-            intent = "action_request"
-        elif any(kw in lower for kw in ["fix", "bug", "issue", "error"]):
-            intent = "problem_report"
-        else:
-            intent = "statement"
-
-        # Tag detection
-        tags: List[str] = []
-        if any(w in lower for w in ["code", "python", "function", "class"]):
-            tags.append("code")
-        if any(w in lower for w in ["deploy", "docker", "kubernetes", "infra"]):
-            tags.append("infrastructure")
-        if any(w in lower for w in ["test", "validate", "qa"]):
-            tags.append("testing")
-
-        # Sentiment detection
-        negatives = {"fail", "broken", "crash", "error", "issue"}
-        positives = {"great", "thanks", "awesome", "good"}
-        sentiment = "neutral"
-        if any(w in lower for w in negatives):
-            sentiment = "negative"
-        elif any(w in lower for w in positives):
-            sentiment = "positive"
-
-        return AnalysisResult(intent=intent, sentiment=sentiment, tags=tags)
-
-
 class ProcessMessageUseCase:
     """Use case for processing conversation messages.
 
@@ -138,7 +80,6 @@ class ProcessMessageUseCase:
         context_builder: ContextBuilderProtocol | None = None,
         response_generator: ResponseGeneratorProtocol | None = None,
         outbound_topic: str = "",
-        analyzer: Optional[MessageAnalyzer] = None,
     ):
         """Initialize the instance."""
 
@@ -148,7 +89,6 @@ class ProcessMessageUseCase:
         self._publisher = publisher
         self._response_generator = response_generator
         self._outbound_topic = outbound_topic
-        self._analyzer = analyzer or MessageAnalyzer()
 
     async def execute(self, input_data: ProcessMessageInput) -> ProcessMessageOutput:
         """Execute the message processing pipeline."""
@@ -157,19 +97,10 @@ class ProcessMessageUseCase:
         tenant = input_data.tenant
         persona_id = input_data.persona_id
 
-        # Step 1: Analyze message
-        raw_message = event.get("message", "")
-        analysis = self._analyzer.analyze(
-            raw_message if isinstance(raw_message, str) else str(raw_message)
-        )
-        analysis_dict = analysis.to_dict()
-
-        # Enrich metadata with analysis
         enriched_metadata = dict(event.get("metadata", {}))
-        enriched_metadata["analysis"] = analysis_dict
         event["metadata"] = enriched_metadata
 
-        # Step 2: Check policy
+        # Step 1: Check policy
         allowed = await self._policy_enforcer.check_message_policy(
             tenant=tenant,
             persona_id=persona_id,
@@ -178,22 +109,22 @@ class ProcessMessageUseCase:
         )
 
         if not allowed:
-            return await self._handle_policy_denial(event, session_id, persona_id, analysis_dict)
+            return await self._handle_policy_denial(event, session_id, persona_id)
 
-        # Step 3: Store user message
+        # Step 2: Store user message
         try:
             await self._session_repo.append_event(session_id, {"type": "user", **event})
         except Exception as e:
             if "UniqueViolation" not in str(type(e).__name__):
                 LOGGER.warning('Failed to store user event: %s', e)
 
-        # Step 4: Store to memory (best effort)
+        # Step 3: Store to memory (best effort)
         await self._store_user_memory(event, session_id, tenant, enriched_metadata)
 
-        # Step 5: Build context and generate response
+        # Step 4: Build context and generate response
         try:
             response_text, usage, path, confidence = await self._generate_response(
-                event, session_id, persona_id, tenant, enriched_metadata, analysis_dict
+                event, session_id, persona_id, tenant, enriched_metadata
             )
 
             if os.environ.get("SA01_ENABLE_MULTIMODAL_CAPABILITIES", "false").lower() == "true":
@@ -208,21 +139,20 @@ class ProcessMessageUseCase:
                 path="error",
             )
 
-        # Step 6: Build and publish response event
+        # Step 5: Build and publish response event
         response_event = self._build_response_event(
             session_id,
             persona_id,
             response_text,
             usage,
             enriched_metadata,
-            analysis_dict,
             confidence,
         )
 
-        # Step 7: Store assistant response
+        # Step 6: Store assistant response
         await self._session_repo.append_event(session_id, {"type": "assistant", **response_event})
 
-        # Step 8: Publish response
+        # Step 7: Publish response
         await self._publisher.publish(
             self._outbound_topic,
             response_event,
@@ -231,7 +161,7 @@ class ProcessMessageUseCase:
             tenant=tenant,
         )
 
-        # Step 9: Store assistant to memory (best effort)
+        # Step 8: Store assistant to memory (best effort)
         await self._store_assistant_memory(
             response_text, session_id, persona_id, tenant, response_event.get("metadata", {})
         )
@@ -250,7 +180,6 @@ class ProcessMessageUseCase:
         event: Dict[str, Any],
         session_id: str,
         persona_id: Optional[str],
-        analysis_dict: Dict[str, Any],
     ) -> ProcessMessageOutput:
         """Handle policy-denied message."""
         policy_record = {
@@ -261,7 +190,6 @@ class ProcessMessageUseCase:
             "message": event.get("message", ""),
             "metadata": {
                 "source": "policy",
-                "analysis": analysis_dict,
                 "policy": {"action": "conversation.send", "status": "denied"},
             },
         }
@@ -275,7 +203,6 @@ class ProcessMessageUseCase:
             "message": get_message(ErrorCode.POLICY_BLOCKED),
             "metadata": {
                 "source": "policy",
-                "analysis": analysis_dict,
                 "policy": {"action": "conversation.send", "status": "denied"},
             },
         }
@@ -361,7 +288,6 @@ class ProcessMessageUseCase:
         persona_id: Optional[str],
         tenant: str,
         metadata: Dict[str, Any],
-        analysis_dict: Dict[str, Any],
     ) -> tuple[str, Dict[str, int], str, Optional[float]]:
         """Generate LLM response.
 
@@ -373,7 +299,7 @@ class ProcessMessageUseCase:
         history_messages = self._history_to_messages(history)
 
         # Build messages inline
-        system_prompt = self._build_system_prompt(analysis_dict)
+        system_prompt = self._build_system_prompt()
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
         # Recall memory snippets via memory_client (SomaBrainClient) if available
@@ -412,7 +338,6 @@ class ProcessMessageUseCase:
             persona_id=persona_id,
             messages=messages,
             tenant=tenant,
-            analysis_metadata=analysis_dict,
             base_metadata=metadata,
         )
         assert self._response_generator is not None
@@ -437,14 +362,13 @@ class ProcessMessageUseCase:
                     messages.append({"role": "assistant", "content": str(content)})
         return messages
 
-    def _build_system_prompt(self, analysis_dict: Dict[str, Any]) -> str:
-        """Build system prompt from analysis."""
-        tags = ", ".join(analysis_dict.get("tags", [])) or "none"
+    def _build_system_prompt(self) -> str:
+        """Build the system prompt. No fake classification — the LLM understands
+        the message natively and SomaBrain supplies cognitive memory."""
         return (
-            "The following classification is for internal guidance only. "
-            "Do not repeat or mention it in your reply. "
-            f"Classification: intent={analysis_dict.get('intent', 'general')}; "
-            f"sentiment={analysis_dict.get('sentiment', 'neutral')}; tags={tags}."
+            "You are a production AI agent with long-term memory provided by "
+            "SomaBrain. Use any [Memory] context above when it is relevant. "
+            "Answer the user directly and accurately."
         )
 
     def _build_response_event(
@@ -454,14 +378,12 @@ class ProcessMessageUseCase:
         response_text: str,
         usage: Dict[str, int],
         metadata: Dict[str, Any],
-        analysis_dict: Dict[str, Any],
         confidence: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Build response event for publishing."""
         response_metadata = dict(metadata)
         response_metadata["source"] = "llm"
         response_metadata["status"] = "completed"
-        response_metadata["analysis"] = analysis_dict
         response_metadata["usage"] = usage
         if confidence is not None:
             response_metadata["confidence"] = confidence

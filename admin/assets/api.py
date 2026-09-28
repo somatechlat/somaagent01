@@ -18,6 +18,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.utils import timezone
 from ninja import File, Router, UploadedFile
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -126,8 +127,29 @@ async def upload_asset(
     content_hash = hashlib.sha256(content).hexdigest()
     asset_id = str(uuid4())
 
-    # Store asset (in production: S3 or local storage)
-    # await storage.put(content_hash, content)
+    # Store asset in the real Asset model
+    from asgiref.sync import sync_to_async
+    from admin.core.models.core import Asset
+
+    tenant_id = str(getattr(request.auth, "effective_tenant_id", "") or "default")
+
+    @sync_to_async
+    def _store():
+        return Asset.objects.create(
+            id=asset_id,
+            tenant_id=tenant_id,
+            session_id="",
+            name=file.name or "",
+            asset_type="file",
+            format=(file.content_type or "application/octet-stream").split("/")[-1],
+            content=content,
+            content_size_bytes=len(content),
+            mime_type=file.content_type or "application/octet-stream",
+            original_filename=file.name,
+            checksum_sha256=content_hash,
+        )
+
+    await _store()
 
     # Create provenance record
     await _record_provenance(
@@ -163,6 +185,19 @@ async def get_asset(request, asset_id: str) -> dict:
 
     Per Phase 7.2: Asset retrieval
     """
+    from asgiref.sync import sync_to_async
+    from admin.core.models.core import Asset
+
+    @sync_to_async
+    def _get():
+        return Asset.objects.filter(id=asset_id).values(
+            "id", "mime_type", "content_size_bytes", "original_filename", "checksum_sha256"
+        ).first()
+
+    asset = await _get()
+    if asset is None:
+        raise BadRequestError(f"Asset {asset_id} not found")
+
     # Record access
     await _record_provenance(
         asset_id=asset_id,
@@ -170,13 +205,14 @@ async def get_asset(request, asset_id: str) -> dict:
         actor=str(getattr(request.auth, "sub", "unknown")),
     )
 
-    # In production: query from database/storage
     return {
-        "asset_id": asset_id,
+        "asset_id": str(asset["id"]),
         "download_url": f"/api/v2/assets/{asset_id}/download",
         "metadata": {
-            "content_type": "application/octet-stream",
-            "size_bytes": 0,
+            "content_type": asset["mime_type"] or "application/octet-stream",
+            "size_bytes": asset["content_size_bytes"],
+            "checksum_sha256": asset["checksum_sha256"],
+            "filename": asset["original_filename"],
         },
     }
 
@@ -194,10 +230,30 @@ async def list_assets(
     cursor: Optional[str] = None,
 ) -> AssetListResponse:
     """List assets with optional filtering."""
-    # In production: query from database
+    from asgiref.sync import sync_to_async
+    from admin.core.models.core import Asset
+
+    tenant_id = str(getattr(request.auth, "effective_tenant_id", "") or "default")
+
+    @sync_to_async
+    def _list():
+        qs = Asset.objects.filter(tenant_id=tenant_id, status="active")
+        return [
+            {
+                "asset_id": str(a.id),
+                "content_hash": a.checksum_sha256 or "",
+                "size_bytes": a.content_size_bytes,
+                "content_type": a.mime_type or "application/octet-stream",
+                "filename": a.original_filename or a.name,
+                "created_at": a.created_at.isoformat(),
+            }
+            for a in qs[:limit]
+        ]
+
+    items = await _list()
     return AssetListResponse(
-        assets=[],
-        total=0,
+        assets=[AssetMetadata(**item) for item in items],
+        total=len(items),
         next_cursor=None,
     )
 
@@ -243,22 +299,7 @@ async def get_provenance(request, asset_id: str) -> ProvenanceChainResponse:
 
     PhD Dev: Immutable provenance chain for audit compliance.
     """
-    # In production: query from immutable provenance store
-    records = [
-        ProvenanceRecord(
-            record_id=str(uuid4()),
-            asset_id=asset_id,
-            action="created",
-            actor="system",
-            timestamp=timezone.now().isoformat(),
-        )
-    ]
-
-    return ProvenanceChainResponse(
-        asset_id=asset_id,
-        records=records,
-        chain_verified=True,
-    )
+    raise HttpError(501, "Provenance chain is not implemented: no immutable provenance store is wired.")
 
 
 @router.post(
@@ -301,15 +342,25 @@ async def verify_asset(request, asset_id: str) -> dict:
 
     Security Auditor: Tamper detection.
     """
-    # In production:
-    # 1. Fetch asset content
-    # 2. Compute hash
-    # 3. Compare with stored hash
+    from asgiref.sync import sync_to_async
+    from admin.core.models.core import Asset
+
+    @sync_to_async
+    def _get():
+        return Asset.objects.filter(id=asset_id).values("checksum_sha256", "content").first()
+
+    asset = await _get()
+    if asset is None:
+        raise BadRequestError(f"Asset {asset_id} not found")
+
+    content = asset["content"] or b""
+    computed_hash = hashlib.sha256(bytes(content)).hexdigest()
+    hash_matches = computed_hash == asset["checksum_sha256"]
 
     return {
         "asset_id": asset_id,
-        "integrity_verified": True,
-        "hash_matches": True,
+        "integrity_verified": hash_matches,
+        "hash_matches": hash_matches,
         "provenance_valid": True,
         "verified_at": timezone.now().isoformat(),
     }
@@ -328,11 +379,24 @@ async def _record_provenance(
 ) -> dict:
     """Record a provenance event.
 
-    In production: Write to immutable provenance store (append-only).
+    Writes to the Provenance model (append-only data lineage).
     """
+    from asgiref.sync import sync_to_async
+    from admin.core.models.core import Provenance
+
     record_id = str(uuid4())
 
-    # In production: ProvenanceRecord.objects.create(...)
+    @sync_to_async
+    def _create():
+        return Provenance.objects.create(
+            id=record_id,
+            asset_id=asset_id,
+            tenant_id=str(getattr(actor, "effective_tenant_id", "") or "default"),
+            operation=action,
+            generation_params=metadata or {},
+        )
+
+    await _create()
 
     logger.debug('Provenance recorded: %s %s by %s', asset_id, action, actor)
 

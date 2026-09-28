@@ -98,16 +98,32 @@ def _get_ui_setting(
 
 
 def _env_or_db(env_key: str, agent_id: str, db_key: str, default: str = "") -> str:
-    """Get value from environment or database.
+    """Get value for agent behaviour / model settings.
 
-    Priority: ENV > DB > default
+    Priority (SOMA-SETTINGS-MODEL-001 §5 — normative):
+        AgentSetting DB  >  Django settings  >  schema default
+    Environment is reserved for URLs/hosts/ports (and only consulted when the
+    key is a topology key). Secrets belong in Vault (AgentSetting.is_secret).
     """
-    env_val = os.environ.get(env_key)
-    if env_val:
-        return env_val
     db_val = _get_agent_setting(agent_id, db_key)
-    if db_val is not None:
+    if db_val is not None and str(db_val) != "":
         return str(db_val)
+    try:
+        from django.conf import settings as django_settings
+
+        dj = getattr(django_settings, db_key, None)
+        if dj is not None and str(dj) != "":
+            return str(dj)
+        # Uppercase Django alias for the same key (e.g. chat_model_name → DEFAULT_CHAT_MODEL_NAME)
+        dj_alias = getattr(django_settings, db_key.upper(), None)
+        if dj_alias is not None and str(dj_alias) != "":
+            return str(dj_alias)
+    except Exception:
+        pass
+    # Topology keys (URLs/hosts/ports) may come from env (L3).
+    env_val = os.environ.get(env_key)
+    if env_val and any(tok in db_key.lower() or tok in env_key.lower() for tok in ("url", "host", "port", "endpoint", "base")):
+        return env_val
     return default
 
 

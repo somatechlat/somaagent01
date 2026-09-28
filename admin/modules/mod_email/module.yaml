@@ -1,0 +1,9 @@
+# Capsule Module manifest — see admin/modules/manifest.py for the contract.
+name: mod_email
+title: Email Channel
+description: Email bridge Capsule (IMAP poll, SMTP send, thread context)
+version: 1.0.0
+settings_sections: [agent, external]
+permissions: [network, vault:read]
+always_enabled: false
+feature_flag: bridge_email

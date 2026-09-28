@@ -51,7 +51,12 @@ from admin.llm.services.litellm_helpers import (
 )
 
 # Local imports from split modules
-from admin.llm.services.litellm_schemas import ChatChunk, ChatGenerationResult
+from admin.llm.services.litellm_schemas import (
+    ChatChunk,
+    ChatGenerationResult,
+    ToolCallDeltasChunk,
+    ToolCallsChunk,
+)
 
 
 # Lazy imports for Django models
@@ -171,11 +176,13 @@ class LiteLLMChatWrapper(SimpleChatModel):
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
-    ) -> Iterator[ChatGenerationChunk]:
+    ) -> Iterator[Any]:
         """Synchronous streaming completion with timeout and bounded retries.
 
         Retries only apply before the first chunk is yielded; once output has
         been delivered a failure propagates rather than replaying content.
+        Yields text as ChatGenerationChunk and native tool traffic as
+        ToolCallDeltasChunk / ToolCallsChunk.
         """
         msgs = self._convert_messages(messages)
         apply_rate_limiter_sync(self.a0_model_conf, str(msgs))
@@ -198,10 +205,14 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     )
                     parsed = _parse_chunk(resp)
                     output = result.add_chunk(parsed)
+                    if output.get("tool_call_deltas"):
+                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
                         )
+                    if result.tool_calls:
+                        yield ToolCallsChunk(tool_calls=result.tool_calls)
                     return
                 for chunk in completion(
                     model=self.model_name,
@@ -213,10 +224,14 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     got_any_chunk = True
                     parsed = _parse_chunk(chunk)
                     output = result.add_chunk(parsed)
+                    if output.get("tool_call_deltas"):
+                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
                         )
+                if result.tool_calls:
+                    yield ToolCallsChunk(tool_calls=result.tool_calls)
                 return
             except Exception as e:
                 if got_any_chunk:
@@ -238,11 +253,14 @@ class LiteLLMChatWrapper(SimpleChatModel):
         stop: Optional[List[str]] = None,
         run_manager: Optional[AsyncCallbackManagerForLLMRun] = None,
         **kwargs: Any,
-    ) -> AsyncIterator[ChatGenerationChunk]:
+    ) -> AsyncIterator[Any]:
         """Asynchronous streaming completion with timeout and bounded retries.
 
         Retries only apply before the first chunk is yielded; once output has
         been delivered a failure propagates rather than replaying content.
+        Yields text as ChatGenerationChunk and native tool traffic as
+        ToolCallDeltasChunk / ToolCallsChunk. ``tools=`` in kwargs is passed
+        straight through to LiteLLM (native function calling).
         When Groq is asked for ``response_format`` while streaming, the call
         drops to a non-stream completion (single chunk out) — see
         ``prepare_completion_kwargs``.
@@ -268,10 +286,14 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     )
                     parsed = _parse_chunk(resp)
                     output = result.add_chunk(parsed)
+                    if output.get("tool_call_deltas"):
+                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
                         )
+                    if result.tool_calls:
+                        yield ToolCallsChunk(tool_calls=result.tool_calls)
                     return
                 response = await acompletion(
                     model=self.model_name,
@@ -284,10 +306,14 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     got_any_chunk = True
                     parsed = _parse_chunk(chunk)
                     output = result.add_chunk(parsed)
+                    if output.get("tool_call_deltas"):
+                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
                         )
+                if result.tool_calls:
+                    yield ToolCallsChunk(tool_calls=result.tool_calls)
                 return
             except Exception as e:
                 if got_any_chunk:

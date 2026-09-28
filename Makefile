@@ -7,7 +7,7 @@
 # Status: Pre-Production
 # ============================================================================
 
-.PHONY: help dev dev-worker test check migrate build build-standalone up down clean health
+.PHONY: help dev dev-worker test check docs-check migrate build build-standalone up down clean health
 
 # Default target
 help:
@@ -28,6 +28,7 @@ help:
 	@echo "Test:"
 	@echo "  make test         - Run tests"
 	@echo "  make check        - Django system check"
+	@echo "  make docs-check   - ISO document control & register compliance"
 	@echo "  make migrate      - Run Django migrations"
 	@echo ""
 	@echo "Clean:"
@@ -76,6 +77,10 @@ test:
 check:
 	@echo "Running Django system check..."
 	DJANGO_SETTINGS_MODULE=services.gateway.settings python manage.py check
+
+docs-check:
+	@echo "Checking ISO document control & register compliance..."
+	python scripts/check_docs.py
 
 migrate:
 	@echo "Running Django migrations..."

@@ -14,6 +14,7 @@ from ninja import Router, Schema
 from admin.auth.api_helpers import determine_redirect_path, update_last_login
 from admin.common.auth import decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError
+from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["OAuth"])
@@ -89,7 +90,7 @@ async def oauth_callback(request, code: str, state: str):
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             response = await client.post(
                 token_url,
                 data={

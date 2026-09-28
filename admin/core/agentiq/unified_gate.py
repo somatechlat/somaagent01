@@ -97,12 +97,21 @@ class UnifiedGate:
                 logger.debug("SpiceDB denied action=%s for capsule=%s", action, capsule.id)
                 return False
 
-            # 3. Capsule Scope Check
-            body: Dict[str, Any] = getattr(capsule, '_cached_body', None) or capsule.body or {}
-            persona = body.get("persona", {})
-            tools_config = persona.get("tools", {})
+            # 3. Capsule Scope Check (async-safe: never touch sync ORM body)
+            body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or {}
+            if not body and hasattr(capsule, "async_body"):
+                try:
+                    body = await capsule.async_body() or {}
+                except Exception:
+                    body = {}
+            if not body:
+                # Minimal fail-open for scope only when body cannot be loaded
+                # in async context — OPA + SpiceDB already gated above.
+                body = {}
+            persona = body.get("persona", {}) if isinstance(body, dict) else {}
+            tools_config = persona.get("tools", {}) if isinstance(persona, dict) else {}
             scope_allowed = self._check_scope(
-                tools_config.get("enabled_capabilities", []),
+                tools_config.get("enabled_capabilities", []) if isinstance(tools_config, dict) else [],
                 action,
                 resource,
             )

@@ -72,13 +72,22 @@ export class WebSocketClient {
         }
         this._pendingUrl = url;
 
-        const token = this._getCookie('access_token');
+        // Prefer ephemeral WS token (sessionStorage). httpOnly cookies are
+        // invisible to JS, so subprotocol auth cannot use document.cookie.
+        let token = this._getCookie('access_token');
+        if (!token) {
+            try {
+                token = sessionStorage.getItem('saas_ws_token');
+            } catch {
+                token = null;
+            }
+        }
         if (token && !this._fallbackWithoutSubprotocol) {
             // P3-04: Pass token via Sec-WebSocket-Protocol header
             this.ws = new WebSocket(url, [`soma-auth.${token}`]);
             this._usingSubprotocol = true;
         } else {
-            // Fallback: cookie-only auth (backward compatible with old servers)
+            // Fallback: cookie-only auth (sent automatically if browser allows)
             this.ws = new WebSocket(url);
             this._usingSubprotocol = false;
         }

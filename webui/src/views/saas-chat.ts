@@ -1,18 +1,29 @@
 /**
- * SomaAgent SaaS — Chat View
- * Per UI_SCREENS_SRS.md Section 5 and AGENT_USER_UI_SRS.md Section 7
+ * SomaAgent SaaS — Chat Workspace (Agent Zero parity)
  *
- * VIBE COMPLIANT:
- * - Real Lit implementation
- * - WebSocket streaming support
- * - Minimal white/black design per UI_STYLE_GUIDE.md
- * - 6 Agent Modes: STD, TRN, ADM, DEV, RO, DGR
+ * 3-column workspace shell:
+ *   Left  — brand, New Chat, searchable conversation list (rename/delete/export),
+ *           user card (/auth/me), nav to Memory / Models / Channels / Settings
+ *   Center — topbar (title, model, pause/stop/reset), message stream + tool
+ *           timeline, welcome empty state, composer
+ *   Right  — canvas rail: Memory / Files / Channel panels (real APIs)
+ *
+ * Transport: WebSocket /ws/v2/chat/:id + REST /chat/conversations*.
+ * Dark-first, AAAS token palette. No mocks, no placeholders.
  */
 
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
 import { WebSocketClient } from '../services/websocket-client.js';
 import { apiClient } from '../services/api-client.js';
+import type { ToolCallStep, ToolStepStatus } from '../components/saas-tool-timeline.js';
+import type { ComposerSendDetail } from '../components/saas-composer.js';
+import type { ChatControlAction, ConnectionStatus } from '../components/saas-chat-topbar.js';
+import { formatRelative } from '../utils/markdown.js';
+import '../components/saas-message.js';
+import '../components/saas-tool-timeline.js';
+import '../components/saas-chat-topbar.js';
+import '../components/saas-composer.js';
 
 export interface ChatMessage {
     id: string;
@@ -21,6 +32,10 @@ export interface ChatMessage {
     timestamp: string;
     confidence?: number;
     streaming?: boolean;
+    tools?: ToolCallStep[];
+    stopped?: boolean;
+    error?: string;
+    attachments?: { name: string; type?: string; size?: number }[];
 }
 
 export interface Conversation {
@@ -31,7 +46,44 @@ export interface Conversation {
     messageCount: number;
 }
 
+interface ToolCallPayload {
+    conversation_id?: string;
+    response_id?: string;
+    iteration?: number;
+    index?: number;
+    tool_call_id?: string | null;
+    name?: string;
+    arguments_delta?: string;
+    arguments?: Record<string, unknown> | null;
+    result?: unknown;
+    ok?: boolean;
+    error?: string | null;
+    duration_ms?: number;
+    status?: string;
+}
+
+interface MemoryItem {
+    id: string;
+    type: string;
+    content: string;
+    summary?: string;
+    tags?: string[];
+    score?: number;
+    timestamp?: string;
+}
+
+interface ChannelItem {
+    id: string;
+    kind: string;
+    status: string;
+    capsule_id?: string | null;
+}
+
 type AgentMode = 'STD' | 'TRN' | 'ADM' | 'DEV' | 'RO' | 'DGR';
+type CanvasTab = 'memory' | 'files' | 'channel';
+
+const ICON = (name: string, size = 20) =>
+    html`<span class="material-symbols-outlined" style="font-size:${size}px" aria-hidden="true">${name}</span>`;
 
 @customElement('saas-chat')
 export class SaasChat extends LitElement {
@@ -39,21 +91,25 @@ export class SaasChat extends LitElement {
         :host {
             display: flex;
             height: 100vh;
-            background: var(--saas-bg-page, #f5f5f5);
-            font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            color: var(--saas-text-primary, #1a1a1a);
+            background: var(--aaas-bg-void, #f5f5f5);
+            font-family: var(--aaas-font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+            color: var(--aaas-text-primary, #ffffff);
+            overflow: hidden;
         }
 
         * {
             box-sizing: border-box;
         }
 
-        /* Material Symbols - Required for Shadow DOM */
+        *:focus-visible {
+            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline-offset: 2px;
+        }
+
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -65,184 +121,357 @@ export class SaasChat extends LitElement {
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ========================================
-           SIDEBAR
-           ======================================== */
+        button {
+            font: inherit;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: inherit;
+        }
+
+        input, textarea, select {
+            font: inherit;
+        }
+
+        /* =========================
+           LEFT SIDEBAR
+           ========================= */
         .sidebar {
-            width: 280px;
-            background: var(--saas-bg-card, #ffffff);
-            border-right: 1px solid var(--saas-border-light, #e0e0e0);
+            width: 272px;
+            background: var(--aaas-bg-sidebar, #ffffff);
+            border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            min-height: 0;
         }
 
         .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+            padding: 16px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            min-width: 0;
         }
 
         .brand-icon {
-            width: 36px;
-            height: 36px;
-            background: #1a1a1a;
+            width: 32px;
+            height: 32px;
+            background: var(--aaas-accent, #e8e4dc);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .brand-icon svg {
-            width: 18px;
-            height: 18px;
-            stroke: white;
+            width: 16px;
+            height: 16px;
+            stroke: var(--aaas-bg-void, #f5f5f5);
             fill: none;
         }
 
         .brand-name {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
+            letter-spacing: -0.01em;
         }
 
-        /* New Conversation Button */
         .new-chat-btn {
-            margin: 16px 20px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            background: #1a1a1a;
-            color: white;
-            border: none;
-            font-size: 14px;
-            font-weight: 500;
+            margin: 4px 16px 12px;
+            padding: 10px 14px;
+            border-radius: var(--aaas-radius-md, 8px);
+            background: var(--aaas-accent, #e8e4dc);
+            color: var(--aaas-bg-void, #f5f5f5);
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: background 0.15s ease;
+            transition: background 150ms ease, transform 150ms ease;
+            width: calc(100% - 32px);
         }
 
         .new-chat-btn:hover {
-            background: #333;
+            background: var(--aaas-accent-hover, #ffffff);
         }
 
-        /* Conversation List */
+        .new-chat-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .search-wrap {
+            padding: 0 16px 10px;
+            position: relative;
+        }
+
+        .search-wrap .material-symbols-outlined {
+            position: absolute;
+            left: 26px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: var(--aaas-text-muted, #999999);
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 10px 8px 34px;
+            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-bg-card, #1e1e1e);
+            color: var(--aaas-text-primary, #ffffff);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 150ms ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--aaas-border-medium, rgba(255,255,255,0.16));
+        }
+
+        .search-input::placeholder {
+            color: var(--aaas-text-muted, #999999);
+        }
+
         .conversations-section {
-            padding: 0 12px;
+            padding: 0 8px;
             flex: 1;
             overflow-y: auto;
+            min-height: 0;
         }
 
         .section-label {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
-            color: var(--saas-text-muted, #999);
-            padding: 16px 8px 8px;
+            color: var(--aaas-text-muted, #999999);
+            padding: 10px 10px 6px;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.08em;
         }
 
         .conversation-item {
-            padding: 12px;
-            border-radius: 8px;
+            position: relative;
+            padding: 9px 10px;
+            border-radius: var(--aaas-radius-md, 8px);
             cursor: pointer;
-            transition: background 0.1s ease;
-            margin-bottom: 4px;
+            transition: background 120ms ease;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }
 
-        .conversation-item:hover {
-            background: var(--saas-bg-hover, #fafafa);
+        .conversation-item:hover,
+        .conversation-item:focus-within {
+            background: var(--aaas-bg-hover, #141414);
         }
 
         .conversation-item.active {
-            background: var(--saas-bg-active, #f0f0f0);
+            background: var(--aaas-bg-active, #1a1a1a);
+        }
+
+        .conversation-item .conv-body {
+            flex: 1;
+            min-width: 0;
         }
 
         .conversation-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--aaas-text-primary, #ffffff);
+        }
+
+        .conversation-meta {
+            font-size: 11px;
+            color: var(--aaas-text-muted, #999999);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .conversation-preview {
+        .conv-actions {
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 120ms ease;
+            flex-shrink: 0;
+        }
+
+        .conversation-item:hover .conv-actions,
+        .conversation-item:focus-within .conv-actions {
+            opacity: 1;
+        }
+
+        .conv-action {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--aaas-text-muted, #999999);
+            transition: background 120ms ease, color 120ms ease;
+        }
+
+        .conv-action:hover {
+            background: var(--aaas-bg-active, #1a1a1a);
+            color: var(--aaas-text-primary, #ffffff);
+        }
+
+        .conv-action.danger:hover {
+            color: var(--aaas-danger, #ef4444);
+        }
+
+        .conv-action .material-symbols-outlined {
+            font-size: 15px;
+        }
+
+        .rename-row {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .rename-input {
+            flex: 1;
+            min-width: 0;
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--aaas-info, #3b82f6);
+            background: var(--aaas-bg-card, #1e1e1e);
+            color: var(--aaas-text-primary, #ffffff);
             font-size: 12px;
-            color: var(--saas-text-secondary, #666);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            outline: none;
         }
 
-        /* Quick Links */
-        .quick-links {
-            padding: 16px 12px;
-            border-top: 1px solid var(--saas-border-light, #e0e0e0);
+        .rename-confirm {
+            color: var(--aaas-success, #22c55e);
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
         }
 
-        .quick-link {
+        .rename-confirm:hover { background: rgba(34,197,94,0.15); }
+
+        .skeleton-list {
+            padding: 4px 10px;
+        }
+
+        .skeleton-row {
+            height: 46px;
+            border-radius: var(--aaas-radius-md, 8px);
+            background: linear-gradient(90deg, var(--aaas-bg-hover, #141414) 25%, var(--aaas-bg-active, #1a1a1a) 50%, var(--aaas-bg-hover, #141414) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            margin-bottom: 6px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .empty-list {
+            padding: 24px 14px;
+            text-align: center;
+            color: var(--aaas-text-muted, #999999);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        /* Nav links */
+        .nav-links {
+            padding: 8px 12px;
+            border-top: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+        }
+
+        .nav-link {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: var(--saas-text-secondary, #666);
+            padding: 8px 10px;
+            border-radius: var(--aaas-radius-md, 8px);
+            font-size: 13px;
+            color: var(--aaas-text-secondary, #a1a1a1);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: background 120ms ease, color 120ms ease;
+            width: 100%;
+            text-align: left;
         }
 
-        .quick-link:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-primary, #1a1a1a);
+        .nav-link:hover {
+            background: var(--aaas-bg-hover, #141414);
+            color: var(--aaas-text-primary, #ffffff);
         }
 
-        .quick-link-icon {
+        .nav-link .material-symbols-outlined {
             font-size: 18px;
             width: 20px;
             text-align: center;
         }
 
-        /* User Section */
+        /* User card */
         .user-section {
-            padding: 16px 20px;
-            border-top: 1px solid var(--saas-border-light, #e0e0e0);
+            padding: 12px 16px;
+            border-top: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .user-avatar {
-            width: 36px;
-            height: 36px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
-            background: var(--saas-bg-active, #f0f0f0);
+            background: var(--aaas-bg-active, #1a1a1a);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
+            flex-shrink: 0;
         }
 
         .user-info {
             flex: 1;
+            min-width: 0;
         }
 
         .user-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .user-role {
-            font-size: 12px;
-            color: var(--saas-text-muted, #999);
+            font-size: 11px;
+            color: var(--aaas-text-muted, #999999);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .logout-btn {
@@ -251,53 +480,55 @@ export class SaasChat extends LitElement {
             border-radius: 6px;
             background: transparent;
             border: none;
-            color: var(--saas-text-secondary, #666);
+            color: var(--aaas-text-muted, #999999);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.1s ease;
+            transition: all 120ms ease;
         }
 
         .logout-btn:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-status-danger, #ef4444);
+            background: var(--aaas-bg-hover, #141414);
+            color: var(--aaas-danger, #ef4444);
         }
 
-
-        /* ========================================
-           MAIN CHAT AREA
-           ======================================== */
+        /* =========================
+           MAIN COLUMN
+           ========================= */
         .main {
             flex: 1;
             display: flex;
             flex-direction: column;
             position: relative;
             overflow: hidden;
+            min-width: 0;
+            background: var(--aaas-bg-void, #f5f5f5);
         }
 
-        /* Header */
         .header {
-            padding: 16px 24px;
-            background: var(--saas-bg-card, #ffffff);
-            border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .header-left {
+            padding: 12px 24px;
+            background: var(--aaas-bg-void, #f5f5f5);
+            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
             gap: 16px;
+            flex-shrink: 0;
         }
 
-        .agent-name {
-            font-size: 16px;
-            font-weight: 600;
+        .header saas-chat-topbar {
+            flex: 1;
+            min-width: 0;
         }
 
-        /* Mode Selector */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* Mode selector */
         .mode-selector {
             position: relative;
         }
@@ -305,42 +536,44 @@ export class SaasChat extends LitElement {
         .mode-btn {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: var(--saas-bg-hover, #fafafa);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            font-size: 13px;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: var(--aaas-radius-md, 8px);
+            background: var(--aaas-surface, #141414);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            font-size: 12px;
             font-weight: 500;
+            color: var(--aaas-text-secondary, #a1a1a1);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all 120ms ease;
         }
 
         .mode-btn:hover {
-            background: var(--saas-bg-active, #f0f0f0);
+            background: var(--aaas-surface-hover, #1a1a1a);
         }
 
         .mode-badge {
             padding: 2px 6px;
             border-radius: 4px;
-            background: #1a1a1a;
-            color: white;
-            font-size: 11px;
-            font-weight: 600;
+            background: var(--aaas-accent, #e8e4dc);
+            color: var(--aaas-bg-void, #f5f5f5);
+            font-size: 10px;
+            font-weight: 700;
         }
 
         .mode-dropdown {
             position: absolute;
-            top: calc(100% + 4px);
+            top: calc(100% + 6px);
             right: 0;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 12px;
-            box-shadow: var(--saas-shadow-lg, 0 8px 24px rgba(0,0,0,0.1));
-            min-width: 220px;
+            background: var(--aaas-bg-card, #1e1e1e);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--aaas-radius-lg, 12px);
+            box-shadow: var(--aaas-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
+            min-width: 240px;
             z-index: 100;
             overflow: hidden;
             display: none;
+            padding: 4px;
         }
 
         .mode-dropdown.open {
@@ -348,26 +581,27 @@ export class SaasChat extends LitElement {
         }
 
         .mode-option {
-            padding: 12px 16px;
+            padding: 10px 12px;
             cursor: pointer;
-            border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-            transition: background 0.1s ease;
-        }
-
-        .mode-option:last-child {
-            border-bottom: none;
+            border-radius: var(--aaas-radius-md, 8px);
+            transition: background 120ms ease;
+            border: none;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            color: inherit;
         }
 
         .mode-option:hover {
-            background: var(--saas-bg-hover, #fafafa);
+            background: var(--aaas-bg-hover, #141414);
         }
 
         .mode-option.active {
-            background: var(--saas-bg-active, #f0f0f0);
+            background: var(--aaas-bg-active, #1a1a1a);
         }
 
         .mode-option.locked {
-            opacity: 0.5;
+            opacity: 0.45;
             cursor: not-allowed;
         }
 
@@ -375,402 +609,585 @@ export class SaasChat extends LitElement {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .mode-option-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
+            color: var(--aaas-text-primary, #ffffff);
         }
 
         .mode-option-desc {
-            font-size: 12px;
-            color: var(--saas-text-secondary, #666);
+            font-size: 11px;
+            color: var(--aaas-text-muted, #999999);
         }
 
         .lock-icon {
             font-size: 12px;
-            color: var(--saas-text-muted, #999);
+            color: var(--aaas-text-muted, #999999);
         }
 
         /* Messages */
         .messages {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
-            padding-bottom: 120px;
+            padding: 28px 24px 16px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 18px;
+            scroll-behavior: smooth;
         }
 
-        .message {
-            max-width: 75%;
-            padding: 14px 18px;
-            border-radius: 16px;
-            font-size: 14px;
-            line-height: 1.6;
+        @media (prefers-reduced-motion: reduce) {
+            .messages { scroll-behavior: auto; }
         }
 
-        .message.user {
-            align-self: flex-end;
-            background: #1a1a1a;
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.assistant {
-            align-self: flex-start;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            color: var(--saas-text-primary, #1a1a1a);
-            border-bottom-left-radius: 4px;
-        }
-
-        .message.system {
-            align-self: center;
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-secondary, #666);
-            font-size: 13px;
-            border-radius: 99px;
-            padding: 8px 16px;
-        }
-
-        .message-time {
-            font-size: 11px;
-            color: inherit;
-            opacity: 0.6;
-            margin-top: 6px;
-        }
-
-        .message.user .message-time {
-            color: rgba(255,255,255,0.7);
-        }
-
-        /* Confidence Indicator */
-        .confidence {
-            font-size: 11px;
-            color: var(--saas-text-muted, #999);
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .confidence-bar {
-            width: 60px;
-            height: 4px;
-            background: var(--saas-border-light, #e0e0e0);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            background: var(--saas-status-success, #22c55e);
-            border-radius: 2px;
-        }
-
-        /* Quick Replies */
-        .quick-replies {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 12px;
-        }
-
-        .quick-reply {
-            padding: 8px 14px;
-            border-radius: 99px;
-            background: var(--saas-bg-hover, #fafafa);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.1s ease;
-        }
-
-        .quick-reply:hover {
-            background: var(--saas-bg-active, #f0f0f0);
-            border-color: var(--saas-border-medium, #ccc);
-        }
-
-        /* Empty State */
-        .empty-state {
+        /* Welcome / empty state */
+        .welcome {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 40px;
+            padding: 40px 24px;
+            gap: 8px;
         }
 
-        .empty-icon {
+        .welcome-icon {
             width: 64px;
             height: 64px;
-            background: var(--saas-bg-hover, #fafafa);
-            border-radius: 16px;
+            background: var(--aaas-bg-card, #1e1e1e);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
-        .empty-title {
-            font-size: 18px;
+        .welcome-icon .material-symbols-outlined {
+            font-size: 30px;
+            color: var(--aaas-accent, #e8e4dc);
+        }
+
+        .welcome h2 {
+            margin: 0;
+            font-size: 22px;
             font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .welcome p {
+            margin: 0;
+            color: var(--aaas-text-secondary, #a1a1a1);
+            max-width: 440px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .welcome-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 22px;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .welcome-action {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 14px;
+            border-radius: var(--aaas-radius-lg, 12px);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-bg-card, #1e1e1e);
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+            color: inherit;
+            font: inherit;
+        }
+
+        .welcome-action:hover {
+            border-color: var(--aaas-border-medium, rgba(255,255,255,0.16));
+            background: var(--aaas-bg-hover, #141414);
+            transform: translateY(-1px);
+        }
+
+        .welcome-action .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--aaas-accent, #e8e4dc);
+            margin-top: 1px;
+        }
+
+        .welcome-action .wa-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .welcome-action .wa-desc {
+            font-size: 11px;
+            color: var(--aaas-text-muted, #999999);
+            line-height: 1.45;
+        }
+
+        /* Message skeletons */
+        .msg-skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 70%;
+        }
+
+        .msg-skeleton .bar {
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, var(--aaas-bg-hover, #141414) 25%, var(--aaas-bg-active, #1a1a1a) 50%, var(--aaas-bg-hover, #141414) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+        }
+
+        .msg-skeleton .bar.short { width: 40%; }
+        .msg-skeleton .bar.mid { width: 72%; }
+
+        /* =========================
+           RIGHT CANVAS
+           ========================= */
+        .right-canvas {
+            display: flex;
+            flex-direction: row;
+            border-left: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-bg-sidebar, #ffffff);
+            height: 100vh;
+            flex-shrink: 0;
+        }
+
+        .right-canvas:not(.open) {
+            width: 48px;
+        }
+
+        .right-canvas.open {
+            width: 320px;
+        }
+
+        .canvas-rail {
+            width: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 0;
+            border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+        }
+
+        .rail-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--aaas-radius-md, 8px);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--aaas-text-muted, #999999);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: background 120ms ease, color 120ms ease;
+        }
+
+        .rail-btn:hover {
+            background: var(--aaas-bg-hover, #141414);
+            color: var(--aaas-text-primary, #ffffff);
+        }
+
+        .rail-btn.active {
+            background: var(--aaas-bg-active, #1a1a1a);
+            color: var(--aaas-accent, #e8e4dc);
+        }
+
+        .rail-btn .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        .canvas-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .canvas-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            text-transform: capitalize;
+            flex-shrink: 0;
+        }
+
+        .canvas-header .icon-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--aaas-text-muted, #999999);
+        }
+
+        .canvas-header .icon-btn:hover {
+            background: var(--aaas-bg-hover, #141414);
+            color: var(--aaas-text-primary, #ffffff);
+        }
+
+        .canvas-body {
+            padding: 12px;
+            overflow: auto;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .canvas-hint {
+            font-size: 12px;
+            color: var(--aaas-text-muted, #999999);
+            line-height: 1.55;
+            padding: 4px 2px 12px;
+        }
+
+        .canvas-search {
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-bg-card, #1e1e1e);
+            color: var(--aaas-text-primary, #ffffff);
+            font-size: 12px;
+            outline: none;
+            margin-bottom: 10px;
+        }
+
+        .canvas-search:focus {
+            border-color: var(--aaas-border-medium, rgba(255,255,255,0.16));
+        }
+
+        .memory-card {
+            padding: 10px;
+            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-bg-card, #1e1e1e);
             margin-bottom: 8px;
         }
 
-        .empty-desc {
-            font-size: 14px;
-            color: var(--saas-text-secondary, #666);
-            max-width: 320px;
+        .memory-card .type {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--aaas-accent, #e8e4dc);
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
-        /* ========================================
-           INPUT DOCK (Floating)
-           ======================================== */
-        .input-dock {
-            position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 48px);
-            max-width: 700px;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 24px;
-            padding: 8px;
-            display: flex;
-            align-items: flex-end;
-            gap: 8px;
-            box-shadow: var(--saas-shadow-lg, 0 8px 24px rgba(0,0,0,0.1));
-            transition: box-shadow 0.2s ease;
-        }
-
-        .input-dock:focus-within {
-            border-color: var(--saas-border-medium, #ccc);
-            box-shadow: var(--saas-shadow-lg, 0 8px 24px rgba(0,0,0,0.1)), 0 0 0 2px rgba(0,0,0,0.05);
-        }
-
-        /* Attachment Button */
-        .attach-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: transparent;
-            border: none;
-            color: var(--saas-text-secondary, #666);
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.1s ease;
-            flex-shrink: 0;
-        }
-
-        .attach-btn:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-primary, #1a1a1a);
-        }
-
-        .input-field {
-            flex: 1;
-            padding: 8px 4px;
-        }
-
-        .input-field textarea {
-            width: 100%;
-            padding: 4px 0;
-            border: none;
-            background: transparent;
-            color: var(--saas-text-primary, #1a1a1a);
-            font-family: inherit;
-            font-size: 14px;
-            resize: none;
-            outline: none;
-            max-height: 120px;
+        .memory-card .content {
+            font-size: 12px;
             line-height: 1.5;
+            color: var(--aaas-text-secondary, #a1a1a1);
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
-        .input-field textarea::placeholder {
-            color: var(--saas-text-muted, #999);
-        }
-
-        /* Voice Button */
-        .voice-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: transparent;
-            border: none;
-            color: var(--saas-text-secondary, #666);
-            font-size: 18px;
-            cursor: pointer;
+        .memory-card .tags {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.1s ease;
-            flex-shrink: 0;
-        }
-
-        .voice-btn:hover {
-            background: var(--saas-bg-hover, #fafafa);
-            color: var(--saas-text-primary, #1a1a1a);
-        }
-
-        .voice-btn.active {
-            background: var(--saas-status-danger, #ef4444);
-            color: white;
-        }
-
-        /* Send Button */
-        .send-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #1a1a1a;
-            border: none;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.15s ease;
-            flex-shrink: 0;
-        }
-
-        .send-btn:hover:not(:disabled) {
-            background: #333;
-            transform: scale(1.05);
-        }
-
-        .send-btn:disabled {
-            background: var(--saas-border-light, #e0e0e0);
-            color: var(--saas-text-muted, #999);
-            cursor: not-allowed;
-        }
-
-        /* ========================================
-           ANIMATIONS
-           ======================================== */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message {
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-            display: flex;
+            flex-wrap: wrap;
             gap: 4px;
-            padding: 14px 18px;
-            align-self: flex-start;
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 16px;
-            border-bottom-left-radius: 4px;
+            margin-top: 6px;
         }
 
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--saas-text-muted, #999);
-            border-radius: 50%;
-            animation: typing 1.4s infinite ease-in-out;
+        .tag-chip {
+            font-size: 10px;
+            padding: 1px 7px;
+            border-radius: 9999px;
+            background: var(--aaas-bg-void, #f5f5f5);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            color: var(--aaas-text-muted, #999999);
         }
 
-        .typing-dot:nth-child(1) { animation-delay: 0s; }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
-            30% { transform: translateY(-6px); opacity: 1; }
-        }
-
-        /* Reconnection Indicator */
-        .reconnecting-banner {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: var(--saas-status-warning, #f59e0b);
-            color: white;
-            padding: 8px 16px;
-            font-size: 13px;
+        .file-row {
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
-            z-index: 50;
+            padding: 8px 10px;
+            border-radius: var(--aaas-radius-md, 8px);
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: var(--aaas-text-secondary, #a1a1a1);
         }
 
-        .reconnecting-spinner {
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
+        .file-row:hover {
+            background: var(--aaas-bg-hover, #141414);
+        }
+
+        .file-row .material-symbols-outlined {
+            font-size: 16px;
+            color: var(--aaas-text-muted, #999999);
+        }
+
+        .file-row .fname {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-row .fsize {
+            font-size: 10px;
+            color: var(--aaas-text-muted, #999999);
+            flex-shrink: 0;
+        }
+
+        .channel-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-bg-card, #1e1e1e);
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .channel-kind {
+            text-transform: capitalize;
+            flex: 1;
+            color: var(--aaas-text-primary, #ffffff);
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+            background: var(--aaas-text-muted, #999999);
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .status-dot.ok { background: var(--aaas-success, #22c55e); }
+        .status-dot.err { background: var(--aaas-danger, #ef4444); }
+        .status-dot.warn { background: var(--aaas-warning, #f59e0b); }
+
+        .panel-skeleton .srow {
+            height: 56px;
+            border-radius: var(--aaas-radius-md, 8px);
+            background: linear-gradient(90deg, var(--aaas-bg-hover, #141414) 25%, var(--aaas-bg-active, #1a1a1a) 50%, var(--aaas-bg-hover, #141414) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            margin-bottom: 8px;
+        }
+
+        /* Agent selector */
+        .agent-select {
+            padding: 5px 8px;
+            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--aaas-surface, #141414);
+            color: var(--aaas-text-primary, #ffffff);
+            font-size: 12px;
+            outline: none;
+            max-width: 160px;
+        }
+
+        /* Scrollbars */
+        .conversations-section::-webkit-scrollbar,
+        .messages::-webkit-scrollbar,
+        .canvas-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .conversations-section::-webkit-scrollbar-thumb,
+        .messages::-webkit-scrollbar-thumb,
+        .canvas-body::-webkit-scrollbar-thumb {
+            background: var(--aaas-border-light, rgba(255,255,255,0.08));
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 960px) {
+            .sidebar {
+                width: 220px;
+            }
+            .right-canvas.open {
+                width: 260px;
+            }
+            .welcome-actions {
+                grid-template-columns: 1fr;
+            }
         }
     `;
 
     @property({ type: String }) sessionId = '';
     @state() private _messages: ChatMessage[] = [];
     @state() private _conversations: Conversation[] = [];
-    @state() private _input = '';
+    @state() private _conversationsLoading = true;
+    @state() private _messagesLoading = false;
     @state() private _isStreaming = false;
     @state() private _streamContent = '';
+    @state() private _activeTools: ToolCallStep[] = [];
+    @state() private _paused = false;
     @state() private _currentMode: AgentMode = 'STD';
     @state() private _showModeDropdown = false;
     @state() private _activeConversationId = '';
     @state() private _wsConnected = false;
+    @state() private _wsEverConnected = false;
     @state() private _wsReconnecting = false;
+    @state() private _connectionStatus: ConnectionStatus = 'ok';
     @state() private _agents: { id: string; name: string; description: string; capsule_id?: string }[] = [];
     @state() private _selectedAgentId = '';
+    @state() private _modelLabel = '';
+    @state() private _chatTitle = 'New conversation';
+    @state() private _userName = 'User';
+    @state() private _userRole = 'Member';
+    @state() private _userInitials = 'U';
+    @state() private _showRightPanel = false;
+    @state() private _rightPanelTab: CanvasTab = 'memory';
+    @state() private _convFilter = '';
+    @state() private _renamingId = '';
+    @state() private _renameDraft = '';
+
+    @state() private _memories: MemoryItem[] = [];
+    @state() private _memoryLoading = false;
+    @state() private _memoryQuery = '';
+
+    @state() private _channels: ChannelItem[] = [];
+    @state() private _channelsLoading = false;
 
     @query('.messages') private _messagesContainer!: HTMLElement;
+    @query('.rename-input') private _renameInput!: HTMLInputElement;
 
     private _wsClient: WebSocketClient | null = null;
-    private _unsubscribe?: () => void;
+    private _turnStopped = false;
+    private _activeResponseId = '';
+    private _reconnectBannerTimer = 0;
+    private _connectionChipTimer = 0;
+    private _lastErrorMessage = '';
 
     private _modes = [
-        { id: 'STD', name: 'Standard Mode', desc: 'Normal operation', locked: false },
-        { id: 'DEV', name: 'Developer Mode', desc: 'Debug tools, logs', locked: false },
-        { id: 'TRN', name: 'Training Mode', desc: 'Cognitive parameters', locked: true },
-        { id: 'ADM', name: 'Admin Mode', desc: 'Agent configuration', locked: true },
-        { id: 'RO', name: 'Read-Only Mode', desc: 'View only, no actions', locked: false },
-        { id: 'DGR', name: 'Degraded Mode', desc: 'Limited functionality', locked: true },
+        { id: 'STD', name: 'Standard', desc: 'Normal operation', locked: false },
+        { id: 'DEV', name: 'Developer', desc: 'Debug tools, logs', locked: false },
+        { id: 'TRN', name: 'Training', desc: 'Cognitive parameters', locked: true },
+        { id: 'ADM', name: 'Admin', desc: 'Agent configuration', locked: true },
+        { id: 'RO', name: 'Read-Only', desc: 'View only, no actions', locked: false },
+        { id: 'DGR', name: 'Degraded', desc: 'Limited tools, resilience budget (governor)', locked: false },
     ];
+
+    private _brainHealthTimer = 0;
 
     async connectedCallback() {
         super.connectedCallback();
-
-        // Load agents from API (filtered by SpiceDB permissions)
+        await this._loadUser();
         await this._loadAgents();
-
         await this._loadConversations();
-
-        // Close dropdown on outside click
         document.addEventListener('click', this._handleOutsideClick);
+        void this._pollBrainConnector();
+        this._brainHealthTimer = window.setInterval(() => void this._pollBrainConnector(), 15000);
+        window.addEventListener('keydown', this._onGlobalKeydown);
     }
 
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this._wsClient) {
+            this._wsClient.disconnect();
+            this._wsClient = null;
+        }
+        document.removeEventListener('click', this._handleOutsideClick);
+        window.removeEventListener('keydown', this._onGlobalKeydown);
+        window.clearTimeout(this._reconnectBannerTimer);
+        window.clearTimeout(this._connectionChipTimer);
+    }
+
+    protected updated(changed: PropertyValues) {
+        if (changed.has('_renamingId') && this._renamingId && this._renameInput) {
+            this._renameInput.focus();
+            this._renameInput.select();
+        }
+    }
+
+    private _onGlobalKeydown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            this._showModeDropdown = false;
+            if (this._renamingId) {
+                this._renamingId = '';
+                this._renameDraft = '';
+            }
+        }
+    };
+
+    private _handleOutsideClick = (e: Event) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.mode-selector')) {
+            this._showModeDropdown = false;
+        }
+    };
+
+    // ==========================================================================
+    // DATA LOADING (real APIs only)
+    // ==========================================================================
+
+
     /**
-     * Load agents from API (filtered by SpiceDB permissions).
-     * Per design.md Section 7.1-7.3 - Agent Selection
+     * Availability banner is driven by the agent SomaBrain connector circuit
+     * (admin/core/somabrain_connector.py) — not a raw browser probe of SomaBrain.
      */
+    private async _pollBrainConnector(): Promise<void> {
+        try {
+            const h = await apiClient.get<{
+                connected: boolean;
+                circuit: string;
+                last_error?: string | null;
+            }>('/core/brain-connector');
+            if (h && h.connected && h.circuit === 'closed') {
+                this._connectionStatus = 'ok';
+                this._wsReconnecting = false;
+            } else if (h && h.circuit === 'open') {
+                this._connectionStatus = 'degraded';
+            } else {
+                this._connectionStatus = 'reconnecting';
+            }
+            this.requestUpdate();
+        } catch {
+            // Keep last state on poll failure; do not spam the banner.
+        }
+    }
+
+    private async _loadUser() {
+        try {
+            const me = await apiClient.get<{ name?: string; username?: string; email?: string; role?: string }>(
+                '/auth/me',
+            );
+            const name = me.name || me.username || me.email || 'User';
+            this._userName = name;
+            this._userRole = me.role || 'Member';
+            this._userInitials = name
+                .split(/\s+/)
+                .map((p) => p[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase() || 'U';
+        } catch {
+            this._userName = 'User';
+            this._userInitials = 'U';
+        }
+    }
+
     private async _loadAgents(): Promise<void> {
         try {
             const data = await apiClient.get<{ agents: { agent_id: string; name: string; description: string; capsule_id?: string }[]; total: number }>('/agents/');
@@ -782,12 +1199,13 @@ export class SaasChat extends LitElement {
             }));
             this._agents = agents;
 
-            // Prefer agent from ?agent= query param
             const params = new URLSearchParams(window.location.search);
             const queryAgentId = params.get('agent');
-            if (queryAgentId && agents.some(a => a.id === queryAgentId)) {
+            if (queryAgentId && agents.some((a) => a.id === queryAgentId)) {
                 this._selectedAgentId = queryAgentId;
             } else if (agents.length === 1) {
+                this._selectedAgentId = agents[0].id;
+            } else if (agents.length > 1 && !this._selectedAgentId) {
                 this._selectedAgentId = agents[0].id;
             }
 
@@ -799,88 +1217,29 @@ export class SaasChat extends LitElement {
         }
     }
 
-    /**
-     * Connect WebSocket for the currently selected agent using its capsule_id.
-     */
-    private _connectWebSocket(): void {
-        // Disconnect existing
-        if (this._wsClient) {
-            this._wsClient.disconnect();
-            this._wsClient = null;
-        }
-
-        const agent = this._agents.find(a => a.id === this._selectedAgentId);
-        if (!agent) {
-            console.warn('[SaasChat] No agent selected');
-            return;
-        }
-
-        // Use capsule_id if available, otherwise fall back to agent_id
-        const wsId = agent.capsule_id || agent.id;
-        if (!wsId) {
-            console.warn('[SaasChat] No capsule_id or agent_id for selected agent');
-            return;
-        }
-
-        this._wsClient = new WebSocketClient({ url: `/ws/v2/chat/${wsId}` });
-
-        this._wsClient.on('chat.message', (data) => {
-            this._handleIncomingMessage(data as ChatMessage);
-        });
-        this._wsClient.on('chat.delta', (data) => {
-            this._handleStreamDelta(data as { delta?: string; content?: string });
-        });
-        this._wsClient.on('chat.done', (data) => {
-            this._handleStreamDone(data as { content?: string; confidence?: number });
-        });
-        this._wsClient.on('connected', () => {
-            this._wsConnected = true;
-            this._wsReconnecting = false;
-            console.log('[SaasChat] WebSocket connected');
-        });
-        this._wsClient.on('disconnected', () => {
-            this._wsConnected = false;
-            this._wsReconnecting = true;
-            console.log('[SaasChat] WebSocket disconnected, reconnecting...');
-        });
-        this._wsClient.on('error', () => {
-            this._wsReconnecting = true;
-        });
-
-        this._wsClient.connect();
-    }
-
-    /**
-     * Load conversations from API.
-     */
     private async _loadConversations(): Promise<void> {
+        this._conversationsLoading = true;
         try {
             const response = await apiClient.get('/chat/conversations');
             const items = Array.isArray(response)
                 ? response
                 : (response as { data?: Conversation[] }).data || [];
 
-            this._conversations = items.map((conv: any) => ({
-                id: conv.id,
-                title: conv.title ?? 'Untitled',
-                lastMessage: conv.last_message ?? '',
-                updatedAt: conv.updated_at ?? '',
-                messageCount: conv.message_count ?? 0,
+            this._conversations = items.map((conv: Record<string, unknown>) => ({
+                id: String(conv.id ?? ''),
+                title: (conv.title as string) ?? 'Untitled',
+                lastMessage: (conv.last_message as string) ?? '',
+                updatedAt: (conv.updated_at as string) ?? '',
+                messageCount: (conv.message_count as number) ?? 0,
             }));
-            if (!this._activeConversationId && this._conversations.length > 0) {
-                this._activeConversationId = this._conversations[0].id;
-                await this._loadConversationMessages(this._activeConversationId);
-            }
         } catch (error) {
             console.error('[SaasChat] Failed to load conversations:', error);
             this._conversations = [];
+        } finally {
+            this._conversationsLoading = false;
         }
     }
 
-    /**
-     * Create new conversation via API.
-     * Per design.md Section 8.1 - Conversation Creation
-     */
     private async _createConversation(agentId: string): Promise<string | null> {
         try {
             const data = await apiClient.post<{ id?: string }>('/chat/conversations', {
@@ -893,31 +1252,842 @@ export class SaasChat extends LitElement {
         }
     }
 
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this._unsubscribe?.();
+    private async _renameConversation(id: string, title: string) {
+        const trimmed = title.trim();
+        if (!trimmed) return;
+        try {
+            await apiClient.patch(`/chat/conversations/${id}`, { title: trimmed });
+            this._conversations = this._conversations.map((c) =>
+                c.id === id ? { ...c, title: trimmed } : c,
+            );
+            if (id === this._activeConversationId) {
+                this._chatTitle = trimmed;
+            }
+        } catch (error) {
+            console.error('[SaasChat] Rename failed:', error);
+        } finally {
+            this._renamingId = '';
+            this._renameDraft = '';
+        }
+    }
+
+    private async _deleteConversation(id: string) {
+        try {
+            await apiClient.delete(`/chat/conversations/${id}`);
+            this._conversations = this._conversations.filter((c) => c.id !== id);
+            if (id === this._activeConversationId) {
+                this._activeConversationId = '';
+                this._messages = [];
+                this._chatTitle = 'New conversation';
+            }
+        } catch (error) {
+            console.error('[SaasChat] Delete failed:', error);
+        }
+    }
+
+    private async _exportConversation(conv: Conversation) {
+        let messages: unknown[] = [];
+        if (conv.id === this._activeConversationId) {
+            messages = this._messages;
+        } else {
+            try {
+                const response = await apiClient.get(`/chat/conversations/${conv.id}/messages`);
+                const items = Array.isArray(response)
+                    ? response
+                    : (response as { data?: unknown[] }).data || [];
+                messages = items;
+            } catch {
+                messages = [];
+            }
+        }
+        const blob = new Blob(
+            [
+                JSON.stringify(
+                    {
+                        conversation_id: conv.id,
+                        title: conv.title,
+                        exported_at: new Date().toISOString(),
+                        messages,
+                    },
+                    null,
+                    2,
+                ),
+            ],
+            { type: 'application/json' },
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `soma-chat-${conv.id || 'export'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ==========================================================================
+    // RIGHT CANVAS PANELS
+    // ==========================================================================
+
+    private _openRightPanel(tab: CanvasTab) {
+        if (this._showRightPanel && this._rightPanelTab === tab) {
+            this._showRightPanel = false;
+            return;
+        }
+        this._rightPanelTab = tab;
+        this._showRightPanel = true;
+        if (tab === 'memory') void this._loadMemories();
+        if (tab === 'channel') void this._loadChannels();
+    }
+
+    private async _loadMemories() {
+        this._memoryLoading = true;
+        try {
+            const response = (await apiClient.get('/memory/')) as {
+                memories?: Array<{
+                    text?: string;
+                    content?: string | Record<string, unknown>;
+                    coord?: string;
+                    score?: number;
+                    created_at?: string;
+                    kind?: string;
+                }>;
+                total?: number;
+            };
+            const hits = Array.isArray(response?.memories) ? response.memories : [];
+            this._memories = hits.map((raw, index) => {
+                const payload = typeof raw.content === 'object' && raw.content !== null ? raw.content : null;
+                const text =
+                    raw.text ||
+                    (typeof raw.content === 'string' ? raw.content : '') ||
+                    (payload ? String((payload as Record<string, unknown>).text ?? '') : '');
+                return {
+                    id: raw.coord || `mem-${index}`,
+                    type: String(raw.kind || 'episodic'),
+                    content: text,
+                    score: typeof raw.score === 'number' ? raw.score : 0,
+                    timestamp: raw.created_at || new Date().toISOString(),
+                } as MemoryItem;
+            });
+        } catch {
+            this._memories = [];
+        } finally {
+            this._memoryLoading = false;
+        }
+    }
+
+    private async _searchMemories() {
+        const q = this._memoryQuery.trim();
+        if (!q) {
+            await this._loadMemories();
+            return;
+        }
+        this._memoryLoading = true;
+        try {
+            const response = (await apiClient.post('/memory/recall', {
+                query: q,
+                top_k: 20,
+            })) as {
+                memories?: Array<{
+                    text?: string;
+                    content?: string | Record<string, unknown>;
+                    coord?: string;
+                    score?: number;
+                    created_at?: string;
+                    kind?: string;
+                }>;
+            };
+            const hits = Array.isArray(response?.memories) ? response.memories : [];
+            this._memories = hits.map((raw, index) => {
+                const payload = typeof raw.content === 'object' && raw.content !== null ? raw.content : null;
+                const text =
+                    raw.text ||
+                    (typeof raw.content === 'string' ? raw.content : '') ||
+                    (payload ? String((payload as Record<string, unknown>).text ?? '') : '');
+                return {
+                    id: raw.coord || `mem-${index}`,
+                    type: String(raw.kind || 'episodic'),
+                    content: text,
+                    score: typeof raw.score === 'number' ? raw.score : 0,
+                    timestamp: raw.created_at || new Date().toISOString(),
+                } as MemoryItem;
+            });
+        } catch {
+            this._memories = [];
+        } finally {
+            this._memoryLoading = false;
+        }
+    }
+
+    private async _loadChannels() {
+        this._channelsLoading = true;
+        const normalize = (response: unknown): ChannelItem[] => {
+            if (Array.isArray(response)) return response as ChannelItem[];
+            const obj = response as { channels?: ChannelItem[] } | null;
+            if (obj && Array.isArray(obj.channels)) return obj.channels;
+            return [];
+        };
+        try {
+            // Prefer the settings namespace; fall back to the bridges endpoint
+            // that saas-settings-channels uses.
+            try {
+                const response = await apiClient.get('/settings/channels');
+                this._channels = normalize(response);
+            } catch {
+                const response = await apiClient.get('/bridges/channels');
+                this._channels = normalize(response);
+            }
+        } catch {
+            // Fail closed to an empty state — never invent channel data.
+            this._channels = [];
+        } finally {
+            this._channelsLoading = false;
+        }
+    }
+
+    private _conversationFiles(): { name: string; type?: string; size?: number }[] {
+        const seen = new Set<string>();
+        const files: { name: string; type?: string; size?: number }[] = [];
+        for (const msg of this._messages) {
+            for (const a of msg.attachments ?? []) {
+                if (!seen.has(a.name)) {
+                    seen.add(a.name);
+                    files.push(a);
+                }
+            }
+        }
+        return files;
+    }
+
+    // ==========================================================================
+    // WEBSOCKET
+    // ==========================================================================
+
+    private _connectWebSocket(): void {
         if (this._wsClient) {
             this._wsClient.disconnect();
             this._wsClient = null;
         }
-        document.removeEventListener('click', this._handleOutsideClick);
+
+        const agent = this._agents.find((a) => a.id === this._selectedAgentId);
+        if (!agent) return;
+
+        const wsId = agent.capsule_id || agent.id;
+        if (!wsId) return;
+
+        this._wsClient = new WebSocketClient({ url: `/ws/v2/chat/${wsId}` });
+
+        this._wsClient.on('chat.message', (data) => {
+            this._handleIncomingMessage(data as ChatMessage);
+        });
+        this._wsClient.on('chat.delta', (data) => {
+            this._handleStreamDelta(data as { delta?: string; content?: string; response_id?: string });
+        });
+        this._wsClient.on('chat.done', (data) => {
+            this._handleStreamDone(data as { content?: string; confidence?: number; response_id?: string });
+        });
+        this._wsClient.on('tool.call', (data) => {
+            this._handleToolCall(data as ToolCallPayload);
+        });
+        this._wsClient.on('tool.delta', (data) => {
+            this._handleToolDelta(data as ToolCallPayload);
+        });
+        this._wsClient.on('tool.done', (data) => {
+            this._handleToolDone(data as ToolCallPayload);
+        });
+        this._wsClient.on('tool.approval_request', (data) => {
+            this._handleToolApprovalRequest(data as ToolCallPayload);
+        });
+        this._wsClient.on('title_update', (data) => {
+            const payload = data as { title?: string; conversation_id?: string };
+            if (payload?.title) {
+                this._chatTitle = payload.title;
+            }
+        });
+        this._wsClient.on('connected', (data) => {
+            this._wsConnected = true;
+            this._wsEverConnected = true;
+            this._wsReconnecting = false;
+            this._connectionStatus = 'ok';
+            window.clearTimeout(this._reconnectBannerTimer);
+            window.clearTimeout(this._connectionChipTimer);
+            const payload = data as { iq_tier?: string; agent_id?: string; tools_available?: number } | undefined;
+            if (payload?.iq_tier) {
+                this._modelLabel = payload.iq_tier;
+            }
+        });
+        this._wsClient.on('disconnected', () => {
+            this._wsConnected = false;
+            // Debounce the degraded chip so a single blip doesn't flash it.
+            window.clearTimeout(this._reconnectBannerTimer);
+            window.clearTimeout(this._connectionChipTimer);
+            this._reconnectBannerTimer = window.setTimeout(() => {
+                if (!this._wsConnected) {
+                    this._wsReconnecting = true;
+                    this._connectionStatus = 'reconnecting';
+                }
+            }, 1200);
+        });
+        // WebSocketClient emits 'error' for BOTH socket errors (Event) and
+        // gateway `error` messages ({code, message}). Distinguish by shape.
+        this._wsClient.on('error', (data) => {
+            const payload = data as { message?: string; code?: string } | undefined;
+            if (payload && typeof payload === 'object' && typeof payload.message === 'string') {
+                const msg = payload.message || 'Chat stream error';
+                // Do not spam identical errors (e.g. reconnect storms).
+                if (this._lastErrorMessage !== msg) {
+                    this._lastErrorMessage = msg;
+                    this._pushInlineError(msg);
+                }
+                this._isStreaming = false;
+                return;
+            }
+            // Raw socket Event — wait for the debounce chip instead of hard error.
+            if (this._wsEverConnected) {
+                window.clearTimeout(this._connectionChipTimer);
+                this._connectionChipTimer = window.setTimeout(() => {
+                    if (!this._wsConnected) {
+                        this._connectionStatus = 'degraded';
+                    }
+                }, 2500);
+            }
+        });
+
+        this._wsClient.connect();
     }
 
-    private _handleOutsideClick = (e: Event) => {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.mode-selector')) {
-            this._showModeDropdown = false;
+    private async _ensureWebSocket(): Promise<boolean> {
+        if (!this._wsClient) return false;
+        if (this._wsClient.connected) return true;
+
+        this._wsClient.connect();
+
+        return new Promise((resolve) => {
+            const unsubscribe = this._wsClient!.on('connected', () => {
+                unsubscribe();
+                resolve(true);
+            });
+            const timeout = setTimeout(() => {
+                unsubscribe();
+                resolve(false);
+            }, 5000);
+            void timeout;
+        });
+    }
+
+    // ==========================================================================
+    // STREAM HANDLERS
+    // ==========================================================================
+
+    private _handleIncomingMessage(msg: ChatMessage) {
+        this._isStreaming = false;
+        this._streamContent = '';
+        this._messages = [...this._messages, msg];
+        this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    private _handleStreamDelta(chunk: { delta?: string; content?: string; response_id?: string }) {
+        if (this._turnStopped) return;
+        if (chunk?.response_id) {
+            if (this._activeResponseId && this._activeResponseId !== chunk.response_id) return;
+            this._activeResponseId = chunk.response_id;
         }
-    };
+        if (this._paused) return;
+        const delta = chunk.delta ?? chunk.content ?? '';
+        this._streamContent += delta;
+        this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    private _handleStreamDone(chunk: { content?: string; confidence?: number; response_id?: string }) {
+        if (
+            this._turnStopped ||
+            (chunk?.response_id && this._activeResponseId && chunk.response_id !== this._activeResponseId)
+        ) {
+            this._streamContent = '';
+            this._activeTools = [];
+            this._activeResponseId = '';
+            this._isStreaming = false;
+            this._turnStopped = false;
+            return;
+        }
+        const message: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: chunk.content ?? this._streamContent,
+            timestamp: new Date().toISOString(),
+            confidence: chunk.confidence,
+            tools: this._activeTools.length > 0 ? [...this._activeTools] : undefined,
+        };
+        this._streamContent = '';
+        this._activeTools = [];
+        this._activeResponseId = '';
+        this._handleIncomingMessage(message);
+    }
+
+    private _finalizeStreamedMessage(stopped: boolean) {
+        const content = this._streamContent;
+        const tools = this._activeTools.length > 0 ? [...this._activeTools] : undefined;
+        this._streamContent = '';
+        this._activeTools = [];
+        this._isStreaming = false;
+        if (content || tools) {
+            this._messages = [
+                ...this._messages,
+                {
+                    id: `msg-${Date.now()}`,
+                    role: 'assistant',
+                    content,
+                    timestamp: new Date().toISOString(),
+                    stopped,
+                    tools,
+                },
+            ];
+            this.updateComplete.then(() => this._scrollToBottom());
+        }
+    }
+
+    /**
+     * Inline error attached to the last message (or a system row).
+     * Never a global blinking banner — this keeps "internal error" spam gone.
+     */
+    private _pushInlineError(content: string) {
+        const last = this._messages[this._messages.length - 1];
+        if (last && last.role === 'assistant') {
+            this._messages = [
+                ...this._messages.slice(0, -1),
+                { ...last, error: last.error ? `${last.error} · ${content}` : content },
+            ];
+            return;
+        }
+        this._messages = [
+            ...this._messages,
+            {
+                id: `msg-${Date.now()}`,
+                role: 'system',
+                content: '',
+                error: content,
+                timestamp: new Date().toISOString(),
+            },
+        ];
+        this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    // ==========================================================================
+    // TOOL TIMELINE
+    // ==========================================================================
+
+    private _toolStepKey(p: ToolCallPayload): string {
+        if (p.tool_call_id) return p.tool_call_id;
+        return `idx:${p.iteration ?? 0}:${p.index ?? 0}`;
+    }
+
+    private _findToolStep(p: ToolCallPayload): number {
+        const key = this._toolStepKey(p);
+        return this._activeTools.findIndex(
+            (s) =>
+                s.id === key ||
+                (p.tool_call_id && s.id === p.tool_call_id) ||
+                (p.index != null && s.index === p.index && (p.iteration == null || s.iteration === p.iteration)),
+        );
+    }
+
+    private _upsertToolStep(p: ToolCallPayload, status: ToolStepStatus): ToolCallStep[] {
+        const key = this._toolStepKey(p);
+        const idx = this._findToolStep(p);
+        const next = [...this._activeTools];
+        if (idx >= 0) {
+            next[idx] = {
+                ...next[idx],
+                name: p.name ?? next[idx].name,
+                status,
+                iteration: p.iteration ?? next[idx].iteration,
+                index: p.index ?? next[idx].index,
+                arguments: (p.arguments ?? next[idx].arguments) as Record<string, unknown> | null,
+            };
+            return next;
+        }
+        next.push({
+            id: key,
+            name: p.name ?? 'tool',
+            status,
+            iteration: p.iteration,
+            index: p.index,
+            arguments: (p.arguments ?? null) as Record<string, unknown> | null,
+            argumentsText: '',
+        });
+        return next;
+    }
+
+    private _handleToolCall(p: ToolCallPayload) {
+        if (this._turnStopped) return;
+        this._activeTools = this._upsertToolStep(p, 'executing');
+    }
+
+    private _handleToolDelta(p: ToolCallPayload) {
+        if (this._turnStopped) return;
+        const key = this._toolStepKey(p);
+        const next = this._upsertToolStep(p, 'executing');
+        const idx = next.findIndex((s) => s.id === key || (p.index != null && s.index === p.index));
+        if (idx >= 0) {
+            const step = { ...next[idx] };
+            step.argumentsText = (step.argumentsText ?? '') + (p.arguments_delta ?? '');
+            try {
+                step.arguments = JSON.parse(step.argumentsText) as Record<string, unknown>;
+            } catch {
+                // incomplete JSON mid-stream — keep raw text only
+            }
+            next[idx] = step;
+        }
+        this._activeTools = next;
+    }
+
+    private _handleToolDone(p: ToolCallPayload) {
+        const status = (p.status as ToolStepStatus) || (p.ok ? 'executed' : 'error');
+        const next = this._upsertToolStep(p, status);
+        const key = this._toolStepKey(p);
+        const idx = next.findIndex((s) => s.id === key || (p.tool_call_id && s.id === p.tool_call_id));
+        if (idx >= 0) {
+            next[idx] = {
+                ...next[idx],
+                name: p.name ?? next[idx].name,
+                result: p.result,
+                ok: p.ok,
+                error: p.error ?? null,
+                durationMs: p.duration_ms,
+                arguments: (p.arguments ?? next[idx].arguments) as Record<string, unknown> | null,
+                status,
+            };
+        }
+        this._activeTools = next;
+    }
+
+    private _handleToolApprovalRequest(p: ToolCallPayload) {
+        const next = this._upsertToolStep(p, 'approval_required');
+        const key = this._toolStepKey(p);
+        const idx = next.findIndex((s) => s.id === key);
+        if (idx >= 0) {
+            next[idx] = {
+                ...next[idx],
+                name: p.name ?? next[idx].name,
+                arguments: (p.arguments ?? next[idx].arguments) as Record<string, unknown> | null,
+                status: 'approval_required',
+            };
+        }
+        this._activeTools = next;
+        this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    private _onToolApproval(e: CustomEvent<{ toolCallId: string; name: string; approved: boolean }>) {
+        e.stopPropagation();
+        if (!this._wsClient?.connected) {
+            this._pushInlineError('Cannot send tool approval — WebSocket disconnected');
+            return;
+        }
+        this._wsClient.send({
+            type: 'tool.approval',
+            payload: {
+                conversation_id: this._activeConversationId,
+                tool_call_id: e.detail.toolCallId,
+                name: e.detail.name,
+                approved: e.detail.approved,
+            },
+        });
+    }
+
+    // ==========================================================================
+    // CHAT CONTROLS
+    // ==========================================================================
+
+    private _onChatControl(e: CustomEvent<{ action: ChatControlAction }>) {
+        e.stopPropagation();
+        const action = e.detail?.action;
+        switch (action) {
+            case 'pause':
+                this._paused = true;
+                break;
+            case 'resume':
+                this._paused = false;
+                break;
+            case 'stop':
+                this._stopTurn();
+                break;
+            case 'reset':
+                void this._resetChat();
+                break;
+            case 'nudge':
+                if (this._wsClient?.connected && this._activeConversationId) {
+                    this._wsClient.send({
+                        type: 'chat.nudge',
+                        payload: { conversation_id: this._activeConversationId },
+                    });
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    private _stopTurn() {
+        if (!this._isStreaming) return;
+        this._turnStopped = true;
+        this._paused = false;
+        this._finalizeStreamedMessage(true);
+    }
+
+    private async _resetChat() {
+        this._stopTurn();
+        this._messages = [];
+        this._streamContent = '';
+        this._activeTools = [];
+        this._paused = false;
+        this._chatTitle = 'New conversation';
+        if (this._selectedAgentId) {
+            const conversationId = await this._createConversation(this._selectedAgentId);
+            if (conversationId) {
+                this._activeConversationId = conversationId;
+                await this._loadConversations();
+            } else {
+                this._pushInlineError('Failed to reset conversation');
+            }
+        } else {
+            this._activeConversationId = '';
+        }
+    }
+
+    private _onClearChat() {
+        this._messages = [];
+        this._streamContent = '';
+        this._activeTools = [];
+    }
+
+    private _onExportChat() {
+        if (this._messages.length === 0) {
+            this._pushInlineError('Nothing to export yet');
+            return;
+        }
+        const payload = this._messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp,
+            tools: m.tools ?? [],
+            attachments: m.attachments ?? [],
+        }));
+        const blob = new Blob(
+            [
+                JSON.stringify(
+                    {
+                        conversation_id: this._activeConversationId,
+                        title: this._chatTitle,
+                        exported_at: new Date().toISOString(),
+                        messages: payload,
+                    },
+                    null,
+                    2,
+                ),
+            ],
+            { type: 'application/json' },
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `soma-chat-${this._activeConversationId || 'export'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ==========================================================================
+    // SEND
+    // ==========================================================================
+
+    private _onComposerSend(e: CustomEvent<ComposerSendDetail>) {
+        e.stopPropagation();
+        const detail = e.detail;
+        if (!detail || (!detail.text?.trim() && (!detail.attachments || detail.attachments.length === 0))) {
+            return;
+        }
+        if (this._isStreaming) {
+            this._pushInlineError('Still finishing the previous turn — message not sent');
+            return;
+        }
+        this._isStreaming = true;
+        void this._deliverUserMessage(detail);
+    }
+
+    private async _deliverUserMessage(detail: ComposerSendDetail) {
+        const content = detail.text.trim();
+        if (!content && (!detail.attachments || detail.attachments.length === 0)) {
+            this._isStreaming = false;
+            return;
+        }
+
+        const wsReady = await this._ensureWebSocket();
+        if (!wsReady) {
+            this._isStreaming = false;
+            this._pushInlineError('Not connected — message not sent');
+            return;
+        }
+
+        let conversationId = this._activeConversationId;
+        if (!conversationId && this._selectedAgentId) {
+            const newId = await this._createConversation(this._selectedAgentId);
+            conversationId = newId || '';
+            if (!conversationId) {
+                this._isStreaming = false;
+                this._pushInlineError('Failed to create conversation — message not sent');
+                return;
+            }
+            this._activeConversationId = conversationId;
+            await this._loadConversations();
+        }
+        if (!conversationId) {
+            this._isStreaming = false;
+            this._pushInlineError('No active conversation — message not sent');
+            return;
+        }
+
+        const userMessage: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'user',
+            content,
+            timestamp: new Date().toISOString(),
+            attachments:
+                detail.attachments?.map((f) => ({ name: f.name, type: f.type, size: f.size })) ?? [],
+        };
+        this._messages = [...this._messages, userMessage];
+        this._turnStopped = false;
+        this._paused = false;
+        this._streamContent = '';
+        this._activeTools = [];
+        this._lastErrorMessage = '';
+
+        this.updateComplete.then(() => this._scrollToBottom());
+
+        try {
+            this._wsClient?.send({
+                type: 'chat.message',
+                payload: {
+                    content,
+                    conversation_id: conversationId,
+                    mode: this._currentMode,
+                    attachments: userMessage.attachments,
+                },
+            });
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            this._isStreaming = false;
+            this._pushInlineError('Failed to send message');
+        }
+    }
+
+    // ==========================================================================
+    // CONVERSATION NAV
+    // ==========================================================================
+
+    private async _startNewChat() {
+        this._messages = [];
+        this._streamContent = '';
+        this._activeTools = [];
+        this._isStreaming = false;
+        this._chatTitle = 'New conversation';
+        this._activeConversationId = '';
+        if (this._selectedAgentId) {
+            const conversationId = await this._createConversation(this._selectedAgentId);
+            if (conversationId) {
+                this._activeConversationId = conversationId;
+                await this._loadConversations();
+                this.updateComplete.then(() => {
+                    const input = this.renderRoot.querySelector('saas-composer') as HTMLElement | null;
+                    input?.shadowRoot?.querySelector('textarea')?.focus();
+                });
+            }
+        }
+    }
+
+    private async _selectConversation(id: string) {
+        if (id === this._activeConversationId && this._messages.length > 0) return;
+        this._activeConversationId = id;
+        const conv = this._conversations.find((c) => c.id === id);
+        if (conv) this._chatTitle = conv.title;
+        await this._loadConversationMessages(id);
+    }
+
+    private async _loadConversationMessages(conversationId: string): Promise<void> {
+        this._messagesLoading = true;
+        try {
+            const response = await apiClient.get(`/chat/conversations/${conversationId}/messages`);
+            const items = Array.isArray(response)
+                ? response
+                : (response as { data?: ChatMessage[] }).data || [];
+
+            this._messages = items.map((msg: Record<string, unknown>) => ({
+                id: String(msg.id ?? `msg-${Date.now()}`),
+                role: (msg.role as ChatMessage['role']) ?? 'assistant',
+                content: String(msg.content ?? ''),
+                timestamp: String(msg.created_at ?? msg.timestamp ?? ''),
+                confidence: (msg.metadata as { confidence?: number } | undefined)?.confidence,
+            }));
+            this.updateComplete.then(() => this._scrollToBottom());
+        } catch (error) {
+            console.error('[SaasChat] Failed to load messages:', error);
+            this._messages = [];
+        } finally {
+            this._messagesLoading = false;
+        }
+    }
+
+    private _scrollToBottom() {
+        if (this._messagesContainer) {
+            this._messagesContainer.scrollTop = this._messagesContainer.scrollHeight;
+        }
+    }
+
+    private _navigate(path: string) {
+        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: path } }));
+    }
+
+    private _logout() {
+        localStorage.removeItem('saas_auth_token');
+        localStorage.removeItem('saas_user');
+        localStorage.removeItem('saas_keycloak_token');
+        sessionStorage.removeItem('saas_auth_state');
+        sessionStorage.removeItem('saas_auth_nonce');
+        window.location.href = '/login';
+    }
+
+    // ==========================================================================
+    // RENDER
+    // ==========================================================================
+
+    private get filteredConversations(): Conversation[] {
+        const q = this._convFilter.trim().toLowerCase();
+        if (!q) return this._conversations;
+        return this._conversations.filter(
+            (c) =>
+                c.title.toLowerCase().includes(q) ||
+                (c.lastMessage ?? '').toLowerCase().includes(q),
+        );
+    }
+
+    private get modeLabel(): string {
+        return this._modes.find((m) => m.id === this._currentMode)?.name ?? this._currentMode;
+    }
 
     render() {
         return html`
-            <!-- Sidebar -->
-            <aside class="sidebar">
+            ${this._renderSidebar()}
+            ${this._renderMain()}
+            ${this._renderCanvas()}
+        `;
+    }
+
+    /* ---------- LEFT SIDEBAR ---------- */
+
+    private _renderSidebar() {
+        const filtered = this.filteredConversations;
+        return html`
+            <aside class="sidebar" aria-label="Conversations">
                 <div class="sidebar-header">
                     <div class="brand">
                         <div class="brand-icon">
-                            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                                 <rect x="14" y="3" width="7" height="7" rx="1"/>
                                 <rect x="14" y="14" width="7" height="7" rx="1"/>
@@ -928,212 +2098,542 @@ export class SaasChat extends LitElement {
                     </div>
                 </div>
 
-                <button class="new-chat-btn" @click=${this._startNewChat}>
-                    <span>+</span> New Conversation
+                <button class="new-chat-btn" @click=${this._startNewChat} title="New conversation">
+                    ${ICON('add_comment', 18)} New Chat
                 </button>
+
+                <div class="search-wrap">
+                    ${ICON('search', 16)}
+                    <input
+                        class="search-input"
+                        type="search"
+                        placeholder="Search conversations"
+                        aria-label="Search conversations"
+                        .value=${this._convFilter}
+                        @input=${(e: Event) => {
+                            this._convFilter = (e.target as HTMLInputElement).value;
+                        }}
+                    />
+                </div>
 
                 <div class="conversations-section">
                     <div class="section-label">Conversations</div>
-                    ${this._conversations.map(conv => html`
-                        <div 
-                            class="conversation-item ${conv.id === this._activeConversationId ? 'active' : ''}"
-                            @click=${() => this._selectConversation(conv.id)}
-                        >
-                            <div class="conversation-title">${conv.title}</div>
-                            <div class="conversation-preview">${conv.lastMessage}</div>
-                        </div>
-                    `)}
+                    ${this._conversationsLoading
+                        ? html`
+                              <div class="skeleton-list" aria-hidden="true">
+                                  <div class="skeleton-row"></div>
+                                  <div class="skeleton-row"></div>
+                                  <div class="skeleton-row"></div>
+                              </div>
+                          `
+                        : filtered.length === 0
+                            ? html`
+                                  <div class="empty-list">
+                                      ${this._convFilter
+                                          ? 'No conversations match your search.'
+                                          : 'No conversations yet. Start a new chat to begin.'}
+                                  </div>
+                              `
+                            : filtered.map((conv) => this._renderConversationRow(conv))}
                 </div>
 
-                <div class="quick-links">
-                    <div class="section-label">Quick Access</div>
-                    <div class="quick-link" @click=${() => this._navigate('/memory')}>
-                        <span class="material-symbols-outlined quick-link-icon">psychology</span> Memory
-                    </div>
-                    <div class="quick-link" @click=${() => this._navigate('/tools')}>
-                        <span class="material-symbols-outlined quick-link-icon">construction</span> Tools
-                    </div>
-                    <div class="quick-link" @click=${() => this._navigate('/settings')}>
-                        <span class="material-symbols-outlined quick-link-icon">settings</span> Settings
-                    </div>
-                    <div class="quick-link" @click=${() => this._navigate('/themes')}>
-                        <span class="material-symbols-outlined quick-link-icon">palette</span> Theme
-                    </div>
-                </div>
+                <nav class="nav-links" aria-label="Workspace">
+                    <button class="nav-link" @click=${() => this._navigate('/memory')}>
+                        ${ICON('psychology', 18)} Memory
+                    </button>
+                    <button class="nav-link" @click=${() => this._navigate('/settings/models')}>
+                        ${ICON('memory', 18)} Models
+                    </button>
+                    <button class="nav-link" @click=${() => this._navigate('/settings/channels')}>
+                        ${ICON('forum', 18)} Channels
+                    </button>
+                    <button class="nav-link" @click=${() => this._navigate('/settings')}>
+                        ${ICON('settings', 18)} Settings
+                    </button>
+                </nav>
 
                 <div class="user-section">
-                    <div class="user-avatar">JD</div>
+                    <div class="user-avatar" aria-hidden="true">${this._userInitials}</div>
                     <div class="user-info">
-                        <div class="user-name">John Doe</div>
-                        <div class="user-role">Member</div>
+                        <div class="user-name" title=${this._userName}>${this._userName}</div>
+                        <div class="user-role">${this._userRole}</div>
                     </div>
-                    <button class="logout-btn" @click=${this._logout} title="Logout">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                            <polyline points="16 17 21 12 16 7"/>
-                            <line x1="21" y1="12" x2="9" y2="12"/>
-                        </svg>
+                    <button class="logout-btn" @click=${this._logout} title="Logout" aria-label="Logout">
+                        ${ICON('logout', 18)}
                     </button>
                 </div>
             </aside>
+        `;
+    }
 
-            <!-- Main Chat Area -->
+    private _renderConversationRow(conv: Conversation) {
+        const isActive = conv.id === this._activeConversationId;
+        const renaming = this._renamingId === conv.id;
+
+        return html`
+            <div
+                class="conversation-item ${isActive ? 'active' : ''}"
+                role="button"
+                tabindex="0"
+                @click=${() => !renaming && this._selectConversation(conv.id)}
+                @keydown=${(e: KeyboardEvent) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !renaming) {
+                        e.preventDefault();
+                        void this._selectConversation(conv.id);
+                    }
+                }}
+                aria-current=${isActive ? 'true' : 'false'}
+            >
+                <div class="conv-body">
+                    ${renaming
+                        ? html`
+                              <div class="rename-row" @click=${(e: Event) => e.stopPropagation()}>
+                                  <input
+                                      class="rename-input"
+                                      .value=${this._renameDraft}
+                                      @input=${(e: Event) => {
+                                          this._renameDraft = (e.target as HTMLInputElement).value;
+                                      }}
+                                      @keydown=${(e: KeyboardEvent) => {
+                                          if (e.key === 'Enter') {
+                                              e.preventDefault();
+                                              void this._renameConversation(conv.id, this._renameDraft);
+                                          } else if (e.key === 'Escape') {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              this._renamingId = '';
+                                              this._renameDraft = '';
+                                          }
+                                      }}
+                                      aria-label="Conversation title"
+                                  />
+                                  <button
+                                      class="rename-confirm"
+                                      title="Save"
+                                      aria-label="Save rename"
+                                      @click=${() => void this._renameConversation(conv.id, this._renameDraft)}
+                                  >
+                                      ${ICON('check', 14)}
+                                  </button>
+                              </div>
+                          `
+                        : html`
+                              <div class="conversation-title">${conv.title || 'Untitled'}</div>
+                              <div class="conversation-meta">
+                                  ${formatRelative(conv.updatedAt) || '—'}
+                                  ${conv.messageCount ? html` · ${conv.messageCount} msg` : nothing}
+                              </div>
+                          `}
+                </div>
+                ${!renaming
+                    ? html`
+                          <div class="conv-actions">
+                              <button
+                                  class="conv-action"
+                                  title="Rename"
+                                  aria-label="Rename conversation"
+                                  @click=${(e: Event) => {
+                                      e.stopPropagation();
+                                      this._renamingId = conv.id;
+                                      this._renameDraft = conv.title;
+                                  }}
+                              >
+                                  ${ICON('edit', 15)}
+                              </button>
+                              <button
+                                  class="conv-action"
+                                  title="Export"
+                                  aria-label="Export conversation"
+                                  @click=${(e: Event) => {
+                                      e.stopPropagation();
+                                      this._exportConversation(conv);
+                                  }}
+                              >
+                                  ${ICON('download', 15)}
+                              </button>
+                              <button
+                                  class="conv-action danger"
+                                  title="Delete"
+                                  aria-label="Delete conversation"
+                                  @click=${(e: Event) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Delete “${conv.title || 'Untitled'}”?`)) {
+                                          void this._deleteConversation(conv.id);
+                                      }
+                                  }}
+                              >
+                                  ${ICON('delete', 15)}
+                              </button>
+                          </div>
+                      `
+                    : nothing}
+            </div>
+        `;
+    }
+
+    /* ---------- CENTER ---------- */
+
+    private _renderMain() {
+        return html`
             <main class="main">
-                <!-- Reconnection Banner per design.md Section 11.7 -->
-                ${this._wsReconnecting ? html`
-                    <div class="reconnecting-banner">
-                        <div class="reconnecting-spinner"></div>
-                        Reconnecting...
-                    </div>
-                ` : ''}
-
                 <header class="header">
-                    <div class="header-left">
-                        ${this._renderAgentSelector()}
-                    </div>
+                    <saas-chat-topbar
+                        .title=${this._chatTitle}
+                        .modelLabel=${this._modelLabel}
+                        .busy=${this._isStreaming}
+                        .paused=${this._paused}
+                        .canNudge=${this._isStreaming}
+                        .connectionStatus=${this._connectionStatus}
+                        @saas-chat-control=${this._onChatControl}
+                    ></saas-chat-topbar>
 
-                    <!-- Mode Selector -->
-                    <div class="mode-selector">
-                        <button class="mode-btn" @click=${this._toggleModeDropdown}>
-                            <span class="mode-badge">${this._currentMode}</span>
-                            ${this._getModeLabel(this._currentMode)}
-                            <span>▼</span>
-                        </button>
-                        <div class="mode-dropdown ${this._showModeDropdown ? 'open' : ''}">
-                            ${this._modes.map(mode => html`
-                                <div 
-                                    class="mode-option ${mode.id === this._currentMode ? 'active' : ''} ${mode.locked ? 'locked' : ''}"
-                                    @click=${() => this._selectMode(mode.id as AgentMode, mode.locked)}
-                                >
-                                    <div class="mode-option-header">
-                                        <span class="mode-badge" style="background: ${mode.id === this._currentMode ? '#1a1a1a' : '#e0e0e0'}; color: ${mode.id === this._currentMode ? 'white' : '#666'}">${mode.id}</span>
-                                        <span class="mode-option-title">${mode.name}</span>
-                                        ${mode.locked ? html`<span class="lock-icon">🔒</span>` : ''}
-                                    </div>
-                                    <div class="mode-option-desc">${mode.desc}</div>
-                                </div>
-                            `)}
+                    <div class="header-right">
+                        ${this._agents.length > 1
+                            ? html`
+                                  <select
+                                      class="agent-select"
+                                      aria-label="Select agent"
+                                      @change=${this._handleAgentSelect}
+                                  >
+                                      ${this._agents.map(
+                                          (agent) => html`
+                                              <option
+                                                  value=${agent.id}
+                                                  ?selected=${agent.id === this._selectedAgentId}
+                                              >
+                                                  ${agent.name}
+                                              </option>
+                                          `,
+                                      )}
+                                  </select>
+                              `
+                            : nothing}
+
+                        <div class="mode-selector">
+                            <button
+                                class="mode-btn"
+                                @click=${this._toggleModeDropdown}
+                                aria-haspopup="listbox"
+                                aria-expanded=${this._showModeDropdown ? 'true' : 'false'}
+                                title="Agent mode"
+                            >
+                                <span class="mode-badge">${this._currentMode}</span>
+                                ${this.modeLabel}
+                                ${ICON('expand_more', 14)}
+                            </button>
+                            <div
+                                class="mode-dropdown ${this._showModeDropdown ? 'open' : ''}"
+                                role="listbox"
+                                aria-label="Agent mode"
+                            >
+                                ${this._modes.map(
+                                    (mode) => html`
+                                        <button
+                                            class="mode-option ${mode.id === this._currentMode
+                                                ? 'active'
+                                                : ''} ${mode.locked ? 'locked' : ''}"
+                                            role="option"
+                                            aria-selected=${mode.id === this._currentMode ? 'true' : 'false'}
+                                            ?disabled=${mode.locked}
+                                            @click=${() => this._selectMode(mode.id as AgentMode, mode.locked)}
+                                        >
+                                            <div class="mode-option-header">
+                                                <span
+                                                    class="mode-badge"
+                                                    style=${mode.id === this._currentMode
+                                                        ? 'background:var(--aaas-accent,#1a1a1a);color:var(--aaas-text-inverse,#ffffff)'
+                                                        : 'background:var(--aaas-bg-void,#f5f5f5);color:var(--aaas-text-muted,#999999)'}
+                                                    >${mode.id}</span
+                                                >
+                                                <span class="mode-option-title">${mode.name}</span>
+                                                ${mode.locked
+                                                    ? html`<span class="lock-icon">${ICON('lock', 12)}</span>`
+                                                    : nothing}
+                                            </div>
+                                            <div class="mode-option-desc">${mode.desc}</div>
+                                        </button>
+                                    `,
+                                )}
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                <div class="messages">
-                    ${this._messages.length === 0 ? this._renderEmptyState() : html`
-                        ${this._messages.map(msg => this._renderMessage(msg))}
-                        ${this._isStreaming ? this._renderTypingIndicator() : ''}
-                    `}
+                <div class="messages" @tool-approval=${this._onToolApproval} role="log" aria-live="polite">
+                    ${this._messagesLoading
+                        ? html`
+                              <div class="msg-skeleton" aria-hidden="true">
+                                  <div class="bar mid"></div>
+                                  <div class="bar"></div>
+                                  <div class="bar short"></div>
+                              </div>
+                          `
+                        : this._messages.length === 0 && !this._isStreaming
+                            ? this._renderWelcome()
+                            : html`
+                                  ${this._messages.map((msg) => this._renderMessage(msg))}
+                                  ${this._isStreaming
+                                      ? html`
+                                            <saas-message
+                                                message-role="assistant"
+                                                .text=${this._streamContent}
+                                                .tools=${this._activeTools}
+                                                .streaming=${!this._paused}
+                                            ></saas-message>
+                                        `
+                                      : nothing}
+                              `}
                 </div>
 
-                <!-- Floating Input Dock -->
-                <div class="input-dock">
-                    <button class="attach-btn" title="Attach file">
-                        +
-                    </button>
-                    <div class="input-field">
-                        <textarea
-                            rows="1"
-                            placeholder=${this._selectedAgentId ? 'Type your message...' : 'Select an agent to start chatting'}
-                            .value=${this._input}
-                            ?disabled=${!this._selectedAgentId}
-                            @input=${this._handleInput}
-                            @keydown=${this._handleKeydown}
-                        ></textarea>
-                    </div>
-                    <button class="voice-btn" title="Voice input" ?disabled=${!this._selectedAgentId}>
-                        <span class="material-symbols-outlined">mic</span>
-                    </button>
-                    <button
-                        class="send-btn"
-                        ?disabled=${!this._input.trim() || this._isStreaming || !this._selectedAgentId}
-                        @click=${this._sendMessage}
-                        title="Send message"
-                    >
-                        ➤
-                    </button>
-                </div>
+                <saas-composer
+                    .busy=${this._isStreaming}
+                    .placeholder=${this._selectedAgentId
+                        ? 'Describe what you want the agent to do…'
+                        : 'Select an agent to start chatting'}
+                    @send-message=${this._onComposerSend}
+                    @clear-chat=${this._onClearChat}
+                    @export-chat=${this._onExportChat}
+                ></saas-composer>
             </main>
         `;
     }
 
-    private _renderEmptyState() {
+    private _renderWelcome() {
+        const firstName =
+            this._userName && this._userName !== 'User' ? `, ${this._userName.split(' ')[0]}` : '';
         return html`
-            <div class="empty-state">
-                <div class="empty-icon"><span class="material-symbols-outlined">chat</span></div>
-                <div class="empty-title">Start a Conversation</div>
-                <div class="empty-desc">
-                    Ask me anything about your data, configurations, or system management.
+            <div class="welcome">
+                <div class="welcome-icon">${ICON('chat', 30)}</div>
+                <h2>Hello${firstName}</h2>
+                <p>
+                    Start a conversation with your Soma agent — tools, memory, and Capsule skills
+                    are live.
+                </p>
+                <div class="welcome-actions">
+                    <button class="welcome-action" @click=${() => this._startNewChat()}>
+                        ${ICON('add_comment', 20)}
+                        <span>
+                            <div class="wa-title">New chat</div>
+                            <div class="wa-desc">Spin up a fresh conversation with the agent</div>
+                        </span>
+                    </button>
+                    <button class="welcome-action" @click=${() => this._navigate('/memory')}>
+                        ${ICON('psychology', 20)}
+                        <span>
+                            <div class="wa-title">Memory</div>
+                            <div class="wa-desc">Browse cognitive memories and recall</div>
+                        </span>
+                    </button>
+                    <button class="welcome-action" @click=${() => this._navigate('/settings/models')}>
+                        ${ICON('tune', 20)}
+                        <span>
+                            <div class="wa-title">Models</div>
+                            <div class="wa-desc">Pick the chat provider and model tier</div>
+                        </span>
+                    </button>
+                    <button class="welcome-action" @click=${() => this._navigate('/settings/channels')}>
+                        ${ICON('forum', 20)}
+                        <span>
+                            <div class="wa-title">Channels</div>
+                            <div class="wa-desc">WhatsApp / Telegram Capsule bridges</div>
+                        </span>
+                    </button>
                 </div>
             </div>
         `;
     }
 
-    private _renderAgentSelector() {
-        if (!this._selectedAgentId) {
-            return html`<span class="agent-name">Select an agent</span>`;
-        }
-        if (this._agents.length <= 1) {
-            const agent = this._agents.find(a => a.id === this._selectedAgentId);
-            return html`<span class="agent-name">${agent?.name ?? 'Support-AI'}</span>`;
-        }
-        return html`
-            <select
-                class="agent-name"
-                style="border: none; background: transparent; font: inherit; cursor: pointer; outline: none;"
-                @change=${this._handleAgentSelect}
-            >
-                ${this._agents.map(agent => html`
-                    <option value=${agent.id} ?selected=${agent.id === this._selectedAgentId}>
-                        ${agent.name}
-                    </option>
-                `)}
-            </select>
-        `;
-    }
-
-    private _handleAgentSelect(e: Event) {
-        const select = e.target as HTMLSelectElement;
-        const agentId = select.value;
-        if (agentId && agentId !== this._selectedAgentId) {
-            this._selectedAgentId = agentId;
-            this._activeConversationId = '';
-            this._messages = [];
-            this._connectWebSocket();
-        }
-    }
-
     private _renderMessage(msg: ChatMessage) {
-        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
         return html`
-            <div class="message ${msg.role}">
-                <div class="message-content" style="white-space: pre-wrap;">${msg.content}</div>
-                <div class="message-time">${time}</div>
-                ${msg.confidence != null ? html`
-                    <div class="confidence">
-                        <div class="confidence-bar">
-                            <div class="confidence-fill" style="width: ${msg.confidence * 100}%"></div>
-                        </div>
-                        <span>${Math.round(msg.confidence * 100)}%</span>
-                    </div>
-                ` : ''}
-            </div>
+            <saas-message
+                message-role=${msg.role}
+                .text=${msg.content}
+                .timestamp=${msg.timestamp}
+                .tools=${msg.tools ?? []}
+                .attachments=${msg.attachments ?? []}
+                .stopped=${!!msg.stopped}
+                .confidence=${msg.confidence}
+                .error=${msg.error ?? ''}
+            ></saas-message>
         `;
     }
 
-    private _renderTypingIndicator() {
+    /* ---------- RIGHT CANVAS ---------- */
+
+    private _renderCanvas() {
         return html`
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
+            <aside class="right-canvas ${this._showRightPanel ? 'open' : ''}" aria-label="Workspace canvas">
+                <div class="canvas-rail">
+                    <button
+                        class="rail-btn ${this._rightPanelTab === 'memory' && this._showRightPanel ? 'active' : ''}"
+                        title="Memory"
+                        aria-label="Memory panel"
+                        @click=${() => this._openRightPanel('memory')}
+                    >
+                        ${ICON('psychology', 20)}
+                    </button>
+                    <button
+                        class="rail-btn ${this._rightPanelTab === 'files' && this._showRightPanel ? 'active' : ''}"
+                        title="Files"
+                        aria-label="Files panel"
+                        @click=${() => this._openRightPanel('files')}
+                    >
+                        ${ICON('folder', 20)}
+                    </button>
+                    <button
+                        class="rail-btn ${this._rightPanelTab === 'channel' && this._showRightPanel ? 'active' : ''}"
+                        title="Channel"
+                        aria-label="Channel panel"
+                        @click=${() => this._openRightPanel('channel')}
+                    >
+                        ${ICON('forum', 20)}
+                    </button>
+                </div>
+                ${this._showRightPanel
+                    ? html`
+                          <div class="canvas-panel">
+                              <div class="canvas-header">
+                                  <span>${this._rightPanelTab}</span>
+                                  <button
+                                      class="icon-btn"
+                                      title="Close panel"
+                                      aria-label="Close panel"
+                                      @click=${() => (this._showRightPanel = false)}
+                                  >
+                                      ${ICON('close', 16)}
+                                  </button>
+                              </div>
+                              <div class="canvas-body">
+                                  ${this._rightPanelTab === 'memory'
+                                      ? this._renderMemoryPanel()
+                                      : nothing}
+                                  ${this._rightPanelTab === 'files' ? this._renderFilesPanel() : nothing}
+                                  ${this._rightPanelTab === 'channel'
+                                      ? this._renderChannelPanel()
+                                      : nothing}
+                              </div>
+                          </div>
+                      `
+                    : nothing}
+            </aside>
         `;
     }
 
-    private _getModeLabel(mode: AgentMode): string {
-        const modeInfo = this._modes.find(m => m.id === mode);
-        return modeInfo?.name.replace(' Mode', '') || mode;
+    private _renderMemoryPanel() {
+        return html`
+            <input
+                class="canvas-search"
+                type="search"
+                placeholder="Search memories…"
+                aria-label="Search memories"
+                .value=${this._memoryQuery}
+                @input=${(e: Event) => {
+                    this._memoryQuery = (e.target as HTMLInputElement).value;
+                }}
+                @keydown=${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void this._searchMemories();
+                    }
+                }}
+            />
+            <div class="canvas-hint">
+                Cognitive memory (Brain + SFM).
+                <button
+                    style="color:var(--aaas-info,#3b82f6);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;font:inherit"
+                    @click=${() => this._navigate('/memory')}
+                >
+                    Open full dashboard
+                </button>
+            </div>
+            ${this._memoryLoading
+                ? html`
+                      <div class="panel-skeleton" aria-hidden="true">
+                          <div class="srow"></div>
+                          <div class="srow"></div>
+                          <div class="srow"></div>
+                      </div>
+                  `
+                : this._memories.length === 0
+                    ? html`<div class="canvas-hint">No memories yet.</div>`
+                    : this._memories.slice(0, 20).map(
+                          (m) => html`
+                              <div class="memory-card">
+                                  <div class="type">${m.type || 'memory'}</div>
+                                  <div class="content">${m.summary || m.content}</div>
+                                  ${m.tags && m.tags.length > 0
+                                      ? html`
+                                            <div class="tags">
+                                                ${m.tags.slice(0, 4).map((t) => html`<span class="tag-chip">${t}</span>`)}
+                                            </div>
+                                        `
+                                      : nothing}
+                              </div>
+                          `,
+                      )}
+        `;
     }
+
+    private _renderFilesPanel() {
+        const files = this._conversationFiles();
+        return html`
+            <div class="canvas-hint">
+                Attachments and workdir files for this conversation.
+            </div>
+            ${files.length === 0
+                ? html`<div class="canvas-hint">No files attached to this conversation yet.</div>`
+                : files.map(
+                      (f) => html`
+                          <div class="file-row">
+                              ${ICON('draft', 16)}
+                              <span class="fname" title=${f.name}>${f.name}</span>
+                              <span class="fsize">${f.size ? `${Math.max(1, Math.round(f.size / 1024))} KB` : ''}</span>
+                          </div>
+                      `,
+                  )}
+        `;
+    }
+
+    private _renderChannelPanel() {
+        return html`
+            <div class="canvas-hint">
+                WhatsApp / Telegram Capsule channels.
+                <button
+                    style="color:var(--aaas-info,#3b82f6);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;font:inherit"
+                    @click=${() => this._navigate('/settings/channels')}
+                >
+                    Configure
+                </button>
+            </div>
+            ${this._channelsLoading
+                ? html`
+                      <div class="panel-skeleton" aria-hidden="true">
+                          <div class="srow"></div>
+                          <div class="srow"></div>
+                      </div>
+                  `
+                : this._channels.length === 0
+                    ? html`<div class="canvas-hint">No channels configured.</div>`
+                    : this._channels.map((c) => {
+                          const status = (c.status ?? '').toLowerCase();
+                          const dotClass =
+                              status === 'ok' || status === 'connected' || status === 'active'
+                                  ? 'ok'
+                                  : status === 'error' || status === 'failed'
+                                      ? 'err'
+                                      : 'warn';
+                          return html`
+                              <div class="channel-row">
+                                  <span class="status-dot ${dotClass}" title=${c.status}></span>
+                                  <span class="channel-kind">${c.kind}</span>
+                                  <span style="color:var(--aaas-text-muted,#6b6b6b);font-size:11px">${c.status}</span>
+                              </div>
+                          `;
+                      })}
+        `;
+    }
+
+    /* ---------- misc handlers ---------- */
 
     private _toggleModeDropdown(e: Event) {
         e.stopPropagation();
@@ -1146,186 +2646,16 @@ export class SaasChat extends LitElement {
         this._showModeDropdown = false;
     }
 
-    private _handleInput(e: Event) {
-        const textarea = e.target as HTMLTextAreaElement;
-        this._input = textarea.value;
-
-        // Auto-resize textarea
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    }
-
-    private _handleKeydown(e: KeyboardEvent) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            this._sendMessage();
+    private _handleAgentSelect(e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const agentId = select.value;
+        if (agentId && agentId !== this._selectedAgentId) {
+            this._selectedAgentId = agentId;
+            this._activeConversationId = '';
+            this._messages = [];
+            this._chatTitle = 'New conversation';
+            this._connectWebSocket();
         }
-    }
-
-    private async _sendMessage() {
-        const content = this._input.trim();
-        if (!content || this._isStreaming || !this._selectedAgentId) {
-            if (!this._selectedAgentId) {
-                console.warn('[SaasChat] No agent selected');
-            }
-            return;
-        }
-
-        const wsReady = await this._ensureWebSocket();
-        if (!wsReady) {
-            console.error('[SaasChat] WebSocket not connected');
-            return;
-        }
-
-        let conversationId = this._activeConversationId;
-        if (!conversationId && this._selectedAgentId) {
-            const newId = await this._createConversation(this._selectedAgentId);
-            conversationId = newId || '';
-            if (!conversationId) {
-                console.error('[SaasChat] Failed to create conversation');
-                return;
-            }
-            this._activeConversationId = conversationId;
-            await this._loadConversations();
-        }
-        if (!conversationId) {
-            console.error('[SaasChat] No active conversation');
-            return;
-        }
-
-        const userMessage: ChatMessage = {
-            id: `msg-${Date.now()}`,
-            role: 'user',
-            content,
-            timestamp: new Date().toISOString(),
-        };
-        this._messages = [...this._messages, userMessage];
-        this._input = '';
-        this._isStreaming = true;
-        this._streamContent = '';
-
-        // Reset textarea height
-        const textarea = this.shadowRoot?.querySelector('textarea');
-        if (textarea) textarea.style.height = 'auto';
-
-        this.updateComplete.then(() => this._scrollToBottom());
-
-        try {
-            this._wsClient?.send({
-                type: 'chat.message',
-                conversation_id: conversationId,
-                content,
-                mode: this._currentMode,
-            });
-        } catch (error) {
-            console.error('Failed to send message:', error);
-            this._isStreaming = false;
-        }
-    }
-
-    private async _ensureWebSocket(): Promise<boolean> {
-        if (!this._wsClient) {
-            return false;
-        }
-        if (this._wsClient.connected) {
-            return true;
-        }
-
-        this._wsClient.connect();
-
-        return new Promise(resolve => {
-            const unsubscribe = this._wsClient!.on('connected', () => {
-                unsubscribe();
-                resolve(true);
-            });
-            const timeout = setTimeout(() => {
-                unsubscribe();
-                resolve(false);
-            }, 5000);
-        });
-    }
-
-    private _handleIncomingMessage(msg: ChatMessage) {
-        this._isStreaming = false;
-        this._streamContent = '';
-        this._messages = [...this._messages, msg];
-        this.updateComplete.then(() => this._scrollToBottom());
-    }
-
-    private _handleStreamDelta(chunk: { delta?: string; content?: string }) {
-        const delta = chunk.delta ?? chunk.content ?? '';
-        this._streamContent += delta;
-        this.updateComplete.then(() => this._scrollToBottom());
-    }
-
-    private _handleStreamDone(chunk: { content?: string; confidence?: number }) {
-        const message: ChatMessage = {
-            id: `msg-${Date.now()}`,
-            role: 'assistant',
-            content: chunk.content ?? this._streamContent,
-            timestamp: new Date().toISOString(),
-            confidence: chunk.confidence,
-        };
-        this._handleIncomingMessage(message);
-    }
-
-    private _scrollToBottom() {
-        if (this._messagesContainer) {
-            this._messagesContainer.scrollTop = this._messagesContainer.scrollHeight;
-        }
-    }
-
-    private async _startNewChat() {
-        // Create conversation via API per design.md Section 8.1
-        if (this._selectedAgentId) {
-            const conversationId = await this._createConversation(this._selectedAgentId);
-            if (conversationId) {
-                this._activeConversationId = conversationId;
-                await this._loadConversations();
-            }
-        }
-        this._messages = [];
-    }
-
-    private _selectConversation(id: string) {
-        this._activeConversationId = id;
-        this._loadConversationMessages(id);
-    }
-
-    private async _loadConversationMessages(conversationId: string): Promise<void> {
-        try {
-            const response = await apiClient.get(`/chat/conversations/${conversationId}/messages`);
-            const items = Array.isArray(response)
-                ? response
-                : (response as { data?: ChatMessage[] }).data || [];
-
-            this._messages = items.map((msg: any) => ({
-                id: msg.id,
-                role: msg.role,
-                content: msg.content,
-                timestamp: msg.created_at,
-                confidence: msg.metadata?.confidence,
-            }));
-            this.updateComplete.then(() => this._scrollToBottom());
-        } catch (error) {
-            console.error('[SaasChat] Failed to load messages:', error);
-        }
-    }
-
-    private _navigate(path: string) {
-        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: path } }));
-    }
-
-    private _logout() {
-        // Clear all auth tokens
-        localStorage.removeItem('saas_auth_token');
-        localStorage.removeItem('saas_user');
-        localStorage.removeItem('saas_keycloak_token');
-        sessionStorage.removeItem('saas_auth_state');
-        sessionStorage.removeItem('saas_auth_nonce');
-
-        // Redirect to login
-        window.location.href = '/login';
     }
 }
 

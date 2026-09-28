@@ -235,10 +235,23 @@ async def list_custom_roles(
 
     PM: View tenant's custom roles.
     """
-    # In production: query from database
+    from asgiref.sync import sync_to_async
+    from admin.permissions.models import Role
+
+    @sync_to_async
+    def _list():
+        qs = Role.objects.all()
+        if tenant_id:
+            qs = qs.filter(tenant_id=tenant_id)
+        return [
+            {"role_id": str(r.id), "name": r.name, "permissions": [], "scope": "tenant"}
+            for r in qs[:100]
+        ]
+
+    roles = await _list()
     return {
-        "roles": [],
-        "total": 0,
+        "roles": roles,
+        "total": len(roles),
     }
 
 
@@ -404,20 +417,23 @@ async def check_granular_permission(
 
     Django Architect: SpiceDB query for authorization.
     """
-    # In production: query SpiceDB
-    # authzed.check(
-    #     subject=f"user:{user_id}",
-    #     permission=permission_id.replace(":", "_"),
-    #     resource=f"{scope_type}:{scope_id or '*'}",
-    # )
+    from services.common.spicedb_client import get_spicedb_client
+
+    client = await get_spicedb_client()
+    allowed = await client.check_permission(
+        user_id=user_id,
+        permission=permission_id.replace(":", "_"),
+        resource_type=scope_type,
+        resource_id=scope_id or "*",
+    )
 
     return {
         "user_id": user_id,
         "permission_id": permission_id,
         "scope_type": scope_type,
         "scope_id": scope_id,
-        "allowed": True,
-        "reason": "direct_grant",
+        "allowed": allowed,
+        "reason": "spicedb_check",
     }
 
 
@@ -436,7 +452,10 @@ async def get_effective_permissions(
 
     Security Auditor: Complete access picture.
     """
-    # In production: aggregate from roles + direct grants
+    from services.common.spicedb_client import get_spicedb_client
+
+    client = await get_spicedb_client()
+    permissions = await client.get_permissions(user_id=user_id, tenant_id=scope_id or "default")
 
     return {
         "user_id": user_id,
@@ -444,5 +463,5 @@ async def get_effective_permissions(
         "scope_id": scope_id,
         "roles": [],
         "direct_grants": [],
-        "effective_permissions": [],
+        "effective_permissions": permissions,
     }

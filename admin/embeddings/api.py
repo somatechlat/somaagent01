@@ -15,9 +15,11 @@ from typing import Optional
 from uuid import uuid4
 
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.memory_contract import embed_text
 
 router = Router(tags=["embeddings"])
 logger = logging.getLogger(__name__)
@@ -112,16 +114,15 @@ async def create_embeddings(
 
     ML Eng: Batch embedding generation.
     """
-    # In production: call embedding model
+    dim = EMBEDDING_MODELS.get(model, EMBEDDING_MODELS["text-embedding-ada-002"])["dimensions"]
 
     data = [
         {
             "object": "embedding",
             "index": i,
-            "embedding": [0.0]
-            * EMBEDDING_MODELS.get(model, EMBEDDING_MODELS["text-embedding-ada-002"])["dimensions"],
+            "embedding": embed_text(text, dim=dim),
         }
-        for i, _ in enumerate(input)
+        for i, text in enumerate(input)
     ]
 
     return EmbeddingResult(
@@ -150,16 +151,7 @@ async def create_batch_embeddings(
     ML Eng: Large-scale embedding.
     DevOps: Batch processing.
     """
-    batch_id = str(uuid4())
-
-    logger.info('Batch embedding started: %s, count=%s', batch_id, len(inputs))
-
-    return {
-        "batch_id": batch_id,
-        "model": model,
-        "total_inputs": len(inputs),
-        "status": "processing",
-    }
+    raise HttpError(501, "Batch embedding is not implemented: no async embedding job runner.")
 
 
 @router.get(
@@ -172,12 +164,7 @@ async def get_batch_status(
     batch_id: str,
 ) -> dict:
     """Get batch embedding status."""
-    return {
-        "batch_id": batch_id,
-        "status": "completed",
-        "processed": 100,
-        "total": 100,
-    }
+    raise HttpError(501, "Batch embedding status is not implemented: no async embedding job runner.")
 
 
 # =============================================================================

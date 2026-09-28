@@ -53,8 +53,17 @@ class MemoryConfigurationError(RuntimeError):
     """
 
 
+class MemoryRecallUnavailable(RuntimeError):
+    """Raised when a memory store cannot answer a recall (outage / transport failure).
+
+    Fail-closed (R-05 / F-10, T-5): never report an outage as an empty recall.
+    The orchestrator must surface "memory unavailable" instead of answering as
+    if the user has no history.
+    """
+
+
 class MemoryWrite(BaseModel):
-    """One memory to persist in both stores (PLAN §1 contract)."""
+    """One memory to persist via the brain (PLAN §1 contract)."""
 
     text: str
     kind: Literal["episodic", "semantic", "belief"] = "episodic"
@@ -67,7 +76,7 @@ class MemoryWrite(BaseModel):
 
 
 class MemoryHit(BaseModel):
-    """One recalled memory merged from either store (PLAN §1 contract)."""
+    """One recalled memory from the brain (PLAN §1 contract)."""
 
     text: str
     coord: str
@@ -77,7 +86,7 @@ class MemoryHit(BaseModel):
 
 
 class MemoryAck(BaseModel):
-    """Per-store outcome of one write (PLAN §1 contract)."""
+    """Outcome of one write (PLAN §1 contract)."""
 
     coord: str
     store: MemoryStoreName
@@ -87,18 +96,18 @@ class MemoryAck(BaseModel):
 
 @runtime_checkable
 class MemoryGateway(Protocol):
-    """Fan-out memory gateway — one write path, one read path (PLAN §1)."""
+    """Brain-backed memory gateway — one write path, one read path (PLAN §1)."""
 
     async def remember(self, w: MemoryWrite) -> list[MemoryAck]:
-        """Store one memory in both stores; one ack per store."""
+        """Store one memory in the brain; one ack."""
         ...
 
     async def recall(self, query: str, k: int, tenant_id: str) -> list[MemoryHit]:
-        """Merge hits from both stores, dedupe by coord, rank by score."""
+        """Recall from the brain, ranked by score."""
         ...
 
     async def forget(self, coord: str, tenant_id: str) -> bool:
-        """Delete one memory from both stores."""
+        """Delete one memory from the brain."""
         ...
 
 
@@ -254,6 +263,7 @@ __all__ = [
     "MemoryConfigurationError",
     "MemoryGateway",
     "MemoryHit",
+    "MemoryRecallUnavailable",
     "MemoryStoreName",
     "MemoryWrite",
     "coord_from_key_material",

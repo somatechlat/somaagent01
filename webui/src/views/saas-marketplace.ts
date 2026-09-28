@@ -310,6 +310,7 @@ export class SaasMarketplace extends LitElement {
 
     @state() private templates: AgentTemplate[] = [];
     @state() private loading = true;
+    @state() private error: string | null = null;
     @state() private activeCategory = 'all';
     @state() private searchQuery = '';
     @state() private sortBy = 'popular';
@@ -321,6 +322,7 @@ export class SaasMarketplace extends LitElement {
 
     private async _loadTemplates() {
         this.loading = true;
+        this.error = null;
         try {
             const token = localStorage.getItem('saas_auth_token');
             const params = new URLSearchParams();
@@ -336,122 +338,16 @@ export class SaasMarketplace extends LitElement {
                 const data = await res.json();
                 this.templates = data.items || data.data || [];
             } else {
-                // Fallback to demo data
-                this.templates = this._getDemoTemplates();
+                this.templates = [];
+                this.error = `Failed to load templates (HTTP ${res.status})`;
             }
         } catch (e) {
             console.error('Failed to load templates:', e);
-            this.templates = this._getDemoTemplates();
+            this.templates = [];
+            this.error = 'Failed to load templates';
         } finally {
             this.loading = false;
         }
-    }
-
-    private _getDemoTemplates(): AgentTemplate[] {
-        return [
-            {
-                id: 'tpl-001',
-                name: 'Customer Support Agent',
-                slug: 'customer-support',
-                description: 'Handle customer inquiries with multilingual support, ticket integration, and escalation workflows.',
-                category: 'customer_service',
-                iconUrl: '',
-                rating: 4.8,
-                ratingCount: 234,
-                installCount: 1250,
-                tierRequirement: 'starter',
-                toolCount: 12,
-                voiceEnabled: true,
-                features: ['Multilingual', 'Zendesk', 'Voice'],
-                author: 'SomaAgent Team',
-                updatedAt: '2025-12-20',
-            },
-            {
-                id: 'tpl-002',
-                name: 'Data Analyst Bot',
-                slug: 'data-analyst',
-                description: 'SQL queries, data visualization, and automated reporting for business intelligence.',
-                category: 'data',
-                iconUrl: '',
-                rating: 4.5,
-                ratingCount: 156,
-                installCount: 890,
-                tierRequirement: 'team',
-                toolCount: 8,
-                voiceEnabled: false,
-                features: ['SQL', 'Charts', 'Reports'],
-                author: 'SomaAgent Team',
-                updatedAt: '2025-12-18',
-            },
-            {
-                id: 'tpl-003',
-                name: 'Research Assistant',
-                slug: 'research-assistant',
-                description: 'Academic paper summarization, citation management, and knowledge synthesis.',
-                category: 'research',
-                iconUrl: '',
-                rating: 4.2,
-                ratingCount: 89,
-                installCount: 456,
-                tierRequirement: 'free',
-                toolCount: 6,
-                voiceEnabled: true,
-                features: ['Papers', 'Citations', 'Summary'],
-                author: 'Community',
-                updatedAt: '2025-12-15',
-            },
-            {
-                id: 'tpl-004',
-                name: 'Sales Development Rep',
-                slug: 'sdr-bot',
-                description: 'Lead qualification, outreach automation, and CRM integration for sales teams.',
-                category: 'sales',
-                iconUrl: '',
-                rating: 4.6,
-                ratingCount: 112,
-                installCount: 678,
-                tierRequirement: 'team',
-                toolCount: 10,
-                voiceEnabled: true,
-                features: ['Salesforce', 'Email', 'Calls'],
-                author: 'SomaAgent Team',
-                updatedAt: '2025-12-22',
-            },
-            {
-                id: 'tpl-005',
-                name: 'Code Review Assistant',
-                slug: 'code-review',
-                description: 'Automated code review, security scanning, and best practice suggestions for development teams.',
-                category: 'dev',
-                iconUrl: '',
-                rating: 4.9,
-                ratingCount: 203,
-                installCount: 1100,
-                tierRequirement: 'starter',
-                toolCount: 7,
-                voiceEnabled: false,
-                features: ['GitHub', 'Security', 'Lint'],
-                author: 'SomaAgent Team',
-                updatedAt: '2025-12-21',
-            },
-            {
-                id: 'tpl-006',
-                name: 'HR Recruiter',
-                slug: 'hr-recruiter',
-                description: 'Resume screening, interview scheduling, and candidate communication automation.',
-                category: 'hr',
-                iconUrl: '',
-                rating: 4.3,
-                ratingCount: 67,
-                installCount: 345,
-                tierRequirement: 'team',
-                toolCount: 9,
-                voiceEnabled: true,
-                features: ['Resume', 'Calendar', 'Email'],
-                author: 'Community',
-                updatedAt: '2025-12-19',
-            },
-        ];
     }
 
     private _getCategoryIcon(category: string): string {
@@ -538,6 +434,12 @@ export class SaasMarketplace extends LitElement {
 
         ${this.loading ? html`
           <div class="loading">Loading templates...</div>
+        ` : this.error ? html`
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <h3>Could not load templates</h3>
+            <p>${this.error}</p>
+          </div>
         ` : this.templates.length === 0 ? html`
           <div class="empty-state">
             <div class="empty-icon">📦</div>

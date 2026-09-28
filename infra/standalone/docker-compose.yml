@@ -40,6 +40,14 @@ services:
       # env_file (.env) holds only non-secret deployment config.
       - AAAS_DEFAULT_CHAT_MODEL=groq/openai/gpt-oss-120b
       - AAAS_DEFAULT_TENANT_ID=${AAAS_DEFAULT_TENANT_ID:?set AAAS_DEFAULT_TENANT_ID}
+      # Real triad memory lane (T-1). Brain is the sole writer; SFM is the store.
+      # Tokens come from .env / up-cluster.sh — never bake into the image.
+      - SOMABRAIN_ENABLED=true
+      - SOMABRAIN_URL=${SOMABRAIN_URL:-http://host.docker.internal:30101}
+      - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:-http://host.docker.internal:10101}
+      - SOMA_API_TOKEN=${SOMA_API_TOKEN:?set SOMA_API_TOKEN}
+      - SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}
+      - MEM_EMBED_DIM=${MEM_EMBED_DIM:-768}
     ports:
       - "20020:9000" # Agent API
     networks:
@@ -173,48 +181,11 @@ services:
       - "20080:80"
     networks:
       - somaagent_net
+    volumes:
+      # Live reload: host dist is served directly. `npm run build` in webui/
+      # is enough — no image rebuild. nginx.conf also hot-mounted.
+      - ../../webui/dist:/usr/share/nginx/html
+      - ../../webui/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - somaagent_standalone
     restart: unless-stopped
-
-  # ===========================================================================
-  # 7. MOCK SOMABRAIN (Optional — enable with --profile mocks)
-  # ===========================================================================
-  somaagent_mock_brain:
-    container_name: somaagent_mock_brain
-    build:
-      context: ../../infra/mocks/somabrain
-      dockerfile: Dockerfile
-    ports:
-      - "20996:9696"
-    networks:
-      - somaagent_net
-    profiles:
-      - mocks
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9696/api/health/\")'" ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
-  # ===========================================================================
-  # 8. MOCK SOMAFRACTALMEMORY (Optional — enable with --profile mocks)
-  # ===========================================================================
-  somaagent_mock_memory:
-    container_name: somaagent_mock_memory
-    build:
-      context: ../../infra/mocks/somafractalmemory
-      dockerfile: Dockerfile
-    ports:
-      - "20101:10101"
-    networks:
-      - somaagent_net
-    profiles:
-      - mocks
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:10101/api/health/\")'" ]
-      interval: 15s
-      timeout: 5s
-      retries: 5

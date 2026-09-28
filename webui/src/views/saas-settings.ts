@@ -561,93 +561,33 @@ export class SaasSettings extends LitElement {
 
     private _renderAgentTab() {
         return html`
-            <!-- Chat Model -->
-            <div class="section">
+            <!-- Models hub card → full Models settings screen (C5 / MD-01…MD-06) -->
+            <div class="section" style="cursor: pointer;" @click=${() => this._openModels()}>
                 <h3 class="section-title">
-                    <span class="material-symbols-outlined">chat</span>
-                    Chat Model
+                    <span class="material-symbols-outlined">smart_toy</span>
+                    Models
+                    <span class="material-symbols-outlined" style="margin-left: auto;">chevron_right</span>
                 </h3>
-                <p class="section-desc">Primary model for conversations and complex tasks.</p>
-                
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label class="form-label">Provider</label>
-                        <select class="form-select" 
-                            .value=${this._chatModel.provider}
-                            @change=${(e: Event) => this._updateChatModel('provider', (e.target as HTMLSelectElement).value)}
-                        >
-                            <option value="openai">OpenAI</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="google">Google AI</option>
-                            <option value="ollama">Ollama (Local)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Model</label>
-                        <select class="form-select"
-                            .value=${this._chatModel.model}
-                            @change=${(e: Event) => this._updateChatModel('model', (e.target as HTMLSelectElement).value)}
-                        >
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="gpt-4o">GPT-4o</option>
-                            <option value="claude-3-opus">Claude 3 Opus</option>
-                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Context Window</label>
-                        <input type="number" class="form-input" 
-                            .value=${String(this._chatModel.contextWindow)}
-                            @input=${(e: Event) => this._updateChatModel('contextWindow', parseInt((e.target as HTMLInputElement).value))}
-                        >
-                        <p class="form-hint">Maximum tokens for context</p>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Max Output Tokens</label>
-                        <input type="number" class="form-input"
-                            .value=${String(this._chatModel.maxTokens)}
-                            @input=${(e: Event) => this._updateChatModel('maxTokens', parseInt((e.target as HTMLInputElement).value))}
-                        >
-                        <p class="form-hint">Maximum tokens per response</p>
-                    </div>
+                <p class="section-desc">
+                    Providers, API keys, model presets, and Chat / Utility / Embedding slots.
+                    Opens the full Models settings screen.
+                </p>
+                <div class="api-key-row">
+                    <span class="api-key-name">Providers</span>
+                    <span class="api-key-value">OpenAI, Anthropic, Google, Groq, Ollama, custom OpenAI-compatible</span>
                 </div>
-            </div>
-
-            <!-- Utility Model -->
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">build</span>
-                    Utility Model
-                </h3>
-                <p class="section-desc">Lightweight model for quick tasks and summarization.</p>
-                
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label class="form-label">Provider</label>
-                        <select class="form-select"
-                            .value=${this._utilityModel.provider}
-                            @change=${(e: Event) => this._updateUtilityModel('provider', (e.target as HTMLSelectElement).value)}
-                        >
-                            <option value="openai">OpenAI</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="google">Google AI</option>
-                            <option value="ollama">Ollama (Local)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Model</label>
-                        <select class="form-select"
-                            .value=${this._utilityModel.model}
-                            @change=${(e: Event) => this._updateUtilityModel('model', (e.target as HTMLSelectElement).value)}
-                        >
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            <option value="gpt-4o-mini">GPT-4o Mini</option>
-                            <option value="claude-3-haiku">Claude 3 Haiku</option>
-                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                        </select>
-                    </div>
+                <div class="api-key-row">
+                    <span class="api-key-name">Slots</span>
+                    <span class="api-key-value">Chat / Utility / Embedding — Capsule or tenant defaults</span>
                 </div>
+                <div class="api-key-row">
+                    <span class="api-key-name">Keys</span>
+                    <span class="api-key-value">Vault-backed, write-only (never echoed)</span>
+                </div>
+                <button class="add-btn" style="margin-top: 16px;" @click=${(e: Event) => { e.stopPropagation(); this._openModels(); }}>
+                    <span class="material-symbols-outlined">settings_suggest</span>
+                    Open Models Settings
+                </button>
             </div>
 
             <!-- Memory Settings -->
@@ -657,7 +597,7 @@ export class SaasSettings extends LitElement {
                     Memory / SomaBrain
                 </h3>
                 <p class="section-desc">Configure agent memory and knowledge base.</p>
-                
+
                 <div class="settings-grid">
                     <div class="form-group">
                         <label class="form-label">SomaBrain URL</label>
@@ -670,6 +610,10 @@ export class SaasSettings extends LitElement {
                 </div>
             </div>
         `;
+    }
+
+    private _openModels() {
+        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/settings/models' } }));
     }
 
     private _renderExternalTab() {

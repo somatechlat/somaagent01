@@ -12,16 +12,30 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 
 router = Router(tags=["tenants"])
 logger = logging.getLogger(__name__)
+
+
+def _tenant_to_api(tenant) -> "Tenant":
+    """Map the real AAAS Tenant row onto this API's response shape."""
+    return Tenant(
+        tenant_id=str(tenant.id),
+        name=tenant.name,
+        slug=tenant.slug,
+        status=tenant.status,
+        plan=tenant.tier.name if tenant.tier_id else "free",
+        created_at=tenant.created_at.isoformat() if tenant.created_at else "",
+        owner_id=tenant.billing_email or "",
+        settings=tenant.feature_overrides or {},
+        limits={},
+    )
 
 
 # =============================================================================
@@ -84,9 +98,15 @@ async def list_tenants(
 
     PM: Platform overview.
     """
+    from admin.aaas.models import Tenant as AaasTenant
+
+    qs = AaasTenant.objects.select_related("tier").all()
+    if status:
+        qs = qs.filter(status=status)
+    tenants = [_tenant_to_api(t) for t in qs[:limit]]
     return {
-        "tenants": [],
-        "total": 0,
+        "tenants": [t.dict() for t in tenants],
+        "total": len(tenants),
     }
 
 
@@ -106,21 +126,10 @@ async def create_tenant(
 
     PM: Tenant onboarding.
     """
-    tenant_id = str(uuid4())
-    slug = name.lower().replace(" ", "-")
-
-    logger.info('Tenant created: %s (%s)', name, tenant_id)
-
-    return Tenant(
-        tenant_id=tenant_id,
-        name=name,
-        slug=slug,
-        status="trial",
-        plan=plan,
-        created_at=timezone.now().isoformat(),
-        owner_id="owner-1",
-        settings={},
-        limits={"users": 5, "agents": 2},
+    raise HttpError(
+        501,
+        "Tenant creation is not implemented on this endpoint. "
+        "Use the AAAS tenant administration API (admin.aaas.models.Tenant).",
     )
 
 
@@ -132,17 +141,13 @@ async def create_tenant(
 )
 async def get_tenant(request, tenant_id: str) -> Tenant:
     """Get tenant details."""
-    return Tenant(
-        tenant_id=tenant_id,
-        name="Example Tenant",
-        slug="example",
-        status="active",
-        plan="pro",
-        created_at=timezone.now().isoformat(),
-        owner_id="owner-1",
-        settings={},
-        limits={},
-    )
+    from admin.aaas.models import Tenant as AaasTenant
+
+    try:
+        tenant = AaasTenant.objects.select_related("tier").get(id=tenant_id)
+    except AaasTenant.DoesNotExist:
+        raise HttpError(404, f"Tenant {tenant_id} not found")
+    return _tenant_to_api(tenant)
 
 
 @router.patch(
@@ -157,10 +162,11 @@ async def update_tenant(
     settings: Optional[dict] = None,
 ) -> dict:
     """Update tenant settings."""
-    return {
-        "tenant_id": tenant_id,
-        "updated": True,
-    }
+    raise HttpError(
+        501,
+        "Tenant update is not implemented on this endpoint. "
+        "Use the AAAS tenant administration API (admin.aaas.models.Tenant).",
+    )
 
 
 @router.delete(
@@ -173,13 +179,11 @@ async def delete_tenant(request, tenant_id: str) -> dict:
 
     Security Auditor: Complete data deletion.
     """
-    logger.critical('Tenant deleted: %s', tenant_id)
-
-    return {
-        "tenant_id": tenant_id,
-        "deleted": True,
-        "data_purged": True,
-    }
+    raise HttpError(
+        501,
+        "Tenant deletion is not implemented on this endpoint. "
+        "Use the AAAS tenant administration API (admin.aaas.models.Tenant).",
+    )
 
 
 # =============================================================================
@@ -201,12 +205,11 @@ async def suspend_tenant(
 
     Security Auditor: Abuse response.
     """
-    logger.warning('Tenant suspended: %s, reason: %s', tenant_id, reason)
-
-    return {
-        "tenant_id": tenant_id,
-        "status": "suspended",
-    }
+    raise HttpError(
+        501,
+        "Tenant suspend is not implemented on this endpoint. "
+        "Use the AAAS tenant administration API (admin.aaas.models.Tenant).",
+    )
 
 
 @router.post(
@@ -216,12 +219,11 @@ async def suspend_tenant(
 )
 async def activate_tenant(request, tenant_id: str) -> dict:
     """Activate a suspended tenant."""
-    logger.info('Tenant activated: %s', tenant_id)
-
-    return {
-        "tenant_id": tenant_id,
-        "status": "active",
-    }
+    raise HttpError(
+        501,
+        "Tenant activate is not implemented on this endpoint. "
+        "Use the AAAS tenant administration API (admin.aaas.models.Tenant).",
+    )
 
 
 # =============================================================================
@@ -259,21 +261,11 @@ async def get_tenant_limits(request, tenant_id: str) -> dict:
 
     DevOps: Resource allocation.
     """
-    return {
-        "tenant_id": tenant_id,
-        "limits": {
-            "max_users": 50,
-            "max_agents": 10,
-            "max_storage_mb": 10240,
-            "max_api_calls_per_month": 100000,
-        },
-        "usage": {
-            "users": 0,
-            "agents": 0,
-            "storage_mb": 0,
-            "api_calls": 0,
-        },
-    }
+    raise HttpError(
+        501,
+        "Tenant limits are not implemented on this endpoint: "
+        "no limit store is wired.",
+    )
 
 
 # =============================================================================
@@ -313,16 +305,10 @@ async def send_invite(
 
     PM: User onboarding.
     """
-    invite_id = str(uuid4())
-
-    logger.info('Invite sent: %s -> %s', email, tenant_id)
-
-    return {
-        "invite_id": invite_id,
-        "email": email,
-        "role": role,
-        "status": "pending",
-    }
+    raise HttpError(
+        501,
+        "Tenant invites are not implemented on this endpoint: no invite store is wired.",
+    )
 
 
 @router.get(
@@ -361,13 +347,11 @@ async def upgrade_plan(
 
     PM: Plan management.
     """
-    logger.info('Plan upgraded: %s -> %s', tenant_id, new_plan)
-
-    return {
-        "tenant_id": tenant_id,
-        "new_plan": new_plan,
-        "upgraded": True,
-    }
+    raise HttpError(
+        501,
+        "Tenant plan changes are not implemented on this endpoint. "
+        "Use the AAAS subscription API.",
+    )
 
 
 @router.post(
@@ -381,9 +365,8 @@ async def downgrade_plan(
     new_plan: str,
 ) -> dict:
     """Downgrade tenant plan."""
-    return {
-        "tenant_id": tenant_id,
-        "new_plan": new_plan,
-        "downgraded": True,
-        "effective_date": timezone.now().isoformat(),
-    }
+    raise HttpError(
+        501,
+        "Tenant plan changes are not implemented on this endpoint. "
+        "Use the AAAS subscription API.",
+    )

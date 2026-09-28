@@ -519,32 +519,21 @@ export class SaasCognitivePanel extends LitElement {
     @state() private _isLoading = false;
     @state() private _isDirty = false;
     @state() private _isSaving = false;
-    @state() private _cognitiveLoad = 42;
+    @state() private _cognitiveLoad = 0;
     @state() private _sleepCycleActive = false;
 
-    @state() private _neuromodulators: NeuromodulatorLevel[] = [
-        { name: 'Dopamine', value: 0.72, min: 0, max: 1, unit: '', description: 'Reward & Motivation', icon: 'mood' },
-        { name: 'Serotonin', value: 0.65, min: 0, max: 1, unit: '', description: 'Mood & Stability', icon: 'sentiment_satisfied' },
-        { name: 'Norepinephrine', value: 0.58, min: 0, max: 1, unit: '', description: 'Alertness & Focus', icon: 'electric_bolt' },
-        { name: 'Acetylcholine', value: 0.81, min: 0, max: 1, unit: '', description: 'Learning & Memory', icon: 'school' },
-        { name: 'GABA', value: 0.45, min: 0, max: 1, unit: '', description: 'Calm & Inhibition', icon: 'spa' },
-        { name: 'Cortisol', value: 0.32, min: 0, max: 1, unit: '', description: 'Stress Response', icon: 'warning' },
-    ];
+    // Live SomaBrain state only — no hardcoded defaults.
+    @state() private _neuromodulators: NeuromodulatorLevel[] = [];
 
     @state() private _params: AdaptationParams = {
-        learningRate: 0.001,
-        explorationRate: 0.15,
-        attentionSpan: 0.8,
-        memoryConsolidation: 0.7,
-        emotionalSensitivity: 0.5,
+        learningRate: 0,
+        explorationRate: 0,
+        attentionSpan: 0,
+        memoryConsolidation: 0,
+        emotionalSensitivity: 0,
     };
 
-    @state() private _activityLog: { message: string; time: string; icon: string }[] = [
-        { message: 'Learning rate adjusted to 0.001', time: '2 min ago', icon: 'tune' },
-        { message: 'Memory consolidation cycle completed', time: '15 min ago', icon: 'memory' },
-        { message: 'Dopamine spike detected', time: '32 min ago', icon: 'trending_up' },
-        { message: 'Sleep cycle initiated', time: '1 hour ago', icon: 'bedtime' },
-    ];
+    @state() private _activityLog: { message: string; time: string; icon: string }[] = [];
 
     async connectedCallback() {
         super.connectedCallback();
@@ -740,18 +729,34 @@ export class SaasCognitivePanel extends LitElement {
     private async _loadCognitiveState() {
         this._isLoading = true;
         try {
-            // Call SomaBrain Cognitive API
-            const response = await apiClient.get('/cognitive/state/') as {
-                neuromodulators?: NeuromodulatorLevel[];
+            // Real SomaBrain Cognitive API — agent-scoped state
+            const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
+            const path = agentId ? `/cognitive/state/${agentId}` : '/cognitive/state/';
+            const response = await apiClient.get(path) as {
+                neuromodulators?: NeuromodulatorLevel[] | Record<string, number>;
+                adaptation_params?: AdaptationParams;
                 params?: AdaptationParams;
                 cognitiveLoad?: number;
+                memory_stats?: Record<string, number>;
             } | null;
             if (response) {
-                if (response.neuromodulators) {
-                    this._neuromodulators = response.neuromodulators;
+                const neuro = response.neuromodulators;
+                if (Array.isArray(neuro) && neuro.length) {
+                    this._neuromodulators = neuro;
+                } else if (neuro && typeof neuro === 'object') {
+                    this._neuromodulators = Object.entries(neuro).map(([name, value]) => ({
+                        name,
+                        value: Number(value) || 0,
+                        min: 0,
+                        max: 1,
+                        unit: '',
+                        description: '',
+                        icon: 'neurology',
+                    }));
                 }
-                if (response.params) {
-                    this._params = response.params;
+                const params = response.adaptation_params || response.params;
+                if (params) {
+                    this._params = params;
                 }
                 if (response.cognitiveLoad !== undefined) {
                     this._cognitiveLoad = response.cognitiveLoad;
@@ -790,20 +795,15 @@ export class SaasCognitivePanel extends LitElement {
 
         this._sleepCycleActive = true;
         try {
-            await apiClient.post('/cognitive/sleep-cycle/', {});
+            const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
+            const path = agentId ? `/cognitive/sleep-cycle/${agentId}` : '/cognitive/sleep-cycle/';
+            await apiClient.post(path, {});
             this._activityLog = [
                 { message: 'Sleep cycle initiated', time: 'Just now', icon: 'bedtime' },
                 ...this._activityLog.slice(0, 9),
             ];
-
-            // Simulate cycle completion after delay
-            setTimeout(() => {
-                this._sleepCycleActive = false;
-                this._activityLog = [
-                    { message: 'Sleep cycle completed', time: 'Just now', icon: 'check_circle' },
-                    ...this._activityLog.slice(0, 9),
-                ];
-            }, 5000);
+            this._sleepCycleActive = false;
+            await this._loadCognitiveState();
         } catch (error) {
             console.error('Failed to trigger sleep cycle:', error);
             this._sleepCycleActive = false;
@@ -816,19 +816,15 @@ export class SaasCognitivePanel extends LitElement {
         }
 
         try {
-            await apiClient.post('/cognitive/reset/', {});
-            this._params = {
-                learningRate: 0.001,
-                explorationRate: 0.15,
-                attentionSpan: 0.8,
-                memoryConsolidation: 0.7,
-                emotionalSensitivity: 0.5,
-            };
+            const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
+            const path = agentId ? `/cognitive/adaptation/reset/${agentId}` : '/cognitive/reset/';
+            await apiClient.post(path, {});
             this._isDirty = false;
             this._activityLog = [
                 { message: 'Adaptation parameters reset to defaults', time: 'Just now', icon: 'restart_alt' },
                 ...this._activityLog.slice(0, 9),
             ];
+            await this._loadCognitiveState();
         } catch (error) {
             console.error('Failed to reset adaptation:', error);
         }

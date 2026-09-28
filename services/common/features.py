@@ -279,6 +279,45 @@ def build_default_registry() -> FeatureRegistry:
             enabled_env_var="SA01_ENABLE_BROWSER",
             stability="experimental",
         ),
+        # ------------------------------------------------------------------
+        # Capsule Module bridge flags (WP D1/D2 — parity doc §6.2)
+        # ------------------------------------------------------------------
+        FeatureDescriptor(
+            key="bridge_whatsapp",
+            description="Enable WhatsApp bridge Capsule module (mod_whatsapp)",
+            default_enabled=False,
+            profiles={"minimal": False, "standard": False, "enhanced": True, "max": True},
+            dependencies=[],
+            degrade_strategy="manual",
+            cost_impact="medium",
+            tags=["bridge", "whatsapp", "capsule"],
+            enabled_env_var="SA01_BRIDGE_WHATSAPP",
+            stability="beta",
+        ),
+        FeatureDescriptor(
+            key="bridge_telegram",
+            description="Enable Telegram bridge Capsule module (mod_telegram)",
+            default_enabled=False,
+            profiles={"minimal": False, "standard": False, "enhanced": True, "max": True},
+            dependencies=[],
+            degrade_strategy="manual",
+            cost_impact="medium",
+            tags=["bridge", "telegram", "capsule"],
+            enabled_env_var="SA01_BRIDGE_TELEGRAM",
+            stability="beta",
+        ),
+        FeatureDescriptor(
+            key="bridge_email",
+            description="Enable Email bridge Capsule module (mod_email)",
+            default_enabled=False,
+            profiles={"minimal": False, "standard": False, "enhanced": True, "max": True},
+            dependencies=[],
+            degrade_strategy="manual",
+            cost_impact="low",
+            tags=["bridge", "email", "capsule"],
+            enabled_env_var="SA01_BRIDGE_EMAIL",
+            stability="beta",
+        ),
     ]
 
     return FeatureRegistry(descriptors=descriptors, profile=profile)  # type: ignore[arg-type]

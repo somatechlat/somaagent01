@@ -1,24 +1,15 @@
 /**
  * SomaAgent01 — Composer "+" Menu
- * Attachments, Memory, Skills, History, Clear, Export
+ * Attachments (composerStore), Memory, Skills, Clear, Export
  */
 
-import { LitElement, html, css } from 'lit';
-import { customElement } from 'lit/decorators.js';
-import { consume } from '@lit/context';
-import { composerContext, ComposerStore } from '../stores/composer-store.js';
-
-interface MenuItem {
-    icon: string;
-    label: string;
-    action: () => void;
-    divider?: boolean;
-}
+import { LitElement, html, css, nothing } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import { composerStore } from '../stores/composer-store.js';
 
 @customElement('saas-composer-menu')
 export class SaasComposerMenu extends LitElement {
-    @consume({ context: composerContext })
-    composerStore!: ComposerStore;
+    @state() private _notice = '';
 
     static styles = css`
         :host {
@@ -27,11 +18,27 @@ export class SaasComposerMenu extends LitElement {
             z-index: 100;
         }
 
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 18px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
         .menu {
             position: absolute;
             bottom: calc(100% + 8px);
             left: 0;
-            min-width: 200px;
+            min-width: 220px;
             background: var(--aaas-bg-card, #1e1e1e);
             border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             border-radius: var(--aaas-radius-lg, 12px);
@@ -55,6 +62,11 @@ export class SaasComposerMenu extends LitElement {
             font-size: 13px;
             color: var(--aaas-text-secondary, #a1a1a1);
             transition: all 100ms ease;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
         }
 
         .menu-item:hover {
@@ -62,10 +74,15 @@ export class SaasComposerMenu extends LitElement {
             color: var(--aaas-text-primary, #ffffff);
         }
 
+        .menu-item:focus-visible {
+            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline-offset: -1px;
+        }
+
         .menu-item .icon {
-            font-size: 15px;
             width: 20px;
             text-align: center;
+            flex-shrink: 0;
         }
 
         .menu-divider {
@@ -74,54 +91,85 @@ export class SaasComposerMenu extends LitElement {
             margin: 4px 0;
         }
 
-        input[type="file"] {
+        input[type='file'] {
             display: none;
+        }
+
+        .notice {
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--aaas-text-muted, #999999);
+        }
+
+        .notice.error {
+            color: var(--aaas-danger, #ef4444);
         }
     `;
 
     private _onFileSelect(e: Event) {
         const input = e.target as HTMLInputElement;
         if (input.files) {
-            Array.from(input.files).forEach(f => this.composerStore.addAttachment(f));
+            Array.from(input.files).forEach((f) => composerStore.addAttachment(f));
+            this._notice = '';
+        } else {
+            this._notice = 'No files selected';
         }
+        input.value = '';
     }
 
     private _clearChat() {
-        if (confirm('Clear all messages in this conversation?')) {
-            window.dispatchEvent(new CustomEvent('clear-chat'));
-        }
+        this.dispatchEvent(new CustomEvent('clear-chat', {
+            bubbles: true,
+            composed: true,
+        }));
+    }
+
+    private _exportChat() {
+        this.dispatchEvent(new CustomEvent('export-chat', {
+            bubbles: true,
+            composed: true,
+        }));
+    }
+
+    private _navigate(path: string) {
+        window.dispatchEvent(new CustomEvent('saas-navigate', {
+            detail: { route: path },
+        }));
     }
 
     render() {
         return html`
-            <div class="menu">
-                <label class="menu-item">
-                    <span class="icon">📎</span>
+            <div class="menu" role="menu">
+                <label class="menu-item" role="menuitem">
+                    <span class="material-symbols-outlined icon">attach_file</span>
                     <span>Attach Files</span>
                     <input type="file" multiple @change=${this._onFileSelect} />
                 </label>
-                <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">🧠</span>
+                <button type="button" class="menu-item" role="menuitem" @click=${() => this._navigate('/memory')}>
+                    <span class="material-symbols-outlined icon">psychology</span>
                     <span>Memory Context</span>
-                </div>
-                <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">🎯</span>
+                </button>
+                <button type="button" class="menu-item" role="menuitem" @click=${() => this._navigate('/settings')}>
+                    <span class="material-symbols-outlined icon">interests</span>
                     <span>Skills</span>
-                </div>
-                <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">📜</span>
-                    <span>History</span>
-                </div>
+                </button>
                 <div class="menu-divider"></div>
-                <div class="menu-item" @click=${this._clearChat}>
-                    <span class="icon">🗑</span>
+                <button type="button" class="menu-item" role="menuitem" @click=${this._clearChat}>
+                    <span class="material-symbols-outlined icon">delete_sweep</span>
                     <span>Clear Chat</span>
-                </div>
-                <div class="menu-item" @click=${() => {}}>
-                    <span class="icon">📤</span>
+                </button>
+                <button type="button" class="menu-item" role="menuitem" @click=${this._exportChat}>
+                    <span class="material-symbols-outlined icon">download</span>
                     <span>Export Chat</span>
-                </div>
+                </button>
+                ${this._notice ? html`<div class="notice ${this._notice.includes('fail') || this._notice.includes('No') ? 'error' : ''}">${this._notice}</div>` : nothing}
             </div>
         `;
+    }
+}
+
+declare global {
+    interface HTMLElementTagNameMap {
+        'saas-composer-menu': SaasComposerMenu;
     }
 }

@@ -10,6 +10,7 @@ export { SaasPlatformDashboard } from './saas-platform-dashboard.js';
 export { SaasTenants } from './saas-tenants.js';
 export { SaasModeSelection } from './saas-mode-selection.js';
 export { SaasSettings } from './saas-settings.js';
+export { SaasSettingsModels } from './saas-settings-models.js';
 export { SaasChat } from './saas-chat.js';
 export { SaasMemoryView } from './saas-memory-view.js';
 export { SaasCognitivePanel } from './saas-cognitive-panel.js';

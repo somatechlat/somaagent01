@@ -41,7 +41,7 @@ export class SaasAgentHeader extends LitElement {
             width: 36px;
             height: 36px;
             border-radius: var(--aaas-radius-lg, 12px);
-            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #6b6b6b));
+            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #999999));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -63,7 +63,7 @@ export class SaasAgentHeader extends LitElement {
 
         .agent-status {
             font-size: 12px;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -200,7 +200,7 @@ export class SaasAgentHeader extends LitElement {
             border-radius: var(--aaas-radius-md, 8px);
             background: transparent;
             border: none;
-            color: var(--aaas-text-muted, #6b6b6b);
+            color: var(--aaas-text-muted, #999999);
             cursor: pointer;
             font-size: 16px;
             transition: all 150ms ease;

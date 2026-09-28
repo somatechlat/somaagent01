@@ -96,7 +96,9 @@ class MemoryReplicator:
     async def _handle_wal(self, event: dict[str, Any]) -> None:
         start = time.time()
         try:
+            # Sync degraded WAL into SomaBrain (T-1). SomaBrain is the store.
             await self.replica.insert_from_wal(event)
+            await self._sync_to_somabrain(event)
         except Exception as exc:
             REPL_EVENTS.labels("error").inc()
             LOGGER.error(
@@ -124,6 +126,30 @@ class MemoryReplicator:
             except Exception:
                 # Ignore malformed timestamps
                 pass
+
+    async def _sync_to_somabrain(self, event: dict[str, Any]) -> None:
+        """Replay one WAL event into SomaBrain via MemoryGateway (T-1)."""
+        payload = event.get("payload") or {}
+        text = payload.get("text") or payload.get("content") or ""
+        if not text:
+            return
+        tenant_id = str(event.get("tenant") or payload.get("tenant_id") or "").strip()
+        if not tenant_id:
+            LOGGER.warning("WAL event missing tenant — skipping SomaBrain sync")
+            return
+        from services.common.memory_gateway import get_memory_gateway
+
+        gateway = get_memory_gateway()
+        acks = await gateway.remember_text(
+            text,
+            tenant_id=tenant_id,
+            kind=str(payload.get("kind") or "episodic"),
+            session_id=event.get("session_id"),
+            salience=float(payload.get("salience") or 0.5),
+            source=str(payload.get("source") or "memory-wal-sync"),
+        )
+        if not any(bool(getattr(a, "ok", False)) for a in acks or []):
+            raise RuntimeError(f"SomaBrain sync rejected WAL id={event.get('id')}")
 
 
 async def main() -> None:

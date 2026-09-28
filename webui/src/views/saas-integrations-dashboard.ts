@@ -198,6 +198,7 @@ export class SaasIntegrationsDashboard extends LitElement {
 
     @state() private integrations: Integration[] = [];
     @state() private loading = true;
+    @state() private error: string | null = null;
     @state() private testing: string | null = null;
     @state() private toast: { message: string; type: string } | null = null;
 
@@ -213,28 +214,21 @@ export class SaasIntegrationsDashboard extends LitElement {
 
     private async loadIntegrations() {
         this.loading = true;
+        this.error = null;
         try {
             const res = await fetch('/api/v2/saas/integrations', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 this.integrations = await res.json();
             } else {
-                this.integrations = this.getMockIntegrations();
+                this.integrations = [];
+                this.error = `Failed to load integrations (HTTP ${res.status})`;
             }
         } catch {
-            this.integrations = this.getMockIntegrations();
+            this.integrations = [];
+            this.error = 'Failed to load integrations';
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockIntegrations(): Integration[] {
-        return [
-            { provider: 'lago', name: 'Lago (Billing)', icon: '💰', connected: true, status: 'connected', last_24h_events: 45 },
-            { provider: 'keycloak', name: 'Keycloak (Auth)', icon: '🔐', connected: true, status: 'connected', last_24h_events: 128 },
-            { provider: 'smtp', name: 'SMTP (Email)', icon: '📧', connected: false, status: 'error', status_message: 'Connection timeout', last_24h_events: 0 },
-            { provider: 'openai', name: 'OpenAI (LLM)', icon: '🤖', connected: true, status: 'connected', last_24h_events: 1250 },
-            { provider: 's3', name: 'AWS S3 (Storage)', icon: '☁️', connected: true, status: 'connected', last_24h_events: 89 },
-        ];
     }
 
     private async testConnection(provider: string) {
@@ -285,6 +279,7 @@ export class SaasIntegrationsDashboard extends LitElement {
 
         <div class="content">
           ${this.loading ? html`<div class="loading">Loading integrations...</div>` : html`
+            ${this.error ? html`<div class="loading">${this.error}</div>` : nothing}
             <div class="integrations-grid">
               ${this.integrations.map(int => html`
                 <div class="integration-card">

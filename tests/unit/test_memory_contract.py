@@ -1,16 +1,15 @@
 """Seam memory contract unit tests — PLAN-TRIAD-SEAMLESS.md §1 ("THE SEAM").
 
 Proves the single-authority contract in services/common/memory_contract.py and
-the fan-out gateway in services/common/memory_gateway.py:
+the brain-only gateway in services/common/memory_gateway.py:
 
   * make_coord() is deterministic: same (tenant, kind, ts, text) → same coord,
     and a different tenant (or text) yields a different coord.
   * embed_text() has fixed dimensionality: always get_mem_embed_dim()
     (settings.MEM_EMBED_DIM, default 768), unless an explicit dim is passed.
-  * MemoryGateway fan-out: remember() returns exactly one ack per store; one
-    store down yields ok=False with an error on that ack while the other store
-    still acks ok=True; recall() merges both stores, dedupes by coord and
-    ranks by score.
+  * MemoryGateway one-write-lane: remember() writes ONLY the brain and returns
+    one ack; recall() returns ONLY brain hits ranked by score; forget() calls
+    ONLY the brain.
 
 No network, no DB, no secrets: store legs are injected fakes that implement
 the adapter surface (async remember/recall/forget/close). The gateway under
@@ -167,12 +166,12 @@ class TestEmbedText:
 
 
 # ---------------------------------------------------------------------------
-# MemoryGateway fan-out — one write path, one read path
+# MemoryGateway one write lane — brain only
 # ---------------------------------------------------------------------------
 
 
-class TestMemoryGatewayFanout:
-    """FanoutMemoryGateway implements the MemoryGateway protocol semantics."""
+class TestMemoryGatewayBrainOnly:
+    """FanoutMemoryGateway implements the MemoryGateway protocol (brain-only)."""
 
     def test_gateway_satisfies_protocol(self):
         """FanoutMemoryGateway is a runtime MemoryGateway."""
@@ -180,8 +179,8 @@ class TestMemoryGatewayFanout:
         assert isinstance(gateway, MemoryGateway)
 
     @pytest.mark.asyncio
-    async def test_remember_returns_one_ack_per_store(self):
-        """remember() yields exactly one MemoryAck per store, both ok."""
+    async def test_remember_writes_only_the_brain(self):
+        """remember() yields one MemoryAck (somabrain) and never touches SFM."""
         brain = FakeStore("somabrain")
         sfm = FakeStore("somafractalmemory")
         gateway = FanoutMemoryGateway(brain, sfm)
@@ -189,22 +188,20 @@ class TestMemoryGatewayFanout:
         w = _write()
         acks = await gateway.remember(w)
 
-        assert len(acks) == 2
-        by_store = {a.store: a for a in acks}
-        assert set(by_store) == {"somabrain", "somafractalmemory"}
-        for ack in acks:
-            assert ack.ok is True
-            assert ack.error is None
-            assert ack.coord == w.coord
-        # One write path: both stores received the same write (coord + embedding).
-        assert len(brain.writes) == 1 and len(sfm.writes) == 1
-        assert brain.writes[0].coord == sfm.writes[0].coord == w.coord
+        assert len(acks) == 1
+        ack = acks[0]
+        assert ack.store == "somabrain"
+        assert ack.ok is True
+        assert ack.error is None
+        assert ack.coord == w.coord
+        assert len(brain.writes) == 1
+        assert brain.writes[0].coord == w.coord
         assert brain.writes[0].embedding is not None
-        assert brain.writes[0].embedding == sfm.writes[0].embedding
+        assert len(sfm.writes) == 0
 
     @pytest.mark.asyncio
-    async def test_remember_isolates_one_store_down(self):
-        """One store down → that ack ok=False with error; the other still ok=True."""
+    async def test_remember_isolates_brain_down(self):
+        """Brain down → one ack ok=False with error; must not raise."""
         brain = FakeStore("somabrain", down=True)
         sfm = FakeStore("somafractalmemory")
         gateway = FanoutMemoryGateway(brain, sfm)
@@ -212,44 +209,55 @@ class TestMemoryGatewayFanout:
         w = _write()
         acks = await gateway.remember(w)  # must not raise
 
-        assert len(acks) == 2
-        by_store = {a.store: a for a in acks}
-
-        failed = by_store["somabrain"]
+        assert len(acks) == 1
+        failed = acks[0]
+        assert failed.store == "somabrain"
         assert failed.ok is False
         assert failed.error  # non-empty error carried on the failed ack
         assert failed.coord == w.coord
-
-        healthy = by_store["somafractalmemory"]
-        assert healthy.ok is True
-        assert healthy.error is None
+        assert len(sfm.writes) == 0
 
     @pytest.mark.asyncio
-    async def test_recall_merges_and_dedupes_by_coord(self):
-        """recall() merges both stores, dedupes by coord (keeps higher score), ranks desc."""
-        shared = "1.0,0.0,0.0"
+    async def test_recall_returns_only_brain_hits(self):
+        """recall() returns only brain hits, ranked by score descending."""
         brain = FakeStore(
             "somabrain",
             hits=[
-                _hit(shared, 0.5, "somabrain", text="from-brain"),
-                _hit("2.0,0.0,0.0", 0.4, "somabrain", text="brain-only"),
+                _hit("1.0,0.0,0.0", 0.5, "somabrain", text="from-brain"),
+                _hit("2.0,0.0,0.0", 0.9, "somabrain", text="brain-high"),
             ],
         )
         sfm = FakeStore(
             "somafractalmemory",
-            hits=[
-                _hit(shared, 0.9, "somafractalmemory", text="from-sfm"),
-                _hit("3.0,0.0,0.0", 0.8, "somafractalmemory", text="sfm-only"),
-            ],
+            hits=[_hit("3.0,0.0,0.0", 0.99, "somafractalmemory", text="sfm-only")],
         )
         gateway = FanoutMemoryGateway(brain, sfm)
 
         hits = await gateway.recall("query", k=10, tenant_id="tenant-a")
 
         coords = [h.coord for h in hits]
-        assert len(coords) == len(set(coords)) == 3  # deduped by coord
-        # The duplicated coord keeps the higher score (0.9) and ranks first.
-        assert coords[0] == shared
-        assert hits[0].score == 0.9
+        assert len(coords) == len(set(coords)) == 2
+        assert set(coords) == {"1.0,0.0,0.0", "2.0,0.0,0.0"}
         assert [h.score for h in hits] == sorted((h.score for h in hits), reverse=True)
-        assert {h.coord for h in hits} == {shared, "2.0,0.0,0.0", "3.0,0.0,0.0"}
+
+    @pytest.mark.asyncio
+    async def test_forget_calls_only_the_brain(self):
+        """forget() delegates to the brain alone and returns its verdict."""
+
+        class ForgetStore(FakeStore):
+            def __init__(self, store_name: str, *, deleted: bool) -> None:
+                super().__init__(store_name)
+                self.deleted = deleted
+                self.calls: list[tuple[str, str]] = []
+
+            async def forget(self, coord: str, tenant_id: str) -> bool:
+                self.calls.append((coord, tenant_id))
+                return self.deleted
+
+        brain = ForgetStore("somabrain", deleted=True)
+        sfm = ForgetStore("somafractalmemory", deleted=False)
+        gateway = FanoutMemoryGateway(brain, sfm)
+
+        assert await gateway.forget("1.0,0.0,0.0", "tenant-a") is True
+        assert brain.calls == [("1.0,0.0,0.0", "tenant-a")]
+        assert sfm.calls == []

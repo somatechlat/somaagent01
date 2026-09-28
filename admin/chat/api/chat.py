@@ -53,12 +53,18 @@ class ConversationOut(BaseModel):
 
 
 class MessageOut(BaseModel):
-    """Chat message (metadata only - content in SomaBrain)."""
+    """Chat message.
+
+    ``content`` carries the message text (the trace registrar stores the turn
+    text in ``Message.coordinate`` — see chat_orchestrator._store_turn).
+    ``coordinate`` is kept for backward compatibility.
+    """
 
     id: str
     conversation_id: str
     role: str  # user, assistant, system
     coordinate: str  # SomaBrain coordinate reference
+    content: str = ""
     token_count: int = 0
     metadata: Optional[dict] = None
     created_at: str
@@ -103,6 +109,12 @@ class ConversationDetailOut(BaseModel):
     message_count: int
     created_at: str
     updated_at: str
+
+
+class RenameConversationRequest(BaseModel):
+    """Rename a conversation (CH-07 manual naming)."""
+
+    title: str
 
 
 # =============================================================================
@@ -307,6 +319,121 @@ async def get_conversation(request, conversation_id: str) -> dict:
     ).model_dump()
 
 
+class ConversationRenameIn(BaseModel):
+    """Rename conversation payload."""
+
+    title: str
+
+
+@router.patch(
+    "/conversations/{conversation_id}",
+    summary="Rename conversation",
+    auth=AuthBearer(),
+)
+async def rename_conversation(request, conversation_id: str, payload: ConversationRenameIn) -> dict:
+    """Rename a conversation (C6 / CH-07)."""
+    from asgiref.sync import sync_to_async
+
+    user = get_current_user(request)
+    title = (payload.title or "").strip()
+    if not title:
+        raise ServiceError("title is required")
+
+    @sync_to_async
+    def _rename():
+        """Execute rename."""
+        try:
+            conv = Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return None
+        if user.sub and str(conv.user_id) != user.sub:
+            return None
+        conv.title = title[:200]
+        conv.save(update_fields=["title", "updated_at"])
+        return conv
+
+    conv = await _rename()
+    if not conv:
+        raise NotFoundError("conversation", conversation_id)
+    return {"id": str(conv.id), "title": conv.title}
+
+
+@router.delete(
+    "/conversations/{conversation_id}",
+    summary="Delete conversation",
+    auth=AuthBearer(),
+)
+async def delete_conversation(request, conversation_id: str) -> dict:
+    """Hard-delete a conversation and its messages (C6 / CH-08)."""
+    from asgiref.sync import sync_to_async
+
+    user = get_current_user(request)
+
+    @sync_to_async
+    def _delete():
+        """Execute delete."""
+        try:
+            conv = Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return None
+        if user.sub and str(conv.user_id) != user.sub:
+            return None
+        Message.objects.filter(conversation=conv).delete()
+        conv.delete()
+        return True
+
+    deleted = await _delete()
+    if not deleted:
+        raise NotFoundError("conversation", conversation_id)
+    return {"id": conversation_id, "deleted": True}
+
+
+@router.get(
+    "/conversations/{conversation_id}/export",
+    summary="Export conversation as markdown",
+    auth=AuthBearer(),
+)
+async def export_conversation(request, conversation_id: str) -> dict:
+    """Export conversation transcript (C6 / CH-08)."""
+    from asgiref.sync import sync_to_async
+
+    user = get_current_user(request)
+
+    @sync_to_async
+    def _load():
+        """Load conversation + messages."""
+        try:
+            conv = Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return None
+        if user.sub and str(conv.user_id) != user.sub:
+            return None
+        msgs = list(
+            Message.objects.filter(conversation=conv).order_by("created_at")
+        )
+        return conv, msgs
+
+    loaded = await _load()
+    if not loaded:
+        raise NotFoundError("conversation", conversation_id)
+
+    conv, msgs = loaded
+    lines = [f"# {conv.title or 'Conversation'}", ""]
+    for m in msgs:
+        role = getattr(m, "role", getattr(m, "sender", "user"))
+        content = getattr(m, "content", "") or ""
+        lines.append(f"## {role}")
+        lines.append(content)
+        lines.append("")
+    return {
+        "id": str(conv.id),
+        "title": conv.title or "Conversation",
+        "format": "markdown",
+        "content": "\n".join(lines),
+        "message_count": len(msgs),
+    }
+
+
 # =============================================================================
 # MESSAGES - Per SRS UC-01
 # =============================================================================
@@ -360,6 +487,7 @@ async def get_messages(
                     conversation_id=str(msg.conversation_id),
                     role=msg.role,
                     coordinate=msg.coordinate,  # SomaBrain reference
+                    content=msg.coordinate or "",  # turn text lives here
                     token_count=msg.token_count,
                     metadata=msg.metadata,
                     created_at=msg.created_at.isoformat(),

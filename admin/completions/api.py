@@ -12,10 +12,9 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
-from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -103,31 +102,10 @@ async def create_chat_completion(
     ML Eng: LLM inference.
     PhD Dev: Completion parameters.
     """
-    completion_id = f"chatcmpl-{uuid4().hex[:24]}"
-
-    # In production: call LLM provider
-
-    logger.info('Completion: %s, model=%s', completion_id, model)
-
-    return CompletionResponse(
-        id=completion_id,
-        created=int(timezone.now().timestamp()),
-        model=model,
-        choices=[
-            CompletionChoice(
-                index=0,
-                message=Message(
-                    role="assistant",
-                    content="Hello! I'm an AI assistant. How can I help you today?",
-                ),
-                finish_reason="stop",
-            )
-        ],
-        usage={
-            "prompt_tokens": sum(len(m.get("content", "").split()) for m in messages),
-            "completion_tokens": 12,
-            "total_tokens": sum(len(m.get("content", "").split()) for m in messages) + 12,
-        },
+    raise HttpError(
+        501,
+        "Chat completion is not implemented on this endpoint. "
+        "Use the V3 chat orchestrator / WS chat path for real LLM inference.",
     )
 
 
@@ -170,26 +148,11 @@ async def create_text_completion(
 
     ML Eng: Legacy completion.
     """
-    completion_id = f"cmpl-{uuid4().hex[:24]}"
-
-    return {
-        "id": completion_id,
-        "object": "text_completion",
-        "created": int(timezone.now().timestamp()),
-        "model": model,
-        "choices": [
-            {
-                "text": "Completed text response.",
-                "index": 0,
-                "finish_reason": "stop",
-            }
-        ],
-        "usage": {
-            "prompt_tokens": len(prompt.split()),
-            "completion_tokens": 4,
-            "total_tokens": len(prompt.split()) + 4,
-        },
-    }
+    raise HttpError(
+        501,
+        "Text completion is not implemented on this endpoint. "
+        "Use the V3 chat orchestrator / WS chat path for real LLM inference.",
+    )
 
 
 # =============================================================================
@@ -213,33 +176,11 @@ async def create_chat_with_functions(
 
     PhD Dev: Tool use.
     """
-    completion_id = f"chatcmpl-{uuid4().hex[:24]}"
-
-    return {
-        "id": completion_id,
-        "object": "chat.completion",
-        "created": int(timezone.now().timestamp()),
-        "model": model,
-        "choices": [
-            {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": None,
-                    "function_call": {
-                        "name": functions[0]["name"] if functions else "example",
-                        "arguments": "{}",
-                    },
-                },
-                "finish_reason": "function_call",
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 50,
-            "completion_tokens": 10,
-            "total_tokens": 60,
-        },
-    }
+    raise HttpError(
+        501,
+        "Function-calling completion is not implemented on this endpoint. "
+        "Use the V3 chat orchestrator tool path.",
+    )
 
 
 # =============================================================================
@@ -262,29 +203,11 @@ async def create_chat_json_mode(
 
     PhD Dev: Structured output.
     """
-    completion_id = f"chatcmpl-{uuid4().hex[:24]}"
-
-    return {
-        "id": completion_id,
-        "object": "chat.completion",
-        "created": int(timezone.now().timestamp()),
-        "model": model,
-        "choices": [
-            {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": '{"result": "success", "data": {}}',
-                },
-                "finish_reason": "stop",
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 30,
-            "completion_tokens": 8,
-            "total_tokens": 38,
-        },
-    }
+    raise HttpError(
+        501,
+        "JSON-mode completion is not implemented on this endpoint. "
+        "Use the V3 chat orchestrator / WS chat path for real LLM inference.",
+    )
 
 
 # =============================================================================
@@ -305,6 +228,7 @@ async def get_stats(
 
     PM: Usage tracking.
     """
+    # Real empty state: no completion usage store is wired to this endpoint.
     return {
         "total_completions": 0,
         "total_tokens": 0,

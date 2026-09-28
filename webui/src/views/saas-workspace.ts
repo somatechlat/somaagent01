@@ -20,7 +20,7 @@ export class SaasWorkspace extends LitElement {
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            background: var(--aaas-bg-void, #0a0a0a);
+            background: var(--aaas-bg-void, #f5f5f5);
             color: var(--aaas-text-primary, #ffffff);
             font-family: var(--aaas-font-sans, 'Inter', sans-serif);
         }

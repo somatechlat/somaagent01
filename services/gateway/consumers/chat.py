@@ -82,6 +82,38 @@ MSG_CONNECTED = "connected"
 MSG_TYPING = "typing"
 MSG_FEEDBACK = "feedback"
 
+# Tool timeline (native function calling) — C1 / CH-11. Emitted while the
+# orchestrator runs its model→tool→model loop so the UI can render a live
+# tool-call timeline. C2 styles these.
+MSG_TOOL_CALL = "tool.call"
+MSG_TOOL_DELTA = "tool.delta"
+MSG_TOOL_DONE = "tool.done"
+MSG_TOOL_APPROVAL_REQUEST = "tool.approval_request"
+MSG_TOOL_APPROVAL = "tool.approval"
+
+# Chat control (C4 / CH-04) — pause, nudge, stop, reset the running turn.
+MSG_CHAT_PAUSE = "chat.pause"
+MSG_CHAT_RESUME = "chat.resume"
+MSG_CHAT_NUDGE = "chat.nudge"
+MSG_CHAT_STOP = "chat.stop"
+MSG_CHAT_RESET = "chat.reset"
+
+TOOL_MSG_TYPES = {
+    MSG_TOOL_CALL,
+    MSG_TOOL_DELTA,
+    MSG_TOOL_DONE,
+    MSG_TOOL_APPROVAL_REQUEST,
+}
+
+CONTROL_MSG_TYPES = {
+    MSG_CHAT_PAUSE,
+    MSG_CHAT_RESUME,
+    MSG_CHAT_NUDGE,
+    MSG_CHAT_STOP,
+    MSG_CHAT_RESET,
+    MSG_TOOL_APPROVAL,
+}
+
 
 # =============================================================================
 # CHAT CONSUMER
@@ -112,6 +144,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.session_id: Optional[str] = None
         self.heartbeat_task: Optional[asyncio.Task] = None
         self.is_streaming: bool = False
+
+        # Chat control state (C4)
+        self._paused: bool = False
+        self._stop_requested: bool = False
+        self._nudge_queue: List[str] = []
+        self._turn_task: Optional[asyncio.Task] = None
+        self._tool_approvals: Dict[str, asyncio.Future] = {}
 
         # Phase 1-3: Pre-loaded at connection time (cached for entire session)
         self.capsule: Optional[Any] = None
@@ -204,10 +243,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
 
             # Phase 4: BUILD PER-CAPSULE TOOL REGISTRY (ONCE)
-            from services.tool_executor.tool_registry import ToolRegistry
+            try:
+                from services.tool_executor.tool_registry import ToolRegistry
 
-            self.tool_registry = ToolRegistry()
-            self.tool_registry.load_from_capsule(self.capsule)
+                self.tool_registry = ToolRegistry()
+                self.tool_registry.load_from_capsule(self.capsule)
+            except Exception:
+                # Tool stack must never block chat (optional deps).
+                logger.exception("ToolRegistry load failed; continuing without tools")
+                self.tool_registry = None
             logger.info(
                 "WebSocket tool registry built: %d tools",
                 len(list(self.tool_registry.list())),
@@ -341,6 +385,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             elif msg_type == MSG_FEEDBACK:
                 await self._handle_feedback(content)
 
+            elif msg_type in CONTROL_MSG_TYPES:
+                await self._handle_control(content)
+
             else:
                 await self._send_error(f"Unknown message type: {msg_type}")
 
@@ -460,6 +507,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """
         payload = content.get("payload") or content.get("data") or {}
         message_content = payload.get("content", "")
+        agent_mode = str(payload.get("mode") or "STD").upper()
         conversation_id = (
             payload.get("conversation_id") or payload.get("session_id") or self.conversation_id
         )
@@ -485,7 +533,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
 
             # Get V3 Chat Orchestrator and stream response
-            from admin.core.chat_orchestrator import ChatTurn, get_chat_orchestrator
+            from admin.core.chat_orchestrator import (
+                ChatTurn,
+                ToolStreamEvent,
+                get_chat_orchestrator,
+            )
 
             orchestrator = await get_chat_orchestrator()
 
@@ -520,11 +572,39 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 conversation_id=conversation_id,
                 history=self._cached_history,
                 capsule_id=self.agent_id,
+                agent_mode=agent_mode,
             )
 
-            async for token in orchestrator.stream_turn(turn):
+            async for item in orchestrator.stream_turn(turn):
+                if self._stop_requested:
+                    break
+
+                # Pause gate (C4): hold token emission without dropping the
+                # turn; resume flushes the backlog naturally.
+                while self._paused and not self._stop_requested:
+                    await asyncio.sleep(0.05)
+
+                if isinstance(item, ToolStreamEvent):
+                    # Tool timeline (tool.call / tool.delta / tool.done /
+                    # tool.approval_request) — forward so the UI can render
+                    # the live tool-call timeline (CH-11).
+                    await self.send_json(
+                        WSMessage(
+                            type=item.type,
+                            payload={
+                                "conversation_id": conversation_id,
+                                "response_id": response_id,
+                                **item.payload,
+                            },
+                        ).to_dict()
+                    )
+                    _metrics.WEBSOCKET_MESSAGES.labels(
+                        direction="outbound", type=item.type
+                    ).inc()
+                    continue
+
                 token_count += 1
-                response_content.append(token)
+                response_content.append(item)
 
                 # Send delta
                 await self.send_json(
@@ -533,7 +613,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         payload={
                             "conversation_id": conversation_id,
                             "response_id": response_id,
-                            "delta": token,
+                            "delta": item,
                             "index": token_count,
                         },
                     ).to_dict()
@@ -569,6 +649,82 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         finally:
             self.is_streaming = False
+
+    async def _handle_control(self, content: dict):
+        """Handle chat control + tool approval (C4 / C2).
+
+        - ``chat.pause`` / ``chat.resume`` — freeze or unfreeze token emission
+        - ``chat.nudge`` — inject a user nudge into the running turn (if any)
+        - ``chat.stop`` — cancel the running turn (fail-closed: no-op if idle)
+        - ``chat.reset`` — clear local conversation stream state
+        - ``tool.approval`` — resolve a pending tool approval future
+        """
+        msg_type = content.get("type", "")
+        payload = content.get("payload") or content.get("data") or {}
+
+        if msg_type == MSG_CHAT_PAUSE:
+            self._paused = True
+            await self._send_json(
+                WSMessage(type="chat.paused", payload={"paused": True})
+            )
+            return
+
+        if msg_type == MSG_CHAT_RESUME:
+            self._paused = False
+            await self._send_json(
+                WSMessage(type="chat.paused", payload={"paused": False})
+            )
+            return
+
+        if msg_type == MSG_CHAT_NUDGE:
+            nudge_text = payload.get("content") or payload.get("text") or "Please continue."
+            if self.is_streaming:
+                self._nudge_queue.append(nudge_text)
+                await self._send_json(
+                    WSMessage(type="chat.nudged", payload={"queued": True})
+                )
+            else:
+                await self._send_error(
+                    "No running turn to nudge", code="not_streaming"
+                )
+            return
+
+        if msg_type == MSG_CHAT_STOP:
+            if self._turn_task and not self._turn_task.done():
+                self._turn_task.cancel()
+                self._stop_requested = True
+            self._paused = False
+            await self._send_json(
+                WSMessage(type="chat.stopped", payload={"stopped": True})
+            )
+            return
+
+        if msg_type == MSG_CHAT_RESET:
+            self._paused = False
+            self._stop_requested = False
+            self._nudge_queue.clear()
+            if self._turn_task and not self._turn_task.done():
+                self._turn_task.cancel()
+            await self._send_json(
+                WSMessage(type="chat.reset", payload={"ok": True})
+            )
+            return
+
+        if msg_type == MSG_TOOL_APPROVAL:
+            tool_call_id = payload.get("tool_call_id") or payload.get("toolCallId") or ""
+            approved = bool(payload.get("approved"))
+            future = self._tool_approvals.pop(tool_call_id, None)
+            if future is not None and not future.done():
+                future.set_result(approved)
+            await self._send_json(
+                WSMessage(
+                    type="tool.approval_resolved",
+                    payload={"tool_call_id": tool_call_id, "approved": approved},
+                )
+            )
+            return
+
+        await self._send_error(f"Unhandled control type: {msg_type}")
 
     async def _handle_feedback(self, content: dict):
         """Handle user feedback (thumbs up/down).

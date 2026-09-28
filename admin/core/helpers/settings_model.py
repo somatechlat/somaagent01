@@ -10,7 +10,20 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+def _dj(name: str, default: Any = None) -> Any:
+    """Resolve one tunable from Django settings (authority), else schema default."""
+    try:
+        from django.conf import settings
+
+        value = getattr(settings, name, None)
+        if value is not None and value != "":
+            return value
+    except Exception:
+        pass
+    return default
 
 
 class SettingsModel(BaseModel):
@@ -19,9 +32,14 @@ class SettingsModel(BaseModel):
 
     version: str = "unknown"
 
-    # Chat / util / embed model settings
-    chat_model_provider: str = "openrouter"
-    chat_model_name: str = "xiaomi/mimo-v2-flash:free"
+    # Chat / util / embed model settings — defaults from Django settings / env
+    # (SA01_DEFAULT_*). Stored per-agent in the agent settings model at runtime.
+    chat_model_provider: str = Field(
+        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
+    )
+    chat_model_name: str = Field(
+        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", "")
+    )
     chat_model_api_base: str = ""
     chat_model_kwargs: Dict[str, Any] = {}
     chat_model_ctx_length: int = 100000
@@ -31,8 +49,12 @@ class SettingsModel(BaseModel):
     chat_model_rl_input: int = 0
     chat_model_rl_output: int = 0
 
-    util_model_provider: str = "openrouter"
-    util_model_name: str = "xiaomi/mimo-v2-flash:free"
+    util_model_provider: str = Field(
+        default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_PROVIDER", "openrouter")
+    )
+    util_model_name: str = Field(
+        default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_NAME", "")
+    )
     util_model_api_base: str = ""
     util_model_ctx_length: int = 100000
     util_model_ctx_input: float = 0.7
@@ -41,8 +63,12 @@ class SettingsModel(BaseModel):
     util_model_rl_input: int = 0
     util_model_rl_output: int = 0
 
-    embed_model_provider: str = "huggingface"
-    embed_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embed_model_provider: str = Field(
+        default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_PROVIDER", "huggingface")
+    )
+    embed_model_name: str = Field(
+        default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_NAME", "")
+    )
     embed_model_api_base: str = ""
     embed_model_kwargs: Dict[str, Any] = {}
     embed_model_rl_requests: int = 0
@@ -50,8 +76,12 @@ class SettingsModel(BaseModel):
     embed_model_rl_output: int = 0
 
     # Browser / tool model settings
-    browser_model_provider: str = "openrouter"
-    browser_model_name: str = "openai/gpt-4.1"
+    browser_model_provider: str = Field(
+        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
+    )
+    browser_model_name: str = Field(
+        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", "")
+    )
     browser_model_api_base: str = ""
     browser_model_vision: bool = True
     browser_model_rl_requests: int = 0
@@ -60,15 +90,25 @@ class SettingsModel(BaseModel):
     browser_model_kwargs: Dict[str, Any] = {}
     browser_http_headers: Dict[str, str] = {}
 
-    # Memory / recall controls
+    # Memory / recall controls — Django settings MEM_* is the authority.
     memory_recall_enabled: bool = True
     memory_recall_delayed: bool = False
-    memory_recall_interval: int = 3
+    memory_recall_interval: int = Field(
+        default_factory=lambda: int(_dj("MEM_HISTORY_LIMIT", 20))
+    )
     memory_recall_history_len: int = 10000
-    memory_recall_memories_max_search: int = 12
-    memory_recall_solutions_max_search: int = 8
-    memory_recall_memories_max_result: int = 5
-    memory_recall_solutions_max_result: int = 3
+    memory_recall_memories_max_search: int = Field(
+        default_factory=lambda: int(_dj("MEM_RECALL_TOP_K", 8))
+    )
+    memory_recall_solutions_max_search: int = Field(
+        default_factory=lambda: int(_dj("MEM_PROXIMITY_TOP_K", 10))
+    )
+    memory_recall_memories_max_result: int = Field(
+        default_factory=lambda: int(_dj("MEM_RECALL_TOP_K", 8))
+    )
+    memory_recall_solutions_max_result: int = Field(
+        default_factory=lambda: int(_dj("MEM_PROXIMITY_TOP_K", 10))
+    )
     memory_recall_similarity_threshold: float = 0.7
     memory_recall_query_prep: bool = True
     memory_recall_post_filter: bool = True
@@ -105,9 +145,15 @@ class SettingsModel(BaseModel):
     stt_waiting_timeout: int = 2000
     speech_provider: str = "browser"
     speech_realtime_enabled: bool = False
-    speech_realtime_model: str = "gpt-4o-realtime-preview"
-    speech_realtime_voice: str = "verse"
-    speech_realtime_endpoint: str = "https://api.openai.com/v1/realtime/sessions"
+    speech_realtime_model: str = Field(
+        default_factory=lambda: _dj("SPEECH_REALTIME_MODEL", "")
+    )
+    speech_realtime_voice: str = Field(
+        default_factory=lambda: _dj("SPEECH_REALTIME_VOICE", "")
+    )
+    speech_realtime_endpoint: str = Field(
+        default_factory=lambda: _dj("SPEECH_REALTIME_ENDPOINT", "")
+    )
     tts_kokoro: bool = False
 
     # MCP / A2A

@@ -6,8 +6,8 @@
 |-------|-------|
 | Document Title | SomaAgent01 Quality Manual |
 | Document Identifier | SOMA-01-QMS-001 |
-| Version | 2.0.0 |
-| Date | 2026-06-15 |
+| Version | 2.1.0 |
+| Date | 2026-09-27 |
 | Status | Active |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -21,6 +21,7 @@
 | 1.0.0 | 2025-12-30 | SomaTech Engineering | Initial quality manual |
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated quality objectives and process map |
 | 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; updated quality metrics; revised improvement plan |
+| 2.1.0 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-DOCS-001 and SOMA-01-DOCS-002 |
 
 ---
 
@@ -221,6 +222,8 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Risk Register | SOMA-01-RISK-001 | ISO 31000 | Risk identification and mitigation |
 | Production Readiness | SOMA-01-PROD-001 | Internal | Production gate criteria and roadmap |
 | Quality Manual | SOMA-01-QMS-001 | ISO 9001 | Quality policy, objectives, and processes |
+| Document Control and Traceability Procedure | SOMA-01-DOCS-001 | ISO 9001:2015 clause 7.5 | Control of documented information |
+| Document Register | SOMA-01-DOCS-002 | ISO 9001:2015 clause 7.5 | Authoritative inventory of `docs/**/*.md` |
 
 ---
 

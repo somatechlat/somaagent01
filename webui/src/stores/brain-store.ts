@@ -26,19 +26,19 @@ export const brainContext = createContext<BrainStore>('brain-store');
 
 export class BrainStore {
     private _state: BrainState = {
-        connected: true,
+        connected: false,
         neuromodulators: {
-            dopamine: 0.72,
-            serotonin: 0.95,
-            noradrenaline: 0.18,
-            acetylcholine: 0.51,
+            dopamine: 0,
+            serotonin: 0,
+            noradrenaline: 0,
+            acetylcholine: 0,
         },
-        adaptation: 78,
-        memoryUsage: 12400,
+        adaptation: 0,
+        memoryUsage: 0,
         sleepStatus: 'active',
-        lastConsolidation: new Date(Date.now() - 7200000).toISOString(),
-        nextScheduled: new Date(Date.now() + 21600000).toISOString(),
-        cognitiveLoad: 'medium',
+        lastConsolidation: null,
+        nextScheduled: null,
+        cognitiveLoad: 'low',
     };
 
     private _listeners: Set<() => void> = new Set();

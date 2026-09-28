@@ -18,6 +18,7 @@ from typing import Optional
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -474,25 +475,7 @@ async def wake_agent(request, agent_id: str) -> dict:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
-    client = get_somabrain_client()
-    if client is None:
-        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
-
-    try:
-        # In production: call SomaBrain wake endpoint
-        state = await client.get_cognitive_state(agent_id)
-
-        return {
-            "agent_id": agent_id,
-            "status": state.get("status", "awake"),
-            "message": get_message(SuccessCode.AGENT_AWAKENED),
-            "timestamp": timezone.now().isoformat(),
-            "degraded": False,
-        }
-
-    except SomaBrainError as e:
-        logger.warning('Wake agent failed - DEGRADED: %s', e)
-        raise ServiceUnavailableError("somabrain", str(e))
+    raise HttpError(501, "Agent wake is not implemented: SomaBrainClient has no wake endpoint.")
 
 
 @router.get(

@@ -13,9 +13,20 @@ from typing import Any, Dict
 
 import httpx
 
-import fitz  # PyMuPDF
-import pytesseract
-from PIL import Image
+try:
+    import fitz  # PyMuPDF
+except Exception:  # noqa: BLE001 — optional PDF stack
+    fitz = None  # type: ignore[assignment]
+
+try:
+    import pytesseract
+except Exception:  # noqa: BLE001 — optional OCR stack
+    pytesseract = None  # type: ignore[assignment]
+
+try:
+    from PIL import Image
+except Exception:  # noqa: BLE001 — optional image stack
+    Image = None  # type: ignore[assignment,misc]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -344,6 +355,9 @@ AVAILABLE_TOOLS = {
         CanvasAppendTool(),
     ]
 }
+
+# Memory tools are registered by services.tool_executor.default_tools
+# (and tool_registry) to avoid a circular import with memory_tools.
 
 
 class IngestDocumentTool(BaseTool):

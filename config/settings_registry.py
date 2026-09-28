@@ -157,9 +157,9 @@ class BaseSettings(ABC):
 class StandaloneSettings(BaseSettings):
     """Settings for Agent-only Standalone deployment (Port 20xxx)."""
 
-    # Standalone-specific: NO Brain/Memory
-    somabrain_enabled: bool = field(default=False)
-    fractalmemory_enabled: bool = field(default=False)
+    # Full triad always on (Agent + SomaBrain + SFM) — never a memory bypass.
+    somabrain_enabled: bool = field(default=True)
+    fractalmemory_enabled: bool = field(default=True)
 
     @classmethod
     def load(cls) -> "StandaloneSettings":
@@ -223,9 +223,10 @@ class StandaloneSettings(BaseSettings):
             sa01_memory_namespace=get_optional_env("SA01_MEMORY_NAMESPACE", "wm"),
             # Budget
             sa01_default_token_budget=int(get_optional_env("SA01_DEFAULT_TOKEN_BUDGET", "4096")),
-            # Standalone-specific
-            somabrain_enabled=False,
-            fractalmemory_enabled=False,
+            # Full triad is ALWAYS enabled — Agent + SomaBrain + SFM.
+            # Never disable the memory lane (user directive 2026-09-27).
+            somabrain_enabled=True,
+            fractalmemory_enabled=True,
         )
 
 

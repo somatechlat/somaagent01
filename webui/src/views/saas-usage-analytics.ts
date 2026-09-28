@@ -318,6 +318,7 @@ export class SaasUsageAnalytics extends LitElement {
     @state() private usage: UsageMetrics | null = null;
     @state() private dailyUsage: DailyUsage[] = [];
     @state() private loading = true;
+    @state() private error: string | null = null;
     @state() private period = 'month';
 
     connectedCallback() {
@@ -332,45 +333,25 @@ export class SaasUsageAnalytics extends LitElement {
 
     private async loadUsageData() {
         this.loading = true;
+        this.error = null;
         try {
             const res = await fetch(`/api/v2/saas/billing/usage?period=${this.period}`, { headers: this.getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                this.usage = data.current || this.getMockUsage();
-                this.dailyUsage = data.daily || this.getMockDaily();
+                this.usage = data.current || null;
+                this.dailyUsage = data.daily || [];
             } else {
-                this.usage = this.getMockUsage();
-                this.dailyUsage = this.getMockDaily();
+                this.usage = null;
+                this.dailyUsage = [];
+                this.error = `Failed to load usage (HTTP ${res.status})`;
             }
         } catch {
-            this.usage = this.getMockUsage();
-            this.dailyUsage = this.getMockDaily();
+            this.usage = null;
+            this.dailyUsage = [];
+            this.error = 'Failed to load usage';
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockUsage(): UsageMetrics {
-        return {
-            tokens: { used: 847500, limit: 1000000, percent: 84.75 },
-            api_calls: { used: 12450, limit: 50000, percent: 24.9 },
-            storage: { used_gb: 7.2, limit_gb: 10, percent: 72 },
-            agents: { used: 4, limit: 5, percent: 80 },
-        };
-    }
-
-    private getMockDaily(): DailyUsage[] {
-        const days = [];
-        for (let i = 29; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            days.push({
-                date: d.toISOString().split('T')[0],
-                tokens: Math.floor(Math.random() * 50000) + 10000,
-                api_calls: Math.floor(Math.random() * 2000) + 200,
-            });
-        }
-        return days;
     }
 
     private formatNumber(n: number): string {
@@ -412,6 +393,7 @@ export class SaasUsageAnalytics extends LitElement {
 
         <div class="content">
           ${this.loading ? html`<div class="loading">Loading usage data...</div>` : nothing}
+          ${this.error ? html`<div class="loading">${this.error}</div>` : nothing}
           
           ${!this.loading && this.usage ? html`
             <!-- Quota Cards -->

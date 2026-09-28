@@ -201,13 +201,26 @@ def _is_transient_litellm_error(exc: Exception) -> bool:
 
 
 # --- Timeout / retry / Groq compat policy (single place for all call paths) ---
+# Production interactive chat: never stall a user turn for tens of seconds.
+# Django settings is the authority (config.settings / services.gateway.settings);
+# env is the 12-factor override. These names are only last-resort schema defaults.
 
-DEFAULT_CONNECT_TIMEOUT_S = 10.0
-DEFAULT_READ_TIMEOUT_S = 45.0
-DEFAULT_MAX_RETRIES = 2
-DEFAULT_RETRY_BASE_DELAY_S = 1.5
-RETRY_BACKOFF_CAP_S = 15.0
-RETRY_AFTER_CAP_S = 30.0
+DEFAULT_CONNECT_TIMEOUT_S = 5.0
+DEFAULT_READ_TIMEOUT_S = 15.0
+DEFAULT_MAX_RETRIES = 1
+DEFAULT_RETRY_BASE_DELAY_S = 0.4
+RETRY_BACKOFF_CAP_S = 2.0
+RETRY_AFTER_CAP_S = 3.0
+
+
+def _django_setting(name: str) -> Any:
+    """Read one tunable from Django settings (authority), else None."""
+    try:
+        from django.conf import settings as django_settings
+
+        return getattr(django_settings, name, None)
+    except Exception:
+        return None
 
 
 def _env_float(name: str) -> float | None:
@@ -233,12 +246,18 @@ def _positive_or(value: Any, default: float) -> float:
 def get_timeout_settings() -> tuple[float, float]:
     """Resolve (connect_s, read_s) timeouts.
 
-    Precedence: SA01_LLM_CONNECT_TIMEOUT / SA01_LLM_READ_TIMEOUT env vars,
-    then optional settings attributes ``llm_connect_timeout`` / ``llm_read_timeout``,
-    then the defaults (10s connect, 45s read).
+    Precedence: Django settings LLM_CONNECT_TIMEOUT_S / LLM_READ_TIMEOUT_S,
+    then SA01_LLM_CONNECT_TIMEOUT / SA01_LLM_READ_TIMEOUT env vars,
+    then optional settings model ``llm_connect_timeout`` / ``llm_read_timeout``.
     """
     connect = _env_float("SA01_LLM_CONNECT_TIMEOUT")
     read = _env_float("SA01_LLM_READ_TIMEOUT")
+    dj_connect = _django_setting("LLM_CONNECT_TIMEOUT_S")
+    dj_read = _django_setting("LLM_READ_TIMEOUT_S")
+    if dj_connect is not None:
+        connect = float(dj_connect)
+    if dj_read is not None:
+        read = float(dj_read)
     if connect is None or read is None:
         try:
             from admin.core.helpers.settings import get_settings
@@ -502,6 +521,48 @@ def apply_rate_limiter_sync(
         return executor.submit(_run_in_fresh_loop).result()
 
 
+def _get_field(obj: Any, name: str) -> Any:
+    """Read ``name`` from a dict- or object-style provider payload."""
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _extract_tool_call_deltas(delta: Any, message: Any) -> list[Any]:
+    """Normalize native tool_call fragments from a stream delta or full message.
+
+    Streaming deltas carry partial ``function.arguments`` JSON fragments keyed
+    by ``index``; non-stream messages carry complete calls. Never regex-parses
+    tool calls out of model text (VIBE: native function calling only).
+    """
+    raw = _get_field(delta, "tool_calls")
+    if not raw:
+        raw = _get_field(message, "tool_calls")
+    if not raw:
+        return []
+    from admin.llm.services.litellm_schemas import ToolCallDelta
+
+    out: list[Any] = []
+    for i, item in enumerate(raw):
+        fn = _get_field(item, "function")
+        index = _get_field(item, "index")
+        try:
+            parsed_index = int(index) if index is not None else i
+        except (TypeError, ValueError):
+            parsed_index = i
+        out.append(
+            ToolCallDelta(
+                index=parsed_index,
+                id=str(_get_field(item, "id") or ""),
+                name=str(_get_field(fn, "name") or ""),
+                arguments=str(_get_field(fn, "arguments") or ""),
+            )
+        )
+    return out
+
+
 def _parse_chunk(chunk: Any) -> "ChatChunk":
     """Parse LLM response chunk into standardized format."""
 
@@ -520,7 +581,13 @@ def _parse_chunk(chunk: Any) -> "ChatChunk":
         else getattr(delta, "reasoning_content", "")
     )
 
-    return ChatChunk(reasoning_delta=reasoning_delta, response_delta=response_delta)
+    parsed: "ChatChunk" = ChatChunk(
+        reasoning_delta=reasoning_delta, response_delta=response_delta
+    )
+    tool_call_deltas = _extract_tool_call_deltas(delta, message)
+    if tool_call_deltas:
+        parsed["tool_call_deltas"] = tool_call_deltas
+    return parsed
 
 
 def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):

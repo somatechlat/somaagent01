@@ -166,7 +166,7 @@ def handle_conversation_message(sender, **kwargs):
             conversation_id="conv-123",
             message_id="msg-456",
             role="user",
-            content="Hello!",
+            content="ping",
         )
     """
     conversation_id = kwargs.get("conversation_id")

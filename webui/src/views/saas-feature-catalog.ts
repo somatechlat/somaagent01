@@ -241,6 +241,7 @@ export class SaasFeatureCatalog extends LitElement {
 
     @state() private features: Feature[] = [];
     @state() private loading = true;
+    @state() private error: string | null = null;
     @state() private search = '';
 
     private readonly tiers = ['free', 'starter', 'team', 'enterprise'];
@@ -257,33 +258,22 @@ export class SaasFeatureCatalog extends LitElement {
 
     private async loadFeatures() {
         this.loading = true;
+        this.error = null;
         try {
             const res = await fetch('/api/v2/saas/features', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 this.features = data.features || [];
             } else {
-                this.features = this.getMockFeatures();
+                this.features = [];
+                this.error = `Failed to load features (HTTP ${res.status})`;
             }
         } catch {
-            this.features = this.getMockFeatures();
+            this.features = [];
+            this.error = 'Failed to load features';
         } finally {
             this.loading = false;
         }
-    }
-
-    private getMockFeatures(): Feature[] {
-        return [
-            { id: '1', code: 'memory', name: 'Long-term Memory', description: 'Vector-based memory recall and consolidation', category: 'Core', is_billable: true, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '2', code: 'voice', name: 'Voice Mode', description: 'Real-time voice conversation with Whisper + Kokoro', category: 'Communication', is_billable: true, is_enabled: true, tiers: ['team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '3', code: 'mcp', name: 'MCP Integration', description: 'Model Context Protocol for external tools', category: 'Extensibility', is_billable: false, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '4', code: 'browser_agent', name: 'Browser Agent', description: 'Web browsing and automation capabilities', category: 'Capabilities', is_billable: false, is_enabled: true, tiers: ['team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '5', code: 'code_execution', name: 'Code Execution', description: 'Sandboxed Python/JS execution', category: 'Capabilities', is_billable: false, is_enabled: true, tiers: ['enterprise'], created_at: '2025-01-01' },
-            { id: '6', code: 'vision', name: 'Vision', description: 'Image understanding and analysis', category: 'Capabilities', is_billable: true, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '7', code: 'delegation', name: 'Agent Delegation', description: 'Multi-agent task delegation', category: 'Advanced', is_billable: false, is_enabled: true, tiers: ['enterprise'], created_at: '2025-01-01' },
-            { id: '8', code: 'file_upload', name: 'File Upload', description: 'Upload and process documents', category: 'Core', is_billable: true, is_enabled: true, tiers: ['free', 'starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-            { id: '9', code: 'export', name: 'Data Export', description: 'Export conversations and memories', category: 'Data', is_billable: false, is_enabled: true, tiers: ['starter', 'team', 'enterprise'], created_at: '2025-01-01' },
-        ];
     }
 
     private async toggleFeature(feature: Feature) {
@@ -352,6 +342,7 @@ export class SaasFeatureCatalog extends LitElement {
 
         <div class="content">
           ${this.loading ? html`<div class="loading">Loading features...</div>` : html`
+            ${this.error ? html`<div class="loading">${this.error}</div>` : nothing}
             <!-- Stats -->
             <div class="stats-row">
               <div class="stat-card">

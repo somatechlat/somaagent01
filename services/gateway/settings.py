@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "channels",
     # Local admin apps (alphabetical order)
     "admin.agents",
+    "admin.bridges",
     "admin.capsules",
     "admin.chat",
     "admin.core",
@@ -85,6 +86,7 @@ INSTALLED_APPS = [
     "admin.gateway",
     "admin.llm",
     "admin.memory",
+    "admin.modules",
     "admin.multimodal",
     "admin.somabrain",
     "admin.notifications",
@@ -237,9 +239,61 @@ AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "true").lower() == "true"
 # Dev auth bypass is handled via DEBUG=True + policy/soma_development.rego gated to environment=="dev".
 
 # SomaBrain (Cognitive Runtime)
-SOMABRAIN_URL = get_optional_env("SA01_SOMA_BASE_URL", "", "SomaBrain cognitive runtime HTTP endpoint")
+SOMABRAIN_URL = get_optional_env(
+    "SOMABRAIN_URL",
+    get_optional_env("SA01_SOMA_BASE_URL", "", "SomaBrain cognitive runtime HTTP endpoint"),
+    "SomaBrain cognitive runtime HTTP endpoint",
+)
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
+SOMABRAIN_MEMORY_HTTP_TOKEN = get_optional_env(
+    "SOMABRAIN_MEMORY_HTTP_TOKEN", "", "SomaBrain service bearer token"
+)
+SOMAFRACTALMEMORY_URL = get_optional_env(
+    "SOMAFRACTALMEMORY_URL", "", "SomaFractalMemory store URL (Brain-side only)"
+)
 SOMABRAIN_API_KEY = os.environ.get("SA01_SOMABRAIN_API_KEY") or os.environ.get("SOMA_API_TOKEN") or None
+
+# ---------------------------------------------------------------------------
+# MEMORY TOOLS / SEAM — fully configurable (Django settings is the authority).
+# ---------------------------------------------------------------------------
+MEM_EMBED_DIM = int(os.environ.get("MEM_EMBED_DIM", "768"))
+MEM_HTTP_TIMEOUT = float(os.environ.get("MEM_HTTP_TIMEOUT", "5.0"))
+MEM_RECALL_TOP_K = int(os.environ.get("MEM_RECALL_TOP_K", "8"))
+MEM_PROXIMITY_TOP_K = int(os.environ.get("MEM_PROXIMITY_TOP_K", "10"))
+MEM_HISTORY_LIMIT = int(os.environ.get("MEM_HISTORY_LIMIT", "20"))
+MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
+MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
+MEM_DEFAULT_SALIENCE = float(os.environ.get("MEM_DEFAULT_SALIENCE", "0.5"))
+MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
+MEM_WRITE_TIMEOUT_S = float(os.environ.get("MEM_WRITE_TIMEOUT_S", "10.0"))
+MEM_RECALL_TIMEOUT_S = float(os.environ.get("MEM_RECALL_TIMEOUT_S", "2.5"))
+MEM_HISTORY_TIMEOUT_S = float(os.environ.get("MEM_HISTORY_TIMEOUT_S", "2.5"))
+MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
+MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
+TOOL_REWARD_SUCCESS = float(os.environ.get("TOOL_REWARD_SUCCESS", "1.0"))
+TOOL_REWARD_FAILURE = float(os.environ.get("TOOL_REWARD_FAILURE", "0.0"))
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = float(
+    os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", "0.5")
+)
+
+# LLM / HTTP / MODEL runtime tunables (Django settings authority).
+LLM_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_LLM_CONNECT_TIMEOUT", "5.0"))
+LLM_READ_TIMEOUT_S = float(os.environ.get("SA01_LLM_READ_TIMEOUT", "15.0"))
+LLM_MAX_RETRIES = int(os.environ.get("SA01_LLM_MAX_RETRIES", "1"))
+LLM_RETRY_BASE_DELAY_S = float(os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S", "0.4"))
+LLM_RETRY_BACKOFF_CAP_S = float(os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S", "2.0"))
+LLM_RETRY_AFTER_CAP_S = float(os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S", "3.0"))
+HTTP_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_HTTP_CONNECT_TIMEOUT", "5.0"))
+HTTP_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_READ_TIMEOUT", "10.0"))
+HTTP_SLOW_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT", "30.0"))
+DEFAULT_CHAT_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
+DEFAULT_CHAT_MODEL_NAME = os.environ.get("SA01_DEFAULT_CHAT_MODEL_NAME", "")
+DEFAULT_UTIL_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_UTIL_MODEL_PROVIDER", "openrouter")
+DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
+DEFAULT_EMBED_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_EMBED_MODEL_PROVIDER", "huggingface")
+DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
+CB_FAILURE_THRESHOLD = int(os.environ.get("CB_FAILURE_THRESHOLD", "5"))
+CB_RESET_TIMEOUT_S = float(os.environ.get("CB_RESET_TIMEOUT_S", "30.0"))
 OPA_URL = get_optional_env("SA01_OPA_URL", "", "Open Policy Agent for authorization policies")
 
 # Voice Services (Whisper STT + Kokoro TTS)

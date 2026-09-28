@@ -58,7 +58,12 @@ class CircuitBreaker:
     """Async-safe circuit breaker with standard state machine.
 
     Usage:
-        breaker = CircuitBreaker("somabrain", failure_threshold=5, reset_timeout=30)
+        from services.common.memory_contract import get_memory_setting
+        breaker = CircuitBreaker(
+            "somabrain",
+            failure_threshold=int(get_memory_setting("CB_FAILURE_THRESHOLD", 5)),
+            reset_timeout=float(get_memory_setting("CB_RESET_TIMEOUT_S", 30.0)),
+        )
 
         try:
             result = await breaker.call(async_function, *args, **kwargs)

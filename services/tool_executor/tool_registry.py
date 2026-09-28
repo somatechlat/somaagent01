@@ -35,21 +35,30 @@ class ToolRegistry:
         self._tools: Dict[str, ToolDefinition] = {}
 
     async def load_all_tools(self) -> None:
-        """Load built-in tool implementations."""
+        """Load built-in tool implementations including the default kit."""
+        from services.tool_executor.default_tools import ensure_default_tools
 
         for name, tool in AVAILABLE_TOOLS.items():
             self.register(tool)
+        ensure_default_tools(self)
 
     def load_from_capsule(self, capsule: Any) -> None:
         """Load tool definitions from a Capsule's tool registry snapshot.
 
         Each Capsule carries its own tool schemas and policies.
-        This creates a per-capsule ToolRegistry that snapshots the
-        capabilities at certification time.
+        Memory tools are always registered so the agent can recall/save/forget
+        regardless of capsule capability lists.
         """
         from admin.core.models import Capsule
+        from services.tool_executor.default_tools import ensure_default_tools
+
+        # Default base kit (memory + core) — cannot be removed by capsule.
+        ensure_default_tools(self)
 
         if not isinstance(capsule, Capsule):
+            for name, tool in AVAILABLE_TOOLS.items():
+                if name not in self._tools:
+                    self.register(tool)
             return
 
         body = getattr(capsule, '_cached_body', None) or capsule.body or {}

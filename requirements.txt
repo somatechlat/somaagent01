@@ -31,7 +31,7 @@ pgvector==0.3.6
 # gRPC and protobuf
 grpcio==1.67.1
 grpcio-tools==1.67.1
-protobuf==5.27.3
+protobuf==5.28.3
 
 # Observability
 prometheus-client==0.21.0

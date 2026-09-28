@@ -124,18 +124,30 @@ class ResultPublisher:
             LOGGER.debug("Failed to publish tool result to conversation.outbound", exc_info=True)
 
     async def _send_feedback(self, result_event: dict[str, Any]) -> None:
-        """Send tool execution feedback to SomaBrain."""
+        """Send tool execution feedback to SomaBrain (FeedbackRequest schema)."""
+        status = result_event.get("status") or ""
+        success = status == "success"
+        from services.common.memory_contract import get_memory_setting
+
+        reward_on_success = float(get_memory_setting("TOOL_REWARD_SUCCESS", 1.0))
+        reward_on_failure = float(get_memory_setting("TOOL_REWARD_FAILURE", 0.0))
+        utility = reward_on_success if success else reward_on_failure
         feedback = {
-            "task_name": result_event.get("tool_name"),
+            "session_id": str(result_event.get("session_id") or ""),
+            "query": str(result_event.get("tool_name") or ""),
+            "prompt": str(result_event.get("tool_name") or ""),
+            "response_text": json.dumps(result_event.get("payload") or {}, default=str)[:4000],
+            "utility": utility,
+            "reward": utility,
             "tenant_id": (result_event.get("metadata") or {}).get("tenant"),
-            "persona_id": result_event.get("persona_id"),
-            "session_id": result_event.get("session_id"),
-            "success": result_event.get("status") == "success",
-            "latency_ms": int((result_event.get("execution_time") or 0) * 1000),
-            "error_type": (
-                None if result_event.get("status") == "success" else result_event.get("status")
-            ),
-            "tags": ["tool_executor"],
+            "metadata": {
+                "persona_id": result_event.get("persona_id"),
+                "tool_name": result_event.get("tool_name"),
+                "success": success,
+                "latency_ms": int((result_event.get("execution_time") or 0) * 1000),
+                "error_type": None if success else status,
+                "tags": ["tool_executor"],
+            },
         }
         try:
             if self._executor.soma is None:
@@ -232,7 +244,9 @@ class ResultPublisher:
                 if self._executor.soma is None:
                     LOGGER.debug("SomaBrain not configured; skipping tool memory capture")
                     return
-                wal_topic = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
+                from services.common.memory_contract import get_memory_setting
+
+                wal_topic = str(get_memory_setting("MEMORY_WAL_TOPIC", "memory.wal"))
                 result = await self._executor.soma.remember(memory_payload)
                 try:
                     wal_event = {

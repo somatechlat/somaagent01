@@ -90,15 +90,19 @@ async def record_usage_event(
 
     DevOps: Real-time metering to Lago.
     """
-    event_id = str(uuid4())
+    from admin.billing.lago_client import get_lago_client
 
-    # In production: send to Lago
-    # lago_client.events.create(
-    #     transaction_id=event_id,
-    #     external_customer_id=tenant_id,
-    #     code=metric,
-    #     properties={"quantity": quantity, **metadata},
-    # )
+    event_id = str(uuid4())
+    client = get_lago_client()
+    properties: dict = {"quantity": quantity}
+    if metadata:
+        properties.update(metadata)
+    await client.create_event(
+        transaction_id=event_id,
+        customer_external_id=tenant_id,
+        code=metric,
+        properties=properties,
+    )
 
     logger.debug('Usage event: %s/%s/%s', tenant_id, metric, quantity)
 

@@ -34,6 +34,14 @@ export { SaasSidebarWorkspace } from './saas-sidebar-workspace.js';
 export { SaasCapsuleEditor } from './saas-capsule-editor.js';
 export { SaasBrainPanel } from './saas-brain-panel.js';
 
+// Chat E2E (C2–C4): message bubble, tool timeline, topbar controls
+export { SaasMessage } from './saas-message.js';
+export { SaasToolTimeline } from './saas-tool-timeline.js';
+export { SaasChatTopbar } from './saas-chat-topbar.js';
+export type { ToolCallStep, ToolStepStatus } from './saas-tool-timeline.js';
+export type { ComposerSendDetail } from './saas-composer.js';
+export type { ChatControlAction } from './saas-chat-topbar.js';
+
 // Types
 export type { SelectOption } from './saas-select.js';
 export type { Tab } from './saas-tabs.js';

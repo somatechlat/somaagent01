@@ -5,11 +5,16 @@ somabrain/api/v1.py:96,104; Django serves them both with and without the
 ``/api`` prefix — somabrain/config/urls.py:479,482):
     POST {SOMABRAIN_URL}/memory/remember   (endpoints/memory_remember.py:102)
     POST {SOMABRAIN_URL}/memory/recall     (endpoints/memory.py:73)
+    POST {SOMABRAIN_URL}/memory/forget     (endpoints/memory.py:291)
     POST {SOMABRAIN_URL}/memory/remember/batch
 
 The ``/api/remember`` and ``/api/recall`` dialect (agent BrainBridge,
 aaas/brain.py:162,218) has NO route in somabrain and is not used here.
-There is no memory delete route on the brain, so ``forget`` reports False.
+
+Forget speaks the brain's ``ForgetRequest`` / ``ForgetResponse`` contract
+(somabrain.api.memory.models:454-471): ``POST /memory/forget`` with
+``{coord, tenant, tenant_id}`` and a response of
+``{ok, coord, store, tenant, error}``.
 
 URL resolution is fail-closed (VIBE Rule 91): env ``SOMABRAIN_URL``, no
 localhost fallback.
@@ -19,14 +24,16 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Union
 
 import httpx
+from pydantic import BaseModel, Field
 
 from services.common.memory_contract import (
     MemoryAck,
     MemoryConfigurationError,
     MemoryHit,
+    MemoryRecallUnavailable,
     MemoryWrite,
     get_memory_setting,
 )
@@ -35,6 +42,37 @@ LOGGER = logging.getLogger(__name__)
 
 # Logical namespace sent with writes; recall must use the same one.
 DEFAULT_NAMESPACE = "default"
+
+
+class ForgetRequest(BaseModel):
+    """Wire DTO for ``POST /memory/forget`` — mirrors somabrain's ForgetRequest.
+
+    ``coord`` accepts the seam comma-separated float string or a float list;
+    ``tenant`` (rich name) and ``tenant_id`` (seam name) are both optional
+    there, but this adapter always sends the seam ``tenant_id`` in both slots
+    so either resolver on the brain side lands on the same tenant.
+    """
+
+    coord: Union[str, list[float]] = Field(
+        ..., description="Coordinate identity: 'x,y,z' or [x,y,z]"
+    )
+    tenant: str | None = Field(None, description="Tenant identifier (rich name)")
+    tenant_id: str | None = Field(None, description="Tenant identifier (seam name)")
+
+
+class ForgetResponse(BaseModel):
+    """Wire DTO for ``POST /memory/forget`` — mirrors somabrain's ForgetResponse.
+
+    ``ok`` is True only when the backend deleted the record. ``ok: false`` with
+    ``error: "not found"`` means the coordinate was not present — the brain
+    fails closed with an HTTP error on backend outage, never a silent success.
+    """
+
+    ok: bool
+    coord: str
+    store: str = "somafractalmemory"
+    tenant: str = ""
+    error: str | None = None
 
 
 def _resolve_base_url(explicit: str | None) -> str:
@@ -55,7 +93,7 @@ def _resolve_base_url(explicit: str | None) -> str:
 
 
 class SomaBrainAdapter:
-    """HTTP adapter for SomaBrain's real ``/memory/remember|recall`` API."""
+    """HTTP adapter for SomaBrain's real ``/memory/remember|recall|forget`` API."""
 
     def __init__(
         self,
@@ -93,6 +131,8 @@ class SomaBrainAdapter:
             headers["Authorization"] = f"Bearer {self._token}"
         if tenant_id:
             headers["X-Tenant-ID"] = tenant_id
+        # Production low-latency write: WM + durable outbox ack, LTM async (T-6).
+        headers["X-Soma-Fast-Ack"] = "true"
         return headers
 
     async def remember(self, w: MemoryWrite, *, key_material: str | None = None) -> MemoryAck:
@@ -138,13 +178,27 @@ class SomaBrainAdapter:
                 "/memory/remember", json=body, headers=self._headers(w.tenant_id)
             )
             response.raise_for_status()
-            return MemoryAck(coord=w.coord, store="somabrain", ok=True)
+            data = response.json() or {}
+            # Prefer the backend's stored coordinate so get/forget use the real key.
+            stored = data.get("coord") or data.get("coordinate")
+            if isinstance(stored, (list, tuple)) and stored:
+                stored_coord = ",".join(str(x) for x in stored)
+            elif isinstance(stored, str) and stored.strip():
+                stored_coord = stored.strip()
+            else:
+                stored_coord = w.coord
+            return MemoryAck(coord=stored_coord, store="somabrain", ok=True)
         except Exception as exc:
             LOGGER.warning("SomaBrain remember failed: %s", exc)
             return MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))
 
     async def recall(self, query: str, k: int, tenant_id: str) -> list[MemoryHit]:
-        """Search via POST /memory/recall. Store outage surfaces as an error log + empty list."""
+        """Search via POST /memory/recall.
+
+        Fail-closed (R-05 / F-10): a transport or store failure raises
+        ``MemoryRecallUnavailable`` — it is never reported as an empty list,
+        which would be indistinguishable from "the user has no history".
+        """
 
         body = {
             "query": query,
@@ -161,7 +215,9 @@ class SomaBrainAdapter:
             data = response.json() or {}
         except Exception as exc:
             LOGGER.warning("SomaBrain recall failed: %s", exc)
-            return []
+            raise MemoryRecallUnavailable(
+                f"SomaBrain recall failed for tenant={tenant_id!r}: {exc}"
+            ) from exc
 
         hits: list[MemoryHit] = []
         for item in data.get("results") or []:
@@ -171,13 +227,32 @@ class SomaBrainAdapter:
         return hits
 
     async def forget(self, coord: str, tenant_id: str) -> bool:
-        """Forget a memory. The brain exposes no memory delete route today."""
+        """Delete via POST /memory/forget. True only when the brain reports ``ok: true``.
 
-        LOGGER.info(
-            "SomaBrain forget skipped: no delete route on the brain API (coord=%s)",
-            coord,
-        )
-        return False
+        Request/response are the brain's ``ForgetRequest`` / ``ForgetResponse``
+        (somabrain.api.memory.models:454-471). ``ok: false`` with
+        ``error: "not found"`` is a real answer — the coordinate was not
+        present — and returns False. A transport or backend failure is logged
+        and also returns False; it is never a silent skip of the call.
+        """
+
+        body = ForgetRequest(coord=coord, tenant=tenant_id, tenant_id=tenant_id)
+        try:
+            response = await self._client.post(
+                "/memory/forget",
+                json=body.model_dump(exclude_none=True),
+                headers=self._headers(tenant_id),
+            )
+            response.raise_for_status()
+            payload = ForgetResponse.model_validate(response.json() or {})
+        except Exception as exc:
+            LOGGER.warning("SomaBrain forget failed for coord=%s: %s", coord, exc)
+            return False
+        if not payload.ok:
+            LOGGER.info(
+                "SomaBrain forget: coord=%s not deleted (%s)", coord, payload.error
+            )
+        return bool(payload.ok)
 
     @staticmethod
     def _to_hit(item: Any) -> MemoryHit | None:
@@ -216,4 +291,4 @@ class SomaBrainAdapter:
         await self._client.aclose()
 
 
-__all__ = ["SomaBrainAdapter"]
+__all__ = ["ForgetRequest", "ForgetResponse", "SomaBrainAdapter"]

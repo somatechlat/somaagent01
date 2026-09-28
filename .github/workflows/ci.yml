@@ -27,6 +27,17 @@ jobs:
       - name: Black format check
         run: black --check --diff .
 
+  docs:
+    name: ISO Document Control
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Document compliance check
+        run: python scripts/check_docs.py
+
   typecheck:
     name: Type Check (Pyright)
     runs-on: ubuntu-latest

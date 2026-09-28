@@ -10,7 +10,7 @@ from typing import Any, AsyncIterator, List, Optional
 
 from asgiref.sync import sync_to_async
 
-from admin.core.chat_orchestrator import ChatTurn, V3ChatOrchestrator
+from admin.core.chat_orchestrator import ChatTurn, ToolStreamEvent, V3ChatOrchestrator
 from admin.core.models import Capsule
 
 
@@ -63,8 +63,10 @@ class ChatService:
             conversation_id=conversation_id,
         )
 
-        async for token in self._orchestrator.stream_turn(turn):
-            yield token
+        async for item in self._orchestrator.stream_turn(turn):
+            if isinstance(item, ToolStreamEvent):
+                continue  # legacy facade is text-only; tool timeline is WS-only
+            yield item
 
     async def get_messages(self, conversation_id: str, user_id: str) -> List[Message]:
         """Retrieve messages for a conversation."""

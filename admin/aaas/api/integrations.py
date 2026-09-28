@@ -23,6 +23,7 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 from admin.common.messages import ErrorCode, SuccessCode, get_message
+from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +277,7 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
 
     try:
         if provider == "lago":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
                 response = await client.get(
                     f"{config['endpoint']}/organizations",
                     headers={"Authorization": f"Bearer {config.get('api_key', '')}"},
@@ -285,7 +286,7 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
                 message = "Connected to Lago" if success else f"Error: {response.status_code}"
 
         elif provider == "keycloak":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
                 response = await client.get(f"{config['endpoint']}/realms/master")
                 success = response.status_code == 200
                 message = (
@@ -293,7 +294,7 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
                 )
 
         elif provider == "openai":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
                 response = await client.get(
                     f"{config['endpoint']}/models",
                     headers={"Authorization": f"Bearer {config.get('api_key', '')}"},
@@ -314,7 +315,7 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
             message = "SMTP port reachable" if success else "SMTP connection failed"
 
         elif provider == "s3":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
                 # Check if S3 endpoint is reachable
                 response = await client.head(f"{config['endpoint']}/{config.get('bucket', '')}")
                 success = response.status_code in [
@@ -369,7 +370,7 @@ async def sync_lago_plans(request) -> dict:
         return {"success": False, "message": get_message(ErrorCode.LAGO_NOT_CONFIGURED)}
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=slow_httpx_timeout()) as client:
             # Fetch plans from Lago
             response = await client.get(
                 f"{config['endpoint']}/plans",

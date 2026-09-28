@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 
 from ninja import Query, Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -213,14 +214,25 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
         }
 
     except SomaBrainError as e:
-        # ZDL: Queue for later sync
-        logger.warning('SomaBrain unavailable, queueing memory: %s', e)
-        # In production: create PendingMemory record
+        # ZDL: degraded mode — Kafka WAL queue, replayed by memory-replicator.
+        logger.warning('SomaBrain unavailable, queueing memory to Kafka WAL: %s', e)
+        from services.common.degraded_memory_queue import publish_degraded_memory
+
+        queued = await publish_degraded_memory(
+            text=payload.content,
+            tenant_id=tenant_id,
+            namespace="chat_history",
+            kind=str(payload.memory_type or "episodic"),
+            source="degraded-api",
+            error=str(e),
+        )
         return {
             "success": True,
-            "memory_id": None,
-            "message": get_message(SuccessCode.MEMORY_QUEUED_FOR_SYNC),
+            "memory_id": queued.get("id"),
+            "degraded": True,
             "queued": True,
+            "queue": queued.get("channel"),
+            "message": get_message(SuccessCode.MEMORY_STORED),
         }
 
 
@@ -258,25 +270,13 @@ async def delete_memory(request, memory_id: str) -> dict:
     auth=AuthBearer(),
 )
 async def get_pending_count(request) -> dict:
-    """Get count of memories pending sync to SomaBrain.
-
-    Used for degradation mode status display.
-    """
-    from admin.core.somabrain_client import get_somabrain_client
-
+    """Degraded status for the UI (Kafka WAL queue ownership)."""
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for pending count")
     tenant_id = request.auth.effective_tenant_id
-    client = get_somabrain_client()
-    if client is None:
-        raise SomaBrainError("SomaBrain not configured", status_code=503)
+    from services.common.degraded_memory_queue import degraded_pending_count
 
-    count = await client.get_pending_count(tenant_id=tenant_id)
-
-    return {
-        "pending_count": count,
-        "tenant_id": tenant_id,
-    }
+    return await degraded_pending_count(tenant_id)
 
 
 @router.get(
@@ -285,10 +285,34 @@ async def get_pending_count(request) -> dict:
     auth=AuthBearer(),
 )
 async def get_memory_stats(request) -> dict:
-    """Get memory statistics for the current tenant."""
-    # In production: aggregate from database
-    return MemoryStatsOut(
-        total_memories=0,
-        pending_sync=0,
-        by_type={"episodic": 0, "semantic": 0, "procedural": 0},
-    ).model_dump()
+    """Get memory statistics for the current tenant via SomaBrain + Kafka WAL."""
+    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
+        raise UnauthorizedError("Tenant context required for stats")
+    tenant_id = request.auth.effective_tenant_id
+
+    total = 0
+    degraded = False
+    try:
+        from services.common.memory_gateway import get_memory_gateway
+
+        gateway = get_memory_gateway()
+        hits = await gateway.recall("*", 1, tenant_id)
+        total = len(hits or [])
+    except Exception:
+        degraded = True
+
+    status = {}
+    try:
+        from services.common.degraded_memory_queue import degraded_pending_count
+
+        status = await degraded_pending_count(tenant_id)
+    except Exception:
+        status = {"degraded": True}
+
+    return {
+        "tenant_id": tenant_id,
+        "total_memories": total,
+        "degraded": bool(status.get("degraded") or degraded),
+        "queue": status.get("queue"),
+        "brain_reachable": bool(status.get("brain_reachable", not degraded)),
+    }

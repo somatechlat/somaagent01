@@ -43,14 +43,12 @@ def _token_count(text: str) -> int:
 # --- Legacy DI surface (deprecated) -----------------------------------------
 #
 # The ONE memory interface is ``services.common.memory_contract.MemoryGateway``.
-# Pass its hits as ``build(..., memory_hits=[...])``. These two names exist only
-# so older tests can inject a SomaBrain/SFM client directly into the builder;
-# they are deliberately NOT protocols, because a second and third Protocol for
-# "recall memories" is exactly the duplication ARCHITECTURE-INVARIANTS §0 bans.
+# Pass its hits as ``build(..., memory_hits=[...])``. ``brain_client`` exists only
+# so older tests can inject SomaBrain. There is NO SFM client slot: the agent
+# never talks to somafractalmemory (T-1). SomaBrain is the sole bridge.
 #
-# Do not type new code against them. Do not implement them. Use MemoryGateway.
+# Do not type new code against these. Use MemoryGateway.
 BrainClientProtocol = Any
-MemoryClientProtocol = Any
 
 
 class ContextBuilder:
@@ -62,17 +60,13 @@ class ContextBuilder:
 
     Memory lane:
         Fed from ``MemoryGateway.recall()`` via ``build(..., memory_hits=[...])``
-        — ONE read path, hits already merged across both stores and deduped by
-        coord. There is no "brain primary / SFM fallback" hierarchy: SomaBrain's
-        long-term backend IS SomaFractalMemory, so that tiering described a
-        topology that does not exist. PostgreSQL history is a separate lane and
-        is never treated as semantic recall.
+        — ONE read path through SomaBrain. Fail-closed: unavailable recall is
+        a sentinel string, never a silent empty lie and never an SFM bypass.
     """
 
     def __init__(
         self,
         brain_client: Optional[BrainClientProtocol] = None,
-        memory_client: Optional[MemoryClientProtocol] = None,
     ) -> None:
         """
         Initialize ContextBuilder.
@@ -80,10 +74,8 @@ class ContextBuilder:
         Args:
             brain_client: DEPRECATED legacy DI slot. Prefer
                 ``build(..., memory_hits=...)`` from ``MemoryGateway.recall()``.
-            memory_client: DEPRECATED legacy DI slot. Prefer ``memory_hits``.
         """
         self._brain_client = brain_client
-        self._memory_client = memory_client
 
     async def build(
         self,
@@ -210,57 +202,28 @@ class ContextBuilder:
         """Build memory lane.
 
         ``memory_hits`` (MemoryGateway.recall() results) is the one read path
-        (PLAN-TRIAD-SEAMLESS §1 rule 5). When ``None``, fall back to the legacy
-        SomaBrain / SomaFractalMemory DI clients.
+        (PLAN-TRIAD-SEAMLESS §1 rule 5). SomaBrain is the only bridge (T-1);
+        the agent never queries somafractalmemory directly.
         """
         if memory_hits is not None:
             return self._format_memory_hits(memory_hits, budget)
 
         memory_config = persona.get("memory", {})
         recall_limit = memory_config.get("recall_limit", 10)
-        threshold = memory_config.get("similarity_threshold", 0.7)
 
-        # Try SomaBrain first (cognitive + memory)
+        # SomaBrain is the sole memory bridge (T-1).
         if self._brain_client:
             try:
                 memories = await self._brain_client.recall(
                     query=query,
                     top_k=recall_limit,
-                    tenant=str(capsule.tenant_id) if capsule.tenant_id else None,  # type: ignore[reportAttributeAccessIssue]
+                    tenant=str(capsule.tenant_id) if capsule.tenant_id else None,
                     namespace="chat_history",
                 )
                 if memories:
                     return self._format_memories(memories, budget)
             except Exception as exc:
                 logger.warning("SomaBrain recall failed: %s", exc)
-
-        # Fallback to SomaFractalMemory (pure memory, independent from Brain)
-        if self._memory_client:
-            try:
-                if hasattr(self._memory_client, "search_async"):
-                    results = await self._memory_client.search_async(
-                        query=query,
-                        top_k=recall_limit,
-                        tenant=str(capsule.tenant_id) if capsule.tenant_id else "default",  # type: ignore[reportAttributeAccessIssue]
-                        namespace="chat_history",
-                        filters={"capsule_id": str(capsule.id)},
-                    )
-                else:
-                    results = self._memory_client.search(
-                        query=query,
-                        top_k=recall_limit,
-                        tenant=str(capsule.tenant_id) if capsule.tenant_id else "default",  # type: ignore[reportAttributeAccessIssue]
-                        namespace="chat_history",
-                        filters={"capsule_id": str(capsule.id)},
-                    )
-                if results:
-                    # SFM returns results with payload; extract content
-                    memories = [
-                        {"content": r.get("payload", {}).get("content", str(r))} for r in results
-                    ]
-                    return self._format_memories(memories, budget)
-            except Exception as exc:
-                logger.warning("SomaFractalMemory search failed: %s", exc)
 
         return "[Memory recall unavailable]"
 
@@ -342,7 +305,6 @@ async def build_context(
     user_message: str,
     history: Optional[List[Dict[str, str]]] = None,
     brain_client: Optional[BrainClientProtocol] = None,
-    memory_client: Optional[MemoryClientProtocol] = None,
     budget_override: Optional[Dict[str, int]] = None,
     memory_hits: Optional[List[Any]] = None,
 ) -> BuiltContext:
@@ -353,14 +315,13 @@ async def build_context(
         capsule: Capsule with body
         user_message: User's message
         history: Conversation history
-        brain_client: Optional SomaBrain client (primary memory recall)
-        memory_client: Optional SomaFractalMemory client (fallback when Brain down)
+        brain_client: Optional SomaBrain client (legacy DI; prefer memory_hits)
         budget_override: Optional explicit token budget per lane (system, history, memory, tools, buffer)
         memory_hits: Optional MemoryGateway.recall() hits for the memory lane
-            (one read path). ``None`` keeps the legacy brain/SFM DI fallback.
+            (one read path through SomaBrain, T-1).
 
     Returns:
         BuiltContext
     """
-    builder = ContextBuilder(brain_client=brain_client, memory_client=memory_client)
+    builder = ContextBuilder(brain_client=brain_client)
     return await builder.build(capsule, user_message, history, budget_override, memory_hits=memory_hits)

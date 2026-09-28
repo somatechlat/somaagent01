@@ -268,7 +268,7 @@ class TestPhase7LLMInference:
         response = {
             "id": "chatcmpl-123",
             "choices": [
-                {"message": {"role": "assistant", "content": "Hello!"}}
+                {"message": {"role": "assistant", "content": "Acknowledged."}}
             ],
             "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
         }
@@ -359,7 +359,7 @@ class TestPhase12ResponseDelivery:
         response = {
             "id": "msg-123",
             "role": "assistant",
-            "content": "Hello! I'd be happy to help.",
+            "content": "I'd be happy to help.",
             "metadata": {"tokens_used": 70, "latency_ms": 450},
         }
 

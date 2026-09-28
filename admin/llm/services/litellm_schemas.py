@@ -5,7 +5,50 @@ Extracted from litellm_client.py for 650-line compliance.
 
 from __future__ import annotations
 
-from typing import TypedDict
+import json
+from dataclasses import dataclass, field
+from typing import Any, NotRequired, TypedDict
+
+
+@dataclass
+class ToolCallDelta:
+    """Normalized fragment of a streamed native tool call.
+
+    Native function-calling only — tool calls are never regex-parsed
+    out of model text (VIBE rule).
+    """
+
+    index: int
+    id: str = ""
+    name: str = ""
+    arguments: str = ""
+
+
+@dataclass
+class AssembledToolCall:
+    """A complete native tool call assembled from stream fragments.
+
+    ``arguments`` is a dict when the provider JSON parsed cleanly; the raw
+    string is kept otherwise so the caller can fail the call visibly.
+    """
+
+    id: str
+    name: str
+    arguments: Any
+
+
+@dataclass
+class ToolCallDeltasChunk:
+    """Yielded mid-stream so callers can render a live tool-argument timeline."""
+
+    deltas: list[ToolCallDelta] = field(default_factory=list)
+
+
+@dataclass
+class ToolCallsChunk:
+    """Yielded after a completion when the model requested native tool calls."""
+
+    tool_calls: list[AssembledToolCall] = field(default_factory=list)
 
 
 class ChatChunk(TypedDict):
@@ -13,6 +56,58 @@ class ChatChunk(TypedDict):
 
     response_delta: str
     reasoning_delta: str
+    tool_call_deltas: NotRequired[list[ToolCallDelta]]
+
+
+class ToolCallAccumulator:
+    """Assemble native tool_call stream fragments into complete calls."""
+
+    def __init__(self) -> None:
+        self._by_index: dict[int, dict[str, Any]] = {}
+        self._order: list[int] = []
+
+    def add_deltas(self, deltas: list[ToolCallDelta]) -> None:
+        """Merge streaming fragments into the per-index assembly slots."""
+        for delta in deltas:
+            idx = int(delta.index)
+            slot = self._by_index.get(idx)
+            if slot is None:
+                slot = {"id": "", "name": "", "arguments": ""}
+                self._by_index[idx] = slot
+                self._order.append(idx)
+            if delta.id:
+                slot["id"] = delta.id
+            if delta.name:
+                slot["name"] += delta.name
+            if delta.arguments:
+                slot["arguments"] += delta.arguments
+
+    def complete(self) -> list[AssembledToolCall]:
+        """Return fully assembled tool calls, in arrival order."""
+        out: list[AssembledToolCall] = []
+        for idx in self._order:
+            slot = self._by_index[idx]
+            name = (slot.get("name") or "").strip()
+            if not name:
+                continue
+            raw = slot.get("arguments") or ""
+            if not raw.strip():
+                args: Any = {}
+            else:
+                try:
+                    parsed = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    args = raw
+                else:
+                    args = parsed if isinstance(parsed, dict) else raw
+            out.append(
+                AssembledToolCall(
+                    id=slot.get("id") or f"call_{idx}",
+                    name=name,
+                    arguments=args,
+                )
+            )
+        return out
 
 
 # --- Typed errors for the LiteLLM call path (fail-closed) ---
@@ -65,11 +160,29 @@ class ChatGenerationResult:
         self.thinking_pairs = [("<think>", "</think>"), ("<reasoning>", "</reasoning>")]
         self._buffer = ""
         self._raw: str = ""
+        self.tool_accumulator = ToolCallAccumulator()
         if chunk:
             self.add_chunk(chunk)
 
+    @property
+    def tool_calls(self) -> list[AssembledToolCall]:
+        """Complete native tool calls assembled from the stream so far."""
+        return self.tool_accumulator.complete()
+
     def add_chunk(self, chunk: ChatChunk) -> ChatChunk:
-        """Consume a chunk of output.
+        """Consume a chunk of output (text + native tool-call fragments)."""
+        deltas = chunk.get("tool_call_deltas") or []
+        if deltas:
+            self.tool_accumulator.add_deltas(deltas)
+        out = self._add_text_chunk(chunk)
+        if deltas:
+            merged: dict[str, Any] = dict(out)
+            merged["tool_call_deltas"] = deltas
+            return merged  # type: ignore[return-value]
+        return out
+
+    def _add_text_chunk(self, chunk: ChatChunk) -> ChatChunk:
+        """Consume a text chunk of output.
 
         Implements a state-machine that recognises <think> and </think> tags,
         collecting the inner text as reasoning and treating everything outside

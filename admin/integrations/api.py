@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -319,12 +320,11 @@ async def oauth_callback(
 
     Security Auditor: Exchange code for tokens.
     """
-    # In production: exchange code for tokens
-
-    return {
-        "integration_id": integration_id,
-        "connected": True,
-    }
+    raise HttpError(
+        501,
+        "OAuth token exchange is not implemented: "
+        "no provider token endpoint is wired to this callback.",
+    )
 
 
 # =============================================================================
@@ -345,12 +345,11 @@ async def check_health(
 
     DevOps: Monitor connection status.
     """
-    return {
-        "integration_id": integration_id,
-        "healthy": True,
-        "latency_ms": 45,
-        "last_check": timezone.now().isoformat(),
-    }
+    raise HttpError(
+        501,
+        "Integration health check is not implemented: "
+        "no provider health probe is wired.",
+    )
 
 
 @router.post(
@@ -366,15 +365,10 @@ async def trigger_sync(
 
     DevOps: Force data synchronization.
     """
-    sync_id = str(uuid4())
-
-    logger.info('Sync triggered for integration: %s', integration_id)
-
-    return {
-        "integration_id": integration_id,
-        "sync_id": sync_id,
-        "status": "started",
-    }
+    raise HttpError(
+        501,
+        "Integration sync is not implemented: no sync worker is wired.",
+    )
 
 
 # =============================================================================

@@ -13,8 +13,8 @@ set -e
 echo "══════════════════════════════════════════════════════════════════"
 echo "        🤖 SOMAAGENT01 STANDALONE - INITIALIZATION                "
 echo "══════════════════════════════════════════════════════════════════"
-echo "   ℹ️  Mode: STANDALONE (Agent-Only)"
-echo "   ℹ️  Brain/Memory: DISABLED"
+echo "   ℹ️  Mode: STANDALONE (Agent + SomaBrain + SFM full triad)"
+echo "   ℹ️  Brain/Memory: ENABLED"
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 1. WAIT FOR INFRASTRUCTURE
@@ -37,6 +37,18 @@ done
 echo "🔧 [Agent01] Running Migrations..."
 python manage.py migrate --noinput
 echo "✅ [Agent01] Migrations Complete."
+
+echo "🔥 [Agent01] Warming orchestrator + memory gateway..."
+python - <<'PY' || echo "⚠️ warmup skipped (non-fatal)"
+import os, django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+django.setup()
+import asyncio
+from admin.core.chat_orchestrator import get_chat_orchestrator, _require_memory_gateway
+_require_memory_gateway()
+asyncio.run(get_chat_orchestrator())
+print("✅ orchestrator + memory gateway warm")
+PY
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 3. COLLECT STATIC FILES (Optional)

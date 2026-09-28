@@ -94,17 +94,11 @@ class LagoClient:
         Returns:
             Customer data from Lago
         """
-        try:
-            # In production, call Lago API
-            logger.info("Creating Lago customer: %s", tenant_id)
-            return {
-                "external_id": tenant_id,
-                "name": name,
-                "email": email,
-            }
-        except Exception as exc:
-            logger.error("Failed to create Lago customer: %s", exc)
-            raise LagoError(str(exc))
+        raise LagoError(
+            "create_customer is not implemented here. "
+            "Use admin.billing.lago_client.LagoClient for real Lago calls.",
+            status_code=501,
+        )
 
     async def create_subscription(
         self,
@@ -121,16 +115,11 @@ class LagoClient:
         Returns:
             Subscription data
         """
-        try:
-            logger.info("Creating subscription: %s -> %s", tenant_id, plan_code)
-            return {
-                "external_customer_id": tenant_id,
-                "plan_code": plan_code,
-                "status": "active",
-            }
-        except Exception as exc:
-            logger.error("Failed to create subscription: %s", exc)
-            raise LagoError(str(exc))
+        raise LagoError(
+            "create_subscription is not implemented here. "
+            "Use admin.billing.lago_client.LagoClient for real Lago calls.",
+            status_code=501,
+        )
 
     async def create_event(
         self,
@@ -153,8 +142,14 @@ class LagoClient:
                 event.transaction_id,
                 event.code,
             )
-            # In production, call Lago events API
-            return True
+            # Not implemented here: real event posting lives in
+            # admin.billing.lago_client.LagoClient. Fail closed instead of
+            # pretending the event was recorded.
+            logger.error(
+                "create_event is not implemented in admin.core.billing; "
+                "use admin.billing.lago_client.LagoClient"
+            )
+            return False
         except Exception as exc:
             logger.error("Lago event failed: %s", exc)
             return False

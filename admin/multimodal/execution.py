@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -297,24 +298,7 @@ async def capture_screenshot(request, payload: ScreenshotRequest) -> ScreenshotR
 
     DevOps: Headless browser automation for screenshots.
     """
-    # In production: use Playwright service
-    # async with async_playwright() as p:
-    #     browser = await p.chromium.launch()
-    #     page = await browser.new_page(viewport={"width": payload.width, "height": payload.height})
-    #     await page.goto(payload.url)
-    #     screenshot = await page.screenshot(full_page=payload.full_page)
-    #     await browser.close()
-
-    screenshot_id = str(uuid4())
-
-    return ScreenshotResponse(
-        screenshot_id=screenshot_id,
-        url=f"/api/v2/multimodal/screenshots/{screenshot_id}",
-        format=payload.format,
-        width=payload.width,
-        height=payload.height,
-        created_at=timezone.now().isoformat(),
-    )
+    raise HttpError(501, "Screenshot capture is not implemented: no Playwright service is wired.")
 
 
 # =============================================================================
@@ -420,9 +404,4 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
 )
 async def get_dag_status(request, dag_id: str) -> dict:
     """Get status of a DAG execution."""
-    # In production: query from database
-    return {
-        "dag_id": dag_id,
-        "status": "completed",
-        "nodes": [],
-    }
+    raise HttpError(501, "DAG status is not implemented: no DAG execution store is wired.")
