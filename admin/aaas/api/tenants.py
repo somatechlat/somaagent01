@@ -67,7 +67,7 @@ def _tenant_to_out(tenant: Tenant) -> TenantOut:
         created_at=tenant.created_at,
         agents=tenant.agents.count(),
         users=tenant.users.count(),
-        mrr=(tenant.tier.price_cents / 100.0) if tenant.tier else 0.0,
+        mrr=(tenant.tier.base_price_cents / 100.0) if tenant.tier else 0.0,
     )
 
 

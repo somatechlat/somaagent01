@@ -29,13 +29,16 @@ _AUDIT_EVENT_TYPES = {
 
 
 @router.get("", response=DashboardResponse)
-async def get_dashboard(request):
+def get_dashboard(request):
     """
     Get complete AAAS Super Admin dashboard data.
     Aggregates data from PostgreSQL and internal services.
-    """
-    from asgiref.sync import sync_to_async
 
+    Sync on purpose: every step is ORM work and nothing is awaited, so a
+    plain ``def`` runs on django-ninja's threadpool. Declaring this
+    ``async def`` put the sync ORM under a live event loop and Django's
+    ``async_unsafe`` guard turned every request into a 500.
+    """
     # Real database queries
     total_tenants = Tenant.objects.count()
     active_tenants = Tenant.objects.filter(status="active").count()
@@ -43,15 +46,13 @@ async def get_dashboard(request):
     total_agents = Agent.objects.count()
     active_agents = Agent.objects.filter(status="active").count()
 
-    # Calculate MRR from active paid subscriptions
-    from django.db.models import Sum
+    # MRR is owned by admin.aaas.services.billing so the metric cannot
+    # fork across handlers again (it did — this file used a field name
+    # SubscriptionTier never had).
+    from admin.aaas.services.billing import compute_mrr_and_arpu
 
-    mrr_result = (
-        Tenant.objects.filter(status="active")
-        .exclude(tier__price_cents=0)
-        .aggregate(total_mrr=Sum("tier__price_cents"))
-    )
-    mrr = (mrr_result.get("total_mrr") or 0) / 100.0
+    revenue = compute_mrr_and_arpu()
+    mrr = revenue.mrr
 
     metrics = DashboardMetrics(
         total_tenants=total_tenants,
@@ -72,7 +73,7 @@ async def get_dashboard(request):
     top_tenants_qs = (
         Tenant.objects.filter(status="active")
         .select_related("tier")
-        .order_by("-tier__price_cents")[:5]
+        .order_by("-tier__base_price_cents")[:5]
     )
 
     top_tenants = [
@@ -82,7 +83,7 @@ async def get_dashboard(request):
             tier=t.tier.name if t.tier else "Free",
             agents=t.agents.count(),
             users=t.users.count(),
-            mrr=(t.tier.price_cents / 100.0) if t.tier else 0.0,
+            mrr=(t.tier.base_price_cents / 100.0) if t.tier else 0.0,
             status=t.status,
         )
         for t in top_tenants_qs
@@ -90,28 +91,23 @@ async def get_dashboard(request):
 
     from admin.aaas.models import AuditLog
 
-    @sync_to_async
-    def _recent_events():
-        events = []
-        for audit in AuditLog.objects.order_by("-created_at")[:10]:
-            event_type = "platform_event"
-            message = audit.action
-            for prefix, (evt_type, evt_msg) in _AUDIT_EVENT_TYPES.items():
-                if audit.action and audit.action.startswith(prefix):
-                    event_type = evt_type
-                    message = f"{evt_msg}: {audit.action}"
-                    break
-            events.append(
-                RecentEvent(
-                    id=str(audit.id),
-                    type=event_type,
-                    message=message,
-                    timestamp=audit.created_at.isoformat() if audit.created_at else "",
-                )
+    recent_events = []
+    for audit in AuditLog.objects.order_by("-created_at")[:10]:
+        event_type = "platform_event"
+        message = audit.action
+        for prefix, (evt_type, evt_msg) in _AUDIT_EVENT_TYPES.items():
+            if audit.action and audit.action.startswith(prefix):
+                event_type = evt_type
+                message = f"{evt_msg}: {audit.action}"
+                break
+        recent_events.append(
+            RecentEvent(
+                id=str(audit.id),
+                type=event_type,
+                message=message,
+                timestamp=audit.created_at.isoformat() if audit.created_at else "",
             )
-        return events
-
-    recent_events = await _recent_events()
+        )
 
     return DashboardResponse(
         metrics=metrics,

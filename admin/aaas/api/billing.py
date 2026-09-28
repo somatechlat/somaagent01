@@ -32,18 +32,16 @@ router = Router()
 @router.get("", response=BillingResponse)
 def get_billing_dashboard(request):
     """Get complete billing dashboard data."""
-    from django.db.models import Count, Q, Sum
+    from django.db.models import Count, Q
 
-    # Calculate MRR
-    paid_tenants = Tenant.objects.filter(status="active").exclude(tier__base_price_cents=0)
-    paid_count = paid_tenants.count()
-    total_count = Tenant.objects.filter(status="active").count()
+    # MRR/ARPU are owned by admin.aaas.services.billing.
+    from admin.aaas.services.billing import compute_mrr_and_arpu
 
-    mrr_result = paid_tenants.aggregate(total_mrr=Sum("tier__base_price_cents"))
-    mrr = (mrr_result.get("total_mrr") or 0) / 100.0
-
-    # Calculate ARPU
-    arpu = mrr / paid_count if paid_count > 0 else 0.0
+    revenue = compute_mrr_and_arpu()
+    mrr = revenue.mrr
+    arpu = revenue.arpu
+    paid_count = revenue.paid_count
+    total_count = revenue.total_count
 
     metrics = BillingMetrics(
         mrr=mrr,
@@ -310,7 +308,7 @@ def _payment_token_fingerprint(token: str) -> str:
     auth=AuthBearer(),
 )
 @transaction.atomic
-async def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
+def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
     """Record a payment method reference for a tenant.
 
     Stores only a one-way fingerprint of the provider token in tenant

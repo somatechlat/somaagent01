@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Q
 from ninja import Query, Router
@@ -274,11 +275,14 @@ class UserDetailOut(BaseModel):
     summary="Get detailed user info",
     auth=AuthBearer(),
 )
-async def get_user_detail(
-    request,
-    user_id: str,
-) -> dict:
-    """Get detailed user info with agent access, activity, sessions."""
+@sync_to_async
+def _load_user_bundle(user_id: str):
+    """Load the ORM half of the user-detail payload on a thread.
+
+    ``get_user_detail`` stays ``async def`` because it also awaits the Redis
+    session manager. Under a live event loop the sync ORM raises
+    ``SynchronousOnlyOperation``, so every query lives here and is awaited.
+    """
     try:
         user = TenantUser.objects.get(id=user_id)
     except TenantUser.DoesNotExist:
@@ -317,6 +321,21 @@ async def get_user_detail(
         }
         for entry in audit_entries
     ]
+
+    return user, permissions, agent_access, activity_log
+
+
+async def get_user_detail(
+    request,
+    user_id: str,
+) -> dict:
+    """Get detailed user info with agent access, activity, sessions.
+
+    Async because it awaits the Redis session manager; the ORM half is
+    pushed to a thread via ``_load_user_bundle`` so it never runs on the
+    event loop.
+    """
+    user, permissions, agent_access, activity_log = await _load_user_bundle(user_id)
 
     # Real sessions from Redis SessionManager
 
@@ -357,7 +376,9 @@ async def get_user_detail(
             roleLabel=role_labels.get(user.role, user.role) or "",
             status="active" if user.is_active else "suspended",
             lastSeen=user.last_login_at.isoformat() if user.last_login_at else None,
-            mfaEnabled=True,  # Would check actual MFA status
+            # MFA secret persistence is not implemented (see admin/auth/mfa.py),
+            # so no user can have MFA enabled. Reporting True would be a lie.
+            mfaEnabled=False,
             createdAt=user.created_at.isoformat() if user.created_at else "",
             permissions=permissions,
             agentAccess=agent_access,
@@ -509,7 +530,9 @@ def get_profile(request) -> dict:
             role=roles[0] if roles else "user",
             roles=roles,
             permissions=permissions,
-            mfa_enabled=True,
+            # MFA cannot be enabled yet: admin/auth/mfa.py fails closed because
+            # TOTP secret persistence is unimplemented.
+            mfa_enabled=False,
             last_login=profile.last_login_at.isoformat() if profile.last_login_at else None,
             session_timeout=profile.session_timeout,
             active_sessions=session_count,
