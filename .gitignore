@@ -156,8 +156,16 @@ id_rsa*
 id_ecdsa*
 id_ed25519*
 
-# Operator-supplied secret material for local Docker seeding.
-# Values are typed/pasted by the operator at deploy time and must never
-# be committed. Only the README (the how-to) stays tracked.
+# Bootstrap secret material for local Docker first-init ONLY.
+#
+# Vault is the store for every application secret (VIBE Rule 164). The only
+# values that may exist as files are the ones a service cannot read from Vault
+# at first init: the postgres/Keycloak bootstrap passwords, and the two Vault
+# lifecycle credentials that cannot live inside Vault itself. Everything else
+# is seeded into Vault and its source file is deleted.
+#
+# Never commit these. Only the README (the how-to) stays tracked.
 infra/standalone/secrets/*
 !infra/standalone/secrets/README.md
+infra/aaas/secrets/*
+!infra/aaas/secrets/README.md

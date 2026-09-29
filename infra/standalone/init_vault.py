@@ -299,11 +299,16 @@ def main(argv: list[str]) -> int:
 
     if not VAULT_TOKEN:
         log(
-            "❌ VAULT_TOKEN (or VAULT_DEV_ROOT_TOKEN_ID) is required.\n"
-            "   It is the bootstrap root credential — it authenticates TO "
-            "Vault and therefore cannot itself live in Vault.\n"
-            "   Export it for this process only. Never write it to .env and "
-            "never to a file under version control."
+            f"❌ no Vault token available.\n"
+            f"   The token authenticates TO Vault and therefore cannot itself\n"
+            f"   live in Vault. It is read from a FILE, never from the\n"
+            f"   environment — a token in env is visible in `ps`, in\n"
+            f"   /proc/*/environ and in every crash dump.\n"
+            f"   Point VAULT_TOKEN_FILE at that file (default:\n"
+            f"   {SECRETS_DIR / 'vault_root_token'}), or run vault_unseal.py\n"
+            f"   first to generate it.\n"
+            f"   There is no VAULT_TOKEN / VAULT_DEV_ROOT_TOKEN_ID fallback,\n"
+            f"   and no dev-mode shortcut."
         )
         return 1
 

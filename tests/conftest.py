@@ -14,6 +14,7 @@ Test Structure:
 """
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -49,9 +50,16 @@ AAAS_ENV = {
     # Mode flags
     "SOMA_AAAS_MODE": "true",
     "SA01_DEPLOYMENT_MODE": "AAAS",
-    # Where Vault lives — topology, not a credential. The token is supplied by
-    # the process environment and is never written into this file.
+    # Where Vault lives — topology, not a credential. The token is a FILE
+    # path, never a value in this file and never a VAULT_TOKEN environment
+    # variable: a token in env is visible in `ps`, in /proc/*/environ and in
+    # every crash dump (VIBE Rule 164). The path is topology; the credential
+    # it names is not.
     "VAULT_ADDR": os.environ.get("VAULT_ADDR", "http://localhost:20882"),
+    "VAULT_TOKEN_FILE": os.environ.get(
+        "VAULT_TOKEN_FILE",
+        str(Path(__file__).resolve().parents[1] / "infra" / "standalone" / "secrets" / "vault_root_token"),
+    ),
     "VAULT_MOUNT": "secret",
     # SOMA_API_TOKEN is a credential and comes from Vault at
     # secret/agent/credentials/soma_api_token. It is not generated here: a
@@ -71,6 +79,10 @@ STANDALONE_ENV = {
     "SOMA_AAAS_MODE": "false",
     "SA01_DEPLOYMENT_MODE": "STANDALONE",
     "VAULT_ADDR": os.environ.get("VAULT_ADDR", "http://localhost:20882"),
+    "VAULT_TOKEN_FILE": os.environ.get(
+        "VAULT_TOKEN_FILE",
+        str(Path(__file__).resolve().parents[1] / "infra" / "standalone" / "secrets" / "vault_root_token"),
+    ),
     "VAULT_MOUNT": "secret",
 }
 

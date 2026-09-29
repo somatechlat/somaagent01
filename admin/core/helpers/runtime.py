@@ -168,25 +168,28 @@ async def handle_rfc(rfc_call: rfc.RFCCall):
 
 
 def _get_rfc_password() -> str:
-    """Execute get rfc password.
+    """Get the RFC password from Vault. VIBE Rule 164.
 
-    VIBE SECURITY: Passwords MUST come from Vault. .env fallback is deprecated.
+    Two different failures, deliberately not collapsed into one:
+
+    * Vault cannot be read (no token, unreachable, sealed) -> the real
+      ``VaultAuthError`` propagates. The password's presence is unknown, and
+      reporting that as "absent" turns an outage into a wrong diagnosis.
+    * Vault answered and ``rfc_password`` is genuinely not stored -> raise
+      naming the exact Vault path to write.
+
+    There is no .env fallback and no empty-string default. Both would be an
+    ENV/secret path, which Rule 164 forbids.
     """
-    # Try Vault first (VIBE Rule 164)
-    try:
-        from services.common.unified_secret_manager import get_secret_manager
+    from services.common.unified_secret_manager import get_secret_manager
 
-        sm = get_secret_manager()
-        vault_password = sm.get_credential("rfc_password")
-        if vault_password:
-            return vault_password
-    except Exception:
-        pass  # Vault not available, fall through
+    vault_password = get_secret_manager().get_credential("rfc_password")
+    if vault_password:
+        return vault_password
 
-    # VIBE Rule 164: secrets live in Vault only. There is deliberately no
-    # .env fallback here — a fallback is an ENV secret path, which the rule
-    # forbids. Missing Vault state is a fatal misconfiguration, not something
-    # to paper over by reading a file on disk.
+    # VIBE Rule 164: secrets live in Vault only. Missing Vault state is a
+    # fatal misconfiguration, not something to paper over by reading a file
+    # on disk.
     raise RuntimeError(
         "VIBE Rule 164: no RFC password available from Vault. "
         "Store it as credential:rfc_password. "
