@@ -1,18 +1,18 @@
 /**
  * Tenant Settings View
- * Organization profile and configuration.
+ * Organization profile, subscription, and lifecycle actions.
  *
  * Route: /admin/settings
  *
- * VIBE COMPLIANT:
- * - Lit 3.x implementation
- * - Django Ninja API integration
- * - Multi-tab navigation
+ * Every control here is backed by a real endpoint:
+ * - profile fields → `PATCH /aaas/tenants/{id}`
+ * - plan change    → `POST /aaas/billing/tenant/{id}/upgrade`
+ * - archive        → `POST /aaas/tenants/{id}/suspend`
+ * - delete         → `DELETE /aaas/tenants/{id}` (soft: status becomes churned)
  *
- * PERSONAS APPLIED:
- * - lock Security Auditor: SSO, MFA policy
- * - palette UX Consultant: Tab organization
- * - architecture Django Architect: Settings structure
+ * There is no organization-data export endpoint in this system, so no export
+ * control is rendered. Fabricating one that downloads nothing would be worse
+ * than not offering it.
  */
 
 import { LitElement, html, css } from 'lit';
@@ -21,7 +21,10 @@ import {
   TenantSettingsController,
   type SettingsTab,
 } from '../controllers/tenant-settings-controller.js';
-import type { TenantSettingChangeDetail } from '../components/saas-tenant-general-settings.js';
+import type {
+  TenantSettingChangeDetail,
+  TenantPlanChangeDetail,
+} from '../components/saas-tenant-general-settings.js';
 
 import '../components/saas-tenant-general-settings.js';
 
@@ -307,7 +310,10 @@ export class SaasTenantSettings extends LitElement {
           ? html`
               <saas-tenant-general-settings
                 .settings=${s}
+                .tiers=${this.controller.tiers}
+                .busy=${this.controller.busy}
                 @tenant-setting-change=${this._onSettingChange}
+                @tenant-plan-change=${this._onPlanChange}
               ></saas-tenant-general-settings>
             `
           : ''}
@@ -342,15 +348,11 @@ export class SaasTenantSettings extends LitElement {
   }
 
   private _renderDangerTab() {
+    const s = this.controller.settings;
+    const busy = this.controller.busy;
     return html`
-      <div
-        class="section danger-section"
-        style="border-color: #fecaca;"
-      >
-        <div
-          class="section-header"
-          style="background: #fef2f2;"
-        >
+      <div class="section danger-section" style="border-color: #fecaca;">
+        <div class="section-header" style="background: #fef2f2;">
           <span class="section-title" style="color: #dc2626;"
             ><span class="material-symbols-outlined">warning</span> Danger
             Zone</span
@@ -360,31 +362,23 @@ export class SaasTenantSettings extends LitElement {
           <div class="danger-item">
             <div>
               <div style="font-weight: 600; margin-bottom: 4px;">
-                Export All Data
-              </div>
-              <div
-                style="font-size: 12px; color: var(--saas-text-secondary);"
-              >
-                Download all organization data including users, agents, and
-                conversations.
-              </div>
-            </div>
-            <button class="btn btn-outline-danger">Export Data</button>
-          </div>
-
-          <div class="danger-item">
-            <div>
-              <div style="font-weight: 600; margin-bottom: 4px;">
                 Archive Organization
               </div>
-              <div
-                style="font-size: 12px; color: var(--saas-text-secondary);"
-              >
-                Disable all access but retain data. Can be reactivated by SAAS
-                Admin.
+              <div style="font-size: 12px; color: var(--saas-text-secondary);">
+                Suspend access and pause every agent under
+                ${s?.name ?? 'this organization'}. Data is retained and the
+                organization can be reactivated.
               </div>
             </div>
-            <button class="btn btn-outline-danger">Archive</button>
+            <button
+              class="btn btn-outline-danger"
+              ?disabled=${busy ||
+              s?.status === 'suspended' ||
+              s?.status === 'churned'}
+              @click=${this._onArchive}
+            >
+              ${busy ? 'Working...' : 'Archive'}
+            </button>
           </div>
 
           <div class="danger-item">
@@ -392,19 +386,65 @@ export class SaasTenantSettings extends LitElement {
               <div style="font-weight: 600; margin-bottom: 4px;">
                 Delete Organization
               </div>
-              <div
-                style="font-size: 12px; color: var(--saas-text-secondary);"
-              >
-                Permanently delete this organization and all associated data.
-                This cannot be undone.
+              <div style="font-size: 12px; color: var(--saas-text-secondary);">
+                Marks this organization as churned. The record is kept for
+                billing history and is not erased — this cannot be undone from
+                here.
               </div>
             </div>
-            <button class="btn btn-danger">Delete Organization</button>
+            <button
+              class="btn btn-danger"
+              ?disabled=${busy || s?.status === 'churned'}
+              @click=${this._onDelete}
+            >
+              ${busy ? 'Working...' : 'Delete Organization'}
+            </button>
           </div>
         </div>
       </div>
     `;
   }
+
+  private _onPlanChange = (e: CustomEvent<TenantPlanChangeDetail>) => {
+    e.stopPropagation();
+    const { tierId } = e.detail;
+    const s = this.controller.settings;
+    const target = this.controller.tiers.find((t) => t.id === tierId);
+    if (!target) return;
+    const current = s?.tier.name ?? s?.tier.slug ?? 'the current plan';
+    if (
+      !confirm(
+        `Change ${s?.name ?? 'this organization'} from ${current} to ${target.name}?`
+      )
+    ) {
+      return;
+    }
+    void this.controller.upgradeTier(tierId);
+  };
+
+  private _onArchive = () => {
+    const s = this.controller.settings;
+    if (
+      !confirm(
+        `Archive ${s?.name ?? 'this organization'}? All agents under it will be paused and access disabled.`
+      )
+    ) {
+      return;
+    }
+    void this.controller.suspendTenant();
+  };
+
+  private _onDelete = () => {
+    const s = this.controller.settings;
+    if (
+      !confirm(
+        `Delete ${s?.name ?? 'this organization'}? It will be marked as churned. This cannot be undone from here.`
+      )
+    ) {
+      return;
+    }
+    void this.controller.deleteTenant();
+  };
 }
 
 declare global {

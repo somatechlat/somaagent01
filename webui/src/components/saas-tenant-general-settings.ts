@@ -4,14 +4,20 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type {
   TenantQuota,
   TenantSettings,
+  TierOption,
 } from '../controllers/tenant-settings-controller.js';
 export interface TenantSettingChangeDetail {
   path: string;
   value: unknown;
+}
+
+export interface TenantPlanChangeDetail {
+  /** SubscriptionTier UUID to switch to. */
+  tierId: string;
 }
 
 @customElement('saas-tenant-general-settings')
@@ -154,6 +160,22 @@ export class SaasTenantGeneralSettings extends LitElement {
       background: var(--saas-bg-surface, #fafafa);
     }
 
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .plan-row {
+      display: flex;
+      gap: var(--saas-spacing-md, 16px);
+      align-items: flex-end;
+      margin-bottom: var(--saas-spacing-lg, 24px);
+    }
+
+    select.form-input {
+      cursor: pointer;
+    }
+
     .status-icon {
       font-size: 8px;
       line-height: 1;
@@ -233,6 +255,16 @@ export class SaasTenantGeneralSettings extends LitElement {
   @property({ type: Object })
   settings!: TenantSettings;
 
+  /** Plans from `GET /aaas/tiers`, offered by the plan picker. */
+  @property({ type: Array })
+  tiers: TierOption[] = [];
+
+  /** True while a plan change is in flight. */
+  @property({ type: Boolean })
+  busy = false;
+
+  @state() private _selectedTierId = '';
+
   render() {
     const s = this.settings;
     return html`
@@ -288,14 +320,13 @@ export class SaasTenantGeneralSettings extends LitElement {
       <div class="section">
         <div class="section-header">
           <span class="section-title">Subscription</span>
-          <button class="btn btn-secondary">Upgrade Plan</button>
         </div>
         <div class="section-content">
           <div class="tier-badge" style="margin-bottom: 24px;">
             <span class="tier-name"
               ><span
                 class="material-symbols-outlined status-icon"
-                style="color: #eab308;"
+                style="color: ${this._statusColor(s.status)};"
                 >circle</span
               >
               ${s.tier.name}</span
@@ -308,13 +339,15 @@ export class SaasTenantGeneralSettings extends LitElement {
                   })}/month`
                 : '—'}</span
             >
-            <span style="color: #22c55e;"
+            <span style="color: ${this._statusColor(s.status)};"
               ><span class="material-symbols-outlined" style="font-size: 12px;"
-                >check_circle</span
+                >circle</span
               >
-              Active</span
+              ${this._statusLabel(s.status)}</span
             >
           </div>
+
+          ${this._renderPlanPicker(s)}
 
           <div class="quota-grid">
             ${this._renderQuota('Agents', s.quotas.agents)}
@@ -323,6 +356,103 @@ export class SaasTenantGeneralSettings extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Plan picker. Every option is a real `SubscriptionTier` row; changing the
+   * plan posts to `POST /billing/tenant/{id}/upgrade`, which is transactional
+   * and writes an AuditLog entry. There is no payment provider behind it, so
+   * no proration figure is shown — the API reports 0 and so does this UI.
+   */
+  private _renderPlanPicker(s: TenantSettings) {
+    if (this.tiers.length === 0) {
+      return html`
+        <div class="plan-row">
+          <span class="form-sublabel">No plans available to switch to.</span>
+        </div>
+      `;
+    }
+
+    const selected = this._selectedTierId || s.tier.id || '';
+    const changed = Boolean(selected) && selected !== s.tier.id;
+
+    return html`
+      <div class="plan-row">
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label">Change plan</label>
+          <select
+            class="form-input"
+            .value=${selected}
+            ?disabled=${this.busy}
+            @change=${(e: Event) =>
+              (this._selectedTierId = (e.target as HTMLSelectElement).value)}
+          >
+            ${this.tiers.map(
+              (t) => html`
+                <option value=${t.id} ?selected=${t.id === selected}>
+                  ${t.name} —
+                  ${t.price > 0
+                    ? `$${t.price.toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}/month`
+                    : 'free'}
+                </option>
+              `
+            )}
+          </select>
+        </div>
+        <button
+          class="btn btn-secondary"
+          style="align-self: flex-end;"
+          ?disabled=${!changed || this.busy}
+          @click=${() => this._emitPlanChange(selected)}
+        >
+          ${this.busy ? 'Changing...' : 'Change Plan'}
+        </button>
+      </div>
+    `;
+  }
+
+  private _statusLabel(status: TenantSettings['status']): string {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'suspended':
+        return 'Suspended';
+      case 'pending':
+        return 'Pending';
+      case 'churned':
+        return 'Churned';
+      default:
+        return status;
+    }
+  }
+
+  private _statusColor(status: TenantSettings['status']): string {
+    switch (status) {
+      case 'active':
+        return '#22c55e';
+      case 'suspended':
+        return '#dc2626';
+      case 'pending':
+        return '#eab308';
+      case 'churned':
+        return '#6b7280';
+      default:
+        return 'var(--saas-text-muted, #999)';
+    }
+  }
+
+  private _emitPlanChange(tierId: string): void {
+    if (!tierId) return;
+    this.dispatchEvent(
+      new CustomEvent<TenantPlanChangeDetail>('tenant-plan-change', {
+        detail: { tierId },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   /**
