@@ -1,17 +1,56 @@
 /**
  * SomaAgent01 — Capsule Editor
- * Tabbed editor for Soul, Body, Hands, Memory, Governance
+ *
+ * Edits the four PERSONALITY-category fields a capsule actually stores, via
+ * `GET`/`PATCH /agents/{agent_id}/capsule` (`CapsuleConfigOut` /
+ * `CapsuleConfigUpdate`). Those four are the whole capsule surface the API
+ * exposes — see `admin/core/helpers/capsule_settings.py`, which classifies
+ * exactly `system_prompt`, `personality_traits`, `neuromodulator_baseline`
+ * and `learning_config` as PERSONALITY.
+ *
+ * A previous version of this component shipped five tabs (Soul, Body, Hands,
+ * Memory, Governance) whose content was invented: hardcoded model names
+ * ("claude-3-sonnet-20240229", "dall-e-3", "kokoro"), a recall limit of 50, a
+ * similarity threshold of 0.75, a "default-constitution-v1" constitution, and
+ * a green "Certified (Ed25519)" claim that nothing in this system can make.
+ * None of it was stored or readable. It is gone rather than kept as decoration.
  */
 
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
+import { workspaceStore } from '../stores/workspace-store.js';
+
+interface CapsuleConfig {
+    agent_id: string;
+    capsule_id: string;
+    name: string;
+    description: string | null;
+    status: string;
+    system_prompt: string;
+    personality_traits: Record<string, number>;
+    neuromodulator_baseline: Record<string, number>;
+    learning_config: Record<string, unknown>;
+}
 
 @customElement('saas-capsule-editor')
 export class SaasCapsuleEditor extends LitElement {
-    @state() private _activeTab: 'soul' | 'body' | 'hands' | 'memory' | 'governance' = 'soul';
-    @state() private _systemPrompt = 'You are an expert software developer. Be concise, write clean code, explain your reasoning.';
-    @state() private _personality = { openness: 6.2, conscientiousness: 8.1, extraversion: 4.5, agreeableness: 7.3, neuroticism: 3.1 };
-    @state() private _neuromodulators = { dopamine: 0.72, serotonin: 0.95, noradrenaline: 0.18, acetylcholine: 0.51 };
+    @state() private _activeTab: 'soul' | 'learning' = 'soul';
+    @state() private _capsule: CapsuleConfig | null = null;
+    @state() private _loading = true;
+    @state() private _error: string | null = null;
+    @state() private _saving = false;
+    @state() private _dirty = false;
+    @state() private _agentId: string | null = null;
+
+    // Editable buffers. Start empty — they are filled from the API response,
+    // never from a guess about what a capsule "should" look like.
+    @state() private _systemPrompt = '';
+    @state() private _personality: Record<string, number> = {};
+    @state() private _neuromodulators: Record<string, number> = {};
+    @state() private _learning: Record<string, unknown> = {};
+
+    private _unsubscribe: (() => void) | null = null;
 
     static styles = css`
         .material-symbols-outlined {
@@ -59,26 +98,19 @@ export class SaasCapsuleEditor extends LitElement {
             padding-bottom: 8px;
         }
 
-        .tab {
-            padding: 6px 12px;
-            border-radius: var(--aaas-radius-md, 8px);
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--aaas-text-muted, #999999);
-            cursor: pointer;
-            transition: all 150ms ease;
+        .tab-btn {
+            background: none;
             border: none;
-            background: transparent;
+            color: var(--aaas-text-muted, #999);
+            font-size: 12px;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 6px;
         }
 
-        .tab:hover {
-            color: var(--aaas-text-secondary, #a1a1a1);
-            background: var(--aaas-bg-hover, #141414);
-        }
-
-        .tab.active {
-            color: var(--aaas-accent, #e8e4dc);
-            background: var(--aaas-bg-active, #1a1a1a);
+        .tab-btn.active {
+            background: var(--aaas-bg-surface, rgba(255,255,255,0.06));
+            color: var(--aaas-text-primary, #fff);
         }
 
         .section {
@@ -86,119 +118,105 @@ export class SaasCapsuleEditor extends LitElement {
         }
 
         .section-title {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--aaas-text-muted, #999999);
-            margin-bottom: 12px;
+            letter-spacing: 0.05em;
+            color: var(--aaas-text-muted, #999);
+            margin-bottom: 10px;
         }
 
-        .field {
-            margin-bottom: 16px;
-        }
-
-        .field-label {
-            font-size: 13px;
-            color: var(--aaas-text-secondary, #a1a1a1);
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        textarea, input[type="text"] {
+        textarea {
             width: 100%;
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-md, 8px);
-            padding: 10px 12px;
-            color: var(--aaas-text-primary, #ffffff);
+            min-height: 120px;
+            background: var(--aaas-bg-surface, rgba(255,255,255,0.04));
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.08));
+            border-radius: 8px;
+            color: var(--aaas-text-primary, #fff);
             font-size: 13px;
-            font-family: inherit;
-            outline: none;
+            padding: 10px;
             resize: vertical;
-            min-height: 80px;
-            transition: border-color 150ms ease;
+            font-family: inherit;
         }
 
-        textarea:focus, input[type="text"]:focus {
-            border-color: var(--aaas-border-medium, rgba(255,255,255,0.1));
+        textarea:focus {
+            outline: none;
+            border-color: var(--aaas-accent, #3b82f6);
         }
 
         .slider-row {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .slider-label {
-            font-size: 13px;
-            color: var(--aaas-text-secondary, #a1a1a1);
-            min-width: 140px;
+            width: 120px;
+            font-size: 12px;
+            color: var(--aaas-text-muted, #999);
+            text-transform: capitalize;
         }
 
         .slider-track {
             flex: 1;
-            height: 6px;
-            background: var(--aaas-bg-hover, #141414);
-            border-radius: var(--aaas-radius-full, 9999px);
-            position: relative;
-            cursor: pointer;
+            height: 4px;
+            background: var(--aaas-border-light, rgba(255,255,255,0.08));
+            border-radius: 2px;
+            overflow: hidden;
         }
 
         .slider-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--aaas-success, #22c55e), var(--aaas-warning, #f59e0b), var(--aaas-danger, #ef4444));
-            border-radius: var(--aaas-radius-full, 9999px);
-            transition: width 200ms ease;
+            background: var(--aaas-accent, #3b82f6);
+            border-radius: 2px;
         }
 
         .slider-value {
-            font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
-            min-width: 40px;
+            width: 36px;
             text-align: right;
+            font-size: 12px;
+            color: var(--aaas-text-primary, #fff);
             font-variant-numeric: tabular-nums;
         }
 
         .neuro-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
         }
 
         .neuro-card {
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-lg, 12px);
-            padding: 14px;
+            background: var(--aaas-bg-surface, rgba(255,255,255,0.04));
+            border-radius: 8px;
+            padding: 12px;
         }
 
         .neuro-name {
-            font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
-            margin-bottom: 8px;
+            font-size: 11px;
+            color: var(--aaas-text-muted, #999);
+            margin-bottom: 4px;
+            text-transform: capitalize;
         }
 
         .neuro-value {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--aaas-text-primary, #ffffff);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--aaas-text-primary, #fff);
+            margin-bottom: 6px;
             font-variant-numeric: tabular-nums;
         }
 
         .neuro-bar {
-            height: 4px;
-            background: var(--aaas-bg-active, #1a1a1a);
-            border-radius: var(--aaas-radius-full, 9999px);
-            margin-top: 8px;
+            height: 3px;
+            background: var(--aaas-border-light, rgba(255,255,255,0.08));
+            border-radius: 2px;
             overflow: hidden;
         }
 
         .neuro-fill {
             height: 100%;
-            border-radius: var(--aaas-radius-full, 9999px);
-            transition: width 300ms ease;
+            border-radius: 2px;
         }
 
         .actions {
@@ -210,170 +228,349 @@ export class SaasCapsuleEditor extends LitElement {
         }
 
         .btn {
-            padding: 8px 16px;
-            border-radius: var(--aaas-radius-md, 8px);
-            font-size: 13px;
-            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
             cursor: pointer;
-            transition: all 150ms ease;
-            border: none;
+            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.12));
+            background: transparent;
+            color: var(--aaas-text-primary, #fff);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-primary {
-            background: var(--aaas-accent, #e8e4dc);
-            color: var(--aaas-bg-void, #f5f5f5);
-        }
-
-        .btn-primary:hover {
-            background: var(--aaas-accent-hover, #ffffff);
-        }
-
-        .btn-secondary {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-secondary, #a1a1a1);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-        }
-
-        .btn-secondary:hover {
-            background: var(--aaas-bg-active, #1a1a1a);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--aaas-accent, #3b82f6);
+            border-color: var(--aaas-accent, #3b82f6);
+            color: #fff;
         }
 
         .btn-danger {
-            background: transparent;
-            color: var(--aaas-danger, #ef4444);
-            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-color: #dc2626;
+            color: #dc2626;
         }
 
-        .btn-danger:hover {
-            background: rgba(239, 68, 68, 0.1);
+        .empty {
+            padding: 24px 0;
+            font-size: 13px;
+            color: var(--aaas-text-muted, #999);
+        }
+
+        .learning-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            font-size: 12px;
+        }
+
+        .learning-key {
+            color: var(--aaas-text-muted, #999);
+        }
+
+        .learning-val {
+            color: var(--aaas-text-primary, #fff);
+            font-variant-numeric: tabular-nums;
+            word-break: break-all;
+            text-align: right;
         }
     `;
 
-    private _renderSoul() {
+    connectedCallback() {
+        super.connectedCallback();
+        this._unsubscribe = workspaceStore.subscribe(() => {
+            const next = workspaceStore.state.activeAgentId;
+            if (next !== this._agentId) {
+                this._agentId = next;
+                void this._load();
+            }
+        });
+        this._agentId = workspaceStore.state.activeAgentId;
+        void this._load();
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this._unsubscribe?.();
+        this._unsubscribe = null;
+    }
+
+    private async _load() {
+        if (!this._agentId) {
+            this._capsule = null;
+            this._loading = false;
+            this._error = null;
+            return;
+        }
+        this._loading = true;
+        this._error = null;
+        try {
+            const data = await apiClient.get<CapsuleConfig>(
+                `/agents/${this._agentId}/capsule`
+            );
+            this._capsule = data;
+            this._systemPrompt = data.system_prompt ?? '';
+            this._personality = { ...(data.personality_traits ?? {}) };
+            this._neuromodulators = { ...(data.neuromodulator_baseline ?? {}) };
+            this._learning = { ...(data.learning_config ?? {}) };
+            this._dirty = false;
+        } catch (e) {
+            console.error('Failed to load capsule:', e);
+            this._capsule = null;
+            this._error =
+                e instanceof Error ? e.message : 'Failed to load capsule';
+        } finally {
+            this._loading = false;
+        }
+    }
+
+    private async _save() {
+        if (!this._agentId || !this._capsule) return;
+        this._saving = true;
+        try {
+            await apiClient.patch(`/agents/${this._agentId}/capsule`, {
+                system_prompt: this._systemPrompt,
+                personality_traits: this._personality,
+                neuromodulator_baseline: this._neuromodulators,
+                learning_config: this._learning,
+            });
+            this._dirty = false;
+            await this._load();
+        } catch (e) {
+            console.error('Failed to save capsule:', e);
+            this._error =
+                e instanceof Error ? e.message : 'Failed to save capsule';
+        } finally {
+            this._saving = false;
+        }
+    }
+
+    /**
+     * Soft-archive the agent. The API is `POST /agents/{agent_id}/archive`;
+     * it is destructive from the operator's side, so it confirms first.
+     */
+    private async _archive() {
+        if (!this._agentId || !this._capsule) return;
+        if (!confirm(`Archive agent ${this._capsule.name}?`)) return;
+        try {
+            await apiClient.post(`/agents/${this._agentId}/archive`, {});
+            await this._load();
+        } catch (e) {
+            console.error('Failed to archive agent:', e);
+            this._error =
+                e instanceof Error ? e.message : 'Failed to archive agent';
+        }
+    }
+
+    /**
+     * Download the loaded capsule as JSON. Purely client-side — it exports
+     * exactly what the API returned, and makes no claim about signing or
+     * certification.
+     */
+    private _export() {
+        if (!this._capsule) return;
+        const blob = new Blob([JSON.stringify(this._capsule, null, 2)], {
+            type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${this._capsule.name || 'capsule'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    render() {
+        if (!this._agentId) {
+            return html`<div class="empty">
+                Select an agent to edit its capsule.
+            </div>`;
+        }
+        if (this._loading) {
+            return html`<div class="empty">Loading capsule...</div>`;
+        }
+        if (!this._capsule) {
+            return html`<div class="empty">
+                ${this._error ?? 'No capsule found for this agent.'}
+            </div>`;
+        }
+
+        return html`
+            <div class="header">
+                <span>Capsule Editor</span>
+                <span class="capsule-name"
+                    >${this._capsule.name || this._capsule.capsule_id}</span
+                >
+            </div>
+
+            <div class="tabs">
+                <button
+                    class="tab-btn ${this._activeTab === 'soul' ? 'active' : ''}"
+                    @click=${() => (this._activeTab = 'soul')}
+                >
+                    Persona
+                </button>
+                <button
+                    class="tab-btn ${this._activeTab === 'learning' ? 'active' : ''}"
+                    @click=${() => (this._activeTab = 'learning')}
+                >
+                    Learning
+                </button>
+            </div>
+
+            ${this._activeTab === 'soul' ? this._renderPersona() : ''}
+            ${this._activeTab === 'learning' ? this._renderLearning() : ''}
+
+            <div class="actions">
+                <button
+                    class="btn btn-primary"
+                    ?disabled=${this._saving || !this._dirty}
+                    @click=${() => void this._save()}
+                >
+                    <span class="material-symbols-outlined">save</span>
+                    ${this._saving ? 'Saving...' : 'Save'}
+                </button>
+                <button class="btn" @click=${() => void this._load()}>
+                    Cancel
+                </button>
+                <button class="btn" @click=${() => this._export()}>
+                    <span class="material-symbols-outlined">download</span>
+                    Export
+                </button>
+                <button class="btn btn-danger" @click=${() => void this._archive()}>
+                    <span class="material-symbols-outlined">archive</span>
+                    Archive
+                </button>
+            </div>
+        `;
+    }
+
+    private _renderPersona() {
         return html`
             <div class="section">
                 <div class="section-title">System Prompt</div>
-                <textarea .value=${this._systemPrompt} @input=${(e: Event) => this._systemPrompt = (e.target as HTMLTextAreaElement).value}></textarea>
+                <textarea
+                    .value=${this._systemPrompt}
+                    @input=${(e: Event) => {
+                        this._systemPrompt = (
+                            e.target as HTMLTextAreaElement
+                        ).value;
+                        this._dirty = true;
+                    }}
+                ></textarea>
             </div>
 
             <div class="section">
-                <div class="section-title">Personality (Big Five)</div>
-                ${Object.entries(this._personality).map(([trait, value]) => html`
-                    <div class="slider-row">
-                        <span class="slider-label">${trait.charAt(0).toUpperCase() + trait.slice(1)}</span>
-                        <div class="slider-track">
-                            <div class="slider-fill" style="width: ${(value / 10) * 100}%"></div>
-                        </div>
-                        <span class="slider-value">${value.toFixed(1)}</span>
-                    </div>
-                `)}
+                <div class="section-title">Personality Traits</div>
+                ${Object.keys(this._personality).length === 0
+                    ? html`<div class="empty">
+                          This capsule stores no personality traits.
+                      </div>`
+                    : Object.entries(this._personality).map(
+                          ([trait, value]) => html`
+                              <div class="slider-row">
+                                  <span class="slider-label">${trait}</span>
+                                  <div class="slider-track">
+                                      <div
+                                          class="slider-fill"
+                                          style="width: ${Math.max(
+                                              0,
+                                              Math.min(100, (value / 10) * 100)
+                                          )}%"
+                                      ></div>
+                                  </div>
+                                  <span class="slider-value"
+                                      >${Number(value).toFixed(1)}</span
+                                  >
+                              </div>
+                          `
+                      )}
             </div>
 
             <div class="section">
                 <div class="section-title">Neuromodulator Baseline</div>
-                <div class="neuro-grid">
-                    ${Object.entries(this._neuromodulators).map(([name, value]) => html`
-                        <div class="neuro-card">
-                            <div class="neuro-name">${name.charAt(0).toUpperCase() + name.slice(1)}</div>
-                            <div class="neuro-value">${value.toFixed(2)}</div>
-                            <div class="neuro-bar">
-                                <div class="neuro-fill" style="width: ${value * 100}%; background: ${value > 0.7 ? 'var(--aaas-success, #22c55e)' : value > 0.4 ? 'var(--aaas-warning, #f59e0b)' : 'var(--aaas-info, #3b82f6)'}"></div>
-                            </div>
-                        </div>
-                    `)}
-                </div>
+                ${Object.keys(this._neuromodulators).length === 0
+                    ? html`<div class="empty">
+                          This capsule stores no neuromodulator baseline.
+                      </div>`
+                    : html`
+                          <div class="neuro-grid">
+                              ${Object.entries(this._neuromodulators).map(
+                                  ([name, value]) => html`
+                                      <div class="neuro-card">
+                                          <div class="neuro-name">${name}</div>
+                                          <div class="neuro-value">
+                                              ${Number(value).toFixed(2)}
+                                          </div>
+                                          <div class="neuro-bar">
+                                              <div
+                                                  class="neuro-fill"
+                                                  style="width: ${Math.max(
+                                                      0,
+                                                      Math.min(100, value * 100)
+                                                  )}%; background: ${value > 0.7
+                                                      ? 'var(--aaas-success, #22c55e)'
+                                                      : value > 0.4
+                                                        ? 'var(--aaas-warning, #f59e0b)'
+                                                        : 'var(--aaas-info, #3b82f6)'}"
+                                              ></div>
+                                          </div>
+                                      </div>
+                                  `
+                              )}
+                          </div>
+                      `}
             </div>
         `;
     }
 
-    private _renderBody() {
+    /**
+     * `learning_config` is a free-form JSON object on the model — it has no
+     * fixed schema this UI can rely on. Render whatever keys the capsule
+     * actually stored; render nothing when it stores none. Inventing a
+     * "Recall Limit" and "Similarity Threshold" here would put numbers on
+     * screen that no endpoint reads or writes.
+     */
+    private _renderLearning() {
+        const entries = Object.entries(this._learning);
         return html`
             <div class="section">
-                <div class="section-title">Models</div>
-                <div class="field">
-                    <label class="field-label">Chat Model</label>
-                    <input type="text" value="claude-3-sonnet-20240229" />
-                </div>
-                <div class="field">
-                    <label class="field-label">Image Model</label>
-                    <input type="text" value="dall-e-3" />
-                </div>
-                <div class="field">
-                    <label class="field-label">Voice Model</label>
-                    <input type="text" value="kokoro" />
-                </div>
+                <div class="section-title">Learning Config</div>
+                ${entries.length === 0
+                    ? html`<div class="empty">
+                          This capsule stores no learning configuration.
+                      </div>`
+                    : entries.map(
+                          ([key, value]) => html`
+                              <div class="learning-row">
+                                  <span class="learning-key">${key}</span>
+                                  <span class="learning-val"
+                                      >${typeof value === 'object'
+                                          ? JSON.stringify(value)
+                                          : String(value)}</span
+                                  >
+                              </div>
+                          `
+                      )}
             </div>
+            ${this._error
+                ? html`<div class="empty" style="color: #dc2626">
+                      ${this._error}
+                  </div>`
+                : nothing}
         `;
     }
+}
 
-    private _renderHands() {
-        return html`
-            <div class="section">
-                <div class="section-title">Capabilities</div>
-                <div class="placeholder" style="color:var(--aaas-text-muted);font-size:13px;padding:20px 0;">
-                    Tool registry will be displayed here.
-                </div>
-            </div>
-        `;
-    }
-
-    private _renderMemory() {
-        return html`
-            <div class="section">
-                <div class="section-title">Memory Configuration</div>
-                <div class="field">
-                    <label class="field-label">Recall Limit</label>
-                    <input type="text" value="50" />
-                </div>
-                <div class="field">
-                    <label class="field-label">Similarity Threshold</label>
-                    <input type="text" value="0.75" />
-                </div>
-            </div>
-        `;
-    }
-
-    private _renderGovernance() {
-        return html`
-            <div class="section">
-                <div class="section-title">Governance</div>
-                <div class="field">
-                    <label class="field-label">Constitution</label>
-                    <input type="text" value="default-constitution-v1" readonly />
-                </div>
-                <div style="font-size:13px;color:var(--aaas-success);margin-top:8px;"><span class="material-symbols-outlined">check_circle</span> Certified (Ed25519)</div>
-            </div>
-        `;
-    }
-
-    render() {
-        return html`
-            <div class="header">
-                <span>Capsule Editor</span>
-                <span class="capsule-name">Dev-Assistant-v2.1</span>
-            </div>
-
-            <div class="tabs">
-                ${(['soul', 'body', 'hands', 'memory', 'governance'] as const).map(t => html`
-                    <button class="tab ${this._activeTab === t ? 'active' : ''}" @click=${() => this._activeTab = t}>
-                        ${t.charAt(0).toUpperCase() + t.slice(1)}
-                    </button>
-                `)}
-            </div>
-
-            ${this._activeTab === 'soul' ? this._renderSoul() : ''}
-            ${this._activeTab === 'body' ? this._renderBody() : ''}
-            ${this._activeTab === 'hands' ? this._renderHands() : ''}
-            ${this._activeTab === 'memory' ? this._renderMemory() : ''}
-            ${this._activeTab === 'governance' ? this._renderGovernance() : ''}
-
-            <div class="actions">
-                <button class="btn btn-primary"><span class="material-symbols-outlined">save</span> Save Draft</button>
-                <button class="btn btn-secondary"><span class="material-symbols-outlined">check_circle</span> Certify</button>
-                <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Export</button>
-                <button class="btn btn-danger"><span class="material-symbols-outlined">delete</span> Archive</button>
-            </div>
-        `;
+declare global {
+    interface HTMLElementTagNameMap {
+        'saas-capsule-editor': SaasCapsuleEditor;
     }
 }
