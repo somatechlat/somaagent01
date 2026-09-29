@@ -414,7 +414,8 @@ export class SaasPlatformDashboard extends LitElement implements PlatformDashboa
                             <span class="material-symbols-outlined">apartment</span>
                             View Tenants
                         </button>
-                        <button class="btn primary">
+                        <button class="btn primary"
+                            @click=${() => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/saas/tenants/new' } }))}>
                             <span class="material-symbols-outlined">add</span>
                             New Tenant
                         </button>

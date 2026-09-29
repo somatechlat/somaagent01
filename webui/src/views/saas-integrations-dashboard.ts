@@ -194,6 +194,31 @@ export class SaasIntegrationsDashboard extends LitElement {
     .toast.error { background: #991b1b; }
 
     .loading { display: flex; justify-content: center; align-items: center; padding: 60px; color: #999; }
+
+    .config-panel {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid var(--saas-border, #e0e0e0);
+      border-radius: 8px;
+      background: var(--saas-bg-surface, #fafafa);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .config-loading { color: var(--saas-text-muted, #999); font-size: 13px; }
+    .config-field { display: flex; flex-direction: column; gap: 4px; }
+    .config-label { font-size: 12px; font-weight: 600; color: var(--saas-text-secondary, #666); }
+    .config-input {
+      padding: 8px 10px;
+      border: 1px solid var(--saas-border, #e0e0e0);
+      border-radius: 6px;
+      font-size: 13px;
+      background: var(--saas-bg-input, #fff);
+      color: var(--saas-text-primary, #1a1a1a);
+    }
+    .config-input:focus { outline: none; border-color: var(--saas-accent, #2563eb); }
+    .config-hint { font-size: 11px; color: var(--saas-text-muted, #999); }
+    .config-actions { display: flex; justify-content: flex-end; }
   `;
 
     @state() private integrations: Integration[] = [];
@@ -201,6 +226,17 @@ export class SaasIntegrationsDashboard extends LitElement {
     @state() private error: string | null = null;
     @state() private testing: string | null = null;
     @state() private toast: { message: string; type: string } | null = null;
+
+    /** Provider whose config panel is open, or null when every card is closed. */
+    @state() private configuring: string | null = null;
+    @state() private configLoading = false;
+    @state() private saving = false;
+    /** Form state for the open panel. `apiKey` is empty until the operator types. */
+    @state() private draft: { endpoint: string; apiKey: string; apiKeyMasked: string | null } = {
+        endpoint: '',
+        apiKey: '',
+        apiKeyMasked: null,
+    };
 
     connectedCallback() {
         super.connectedCallback();
@@ -246,6 +282,82 @@ export class SaasIntegrationsDashboard extends LitElement {
     private showToast(message: string, type: string) {
         this.toast = { message, type };
         setTimeout(() => { this.toast = null; }, 4000);
+    }
+
+    /**
+     * Load a provider's configuration and open its panel.
+     *
+     * GET returns the secret only as `api_key_masked` (e.g. "sk-...4f3d") —
+     * the plaintext never comes back, so the field starts empty and the
+     * masked value is shown as the placeholder. Leaving it empty on save
+     * keeps the stored key.
+     */
+    private async openConfig(provider: string) {
+        if (this.configuring === provider) {
+            this.configuring = null;
+            return;
+        }
+        this.configuring = provider;
+        this.configLoading = true;
+        this.draft = { endpoint: '', apiKey: '', apiKeyMasked: null };
+        try {
+            const res = await fetch(`/api/v2/aaas/integrations/${provider}`, {
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const cfg: {
+                endpoint?: string | null;
+                api_key_masked?: string | null;
+            } = await res.json();
+            this.draft = {
+                endpoint: cfg.endpoint ?? '',
+                apiKey: '',
+                apiKeyMasked: cfg.api_key_masked ?? null,
+            };
+        } catch {
+            this.showToast('Failed to load integration settings', 'error');
+            this.configuring = null;
+        } finally {
+            this.configLoading = false;
+        }
+    }
+
+    /**
+     * Persist the panel. `api_key` is sent only when a new value was typed:
+     * sending an empty string would be read by the API as "set the key to
+     * empty", not "leave it alone".
+     */
+    private async saveConfig(provider: string) {
+        this.saving = true;
+        try {
+            const body: { endpoint?: string; api_key?: string } = {};
+            if (this.draft.endpoint) {
+                body.endpoint = this.draft.endpoint;
+            }
+            if (this.draft.apiKey) {
+                body.api_key = this.draft.apiKey;
+            }
+            const res = await fetch(`/api/v2/aaas/integrations/${provider}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const detail = await res.text();
+                throw new Error(detail || `HTTP ${res.status}`);
+            }
+            this.showToast('Integration settings saved', 'success');
+            this.configuring = null;
+            this.draft = { endpoint: '', apiKey: '', apiKeyMasked: null };
+            await this.loadIntegrations();
+        } catch (e) {
+            this.showToast(e instanceof Error ? e.message : 'Failed to save settings', 'error');
+        } finally {
+            this.saving = false;
+        }
     }
 
     private getStatusClass(status: string): string {
@@ -310,11 +422,43 @@ export class SaasIntegrationsDashboard extends LitElement {
                       <span class="material-symbols-outlined">${this.testing === int.provider ? 'hourglass_top' : 'cable'}</span>
                       ${this.testing === int.provider ? 'Testing...' : 'Test'}
                     </button>
-                    <button class="action-btn primary">
+                    <button class="action-btn primary" @click=${() => this.openConfig(int.provider)} ?disabled=${this.configLoading}>
                       <span class="material-symbols-outlined">settings</span>
-                      Configure
+                      ${this.configuring === int.provider ? 'Close' : 'Configure'}
                     </button>
                   </div>
+
+                  ${this.configuring === int.provider ? html`
+                    <div class="config-panel">
+                      ${this.configLoading ? html`<div class="config-loading">Loading settings...</div>` : html`
+                        <div class="config-field">
+                          <label class="config-label">Endpoint</label>
+                          <input class="config-input" type="url" placeholder="https://"
+                            .value=${this.draft.endpoint}
+                            @input=${(e: Event) => this.draft = { ...this.draft, endpoint: (e.target as HTMLInputElement).value }}>
+                        </div>
+                        <div class="config-field">
+                          <label class="config-label">API key</label>
+                          <input class="config-input" type="password" autocomplete="new-password"
+                            placeholder=${this.draft.apiKeyMasked ?? 'Not set'}
+                            .value=${this.draft.apiKey}
+                            @input=${(e: Event) => this.draft = { ...this.draft, apiKey: (e.target as HTMLInputElement).value }}>
+                          <span class="config-hint">
+                            ${this.draft.apiKeyMasked
+                              ? `Currently ${this.draft.apiKeyMasked}. Leave blank to keep it.`
+                              : 'No key stored yet.'}
+                          </span>
+                        </div>
+                        <div class="config-actions">
+                          <button class="action-btn primary" ?disabled=${this.saving}
+                            @click=${() => this.saveConfig(int.provider)}>
+                            <span class="material-symbols-outlined">save</span>
+                            ${this.saving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      `}
+                    </div>
+                  ` : nothing}
                 </div>
               `)}
             </div>

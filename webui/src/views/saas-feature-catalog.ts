@@ -342,10 +342,6 @@ export class SaasFeatureCatalog extends LitElement {
             <input type="search" class="btn" placeholder="Search features..."
               @input=${(e: Event) => this.search = (e.target as HTMLInputElement).value}
               style="width: 200px;">
-            <button class="btn btn-primary">
-              <span class="material-symbols-outlined">add</span>
-              New Feature
-            </button>
           </div>
         </header>
 

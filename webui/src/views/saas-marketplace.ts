@@ -395,11 +395,6 @@ export class SaasMarketplace extends LitElement {
       <div class="marketplace">
         <div class="page-header">
           <h1 class="page-title">🔴 Agent Marketplace</h1>
-          <div class="header-actions">
-            <saas-permission-guard permission="platform:manage_features" fallback="hide">
-              <button class="btn-primary">+ Submit Template</button>
-            </saas-permission-guard>
-          </div>
         </div>
 
         <!-- Categories -->
