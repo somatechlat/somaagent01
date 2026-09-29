@@ -86,12 +86,12 @@ def normalize_number(raw: str) -> str:
 def normalize_allowed_numbers(value: object) -> set[str]:
     """Accept list/tuple/set or comma-delimited string (A0 clone)."""
     if isinstance(value, str):
-        candidates: List[object] = value.split(",")
+        candidates: List[str] = value.split(",")
     elif isinstance(value, (list, tuple, set)):
-        candidates = list(value)
+        candidates = [str(item) for item in value]
     else:
         return set()
-    normalized = {normalize_number(str(item)) for item in candidates}
+    normalized = {normalize_number(item) for item in candidates}
     normalized.discard("")
     return normalized
 

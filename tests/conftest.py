@@ -14,7 +14,6 @@ Test Structure:
 """
 
 import os
-import secrets as _secrets
 
 import pytest
 
@@ -24,14 +23,22 @@ import pytest
 
 AAAS_ENV = {
     # PostgreSQL (somastack_postgres)
+    # Topology only. No password, no DSN: the password comes from Vault at
+    # secret/agent/credentials/postgres_password and a DSN embeds it. These
+    # are the POSTGRES_* names config/settings_registry.py reads (VIBE 100).
     "SA01_DB_HOST": "localhost",
     "SA01_DB_PORT": "63932",
     "SA01_DB_USER": "soma",
-    "SA01_DB_PASSWORD": os.environ.get("TEST_DB_PASSWORD", ""),
     "SA01_DB_NAME": "somaagent",
-    "SA01_DB_DSN": os.environ.get("TEST_DB_DSN", "postgresql://soma@localhost:63932/somaagent"),
-    # Redis (somastack_redis)
+    "POSTGRES_HOST": "localhost",
+    "POSTGRES_PORT": "63932",
+    "POSTGRES_USER": "soma",
+    "POSTGRES_DB": "somaagent",
+    # Redis (somastack_redis) — URL without credentials. Topology only.
     "SA01_REDIS_URL": "redis://localhost:63979/0",
+    "REDIS_HOST": "localhost",
+    "REDIS_PORT": "63979",
+    "REDIS_DB": "0",
     # Milvus (somastack_milvus)
     "MILVUS_HOST": "localhost",
     "MILVUS_PORT": "63953",
@@ -42,15 +49,29 @@ AAAS_ENV = {
     # Mode flags
     "SOMA_AAAS_MODE": "true",
     "SA01_DEPLOYMENT_MODE": "AAAS",
-    "SOMA_API_TOKEN": os.environ.get("TEST_SOMA_API_TOKEN", _secrets.token_urlsafe(32)),
+    # Where Vault lives — topology, not a credential. The token is supplied by
+    # the process environment and is never written into this file.
+    "VAULT_ADDR": os.environ.get("VAULT_ADDR", "http://localhost:20882"),
+    "VAULT_MOUNT": "secret",
+    # SOMA_API_TOKEN is a credential and comes from Vault at
+    # secret/agent/credentials/soma_api_token. It is not generated here: a
+    # random token this process invents authenticates nothing, so tests would
+    # pass against a credential the real stack would reject — a fake that
+    # hides the very thing it claims to cover (VIBE Rule 4 / 164).
 }
 
 STANDALONE_ENV = {
     "SA01_DB_HOST": "localhost",
     "SA01_DB_PORT": "5432",
+    "POSTGRES_HOST": "localhost",
+    "POSTGRES_PORT": "5432",
+    "REDIS_HOST": "localhost",
+    "REDIS_PORT": "63979",
     "MILVUS_PORT": "19530",
     "SOMA_AAAS_MODE": "false",
     "SA01_DEPLOYMENT_MODE": "STANDALONE",
+    "VAULT_ADDR": os.environ.get("VAULT_ADDR", "http://localhost:20882"),
+    "VAULT_MOUNT": "secret",
 }
 
 
@@ -58,6 +79,18 @@ def _apply_env(env_dict: dict) -> None:
     """Apply environment variables."""
     for key, value in env_dict.items():
         os.environ[key] = value
+
+
+# Test topology must be in the environment BEFORE any test module is imported.
+# Collection imports test modules, and those import Django models and
+# config.settings_registry, which resolve topology at import time. Applying it
+# from a fixture is too late — the fixture runs after collection — so it
+# happens here, at conftest import.
+#
+# This is test infrastructure declaration, not a fallback: it names the real
+# hosts and ports of the real test stack. Secrets are deliberately absent —
+# they come from Vault (VIBE Rule 164).
+_apply_env(AAAS_ENV)
 
 
 # ===========================================================================
@@ -75,12 +108,8 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def configure_test_environment(request):
-    """Auto-configure environment based on test markers."""
-    # Default to AAAS mode for integration tests
-    _apply_env(AAAS_ENV)
-
-    # Setup Django (settings module configured via pytest.ini)
+def configure_test_environment():
+    """Setup Django (settings module configured via pytest.ini)."""
     import django
 
     django.setup()

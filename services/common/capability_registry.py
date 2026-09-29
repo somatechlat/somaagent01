@@ -61,7 +61,7 @@ class CapabilityCandidate:
 class CapabilityRegistry:
     """Registry for agent capabilities."""
 
-    def __init__(self, dsn: Optional[str] = None) -> None:
+    def __init__(self) -> None:
         self._capabilities: Dict[str, Dict[str, Any]] = {}
 
     async def ensure_schema(self) -> None:

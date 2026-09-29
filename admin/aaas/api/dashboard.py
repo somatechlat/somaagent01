@@ -68,9 +68,9 @@ def get_dashboard(request):
 
     month_start = datetime.now(_tz.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     tokens_this_month = int(
-        UsageRecord.objects.filter(
-            metric_code="tokens", recorded_at__gte=month_start
-        ).aggregate(n=Sum("quantity"))["n"]
+        UsageRecord.objects.filter(metric_code="tokens", recorded_at__gte=month_start).aggregate(
+            n=Sum("quantity")
+        )["n"]
         or 0
     )
     storage_used_gb = (

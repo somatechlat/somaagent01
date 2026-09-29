@@ -47,12 +47,18 @@ spec:
               value: "AAAS"
             - name: DJANGO_SETTINGS_MODULE
               value: "services.gateway.settings"
-            # Database (from Secret)
-            - name: SA01_DB_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: somaagent-secrets
-                  key: db-dsn
+            # Database topology — parts, not a DSN. A DSN embeds the password,
+            # so there is no SA01_DB_DSN. The password is read from Vault at
+            # secret/agent/credentials/postgres_password by
+            # config/settings_registry.py, which assembles the connection.
+            - name: POSTGRES_HOST
+              value: "postgres.shared.svc.cluster.local"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "somaagent"
+            - name: POSTGRES_USER
+              value: "somaagent"
             # Redis (from Secret)
             - name: SA01_REDIS_URL
               valueFrom:
@@ -76,17 +82,12 @@ spec:
               value: "spicedb.shared.svc.cluster.local"
             - name: SPICEDB_PORT
               value: "50051"
-            - name: SPICEDB_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: somaagent-secrets
-                  key: spicedb-token
-            # Django secret
-            - name: SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: somaagent-secrets
-                  key: django-secret-key
+            # The SpiceDB pre-shared key and the Django SECRET_KEY are
+            # credentials and come from Vault (secret/agent/credentials/
+            # spicedb_token, .../django_secret_key). They are deliberately NOT
+            # injected as environment variables: nothing reads them from ENV,
+            # so an injection here would be a second, unread source of truth
+            # that looks like configuration and is not.
             # Vault (secrets backend, VIBE Rule 164) — in-cluster service, no localhost
             - name: VAULT_ADDR
               value: "http://vault.shared.svc.cluster.local:8200"

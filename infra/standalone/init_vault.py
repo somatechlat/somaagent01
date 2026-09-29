@@ -33,10 +33,14 @@ Usage::
 
 Environment::
 
-    VAULT_TOKEN               bootstrap root credential (or VAULT_DEV_ROOT_TOKEN_ID)
+    VAULT_TOKEN_FILE          path to the Vault root token (NOT the token).
+                              Default: <SECRETS_DIR>/vault_root_token
     VAULT_ADDR                default http://localhost:20882
     VAULT_MOUNT               default "secret"
     SECRETS_DIR               default ./secrets next to this file
+
+There is no VAULT_TOKEN environment variable. The root token is a credential
+and is read from a file, never from the environment (VIBE Rule 164).
 """
 
 from __future__ import annotations
@@ -53,7 +57,28 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SECRETS_DIR = Path(os.environ.get("SECRETS_DIR", SCRIPT_DIR / "secrets"))
 VAULT_ADDR = os.environ.get("VAULT_ADDR", "http://localhost:20882").rstrip("/")
 VAULT_MOUNT = os.environ.get("VAULT_MOUNT", "secret").rstrip("/")
-VAULT_TOKEN = os.environ.get("VAULT_TOKEN") or os.environ.get("VAULT_DEV_ROOT_TOKEN_ID") or ""
+
+# The Vault root token authenticates this seeder TO Vault, so it cannot itself
+# live in Vault. It is still a credential, and VIBE Rule 164 says a credential
+# does not belong in the environment — an ENV value is visible in `ps`, in
+# /proc/*/environ and in every crash dump. It arrives as a FILE instead, the
+# same way postgres_password does: a Docker secret, or ./secrets/vault_root_token
+# for a bare-metal run. VAULT_TOKEN_FILE is a path, not a secret.
+#
+# There is deliberately no VAULT_TOKEN fallback. Exporting a root token into a
+# shell is exactly the habit this whole design exists to remove.
+_TOKEN_FILE = Path(os.environ.get("VAULT_TOKEN_FILE", SECRETS_DIR / "vault_root_token"))
+try:
+    VAULT_TOKEN = _TOKEN_FILE.read_text(encoding="utf-8").strip()
+except OSError:
+    VAULT_TOKEN = ""
+if not VAULT_TOKEN:
+    raise SystemExit(
+        f"ERROR: no Vault root token at {_TOKEN_FILE}.\n"
+        f"   Run vault_unseal.py first (it initialises Vault and writes the "
+        f"token there), or point VAULT_TOKEN_FILE at the token. It is never "
+        f"read from the environment."
+    )
 
 CREDENTIALS_PATH = "agent/credentials"
 API_KEYS_PATH = "agent/api_keys"
@@ -93,6 +118,12 @@ OPTIONAL_CREDENTIALS = (
     "wa_cloud_api_token",
     "wa_cloud_webhook_verify_token",
     "wa_cloud_app_secret",
+    # Capsule certification (the Registry Root of Trust). Read when the
+    # Registry is constructed, not at boot, so its absence does not stop the
+    # API from starting — but certification then fails closed rather than
+    # signing with anything invented. services/registry_service.py accepts
+    # only a real 32-byte seed (base64 or hex); it never pads one into shape.
+    "registry_private_key",
 )
 
 
@@ -319,20 +350,29 @@ def main(argv: list[str]) -> int:
     credential_names = set(REQUIRED_CREDENTIALS) | set(OPTIONAL_CREDENTIALS)
     if SECRETS_DIR.is_dir():
         provider_files = [
-            full for full in sorted(SECRETS_DIR.glob("*_api_key"))
+            full
+            for full in sorted(SECRETS_DIR.glob("*_api_key"))
             if full.name not in credential_names
         ]
         if not provider_files:
-            log("   – no LLM provider key files (none named <provider>_api_key "
+            log(
+                "   – no LLM provider key files (none named <provider>_api_key "
                 "outside the credential set). The agent fails closed with "
-                "LLMNotConfiguredError for a provider that has no key.")
+                "LLMNotConfiguredError for a provider that has no key."
+            )
         for full in provider_files:
             provider = full.name[: -len("_api_key")]
             if not provider:
                 continue
             counts[
-                seed(API_KEYS_PATH, f"{provider}_api_key", full.name,
-                     required=False, force=force, check=check)
+                seed(
+                    API_KEYS_PATH,
+                    f"{provider}_api_key",
+                    full.name,
+                    required=False,
+                    force=force,
+                    check=check,
+                )
             ] += 1
 
     log("")

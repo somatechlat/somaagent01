@@ -232,17 +232,24 @@ SOMABRAIN_URL = get_optional_env(
     "SomaBrain cognitive runtime HTTP endpoint",
 )
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
-SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential(
-    "somabrain_memory_http_token"
-) or ""
+SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential("somabrain_memory_http_token")
+# Absent becomes None, never "". An empty string reads as "configured with a blank
+# secret" and is then sent as `Authorization: Bearer ` — an unauthenticated call
+# that fails at the far end with a 401 nobody can trace back to the missing key.
+# None is the honest "not configured", and every consumer refuses to send a
+# request on it (VIBE Rule 91).
 SOMAFRACTALMEMORY_URL = get_optional_env(
     "SOMAFRACTALMEMORY_URL", "", "SomaFractalMemory store URL (Brain-side only)"
 )
-SOMABRAIN_API_KEY = (
-    get_secret_manager().get_credential("somabrain_api_key")
-    or get_secret_manager().get_credential("soma_api_token")
-    or None
-)
+# SOMABRAIN_API_KEY used to be defined here as
+#     get_credential("somabrain_api_key") or get_credential("soma_api_token") or None
+# — a silent cross-credential substitution that let a missing somabrain_api_key
+# be papered over with an unrelated token. Nothing in the codebase read the
+# attribute, so it was a fallback with no consumer: dead code whose only effect
+# was to hide a misconfiguration. Both the setting and the substitution are gone.
+# The credential itself still exists in Vault at
+# secret/agent/credentials/somabrain_api_key and is read explicitly wherever a
+# caller actually needs it.
 
 # ---------------------------------------------------------------------------
 # MEMORY TOOLS / SEAM — fully configurable (Django settings is the authority).
@@ -296,7 +303,10 @@ AGENTVOICEVOX_BASE_URL = os.environ.get("SA01_VOICEVOX_URL", "http://localhost:6
 
 # LLM Service
 LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
-LLM_API_KEY = get_secret_manager().get_credential("llm_api_key") or ""
+# Absent becomes None, never "" — see the note on SOMABRAIN_MEMORY_HTTP_TOKEN.
+# Consumers refuse to call the LLM with a missing key rather than sending
+# `Authorization: Bearer ` and getting a 401 back.
+LLM_API_KEY = get_secret_manager().get_credential("llm_api_key")
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
 
 # Multimodal Services

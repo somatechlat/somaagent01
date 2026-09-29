@@ -30,36 +30,33 @@ T = TypeVar("T", bound="BaseSettings")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def get_required_env(
-    var_name: str, *, allow_dev_default: bool = False, dev_default: str = ""
-) -> str:
-    """Get required environment variable with fail-fast in production.
+def get_required_env(var_name: str) -> str:
+    """Get a required environment variable. Missing is always fatal.
 
-    VIBE Rule 91: Zero-Fallback Mandate
-    - PROD mode: Missing env var raises RuntimeError
-    - DEV mode: Returns dev_default with warning (if allow_dev_default=True)
+    VIBE Rule 91: Zero-Fallback Mandate. There is no dev_default and no
+    deployment-mode exemption — a default that lets the stack boot without
+    its configuration is exactly the fallback this rule forbids, and a mode
+    check around it is a bypass. If the variable is required, the operator
+    sets it in every environment.
     """
     value = os.environ.get(var_name)
     if value:
         return value
 
-    deployment_mode = os.environ.get("SA01_DEPLOYMENT_MODE", "DEV").upper()
-
-    if deployment_mode in ("PROD", "PRODUCTION"):
-        raise RuntimeError(
-            f"VIBE Rule 91 VIOLATION: {var_name} is REQUIRED in production. "
-            f"Set {var_name} in your environment or Vault."
-        )
-
-    if allow_dev_default:
-        LOGGER.warning("[DEV MODE] Using default for %s. Set this in production!", var_name)
-        return dev_default
-
-    raise RuntimeError(f"Environment variable {var_name} is required but not set.")
+    raise RuntimeError(
+        f"VIBE Rule 91 VIOLATION: {var_name} is REQUIRED and is not set. "
+        f"There is no default. Set {var_name} in the environment "
+        f"(deployment topology) — secrets go in Vault, not here."
+    )
 
 
 def get_optional_env(var_name: str, default: str = "") -> str:
-    """Get optional environment variable with fallback allowed."""
+    """Get an optional environment variable.
+
+    Only for values that are genuinely optional: a disabled feature, an
+    unused integration, or a knob with a documented product default. Never
+    for topology that a running deployment needs to connect to anything.
+    """
     return os.environ.get(var_name, default)
 
 
@@ -137,10 +134,65 @@ class BaseSettings(ABC):
     # Budget
     sa01_default_token_budget: int = field(default=4096)
 
+    def postgres_password(self) -> str:
+        """The PostgreSQL password, from Vault — never from ENV.
+
+        VIBE Rule 164: a database password is a credential. Topology
+        (host/port/user/db) is deployment configuration and belongs in ENV;
+        the password does not.
+
+        Missing is fatal. There is no empty-string fallback: connecting with a
+        blank password is a silent misconfiguration that surfaces far from its
+        cause, and inventing one is the fake Rule 4 forbids.
+        """
+        password = get_secret_manager().get_credential("postgres_password")
+        if not password:
+            raise RuntimeError(
+                "VIBE Rule 164 VIOLATION: postgres_password is missing. "
+                "Set it in Vault at secret/agent/credentials/postgres_password. "
+                "It is never generated, never defaulted and never read from ENV."
+            )
+        return password
+
     @property
     def postgres_dsn(self) -> str:
-        """PostgreSQL connection string (password from Vault)."""
-        return f"postgresql://{self.postgres_user}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        """PostgreSQL connection string, assembled at call time.
+
+        There is no connection string in ENV anywhere in this system. A DSN
+        embeds the password, so supplying one through the environment would put
+        a credential in a file and in the process table. The string is built
+        here from topology plus the Vault password and is meant to be passed
+        straight into a client — never logged, never written to ENV, never
+        stored on self.
+
+        VIBE Rule 164.
+        """
+        from urllib.parse import quote_plus
+
+        return (
+            f"postgresql://{quote_plus(self.postgres_user)}:"
+            f"{quote_plus(self.postgres_password())}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    def django_database_config(self) -> dict:
+        """The Django `DATABASES` entry for this deployment.
+
+        Discrete fields rather than a DSN on purpose: Django never needs the
+        password inside a URL, and keeping it as its own field means no parser
+        has to split a credential back out of a string — which is exactly how
+        the password used to reach the ENV.
+
+        VIBE Rule 100 (one authority) + Rule 164 (password from Vault).
+        """
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": self.postgres_db,
+            "USER": self.postgres_user,
+            "PASSWORD": self.postgres_password(),
+            "HOST": self.postgres_host,
+            "PORT": str(self.postgres_port),
+        }
 
     @property
     def redis_url(self) -> str:
@@ -176,16 +228,12 @@ class StandaloneSettings(BaseSettings):
             deployment_mode="STANDALONE",
             deployment_target=get_optional_env("SA01_DEPLOYMENT_TARGET", "LOCAL"),
             # Database - fail-fast in prod
-            postgres_host=get_required_env(
-                "POSTGRES_HOST", allow_dev_default=True, dev_default="somaagent_postgres"
-            ),
+            postgres_host=get_required_env("POSTGRES_HOST"),
             postgres_port=int(get_optional_env("POSTGRES_PORT", "5432")),
             postgres_db=get_optional_env("POSTGRES_DB", "somaagent"),
             postgres_user=get_optional_env("POSTGRES_USER", "somaagent"),
             # Redis
-            redis_host=get_required_env(
-                "REDIS_HOST", allow_dev_default=True, dev_default="somaagent_redis"
-            ),
+            redis_host=get_required_env("REDIS_HOST"),
             redis_port=int(get_optional_env("REDIS_PORT", "6379")),
             redis_db=int(get_optional_env("REDIS_DB", "0")),
             # SpiceDB
@@ -197,9 +245,7 @@ class StandaloneSettings(BaseSettings):
             spicedb_token=get_secret_manager().get_credential("spicedb_token"),
             spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
             # Vault
-            vault_addr=get_required_env(
-                "VAULT_ADDR", allow_dev_default=True, dev_default="http://somaagent_vault:8200"
-            ),
+            vault_addr=get_required_env("VAULT_ADDR"),
             vault_mount=get_optional_env("VAULT_MOUNT", "secret"),
             vault_path_prefix=get_optional_env("VAULT_PATH_PREFIX", "somaagent"),
             # Application
@@ -273,16 +319,12 @@ class AAASSettings(BaseSettings):
             deployment_mode="AAAS",
             deployment_target=get_optional_env("SA01_DEPLOYMENT_TARGET", "LOCAL"),
             # Database - AAAS namespace
-            postgres_host=get_required_env(
-                "POSTGRES_HOST", allow_dev_default=True, dev_default="somastack_postgres"
-            ),
+            postgres_host=get_required_env("POSTGRES_HOST"),
             postgres_port=int(get_optional_env("POSTGRES_PORT", "5432")),
             postgres_db=get_optional_env("POSTGRES_DB", "soma"),
             postgres_user=get_optional_env("POSTGRES_USER", "soma"),
             # Redis
-            redis_host=get_required_env(
-                "REDIS_HOST", allow_dev_default=True, dev_default="somastack_redis"
-            ),
+            redis_host=get_required_env("REDIS_HOST"),
             redis_port=int(get_optional_env("REDIS_PORT", "6379")),
             redis_db=int(get_optional_env("REDIS_DB", "0")),
             # SpiceDB
@@ -294,9 +336,7 @@ class AAASSettings(BaseSettings):
             spicedb_token=get_secret_manager().get_credential("spicedb_token"),
             spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
             # Vault
-            vault_addr=get_required_env(
-                "VAULT_ADDR", allow_dev_default=True, dev_default="http://somastack_vault:8200"
-            ),
+            vault_addr=get_required_env("VAULT_ADDR"),
             vault_mount=get_optional_env("VAULT_MOUNT", "secret"),
             vault_path_prefix=get_optional_env("VAULT_PATH_PREFIX", "soma"),
             # Application
@@ -309,9 +349,7 @@ class AAASSettings(BaseSettings):
             somabrain_enabled=True,
             fractalmemory_enabled=True,
             # Milvus
-            milvus_host=get_required_env(
-                "MILVUS_HOST", allow_dev_default=True, dev_default="somastack_milvus"
-            ),
+            milvus_host=get_required_env("MILVUS_HOST"),
             milvus_port=int(get_optional_env("MILVUS_PORT", "19530")),
             # Kafka
             kafka_bootstrap_servers=get_optional_env(

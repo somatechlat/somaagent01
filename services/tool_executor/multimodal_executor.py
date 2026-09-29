@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
@@ -56,7 +55,6 @@ class MultimodalExecutor:
 
     def __init__(
         self,
-        dsn: Optional[str] = None,
         asset_store: Optional[AssetStore] = None,
         job_planner: Optional[JobPlanner] = None,
         execution_tracker: Optional[ExecutionTracker] = None,
@@ -66,8 +64,13 @@ class MultimodalExecutor:
     ) -> None:
         """Initialize executor with services.
 
+        Every store here is Django ORM-backed and gets its connection from
+        settings.DATABASES, which is assembled from topology in ENV plus the
+        password in Vault. There is no connection string to pass down: the old
+        `dsn` parameter was threaded through five constructors and ignored by
+        all of them.
+
         Args:
-            dsn: Database connection string
             asset_store: AssetStore instance
             job_planner: JobPlanner instance
             execution_tracker: ExecutionTracker instance
@@ -75,13 +78,12 @@ class MultimodalExecutor:
             soma_brain_client: SomaBrainOutcomesStore instance for learning
             policy_router: PolicyGraphRouter instance for provider selection
         """
-        self._dsn = dsn or os.environ.get("SA01_DB_DSN", "")
-        self._asset_store = asset_store or AssetStore(dsn=self._dsn)
-        self._job_planner = job_planner or JobPlanner(dsn=self._dsn)
-        self._execution_tracker = execution_tracker or ExecutionTracker(dsn=self._dsn)
+        self._asset_store = asset_store or AssetStore()
+        self._job_planner = job_planner or JobPlanner()
+        self._execution_tracker = execution_tracker or ExecutionTracker()
         self._soma_brain_client = soma_brain_client or SomaBrainOutcomesStore()
         self._portfolio_ranker = PortfolioRanker(self._soma_brain_client)
-        self._policy_router = policy_router or PolicyGraphRouter(dsn=self._dsn)
+        self._policy_router = policy_router or PolicyGraphRouter()
         self._provenance_recorder = ProvenanceRecorder()
         self._initialized = False
 

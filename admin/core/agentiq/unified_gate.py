@@ -156,7 +156,7 @@ class UnifiedGate:
         try:
             client = self._get_policy_client()
             request = PolicyRequest(
-                tenant=tenant_id or str(capsule.tenant_id),
+                tenant=tenant_id or str(capsule.tenant.id),
                 persona_id=None,
                 action=action,
                 resource=resource or str(capsule.id),

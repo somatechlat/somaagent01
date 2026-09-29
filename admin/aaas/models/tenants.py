@@ -47,8 +47,6 @@ class Tenant(models.Model):
         max_length=100, blank=True, help_text="Keycloak realm for this tenant"
     )
 
-
-
     # Contact
     billing_email = models.EmailField(blank=True, help_text="Primary billing contact email")
 

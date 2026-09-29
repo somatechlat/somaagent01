@@ -93,6 +93,20 @@ def _merge_dicts(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[st
 _cached_config: Config | None = None
 
 
+def _postgres_dsn_from_authority() -> str:
+    """The PostgreSQL connection string, assembled — never read from ENV.
+
+    There is no connection-string environment variable in this system. A DSN
+    embeds the password, so supplying one through the environment puts a
+    credential in a file and in the process table. Topology comes from ENV and
+    the password from Vault; config/settings_registry.py is the single place
+    that knows how to combine them (VIBE Rule 100 + 164).
+    """
+    from config.settings_registry import SettingsRegistry
+
+    return SettingsRegistry.load().postgres_dsn
+
+
 def load_config() -> Config:
     """Load and validate the full configuration.
 
@@ -122,7 +136,12 @@ def load_config() -> Config:
             "log_level": "INFO",
         },
         "database": {
-            "dsn": os.environ.get("SA01_DB_DSN", ""),
+            # Assembled, never read from ENV. A connection string embeds the
+            # password, so SA01_DB_DSN in the environment is a credential in a
+            # file and in the process table. Topology is ENV; the password is
+            # Vault (VIBE Rule 164). config/settings_registry.py is the one
+            # place that knows how to reach Postgres (VIBE Rule 100).
+            "dsn": _postgres_dsn_from_authority(),
             "pool_size": 20,
             "max_overflow": 10,
             "pool_timeout": 30,
@@ -163,11 +182,8 @@ def load_config() -> Config:
         "extra": {},
     }
     # Override defaults with canonical SA01_* environment variables so the
-    # configuration reflects the actual deployment settings.
-    default_cfg_dict["database"]["dsn"] = os.getenv(
-        "SA01_DB_DSN",
-        default_cfg_dict["database"]["dsn"],
-    )
+    # configuration reflects the actual deployment settings. The database DSN
+    # is deliberately NOT one of them — see _postgres_dsn_from_authority().
     default_cfg_dict["kafka"]["bootstrap_servers"] = os.getenv(
         "SA01_KAFKA_BOOTSTRAP_SERVERS",
         default_cfg_dict["kafka"]["bootstrap_servers"],

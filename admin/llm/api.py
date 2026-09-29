@@ -496,14 +496,12 @@ def update_model(request, model_id: str, body: ModelPatch) -> ModelOut:
 
 @router.delete("/models/{model_id}", auth=AuthBearer(), summary="Delete model config")
 def delete_model(request, model_id: str) -> dict:
-    from admin.llm.models import LLMModelConfig
-
     obj = _get_llm_model(model_id)
     if obj is None:
         raise HttpError(404, f"model_not_found: {model_id}")
     # PROTECT FKs (Capsule.chat_model) will raise; surface as 409
     try:
-        LLMModelConfig.objects.filter(id=obj.id).delete()
+        obj.delete()
     except Exception as exc:
         raise HttpError(409, f"model_in_use: {exc}") from exc
     return {"deleted": True, "id": model_id}
@@ -518,10 +516,13 @@ def delete_model(request, model_id: str) -> dict:
 def get_slots(request, capsule_id: Optional[str] = None) -> SlotsOut:
     """Three slots bound to an active Capsule or tenant defaults."""
     if capsule_id:
-        cap = Capsule.objects.filter(id=capsule_id).first()
+        cap = Capsule.objects.filter(id=capsule_id).select_related("chat_model").first()
         if cap is None:
             raise HttpError(404, f"capsule_not_found: {capsule_id}")
-        chat_id = str(cap.chat_model_id) if cap.chat_model_id else None
+        # Relation object, not the FK attname: pyright cannot see chat_model_id.
+        # select_related keeps this to the same single query.
+        chat = cap.chat_model
+        chat_id = str(chat.pk) if chat else None
         utility_id = _get_setting(str(cap.id), "utility_model_id")
         embedding_id = _get_setting(str(cap.id), "embedding_model_id")
         return SlotsOut(

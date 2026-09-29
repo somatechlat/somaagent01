@@ -69,9 +69,10 @@ class ApiKeyStore:
     available for other code paths.
     """
 
-    def __init__(self, dsn: Optional[str] = None) -> None:
-        # For the purposes of the test suite we use a simple in‑memory dict.
-        # ``dsn`` is accepted for signature compatibility but ignored.
+    def __init__(self) -> None:
+        # For the purposes of the test suite we use a simple in-memory dict.
+        # No connection string: this store never opens a database connection of
+        # its own. The old `dsn` parameter was accepted and ignored — a shim.
         """Initialize the instance."""
 
         self._records: dict[str, dict[str, Any]] = {}

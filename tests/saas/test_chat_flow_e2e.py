@@ -105,7 +105,6 @@ def clean_cache():
     yield
     cache.clear()
 
-
     """Access centralized Django settings."""
     from django.conf import settings
 

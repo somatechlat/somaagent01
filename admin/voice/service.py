@@ -28,7 +28,7 @@ from typing import Awaitable, Optional, TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
-    from admin.core.helpers.config import Config
+    from admin.core.config.models import Config
     from admin.llm.models import LLMModelConfig
     from admin.voice.models import VoiceModel, VoicePersona, VoiceSession  # type: ignore[import]
 
@@ -218,7 +218,7 @@ def _llm_config_to_out(config: LLMModelConfig) -> LLMConfigOut:
     """Map an LLMModelConfig ORM instance to its API schema."""
 
     return LLMConfigOut(
-        id=config.id,
+        id=config.pk,
         name=config.name,
         display_name=config.display_name or config.name,
         provider=config.provider,

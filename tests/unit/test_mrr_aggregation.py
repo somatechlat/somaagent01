@@ -35,6 +35,7 @@ class TestMrrFieldResolution:
         with pytest.raises(FieldError):
             Sum("tier__price_cents").resolve_expression(Tenant.objects.all().query)
 
+
 @pytest.mark.django_db(transaction=True)
 class TestMrrAggregation:
     """compute_mrr_and_arpu is the single owner of the MRR metric."""

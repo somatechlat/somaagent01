@@ -488,6 +488,23 @@ async def register_user(request, payload: RegisterRequest):
     users_url = f"{config.server_url}/admin/realms/{config.realm}/users"
 
     try:
+        # VIBE Rule 164: the Keycloak admin password is a credential and comes
+        # from Vault, never from request.META. META is the CGI environment of
+        # the request — reading a password out of it means the password was in
+        # the process environment, which is exactly the model Rule 164 forbids.
+        # The trailing default of "" was worse still: it authenticated to
+        # Keycloak with a blank password rather than reporting a missing secret.
+        from services.common.unified_secret_manager import get_secret_manager
+
+        admin_password = get_secret_manager().get_credential("keycloak_admin_password")
+        if not admin_password:
+            logger.error("Keycloak admin password is not configured in Vault")
+            raise ServiceUnavailableError(
+                "auth",
+                "Identity service is not configured "
+                "(secret/agent/credentials/keycloak_admin_password)",
+            )
+
         async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             # Get admin access token
             admin_resp = await client.post(
@@ -496,7 +513,7 @@ async def register_user(request, payload: RegisterRequest):
                     "grant_type": "password",
                     "client_id": "admin-cli",
                     "username": "admin",
-                    "password": request.META.get("KEYCLOAK_ADMIN_PASSWORD", ""),
+                    "password": admin_password,
                 },
             )
             if admin_resp.status_code != 200:
@@ -527,11 +544,22 @@ async def register_user(request, payload: RegisterRequest):
 
             if create_resp.status_code == 201:
                 logger.info("User registered in Keycloak: %s", payload.email)
+                await _emit_auth_audit(
+                    request,
+                    action="auth.registered",
+                    actor_email=payload.email,
+                )
                 return {
                     "success": True,
                     "message": get_message(SuccessCode.VERIFICATION_EMAIL_SENT),
                 }
             elif create_resp.status_code == 409:
+                await _emit_auth_audit(
+                    request,
+                    action="auth.register_failed",
+                    details={"reason": "user_exists"},
+                    actor_email=payload.email,
+                )
                 raise BadRequestError("User already exists")
             else:
                 logger.error(
@@ -539,10 +567,22 @@ async def register_user(request, payload: RegisterRequest):
                     create_resp.status_code,
                     create_resp.text,
                 )
+                await _emit_auth_audit(
+                    request,
+                    action="auth.register_failed",
+                    details={"reason": "keycloak_rejected"},
+                    actor_email=payload.email,
+                )
                 raise ServiceUnavailableError("auth", "User registration failed")
 
     except httpx.HTTPError as e:
         logger.error("Keycloak communication error during registration: %s", e)
+        await _emit_auth_audit(
+            request,
+            action="auth.register_failed",
+            details={"reason": "identity_service_unavailable"},
+            actor_email=payload.email,
+        )
         raise ServiceUnavailableError("auth", "Identity service unavailable")
 
 

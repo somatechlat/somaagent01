@@ -307,7 +307,11 @@ async def test_connection(channel_id: str) -> BridgeControlResult:
         # from Vault. Never from the environment.
         from services.common.unified_secret_manager import get_secret_manager
 
-        token = config.get("api_token") or get_secret_manager().get_credential("wa_cloud_api_token") or ""
+        token = (
+            config.get("api_token")
+            or get_secret_manager().get_credential("wa_cloud_api_token")
+            or ""
+        )
         phone_number_id = config.get("phone_number_id") or os.environ.get(
             "WA_CLOUD_PHONE_NUMBER_ID", ""
         )
@@ -394,7 +398,9 @@ def verify_subscription(
     # Vault, never from the environment.
     from services.common.unified_secret_manager import get_secret_manager
 
-    expected = verify_token or get_secret_manager().get_credential("wa_cloud_webhook_verify_token") or ""
+    expected = (
+        verify_token or get_secret_manager().get_credential("wa_cloud_webhook_verify_token") or ""
+    )
     from services.bridge_worker.drivers.whatsapp import verify_webhook_challenge
 
     return verify_webhook_challenge(mode, token, challenge, expected)
@@ -411,18 +417,34 @@ def handle_cloud_webhook(
 
     Persists normalized ``InboundMessage`` rows (processed_at=null) so the
     bridge worker ``CloudApiDriver.poll_inbound`` can pick them up.
-    Optionally validates X-Hub-Signature-256 when WA_CLOUD_APP_SECRET is set.
+
+    X-Hub-Signature-256 is ALWAYS validated. It is not optional: an unsigned
+    body is rejected whether or not a secret happens to be configured, because
+    accepting one is what lets anyone post forged inbound messages.
     """
     # VIBE Rule 164: the app secret is a credential and comes from Vault, never
     # from the environment.
     from services.common.unified_secret_manager import get_secret_manager
 
-    app_secret = get_secret_manager().get_credential("wa_cloud_app_secret") or ""
-    if app_secret:
-        from services.bridge_worker.drivers.whatsapp import verify_cloud_signature
+    app_secret = get_secret_manager().get_credential("wa_cloud_app_secret")
+    if not app_secret:
+        # Fail closed. The previous code did `if app_secret:` and skipped
+        # verification entirely when the secret was unset — so a deployment
+        # that had forgotten to configure one accepted every unsigned webhook
+        # body as authentic. That is a bypass: the check has to fail shut,
+        # because an unverifiable payload is indistinguishable from a forged one.
+        logger.error("wa_cloud_app_secret is not configured in Vault; refusing unsigned webhook")
+        return BridgeControlResult(
+            False,
+            "not_configured",
+            "webhook signature cannot be verified: "
+            "secret/agent/credentials/wa_cloud_app_secret is missing",
+        )
 
-        if not verify_cloud_signature(app_secret, raw_body, signature_header):
-            return BridgeControlResult(False, "forbidden", "invalid webhook signature")
+    from services.bridge_worker.drivers.whatsapp import verify_cloud_signature
+
+    if not verify_cloud_signature(app_secret, raw_body, signature_header):
+        return BridgeControlResult(False, "forbidden", "invalid webhook signature")
 
     if not _feature_enabled():
         return BridgeControlResult(False, "disabled", "bridge_whatsapp flag is off")

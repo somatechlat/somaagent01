@@ -24,7 +24,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.messages import ErrorCode, get_message, SuccessCode
-from services.common.http_timeouts import httpx_timeout, slow_httpx_timeout  # noqa: E402
+from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

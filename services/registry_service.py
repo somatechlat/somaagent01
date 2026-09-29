@@ -13,7 +13,6 @@ Implements the "Birth Protocol" and "Unhackable Covenant".
 
 import base64
 import logging
-import os
 from typing import Optional
 from uuid import UUID
 
@@ -41,37 +40,75 @@ class RegistryService:
         self._verify_key: Optional[VerifyKey] = None
         self._load_keys()
 
-    def _load_keys(self):
-        """
-        Load the Registry's Ed25519 keys from secure storage.
+    @staticmethod
+    def _parse_seed(secret_seed: str) -> bytes:
+        """Decode an Ed25519 seed that is exactly 32 bytes.
 
-        CRITICAL SECURITY:
-        In Production, this MUST come from Vault or AWS Secrets Manager.
-        In StandAlone, we allow env vars.
-        """
-        secret_seed = os.environ.get("SOMA_REGISTRY_PRIVATE_KEY")
+        Accepted encodings: standard base64 of 32 bytes, or 64 hex characters.
+        Anything else is rejected.
 
-        if not secret_seed:
-            logger.warning("REGISTRY_KEY not found. Signing capabilities DISABLED.")
-            return
+        The seed is NEVER padded, truncated, zero-filled or re-derived from the
+        characters of the value. Ed25519's entire security rests on these 32
+        bytes: a seed manufactured from a short or malformed string is not a
+        weaker key, it is a key an attacker can reconstruct — and it would sign
+        capsules as though it were the real Root of Trust (VIBE Rule 4).
+        """
+        candidate = secret_seed.strip()
+        if not candidate:
+            raise RuntimeError(
+                "VIBE Rule 4 VIOLATION: registry_private_key is empty. "
+                "A signing seed is never fabricated from nothing."
+            )
 
         try:
-            # Seed must be 32 bytes hex or base64.
-            # For simplicity in this impl, assuming Base64 encoded seed.
-            try:
-                seed_bytes = base64.b64decode(secret_seed)
-            except Exception:
-                # If not base64, maybe raw hex string? Or just raw bytes?
-                # Fallback to creating a key from the variable if verify fails.
-                seed_bytes = secret_seed.encode()[:32].ljust(32, b"0")
+            decoded = base64.b64decode(candidate, validate=True)
+            if len(decoded) == 32:
+                return decoded
+        except Exception:
+            pass
 
-            self._signing_key = SigningKey(seed_bytes)
-            self._verify_key = self._signing_key.verify_key
-            logger.info("Registry Signing Key Loaded Successfully.")
+        try:
+            decoded = bytes.fromhex(candidate)
+            if len(decoded) == 32:
+                return decoded
+        except Exception:
+            pass
 
-        except Exception as e:
-            logger.error("Failed to load Signing Key: %s", str(e))
-            raise RuntimeError("CRITICAL: Registry Key Corruption")
+        raise RuntimeError(
+            "VIBE Rule 4 VIOLATION: registry_private_key must be exactly 32 bytes, "
+            "encoded as base64 or hex. It is never padded, truncated or "
+            "re-derived — a manufactured seed would sign capsules with a key "
+            "an attacker can reconstruct. Generate one with "
+            "`openssl rand -base64 32` and store it in Vault."
+        )
+
+    def _load_keys(self):
+        """
+        Load the Registry's Ed25519 signing seed from Vault.
+
+        VIBE Rule 164: the seed is a credential. It is never read from the
+        environment, in any deployment mode — "Standalone" is not an exemption
+        from secret handling, it is a topology.
+
+        Absent or malformed is fatal. The Registry is the Root of Trust: a
+        deployment that cannot sign must not start as though it could, and a
+        silently disabled signer turns every certification into a no-op nobody
+        is told about.
+        """
+        from services.common.unified_secret_manager import get_secret_manager
+
+        secret_seed = get_secret_manager().get_credential("registry_private_key")
+        if not secret_seed:
+            raise RuntimeError(
+                "VIBE Rule 164 VIOLATION: registry_private_key is missing. "
+                "Set it in Vault at secret/agent/credentials/registry_private_key. "
+                "It is never generated, never defaulted and never read from ENV."
+            )
+
+        seed_bytes = self._parse_seed(secret_seed)
+        self._signing_key = SigningKey(seed_bytes)
+        self._verify_key = self._signing_key.verify_key
+        logger.info("Registry signing key loaded from Vault.")
 
     def certify_capsule(self, capsule_id: UUID) -> Capsule:
         """

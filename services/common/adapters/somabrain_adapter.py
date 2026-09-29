@@ -106,11 +106,22 @@ class SomaBrainAdapter:
         """Initialize the adapter. Raises if the store URL is unset."""
 
         self._base_url = _resolve_base_url(base_url)
-        self._token = (
-            token
-            if token is not None
-            else str(get_memory_setting("SOMABRAIN_MEMORY_HTTP_TOKEN", "") or "")
-        )
+        # Resolve the bearer token with no `or ""` and no "omit the header if
+        # unset". _resolve_base_url has already refused to proceed without a
+        # store URL, so the credential that authenticates to that URL is
+        # required. Absent is None, and None is fatal: the previous code coerced
+        # it to "" and then _headers() quietly left Authorization off, so a
+        # deployment that had never seeded the token made unauthenticated calls
+        # and got a 401 naming nothing (VIBE Rule 164).
+        resolved = token if token is not None else get_memory_setting("SOMABRAIN_MEMORY_HTTP_TOKEN")
+        self._token = str(resolved) if resolved else ""
+        if not self._token:
+            raise MemoryConfigurationError(
+                "SomaBrain store URL is configured but the memory HTTP token is "
+                "not. Set secret/agent/credentials/somabrain_memory_http_token "
+                "in Vault. An empty or missing token is never sent "
+                "unauthenticated (VIBE Rule 164)."
+            )
         self._timeout = float(
             timeout if timeout is not None else get_memory_setting("MEM_HTTP_TIMEOUT", 5.0)
         )
@@ -127,8 +138,9 @@ class SomaBrainAdapter:
         """Build request headers; bearer token plus tenant hint."""
 
         headers: dict[str, str] = {"Accept": "application/json"}
-        if self._token:
-            headers["Authorization"] = f"Bearer {self._token}"
+        # Unconditional: __init__ refuses to construct without a token, so
+        # there is no branch here in which the request goes out unauthenticated.
+        headers["Authorization"] = f"Bearer {self._token}"
         if tenant_id:
             headers["X-Tenant-ID"] = tenant_id
         # Production low-latency write: WM + durable outbox ack, LTM async (T-6).

@@ -84,42 +84,67 @@ def _env(name: str, default: str = "") -> str:
 # ---------------------------------------------------------------------------
 
 
+def _reject_inline_secret(cfg: Dict[str, Any], keys: tuple[str, ...], what: str) -> None:
+    """Refuse a raw secret sitting in Channel.config.
+
+    The Channel model is normative on this: "Credentials are referenced
+    (``credentials_ref`` = Vault path), never stored." A raw token in the config
+    JSON is that violation. Silently ignoring it would leave an operator
+    wondering why their key is not working while the value sits readable in the
+    database — so refuse it, name the field, and point at the one place a
+    credential may live.
+    """
+    for key in keys:
+        if str(cfg.get(key) or "").strip():
+            raise TelegramConfigError(
+                f"{what} found in Channel.config['{key}']. Credentials are "
+                f"referenced by credentials_ref (a Vault path), never stored in "
+                f"channel config and never read from the environment. Move the "
+                f"value to Vault and set Channel.credentials_ref to that path "
+                f"(VIBE Rule 164)."
+            )
+
+
 def resolve_bot_token(
     *,
     credentials_ref: str = "",
     channel_config: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Resolve the bot token. Order: Vault ``credentials_ref`` → config → env.
+    """Resolve the bot token from Vault. Vault is the only source.
 
     ``credentials_ref`` format: ``<vault-path>`` or ``<vault-path>#<key>``
     (default key ``bot_token``). The raw token is never logged.
 
-    Raises ``TelegramConfigError`` when nothing resolves — fail-closed.
-    """
-    cfg = _cfg(channel_config)
+    This used to fall back through ``config.bot_token`` and then the
+    ``TG_BOT_TOKEN`` family of environment variables. Both are gone. The
+    ``Channel`` model is normative — credentials are referenced by
+    ``credentials_ref``, never stored — so an inline token in the config JSON
+    and a token in the environment are the same violation reached by two
+    different doors. An inline secret is refused outright rather than silently
+    ignored.
 
-    if credentials_ref:
-        token = _vault_token(credentials_ref)
-        if token:
-            return token
+    Raises ``TelegramConfigError`` when no token resolves — fail-closed.
+    """
+    _reject_inline_secret(
+        _cfg(channel_config),
+        ("bot_token", "token", "api_token"),
+        "Telegram bot token",
+    )
+
+    if not credentials_ref.strip():
+        raise TelegramConfigError(
+            "no Telegram bot token: set Channel.credentials_ref to the Vault "
+            "path holding it (e.g. secret/agent/credentials/telegram_bot_token). "
+            "It is never read from Channel.config and never from the "
+            "environment (VIBE Rule 164)."
+        )
+
+    token = _vault_token(credentials_ref)
+    if not token:
         raise TelegramConfigError(
             f"credentials_ref '{credentials_ref}' did not yield a bot token — fail-closed"
         )
-
-    for key in ("bot_token", "token", "api_token"):
-        value = str(cfg.get(key) or "").strip()
-        if value:
-            return value
-
-    for name in ("TG_BOT_TOKEN", "TELEGRAM_BOT_TOKEN", "SA01_TELEGRAM_BOT_TOKEN"):
-        value = _env(name).strip()
-        if value:
-            return value
-
-    raise TelegramConfigError(
-        "no Telegram bot token: set Channel.credentials_ref (Vault), "
-        "config.bot_token, or TG_BOT_TOKEN"
-    )
+    return token
 
 
 def _vault_token(credentials_ref: str) -> str:
@@ -170,9 +195,9 @@ class UserAllowlist:
 def normalize_allowed_users(value: object) -> UserAllowlist:
     """Accept list/tuple/set or comma-delimited string of ids / @usernames."""
     if isinstance(value, str):
-        candidates: List[object] = value.split(",")
+        candidates: List[str] = value.split(",")
     elif isinstance(value, (list, tuple, set)):
-        candidates = list(value)
+        candidates = [str(item) for item in value]
     else:
         return UserAllowlist()
     allow = UserAllowlist()
@@ -480,7 +505,9 @@ class TelegramBotDriver:
             if exc.status_code == 400 and "parse" in str(exc).lower():
                 plain = re.sub(r"<[^>]+>", "", text)
                 plain = re.sub(r"[*_`\\]", "", plain)
-                fallback = {"chat_id": chat_id, "text": plain}
+                # Same request body shape as `body` above: chat_id/text are
+                # strings, reply_to_message_id is the Telegram integer message id.
+                fallback: Dict[str, Any] = {"chat_id": chat_id, "text": plain}
                 if body.get("reply_to_message_id") is not None:
                     fallback["reply_to_message_id"] = body["reply_to_message_id"]
                 return await self._call("sendMessage", fallback)
@@ -516,7 +543,10 @@ class TelegramBotDriver:
                 status_code=resp.status_code,
                 retryable=retryable,
             )
-        return result.get("result") if isinstance(result.get("result"), dict) else {"ok": True}
+        # sendPhoto/sendDocument answer with a Message object; wrap anything
+        # else the way _call does rather than inventing a success body.
+        message = result.get("result")
+        return message if isinstance(message, dict) else {"result": message}
 
     async def send_typing(self, chat_id: str, paused: bool = False) -> None:
         """One-shot typing indicator (never fatal)."""
@@ -725,16 +755,42 @@ def verify_webhook_secret(expected: str, provided: str) -> bool:
 def resolve_webhook_secret(
     *, channel_config: Optional[Dict[str, Any]] = None, credentials_ref: str = ""
 ) -> str:
-    """Webhook secret: config → Vault (``credentials_ref`` key ``webhook_secret``) → env."""
-    cfg = _cfg(channel_config)
-    secret = str(cfg.get("webhook_secret") or "").strip()
-    if secret:
-        return secret
-    if credentials_ref:
-        secret = _vault_key(credentials_ref, "webhook_secret")
-        if secret:
-            return secret
-    return _env("TG_WEBHOOK_SECRET").strip()
+    """Webhook secret from Vault (``credentials_ref`` key ``webhook_secret``).
+
+    Returns ``""`` only when the channel has no ``credentials_ref`` at all —
+    i.e. webhooks are not configured for this channel. Both callers treat that
+    as fatal: setting a webhook without a secret is refused, and verifying one
+    without an expected secret rejects the request (``verify_webhook_secret``
+    fail-closes on an empty expected value).
+
+    This used to resolve ``config.webhook_secret`` → Vault → ``TG_WEBHOOK_SECRET``
+    from the environment, and to return ``""`` when all three were absent. The
+    config and environment sources are gone for the same reason as in
+    :func:`resolve_bot_token`: the Channel model says credentials are referenced
+    by ``credentials_ref`` and never stored. The environment fallback was the
+    more dangerous of the two — anyone who could set ``TG_WEBHOOK_SECRET`` on the
+    worker could choose the value Telegram's requests would be checked against.
+
+    Raises ``TelegramConfigError`` when ``credentials_ref`` is set but yields
+    nothing — a named pointer to a missing secret is a misconfiguration, not an
+    unconfigured channel.
+    """
+    _reject_inline_secret(
+        _cfg(channel_config),
+        ("webhook_secret",),
+        "Telegram webhook secret",
+    )
+
+    if not credentials_ref.strip():
+        return ""
+
+    secret = _vault_key(credentials_ref, "webhook_secret")
+    if not secret:
+        raise TelegramConfigError(
+            f"credentials_ref '{credentials_ref}' has no 'webhook_secret' key — "
+            f"webhook verification cannot proceed (fail-closed)"
+        )
+    return secret
 
 
 def _vault_key(credentials_ref: str, key: str) -> str:
@@ -749,8 +805,14 @@ def _vault_key(credentials_ref: str, key: str) -> str:
         from services.common.vault_secrets import load_kv_secret
 
         return (load_kv_secret(path=path, key=key) or "").strip()
-    except Exception:  # noqa: BLE001
-        return ""
+    except Exception as exc:  # noqa: BLE001
+        # Do not swallow this into "". The old `except Exception: return ""`
+        # made a Vault outage indistinguishable from "this channel has no
+        # webhook secret", and the caller then reported the wrong thing.
+        raise TelegramConfigError(
+            f"could not read '{key}' from Vault at '{path}' "
+            f"(credentials_ref '{credentials_ref}'): {exc}"
+        ) from None
 
 
 # ---------------------------------------------------------------------------

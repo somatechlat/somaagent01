@@ -56,7 +56,6 @@ class AaasFeature(models.Model):
         default=False, help_text="Whether feature has usage-based billing"
     )
 
-
     # UI Configuration
     requires_modal = models.BooleanField(
         default=True, help_text="Whether feature requires full-screen config modal"

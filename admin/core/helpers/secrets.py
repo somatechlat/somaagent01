@@ -1,4 +1,14 @@
-"""Module secrets."""
+"""Redaction vocabulary for log output.
+
+This is NOT a secret store. Secrets live in Vault (VIBE Rule 164) and are
+read through ``services.common.unified_secret_manager``. This module's only
+job is to know which string values must be masked before anything reaches a
+log or a print — its one consumer is ``admin.core.helpers.print_style``.
+
+It used to also *write* secrets to a plaintext ``tmp/secrets.env`` via
+``save_secrets`` / ``save_secrets_with_merge``. That was a second secret store
+sitting next to Vault, and nothing ever called it: the write path is gone.
+"""
 
 import re
 import threading
@@ -179,12 +189,8 @@ class SecretsManager:
             self._last_raw_text = ""
             return ""
 
-    def _write_secrets_raw(self, content: str):
-        """Write raw secrets file content to local filesystem."""
-        files.write_file(self._secrets_file_rel, content)
-
     def load_secrets(self) -> Dict[str, str]:
-        """Load secrets from file, return key-value dict"""
+        """Load the redaction vocabulary, return key-value dict."""
         with self._lock:
             if self._secrets_cache is not None:
                 return self._secrets_cache
@@ -192,7 +198,6 @@ class SecretsManager:
             secrets: Dict[str, str] = {}
             try:
                 content = self.read_secrets_raw()
-                # keep raw snapshot for future save merge without reading again
                 self._last_raw_text = content
                 if content:
                     secrets = self.parse_env_content(content)
@@ -202,41 +207,6 @@ class SecretsManager:
 
             self._secrets_cache = secrets
             return secrets
-
-    def save_secrets(self, secrets_content: str):
-        """Save secrets content to file and update cache"""
-        with self._lock:
-            # Ensure write to local filesystem (UTF-8)
-            self._write_secrets_raw(secrets_content)
-            # Update cache
-            self._secrets_cache = self.parse_env_content(secrets_content)
-            # Update raw snapshot
-            self._last_raw_text = secrets_content
-
-    def save_secrets_with_merge(self, submitted_content: str):
-        """Merge submitted content with existing file preserving comments, order and supporting deletion.
-        - Existing keys keep their value when submitted as MASK_VALUE (***).
-        - Keys present in existing but omitted from submitted are deleted.
-        - New keys with non-masked values are appended at the end.
-        """
-        with self._lock:
-            # Prefer in-memory snapshot to avoid disk reads during save
-            if self._last_raw_text is not None:
-                existing_text = self._last_raw_text
-            else:
-                try:
-                    existing_text = self.read_secrets_raw()
-                except Exception as e:
-                    # If read fails and submitted contains masked values, abort to avoid losing values/comments
-                    if self.MASK_VALUE in submitted_content:
-                        raise RepairableException(
-                            "Saving secrets failed because existing secrets could not be read to preserve masked values and comments. Please retry."
-                        ) from e
-                    # No masked values, safe to treat as new file
-                    existing_text = ""
-            merged_lines = self._merge_env(existing_text, submitted_content)
-            merged_text = self._serialize_env_lines(merged_lines)
-            self.save_secrets(merged_text)
 
     def get_keys(self) -> List[str]:
         """Get list of secret keys"""
@@ -471,53 +441,3 @@ class SecretsManager:
             elif ln.type == "other" and with_other:
                 out.append(ln.raw)
         return "\n".join(out)
-
-    def _merge_env(self, existing_text: str, submitted_text: str) -> List[EnvLine]:
-        """Merge using submitted content as the base to preserve its comments and structure.
-        Behavior:
-        - Iterate submitted lines in order and keep them (including comments/blanks/other).
-        - For pair lines:
-            - If key exists in existing and submitted value is MASK_VALUE (***), use existing value.
-            - If key is new and value is MASK_VALUE, skip (ignore masked-only additions).
-            - Otherwise, use submitted value as-is.
-        - Keys present only in existing and not in submitted are deleted (not added).
-        This preserves comments and arbitrary lines from the submitted content and persists them.
-        """
-        existing_lines = self.parse_env_lines(existing_text)
-        submitted_lines = self.parse_env_lines(submitted_text)
-
-        existing_pairs: Dict[str, EnvLine] = {
-            ln.key: ln for ln in existing_lines if ln.type == "pair" and ln.key is not None
-        }
-
-        merged: List[EnvLine] = []
-        for sub in submitted_lines:
-            if sub.type != "pair" or sub.key is None:
-                # Preserve submitted comments/blanks/other verbatim
-                merged.append(sub)
-                continue
-
-            key = sub.key
-            submitted_val = sub.value or ""
-
-            if key in existing_pairs and submitted_val == self.MASK_VALUE:
-                # Replace mask with existing value, keep submitted key formatting
-                existing_val = existing_pairs[key].value or ""
-                merged.append(
-                    EnvLine(
-                        raw=f"{(sub.key_part or key)}={existing_val}",
-                        type="pair",
-                        key=key,
-                        value=existing_val,
-                        key_part=sub.key_part or key,
-                        inline_comment=sub.inline_comment,
-                    )
-                )
-            elif key not in existing_pairs and submitted_val == self.MASK_VALUE:
-                # Masked-only new key -> ignore
-                continue
-            else:
-                # Use submitted value as-is
-                merged.append(sub)
-
-        return merged

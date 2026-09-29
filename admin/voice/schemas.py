@@ -88,7 +88,11 @@ class VoicePersonaBase(BaseModel):
 class VoicePersonaCreate(VoicePersonaBase):
     """Schema for creating a VoicePersona."""
 
-    llm_config_id: Optional[UUID] = Field(None, description="LLM config FK")
+    # VoicePersona.llm_config is a ForeignKey to LLMModelConfig, whose primary
+    # key is a BigAutoField (see admin/llm/migrations/0001_initial.py). So this
+    # id is an integer, not a UUID — annotating it UUID made every persona
+    # create reject the model config it was being pointed at.
+    llm_config_id: Optional[int] = Field(None, description="LLM config FK")
 
 
 class VoicePersonaUpdate(BaseModel):
@@ -100,7 +104,7 @@ class VoicePersonaUpdate(BaseModel):
     voice_speed: Optional[float] = None
     stt_model: Optional[str] = None
     stt_language: Optional[str] = None
-    llm_config_id: Optional[UUID] = None
+    llm_config_id: Optional[int] = None
     system_prompt: Optional[str] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
@@ -115,7 +119,7 @@ class VoicePersonaOut(VoicePersonaBase):
 
     id: UUID
     tenant_id: str
-    llm_config_id: Optional[UUID] = None
+    llm_config_id: Optional[int] = None
     llm_config_name: Optional[str] = None
     is_active: bool
     is_default: bool
@@ -191,7 +195,11 @@ class VoiceSessionStats(BaseModel):
 class LLMConfigOut(BaseModel):
     """Reference to an existing LLMModelConfig for persona selection."""
 
-    id: UUID
+    # LLMModelConfig's pk is a BigAutoField, so this is an int. It was
+    # annotated UUID, which pydantic rejects outright — every call to
+    # GET /voice/llm-configs would have raised a ValidationError on the
+    # first row it tried to serialize.
+    id: int
     name: str
     display_name: str
     provider: str
@@ -219,7 +227,7 @@ class LLMConfigListOut(BaseModel):
 class VoiceModelOut(BaseModel):
     """Schema for VoiceModel (TTS voices)."""
 
-    id: UUID
+    id: str
     name: str
     provider: str
     voice_id: str

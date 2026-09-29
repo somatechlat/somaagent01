@@ -204,8 +204,9 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     )
                     parsed = _parse_chunk(resp)
                     output = result.add_chunk(parsed)
-                    if output.get("tool_call_deltas"):
-                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
+                    deltas = output.get("tool_call_deltas")
+                    if deltas:
+                        yield ToolCallDeltasChunk(deltas=deltas)
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
@@ -223,8 +224,9 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     got_any_chunk = True
                     parsed = _parse_chunk(chunk)
                     output = result.add_chunk(parsed)
-                    if output.get("tool_call_deltas"):
-                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
+                    deltas = output.get("tool_call_deltas")
+                    if deltas:
+                        yield ToolCallDeltasChunk(deltas=deltas)
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
@@ -285,8 +287,9 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     )
                     parsed = _parse_chunk(resp)
                     output = result.add_chunk(parsed)
-                    if output.get("tool_call_deltas"):
-                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
+                    deltas = output.get("tool_call_deltas")
+                    if deltas:
+                        yield ToolCallDeltasChunk(deltas=deltas)
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])
@@ -305,8 +308,9 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     got_any_chunk = True
                     parsed = _parse_chunk(chunk)
                     output = result.add_chunk(parsed)
-                    if output.get("tool_call_deltas"):
-                        yield ToolCallDeltasChunk(deltas=output["tool_call_deltas"])
+                    deltas = output.get("tool_call_deltas")
+                    if deltas:
+                        yield ToolCallDeltasChunk(deltas=deltas)
                     if output["response_delta"]:
                         yield ChatGenerationChunk(
                             message=AIMessageChunk(content=output["response_delta"])

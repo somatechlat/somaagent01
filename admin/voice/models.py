@@ -118,8 +118,12 @@ class VoicePersona(TenantScopedModel):
     is_active = models.BooleanField(default=True, db_index=True)
     is_default = models.BooleanField(default=False)
 
-    # Type-checker visible ForeignKey _id attribute
-    llm_config_id: uuid.UUID | None
+    # Type-checker visible ForeignKey _id attribute. This is `int | None`, not
+    # a UUID: the FK targets LLMModelConfig, whose primary key is a
+    # BigAutoField (admin/llm/migrations/0001_initial.py). The old
+    # `uuid.UUID | None` annotation was a fabrication that made every
+    # consumer type-check against a key shape the table cannot produce.
+    llm_config_id: int | None
 
     class Meta:
         """Meta class implementation."""
@@ -138,33 +142,6 @@ class VoicePersona(TenantScopedModel):
         """Return string representation."""
 
         return f"{self.name} ({self.voice_id})"
-
-    def to_dict(self):
-        """Serialize for API response."""
-        return {
-            "id": str(self.id),
-            "tenant_id": str(self.tenant_id),
-            "name": self.name,
-            "description": self.description,
-            "voice_id": self.voice_id,
-            "voice_speed": self.voice_speed,
-            "stt_model": self.stt_model,
-            "stt_language": self.stt_language,
-            # LLM from ForeignKey
-            "llm_config_id": str(self.llm_config_id) if self.llm_config_id else None,
-            "llm_config_name": self.llm_config.name if self.llm_config else None,
-            "llm_provider": self.llm_config.provider if self.llm_config else None,
-            "system_prompt": self.system_prompt,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "turn_detection_enabled": self.turn_detection_enabled,
-            "turn_detection_threshold": self.turn_detection_threshold,
-            "silence_duration_ms": self.silence_duration_ms,
-            "is_active": self.is_active,
-            "is_default": self.is_default,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
 
 
 # =============================================================================
@@ -286,33 +263,6 @@ class VoiceSession(TenantScopedModel):
             self.duration_seconds = (self.terminated_at - self.started_at).total_seconds()
         self.save()
 
-    def to_dict(self):
-        """Serialize for API response."""
-        return {
-            "id": str(self.id),
-            "tenant_id": str(self.tenant_id),
-            "project_id": str(self.project_id) if self.project_id else None,
-            "api_key_id": str(self.api_key_id) if self.api_key_id else None,
-            "user_id": str(self.user_id) if self.user_id else None,
-            "persona_id": str(self.persona_id) if self.persona_id else None,
-            "status": self.status,
-            "config": self.config,
-            "duration_seconds": self.duration_seconds,
-            "input_tokens": self.input_tokens,
-            "output_tokens": self.output_tokens,
-            "total_tokens": self.input_tokens + self.output_tokens,
-            "audio_input_seconds": self.audio_input_seconds,
-            "audio_output_seconds": self.audio_output_seconds,
-            "total_audio_seconds": self.audio_input_seconds + self.audio_output_seconds,
-            "turn_count": self.turn_count,
-            "error_code": self.error_code,
-            "error_message": self.error_message,
-            "metadata": self.metadata,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "terminated_at": (self.terminated_at.isoformat() if self.terminated_at else None),
-        }
-
 
 # =============================================================================
 # VOICE MODEL (Available Voices) - TTS only, not LLM
@@ -372,18 +322,3 @@ class VoiceModel(models.Model):
         """Return string representation."""
 
         return f"{self.name} ({self.provider})"
-
-    def to_dict(self):
-        """Serialize for API response."""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "provider": self.provider,
-            "language": self.language,
-            "gender": self.gender,
-            "description": self.description,
-            "sample_url": self.sample_url,
-            "is_active": self.is_active,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }

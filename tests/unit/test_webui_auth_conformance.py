@@ -65,8 +65,7 @@ class TestNoLocalStorageTokens:
                 offenders.append(f"{rel}: {match.group(0)}")
         assert not offenders, (
             "webui must not read session tokens from localStorage — auth is an "
-            "httpOnly cookie sent by apiClient (see api-client.ts):\n  "
-            + "\n  ".join(offenders)
+            "httpOnly cookie sent by apiClient (see api-client.ts):\n  " + "\n  ".join(offenders)
         )
 
     def test_no_token_key_names_in_storage_writes(self):
@@ -81,10 +80,9 @@ class TestNoLocalStorageTokens:
                 continue
             for match in write.finditer(path.read_text(encoding="utf-8")):
                 offenders.append(f"{rel}: {match.group(0)}")
-        assert not offenders, (
-            "webui must not persist session tokens in localStorage:\n  "
-            + "\n  ".join(offenders)
-        )
+        assert (
+            not offenders
+        ), "webui must not persist session tokens in localStorage:\n  " + "\n  ".join(offenders)
 
 
 class TestNoHandRolledAuthHeaders:
@@ -113,7 +111,6 @@ class TestNoHandRolledAuthHeaders:
                 continue
             if smell.search(path.read_text(encoding="utf-8")):
                 offenders.append(rel)
-        assert not offenders, (
-            "per-view auth header helpers bypass apiClient:\n  "
-            + "\n  ".join(offenders)
+        assert not offenders, "per-view auth header helpers bypass apiClient:\n  " + "\n  ".join(
+            offenders
         )

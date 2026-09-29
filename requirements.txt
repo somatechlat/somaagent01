@@ -27,6 +27,7 @@ lz4==4.3.3
 redis==5.2.0
 psycopg[binary]==3.2.3
 pgvector==0.3.6
+minio==7.2.20
 
 # gRPC and protobuf
 grpcio==1.67.1

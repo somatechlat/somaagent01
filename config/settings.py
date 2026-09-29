@@ -32,7 +32,11 @@ SA01_DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE")
 KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://localhost:20880")
 KEYCLOAK_REALM = os.environ.get("KEYCLOAK_REALM", "somaagent")
 KEYCLOAK_CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "somaagent-api")
-KEYCLOAK_CLIENT_SECRET = get_secret_manager().get_credential("keycloak_client_secret") or ""
+# Absent becomes None, never "". An empty string reads as "configured with a
+# blank secret" and is then sent to Keycloak as though it were real — a working
+# default that hides the misconfiguration. None is the honest "not configured"
+# and matches services/gateway/settings.py (VIBE Rule 91).
+KEYCLOAK_CLIENT_SECRET = get_secret_manager().get_credential("keycloak_client_secret") or None
 SA01_KEYCLOAK_URL = KEYCLOAK_URL
 
 # AAAS / Multi-tenancy

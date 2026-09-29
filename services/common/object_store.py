@@ -139,7 +139,18 @@ class MinioObjectStore:
 
     def list_keys(self, prefix: str = "") -> list[str]:
         objects = self._client.list_objects(self.bucket, prefix=prefix or "")
-        return [obj.object_name for obj in objects]
+        keys: list[str] = []
+        for obj in objects:
+            name = obj.object_name
+            if not name:
+                # The SDK types object_name as optional; an unnamed entry means
+                # the listing is unusable, so refuse rather than return a partial one.
+                raise ObjectStoreUnavailable(
+                    f"MinIO listed an object without a name in bucket {self.bucket!r} "
+                    f"(prefix {prefix!r}); refusing to return a partial listing."
+                )
+            keys.append(name)
+        return keys
 
     def healthcheck(self) -> dict[str, Any]:
         return {"endpoint": self.endpoint, "bucket": self.bucket, "ok": True}
@@ -163,13 +174,14 @@ def get_object_store() -> MinioObjectStore:
     except Exception as exc:  # Vault unreachable / mount missing — fail closed.
         vault_error = exc
 
-    missing = []
-    if not access_key:
-        missing.append(ACCESS_KEY_PATH)
-    if not secret_key:
-        missing.append(SECRET_KEY_PATH)
-
-    if missing:
+    # Fail closed on any missing secret. The truthiness check also narrows
+    # both values to str for the MinIO client below.
+    if not access_key or not secret_key:
+        missing = []
+        if not access_key:
+            missing.append(ACCESS_KEY_PATH)
+        if not secret_key:
+            missing.append(SECRET_KEY_PATH)
         detail = f" (Vault error: {vault_error})" if vault_error else ""
         LOGGER.error(
             "object store credentials unavailable from Vault; refusing to start",
@@ -187,8 +199,8 @@ def get_object_store() -> MinioObjectStore:
 
     return MinioObjectStore(
         endpoint=endpoint,
-        access_key=access_key,  # type: ignore[arg-type]
-        secret_key=secret_key,  # type: ignore[arg-type]
+        access_key=access_key,
+        secret_key=secret_key,
         bucket=bucket,
         secure=secure,
     )

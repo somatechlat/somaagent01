@@ -297,10 +297,12 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     ErrorCode.BUDGET_CHECK_FAILED: _("Budget check failed, please try again"),
     # Vault / Secrets
     ErrorCode.VAULT_ADDR_MISSING: _(
-        "Vault address is required in production mode. Set VAULT_ADDR in your environment."
+        "Vault address is required in every mode. Point VAULT_ADDR at the running "
+        "Vault (its API address — topology, not a credential)."
     ),
     ErrorCode.VAULT_UNREACHABLE: _(
-        "Vault is unreachable at {addr} in production mode. All system secrets must be stored in Vault."
+        "Vault is unreachable at {addr}. All system secrets live in Vault; there is "
+        "no local copy to fall back on."
     ),
     # Files
     ErrorCode.FILE_SIZE_EXCEEDED: _("File size exceeds declared size"),

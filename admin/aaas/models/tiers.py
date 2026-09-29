@@ -44,7 +44,6 @@ class SubscriptionTier(models.Model):
         help_text="Billing cycle",
     )
 
-
     # Limits
     max_agents = models.IntegerField(default=1, help_text="Maximum agents allowed")
 

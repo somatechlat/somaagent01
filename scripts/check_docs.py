@@ -80,6 +80,7 @@ def is_annex(rel_path: str) -> bool:
     """True for annexed design artefacts (see SOMA-01-DOCS-001 §3.3.4)."""
     return rel_path.startswith(ANNEX_PREFIX)
 
+
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 

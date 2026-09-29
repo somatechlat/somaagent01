@@ -96,10 +96,15 @@ class PolicyClient:
         if cached and (now - cached[1]) < self.cache_ttl:
             return cached[0]
 
-        assert self.base_url is not None
+        client = self._client
+        if client is None or self.base_url is None:
+            # Reachable only if construction left us without a transport while
+            # not in standalone mode. Deny instead of inventing a client.
+            LOGGER.error("PolicyClient is not initialised; denying (fail-closed)")
+            return False
         url = f"{self.base_url.rstrip('/')}{self.data_path}"
         try:
-            response = await self._client.post(url, json=payload)
+            response = await client.post(url, json=payload)
             if response.status_code != 200:
                 LOGGER.error(
                     "OPA request failed",
@@ -118,7 +123,9 @@ class PolicyClient:
     async def close(self) -> None:
         """Execute close."""
 
-        await self._client.aclose()
+        # Standalone mode never opens a transport; there is nothing to close.
+        if self._client is not None:
+            await self._client.aclose()
 
     def _cache_key(self, request: PolicyRequest) -> tuple[Any, ...]:
         """Execute cache key.

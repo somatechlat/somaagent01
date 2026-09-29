@@ -61,7 +61,6 @@ class ModelInfo(BaseModel):
 
 from services.common.memory_contract import get_mem_embed_dim
 
-
 EMBEDDING_MODELS = {
     "text-embedding-ada-002": {
         "name": "text-embedding-ada-002",

@@ -47,7 +47,10 @@ class AssetType:
 class AssetStore(BaseStore[AssetRecord]):
     """Django ORM-backed store for assets."""
 
-    def __init__(self, dsn: Optional[str] = None) -> None:
+    def __init__(self) -> None:
+        # No connection string. This store is Django ORM-backed and gets its
+        # connection from settings.DATABASES. A dsn parameter here was accepted
+        # and ignored — a shim that implied the caller supplied a connection.
         pass
 
     async def ensure_schema(self) -> None:

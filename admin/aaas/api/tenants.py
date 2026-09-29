@@ -129,7 +129,6 @@ def create_tenant(request, payload: TenantCreate):
         slug=slugify(payload.name),
         tier=tier,
         status="active",
-
         keycloak_realm_id=None,  # Will be set when provisioned in Keycloak
     )
 

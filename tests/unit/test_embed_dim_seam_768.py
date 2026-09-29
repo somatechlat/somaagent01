@@ -2,9 +2,9 @@
 
 MEM_EMBED_DIM == SOMABRAIN_EMBED_DIM == SOMA_VECTOR_DIM == 768 (ARCHITECTURE-INVARIANTS §2).
 """
+
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
@@ -18,15 +18,24 @@ def _read(rel: str) -> str:
 class TestAgentDimDefaults:
     def test_settings_mem_embed_dim_default_768(self):
         src = _read("config/settings.py")
-        assert re.search(r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,\s*["\']768["\']\s*\)\)', src)
+        assert re.search(
+            r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,\s*["\']768["\']\s*\)\)',
+            src,
+        )
 
     def test_gateway_settings_mem_embed_dim_default_768(self):
         src = _read("services/gateway/settings.py")
-        assert re.search(r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,\s*["\']768["\']\s*\)\)', src)
+        assert re.search(
+            r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,\s*["\']768["\']\s*\)\)',
+            src,
+        )
 
     def test_unified_settings_vector_dim_default_768(self):
         src = _read("infra/aaas/unified_settings.py")
-        assert re.search(r'SOMA_VECTOR_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']SOMA_VECTOR_DIM["\']\s*,\s*["\']768["\']\s*\)\)', src)
+        assert re.search(
+            r'SOMA_VECTOR_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']SOMA_VECTOR_DIM["\']\s*,\s*["\']768["\']\s*\)\)',
+            src,
+        )
 
     def test_aaas_env_uses_768(self):
         env = _read("infra/aaas/aaas/.env")
@@ -35,7 +44,9 @@ class TestAgentDimDefaults:
 
     def test_aaas_env_example_uses_768(self):
         env = _read("infra/aaas/aaas/.env.example")
-        assert "1536" not in env.split("SFM_VECTOR_DIM")[-1][:20] if "SFM_VECTOR_DIM" in env else True
+        assert (
+            "1536" not in env.split("SFM_VECTOR_DIM")[-1][:20] if "SFM_VECTOR_DIM" in env else True
+        )
         assert re.search(r"^(SFM_VECTOR_DIM|SOMA_VECTOR_DIM)=768\s*$", env, re.M)
 
     def test_memory_contract_default_is_768(self):
@@ -55,15 +66,15 @@ class TestEmbeddingCatalog:
         assert "from services.common.memory_contract import get_mem_embed_dim" in src
 
     def test_catalog_dims_match_configured_dim(self):
-        from services.common.memory_contract import get_mem_embed_dim
         import importlib
 
         import admin.embeddings.api as api
+        from services.common.memory_contract import get_mem_embed_dim
 
         importlib.reload(api)  # re-stamp catalog with current settings
         configured = get_mem_embed_dim()
         assert configured == 768
         for model_id, info in api.EMBEDDING_MODELS.items():
-            assert info["dimensions"] == configured, (
-                f"{model_id} exposes dim {info['dimensions']} != configured {configured}"
-            )
+            assert (
+                info["dimensions"] == configured
+            ), f"{model_id} exposes dim {info['dimensions']} != configured {configured}"

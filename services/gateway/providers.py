@@ -104,7 +104,7 @@ def get_multimodal_executor():
     """Get the MultimodalExecutor instance for multimodal job execution."""
     from services.tool_executor.multimodal_executor import MultimodalExecutor
 
-    return MultimodalExecutor(dsn=get_optional_env("SA01_DB_DSN", ""))
+    return MultimodalExecutor()
 
 
 def get_session_store():

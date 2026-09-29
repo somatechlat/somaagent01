@@ -130,9 +130,7 @@ class ToolExecutor:
             try:
                 from services.tool_executor.multimodal_executor import MultimodalExecutor
 
-                self._multimodal_executor = MultimodalExecutor(
-                    dsn=os.environ.get("SA01_DB_DSN", "")
-                )
+                self._multimodal_executor = MultimodalExecutor()
                 await self._multimodal_executor.initialize()
                 poll_raw = os.environ.get("SA01_MULTIMODAL_POLL_INTERVAL", "2.0") or "2.0"
                 try:

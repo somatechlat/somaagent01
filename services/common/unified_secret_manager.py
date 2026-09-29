@@ -13,7 +13,6 @@ import logging
 import os
 from typing import List, Optional
 
-from admin.common.messages import ErrorCode, get_message
 from services.common.vault_secrets import (
     delete_kv_secret,
     load_kv_secret,
@@ -34,23 +33,34 @@ class UnifiedSecretManager:
         """Initialize the instance."""
 
         self._vault_addr = os.environ.get("VAULT_ADDR")
-        deployment_mode = os.environ.get("SA01_DEPLOYMENT_MODE", "DEV").upper()
-        is_prod = deployment_mode in ("PROD", "PRODUCTION", "STANDALONE")
 
+        # Vault is mandatory in every mode. This used to be gated behind
+        # SA01_DEPLOYMENT_MODE in ("PROD", "PRODUCTION", "STANDALONE"), which
+        # meant the fail-closed check was itself opt-in: an unset SA01_DEPLOYMENT_MODE
+        # defaulted to "DEV", skipped both raises, and logged "secrets will not be
+        # available" before carrying on. That is the softest possible bypass —
+        # the guard that is supposed to enforce Rule 164 was disabled by default.
+        #
+        # There is no deployment shape in which a missing or unreachable Vault is
+        # acceptable here. Constructing this object means a secret is about to be
+        # read; if it cannot be read from Vault the operation must not proceed on
+        # nothing (VIBE Rule 164 / Rule 91).
         if not self._vault_addr:
-            if is_prod:
-                raise RuntimeError(
-                    f"VIBE Rule 164 VIOLATION: {get_message(ErrorCode.VAULT_ADDR_MISSING)}"
-                )
-            LOGGER.warning(
-                "VAULT_ADDR not configured - secrets will not be available. "
-                "In production, this is a FATAL error."
-            )
-            return
-
-        if is_prod and not self._check_vault_reachable():
             raise RuntimeError(
-                f"VIBE Rule 164 VIOLATION: {get_message(ErrorCode.VAULT_UNREACHABLE, addr=self._vault_addr)}"
+                "VIBE Rule 164 VIOLATION: VAULT_ADDR is not set. Every secret is "
+                "served by Vault and this is its API address (topology, not a "
+                "credential — the credential lives in Vault itself). Point it at "
+                "the running Vault, e.g. http://vault:8200, before any secret is "
+                "read."
+            )
+
+        if not self._check_vault_reachable():
+            raise RuntimeError(
+                f"VIBE Rule 164 VIOLATION: Vault at {self._vault_addr} is "
+                "unreachable, so no secret can be read. Bring the Vault at "
+                f"{self._vault_addr} up and unsealed (see infra/standalone/"
+                "vault_unseal.py); there is no local copy of these secrets to "
+                "fall back on."
             )
 
     def _check_vault_reachable(self) -> bool:

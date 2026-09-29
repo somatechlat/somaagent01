@@ -219,7 +219,7 @@ class ContextBuilder:
                 memories = await self._brain_client.recall(
                     query=query,
                     top_k=recall_limit,
-                    tenant=str(capsule.tenant_id) if capsule.tenant_id else None,
+                    tenant=str(capsule.tenant.id),
                     namespace="chat_history",
                 )
                 if memories:

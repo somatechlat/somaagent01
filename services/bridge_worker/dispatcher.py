@@ -28,6 +28,8 @@ from services.bridge_worker.drivers.base import (
     BridgeSendError,
     InboundEnvelope,
     OutboundPayload,
+    SupportsSendTyping,
+    SupportsTypingSession,
 )
 
 logger = logging.getLogger(__name__)
@@ -456,15 +458,18 @@ class OutboundSender:
 
             store = DLQStore()
             await store.ensure_schema()
+            # DLQStore.add signature is (topic, event, error) — topic names the
+            # dead-letter stream, event carries the failed record.
             await store.add(
-                {
-                    "kind": "bridge_outbound",
+                topic="bridge_outbound",
+                event={
                     "channel_id": self.channel_id,
                     "outbound_id": outbound_id,
                     "payload": payload.to_payload(),
                     "attempts": attempts,
                     "error": last_error,
-                }
+                },
+                error=last_error,
             )
         except Exception:  # noqa: BLE001 — DLQ push must not mask the failed send
             logger.exception("DLQ push failed for outbound %s", outbound_id)
@@ -656,15 +661,16 @@ class BridgeDispatcher:
     async def _typing_indicator(self, chat_id: str) -> AsyncIterator[None]:
         """Typing while the agent runs: driver typing_session if available
         (Telegram sendChatAction loop), else a one-shot best-effort poke."""
-        session = getattr(self.driver, "typing_session", None)
-        if callable(session):
-            async with session(chat_id):
+        # Structural capability checks — drivers that implement the method
+        # advertise it; getattr+callable narrowed to `object` and hid the
+        # async CM / coroutine shapes.
+        if isinstance(self.driver, SupportsTypingSession):
+            async with self.driver.typing_session(chat_id):
                 yield
             return
-        typing = getattr(self.driver, "send_typing", None)
-        if callable(typing):
+        if isinstance(self.driver, SupportsSendTyping):
             try:
-                await typing(chat_id)
+                await self.driver.send_typing(chat_id)
             except Exception:  # noqa: BLE001 — typing is never fatal
                 pass
         yield

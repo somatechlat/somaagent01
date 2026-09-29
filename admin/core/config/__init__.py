@@ -104,15 +104,16 @@ def soma_base_url() -> str:
 
 
 def postgres_dsn() -> str:
-    """Execute postgres dsn."""
+    """The PostgreSQL connection string, assembled — never read from ENV.
 
-    dsn = env("POSTGRES_DSN", "")
-    if not dsn:
-        raise RuntimeError(
-            "VIBE Rule 91 VIOLATION: POSTGRES_DSN is REQUIRED. "
-            "Set POSTGRES_DSN in your environment or Vault."
-        )
-    return str(dsn)
+    There is no POSTGRES_DSN / SA01_DB_DSN environment variable. A connection
+    string embeds the password, so one in the environment is a credential in a
+    file and in the process table. Topology is ENV, the password is Vault, and
+    config/settings_registry.py combines them (VIBE Rule 100 + 164).
+    """
+    from config.settings_registry import SettingsRegistry
+
+    return SettingsRegistry.load().postgres_dsn
 
 
 def redis_url() -> str:

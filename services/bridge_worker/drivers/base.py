@@ -7,6 +7,7 @@ normalized event shape emitted by ``whatsapp-bridge/bridge.js``.
 
 from __future__ import annotations
 
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
@@ -119,15 +120,46 @@ class BridgeDriver(Protocol):
         Poll is destructive (A0 ``GET /messages`` splices the queue) — the
         caller is responsible for persisting envelopes before processing.
         """
+        # Contract method: a driver that falls through here would silently
+        # report "no inbound" forever. Fail loud instead.
+        raise NotImplementedError("BridgeDriver.poll_inbound must be implemented by the driver")
 
     async def send_outbound(self, payload: OutboundPayload) -> Dict[str, Any]:
         """Send one message. Raise ``BridgeSendError`` on failure."""
+        raise NotImplementedError("BridgeDriver.send_outbound must be implemented by the driver")
 
     async def health(self) -> DriverHealth:
         """Return current driver/sidecar health."""
+        raise NotImplementedError("BridgeDriver.health must be implemented by the driver")
 
     async def get_qr(self) -> Optional[Dict[str, Any]]:
         """Return pairing QR state, or None when not applicable."""
+
+
+@runtime_checkable
+class SupportsTypingSession(Protocol):
+    """Optional driver capability: typing indicator held across a block.
+
+    Telegram implements this as a ``sendChatAction`` refresh loop; drivers
+    without a long-lived indicator implement ``SupportsSendTyping`` instead.
+    """
+
+    def typing_session(self, chat_id: str) -> AbstractAsyncContextManager[None]:
+        """Return an async context manager that keeps the indicator alive."""
+        raise NotImplementedError(
+            "SupportsTypingSession.typing_session must be implemented by the driver"
+        )
+
+
+@runtime_checkable
+class SupportsSendTyping(Protocol):
+    """Optional driver capability: one-shot typing indicator poke."""
+
+    async def send_typing(self, chat_id: str, paused: bool = False) -> None:
+        """Send one best-effort typing poke. Must never raise fatally."""
+        raise NotImplementedError(
+            "SupportsSendTyping.send_typing must be implemented by the driver"
+        )
 
 
 class BridgeSendError(Exception):

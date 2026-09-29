@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from uuid import uuid4
 
 from asgiref.sync import sync_to_async
 from ninja import Router
 from ninja.errors import HttpError
 
+from admin.aaas.models.choices import AgentStatus
 from admin.agents.api.schemas import (
     Agent,
     AgentStats,
@@ -41,7 +41,6 @@ from admin.agents.services.agent_service import (
     _update_agent,
     _update_capsule,
 )
-from admin.aaas.models.choices import AgentStatus
 from admin.common.auth import AuthBearer
 
 router = Router(tags=["agents"])
@@ -399,9 +398,7 @@ async def get_agent_stats(request, agent_id: str) -> AgentStats:
         convs = Conversation.objects.filter(agent_id=agent_id)
         # `convs`, not `concs` — the old name was undefined and this helper
         # raised NameError the moment anything asked for agent stats.
-        return convs.count(), Message.objects.filter(
-            conversation_id__in=convs.values("id")
-        ).count()
+        return convs.count(), Message.objects.filter(conversation_id__in=convs.values("id")).count()
 
     conversations, messages = await _count()
     return AgentStats(
@@ -434,8 +431,7 @@ async def clone_agent(
     """
     from django.utils.text import slugify
 
-    from admin.aaas.models import Agent as AgentModel
-    from admin.aaas.models import Tenant as TenantModel
+    from admin.aaas.models import Agent as AgentModel, Tenant as TenantModel
 
     tenant_id = _resolve_tenant_id(request, None)
     source = await _get_agent_by_id(agent_id, tenant_id)
@@ -444,7 +440,7 @@ async def clone_agent(
 
     @sync_to_async
     def _clone():
-        target_tenant_id_val = target_tenant_id or str(source.tenant_id)
+        target_tenant_id_val = target_tenant_id or str(source.tenant.id)
         if not TenantModel.objects.filter(id=target_tenant_id_val).exists():
             raise HttpError(404, f"Target tenant {target_tenant_id_val} not found")
 

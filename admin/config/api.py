@@ -336,14 +336,26 @@ async def list_secrets(request) -> dict:
     """List secret keys (not values).
 
     Security Auditor: Only key names, not values.
-    """
-    # Return existence check.
-    secrets = ["OPENAI_API_KEY", "SOMABRAIN_TOKEN", "DATABASE_DSN"]
 
+    These credentials live in Vault (VIBE Rule 164), never in the environment,
+    so this reports whether the Vault credential exists — not whether some ENV
+    var is set. An ENV set-check would advertise a model that does not exist and
+    would read as "configured" for a value the application never consults.
+    """
+    from services.common.unified_secret_manager import get_secret_manager
+
+    credentials = ["llm_api_key", "somabrain_memory_http_token", "postgres_password"]
+
+    sm = get_secret_manager()
     clean_list = []
-    for s in secrets:
-        val = os.environ.get(s)
-        clean_list.append({"key": s, "masked": True, "set": val is not None})
+    for key in credentials:
+        try:
+            present = bool(sm.get_credential(key))
+        except Exception:
+            # Vault unreachable. That is not "unset" — it is unknown, and the
+            # distinction matters to whoever has to fix it.
+            present = None
+        clean_list.append({"key": key, "source": "vault", "masked": True, "set": present})
 
     return {
         "secrets": clean_list,

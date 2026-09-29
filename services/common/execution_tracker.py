@@ -38,7 +38,7 @@ class ExecutionRecord:
 class ExecutionTracker:
     """Tracks execution status of a job."""
 
-    def __init__(self, dsn: Optional[str] = None) -> None:
+    def __init__(self) -> None:
         self.job_id = ""
         self.status = ExecutionStatus.PENDING
         self.progress = 0.0

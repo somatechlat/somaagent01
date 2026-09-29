@@ -70,24 +70,32 @@ services:
       - SA01_REDIS_URL=redis://somastack_redis:6379/0
       # Multi-tenancy: Default tenant ID when not in JWT
       - AAAS_DEFAULT_TENANT_ID=00000000-0000-0000-0000-000000000003
-      # API Token for E2E tests
-      - SOMA_API_TOKEN=${SOMA_API_TOKEN}
+      # Inter-service auth token is a credential: Vault
+      # secret/agent/credentials/soma_api_token. Never ENV.
       # Keycloak OIDC Identity Provider
       - SA01_KEYCLOAK_URL=http://somastack_keycloak:8080
-      # Legacy compatibility (for settings.py fallback)
-      - SA01_DB_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somaagent
+      # Database topology — parts, not a DSN. A DSN embeds the password.
+      # There is no SA01_DB_DSN / SOMABRAIN_POSTGRES_DSN / SFM_POSTGRES_DSN.
+      # The password is read from Vault at
+      # secret/agent/credentials/postgres_password by
+      # config/settings_registry.py and assembled into the connection there.
+      - POSTGRES_HOST=somastack_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=soma
+      - POSTGRES_DB=somaagent
+      - SOMABRAIN_DB=somabrain
+      - SOMA_DB_NAME=somamemory
       # Required for Django security and JWT validation
       - SA01_ALLOWED_HOSTS=*
-      - SA01_JWT_SECRET=${SA01_JWT_SECRET:?SA01_JWT_SECRET is required}
+      # JWT signing secret is a credential: Vault
+      # secret/agent/credentials/jwt_secret. Never ENV.
       - SA01_AUTH_REQUIRED=true
       # SomaBrain required env vars
       - SOMABRAIN_KAFKA_URL=somastack_kafka:9092
       - SOMABRAIN_OPA_URL=http://somastack_opa:8181
-      - SOMABRAIN_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somabrain
       - SOMABRAIN_REDIS_URL=redis://somastack_redis:6379/0
       - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101
       # SomaFractalMemory required env vars
-      - SFM_POSTGRES_DSN=postgresql://soma:${VAULT_POSTGRES_PASSWORD:?VAULT_POSTGRES_PASSWORD is required}@somastack_postgres:5432/somamemory
       - SFM_REDIS_URL=redis://somastack_redis:6379/0
       - SFM_MILVUS_HOST=somastack_milvus
       - SFM_MILVUS_PORT=19530

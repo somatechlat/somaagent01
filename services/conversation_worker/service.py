@@ -70,7 +70,10 @@ class ConversationWorkerService(BaseService):
             # Close worker connections gracefully
             if self.worker:
                 try:
-                    await self.worker.soma.close()
+                    # SomaBrain is optional: get() returns None in standalone mode.
+                    soma = self.worker.soma
+                    if soma is not None:
+                        await soma.close()
                     await self.worker.router.close()
                     await self.worker.policy.close()
                 except Exception as e:

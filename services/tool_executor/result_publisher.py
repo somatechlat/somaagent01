@@ -153,7 +153,8 @@ class ResultPublisher:
             if self._executor.soma is None:
                 LOGGER.debug("SomaBrain not configured; skipping tool feedback")
             else:
-                await self._executor.soma.context_feedback(feedback)
+                # context_feedback takes keyword fields matching the FeedbackRequest schema.
+                await self._executor.soma.context_feedback(**feedback)
                 TOOL_FEEDBACK_TOTAL.labels("delivered").inc()
         except Exception as exc:
             try:

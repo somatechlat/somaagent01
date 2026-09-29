@@ -220,8 +220,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     thread_sensitive=True,
                 )()
                 if agent and agent.primary_capsule:
-                    self.capsule = agent.primary_capsule
-                    logger.info("Resolved agent %s → capsule %s", self.agent_id, self.capsule.id)
+                    capsule = agent.primary_capsule
+                    self.capsule = capsule
+                    logger.info("Resolved agent %s → capsule %s", self.agent_id, capsule.id)
             if not self.capsule:
                 logger.warning("Capsule not found for agent: %s", self.agent_id)
                 await self.close(code=4004)
@@ -249,14 +250,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
                 self.tool_registry = ToolRegistry()
                 self.tool_registry.load_from_capsule(self.capsule)
+                logger.info(
+                    "WebSocket tool registry built: %d tools",
+                    len(list(self.tool_registry.list())),
+                )
             except Exception:
                 # Tool stack must never block chat (optional deps).
                 logger.exception("ToolRegistry load failed; continuing without tools")
                 self.tool_registry = None
-            logger.info(
-                "WebSocket tool registry built: %d tools",
-                len(list(self.tool_registry.list())),
-            )
 
             # Phase 5: PERMISSION PRE-CHECK (ONCE, cached)
             from admin.core.agentiq import UnifiedGate
@@ -666,19 +667,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         if msg_type == MSG_CHAT_PAUSE:
             self._paused = True
-            await self._send_json(WSMessage(type="chat.paused", payload={"paused": True}))
+            await self.send_json(WSMessage(type="chat.paused", payload={"paused": True}).to_dict())
             return
 
         if msg_type == MSG_CHAT_RESUME:
             self._paused = False
-            await self._send_json(WSMessage(type="chat.paused", payload={"paused": False}))
+            await self.send_json(WSMessage(type="chat.paused", payload={"paused": False}).to_dict())
             return
 
         if msg_type == MSG_CHAT_NUDGE:
             nudge_text = payload.get("content") or payload.get("text") or "Please continue."
             if self.is_streaming:
                 self._nudge_queue.append(nudge_text)
-                await self._send_json(WSMessage(type="chat.nudged", payload={"queued": True}))
+                await self.send_json(
+                    WSMessage(type="chat.nudged", payload={"queued": True}).to_dict()
+                )
             else:
                 await self._send_error("No running turn to nudge", code="not_streaming")
             return
@@ -688,7 +691,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 self._turn_task.cancel()
                 self._stop_requested = True
             self._paused = False
-            await self._send_json(WSMessage(type="chat.stopped", payload={"stopped": True}))
+            await self.send_json(
+                WSMessage(type="chat.stopped", payload={"stopped": True}).to_dict()
+            )
             return
 
         if msg_type == MSG_CHAT_RESET:
@@ -697,7 +702,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             self._nudge_queue.clear()
             if self._turn_task and not self._turn_task.done():
                 self._turn_task.cancel()
-            await self._send_json(WSMessage(type="chat.reset", payload={"ok": True}))
+            await self.send_json(WSMessage(type="chat.reset", payload={"ok": True}).to_dict())
             return
 
         if msg_type == MSG_TOOL_APPROVAL:
@@ -706,11 +711,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             future = self._tool_approvals.pop(tool_call_id, None)
             if future is not None and not future.done():
                 future.set_result(approved)
-            await self._send_json(
+            await self.send_json(
                 WSMessage(
                     type="tool.approval_resolved",
                     payload={"tool_call_id": tool_call_id, "approved": approved},
-                )
+                ).to_dict()
             )
             return
 

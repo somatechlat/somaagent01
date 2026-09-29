@@ -43,13 +43,13 @@ def _map_agent_to_schema(agent: AgentModel) -> Agent:
         agent_id=str(agent.id),
         name=agent.name,
         description=agent.description,
-        tenant_id=str(agent.tenant_id),
+        tenant_id=str(agent.tenant.id),
         status=agent.status,
         model=config.get("model", "gpt-4"),
         personality=config.get("personality", {}),
         tools=config.get("tools", []),
         memory_config=config.get("memory", {}),
-        capsule_id=str(agent.primary_capsule_id) if agent.primary_capsule_id else None,
+        capsule_id=str(agent.primary_capsule.id) if agent.primary_capsule else None,
         created_at=agent.created_at.isoformat(),
         updated_at=agent.updated_at.isoformat(),
     )
@@ -66,7 +66,7 @@ def _list_agents(
     if status:
         qs = qs.filter(status=status)
     total = qs.count()
-    page_qs = qs.select_related("tenant").order_by("-created_at")[:limit]
+    page_qs = qs.select_related("tenant", "primary_capsule").order_by("-created_at")[:limit]
     agents = list(page_qs)
     return agents, total
 
@@ -75,7 +75,9 @@ def _list_agents(
 def _get_agent_by_id(agent_id: str, tenant_id: str) -> AgentModel | None:
     """Fetch a single agent by ID and tenant."""
     try:
-        return AgentModel.objects.select_related("tenant").get(id=agent_id, tenant_id=tenant_id)
+        return AgentModel.objects.select_related("tenant", "primary_capsule").get(
+            id=agent_id, tenant_id=tenant_id
+        )
     except AgentModel.DoesNotExist:
         return None
 

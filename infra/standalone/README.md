@@ -27,32 +27,31 @@ Credential keys the settings modules read from Vault:
 `somabrain_memory_http_token`, `somabrain_api_key`, `llm_api_key`,
 `keycloak_client_secret`, `google_client_secret`, `keycloak_admin_password`.
 
-### The one carve-out: `VAULT_TOKEN`
+### The Vault lifecycle credentials
 
-`VAULT_TOKEN` is the **bootstrap root credential**. It authenticates *to* Vault,
-so it cannot itself be stored in Vault — that would be circular. It is exported
-by the deployer for the `docker compose up` process only:
+Vault's root token and unseal key authenticate *to* Vault, so they cannot live
+inside it — that would be circular. They are still credentials, so they are
+**not in the environment either**. They are files under `./secrets/`, exactly
+like `postgres_password`:
 
-```bash
-export VAULT_TOKEN="$(cat /path/kept/outside/the/repo)"
-```
+| File | Written by | Read by |
+|---|---|---|
+| `secrets/vault_root_token` | `vault_unseal.py` on first init | `init_vault.py`, via `VAULT_TOKEN_FILE` |
+| `secrets/vault_unseal_key` | `vault_unseal.py` on first init | `vault_unseal.py` on every boot |
 
-Never write it to `.env`. Never commit it. This is the single exception to
-"secrets come from Vault", and it is the root of trust that makes the rest
-possible.
+There is no `VAULT_TOKEN` environment variable anywhere in this stack, and no
+`export VAULT_TOKEN=…` step. An environment variable is visible in `ps`, in
+`/proc/*/environ` and in every core dump; a `0600` file mounted as a Docker
+secret is not.
 
-**The value must not start with `s.`** (measured on `hashicorp/vault:1.15`).
-Vault reserves that prefix for tokens it issues itself and refuses it as a
-custom root token ID:
+On first `docker compose up`, `vault_unseal.py` initialises Vault (1-of-1
+threshold), generates both values and writes them to `./secrets/` with mode
+`0600`. **They are the only copy — back them up.** Every later boot reads the
+unseal key and unseals Vault; the root token is used only by the seeder.
 
-```
-Error initializing Dev mode: failed to create root token with ID "s.…":
-  * invalid request
-```
-
-The container then exits 1 — but only *after* logging `core: vault is unsealed`,
-so a log tail looks healthy while the process is already dead. A plain random
-string (`openssl rand -hex 16`) is fine.
+If the Vault volume is wiped but those two files remain, the script refuses to
+overwrite them and tells you so, rather than silently minting a second root of
+trust for the same store.
 
 ### Operator-supplied values
 
@@ -67,8 +66,9 @@ prints a value and fails closed if a required file is missing or empty.
 |---|---|
 | `docker-compose.yml` | Services, secrets, dependency order |
 | `Dockerfile` | Agent container |
-| `entrypoint-app.sh` | Composes `SA01_DB_DSN` from the mounted secret + topology |
 | `entrypoint-keycloak.sh` | Supplies Keycloak's two passwords from mounted secrets |
+| `vault.hcl` | Vault server config: `file` storage on a named volume, real seal |
+| `vault_unseal.py` | Init-once, unseal-on-every-boot. Generates the two lifecycle credentials |
 | `init_vault.py` | One-shot seeder: `./secrets/` → Vault at the real paths |
 | `secrets/` | Operator-supplied values. Gitignored except its README |
 | `start.sh` | Container init: wait for infra, migrate, warm up, start uvicorn |
@@ -127,22 +127,28 @@ Put the real LLM provider key in `secrets/groq_api_key` (or your provider's
 ### 3. Start
 
 ```bash
-export VAULT_TOKEN="$(openssl rand -hex 16)"   # dev only — see the carve-out
 docker compose up --build -d
-docker compose logs -f somaagent_vault_init somaagent_standalone
+docker compose logs -f somaagent_vault_unseal somaagent_vault_init somaagent_standalone
 ```
 
-Startup order is enforced, not hoped for: Vault is healthy →
-`init_vault.py` completes successfully → Postgres and Redis are healthy →
-the app starts. If any required secret file is absent, `init_vault.py` exits
-non-zero and the app never starts.
+No token to export. `vault_unseal.py` initialises Vault on this first boot and
+writes `secrets/vault_root_token` and `secrets/vault_unseal_key` for you.
+
+Startup order is enforced, not hoped for: Vault is reachable → `vault_unseal.py`
+initialises/unseals it → `init_vault.py` completes successfully → Postgres and
+Redis are healthy → the app starts. If any required secret file is absent,
+`init_vault.py` exits non-zero and the app never starts.
 
 ### 4. Verify
 
 ```bash
-# Every required key is present in Vault
-SECRETS_DIR=./secrets VAULT_ADDR=http://localhost:20882 VAULT_TOKEN=$VAULT_TOKEN \
+# Every required key is present in Vault (reads the root token from the file)
+SECRETS_DIR=./secrets VAULT_ADDR=http://localhost:20882 \
   python3 init_vault.py --check
+
+# Vault is unsealed
+SECRETS_DIR=./secrets VAULT_ADDR=http://localhost:20882 \
+  python3 vault_unseal.py --status
 
 # Agent is up
 curl -fsS http://localhost:20020/api/health/
@@ -190,10 +196,10 @@ oversight. Each row names the production behaviour it stands in for.
 
 | # | Local | Production | Why locally |
 |---|---|---|---|
-| 1 | **Vault runs in dev mode** (`hashicorp/vault` + `VAULT_DEV_ROOT_TOKEN_ID`) | Unsealed Vault with AppRole / Kubernetes auth, real seal, audit devices | Dev mode needs no unseal ceremony and no PKI, which is disproportionate for one laptop. **Consequence: secrets are in memory and a container restart loses them — re-run `init_vault.py`.** |
+| 1 | **Vault unseal key is held by the deployer** (`./secrets/vault_unseal_key`, 1-of-1) | Auto-unseal against a cloud KMS, m-of-n key shares, audit devices | A laptop has no KMS to auto-unseal against and no second operator to hold a second share. **No consequence for durability:** Vault runs in server mode with `file` storage on a named volume, so credentials survive restarts — the previous dev-mode design lost every secret on `docker compose restart`. What is local is only *who holds the unseal key*, not whether secrets persist. |
 | 2 | **Keycloak runs `start-dev`** | `start --optimized` behind TLS with a real hostname | Dev mode disables hostname strictness and TLS requirements that a local stack cannot satisfy. |
 | 3 | **Keycloak has no `_FILE` secret support** | Platform secret store injects `KC_DB_PASSWORD` / `KEYCLOAK_ADMIN_PASSWORD` | Verified against keycloak.org/server/configuration: the image documents `KC_DB_PASSWORD` but ships no `_FILE` variant. `entrypoint-keycloak.sh` exports them from mounted Docker secrets into that container's process env only. |
-| 4 | **`SA01_DB_DSN` is composed in `entrypoint-app.sh`** | The app builds its connection from topology + `secret/agent/credentials/postgres_password` | `services/gateway/settings.py` still parses `SA01_DB_DSN`. Until that read is converted (tracked; needs the settings lane), the DSN is formed in-container from the mounted Docker secret. It never touches the host, `.env` or git. **This is the one place a password-bearing DSN exists, and it should reach zero.** |
+| 4 | **Database password comes from Vault, same as production** | Identical | No local deviation. Topology (`SA01_DB_HOST/PORT/NAME/USER`) is ENV; the password is `secret/agent/credentials/postgres_password`. `config/settings_registry.py` assembles `DATABASES` from those two sources and nothing else. No `SA01_DB_DSN` exists in any environment. |
 | 5 | **Redis has no auth** | Redis ACL / `requirepass`, password in Vault | Standalone Redis is on the isolated bridge network only. |
 | 6 | **No TLS anywhere** | TLS at every hop | Local CA + certs is out of scope for a single-machine stack. Do not expose these ports beyond localhost. |
 | 7 | **Root token is a shared static value** | Short-lived, per-workload identity (AppRole role_id/secret_id, or K8s service account) | See carve-out above. |

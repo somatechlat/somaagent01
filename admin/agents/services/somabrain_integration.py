@@ -153,14 +153,13 @@ async def recall_memories(
         LOGGER.debug("SomaBrain not configured; returning empty recall results")
         return []
     try:
-        result = await soma_client.recall(
+        memories = await soma_client.recall(
             query=query,
             top_k=top_k,
             tenant=agent.tenant_id,
             namespace="wm",
             tags=[memory_type] if memory_type else None,
         )
-        memories = result.get("results", [])
         if memories:
             PrintStyle(font_color="cyan", padding=False).print(f"Recalled {len(memories)} memories")
         return memories

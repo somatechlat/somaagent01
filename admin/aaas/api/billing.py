@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from ninja import Query, Router
+from ninja import Router
 from ninja.errors import HttpError
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,6 @@ from admin.aaas.api.schemas import (
 )
 from admin.aaas.models import SubscriptionTier, Tenant
 from admin.common.auth import AuthBearer
-from admin.common.messages import get_message, SuccessCode
 
 router = Router()
 
@@ -233,7 +232,6 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
     - Atomic operation
     - Audit logging (via AuditLog model)
     """
-    from ninja.errors import HttpError
 
     try:
         tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
@@ -351,7 +349,6 @@ def add_payment_method(request, tenant_id: str, payload: PaymentMethodCreate):
     metadata. The raw token is discarded immediately: keeping it would put
     live payment credential material into a JSON metadata column.
     """
-    from ninja.errors import HttpError
 
     try:
         tenant = Tenant.objects.get(id=tenant_id)

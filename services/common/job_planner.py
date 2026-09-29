@@ -88,7 +88,8 @@ class PlanValidationError(Exception):
 class JobPlanner:
     """Planner for multimodal job execution."""
 
-    def __init__(self, dsn: Optional[str] = None) -> None:
+    def __init__(self) -> None:
+        # Django ORM-backed; connection comes from settings.DATABASES.
         pass
 
     async def ensure_schema(self) -> None:
