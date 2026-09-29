@@ -27,6 +27,47 @@ export interface NavSection {
     items: NavItem[];
 }
 
+/**
+ * The platform admin navigation, as the product already declares it.
+ *
+ * Every one of the ~20 call sites mounts `<saas-sidebar>` without passing
+ * `sections`, so until now the component rendered a logo, a collapse button
+ * and an empty `<nav>`. This is the same navigation the platform dashboard
+ * draws inline — copied once, here, so there is a single source of truth for
+ * where admin screens live rather than a copy per view.
+ *
+ * Every `route` below is a real router entry in `webui/src/main.ts`. Nothing
+ * is aspirational: if a screen is not routed, it does not appear.
+ */
+export const ADMIN_NAV: NavSection[] = [
+    {
+        id: 'overview',
+        label: 'Overview',
+        items: [
+            { id: 'dashboard', label: 'Dashboard', icon: 'visibility', route: '/saas/dashboard' },
+            { id: 'tenants', label: 'Tenants', icon: 'apartment', route: '/saas/tenants' },
+        ],
+    },
+    {
+        id: 'finance',
+        label: 'Finance',
+        items: [
+            { id: 'subscriptions', label: 'Subscriptions', icon: 'card_membership', route: '/saas/subscriptions' },
+            { id: 'billing', label: 'Billing', icon: 'payments', route: '/saas/billing' },
+        ],
+    },
+    {
+        id: 'platform',
+        label: 'Platform',
+        items: [
+            { id: 'models', label: 'Models', icon: 'model_training', route: '/platform/models' },
+            { id: 'roles', label: 'Roles', icon: 'admin_panel_settings', route: '/platform/roles' },
+            { id: 'flags', label: 'Feature Flags', icon: 'toggle_on', route: '/platform/flags' },
+            { id: 'api-keys', label: 'API Keys', icon: 'vpn_key', route: '/platform/api-keys' },
+        ],
+    },
+];
+
 @customElement('saas-sidebar')
 export class SaasSidebar extends LitElement {
     static styles = css`
@@ -252,7 +293,8 @@ export class SaasSidebar extends LitElement {
         }
     `;
 
-    @property({ type: Array }) sections: NavSection[] = [];
+    /** Defaults to ADMIN_NAV. Pass `sections` to override for a different shell. */
+    @property({ type: Array }) sections: NavSection[] = ADMIN_NAV;
     @property({ type: String }) activeRoute = '';
     @property({ type: Boolean }) collapsed = false;
     @property({ type: String }) userName = '';
