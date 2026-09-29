@@ -1,7 +1,7 @@
 """
 Quality Evaluation API.
 
-Asset quality evaluation, LLM-based critique, and bounded retry logic.
+Asset quality evaluation and bounded retry logic.
 """
 
 from __future__ import annotations
@@ -94,28 +94,6 @@ class RetryExecutionResponse(BaseModel):
     total_duration_ms: float
 
 
-class AssetCritiqueRequest(BaseModel):
-    """Request asset critique."""
-
-    asset_id: str
-    asset_type: str
-    content: str
-    rubric: Optional[dict] = None  # Custom evaluation rubric
-
-
-class AssetCritiqueResponse(BaseModel):
-    """Asset critique result."""
-
-    critique_id: str
-    asset_id: str
-    overall_assessment: str  # excellent, good, acceptable, needs_improvement, poor
-    strengths: list[str]
-    weaknesses: list[str]
-    suggestions: list[str]
-    detailed_scores: dict
-    critiqued_at: str
-
-
 # =============================================================================
 # ENDPOINTS - Quality Evaluation
 # =============================================================================
@@ -177,82 +155,6 @@ async def evaluate_quality(
         scores=scores,
         recommendations=recommendations,
         evaluated_at=timezone.now().isoformat(),
-    )
-
-
-@router.post(
-    "/critique",
-    response=AssetCritiqueResponse,
-    summary="Get asset critique",
-    auth=AuthBearer(),
-)
-async def critique_asset(
-    request,
-    payload: AssetCritiqueRequest,
-) -> AssetCritiqueResponse:
-    """Get detailed critique of an asset.
-
-    Per Phase 7.4: AssetCritic service
-
-    PhD Dev: Comprehensive analysis with actionable feedback.
-    """
-    critique_id = str(uuid4())
-
-    # Real critique via content analysis (heuristic-based, no LLM required)
-    assessment, strengths, weaknesses, suggestions = _generate_critique(
-        payload.asset_type,
-        payload.content,
-        payload.rubric,
-    )
-
-    # Derive scores from the same analysis instead of hardcoding
-    word_count = len(payload.content.split()) if payload.content else 0
-    has_headings = "#" in payload.content if payload.content else False
-    has_lists = any(m in payload.content for m in ["- ", "* ", "1."]) if payload.content else False
-    has_code = "```" in payload.content if payload.content else False
-
-    # Score derivation matching assessment tiers
-    if assessment == "excellent":
-        clarity = accuracy = completeness = style = 0.9
-    elif assessment == "good":
-        clarity = 0.82
-        accuracy = 0.78
-        completeness = 0.75
-        style = 0.80
-    elif assessment == "acceptable":
-        clarity = 0.68
-        accuracy = 0.65
-        completeness = 0.62
-        style = 0.70
-    else:
-        clarity = 0.45
-        accuracy = 0.40
-        completeness = 0.35
-        style = 0.50
-
-    # Bonus for structural elements
-    if has_headings:
-        clarity = min(1.0, clarity + 0.05)
-    if has_lists:
-        completeness = min(1.0, completeness + 0.05)
-    if has_code:
-        style = min(1.0, style + 0.03)
-
-    return AssetCritiqueResponse(
-        critique_id=critique_id,
-        asset_id=payload.asset_id,
-        overall_assessment=assessment,
-        strengths=strengths,
-        weaknesses=weaknesses,
-        suggestions=suggestions,
-        detailed_scores={
-            "clarity": round(clarity, 2),
-            "accuracy": round(accuracy, 2),
-            "completeness": round(completeness, 2),
-            "style": round(style, 2),
-            "word_count": word_count,
-        },
-        critiqued_at=timezone.now().isoformat(),
     )
 
 
@@ -382,29 +284,17 @@ async def list_retry_policies(request) -> dict:
     auth=AuthBearer(),
 )
 async def get_thresholds(request) -> dict:
-    """Get quality threshold configuration."""
-    return {
-        "default_threshold": DEFAULT_QUALITY_THRESHOLD,
-        "thresholds_by_type": {
-            "text": 0.7,
-            "image": 0.6,
-            "code": 0.8,
-            "diagram": 0.65,
-        },
-    }
+    """Get quality threshold configuration.
 
-
-@router.patch(
-    "/thresholds",
-    summary="Update quality thresholds",
-    auth=AuthBearer(),
-)
-async def update_thresholds(request, thresholds: dict) -> dict:
-    """Update quality threshold configuration.
-
-    Security Auditor: Admin only.
+    Only the threshold this module actually applies is reported. There is
+    no per-asset-type threshold store, and no endpoint to write one —
+    claiming otherwise was inventing configuration.
     """
-    raise HttpError(501, "Threshold persistence is not implemented: no settings store is wired.")
+    return {"default_threshold": DEFAULT_QUALITY_THRESHOLD}
+
+
+# Threshold persistence is not implemented: there is no settings store wired
+# for it. /thresholds is read-only until one exists.
 
 
 # =============================================================================
@@ -461,66 +351,27 @@ Respond with ONLY a JSON object in this format:
                 # Parse JSON from response
                 try:
                     eval_result = json.loads(content_text.strip())
-                    return QualityScore(
-                        criterion=criterion,
-                        score=float(eval_result.get("score", 0.7)),
-                        feedback=eval_result.get("feedback"),
-                    )
                 except json.JSONDecodeError:
-                    # Fallback parsing
-                    return QualityScore(
-                        criterion=criterion, score=0.7, feedback="Evaluation complete"
+                    raise HttpError(
+                        502,
+                        "Quality evaluation failed: the LLM did not return parsable JSON.",
                     )
+                if "score" not in eval_result:
+                    raise HttpError(
+                        502,
+                        "Quality evaluation failed: the LLM returned no score.",
+                    )
+                return QualityScore(
+                    criterion=criterion,
+                    score=float(eval_result["score"]),
+                    feedback=eval_result.get("feedback"),
+                )
 
     except Exception as e:
         logger.error("Quality evaluation error: %s", e)
         raise HttpError(502, f"Quality evaluation unavailable: {e}")
 
     raise HttpError(502, "Quality evaluation failed: LLM returned no parsable score.")
-
-
-def _generate_critique(
-    asset_type: str,
-    content: str,
-    rubric: Optional[dict],
-) -> tuple[str, list[str], list[str], list[str]]:
-    """Generate critique for an asset using content analysis."""
-    # Real content analysis based on content length and complexity
-    word_count = len(content.split()) if content else 0
-    char_count = len(content) if content else 0
-
-    # Analyze structure
-    has_headings = "#" in content if content else False
-    has_lists = any(marker in content for marker in ["- ", "* ", "1."]) if content else False
-    has_code = "```" in content if content else False
-
-    # Determine assessment based on real analysis
-    if word_count > 100 and has_headings and has_lists:
-        assessment = "excellent"
-        strengths = ["Well-structured content", "Good use of formatting", "Comprehensive coverage"]
-        weaknesses = []
-        suggestions = ["Consider adding visual examples"]
-    elif word_count > 50 and (has_headings or has_lists):
-        assessment = "good"
-        strengths = ["Clear organization", "Adequate detail"]
-        weaknesses = ["Could expand on key points"]
-        suggestions = ["Add more examples", "Include code samples" if not has_code else ""]
-    elif word_count > 20:
-        assessment = "acceptable"
-        strengths = ["Basic information provided"]
-        weaknesses = ["Lacks structure", "Could be more detailed"]
-        suggestions = ["Add headings for organization", "Expand key sections"]
-    else:
-        assessment = "needs_improvement"
-        strengths = ["Initial attempt made"]
-        weaknesses = ["Too brief", "Lacks organization", "Missing key details"]
-        suggestions = [
-            "Significantly expand content",
-            "Add structure with headings",
-            "Include examples",
-        ]
-
-    return assessment, strengths, [w for w in weaknesses if w], [s for s in suggestions if s]
 
 
 async def _execute_operation(operation_type: str, input_data: dict) -> dict:
@@ -539,7 +390,7 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 
     url = service_urls.get(operation_type)
     if not url:
-        return {"result": "unknown_operation", "type": operation_type}
+        raise HttpError(400, f"Unknown operation_type: {operation_type!r}")
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -554,28 +405,25 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 
 
 async def _quick_quality_check(output: dict) -> float:
-    """Quick quality check for retry logic."""
-    # Assess quality based on actual output characteristics
+    """Score an operation's output with the real LLM evaluator.
+
+    This used to return invented constants derived from
+    ``len(str(output))`` — 0.9 for "more than 100 characters", 0.7 for
+    "completed but empty", and so on. Those numbers drove the retry gate
+    and had nothing to do with the quality of the output. Now the score
+    comes from the same LLM evaluation that ``/evaluate`` uses.
+    """
+    import json
+
     if not output:
-        return 0.0
+        raise HttpError(502, "Operation produced no output to evaluate.")
 
-    result = output.get("result", "")
-
-    if result == "completed" and output.get("data"):
-        data = output.get("data", {})
-        # Check data completeness
-        if len(str(data)) > 100:
-            return 0.9
-        elif len(str(data)) > 50:
-            return 0.75
-        else:
-            return 0.6
-    elif result == "completed":
-        return 0.7
-    elif result == "error":
-        return 0.3
-    else:
-        return 0.5
+    score = await _evaluate_criterion(
+        criterion="quality",
+        content=json.dumps(output, default=str)[:4000],
+        asset_type="text",
+    )
+    return score.score
 
 
 def _calculate_backoff(

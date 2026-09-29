@@ -20,6 +20,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.common.exceptions import NotFoundError, ValidationError
 
 router = Router(tags=["integrations"])
 logger = logging.getLogger(__name__)
@@ -176,14 +177,27 @@ async def get_integration(
     integration_id: str,
 ) -> Integration:
     """Get integration details."""
+    from asgiref.sync import sync_to_async
+
+    from admin.integrations.models import Integration as IntegrationModel
+
+    @sync_to_async
+    def _get():
+        try:
+            return IntegrationModel.objects.get(id=integration_id)
+        except IntegrationModel.DoesNotExist:
+            raise NotFoundError("integration", integration_id)
+
+    obj = await _get()
     return Integration(
-        integration_id=integration_id,
-        name="Example Integration",
-        type="api_key",
-        provider="example",
-        status="connected",
-        config={},
-        created_at=timezone.now().isoformat(),
+        integration_id=str(obj.id),
+        name=obj.name,
+        type=obj.type,
+        provider=obj.provider,
+        status=obj.status,
+        config=obj.config,
+        created_at=obj.created_at.isoformat(),
+        last_sync=obj.last_sync.isoformat() if obj.last_sync else None,
     )
 
 
@@ -199,9 +213,37 @@ async def update_integration(
     name: Optional[str] = None,
 ) -> dict:
     """Update integration settings."""
+    from asgiref.sync import sync_to_async
+
+    from admin.integrations.models import Integration as IntegrationModel
+
+    @sync_to_async
+    def _update():
+        try:
+            obj = IntegrationModel.objects.get(id=integration_id)
+        except IntegrationModel.DoesNotExist:
+            raise NotFoundError("integration", integration_id)
+
+        update_fields = []
+        if name is not None:
+            obj.name = name
+            update_fields.append("name")
+        if config is not None:
+            obj.config = config
+            update_fields.append("config")
+        if not update_fields:
+            return obj, []
+        obj.save(update_fields=update_fields)
+        return obj, update_fields
+
+    obj, changed = await _update()
+    if not changed:
+        raise ValidationError("Nothing to update: send name and/or config.")
+    logger.info("Integration updated: %s (%s)", obj.name, ", ".join(changed))
     return {
-        "integration_id": integration_id,
+        "integration_id": str(obj.id),
         "updated": True,
+        "changed_fields": changed,
     }
 
 
@@ -221,7 +263,6 @@ async def delete_integration(
     """
     from asgiref.sync import sync_to_async
 
-    from admin.common.exceptions import NotFoundError
     from admin.integrations.models import Integration as IntegrationModel
 
     @sync_to_async
@@ -265,7 +306,6 @@ async def start_oauth(
 
     from asgiref.sync import sync_to_async
 
-    from admin.common.exceptions import NotFoundError
     from admin.integrations.models import Integration as IntegrationModel
 
     state = str(uuid4())

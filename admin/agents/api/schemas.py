@@ -37,15 +37,13 @@ class AgentStats(BaseModel):
 
     total_conversations: int
     total_messages: int
-    avg_response_time_ms: float
+    # Nothing in this system records per-message latency or satisfaction.
+    # Both are optional and None when unmeasured — a 0.0 here would be a
+    # fabricated metric, not a measurement.
+    avg_response_time_ms: Optional[float] = None
     satisfaction_score: Optional[float] = None
 
 
-class AgentDeployment(BaseModel):
-    """Agent deployment info."""
-
-    agent_id: str
-    environment: str
     version: str
     deployed_at: str
     deployed_by: str

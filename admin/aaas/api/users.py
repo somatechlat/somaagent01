@@ -49,6 +49,10 @@ class UserInviteRequest(BaseModel):
     email: str
     name: str
     role: str = "member"
+    # TenantUser.user_id is the Keycloak subject and is not nullable. An
+    # invite without one would have to invent an identity that no login can
+    # ever match, so the caller must supply the real subject.
+    user_id: str
 
 
 class UserUpdateRequest(BaseModel):
@@ -133,12 +137,22 @@ def invite_user(
     if payload.role not in VALID_ROLES:
         raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
 
+    from uuid import UUID
+
+    try:
+        keycloak_user_id = UUID(payload.user_id)
+    except ValueError:
+        raise ValidationError("user_id must be the Keycloak subject (a UUID).", field="user_id")
+
+    if TenantUser.objects.filter(user_id=keycloak_user_id).exists():
+        raise ValidationError("That Keycloak user is already a member.", field="user_id")
+
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
 
     user = TenantUser.objects.create(
         id=uuid4(),
         tenant_id=tenant_id,
-        user_id=uuid4(),  # Would be from Keycloak
+        user_id=keycloak_user_id,
         email=payload.email,
         display_name=payload.name,
         role=payload.role,

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from ninja import Query, Router
+from ninja.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ def get_tenant_billing(request, tenant_id: str):
     )
 
 
-@router.post("/tenant/{tenant_id}/upgrade", response=UpgradeResponse)
+@router.post("/tenant/{tenant_id}/upgrade", response=UpgradeResponse, auth=AuthBearer())
 @transaction.atomic
 def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
     """Upgrade or downgrade a tenant's subscription tier.
@@ -225,24 +226,33 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
     old_tier_name = tenant.tier.name if tenant.tier else "None"
     old_price = tenant.tier.base_price_cents if tenant.tier else 0
 
-    # Calculate proration (simplified - real impl uses Stripe)
+    # No payment provider is integrated, so no proration can be computed.
+    # The old code invented one as (new - old) // 2 and reported it as if it
+    # had been charged. It has not been. Report 0 and say so.
     prorated = 0
-    if payload.prorate and old_price > 0:
-        # Simple: half-month proration estimate
-        prorated = (new_tier.base_price_cents - old_price) // 2
 
     # Update tenant tier
     tenant.tier = new_tier
     tenant.save(update_fields=["tier", "updated_at"])
 
-    # Log the change (audit trail)
-    from uuid import uuid4
+    # Log the change (audit trail). The actor is the authenticated caller —
+    # AuditLog.actor_id is the Keycloak subject and is what
+    # get_user_detail joins on to show a user's activity.
+    from uuid import UUID
 
     from admin.aaas.models import AuditLog
 
+    actor_sub = getattr(request.auth, "sub", None)
+    if not actor_sub:
+        raise HttpError(401, "Authenticated subject is required to change a tier.")
+    try:
+        actor_id = UUID(str(actor_sub))
+    except ValueError:
+        raise HttpError(401, f"Token subject is not a UUID: {actor_sub!r}")
+
     AuditLog.objects.create(
-        actor_id=uuid4(),  # Would be request.user.id in real impl
-        actor_email="system@somaagent.ai",
+        actor_id=actor_id,
+        actor_email=getattr(request.auth, "email", "") or "",
         tenant=tenant,
         action="tier.upgraded",
         resource_type="tenant",
@@ -251,12 +261,16 @@ def upgrade_tenant_tier(request, tenant_id: str, payload: UpgradeRequest):
         new_value={"tier": new_tier.name, "price_cents": new_tier.base_price_cents},
     )
 
+    message = f"Successfully changed tier from {old_tier_name} to {new_tier.name}"
+    if payload.prorate:
+        message += ". No proration applied: no payment provider is integrated."
+
     return UpgradeResponse(
         success=True,
-        message=f"Successfully changed tier from {old_tier_name} to {new_tier.name}",
+        message=message,
         old_tier=old_tier_name,
         new_tier=new_tier.name,
-        prorated_amount_cents=max(0, prorated),
+        prorated_amount_cents=prorated,
     )
 
 

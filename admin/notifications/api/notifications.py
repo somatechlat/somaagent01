@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 router = Router(tags=["notifications"])
@@ -45,8 +46,11 @@ async def list_notifications(limit: int = 50, unreadOnly: bool = False) -> dict:
             tenant_id="default", user_id=None, limit=limit, unread_only=unreadOnly
         )
         return {"notifications": data}
-    except Exception:
-        return {"notifications": []}
+    except Exception as exc:
+        # Fail loud. Returning [] here made a broken store look like "you have
+        # no notifications", which is the worst possible lie to show an admin.
+        logger.error("Failed to list notifications: %s", exc)
+        raise HttpError(502, f"Notification store unavailable: {exc}")
 
 
 @router.post("", summary="Create notification")

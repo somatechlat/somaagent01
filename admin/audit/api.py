@@ -1,21 +1,27 @@
 """Audit API - Security audit logging.
 
+Read side of the real ``admin.aaas.models.AuditLog`` table. That model is
+written by ``admin.common.middleware``, ``admin.auth.api`` and the AAAS
+admin handlers; this module queries it and invents nothing.
 
-Comprehensive audit trail for compliance.
-
-- Security Auditor: Complete audit trail
-- PM: Compliance reporting
-- DevOps: Log aggregation
+The previous version of this file returned a hardcoded ``user-123`` login
+event, zeroed summary buckets, a compliance report id minted from ``uuid4``,
+an alerts list and a retention policy of ``365``/``90`` days. None of it was
+backed by a table. The report, alert and retention routes are gone: there is
+no report store, no alert store and no settings store behind them.
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Optional
-from uuid import uuid4
+from uuid import UUID
 
-from django.utils import timezone
+from asgiref.sync import sync_to_async
+from django.db.models import Count
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -25,34 +31,61 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# SCHEMAS
+# SCHEMAS — mirror AuditLog's real columns, nothing more.
 # =============================================================================
 
 
 class AuditEvent(BaseModel):
-    """Audit event."""
+    """One row of the audit trail."""
 
     event_id: str
     timestamp: str
     actor_id: str
-    actor_type: str  # user, system, agent
-    action: str  # create, read, update, delete, login, logout
+    actor_email: Optional[str] = None
+    tenant_id: Optional[str] = None
+    action: str
     resource_type: str
     resource_id: Optional[str] = None
-    tenant_id: Optional[str] = None
+    old_value: Optional[dict] = None
+    new_value: Optional[dict] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    details: Optional[dict] = None
-    severity: str = "info"  # info, warning, critical
+    request_id: Optional[str] = None
 
 
 class AuditSummary(BaseModel):
-    """Audit summary statistics."""
+    """Aggregate counts over the audit trail."""
 
     total_events: int
     by_action: dict
     by_resource: dict
-    by_severity: dict
+
+
+def _to_event(row) -> AuditEvent:
+    return AuditEvent(
+        event_id=str(row.id),
+        timestamp=row.created_at.isoformat() if row.created_at else "",
+        actor_id=str(row.actor_id),
+        actor_email=row.actor_email or None,
+        tenant_id=str(row.tenant_id) if row.tenant_id else None,
+        action=row.action,
+        resource_type=row.resource_type,
+        resource_id=str(row.resource_id) if row.resource_id else None,
+        old_value=row.old_value,
+        new_value=row.new_value,
+        ip_address=row.ip_address,
+        user_agent=row.user_agent or None,
+        request_id=row.request_id or None,
+    )
+
+
+def _parse_date(value: Optional[str], field: str) -> Optional[datetime]:
+    if value is None:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        raise HttpError(400, f"{field} must be an ISO-8601 timestamp, got {value!r}")
 
 
 # =============================================================================
@@ -70,58 +103,40 @@ async def list_audit_events(
     actor_id: Optional[str] = None,
     action: Optional[str] = None,
     resource_type: Optional[str] = None,
-    severity: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> dict:
-    """List audit events.
+    """List audit events."""
+    from admin.aaas.models import AuditLog
 
-    Security Auditor: Query audit trail.
-    """
-    return {
-        "events": [
-            AuditEvent(
-                event_id="1",
-                timestamp=timezone.now().isoformat(),
-                actor_id="user-123",
-                actor_type="user",
-                action="login",
-                resource_type="auth",
-                severity="info",
-            ).dict(),
-        ],
-        "total": 1,
-        "offset": offset,
-        "limit": limit,
-    }
+    start = _parse_date(from_date, "from_date")
+    end = _parse_date(to_date, "to_date")
 
+    @sync_to_async
+    def _query():
+        qs = AuditLog.objects.all()
+        if actor_id:
+            try:
+                qs = qs.filter(actor_id=UUID(actor_id))
+            except ValueError:
+                raise HttpError(400, f"actor_id must be a UUID, got {actor_id!r}")
+        if action:
+            qs = qs.filter(action=action)
+        if resource_type:
+            qs = qs.filter(resource_type=resource_type)
+        if start:
+            qs = qs.filter(created_at__gte=start)
+        if end:
+            qs = qs.filter(created_at__lte=end)
 
-@router.get(
-    "/{event_id}",
-    response=AuditEvent,
-    summary="Get audit event",
-    auth=AuthBearer(),
-)
-async def get_audit_event(
-    request,
-    event_id: str,
-) -> AuditEvent:
-    """Get audit event details."""
-    return AuditEvent(
-        event_id=event_id,
-        timestamp=timezone.now().isoformat(),
-        actor_id="user-123",
-        actor_type="user",
-        action="login",
-        resource_type="auth",
-    )
+        total = qs.count()
+        rows = list(qs.order_by("-created_at")[offset : offset + limit])
+        return [_to_event(r).model_dump() for r in rows], total
 
-
-# =============================================================================
-# ENDPOINTS - Summary & Reports
-# =============================================================================
+    events, total = await _query()
+    return {"events": events, "total": total, "offset": offset, "limit": limit}
 
 
 @router.get(
@@ -135,63 +150,60 @@ async def get_audit_summary(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
 ) -> AuditSummary:
-    """Get audit summary statistics.
+    """Get audit summary statistics."""
+    from admin.aaas.models import AuditLog
 
-    PM: Compliance dashboard.
-    """
+    start = _parse_date(from_date, "from_date")
+    end = _parse_date(to_date, "to_date")
+
+    @sync_to_async
+    def _query():
+        qs = AuditLog.objects.all()
+        if start:
+            qs = qs.filter(created_at__gte=start)
+        if end:
+            qs = qs.filter(created_at__lte=end)
+        return (
+            qs.count(),
+            dict(qs.values_list("action").annotate(n=Count("id")).order_by()),
+            dict(qs.values_list("resource_type").annotate(n=Count("id")).order_by()),
+        )
+
+    total, by_action, by_resource = await _query()
     return AuditSummary(
-        total_events=0,
-        by_action={"login": 0, "create": 0, "update": 0, "delete": 0},
-        by_resource={"agent": 0, "tenant": 0, "user": 0},
-        by_severity={"info": 0, "warning": 0, "critical": 0},
+        total_events=total,
+        by_action=by_action,
+        by_resource=by_resource,
     )
 
 
 @router.get(
-    "/reports/compliance",
-    summary="Generate compliance report",
+    "/{event_id}",
+    response=AuditEvent,
+    summary="Get audit event",
     auth=AuthBearer(),
 )
-async def generate_compliance_report(
+async def get_audit_event(
     request,
-    from_date: str,
-    to_date: str,
-    format: str = "json",  # json, csv, pdf
-) -> dict:
-    """Generate compliance report.
+    event_id: str,
+) -> AuditEvent:
+    """Get audit event details."""
+    from admin.aaas.models import AuditLog
 
-    PM: Audit report for compliance.
-    """
-    report_id = str(uuid4())
+    @sync_to_async
+    def _get():
+        try:
+            return AuditLog.objects.get(id=UUID(event_id))
+        except ValueError:
+            raise HttpError(400, f"event_id must be a UUID, got {event_id!r}")
+        except AuditLog.DoesNotExist:
+            raise HttpError(404, f"Audit event {event_id} not found")
 
-    return {
-        "report_id": report_id,
-        "from_date": from_date,
-        "to_date": to_date,
-        "format": format,
-        "status": "generating",
-    }
-
-
-@router.get(
-    "/reports/{report_id}",
-    summary="Get report status",
-    auth=AuthBearer(),
-)
-async def get_report_status(
-    request,
-    report_id: str,
-) -> dict:
-    """Get report generation status."""
-    return {
-        "report_id": report_id,
-        "status": "completed",
-        "download_url": f"/api/v2/audit/reports/{report_id}/download",
-    }
+    return _to_event(await _get())
 
 
 # =============================================================================
-# ENDPOINTS - Actor History
+# ENDPOINTS - History
 # =============================================================================
 
 
@@ -203,17 +215,22 @@ async def get_report_status(
 async def get_actor_history(
     request,
     actor_id: str,
-    limit: int = 100,
+    limit: int = 50,
 ) -> dict:
-    """Get all events for an actor.
+    """Audit trail for one actor."""
+    from admin.aaas.models import AuditLog
 
-    Security Auditor: User activity review.
-    """
-    return {
-        "actor_id": actor_id,
-        "events": [],
-        "total": 0,
-    }
+    try:
+        actor_uuid = UUID(actor_id)
+    except ValueError:
+        raise HttpError(400, f"actor_id must be a UUID, got {actor_id!r}")
+
+    @sync_to_async
+    def _query():
+        qs = AuditLog.objects.filter(actor_id=actor_uuid)
+        return [_to_event(r).model_dump() for r in qs.order_by("-created_at")[:limit]]
+
+    return {"actor_id": actor_id, "events": await _query()}
 
 
 @router.get(
@@ -225,99 +242,28 @@ async def get_resource_history(
     request,
     resource_type: str,
     resource_id: str,
-    limit: int = 100,
+    limit: int = 50,
 ) -> dict:
-    """Get all events for a resource.
+    """Audit trail for one resource."""
+    from admin.aaas.models import AuditLog
 
-    Security Auditor: Resource change history.
-    """
+    try:
+        resource_uuid = UUID(resource_id)
+    except ValueError:
+        raise HttpError(400, f"resource_id must be a UUID, got {resource_id!r}")
+
+    @sync_to_async
+    def _query():
+        qs = AuditLog.objects.filter(resource_type=resource_type, resource_id=resource_uuid)
+        return [_to_event(r).model_dump() for r in qs.order_by("-created_at")[:limit]]
+
     return {
         "resource_type": resource_type,
         "resource_id": resource_id,
-        "events": [],
-        "total": 0,
+        "events": await _query(),
     }
 
 
-# =============================================================================
-# ENDPOINTS - Alerts
-# =============================================================================
-
-
-@router.get(
-    "/alerts",
-    summary="List security alerts",
-    auth=AuthBearer(),
-)
-async def list_alerts(
-    request,
-    acknowledged: Optional[bool] = None,
-    severity: Optional[str] = None,
-) -> dict:
-    """List security alerts.
-
-    Security Auditor: Security incidents.
-    """
-    return {
-        "alerts": [],
-        "total": 0,
-        "unacknowledged": 0,
-    }
-
-
-@router.post(
-    "/alerts/{alert_id}/acknowledge",
-    summary="Acknowledge alert",
-    auth=AuthBearer(),
-)
-async def acknowledge_alert(
-    request,
-    alert_id: str,
-    notes: Optional[str] = None,
-) -> dict:
-    """Acknowledge a security alert."""
-    logger.info("Alert acknowledged: %s", alert_id)
-
-    return {
-        "alert_id": alert_id,
-        "acknowledged": True,
-        "acknowledged_at": timezone.now().isoformat(),
-    }
-
-
-# =============================================================================
-# ENDPOINTS - Retention
-# =============================================================================
-
-
-@router.get(
-    "/retention",
-    summary="Get retention policy",
-    auth=AuthBearer(),
-)
-async def get_retention_policy(request) -> dict:
-    """Get audit log retention policy.
-
-    DevOps: Retention configuration.
-    """
-    return {
-        "retention_days": 365,
-        "archive_after_days": 90,
-        "compression_enabled": True,
-    }
-
-
-@router.patch(
-    "/retention",
-    summary="Update retention policy",
-    auth=AuthBearer(),
-)
-async def update_retention_policy(
-    request,
-    retention_days: Optional[int] = None,
-    archive_after_days: Optional[int] = None,
-) -> dict:
-    """Update retention policy."""
-    return {
-        "updated": True,
-    }
+# Compliance reports, alerts and retention policy are not implemented: there
+# is no report store, no alert store and no settings store behind them. The
+# routes that claimed otherwise are gone.

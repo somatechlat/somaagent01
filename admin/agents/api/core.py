@@ -41,6 +41,7 @@ from admin.agents.services.agent_service import (
     _update_agent,
     _update_capsule,
 )
+from admin.aaas.models.choices import AgentStatus
 from admin.common.auth import AuthBearer
 
 router = Router(tags=["agents"])
@@ -155,13 +156,25 @@ async def update_agent(
     auth=AuthBearer(),
 )
 async def delete_agent(request, agent_id: str) -> dict:
-    """Delete an agent."""
-    logger.warning("Agent deleted: %s", agent_id)
+    """Archive an agent.
 
-    return {
-        "agent_id": agent_id,
-        "deleted": True,
-    }
+    There is no hard delete: AgentStatus has no DELETED state and the row is
+    referenced by conversations and audit records. Archived agents drop out
+    of every listing, which filters on status.
+    """
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
+    @sync_to_async
+    def _archive() -> None:
+        agent.status = AgentStatus.ARCHIVED
+        agent.save(update_fields=["status", "updated_at"])
+
+    await _archive()
+    logger.info("Agent archived: %s", agent_id)
+    return {"agent_id": agent_id, "deleted": True, "status": AgentStatus.ARCHIVED}
 
 
 # =============================================================================
@@ -177,16 +190,17 @@ async def delete_agent(request, agent_id: str) -> dict:
 async def get_personality(request, agent_id: str) -> dict:
     """Get agent personality config.
 
-    PhD Dev: Personality tuning.
+    Stored on ``Agent.config["personality"]`` — the same place
+    ``admin.agents.services.agent_service`` already reads it from.
     """
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
     return {
         "agent_id": agent_id,
-        "personality": {
-            "system_prompt": "",
-            "tone": "professional",
-            "language": "en",
-            "temperature": 0.7,
-        },
+        "personality": (agent.config or {}).get("personality", {}),
     }
 
 
@@ -200,11 +214,21 @@ async def update_personality(
     agent_id: str,
     personality: dict,
 ) -> dict:
-    """Update agent personality."""
-    return {
-        "agent_id": agent_id,
-        "updated": True,
-    }
+    """Update agent personality on ``Agent.config["personality"]``."""
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
+    @sync_to_async
+    def _persist() -> None:
+        config = agent.config or {}
+        config["personality"] = personality
+        agent.config = config
+        agent.save(update_fields=["config", "updated_at"])
+
+    await _persist()
+    return {"agent_id": agent_id, "updated": True, "personality": personality}
 
 
 @router.get(
@@ -281,16 +305,36 @@ async def update_agent_tools(
 async def get_memory_config(request, agent_id: str) -> dict:
     """Get agent memory configuration.
 
-    PhD Dev: Memory architecture.
+    Stored on ``Agent.config["memory"]``, which ``admin.core.chat_orchestrator``
+    and ``admin.core.context.builder`` already read (``recall_limit`` and
+    friends). There is no separate memory-config store.
     """
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
     return {
         "agent_id": agent_id,
-        "memory_config": {
-            "type": "conversation",
-            "retention_days": 30,
-            "max_context_tokens": 4000,
-        },
+        "memory_config": (agent.config or {}).get("memory", {}),
     }
+
+
+async def _set_agent_status(request, agent_id: str, status: str) -> dict:
+    """Set an agent's status on the real Agent row."""
+    tenant_id = _resolve_tenant_id(request, None)
+    agent = await _get_agent_by_id(agent_id, tenant_id)
+    if not agent:
+        raise HttpError(404, "Agent not found")
+
+    @sync_to_async
+    def _persist() -> None:
+        agent.status = status
+        agent.save(update_fields=["status", "updated_at"])
+
+    await _persist()
+    logger.info("Agent %s -> %s", agent_id, status)
+    return {"agent_id": agent_id, "status": status}
 
 
 # =============================================================================
@@ -305,12 +349,7 @@ async def get_memory_config(request, agent_id: str) -> dict:
 )
 async def activate_agent(request, agent_id: str) -> dict:
     """Activate an agent for use."""
-    logger.info("Agent activated: %s", agent_id)
-
-    return {
-        "agent_id": agent_id,
-        "status": "active",
-    }
+    return await _set_agent_status(request, agent_id, AgentStatus.ACTIVE)
 
 
 @router.post(
@@ -320,10 +359,7 @@ async def activate_agent(request, agent_id: str) -> dict:
 )
 async def pause_agent(request, agent_id: str) -> dict:
     """Pause an agent."""
-    return {
-        "agent_id": agent_id,
-        "status": "paused",
-    }
+    return await _set_agent_status(request, agent_id, AgentStatus.PAUSED)
 
 
 @router.post(
@@ -333,14 +369,11 @@ async def pause_agent(request, agent_id: str) -> dict:
 )
 async def archive_agent(request, agent_id: str) -> dict:
     """Archive an agent."""
-    return {
-        "agent_id": agent_id,
-        "status": "archived",
-    }
+    return await _set_agent_status(request, agent_id, AgentStatus.ARCHIVED)
 
 
 # =============================================================================
-# ENDPOINTS - Stats & Deployments
+# ENDPOINTS - Stats
 # =============================================================================
 
 
@@ -353,56 +386,26 @@ async def archive_agent(request, agent_id: str) -> dict:
 async def get_agent_stats(request, agent_id: str) -> AgentStats:
     """Get agent statistics.
 
-    PM: Performance metrics.
+    Counted from the real conversation and message rows. Latency is omitted
+    rather than reported as 0.0 — nothing in this system records per-message
+    timing, so a number here would be invented.
     """
+    from admin.chat.models import Conversation, Message
+
+    @sync_to_async
+    def _count() -> tuple[int, int]:
+        # Message.conversation_id is a plain UUIDField, not a ForeignKey, so
+        # there is no reverse relation to aggregate across.
+        convs = Conversation.objects.filter(agent_id=agent_id)
+        return convs.count(), Message.objects.filter(
+            conversation_id__in=concs.values("id")
+        ).count()
+
+    conversations, messages = await _count()
     return AgentStats(
-        total_conversations=0,
-        total_messages=0,
-        avg_response_time_ms=0.0,
+        total_conversations=conversations,
+        total_messages=messages,
     )
-
-
-@router.get(
-    "/{agent_id}/deployments",
-    summary="List deployments",
-    auth=AuthBearer(),
-)
-async def list_deployments(request, agent_id: str) -> dict:
-    """List agent deployments.
-
-    DevOps: Deployment history.
-    """
-    return {
-        "agent_id": agent_id,
-        "deployments": [],
-        "total": 0,
-    }
-
-
-@router.post(
-    "/{agent_id}/deploy",
-    summary="Deploy agent",
-    auth=AuthBearer(),
-)
-async def deploy_agent(
-    request,
-    agent_id: str,
-    environment: str = "production",
-) -> dict:
-    """Deploy agent to environment.
-
-    DevOps: Deployment.
-    """
-    deployment_id = str(uuid4())
-
-    logger.info("Agent deployed: %s -> %s", agent_id, environment)
-
-    return {
-        "deployment_id": deployment_id,
-        "agent_id": agent_id,
-        "environment": environment,
-        "deployed": True,
-    }
 
 
 # =============================================================================
@@ -423,16 +426,46 @@ async def clone_agent(
 ) -> dict:
     """Clone an agent.
 
-    PM: Agent replication.
+    Copies the Agent row and its config/feature_settings. Capsule links are
+    ManyToMany and are copied too; the capsule rows themselves are shared,
+    not duplicated.
     """
-    new_agent_id = str(uuid4())
+    from django.utils.text import slugify
 
-    logger.info("Agent cloned: %s -> %s", agent_id, new_agent_id)
+    from admin.aaas.models import Agent as AgentModel
+    from admin.aaas.models import Tenant as TenantModel
+
+    tenant_id = _resolve_tenant_id(request, None)
+    source = await _get_agent_by_id(agent_id, tenant_id)
+    if not source:
+        raise HttpError(404, "Agent not found")
+
+    @sync_to_async
+    def _clone():
+        target_tenant_id_val = target_tenant_id or str(source.tenant_id)
+        if not TenantModel.objects.filter(id=target_tenant_id_val).exists():
+            raise HttpError(404, f"Target tenant {target_tenant_id_val} not found")
+
+        clone = AgentModel.objects.create(
+            tenant_id=target_tenant_id_val,
+            name=new_name,
+            slug=slugify(new_name),
+            description=source.description,
+            status=AgentStatus.PAUSED,
+            config=source.config or {},
+            feature_settings=source.feature_settings or {},
+            primary_capsule=source.primary_capsule,
+        )
+        clone.capsules.set(source.capsules.all())
+        return clone
+
+    clone = await _clone()
+    logger.info("Agent cloned: %s -> %s", agent_id, clone.id)
 
     return {
         "original_agent_id": agent_id,
-        "new_agent_id": new_agent_id,
-        "name": new_name,
+        "new_agent_id": str(clone.id),
+        "name": clone.name,
         "cloned": True,
     }
 

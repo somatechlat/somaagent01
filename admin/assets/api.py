@@ -271,8 +271,27 @@ async def list_assets(
 async def delete_asset(request, asset_id: str) -> dict:
     """Delete an asset.
 
-    Security Auditor: Soft delete with provenance trail.
+    Security Auditor: Soft delete with provenance trail. The row stays for
+    the audit chain (``tombstone_reason``) but drops out of every listing,
+    which filters on ``status="active"``.
     """
+    from asgiref.sync import sync_to_async
+
+    from admin.common.exceptions import NotFoundError
+    from admin.core.models import Asset
+
+    @sync_to_async
+    def _tombstone():
+        updated = Asset.objects.filter(id=asset_id, status="active").update(
+            status="deleted",
+            tombstone_reason=f"deleted by {getattr(request.auth, 'sub', 'unknown')}",
+        )
+        return updated
+
+    removed = await _tombstone()
+    if not removed:
+        raise NotFoundError("asset", asset_id)
+
     await _record_provenance(
         asset_id=asset_id,
         action="deleted",
