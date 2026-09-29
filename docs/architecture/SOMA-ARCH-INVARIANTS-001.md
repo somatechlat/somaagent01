@@ -305,7 +305,7 @@ duplication, and each needs its own decision rather than a blind rewrite:
 
 | Call site | Concern | Verdict |
 |---|---|---|
-| `helpers/memory_stores.py:370` | document/RAG ingest (`doc.page_content`) | migrate to the seam |
+| ~~`helpers/memory_stores.py`~~ (deleted) | document/RAG ingest (`doc.page_content`) | module removed; ingest lives behind the memory seam |
 | `tool_executor/result_publisher.py:236` | tool-output capture | migrate to the seam |
 | `agents/services/somabrain_integration.py:133` | `api/migrate.py` only | migrate or delete |
 | `somabrain/api_router.py:201` | HTTP surface for external callers | keep — it is a *server* |

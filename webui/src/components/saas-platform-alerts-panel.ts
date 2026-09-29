@@ -139,7 +139,7 @@ export class SaasPlatformAlertsPanel extends LitElement {
         }
     `;
 
-    @property({ type: Number }) activeAlerts = 0;
+    @property({ type: Number }) activeAlerts: number | null = null;
     @property({ type: Array }) alerts: RecentEvent[] = [];
 
     render() {
@@ -150,8 +150,8 @@ export class SaasPlatformAlertsPanel extends LitElement {
                         <span class="material-symbols-outlined">warning</span>
                         Active Alerts
                     </h3>
-                    <span class="alert-count ${this.activeAlerts > 0 ? 'has-alerts' : ''}">
-                        ${this.activeAlerts}
+                    <span class="alert-count ${this.activeAlerts != null && this.activeAlerts > 0 ? 'has-alerts' : ''}">
+                        ${this.activeAlerts == null ? '—' : this.activeAlerts}
                     </span>
                 </div>
                 <div class="card-body alert-list">

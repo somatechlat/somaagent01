@@ -198,9 +198,9 @@ The 650-line limit is a code quality constraint applied across the SOMA ecosyste
 | REQ-033 | ~~The system shall decompose `admin/conversations/api.py` to not exceed 650 lines.~~ | Should | Test | **N/A — `admin/conversations/` was deleted; chat endpoints consolidated into `admin/chat/api/chat.py`** |
 | REQ-034 | The system shall decompose `admin/permissions/granular.py` to not exceed 650 lines. | Should | Test | Draft |
 | REQ-035 | The system shall decompose `admin/voice/api.py` to not exceed 650 lines. | Should | Test | Draft |
-| REQ-036 | The system shall decompose `admin/flink/api.py` to not exceed 650 lines. | Should | Test | Draft |
+| REQ-036 | ~~decompose `admin/flink/api.py`~~ — module deleted (Flink surface reduced to `admin/flink/models.py`) | Should | Test | Resolved |
 | REQ-037 | The system shall decompose `admin/core/helpers/scheduler_models.py` to not exceed 650 lines. | Should | Test | Draft |
-| REQ-038 | The system shall decompose `admin/core/helpers/memory_stores.py` to not exceed 650 lines. | Should | Test | Draft |
+| REQ-038 | ~~decompose `admin/core/helpers/memory_stores.py`~~ — module deleted (memory stores moved behind the memory seam) | Should | Test | Resolved |
 
 ---
 

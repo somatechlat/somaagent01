@@ -82,17 +82,10 @@ export class SaasBillingMetricsCards extends LitElement {
   `;
 
   @property({ type: Object })
-  metrics?: BillingMetrics;
+  metrics: BillingMetrics | null = null;
 
   render() {
-    const m = this.metrics ?? {
-      mrr: 0,
-      mrr_growth: 0,
-      arpu: 0,
-      churn_rate: 0,
-      total_tenants: 0,
-      paid_tenants: 0,
-    };
+    const m = this.metrics;
 
     return html`
       <div class="stats-grid">
@@ -103,7 +96,7 @@ export class SaasBillingMetricsCards extends LitElement {
               <span class="material-symbols-outlined">trending_up</span>
             </div>
           </div>
-          <div class="stat-value">$${this._formatDollars(m.mrr)}</div>
+          <div class="stat-value">${m ? `$${this._formatDollars(m.mrr)}` : '—'}</div>
         </div>
 
         <div class="stat-card">
@@ -113,7 +106,7 @@ export class SaasBillingMetricsCards extends LitElement {
               <span class="material-symbols-outlined">person</span>
             </div>
           </div>
-          <div class="stat-value">$${this._formatDollars(m.arpu)}</div>
+          <div class="stat-value">${m ? `$${this._formatDollars(m.arpu)}` : '—'}</div>
         </div>
 
         <div class="stat-card">
@@ -123,7 +116,7 @@ export class SaasBillingMetricsCards extends LitElement {
               <span class="material-symbols-outlined">sync_problem</span>
             </div>
           </div>
-          <div class="stat-value">${m.churn_rate}%</div>
+          <div class="stat-value">${this._formatPercent(m?.churn_rate)}</div>
         </div>
 
         <div class="stat-card">
@@ -133,14 +126,21 @@ export class SaasBillingMetricsCards extends LitElement {
               <span class="material-symbols-outlined">verified</span>
             </div>
           </div>
-          <div class="stat-value">${m.paid_tenants}/${m.total_tenants}</div>
+          <div class="stat-value">
+            ${m ? `${m.paid_tenants}/${m.total_tenants}` : '—'}
+          </div>
         </div>
       </div>
     `;
   }
 
+  /** Null means unmeasured — never render it as 0. */
+  private _formatPercent(value: number | null | undefined): string {
+    return value == null ? '—' : `${value}%`;
+  }
+
   private _formatDollars(amount: number): string {
-    return (amount ?? 0).toLocaleString('en-US', {
+    return amount.toLocaleString('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     });

@@ -1,34 +1,37 @@
 /**
  * SAAS Admin Models List View
- * Management interface for AI Models (Chat & Embedding)
+ * Catalog of the LLM models the platform has configured.
  *
- * SRS Reference: Section 9.1
- * VIBE COMPLIANT:
- * - Real Lit 3.x Web Component
- * - Uses shared components (data-table, form-field, select, toggle)
- * - Material Icons
- * - Light/dark theme support
+ * Backed by /api/v2/aaas/settings/models. The previous version of this view
+ * rendered five hardcoded models with fabricated `type`, `contextWindow`,
+ * `hasVision` and `status` fields, and an "Add Model" dialog that invented
+ * context windows, output-token caps and capability toggles. No such fields
+ * exist on ModelConfig, and there is no create endpoint — the catalog is
+ * seeded in PlatformConfig and only its enablement, defaults and rate limit
+ * are editable. This view reads that store and patches only the fields the
+ * backend actually accepts.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '../components/saas-data-table.js';
-import '../components/saas-glass-modal.js';
 import '../components/saas-form-field.js';
 import '../components/saas-select.js';
-import '../components/saas-toggle.js';
 import '../components/saas-status-badge.js';
 import '../components/saas-action-menu.js';
 import type { TableColumn } from '../components/saas-data-table.js';
+import { apiClient, getData } from '../services/api-client.js';
 
-interface Model {
+/** Matches admin.aaas.api.schemas.ModelConfigOut — no invented fields. */
+interface ModelConfig {
     id: string;
-    name: string;
     provider: string;
-    type: 'chat' | 'embedding' | 'utility';
-    contextWindow: string;
-    hasVision: boolean;
-    status: 'active' | 'deprecated' | 'beta';
+    model_name: string;
+    display_name: string;
+    enabled: boolean;
+    default_for_chat: boolean;
+    default_for_completion: boolean;
+    rate_limit: number | null;
 }
 
 @customElement('saas-admin-models-list')
@@ -59,16 +62,6 @@ export class SaasAdminModelsList extends LitElement {
             margin-top: 4px;
         }
 
-        .controls {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .search-input {
-            width: 300px;
-        }
-
         .btn-primary {
             display: inline-flex;
             align-items: center;
@@ -81,80 +74,122 @@ export class SaasAdminModelsList extends LitElement {
             font-size: var(--saas-text-sm, 13px);
             font-weight: var(--saas-font-medium, 500);
             cursor: pointer;
-            transition: background 150ms;
         }
 
-        .btn-primary:hover {
-            background: var(--saas-accent-hover, #333333);
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .form-section-title {
-            grid-column: 1 / -1;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--saas-text-primary);
-            margin-top: 8px;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid var(--saas-border-light);
-        }
-
-        .checkbox-group {
-            grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+        .controls {
+            display: flex;
             gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .state-banner {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+
+        .state-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--saas-status-danger, #dc2626);
+        }
+
+        .state-empty {
+            background: var(--saas-bg-active, #f5f5f5);
+            border: 1px solid var(--saas-border-light, #e5e5e5);
+            color: var(--saas-text-secondary, #666666);
         }
     `;
 
-    @state() private _models: Model[] = [
-        { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', type: 'chat', contextWindow: '128K', hasVision: true, status: 'active' },
-        { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', type: 'chat', contextWindow: '200K', hasVision: true, status: 'active' },
-        { id: 'gemini-1-5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', type: 'chat', contextWindow: '2M', hasVision: true, status: 'active' },
-        { id: 'text-embedding-3-large', name: 'Text Embedding 3 Large', provider: 'OpenAI', type: 'embedding', contextWindow: '8K', hasVision: false, status: 'active' },
-        { id: 'gemma-2-9b', name: 'Gemma 2 9B', provider: 'Google', type: 'chat', contextWindow: '8K', hasVision: false, status: 'beta' },
-    ];
-
-    @state() private _showModal = false;
+    @state() private _models: ModelConfig[] = [];
+    @state() private _loading = true;
+    @state() private _error: string | null = null;
     @state() private _search = '';
     @state() private _selectedProvider = '';
 
+    connectedCallback() {
+        super.connectedCallback();
+        this._load();
+    }
+
+    private async _load() {
+        this._loading = true;
+        this._error = null;
+        try {
+            const rows = await apiClient.get<ModelConfig[]>('/aaas/settings/models');
+            this._models = getData<ModelConfig[]>(rows) ?? (Array.isArray(rows) ? rows : []);
+        } catch (e) {
+            this._error = e instanceof Error ? e.message : String(e);
+            this._models = [];
+        } finally {
+            this._loading = false;
+        }
+    }
+
+    private async _patch(row: ModelConfig, body: Partial<Pick<ModelConfig, 'enabled' | 'default_for_chat' | 'default_for_completion' | 'rate_limit'>>) {
+        try {
+            await apiClient.patch(`/aaas/settings/models/${encodeURIComponent(row.id)}`, body);
+            await this._load();
+        } catch (e) {
+            this._error = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private _handleAction(e: CustomEvent, row: ModelConfig) {
+        const action = e.detail?.action;
+        if (action === 'toggle') {
+            this._patch(row, { enabled: !row.enabled });
+        } else if (action === 'default_chat') {
+            this._patch(row, { default_for_chat: !row.default_for_chat });
+        } else if (action === 'default_completion') {
+            this._patch(row, { default_for_completion: !row.default_for_completion });
+        }
+    }
+
     private _columns: TableColumn[] = [
-        { key: 'name', label: 'Model Name', sortable: true, width: '25%' },
+        { key: 'display_name', label: 'Model', sortable: true, width: '25%' },
         { key: 'provider', label: 'Provider', sortable: true, width: '15%' },
         {
-            key: 'type',
-            label: 'Type',
-            sortable: true,
-            width: '15%',
-            render: (val) => html`
-                <span style="text-transform: capitalize">${val}</span>
-            `
+            key: 'model_name',
+            label: 'Model ID',
+            width: '22%',
+            render: (val) => html`<code style="font-size: 12px; color: var(--saas-text-secondary)">${val}</code>`
         },
-        { key: 'contextWindow', label: 'Context', width: '10%' },
         {
-            key: 'hasVision',
-            label: 'Vision',
-            width: '10%',
+            key: 'default_for_chat',
+            label: 'Chat default',
+            width: '11%',
             align: 'center',
-            render: (val) => val ? html`<span class="material-symbols-outlined" style="font-size: 18px; color: var(--saas-status-success)">check_circle</span>` : '—'
+            render: (val) => val
+                ? html`<span class="material-symbols-outlined" style="font-size: 18px; color: var(--saas-status-success)">check_circle</span>`
+                : html`<span style="color: var(--saas-text-muted)">—</span>`
         },
         {
-            key: 'status',
+            key: 'default_for_completion',
+            label: 'Completion default',
+            width: '11%',
+            align: 'center',
+            render: (val) => val
+                ? html`<span class="material-symbols-outlined" style="font-size: 18px; color: var(--saas-status-success)">check_circle</span>`
+                : html`<span style="color: var(--saas-text-muted)">—</span>`
+        },
+        {
+            key: 'rate_limit',
+            label: 'Rate limit',
+            width: '10%',
+            render: (val) => html`${val === null || val === undefined ? '—' : `${val}/min`}`
+        },
+        {
+            key: 'enabled',
             label: 'Status',
-            width: '15%',
+            width: '12%',
             render: (val) => html`
-                <saas-status-badge 
-                    variant=${val === 'active' ? 'success' : val === 'beta' ? 'warning' : 'neutral'}
+                <saas-status-badge
+                    variant=${val ? 'success' : 'neutral'}
                     size="sm"
                     dot
-                >${val}</saas-status-badge>
+                >${val ? 'enabled' : 'disabled'}</saas-status-badge>
             `
         },
         {
@@ -162,35 +197,44 @@ export class SaasAdminModelsList extends LitElement {
             label: '',
             width: '40px',
             align: 'right',
-            render: (val, row) => html`
+            render: (_val, row) => html`
                 <saas-action-menu
                     .actions=${[
-                    { id: 'edit', label: 'Edit', icon: 'edit' },
-                    { id: 'toggle', label: row.status === 'active' ? 'Disable' : 'Enable', icon: row.status === 'active' ? 'block' : 'check_circle' },
-                    { id: 'delete', label: 'Delete', icon: 'delete', variant: 'danger' }
-                ]}
-                    @saas-action=${(e: CustomEvent) => this._handleAction(e, row)}
+                        {
+                            id: 'toggle',
+                            label: (row as unknown as ModelConfig).enabled ? 'Disable' : 'Enable',
+                            icon: (row as unknown as ModelConfig).enabled ? 'block' : 'check_circle'
+                        },
+                        {
+                            id: 'default_chat',
+                            label: (row as unknown as ModelConfig).default_for_chat ? 'Unset chat default' : 'Set as chat default',
+                            icon: 'chat'
+                        },
+                        {
+                            id: 'default_completion',
+                            label: (row as unknown as ModelConfig).default_for_completion ? 'Unset completion default' : 'Set as completion default',
+                            icon: 'bolt'
+                        }
+                    ]}
+                    @saas-action=${(e: CustomEvent) => this._handleAction(e, row as unknown as ModelConfig)}
                 ></saas-action-menu>
             `
         }
     ];
 
-    private _handleAction(e: CustomEvent, row: any) {
-        console.log('Action:', e.detail.action, 'Row:', row);
-        // Implement real actions here
-    }
-
     render() {
+        const providers = Array.from(new Set(this._models.map(m => m.provider))).sort();
+        const filtered = this._models.filter(m =>
+            (!this._search || m.display_name.toLowerCase().includes(this._search.toLowerCase()) || m.model_name.toLowerCase().includes(this._search.toLowerCase())) &&
+            (!this._selectedProvider || m.provider === this._selectedProvider)
+        );
+
         return html`
             <div class="header">
                 <div class="title-area">
                     <h1>Model Catalog</h1>
                     <div class="subtitle">Manage AI models, providers, and capabilities</div>
                 </div>
-                <button class="btn-primary" @click=${() => this._showModal = true}>
-                    <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-                    Add Model
-                </button>
             </div>
 
             <div class="controls">
@@ -198,116 +242,35 @@ export class SaasAdminModelsList extends LitElement {
                     class="search-input"
                     placeholder="Search models..."
                     style="margin-bottom: 0"
-                    @saas-input=${(e: CustomEvent) => this._search = e.detail.value}
+                    @saas-input=${(e: CustomEvent) => { this._search = e.detail?.value ?? ''; }}
                 ></saas-form-field>
 
                 <saas-select
                     placeholder="All Providers"
                     style="width: 200px; margin-bottom: 0"
                     .options=${[
-                { label: 'All Providers', value: '' },
-                { label: 'OpenAI', value: 'OpenAI' },
-                { label: 'Anthropic', value: 'Anthropic' },
-                { label: 'Google', value: 'Google' }
-            ]}
-                    @saas-change=${(e: CustomEvent) => this._selectedProvider = e.detail.value}
+                        { label: 'All Providers', value: '' },
+                        ...providers.map(p => ({ label: p, value: p }))
+                    ]}
+                    @saas-change=${(e: CustomEvent) => { this._selectedProvider = e.detail?.value ?? ''; }}
                 ></saas-select>
             </div>
 
-            <saas-data-table
-                .columns=${this._columns}
-                .data=${this._models.filter(m =>
-                (!this._search || m.name.toLowerCase().includes(this._search.toLowerCase())) &&
-                (!this._selectedProvider || m.provider === this._selectedProvider)
-            )}
-            ></saas-data-table>
+            ${this._error ? html`
+                <div class="state-banner state-error">Failed to load models: ${this._error}</div>
+            ` : nothing}
 
-            <saas-glass-modal
-                ?open=${this._showModal}
-                title="Add Model to Catalog"
-                size="md"
-                @saas-modal-close=${() => this._showModal = false}
-            >
-                <div class="form-grid">
-                    <saas-select
-                        label="Provider"
-                        placeholder="Select Provider"
-                        .options=${[
-                { label: 'OpenAI', value: 'openai', icon: 'smart_toy' },
-                { label: 'Anthropic', value: 'anthropic', icon: 'psychology' },
-                { label: 'Google', value: 'google', icon: 'search' },
-                { label: 'Mistral', value: 'mistral', icon: 'wind_power' }
-            ]}
-                    ></saas-select>
-
-                    <saas-form-field
-                        label="Model ID"
-                        placeholder="e.g. gpt-4o"
-                        required
-                    ></saas-form-field>
-
-                    <saas-form-field
-                        label="Display Name"
-                        placeholder="e.g. GPT-4o"
-                        required
-                    ></saas-form-field>
-
-                    <saas-select
-                        label="Type"
-                        placeholder="Select Type"
-                        .options=${[
-                { label: 'Chat Model', value: 'chat' },
-                { label: 'Embedding Model', value: 'embedding' },
-                { label: 'Utility Model', value: 'utility' }
-            ]}
-                    ></saas-select>
-
-                    <saas-form-field
-                        label="Context Window"
-                        placeholder="e.g. 128K"
-                        type="text"
-                    ></saas-form-field>
-
-                    <saas-form-field
-                        label="Max Output Tokens"
-                        placeholder="e.g. 4096"
-                        type="number"
-                    ></saas-form-field>
-
-                    <div class="form-section-title">Capabilities</div>
-                    
-                    <div class="checkbox-group">
-                        <saas-toggle label="Vision Support" description="Can process images"></saas-toggle>
-                        <saas-toggle label="Function Calling" description="Can execute tools"></saas-toggle>
-                        <saas-toggle label="JSON Mode" description="Structured output"></saas-toggle>
-                    </div>
-
-                    <div class="form-section-title">Rate Limits</div>
-
-                    <saas-form-field
-                        label="RPM (Requests/Min)"
-                        placeholder="500"
-                        type="number"
-                    ></saas-form-field>
-
-                    <saas-form-field
-                        label="TPM (Tokens/Min)"
-                        placeholder="30000"
-                        type="number"
-                    ></saas-form-field>
-                </div>
-
-                <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px">
-                    <button class="btn-secondary" @click=${() => this._showModal = false} style="
-                        padding: 8px 16px; 
-                        background: transparent; 
-                        border: 1px solid var(--saas-border-light); 
-                        border-radius: 8px;
-                        cursor: pointer;
-                    ">Cancel</button>
-                    <button class="btn-primary">Add Model</button>
-                </div>
-            </saas-glass-modal>
+            ${this._loading
+                ? html`<div class="state-banner state-empty">Loading model catalog…</div>`
+                : filtered.length === 0
+                    ? html`<div class="state-banner state-empty">No models match.</div>`
+                    : html`
+                        <saas-data-table
+                            .columns=${this._columns}
+                            .data=${filtered}
+                        ></saas-data-table>
+                    `
+            }
         `;
     }
 }

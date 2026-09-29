@@ -7,9 +7,11 @@ import { apiClient } from '../services/api-client.js';
 
 export interface BillingMetrics {
   mrr: number;
-  mrr_growth: number;
+  /** Null when the system has no historical MRR snapshots to measure growth. */
+  mrr_growth: number | null;
   arpu: number;
-  churn_rate: number;
+  /** Null when the system keeps no churn cohort data. */
+  churn_rate: number | null;
   total_tenants: number;
   paid_tenants: number;
 }
@@ -29,7 +31,8 @@ export interface TierRevenue {
 }
 
 export interface BillingControllerData {
-  _metrics: BillingMetrics;
+  /** Null until real metrics are fetched; never placeholder zeros. */
+  _metrics: BillingMetrics | null;
   _tierRevenue: TierRevenue[];
   _invoices: Invoice[];
   _isLoading: boolean;

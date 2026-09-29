@@ -313,6 +313,19 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
 
         await self.send_json({"type": "response_start"})
 
+        # Checked BEFORE the try and before the request. The previous code
+        # built `Authorization: Bearer {LLM_API_KEY or ""}` and posted anyway,
+        # and the broad `except Exception` below then turned the resulting 401
+        # into "I'm sorry, I couldn't process your request." — a user-facing
+        # apology that hides a missing credential. A missing key is a
+        # configuration error and is raised as one (VIBE Rule 164).
+        llm_api_key = getattr(settings, "LLM_API_KEY", None)
+        if not llm_api_key:
+            raise RuntimeError(
+                "Voice LLM is not configured: LLM_API_KEY is missing. "
+                "Set secret/agent/credentials/llm_api_key in Vault."
+            )
+
         try:
             import httpx
 
@@ -333,7 +346,7 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                         "model": getattr(settings, "DEFAULT_VOICE_MODEL", "gpt-4o-mini"),
                         "max_tokens": 150,
                     },
-                    headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"},
+                    headers={"Authorization": f"Bearer {llm_api_key}"},
                 )
 
                 if llm_response.status_code == 200:

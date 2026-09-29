@@ -133,11 +133,15 @@ export class SaasPlatformStatsGrid extends LitElement {
                     </div>
                     <div class="metric-value">$${this._formatNumber(this.metrics.mrr)}</div>
                     <div class="metric-sub">
-                        <span class="metric-trend up">
-                            <span class="material-symbols-outlined">trending_up</span>
-                            +${this.metrics.mrrGrowth}%
-                        </span>
-                        from last month
+                        ${this.metrics.mrrGrowth == null
+                            ? html`<span>—</span>`
+                            : html`
+                                <span class="metric-trend up">
+                                    <span class="material-symbols-outlined">trending_up</span>
+                                    +${this.metrics.mrrGrowth}%
+                                </span>
+                                from last month
+                            `}
                     </div>
                 </div>
 
@@ -174,11 +178,13 @@ export class SaasPlatformStatsGrid extends LitElement {
                             <span class="material-symbols-outlined">speed</span>
                         </div>
                     </div>
-                    <div class="metric-value">${this.metrics.uptime}%</div>
+                    <div class="metric-value">${this._formatUptime(this.metrics.uptime_seconds)}</div>
                     <div class="metric-sub">
-                        ${this.metrics.activeAlerts > 0 ? html`
-                            <span style="color: var(--saas-status-warning)">${this.metrics.activeAlerts} active alerts</span>
-                        ` : 'All systems operational'}
+                        ${this.metrics.activeAlerts == null
+                            ? 'Alerting not configured'
+                            : this.metrics.activeAlerts > 0
+                                ? html`<span style="color: var(--saas-status-warning)">${this.metrics.activeAlerts} active alerts</span>`
+                                : 'No active alerts'}
                     </div>
                 </div>
             </div>
@@ -189,6 +195,15 @@ export class SaasPlatformStatsGrid extends LitElement {
         if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
         if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
         return num.toLocaleString();
+    }
+
+    /** Seconds since process start, as a duration (never a percent). */
+    private _formatUptime(seconds: number): string {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (days > 0) return `${days}d ${hours}h`;
+        return `${hours}h ${minutes}m`;
     }
 }
 

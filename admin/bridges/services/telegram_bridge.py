@@ -197,7 +197,8 @@ async def start(channel_id: str) -> BridgeControlResult:
             return BridgeControlResult(
                 False,
                 "error",
-                "webhook secret missing — set config.webhook_secret or TG_WEBHOOK_SECRET (fail-closed)",
+                "webhook secret missing — set Channel.credentials_ref to the "
+                "Vault path holding 'webhook_secret' (fail-closed)",
                 {"mode": mode},
             )
         try:

@@ -218,14 +218,9 @@ export class SaasBilling extends LitElement implements BillingControllerHost {
     }
   `;
 
-  @state() _metrics: BillingMetrics = {
-    mrr: 0,
-    mrr_growth: 0,
-    arpu: 0,
-    churn_rate: 0,
-    total_tenants: 0,
-    paid_tenants: 0,
-  };
+  // Real metrics arrive from /aaas/billing/ via BillingController.
+  // null until fetched — never placeholder zeros.
+  @state() _metrics: BillingMetrics | null = null;
 
   @state() _tierRevenue: TierRevenue[] = [];
 

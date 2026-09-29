@@ -212,7 +212,7 @@ export class SaasTenantBillingSummary extends LitElement {
                                                   : ''}
                                           </span>
                                       </div>
-                                      ${stat.limit
+                                      ${percent !== null
                                           ? html`
                                                 <div class="usage-bar">
                                                     <div
@@ -264,12 +264,14 @@ export class SaasTenantBillingSummary extends LitElement {
         return new Date(dateStr).toLocaleDateString();
     }
 
-    private _getUsagePercent(stat: UsageStat): number {
-        if (!stat.limit) return 0;
+    /** A measurable usage bar, or null when this system has no meter. */
+    private _getUsagePercent(stat: UsageStat): number | null {
+        if (typeof stat.used !== 'number' || !stat.limit) return null;
         return Math.min(100, (stat.used / stat.limit) * 100);
     }
 
-    private _getUsageClass(percent: number): string {
+    private _getUsageClass(percent: number | null): string {
+        if (percent === null) return '';
         if (percent >= 90) return 'danger';
         if (percent >= 70) return 'warning';
         return '';

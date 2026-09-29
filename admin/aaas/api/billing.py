@@ -46,9 +46,11 @@ def get_billing_dashboard(request):
 
     metrics = BillingMetrics(
         mrr=mrr,
-        mrr_growth=0.0,
+        # No historical MRR snapshots are kept, so growth is unknown.
+        mrr_growth=None,
         arpu=arpu,
-        churn_rate=0.0,
+        # No churn cohort data is kept either.
+        churn_rate=None,
         paid_tenants=paid_count,
         total_tenants=total_count,
     )
@@ -86,46 +88,66 @@ def get_billing_dashboard(request):
 @router.get("/usage", response=UsageMetrics)
 def get_platform_usage(request, period: str = "month"):
     """Get platform-wide usage stats - per SRS Section 5.1."""
-    from django.db.models import Sum
-
-    from admin.aaas.models import Agent, UsageRecord
-
-    # Aggregate usage records for the period
-    usage = UsageRecord.objects.filter(billing_period=period).aggregate(
-        total_tokens=Sum("quantity"),
-    )
-
-    return UsageMetrics(
-        tenant_id=None,
-        period=period,
-        tokens_used=usage.get("total_tokens") or 0,
-        storage_used_gb=0.0,
-        api_calls=0,
-        agents_active=Agent.objects.filter(status="active").count(),
-        users_active=0,
-    )
+    return _usage_for(tenant_id=None, period=period)
 
 
 @router.get("/usage/{tenant_id}", response=UsageMetrics)
 def get_tenant_usage(request, tenant_id: str, period: str = "month"):
     """Get usage stats for a specific tenant - per SRS Section 5.1."""
+    return _usage_for(tenant_id=tenant_id, period=period)
+
+
+def _usage_for(tenant_id: Optional[str], period: str) -> "UsageMetrics":
+    """Aggregate real usage for a period.
+
+    ``UsageRecord`` has no ``billing_period`` column — the previous code
+    filtered on one and raised ``FieldError`` on every call. The period is
+    matched against ``recorded_at`` instead. Nothing in this codebase writes
+    ``UsageRecord`` yet, so an empty table correctly yields zero tokens;
+    ``api_calls`` and ``users_active`` have no meter at all and report
+    ``None`` rather than a fabricated 0.
+    """
+    from datetime import datetime, timedelta, timezone as _tz
+
     from django.db.models import Sum
 
     from admin.aaas.models import Agent, UsageRecord
+    from admin.core.models import Asset
 
-    usage = UsageRecord.objects.filter(
-        tenant_id=tenant_id,
-        billing_period=period,
-    ).aggregate(total_tokens=Sum("quantity"))
+    now = datetime.now(_tz.utc)
+    if period == "day":
+        start = now - timedelta(days=1)
+    elif period == "week":
+        start = now - timedelta(days=7)
+    elif period == "year":
+        start = now - timedelta(days=365)
+    else:  # month and anything unrecognised
+        start = now - timedelta(days=30)
+
+    qs = UsageRecord.objects.filter(recorded_at__gte=start, metric_code="tokens")
+    if tenant_id:
+        qs = qs.filter(tenant_id=tenant_id)
+    tokens = int(qs.aggregate(n=Sum("quantity"))["n"] or 0)
+
+    asset_qs = Asset.objects.filter(status="active")
+    if tenant_id:
+        asset_qs = asset_qs.filter(tenant_id=tenant_id)
+    storage_gb = (asset_qs.aggregate(n=Sum("content_size_bytes"))["n"] or 0) / (1024**3)
+
+    agent_qs = Agent.objects.filter(status="active")
+    if tenant_id:
+        agent_qs = agent_qs.filter(tenant_id=tenant_id)
 
     return UsageMetrics(
         tenant_id=tenant_id,
         period=period,
-        tokens_used=usage.get("total_tokens") or 0,
-        storage_used_gb=0.0,
-        api_calls=0,
-        agents_active=Agent.objects.filter(tenant_id=tenant_id, status="active").count(),
-        users_active=0,
+        tokens_used=tokens,
+        storage_used_gb=storage_gb,
+        # No API-call meter exists.
+        api_calls=None,
+        agents_active=agent_qs.count(),
+        # No active-user meter exists.
+        users_active=None,
     )
 
 

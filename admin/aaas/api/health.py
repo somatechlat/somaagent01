@@ -21,6 +21,9 @@ from pydantic import BaseModel
 
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
+from admin.observability.api import get_uptime_seconds
+
+
 router = Router(tags=["health"])
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,10 @@ class PlatformHealth(BaseModel):
     status: str  # 'healthy', 'degraded', 'critical'
     services: list[ServiceHealth]
     timestamp: str
-    uptime_percent: float = 99.9
+    # Process uptime in seconds. There is no availability prober and no
+    # historical uptime store, so an uptime *percentage* cannot be measured
+    # and is not reported.
+    uptime_seconds: float
 
 
 # =============================================================================
@@ -243,7 +249,7 @@ async def get_platform_health(request) -> PlatformHealth:
         status=overall,
         services=list(checks),
         timestamp=timezone.now().isoformat(),
-        uptime_percent=99.9,  # Would calculate from metrics in production
+        uptime_seconds=get_uptime_seconds(),
     )
 
 

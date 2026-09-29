@@ -17,7 +17,11 @@ export interface Invoice {
 
 export interface UsageStat {
     metric: string;
-    used: number;
+    /**
+     * Measured value, or the string '—' when this system has no meter for it.
+     * Unmeasured metrics are never rendered as 0.
+     */
+    used: number | string;
     limit: number;
     unit: string;
 }
@@ -148,9 +152,9 @@ export class TenantBillingController {
                 apiClient.get<{
                     tokens_used: number;
                     storage_used_gb: number;
-                    api_calls: number;
+                    api_calls: number | null;
                     agents_active: number;
-                    users_active: number;
+                    users_active: number | null;
                 }>(`/aaas/billing/usage/${tenantId}`),
                 apiClient.get<
                     Array<{
@@ -172,12 +176,24 @@ export class TenantBillingController {
                 is_current: tier.name === billingData.current_tier,
             }));
 
+            // api_calls / users_active are Optional on the backend: null means
+            // this system has no meter for them. Surface that as '—', never 0.
             this._usage = [
-                { metric: 'Agents Active', used: usageData.agents_active || 0, limit: 0, unit: '' },
-                { metric: 'Users Active', used: usageData.users_active || 0, limit: 0, unit: '' },
-                { metric: 'API Calls', used: usageData.api_calls || 0, limit: 0, unit: '' },
-                { metric: 'Tokens Used', used: usageData.tokens_used || 0, limit: 0, unit: '' },
-                { metric: 'Storage', used: usageData.storage_used_gb || 0, limit: 0, unit: 'GB' },
+                { metric: 'Agents Active', used: usageData.agents_active ?? 0, limit: 0, unit: '' },
+                {
+                    metric: 'Users Active',
+                    used: usageData.users_active ?? '—',
+                    limit: 0,
+                    unit: '',
+                },
+                {
+                    metric: 'API Calls',
+                    used: usageData.api_calls ?? '—',
+                    limit: 0,
+                    unit: '',
+                },
+                { metric: 'Tokens Used', used: usageData.tokens_used ?? 0, limit: 0, unit: '' },
+                { metric: 'Storage', used: usageData.storage_used_gb ?? 0, limit: 0, unit: 'GB' },
             ];
         } catch (e) {
             console.error('[TenantBillingController] Failed to load billing data:', e);

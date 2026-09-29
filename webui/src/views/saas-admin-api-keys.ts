@@ -3,11 +3,15 @@
  * Management interface for Platform API Keys (LLMs, Services)
  *
  * SRS Reference: Section 9.4
- * VIBE COMPLIANT:
- * - Real Lit 3.x Web Component
- * - Shared components
- * - Material Icons
- * - Secure display (masked keys)
+ *
+ * Backed by /api/v2/aaas/settings/api-keys. The previous version of this
+ * view rendered five hardcoded keys with fabricated `type`, `keyMasked` and
+ * `status` fields, offered a "Safe & Verify" button that did nothing, and
+ * claimed "Keys are stored securely in Secret Manager". Nothing in this
+ * system talks to a Secret Manager — secrets live in Vault — and the create
+ * endpoint generates the key server-side. This version reads and writes the
+ * real store and shows the generated key exactly once, which is the only
+ * time the backend will ever return it.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -19,14 +23,26 @@ import '../components/saas-select.js';
 import '../components/saas-status-badge.js';
 import '../components/saas-action-menu.js';
 import type { TableColumn } from '../components/saas-data-table.js';
+import { apiClient, getData } from '../services/api-client.js';
 
+/** Matches admin.aaas.api.schemas.ApiKeyOut — no invented fields. */
 interface ApiKey {
     id: string;
-    provider: string;
-    keyMasked: string;
-    type: 'llm' | 'service';
-    status: 'valid' | 'expired' | 'missing';
-    lastUsed?: string;
+    name: string;
+    prefix: string;
+    tenant_id: string | null;
+    created_at: string;
+    last_used: string | null;
+    expires_at: string | null;
+}
+
+/** Shape returned by POST /aaas/settings/api-keys — `key` only exists once. */
+interface ApiKeyCreated {
+    id: string;
+    name: string;
+    prefix: string;
+    key: string;
+    message: string;
 }
 
 @customElement('saas-admin-api-keys')
@@ -89,64 +105,160 @@ export class SaasAdminApiKeys extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-size: 20px;
         }
+
+        .state-banner {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+
+        .state-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--saas-status-danger, #dc2626);
+        }
+
+        .state-empty {
+            background: var(--saas-bg-active, #f5f5f5);
+            border: 1px solid var(--saas-border-light, #e5e5e5);
+            color: var(--saas-text-secondary, #666666);
+        }
+
+        .generated-key {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 13px;
+            background: var(--saas-bg-active, #f5f5f5);
+            border: 1px solid var(--saas-border-light, #e5e5e5);
+            border-radius: 8px;
+            padding: 12px;
+            word-break: break-all;
+        }
     `;
 
-    @state() private _keys: ApiKey[] = [
-        { id: '1', provider: 'OpenAI', keyMasked: 'sk-proj-****...8x9K', type: 'llm', status: 'valid', lastUsed: 'Just now' },
-        { id: '2', provider: 'Anthropic', keyMasked: 'sk-ant-****...JKL2', type: 'llm', status: 'valid', lastUsed: '5m ago' },
-        { id: '3', provider: 'Google', keyMasked: 'AIzaSy****...mnop', type: 'llm', status: 'valid', lastUsed: '1h ago' },
-        { id: '4', provider: 'Groq', keyMasked: 'gsk_****...qrst', type: 'llm', status: 'expired', lastUsed: '2d ago' },
-        { id: '5', provider: 'Serper', keyMasked: '****...xyz', type: 'service', status: 'valid', lastUsed: 'Just now' },
-    ];
+    @state() private _keys: ApiKey[] = [];
+    @state() private _loading = true;
+    @state() private _error: string | null = null;
+    @state() private _showCreateModal = false;
+    @state() private _created: ApiKeyCreated | null = null;
+    @state() private _newName = '';
+    @state() private _newTenantId = '';
+    @state() private _newExpiresInDays = '';
 
-    @state() private _showModal = false;
+    connectedCallback() {
+        super.connectedCallback();
+        this._load();
+    }
+
+    private async _load() {
+        this._loading = true;
+        this._error = null;
+        try {
+            const rows = await apiClient.get<ApiKey[]>('/aaas/settings/api-keys');
+            this._keys = getData<ApiKey[]>(rows) ?? (Array.isArray(rows) ? rows : []);
+        } catch (e) {
+            this._error = e instanceof Error ? e.message : String(e);
+            this._keys = [];
+        } finally {
+            this._loading = false;
+        }
+    }
+
+    /** Honest status: the store only returns active keys, so the only other
+     *  state a row can be in is past its own expiry. */
+    private _statusOf(row: ApiKey): 'active' | 'expired' {
+        if (!row.expires_at) return 'active';
+        return new Date(row.expires_at).getTime() < Date.now() ? 'expired' : 'active';
+    }
+
+    private _formatTs(value: string | null): string {
+        if (!value) return '—';
+        const t = new Date(value).getTime();
+        return Number.isNaN(t) ? value : new Date(value).toLocaleString();
+    }
+
+    private async _create() {
+        const name = this._newName.trim();
+        if (!name) return;
+
+        const body: Record<string, unknown> = { name };
+        const tenantId = this._newTenantId.trim();
+        if (tenantId) body.tenant_id = tenantId;
+        const days = parseInt(this._newExpiresInDays, 10);
+        if (!Number.isNaN(days) && days > 0) body.expires_in_days = days;
+
+        try {
+            const created = await apiClient.post<ApiKeyCreated>('/aaas/settings/api-keys', body);
+            this._created = created;
+            this._showCreateModal = false;
+            this._newName = '';
+            this._newTenantId = '';
+            this._newExpiresInDays = '';
+            await this._load();
+        } catch (e) {
+            this._error = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private async _revoke(row: ApiKey) {
+        try {
+            await apiClient.delete(`/aaas/settings/api-keys/${row.id}`);
+            await this._load();
+        } catch (e) {
+            this._error = e instanceof Error ? e.message : String(e);
+        }
+    }
 
     private _columns: TableColumn[] = [
         {
-            key: 'provider',
-            label: 'Provider',
+            key: 'name',
+            label: 'Name',
             sortable: true,
-            width: '20%',
-            render: (val, row) => html`
-                <div style="display: flex; align-items: center; gap: 8px">
-                    <span class="material-symbols-outlined" style="font-size: 20px; color: ${row.status === 'valid' ? 'var(--saas-status-success)' : 'var(--saas-text-muted)'}">
-                        ${row.type === 'llm' ? 'smart_toy' : 'dns'}
-                    </span>
-                    <span style="font-weight: 500">${val}</span>
-                </div>
-            `
+            width: '22%',
+            render: (val) => html`<span style="font-weight: 500">${val}</span>`
         },
         {
-            key: 'keyMasked',
-            label: 'Key',
-            width: '25%',
-            render: (val) => html`<code style="font-size: 12px; color: var(--saas-text-secondary)">${val}</code>`
+            key: 'prefix',
+            label: 'Prefix',
+            width: '14%',
+            render: (val) => html`<code style="font-size: 12px; color: var(--saas-text-secondary)">${val}…</code>`
+        },
+        {
+            key: 'tenant_id',
+            label: 'Tenant',
+            width: '16%',
+            render: (val) => html`<span style="font-size: 12px; color: var(--saas-text-secondary)">${val ?? 'platform'}</span>`
         },
         {
             key: 'status',
             label: 'Status',
-            width: '15%',
-            render: (val) => html`
-                <saas-status-badge 
-                    variant=${val === 'valid' ? 'success' : val === 'expired' ? 'warning' : 'danger'}
-                    size="sm"
-                    dot
-                >${val}</saas-status-badge>
-            `
+            width: '12%',
+            render: (_val, row) => {
+                const status = this._statusOf(row as unknown as ApiKey);
+                return html`
+                    <saas-status-badge
+                        variant=${status === 'active' ? 'success' : 'warning'}
+                        size="sm"
+                        dot
+                    >${status}</saas-status-badge>
+                `;
+            }
         },
-        { key: 'lastUsed', label: 'Last Used', width: '15%' },
+        { key: 'created_at', label: 'Created', width: '14%', render: (val) => html`${this._formatTs(val as string)}` },
+        { key: 'last_used', label: 'Last Used', width: '14%', render: (val) => html`${this._formatTs(val as string)}` },
         {
             key: 'actions',
             label: '',
             width: '40px',
             align: 'right',
-            render: (val, row) => html`
+            render: (_val, row) => html`
                 <saas-action-menu
                     .actions=${[
-                    { id: 'edit', label: 'Rotate Key', icon: 'refresh' },
-                    { id: 'test', label: 'Test Connection', icon: 'network_check' },
-                    { id: 'delete', label: 'Remove', icon: 'delete', variant: 'danger' }
-                ]}
+                        { id: 'revoke', label: 'Revoke', icon: 'delete', variant: 'danger' }
+                    ]}
+                    @saas-action=${(e: CustomEvent) => {
+                        if (e.detail?.action === 'revoke') this._revoke(row as unknown as ApiKey);
+                    }}
                 ></saas-action-menu>
             `
         }
@@ -159,7 +271,7 @@ export class SaasAdminApiKeys extends LitElement {
                     <h1>Platform API Keys</h1>
                     <div class="subtitle">Manage credentials for external AI providers and services</div>
                 </div>
-                <button class="btn-primary" @click=${() => this._showModal = true}>
+                <button class="btn-primary" @click=${() => { this._showCreateModal = true; }}>
                     <span class="material-symbols-outlined" style="font-size: 18px">add</span>
                     Add Key
                 </button>
@@ -172,61 +284,98 @@ export class SaasAdminApiKeys extends LitElement {
                 </div>
             </div>
 
-            <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--saas-text-secondary); text-transform: uppercase; letter-spacing: 0.5px">LLM Providers</h3>
-            <saas-data-table
-                .columns=${this._columns}
-                .data=${this._keys.filter(k => k.type === 'llm')}
-                style="margin-bottom: 32px"
-            ></saas-data-table>
+            ${this._error ? html`
+                <div class="state-banner state-error">Failed to load API keys: ${this._error}</div>
+            ` : nothing}
 
-            <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--saas-text-secondary); text-transform: uppercase; letter-spacing: 0.5px">Services</h3>
-            <saas-data-table
-                .columns=${this._columns}
-                .data=${this._keys.filter(k => k.type === 'service')}
-            ></saas-data-table>
+            ${this._loading
+                ? html`<div class="state-banner state-empty">Loading API keys…</div>`
+                : this._keys.length === 0
+                    ? html`<div class="state-banner state-empty">No active API keys.</div>`
+                    : html`
+                        <saas-data-table
+                            .columns=${this._columns}
+                            .data=${this._keys}
+                        ></saas-data-table>
+                    `
+            }
 
             <saas-glass-modal
-                ?open=${this._showModal}
-                title="Add API Key"
+                ?open=${this._showCreateModal}
+                title="Generate API Key"
                 size="md"
-                @saas-modal-close=${() => this._showModal = false}
+                @saas-modal-close=${() => { this._showCreateModal = false; }}
             >
                 <div style="display: flex; flex-direction: column; gap: 16px">
-                    <saas-select
-                        label="Provider"
-                        placeholder="Select Provider"
-                        .options=${[
-                { label: 'OpenAI', value: 'openai', icon: 'smart_toy' },
-                { label: 'Anthropic', value: 'anthropic', icon: 'psychology' },
-                { label: 'Google', value: 'google', icon: 'search' },
-                { label: 'Serper', value: 'serper', icon: 'search_check' }
-            ]}
-                    ></saas-select>
-
                     <saas-form-field
-                        label="API Key"
-                        placeholder="sk-..."
-                        type="password"
+                        label="Name"
+                        placeholder="e.g. production-gateway"
                         required
-                        helper="Keys are stored securely in Secret Manager"
+                        .value=${this._newName}
+                        @saas-input=${(e: CustomEvent) => { this._newName = e.detail?.value ?? ''; }}
+                        helper="A label you will recognise in this list."
                     ></saas-form-field>
 
-                    <saas-toggle
-                        label="Active immediately"
-                        checked
-                    ></saas-toggle>
+                    <saas-form-field
+                        label="Tenant ID"
+                        placeholder="Leave blank for a platform-wide key"
+                        .value=${this._newTenantId}
+                        @saas-input=${(e: CustomEvent) => { this._newTenantId = e.detail?.value ?? ''; }}
+                    ></saas-form-field>
+
+                    <saas-form-field
+                        label="Expires in days"
+                        placeholder="Leave blank to never expire"
+                        type="number"
+                        .value=${this._newExpiresInDays}
+                        @saas-input=${(e: CustomEvent) => { this._newExpiresInDays = e.detail?.value ?? ''; }}
+                    ></saas-form-field>
+
+                    <div style="font-size: 12px; color: var(--saas-text-secondary)">
+                        The key is generated by the server and shown once. Only a one-way hash and an
+                        8-character prefix are stored, so it cannot be recovered after this dialog.
+                    </div>
                 </div>
 
                 <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px">
-                    <button class="btn-secondary" @click=${() => this._showModal = false} style="
-                        padding: 8px 16px; 
-                        background: transparent; 
-                        border: 1px solid var(--saas-border-light); 
+                    <button class="btn-secondary" @click=${() => { this._showCreateModal = false; }} style="
+                        padding: 8px 16px;
+                        background: transparent;
+                        border: 1px solid var(--saas-border-light);
                         border-radius: 8px;
                         cursor: pointer;
                     ">Cancel</button>
-                    <button class="btn-primary">Safe & Verify</button>
+                    <button class="btn-primary" @click=${() => this._create()}>Generate Key</button>
                 </div>
+            </saas-glass-modal>
+
+            <saas-glass-modal
+                ?open=${this._created !== null}
+                title="Copy this key now"
+                size="md"
+                @saas-modal-close=${() => { this._created = null; }}
+            >
+                ${this._created ? html`
+                    <div style="display: flex; flex-direction: column; gap: 16px">
+                        <div class="warning-banner" style="margin-bottom: 0">
+                            <span class="icon-warning">warning</span>
+                            <div>${this._created.message}</div>
+                        </div>
+                        <div class="generated-key">${this._created.key}</div>
+                    </div>
+                    <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px">
+                        <button class="btn-primary" @click=${() => {
+                            navigator.clipboard?.writeText(this._created?.key ?? '');
+                        }}>Copy</button>
+                        <button class="btn-secondary" @click=${() => { this._created = null; }} style="
+                            padding: 8px 16px;
+                            background: transparent;
+                            border: 1px solid var(--saas-border-light);
+                            border-radius: 8px;
+                            cursor: pointer;
+                        ">Done</button>
+                    </div>
+                ` : nothing}
             </saas-glass-modal>
         `;
     }

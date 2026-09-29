@@ -13,9 +13,9 @@ export interface PlatformMetrics {
     activeAgents: number;
     totalUsers: number;
     mrr: number;
-    mrrGrowth: number;
-    uptime: number;
-    activeAlerts: number;
+    mrrGrowth: number | null;
+    uptime_seconds: number;
+    activeAlerts: number | null;
     tokensThisMonth: number;
     storageUsedGB: number;
 }
@@ -59,9 +59,9 @@ export const DEFAULT_METRICS: PlatformMetrics = {
     activeAgents: 0,
     totalUsers: 0,
     mrr: 0,
-    mrrGrowth: 0,
-    uptime: 0,
-    activeAlerts: 0,
+    mrrGrowth: null,
+    uptime_seconds: 0,
+    activeAlerts: null,
     tokensThisMonth: 0,
     storageUsedGB: 0,
 };

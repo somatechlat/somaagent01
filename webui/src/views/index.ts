@@ -52,6 +52,6 @@ export { SaasInfrastructureDashboard } from './saas-infrastructure-dashboard.js'
 export { SaasAgentMetrics } from './saas-agent-metrics.js';
 
 // Entity Views
-export { SaasTenantsView, SaasUsersView, SaasAgentsView, SaasFeaturesView } from './saas-entity-views.js';
+export { SaasTenantsView, SaasUsersView, SaasAgentsView } from './saas-entity-views.js';
 export { SaasUserDetail } from './saas-user-detail.js';
 export { SaasTenantWizard } from './saas-tenant-wizard.js';

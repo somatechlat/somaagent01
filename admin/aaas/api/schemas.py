@@ -15,7 +15,12 @@ from ninja import Schema
 # DASHBOARD SCHEMAS
 # =============================================================================
 class DashboardMetrics(Schema):
-    """Core platform metrics for AAAS dashboard."""
+    """Core platform metrics for AAAS dashboard.
+
+    Fields this system can actually measure are plain values. Fields that
+    have no instrument behind them are Optional and report ``None`` rather
+    than a number that was made up.
+    """
 
     total_tenants: int
     active_tenants: int
@@ -24,9 +29,13 @@ class DashboardMetrics(Schema):
     active_agents: int
     total_users: int
     mrr: float
-    mrr_growth: float
-    uptime: float
-    active_alerts: int
+    # No prior-period MRR is stored, so growth cannot be computed.
+    mrr_growth: Optional[float] = None
+    # Process uptime in seconds. There is no availability prober, so an
+    # uptime *percentage* cannot be measured and is not reported.
+    uptime_seconds: float
+    # No alert store exists in this system.
+    active_alerts: Optional[int] = None
     tokens_this_month: int
     storage_used_gb: float
 
@@ -154,12 +163,16 @@ class TierUpdate(Schema):
 # BILLING SCHEMAS
 # =============================================================================
 class BillingMetrics(Schema):
-    """Billing dashboard metrics."""
+    """Billing dashboard metrics.
+
+    ``mrr_growth`` and ``churn_rate`` need historical snapshots this system
+    does not keep, so they report ``None`` rather than a fabricated 0.0.
+    """
 
     mrr: float
-    mrr_growth: float
+    mrr_growth: Optional[float] = None
     arpu: float
-    churn_rate: float
+    churn_rate: Optional[float] = None
     paid_tenants: int
     total_tenants: int
 
@@ -199,15 +212,19 @@ class BillingResponse(Schema):
 # USAGE SCHEMAS
 # =============================================================================
 class UsageMetrics(Schema):
-    """Usage tracking metrics."""
+    """Usage tracking metrics.
+
+    ``storage_used_gb`` is summed from real asset bytes. ``api_calls`` and
+    ``users_active`` have no meter behind them yet and report ``None``.
+    """
 
     tenant_id: Optional[str] = None
     period: str
     tokens_used: int
     storage_used_gb: float
-    api_calls: int
+    api_calls: Optional[int] = None
     agents_active: int
-    users_active: int
+    users_active: Optional[int] = None
 
 
 # =============================================================================
@@ -227,13 +244,17 @@ class FeatureOut(Schema):
 
 
 class FeatureFlagOut(Schema):
-    """Feature flag response."""
+    """Feature flag response.
+
+    Mirrors ``AaasFeature``. There is no rollout-percentage column on that
+    model, so none is reported.
+    """
 
     id: str
+    code: str
     name: str
     description: str
     enabled: bool
-    rollout_percentage: int
     created_at: datetime
     updated_at: datetime
 
@@ -242,7 +263,6 @@ class FeatureFlagUpdate(Schema):
     """Update feature flag request."""
 
     enabled: Optional[bool] = None
-    rollout_percentage: Optional[int] = None
 
 
 # =============================================================================

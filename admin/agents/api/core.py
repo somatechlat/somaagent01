@@ -397,8 +397,10 @@ async def get_agent_stats(request, agent_id: str) -> AgentStats:
         # Message.conversation_id is a plain UUIDField, not a ForeignKey, so
         # there is no reverse relation to aggregate across.
         convs = Conversation.objects.filter(agent_id=agent_id)
+        # `convs`, not `concs` — the old name was undefined and this helper
+        # raised NameError the moment anything asked for agent stats.
         return convs.count(), Message.objects.filter(
-            conversation_id__in=concs.values("id")
+            conversation_id__in=convs.values("id")
         ).count()
 
     conversations, messages = await _count()

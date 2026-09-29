@@ -13,7 +13,7 @@ from admin.aaas.api.schemas import (
     RecentEvent,
     TopTenant,
 )
-from admin.aaas.models import Agent, Tenant
+from admin.aaas.models import Agent, Tenant, TenantUser
 
 router = Router()
 
@@ -54,19 +54,46 @@ def get_dashboard(request):
     revenue = compute_mrr_and_arpu()
     mrr = revenue.mrr
 
+    total_users = TenantUser.objects.count()
+
+    # Tokens and storage are summed from the tables that actually hold them.
+    # A month boundary is applied to recorded_at; if nothing is metered the
+    # true sum is zero, which is what is reported.
+    from datetime import datetime, timezone as _tz
+
+    from django.db.models import Sum
+
+    from admin.aaas.models import UsageRecord
+    from admin.core.models import Asset
+
+    month_start = datetime.now(_tz.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    tokens_this_month = int(
+        UsageRecord.objects.filter(
+            metric_code="tokens", recorded_at__gte=month_start
+        ).aggregate(n=Sum("quantity"))["n"]
+        or 0
+    )
+    storage_used_gb = (
+        Asset.objects.filter(status="active").aggregate(n=Sum("content_size_bytes"))["n"] or 0
+    ) / (1024**3)
+
+    from admin.observability.api import get_uptime_seconds
+
     metrics = DashboardMetrics(
         total_tenants=total_tenants,
         active_tenants=active_tenants,
         trial_tenants=trial_tenants,
         total_agents=total_agents,
         active_agents=active_agents,
-        total_users=0,
+        total_users=total_users,
         mrr=mrr,
-        mrr_growth=0.0,
-        uptime=99.95,
-        active_alerts=0,
-        tokens_this_month=0,
-        storage_used_gb=0.0,
+        # No prior-period MRR is stored, so growth is unknown.
+        mrr_growth=None,
+        uptime_seconds=get_uptime_seconds(),
+        # No alert store exists in this system.
+        active_alerts=None,
+        tokens_this_month=tokens_this_month,
+        storage_used_gb=storage_used_gb,
     )
 
     # Top tenants by MRR

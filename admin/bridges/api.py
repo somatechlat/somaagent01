@@ -238,7 +238,7 @@ def update_channel(request, channel_id: str, payload: ChannelUpdate) -> dict:
         obj.credentials_ref = payload.credentials_ref
     if payload.capsule_id is not None:
         if payload.capsule_id == "":
-            obj.capsule_id = None
+            obj.capsule = None
         else:
             try:
                 capsule_id = UUID(str(payload.capsule_id))
@@ -246,9 +246,15 @@ def update_channel(request, channel_id: str, payload: ChannelUpdate) -> dict:
                 raise HttpError(422, f"invalid capsule_id '{payload.capsule_id}'") from None
             from admin.core.models import Capsule
 
-            if not Capsule.objects.filter(id=capsule_id, tenant_id=tenant_id).exists():
+            # Fetch the row once and assign through the relation. The code used
+            # to do an .exists() query and then set `obj.capsule_id`, which is
+            # Django's generated attname — it exists at runtime but no type
+            # checker can see it. Assigning `obj.capsule` is the real field,
+            # needs no second query, and cannot drift from the model.
+            capsule = Capsule.objects.filter(id=capsule_id, tenant_id=tenant_id).first()
+            if capsule is None:
                 raise HttpError(422, f"capsule '{payload.capsule_id}' not found in tenant")
-            obj.capsule_id = capsule_id
+            obj.capsule = capsule
 
     obj.save()
     logger.info("channel updated: %s", obj.id)
@@ -275,7 +281,7 @@ def delete_channel(request, channel_id: str) -> dict:
 
 
 @router.post("/channels/{channel_id}/test", summary="Test channel connection", auth=AuthBearer())
-def test_channel(request, channel_id: str) -> dict:
+async def test_channel(request, channel_id: str) -> dict:
     """Test connectivity for a channel (WhatsApp / Telegram)."""
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
@@ -284,14 +290,19 @@ def test_channel(request, channel_id: str) -> dict:
     if not obj:
         raise HttpError(404, f"channel '{channel_id}' not found")
     try:
+        # Every bridge service is `async` and returns BridgeControlResult.
+        # These handlers used to be sync and returned the coroutine object
+        # un-awaited, so the endpoint responded with a serialized coroutine
+        # instead of the result. Ninja supports `async def` handlers; await the
+        # call and unwrap through to_dict() to honour the `-> dict` contract.
         if obj.kind == Channel.KIND_WHATSAPP:
             from admin.bridges.services.whatsapp_bridge import test_connection
 
-            return test_connection(channel_id)
+            return (await test_connection(channel_id)).to_dict()
         if obj.kind == Channel.KIND_TELEGRAM:
             from admin.bridges.services.telegram_bridge import test_connection
 
-            return test_connection(channel_id)
+            return (await test_connection(channel_id)).to_dict()
         raise HttpError(501, f"test_connection not implemented for kind '{obj.kind}'")
     except HttpError:
         raise
@@ -301,7 +312,7 @@ def test_channel(request, channel_id: str) -> dict:
 
 
 @router.post("/channels/{channel_id}/start", summary="Start channel", auth=AuthBearer())
-def start_channel(request, channel_id: str) -> dict:
+async def start_channel(request, channel_id: str) -> dict:
     """Start a bridge channel runtime."""
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
@@ -313,11 +324,11 @@ def start_channel(request, channel_id: str) -> dict:
         if obj.kind == Channel.KIND_WHATSAPP:
             from admin.bridges.services.whatsapp_bridge import start
 
-            return start(channel_id)
+            return (await start(channel_id)).to_dict()
         if obj.kind == Channel.KIND_TELEGRAM:
             from admin.bridges.services.telegram_bridge import start
 
-            return start(channel_id)
+            return (await start(channel_id)).to_dict()
         raise HttpError(501, f"start not implemented for kind '{obj.kind}'")
     except HttpError:
         raise
@@ -327,7 +338,7 @@ def start_channel(request, channel_id: str) -> dict:
 
 
 @router.post("/channels/{channel_id}/stop", summary="Stop channel", auth=AuthBearer())
-def stop_channel(request, channel_id: str) -> dict:
+async def stop_channel(request, channel_id: str) -> dict:
     """Stop a bridge channel runtime."""
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
@@ -339,11 +350,11 @@ def stop_channel(request, channel_id: str) -> dict:
         if obj.kind == Channel.KIND_WHATSAPP:
             from admin.bridges.services.whatsapp_bridge import stop
 
-            return stop(channel_id)
+            return (await stop(channel_id)).to_dict()
         if obj.kind == Channel.KIND_TELEGRAM:
             from admin.bridges.services.telegram_bridge import stop
 
-            return stop(channel_id)
+            return (await stop(channel_id)).to_dict()
         raise HttpError(501, f"stop not implemented for kind '{obj.kind}'")
     except HttpError:
         raise
@@ -353,7 +364,7 @@ def stop_channel(request, channel_id: str) -> dict:
 
 
 @router.get("/channels/{channel_id}/qr", summary="Get pairing QR", auth=AuthBearer())
-def channel_qr(request, channel_id: str) -> dict:
+async def channel_qr(request, channel_id: str) -> dict:
     """Get pairing QR for WhatsApp (Baileys)."""
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
@@ -365,7 +376,7 @@ def channel_qr(request, channel_id: str) -> dict:
         raise HttpError(501, "QR is only available for WhatsApp channels")
     from admin.bridges.services.whatsapp_bridge import get_qr
 
-    return get_qr(channel_id)
+    return (await get_qr(channel_id)).to_dict()
 
 
 # =============================================================================

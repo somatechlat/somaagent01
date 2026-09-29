@@ -210,16 +210,19 @@ async def list_feature_flags(request):
 
     @sync_to_async
     def _load():
-        return list(AaasFeature.objects.filter(is_active=True).order_by("name"))
+        # Every catalog row is listed, active or not: filtering on
+        # is_active=True would hide a disabled flag and make it impossible
+        # to switch back on from this screen.
+        return list(AaasFeature.objects.all().order_by("category", "sort_order", "name"))
 
     flags = await _load()
     return [
         FeatureFlagOut(
             id=str(flag.id),
+            code=flag.code,
             name=flag.name,
             description=flag.description or "",
             enabled=flag.is_active,
-            rollout_percentage=100 if flag.is_active else 0,
             created_at=flag.created_at,
             updated_at=flag.updated_at,
         )
@@ -247,10 +250,10 @@ async def update_feature_flag(request, flag_id: str, payload: FeatureFlagUpdate)
     flag = await _update()
     return FeatureFlagOut(
         id=str(flag.id),
+        code=flag.code,
         name=flag.name,
         description=flag.description or "",
         enabled=flag.is_active,
-        rollout_percentage=100 if flag.is_active else 0,
         created_at=flag.created_at,
         updated_at=flag.updated_at,
     )

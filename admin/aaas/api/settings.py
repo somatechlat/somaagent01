@@ -131,7 +131,7 @@ def list_models(request):
             enabled=m.get("enabled", True),
             default_for_chat=m.get("default_for_chat", False),
             default_for_completion=m.get("default_for_completion", False),
-            rate_limit=m.get("rate_limit", 100),
+            rate_limit=m.get("rate_limit"),
         )
         for m in models_data
     ]
@@ -151,12 +151,16 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 
     for m in models_data:
         if m["id"] == model_id:
-            # Update fields
+            # Every field ModelConfigUpdate accepts is written back. Dropping
+            # one on the floor while returning 200 is a silent no-op.
             if payload.enabled is not None:
                 m["enabled"] = payload.enabled
+            if payload.default_for_chat is not None:
+                m["default_for_chat"] = payload.default_for_chat
+            if payload.default_for_completion is not None:
+                m["default_for_completion"] = payload.default_for_completion
             if payload.rate_limit is not None:
                 m["rate_limit"] = payload.rate_limit
-            # ... update other fields as needed
             updated_model = m
             break
 
@@ -174,7 +178,9 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
         model_name=updated_model.get("model_name", updated_model["id"]),
         display_name=updated_model.get("display_name", updated_model["id"]),
         enabled=updated_model.get("enabled", True),
-        rate_limit=updated_model.get("rate_limit", 100),
+        default_for_chat=updated_model.get("default_for_chat", False),
+        default_for_completion=updated_model.get("default_for_completion", False),
+        rate_limit=updated_model.get("rate_limit"),
     )
 
 

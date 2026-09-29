@@ -43,10 +43,11 @@ class AgentStats(BaseModel):
     avg_response_time_ms: Optional[float] = None
     satisfaction_score: Optional[float] = None
 
-
-    version: str
-    deployed_at: str
-    deployed_by: str
+    # `version`, `deployed_at` and `deployed_by` used to sit here as required
+    # fields. They are deployment metadata, not statistics, nothing in the tree
+    # reads them, and because they had no defaults every AgentStats() call was
+    # missing arguments. They are not optional and unmeasured — they are the
+    # wrong schema's fields, so they are gone.
 
 
 class ToolInfo(BaseModel):

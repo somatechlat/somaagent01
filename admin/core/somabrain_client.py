@@ -152,9 +152,20 @@ class SomaBrainClient:
             from django.conf import settings as django_settings
 
             headers = {"Content-Type": "application/json"}
-            token = getattr(django_settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", "")
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
+            token = getattr(django_settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None)
+            # Fail closed. The previous code did `if token:` and simply omitted
+            # the Authorization header when the secret was unset — so a
+            # deployment that had forgotten to seed somabrain_memory_http_token
+            # made unauthenticated calls to SomaBrain and got a 401 back that
+            # named nothing. If the endpoint is configured, the credential that
+            # authenticates to it is required (VIBE Rule 164).
+            if not token:
+                raise SomaClientError(
+                    "SomaBrain is configured but the memory HTTP token is not. "
+                    "Set secret/agent/credentials/somabrain_memory_http_token in Vault.",
+                    status_code=503,
+                )
+            headers["Authorization"] = f"Bearer {token}"
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
                 timeout=self._timeout,

@@ -322,6 +322,19 @@ async def _evaluate_criterion(
     import httpx
     from django.conf import settings
 
+    # Checked BEFORE the request, not inside it. The previous code built
+    # `Authorization: Bearer {LLM_API_KEY or ""}` and posted anyway, so a missing
+    # key produced an unauthenticated call that failed as a bare 401 far away.
+    # A missing credential is a configuration error and is reported as one
+    # (VIBE Rule 164).
+    llm_api_key = getattr(settings, "LLM_API_KEY", None)
+    if not llm_api_key:
+        raise HttpError(
+            503,
+            "Quality evaluation is not configured: LLM_API_KEY is missing. "
+            "Set secret/agent/credentials/llm_api_key in Vault.",
+        )
+
     try:
         llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
 
@@ -340,7 +353,7 @@ Respond with ONLY a JSON object in this format:
                     "model": getattr(settings, "QUALITY_EVAL_MODEL", "gpt-4o-mini"),
                     "max_tokens": 100,
                 },
-                headers={"Authorization": f"Bearer {getattr(settings, 'LLM_API_KEY', '')}"},
+                headers={"Authorization": f"Bearer {llm_api_key}"},
             )
 
             if response.status_code == 200:

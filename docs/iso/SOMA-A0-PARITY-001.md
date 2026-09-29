@@ -731,13 +731,13 @@ Execution is 23 P0 parity items, 7 remediation waves, and 30+ work packages, del
 | `admin/integrations/api.py:312-336` | `oauth_callback` returns `connected: True` | **IMPLEMENT** token exchange or 501 |
 | `admin/capabilities/api.py:136-200` | persist commented out; empty list | **IMPLEMENT** DB-backed Capability CRUD |
 | `admin/tenants/api.py:77-132` | empty/fabricated tenants | **IMPLEMENT** |
-| `admin/tools/api.py:63-101,265-271` | `SYSTEM_TOOLS` dict; execute returns `pending` | **IMPLEMENT** via ToolRegistry |
+| `admin/tools/api/tools.py` (was `admin/tools/api.py`, now a package) | `SYSTEM_TOOLS` dict; execute returns `pending` | **IMPLEMENT** via ToolRegistry |
 | `admin/orchestrator/api.py:201-217` | Temporal start commented; fake `running` | **IMPLEMENT** or 501 |
 | `admin/completions/api.py:108-125` | canned `"Hello! I'm an AI assistant..."` | **DELETE** — fake LLM forbidden |
 | `admin/embeddings/api.py:113-125` | zero-vectors `[0.0]*dim` | **IMPLEMENT** via `embed_text` / provider |
 | `admin/core/billing.py` | echo dicts, “call the billing API in production” | **DELETED** — file removed entirely; this system has no billing integration |
 | `admin/auth/api_sso.py:46-53` | LDAP bind not performed | **IMPLEMENT** ldap3 or 501 |
-| `admin/analytics/api.py` | empty aggregates | **IMPLEMENT** or 501 |
+| ~~`admin/analytics/api.py`~~ | deleted: fabricated empty aggregates, no analytics store behind them | removed — do not rebuild without a real store |
 | `admin/multimodal/execution.py:300,423` | Playwright “in production” stubs | **IMPLEMENT** |
 | `admin/a2a/api.py` | Temporal stubs | **IMPLEMENT** or flag off |
 | `admin/aaas/api/features.py:206` | `return []` | **IMPLEMENT** |

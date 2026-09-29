@@ -37,6 +37,17 @@ _COST_PER_IMAGE = 0.04
 _app_start_time = time.time()
 
 
+def get_uptime_seconds() -> float:
+    """Seconds since this process started.
+
+    The single source of truth for uptime. There is no availability prober
+    and no historical uptime store in this system, so an availability
+    *percentage* cannot be measured — only process uptime can. Everything
+    that reports uptime reads this.
+    """
+    return time.time() - _app_start_time
+
+
 # =============================================================================
 # SCHEMAS
 # =============================================================================
@@ -251,7 +262,7 @@ async def liveness(request) -> LivenessResponse:
 
     DevOps: Use for K8s livenessProbe.
     """
-    uptime = time.time() - _app_start_time
+    uptime = get_uptime_seconds()
 
     return LivenessResponse(
         alive=True,
@@ -289,7 +300,7 @@ async def get_prometheus_metrics(request) -> str:
             "soma_up 1",
             "# HELP soma_uptime_seconds Server uptime in seconds",
             "# TYPE soma_uptime_seconds gauge",
-            f"soma_uptime_seconds {time.time() - _app_start_time:.2f}",
+            f"soma_uptime_seconds {get_uptime_seconds():.2f}",
         ]
         return "\n".join(lines)
 
@@ -330,7 +341,7 @@ async def get_metrics_json(request) -> MetricsJsonResponse:
                 MetricValue(name="soma_up", value=1.0, timestamp=now),
                 MetricValue(
                     name="soma_uptime_seconds",
-                    value=time.time() - _app_start_time,
+                    value=get_uptime_seconds(),
                     timestamp=now,
                 ),
             ]
