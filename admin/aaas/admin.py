@@ -1,48 +1,29 @@
 """AAAS Django Admin - Main entry point.
 
-Split into modules for 650-line compliance:
-- admin_tenants.py: SubscriptionTier, Tenant, TenantUser admins
-- admin_agents.py: Agent, AgentUser, Feature, Usage, Audit admins
+Registers Django admin for this agent's own records: its agents, their
+assigned users, and the audit trail.
+
+No SaaS or billing is administered here. Subscription tiers, plan feature
+gating and usage metering exist as data models only — this product is a
+standalone agent and has no billing administration surface. See AGENT.md §1.1.
 """
 
 try:
 
     # Import all admin classes to register with Django admin
     from admin.aaas.admin_agents import (
-        AaasFeatureAdmin,
         AgentAdmin,
         AgentInline,
         AgentUserAdmin,
         AgentUserInline,
         AuditLogAdmin,
-        FeatureProviderAdmin,
-        TierFeatureAdmin,
-        UsageRecordAdmin,
-    )
-    from admin.aaas.admin_tenants import (
-        SubscriptionTierAdmin,
-        TenantAdmin,
-        TenantUserAdmin,
-        TenantUserInline,
-        TierFeatureInline,
     )
 
     __all__ = [
-        # Tenant admins
-        "SubscriptionTierAdmin",
-        "TenantAdmin",
-        "TenantUserAdmin",
-        "TenantUserInline",
-        "TierFeatureInline",
-        # Agent admins
         "AgentAdmin",
         "AgentUserAdmin",
         "AgentInline",
         "AgentUserInline",
-        "AaasFeatureAdmin",
-        "TierFeatureAdmin",
-        "FeatureProviderAdmin",
-        "UsageRecordAdmin",
         "AuditLogAdmin",
     ]
 except Exception:

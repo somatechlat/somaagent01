@@ -21,7 +21,6 @@ def map_capsule_tenants_to_fk(apps, schema_editor):
         defaults={
             "name": "Default Tier",
             "is_active": True,
-            "is_public": False,
             "sort_order": 0,
         },
     )

@@ -11,7 +11,8 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
-from admin.common.auth import RoleRequired
+from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["admin-memory"])
 
@@ -36,12 +37,15 @@ class MemoryMetricsResponse(BaseModel):
     "/memory/metrics",
     response=MemoryMetricsResponse,
     summary="Get memory and Kafka metrics",
-    auth=RoleRequired("admin", "aaas_admin"),
+    auth=AuthBearer(),
 )
 async def admin_memory_metrics(
     request: HttpRequest,
 ) -> MemoryMetricsResponse:
     """Get Kafka health metrics for memory subsystem."""
+    # A role string is not the catalog. Reading platform metrics is
+    # ``system:read_metrics``, and that is the authority being spent here.
+    await authorize(request, action="system:read_metrics", resource="memory")
     from services.common.event_bus import KafkaEventBus, KafkaSettings
 
     client = KafkaEventBus(KafkaSettings.from_env())

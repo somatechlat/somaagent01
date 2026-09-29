@@ -19,6 +19,7 @@ from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError
 from admin.common.messages import ErrorCode, get_message
 from admin.core.models import FeatureFlag as FeatureFlagModel
+from services.common.authorization import authorize
 
 router = Router(tags=["config"])
 logger = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ async def get_system_config(
     VIBE: Returns REAL Environment Variables (safelist).
     DevOps: Platform-level settings.
     """
+    await authorize(request, action="system:view", resource="settings")
     # Safe list of exposed config
     exposed_keys = [
         ("DEBUG", "bool", "general"),
@@ -122,6 +124,7 @@ async def update_system_config(
     VIBE: Runtime updates not supported for Env Vars.
     Use Deployment update.
     """
+    await authorize(request, action="system:configure", resource="settings")
     return {"error": get_message(ErrorCode.CONFIG_RUNTIME_UPDATE_NOT_SUPPORTED)}, 400
 
 
@@ -144,6 +147,7 @@ async def get_tenant_config(
 
     Pending: Wire to AgentSetting or TenantConfig model when available.
     """
+    await authorize(request, action="org:read", resource="settings")
     return ConfigListResponse(items=[], total=0)
 
 
@@ -159,6 +163,7 @@ async def update_tenant_config(
     value: str,
 ) -> tuple[dict, int]:
     """Update tenant configuration."""
+    await authorize(request, action="org:update", resource="settings")
     return {"error": get_message(ErrorCode.CONFIG_TENANT_MODEL_PENDING)}, 501
 
 
@@ -181,6 +186,7 @@ async def get_feature_flags(
 
     DevOps: Feature flag management via DB.
     """
+    await authorize(request, action="system:view", resource="settings")
 
     @sync_to_async
     def _get_flags():
@@ -216,6 +222,7 @@ async def create_feature_flag(
     description: Optional[str] = None,
 ) -> dict:
     """Create a new feature flag."""
+    await authorize(request, action="system:configure", resource="settings")
 
     @sync_to_async
     def _create():
@@ -241,6 +248,7 @@ async def update_feature_flag(
     enabled: bool,
 ) -> dict:
     """Update feature flag state."""
+    await authorize(request, action="system:configure", resource="settings")
 
     @sync_to_async
     def _update():
@@ -268,6 +276,7 @@ async def update_feature_flag(
 )
 async def delete_feature_flag(request, key: str) -> dict:
     """Delete a feature flag."""
+    await authorize(request, action="system:configure", resource="settings")
 
     @sync_to_async
     def _delete():
@@ -301,6 +310,7 @@ async def check_feature_flag(
 
     DevOps: Evaluate feature flag with targeting rules.
     """
+    await authorize(request, action="system:view", resource="settings")
 
     @sync_to_async
     def _check():
@@ -342,6 +352,9 @@ async def list_secrets(request) -> dict:
     var is set. An ENV set-check would advertise a model that does not exist and
     would read as "configured" for a value the application never consults.
     """
+    # Names and presence, never values — but an inventory of which credentials
+    # exist is still a map of where the bodies are buried. It is not public.
+    await authorize(request, action="system:view", resource="settings")
     from services.common.unified_secret_manager import get_secret_manager
 
     credentials = ["llm_api_key", "somabrain_memory_http_token", "postgres_password"]

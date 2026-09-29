@@ -21,13 +21,27 @@ class RecordingPolicyClient:
     def __init__(self, allowed: bool) -> None:
         self.allowed = allowed
 
+    @property
+    def is_configured(self) -> bool:
+        # Part of the PolicyClient contract. Without it authorize() treats the
+        # client as unconfigured and skips the policy layer these tests assert on.
+        return True
+
     async def evaluate(self, request) -> bool:  # noqa: ANN001
         return self.allowed
 
 
 class MinimalRequest:
+    """Request stand-in carrying the subject authorize() reads.
+
+    `auth` is the caller's identity, not a gate bypass: authorize() applies
+    the RBAC floor before OPA, and a request with no roles is denied there
+    without ever reaching the policy engine these tests are about.
+    """
+
     def __init__(self) -> None:
         self.headers = {"X-Tenant-Id": "tenant-a"}
+        self.auth = {"roles": ["sysadmin"]}
 
 
 class RecordingPublisher:

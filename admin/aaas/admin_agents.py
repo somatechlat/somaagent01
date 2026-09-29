@@ -8,15 +8,7 @@ try:
     from django.contrib import admin
     from django.utils.html import format_html
 
-    from admin.aaas.models import (
-        AaasFeature,
-        Agent,
-        AgentUser,
-        AuditLog,
-        FeatureProvider,
-        TierFeature,
-        UsageRecord,
-    )
+    from admin.aaas.models import Agent, AgentUser, AuditLog
 
     class AgentUserInline(admin.TabularInline):
         """Inline for managing users assigned to an agent."""
@@ -104,77 +96,6 @@ try:
         @admin.display(description="User ID")
         def user_id_short(self, obj):
             return str(obj.user_id)[:8] if obj.user_id else "-"
-
-    @admin.register(AaasFeature)
-    class AaasFeatureAdmin(admin.ModelAdmin):
-        """Django Admin for AAAS Features."""
-
-        list_display = ["name", "code", "category", "is_active", "sort_order", "created_at"]
-        list_filter = ["category", "is_active", "created_at"]
-        search_fields = ["name", "code", "description"]
-        readonly_fields = ["id", "created_at", "updated_at"]
-        ordering = ["category", "sort_order", "name"]
-
-        fieldsets = (
-            ("Feature Information", {"fields": ("id", "name", "code", "description", "category")}),
-            ("Limits", {"fields": ("default_quota", "quota_unit")}),
-            ("Display", {"fields": ("sort_order", "is_active")}),
-            ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
-        )
-
-    @admin.register(TierFeature)
-    class TierFeatureAdmin(admin.ModelAdmin):
-        """Django Admin for Tier-Feature mappings."""
-
-        list_display = ["tier", "feature", "is_enabled", "quota_limit"]
-        list_filter = ["tier", "is_enabled"]
-        search_fields = ["tier__name", "feature__name"]
-        list_select_related = ["tier", "feature"]
-
-    @admin.register(FeatureProvider)
-    class FeatureProviderAdmin(admin.ModelAdmin):
-        """Django Admin for Feature Providers."""
-
-        list_display = ["name", "code", "feature", "is_default", "is_active", "created_at"]
-        list_filter = ["is_active", "is_default", "feature"]
-        search_fields = ["name", "code", "description"]
-        list_select_related = ["feature"]
-
-    @admin.register(UsageRecord)
-    class UsageRecordAdmin(admin.ModelAdmin):
-        """Django Admin for Usage Records - read-only for billing."""
-
-        list_display = [
-            "tenant",
-            "metric_code",
-            "quantity",
-            "unit",
-            "recorded_at",
-        ]
-        list_filter = ["metric_code", "recorded_at", "tenant"]
-        search_fields = ["tenant__name", "metric_code"]
-        readonly_fields = [
-            "id",
-            "tenant",
-            "agent",
-            "metric_code",
-            "quantity",
-            "unit",
-            "metadata",
-            "recorded_at",
-            "period_start",
-            "period_end",
-        ]
-        ordering = ["-recorded_at"]
-        list_per_page = 100
-        date_hierarchy = "recorded_at"
-        list_select_related = ["tenant"]
-
-        def has_add_permission(self, request):
-            return False
-
-        def has_delete_permission(self, request, obj=None):
-            return False
 
     @admin.register(AuditLog)
     class AuditLogAdmin(admin.ModelAdmin):

@@ -3,23 +3,27 @@ Settings API - Django Ninja endpoints for service configuration
 
 
 - Pure Django Ninja implementation
-- Django ORM for persistence
-- Permission-aware read/write
-- 10 personas in mind (especially DevOps Engineer, Security Specialist)
+- Django ORM for persistence (``InfrastructureConfig`` / ``ServiceHealth``)
+- Permission-aware read *and* write — both directions are gated
 """
 
 import logging
-import os
-from typing import Optional
+from typing import Any, Dict, Optional
 
+from asgiref.sync import sync_to_async
 from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.exceptions import ServiceError, ValidationError
 from admin.common.messages import ErrorCode, get_message
+from config.settings_registry import get_settings as get_registry_settings
 from services.common import publisher as publisher_mod
 from services.common.authorization import authorize
+from services.common.secret_policy import (
+    assert_no_secret_value,
+    is_secret_shaped_key,
+)
 
 LOGGER = logging.getLogger("settings_v2")
 
@@ -34,7 +38,7 @@ class SettingsResponse(BaseModel):
 
     entity: str
     values: dict
-    source: str  # 'database', 'env', 'default'
+    source: str  # 'database' | 'registry' | 'default'
     last_modified: Optional[str] = None
 
 
@@ -52,111 +56,233 @@ class SettingsUpdateResponse(BaseModel):
     message: str
 
 
-# Default settings from environment/Django settings (secure defaults)
-DEFAULT_SETTINGS = {
+# ─────────────────────────────────────────────────────────────────────────────
+# Where each value comes from, and why
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Three stores, and the split is not arbitrary:
+#
+#   registry   Bootstrap topology. Needed before Django and Postgres exist,
+#              so it cannot live in either. Exposed here READ-ONLY: pointing
+#              the running stack at a different Postgres from inside Postgres
+#              is not a real operation. Changing it is a deploy.
+#   database   Everything else — pool sizes, timeouts, retention, model
+#              names, integration URLs. Mutable at runtime, so it lives in
+#              ``InfrastructureConfig`` where RBAC can gate every read and
+#              every write.
+#   default    The seed for a database key that has never been written. A
+#              declared policy value, not a fallback for missing config.
+#
+# Secrets appear in none of them. A secret-shaped key stores a Vault *path*
+# and ``InfrastructureConfig.save()`` refuses anything else (Rule 164).
+#
+# ``os.environ`` is not consulted. Rule 100 retired it as a config store.
+
+# key -> {"type", "editable", "default"?, "registry"?}
+#
+# `registry` names an attribute on the settings registry instance. A key that
+# carries one is topology and is never editable through this API.
+ENTITY_SPECS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "postgresql": {
-        "host": os.getenv("POSTGRES_HOST", "localhost"),
-        "port": int(os.getenv("POSTGRES_PORT", "5432")),
-        "database": os.getenv("POSTGRES_DB", "somaagent"),
-        "user": os.getenv("POSTGRES_USER", "soma"),
-        "pool_size": 20,
-        "max_overflow": 10,
-        "timeout": 30,
+        "host": {"type": "url", "editable": False, "registry": "postgres_host"},
+        "port": {"type": "integer", "editable": False, "registry": "postgres_port"},
+        "database": {"type": "string", "editable": False, "registry": "postgres_db"},
+        "user": {"type": "string", "editable": False, "registry": "postgres_user"},
+        "pool_size": {"type": "integer", "editable": True, "default": 20},
+        "max_overflow": {"type": "integer", "editable": True, "default": 10},
+        "timeout": {"type": "integer", "editable": True, "default": 30},
     },
     "redis": {
-        "url": os.getenv("REDIS_URL"),
-        "max_connections": 100,
-        "ttl_default": 3600,
+        "url": {"type": "url", "editable": False, "registry": "redis_url"},
+        "max_connections": {"type": "integer", "editable": True, "default": 100},
+        "ttl_default": {"type": "integer", "editable": True, "default": 3600},
     },
     "kafka": {
-        "brokers": os.getenv("KAFKA_BROKERS", "localhost:9092"),
-        "group_id": "somaagent-group",
-        "auto_offset_reset": "latest",
+        "brokers": {
+            "type": "string",
+            "editable": False,
+            "registry": "kafka_bootstrap_servers",
+        },
+        "group_id": {"type": "string", "editable": True, "default": "somaagent-group"},
+        "auto_offset_reset": {"type": "string", "editable": True, "default": "latest"},
     },
     "temporal": {
-        "host": os.getenv("TEMPORAL_HOST", "temporal:7233"),
-        "namespace": "default",
-        "task_queue": "soma-tasks",
-        "workflow_timeout": 3600,
-        "activity_timeout": 300,
-        "retry_max": 3,
+        "host": {"type": "string", "editable": False, "registry": "temporal_host"},
+        "namespace": {"type": "string", "editable": True, "default": "default"},
+        "task_queue": {"type": "string", "editable": True, "default": "soma-tasks"},
+        "workflow_timeout": {"type": "integer", "editable": True, "default": 3600},
+        "activity_timeout": {"type": "integer", "editable": True, "default": 300},
+        "retry_max": {"type": "integer", "editable": True, "default": 3},
     },
+    # Keycloak / SomaBrain / Voice are integration endpoints, not bootstrap
+    # topology: nothing needs them before the ORM is up. They are therefore
+    # ordinary editable settings — which is what makes them RBAC-addressable
+    # rather than a deploy.
     "keycloak": {
-        "url": os.getenv("KEYCLOAK_URL", "http://keycloak:8080"),
-        "realm": os.getenv("KEYCLOAK_REALM", "master"),
-        "client_id": os.getenv("KEYCLOAK_CLIENT_ID", ""),
-        # Don't expose secret in defaults
+        "url": {"type": "url", "editable": True, "default": "http://keycloak:8080"},
+        "realm": {"type": "string", "editable": True, "default": "master"},
+        "client_id": {"type": "string", "editable": True, "default": ""},
+        # The client secret is not here. It lives in Vault; the settings row
+        # would hold `secret/agent/credentials/keycloak_client_secret`.
     },
     "somabrain": {
-        "url": os.getenv("SOMABRAIN_URL", "http://somabrain:8000"),
-        "retention_days": 365,
-        "sleep_interval": 21600,
-        "consolidation_enabled": True,
+        "url": {"type": "url", "editable": True, "default": "http://somabrain:8000"},
+        "retention_days": {"type": "integer", "editable": True, "default": 365},
+        "sleep_interval": {"type": "integer", "editable": True, "default": 21600},
+        "consolidation_enabled": {"type": "boolean", "editable": True, "default": True},
     },
     "voice": {
-        "whisper_url": os.getenv("WHISPER_URL", "http://whisper:8000"),
-        "whisper_model": "base",
-        "kokoro_url": os.getenv("KOKORO_URL", "http://kokoro:8000"),
-        "kokoro_voice": "af_nicole",
+        "whisper_url": {"type": "url", "editable": True, "default": "http://whisper:8000"},
+        "whisper_model": {"type": "string", "editable": True, "default": "base"},
+        "kokoro_url": {"type": "url", "editable": True, "default": "http://kokoro:8000"},
+        "kokoro_voice": {"type": "string", "editable": True, "default": "af_nicole"},
     },
 }
 
 
-def get_settings_from_db(entity: str) -> Optional[dict]:
-    """Get settings from database if stored there"""
-    try:
-        from admin.core.models import ServiceConfig  # type: ignore[import-not-found]
+def _registry_value(attr: str) -> Any:
+    """Read one topology attribute off the settings registry.
 
-        config = ServiceConfig.objects.filter(service_name=entity, is_active=True).first()
-        if config:
-            return config.config_json
-    except Exception:
-        # Model might not exist yet
-        pass
-    return None
+    The registry is the single source for a deployment's shape. Reading it
+    here rather than re-declaring the host is what keeps "one place" true.
+    """
+    return getattr(get_registry_settings(), attr)
+
+
+def seed_defaults(entity: str) -> Dict[str, Any]:
+    """The full declared shape of one entity, before any operator edit.
+
+    Topology keys resolve through the registry; everything else uses its
+    declared default. This is what a fresh deployment sees, and it is what
+    ``GET`` reports as ``source="default"`` when no row has been written.
+    """
+    values: Dict[str, Any] = {}
+    for key, spec in ENTITY_SPECS[entity].items():
+        if "registry" in spec:
+            values[key] = _registry_value(spec["registry"])
+        else:
+            values[key] = spec.get("default")
+    return values
+
+
+# `DEFAULT_SETTINGS` used to be a module-level dict built by reading
+# `os.environ` at import time. It is gone: building it here would force a
+# registry load — and therefore a Vault round-trip — the moment this module
+# is imported. Use `seed_defaults(entity)` when the declared shape is needed.
+
+
+def get_settings_from_db(entity: str) -> Optional[dict]:
+    """Read the operator-written overrides for one entity.
+
+    Returns ``None`` when nothing has been written, which is a real state
+    ("use the declared shape"), not an error. A database that cannot be read
+    is an error and raises — swallowing it is how "cannot read the store"
+    becomes "not configured", and then the stack boots on values nobody chose.
+
+    A secret-shaped key comes back as its Vault *path*, never as a credential
+    (Rule 164).
+    """
+    from admin.core.infrastructure.models import InfrastructureConfig
+
+    rows = InfrastructureConfig.objects.filter(service__service_name=entity)
+    if not rows.exists():
+        return None
+
+    out: Dict[str, Any] = {}
+    for row in rows:
+        assert_no_secret_value(
+            row.key, row.value, where=f"InfrastructureConfig({entity}.{row.key})"
+        )
+        out[row.key] = row.value
+    return out
 
 
 def save_settings_to_db(entity: str, values: dict) -> bool:
-    """Save settings to database"""
-    try:
-        from admin.core.models import ServiceConfig  # type: ignore[import-not-found]
+    """Persist operator overrides for one entity.
 
-        config, created = ServiceConfig.objects.update_or_create(
-            service_name=entity, defaults={"config_json": values, "is_active": True}
+    Every row goes through ``InfrastructureConfig.save()``, which is the
+    Rule 164 write gate — a credential here is refused before the DB is
+    touched. The check is repeated in this layer so a caller cannot reach
+    persistence around the model, and so the failure names the entity.
+    """
+    from admin.core.infrastructure.models import InfrastructureConfig, ServiceHealth
+
+    for key, value in values.items():
+        assert_no_secret_value(key, value, where=f"settings[{entity}].{key}")
+
+    service, _ = ServiceHealth.objects.get_or_create(
+        service_name=entity,
+        defaults={
+            "display_name": entity.replace("_", " ").title(),
+            "category": "core",
+            "status": "unknown",
+        },
+    )
+
+    spec = ENTITY_SPECS.get(entity, {})
+    for key, value in values.items():
+        key_spec = spec.get(key, {})
+        row, _created = InfrastructureConfig.objects.get_or_create(
+            service=service,
+            key=key,
+            defaults={
+                "value": "" if value is None else str(value),
+                "default_value": str(key_spec.get("default", "")),
+                "is_secret": is_secret_shaped_key(key),
+                "is_editable": bool(key_spec.get("editable", True)),
+                "value_type": key_spec.get("type", "string"),
+            },
         )
-        return True
-    except Exception as e:
-        print(f"Failed to save settings for {entity}: {e}")
-        return False
+        if not _created:
+            if not row.is_editable:
+                raise ValidationError(
+                    get_message(
+                        ErrorCode.VALIDATION_ERROR,
+                        details=f"{entity}.{key} is topology and is not editable at runtime",
+                    ),
+                    details={"entity": entity, "key": key},
+                )
+            row.value = "" if value is None else str(value)
+            row.save()
+    return True
 
 
 @router.get("/{entity}", response=SettingsResponse)
-def get_settings(request: HttpRequest, entity: str):
+async def get_settings(request: HttpRequest, entity: str):
     """
     Get settings for a service entity.
-    Checks: database first, then env/defaults.
+
+    Gated: configuration is not public. Reads and writes both go through
+    ``authorize()``, so a principal who may not see a service's shape cannot
+    probe it here.
     """
-    # Check database first
-    db_settings = get_settings_from_db(entity)
-    if db_settings:
+    await authorize(request, action="system:view", resource="settings")
+
+    if entity not in ENTITY_SPECS:
+        raise ValidationError(
+            get_message(ErrorCode.VALIDATION_ERROR, details=f"Unknown entity: {entity}"),
+            details={"entity": entity},
+        )
+
+    defaults = seed_defaults(entity)
+    # sync_to_async: these views are async, Django's ORM is not. Reaching for
+    # the ORM directly here raises SynchronousOnlyOperation rather than
+    # blocking the loop, which is the failure this wrapper exists to avoid.
+    db_settings = await sync_to_async(get_settings_from_db)(entity)
+    if db_settings is not None:
         return SettingsResponse(
             entity=entity,
-            values=db_settings,
+            values={**defaults, **db_settings},
             source="database",
         )
 
-    # Fall back to defaults
-    if entity in DEFAULT_SETTINGS:
-        return SettingsResponse(
-            entity=entity,
-            values=DEFAULT_SETTINGS[entity],
-            source="default",
-        )
-
+    # Nothing written yet — the declared shape. `source` says which, so the
+    # caller can tell "operator chose this" from "nobody has chosen yet".
+    topology_only = all("registry" in s for s in ENTITY_SPECS[entity].values())
     return SettingsResponse(
         entity=entity,
-        values={},
-        source="unknown",
+        values=defaults,
+        source="registry" if topology_only else "default",
     )
 
 
@@ -169,20 +295,33 @@ async def update_settings(request: HttpRequest, entity: str, payload: SettingsUp
     emits a ``settings.changed`` audit event through the durable publisher.
     """
     # Gate first — no unauthenticated probing of validation errors.
-    await authorize(request, action="settings:write", resource="settings")
+    await authorize(request, action="system:configure", resource="settings")
 
     # Validate entity
-    if entity not in DEFAULT_SETTINGS:
+    if entity not in ENTITY_SPECS:
         raise ValidationError(
             get_message(ErrorCode.VALIDATION_ERROR, details=f"Unknown entity: {entity}"),
             details={"entity": entity},
         )
 
-    # Merge with defaults (don't lose fields)
-    merged = {**DEFAULT_SETTINGS.get(entity, {}), **payload.values}
+    spec = ENTITY_SPECS[entity]
+    for key in payload.values:
+        if key in spec and not spec[key].get("editable", True):
+            raise ValidationError(
+                get_message(
+                    ErrorCode.VALIDATION_ERROR,
+                    details=(
+                        f"{entity}.{key} is deployment topology. It is readable "
+                        f"here but changes with a deploy, not a request."
+                    ),
+                ),
+                details={"entity": entity, "key": key},
+            )
 
-    # Save to database
-    if not save_settings_to_db(entity, merged):
+    # Only the operator's keys are written. The declared shape is the seed
+    # a reader merges in; persisting it too would overwrite a registry change
+    # with a snapshot taken at some earlier request.
+    if not await sync_to_async(save_settings_to_db)(entity, payload.values):
         raise ServiceError(
             get_message(ErrorCode.INTERNAL_ERROR),
             details={"entity": entity},
@@ -192,7 +331,9 @@ async def update_settings(request: HttpRequest, entity: str, payload: SettingsUp
     # result to failure. The durable publisher owns retries.
     await _emit_settings_changed(request, entity, list(payload.values.keys()))
 
-    return SettingsUpdateResponse(success=True, entity=entity, message="Settings saved")
+    return SettingsUpdateResponse(
+        success=True, entity=entity, message="Settings saved"
+    )
 
 
 async def _emit_settings_changed(request: HttpRequest, entity: str, changed_keys: list) -> None:
@@ -221,8 +362,13 @@ async def _emit_settings_changed(request: HttpRequest, entity: str, changed_keys
 
 
 @router.get("/", response=list)
-def list_services(request: HttpRequest):
-    """List all configurable services"""
+async def list_services(request: HttpRequest):
+    """List all configurable services.
+
+    Gated like every other settings surface — the inventory of what the
+    platform is wired to is itself configuration.
+    """
+    await authorize(request, action="system:view", resource="settings")
     return [
         {"entity": "postgresql", "name": "PostgreSQL", "icon": "database"},
         {"entity": "redis", "name": "Redis", "icon": "bolt"},

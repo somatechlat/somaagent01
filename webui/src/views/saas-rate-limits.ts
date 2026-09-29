@@ -26,15 +26,6 @@ interface RateLimit {
   policy: 'HARD' | 'SOFT';
 }
 
-interface TierOverride {
-  tier: string;
-  api_calls: number | null;
-  voice_minutes: number | null;
-  llm_tokens: number | null;
-  file_uploads: number | null;
-  memory_queries: number | null;
-}
-
 @customElement('saas-rate-limits')
 export class SaasRateLimits extends LitElement {
   static styles = css`
@@ -189,76 +180,10 @@ export class SaasRateLimits extends LitElement {
     .policy-hard { background: #fee2e2; color: #991b1b; }
     .policy-soft { background: #fef3c7; color: #92400e; }
 
-    /* Tier Grid */
-    .tier-grid {
-      display: grid;
-      grid-template-columns: 120px repeat(5, 1fr);
-      gap: 1px;
-      background: #e0e0e0;
-    }
-
-    .tier-cell, .tier-header {
-      padding: 12px 16px;
-      background: #fff;
-      font-size: 12px;
-    }
-
-    .tier-header {
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: #888;
-      background: #fafafa;
-    }
-
-    .tier-name {
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tier-badge {
-      font-size: 9px;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
-    .tier-free { background: #e0e0e0; }
-    .tier-starter { background: #dbeafe; color: #1e40af; }
-    .tier-team { background: #dcfce7; color: #166534; }
-    .tier-enterprise { background: #ede9fe; color: #5b21b6; }
-
-    .tier-input {
-      width: 100%;
-      padding: 6px;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      font-size: 12px;
-      text-align: center;
-      background: transparent;
-    }
-
-    .tier-input:hover { border-color: #e0e0e0; }
-    .tier-input:focus { outline: none; border-color: #1a1a1a; background: #fff; }
-
-    .unlimited { color: #16a34a; font-weight: 500; }
-
-    .btn-icon {
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-    }
-
     .loading { display: flex; justify-content: center; padding: 60px; color: #999; }
   `;
 
   @state() private limits: RateLimit[] = [];
-  @state() private tiers: TierOverride[] = [];
   @state() private loading = true;
   @state() private saving = false;
 
@@ -278,10 +203,8 @@ export class SaasRateLimits extends LitElement {
         window_seconds: l.window_seconds,
         policy: l.policy,
       }));
-      this.tiers = [];
     } catch {
       this.limits = [];
-      this.tiers = [];
     } finally {
       this.loading = false;
     }
@@ -296,12 +219,6 @@ export class SaasRateLimits extends LitElement {
   private updateLimit(key: string, field: keyof RateLimit, value: unknown) {
     this.limits = this.limits.map(l =>
       l.key === key ? { ...l, [field]: value } : l
-    );
-  }
-
-  private updateTierOverride(tier: string, field: keyof TierOverride, value: unknown) {
-    this.tiers = this.tiers.map(t =>
-      t.tier === tier ? { ...t, [field]: value } : t
     );
   }
 
@@ -323,10 +240,6 @@ export class SaasRateLimits extends LitElement {
     } finally {
       this.saving = false;
     }
-  }
-
-  private getTierClass(tier: string): string {
-    return `tier-${tier.toLowerCase()}`;
   }
 
   render() {
@@ -405,66 +318,6 @@ export class SaasRateLimits extends LitElement {
               </div>
             </div>
 
-            <!-- Per-Tier Overrides -->
-            <div class="section">
-              <div class="section-header">
-                <span class="section-title">Per-Tier Overrides</span>
-              </div>
-              <div class="section-content">
-                <div class="tier-grid">
-                  <!-- Header Row -->
-                  <div class="tier-header">Tier</div>
-                  <div class="tier-header">API Calls</div>
-                  <div class="tier-header">Voice Min</div>
-                  <div class="tier-header">LLM Tokens</div>
-                  <div class="tier-header">File Uploads</div>
-                  <div class="tier-header">Memory Queries</div>
-
-                  <!-- Tier Rows -->
-                  ${this.tiers.map(tier => html`
-                    <div class="tier-cell tier-name">
-                      <span class="tier-badge ${this.getTierClass(tier.tier)}">${tier.tier}</span>
-                    </div>
-                    <div class="tier-cell">
-                      ${tier.api_calls === null
-        ? html`<span class="unlimited">Unlimited</span>`
-        : html`<input type="number" class="tier-input" .value=${String(tier.api_calls)}
-                            @change=${(e: Event) => this.updateTierOverride(tier.tier, 'api_calls', parseInt((e.target as HTMLInputElement).value))}>`
-      }
-                    </div>
-                    <div class="tier-cell">
-                      ${tier.voice_minutes === null
-        ? html`<span class="unlimited">Unlimited</span>`
-        : html`<input type="number" class="tier-input" .value=${String(tier.voice_minutes)}
-                            @change=${(e: Event) => this.updateTierOverride(tier.tier, 'voice_minutes', parseInt((e.target as HTMLInputElement).value))}>`
-      }
-                    </div>
-                    <div class="tier-cell">
-                      ${tier.llm_tokens === null
-        ? html`<span class="unlimited">Unlimited</span>`
-        : html`<input type="number" class="tier-input" .value=${String(tier.llm_tokens)}
-                            @change=${(e: Event) => this.updateTierOverride(tier.tier, 'llm_tokens', parseInt((e.target as HTMLInputElement).value))}>`
-      }
-                    </div>
-                    <div class="tier-cell">
-                      ${tier.file_uploads === null
-        ? html`<span class="unlimited">Unlimited</span>`
-        : html`<input type="number" class="tier-input" .value=${String(tier.file_uploads)}
-                            @change=${(e: Event) => this.updateTierOverride(tier.tier, 'file_uploads', parseInt((e.target as HTMLInputElement).value))}>`
-      }
-                    </div>
-                    <div class="tier-cell">
-                      ${tier.memory_queries === null
-        ? html`<span class="unlimited">Unlimited</span>`
-        : html`<input type="number" class="tier-input" .value=${String(tier.memory_queries)}
-                            @change=${(e: Event) => this.updateTierOverride(tier.tier, 'memory_queries', parseInt((e.target as HTMLInputElement).value))}>`
-      }
-                    </div>
-                  `)}
-                </div>
-              </div>
-            </div>
-
             <!-- Legend -->
             <div class="section">
               <div class="section-header">
@@ -473,7 +326,7 @@ export class SaasRateLimits extends LitElement {
               <div class="section-content" style="padding: 16px 20px;">
                 <div style="display: flex; gap: 24px; font-size: 13px;">
                   <div><span class="policy-badge policy-hard">HARD</span> Block requests when quota exceeded</div>
-                  <div><span class="policy-badge policy-soft">SOFT</span> Warn but allow overage (bill for extra)</div>
+                  <div><span class="policy-badge policy-soft">SOFT</span> Warn but allow overage</div>
                 </div>
               </div>
             </div>

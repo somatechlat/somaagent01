@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ServiceError
+from services.common.authorization import authorize
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ async def _gateway():
 @router.get("/", summary="List recent memories", auth=AuthBearer())
 async def list_memories(request, limit: int = 20) -> dict:
     """Recent memories from SomaBrain (recall-wide)."""
+    await authorize(request, action="resource:memory_read", resource="memory")
     gateway = await _gateway()
     tenant_id = _tenant(request)
     try:
@@ -79,6 +81,7 @@ async def list_memories(request, limit: int = 20) -> dict:
 @router.post("/recall", summary="Recall memories", auth=AuthBearer())
 async def recall_memories(request, payload: MemoryRecallIn) -> dict:
     """Semantic recall via SomaBrain only."""
+    await authorize(request, action="resource:memory_search", resource="memory")
     gateway = await _gateway()
     tenant_id = _tenant(request)
     try:
@@ -101,6 +104,7 @@ async def recall_memories(request, payload: MemoryRecallIn) -> dict:
 @router.post("/save", summary="Save memory", auth=AuthBearer())
 async def save_memory(request, payload: MemorySaveIn) -> dict:
     """Persist a memory through SomaBrain (one write lane)."""
+    await authorize(request, action="resource:memory_write", resource="memory")
     gateway = await _gateway()
     tenant_id = _tenant(request)
     try:
@@ -140,6 +144,7 @@ class MemoryForgetIn(BaseModel):
 @router.post("/forget", summary="Forget memory by coord (body)", auth=AuthBearer())
 async def forget_memory_body(request, payload: MemoryForgetIn) -> dict:
     """Erase a memory via SomaBrain forget. Body form avoids URL-encoding coords."""
+    await authorize(request, action="resource:memory_delete", resource="memory")
     gateway = await _gateway()
     tenant_id = _tenant(request)
     coord = (payload.coord or "").strip()
@@ -158,6 +163,7 @@ async def forget_memory_body(request, payload: MemoryForgetIn) -> dict:
 async def forget_memory(request, coord: str) -> dict:
     """Erase a memory via SomaBrain forget. Prefer POST /memory/forget for coords
     containing commas (URL path segments split on them)."""
+    await authorize(request, action="resource:memory_delete", resource="memory")
     gateway = await _gateway()
     tenant_id = _tenant(request)
     coord = (coord or "").strip()

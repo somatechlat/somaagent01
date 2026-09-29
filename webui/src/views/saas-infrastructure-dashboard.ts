@@ -6,7 +6,7 @@
  * - Matches existing SAAS design system (tokens.css)
  * - Light theme, minimal, professional
  * - Google Material Symbols icons (NO EMOJIS)
- * - Sidebar + Header pattern per saas-platform-dashboard.ts
+ * - Sidebar + Header pattern
  */
 
 import { LitElement, html, css, nothing } from 'lit';

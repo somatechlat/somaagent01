@@ -278,7 +278,11 @@ class InfrastructureConfig(models.Model):
     """Infrastructure service configuration stored in ORM.
 
     Allows viewing and modifying service configs through UI.
-    Secrets are stored encrypted.
+
+    This is **configuration**, not a secret store. Topology only — hosts,
+    ports, pool sizes, timeouts, feature toggles. A row whose key is
+    secret-shaped may hold a Vault *path* and nothing else; the credential
+    itself lives in Vault (VIBE Rule 164). `save()` enforces that.
     """
 
     id = models.UUIDField(
@@ -296,10 +300,14 @@ class InfrastructureConfig(models.Model):
         max_length=100, help_text="Configuration key (e.g., 'host', 'port', 'pool_size')"
     )
 
-    value = models.TextField(blank=True, help_text="Configuration value (encrypted if is_secret)")
+    value = models.TextField(
+        blank=True,
+        help_text="Configuration value. If is_secret, a Vault path — never the credential.",
+    )
 
     is_secret = models.BooleanField(
-        default=False, help_text="Whether this value should be encrypted/hidden"
+        default=False,
+        help_text="Key names a credential: value must be a Vault path or empty. Not a storage mode.",
     )
 
     is_editable = models.BooleanField(
@@ -334,9 +342,57 @@ class InfrastructureConfig(models.Model):
 
         return f"{self.service.service_name}.{self.key}"
 
+    def save(self, *args, **kwargs):
+        """Refuse to become a second secret store. VIBE Rule 164.
+
+        This model used to advertise "Secrets are stored encrypted" and carry
+        an `is_secret` flag with its own masking. That is a second secret
+        store: separate backup, separate access control, separate key
+        management — and a stolen Postgres replica walks away with every
+        credential it holds.
+
+        The flag survives as an assertion, not a storage mode: `is_secret=True`
+        means this key *names* a credential, so `value` and `default_value`
+        may hold only a Vault path or nothing. Consumers resolve the real
+        value from Vault at point of use.
+        """
+        from services.common.secret_policy import (
+            assert_no_secret_value,
+            assert_vault_path_or_empty,
+        )
+
+        # `service` is a nullable FK and rows are built without it before the
+        # first save, so the diagnostic string must not dereference it.
+        service_name = getattr(getattr(self, "service", None), "service_name", None) or "?"
+        where = f"InfrastructureConfig({service_name}.{self.key})"
+
+        # `is_secret=True` is an explicit claim that this is a credential, so
+        # both value and default must be pointers, never material.
+        if self.is_secret:
+            assert_vault_path_or_empty(self.key, self.value, where=where)
+            assert_vault_path_or_empty(self.key, self.default_value, where=where)
+        else:
+            # Still catch credential material hidden under a plain key.
+            assert_no_secret_value(self.key, self.value, where=where)
+            assert_no_secret_value(self.key, self.default_value, where=where)
+
+        super().save(*args, **kwargs)
+
     def get_display_value(self) -> str:
-        """Get value for display (masked if secret)."""
+        """Value for display.
+
+        A secret-shaped row holds a Vault path, not a credential, so the path
+        is shown as-is — an operator needs to see *where* the credential comes
+        from. Masking it would hide the pointer and leak nothing (VIBE Rule
+        164). If a raw credential ever reached this column, `save()` refused
+        it; this mask is the belt to that braces, for rows written before the
+        gate existed.
+        """
         if self.is_secret and self.value:
+            from services.common.secret_policy import is_vault_path
+
+            if is_vault_path(self.value):
+                return self.value
             return "••••••••"
         return self.value
 

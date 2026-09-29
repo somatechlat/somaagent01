@@ -16,6 +16,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from admin.common.exceptions import ServiceUnavailableError, UnauthorizedError
 
 router = Router(tags=["mfa"])
@@ -79,6 +80,8 @@ async def setup_mfa(request) -> MFASetupResponse:
         - Provisioning URI for manual entry
         - Backup codes for recovery
     """
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     import secrets
 
     import pyotp  # type: ignore[import]
@@ -129,6 +132,8 @@ async def verify_mfa(request, payload: MFAVerifyRequest) -> MFAVerifyResponse:
     2. If valid, enables MFA for the user
     3. Returns success/failure status
     """
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
 
     # Fail-closed: MFA secret must be loaded from the user's encrypted DB record,
     # NOT a hardcoded value. Until MFASetup model + persistence is implemented,
@@ -165,6 +170,8 @@ async def validate_mfa_login(request, payload: MFAVerifyRequest) -> dict:
 )
 async def get_mfa_status(request) -> MFAStatusResponse:
     """Get current MFA status for the user."""
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     raise HttpError(501, "MFA status is not implemented: user record store is not wired.")
 
 
@@ -175,6 +182,8 @@ async def get_mfa_status(request) -> MFAStatusResponse:
 )
 async def disable_mfa(request, payload: MFAVerifyRequest) -> dict:
     """Disable MFA (requires current TOTP code)."""
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     import pyotp  # type: ignore[import]  # noqa: F401
 
     # Fail-closed: disabling MFA must verify against the user's real stored secret

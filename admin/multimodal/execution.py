@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError
+from services.common.authorization import authorize
 
 router = Router(tags=["multimodal"])
 logger = logging.getLogger(__name__)
@@ -149,6 +150,8 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
 
     ML Eng: High-quality image generation with prompt optimization.
     """
+    await authorize(request, action="resource:tool_execute", resource="multimodal")
+
     import httpx
 
     # 1. Resolve Model Configuration (Rule 91)
@@ -242,6 +245,7 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
 
     PhD Dev: Convert Mermaid code to visual diagrams.
     """
+    await authorize(request, action="resource:tool_execute", resource="multimodal")
 
     import httpx
 
@@ -298,6 +302,8 @@ async def capture_screenshot(request, payload: ScreenshotRequest) -> ScreenshotR
 
     DevOps: Headless browser automation for screenshots.
     """
+    await authorize(request, action="resource:tool_execute", resource="multimodal")
+
     raise HttpError(501, "Screenshot capture is not implemented: no Playwright service is wired.")
 
 
@@ -319,6 +325,8 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
 
     PhD Dev: Parallel execution with dependency resolution.
     """
+    await authorize(request, action="resource:tool_execute", resource="multimodal")
+
     import asyncio
     import time
 
@@ -404,4 +412,6 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
 )
 async def get_dag_status(request, dag_id: str) -> dict:
     """Get status of a DAG execution."""
+    await authorize(request, action="system:view", resource="multimodal")
+
     raise HttpError(501, "DAG status is not implemented: no DAG execution store is wired.")

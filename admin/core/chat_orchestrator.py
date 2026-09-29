@@ -412,7 +412,7 @@ class V3ChatOrchestrator:
 
             # Phase 4: Permission Check (UnifiedGate + PermissionChecker)
             perm = await self._permission_checker.check(
-                user_id=turn.user_id, permission="chat:send", tenant_id=tenant_id
+                user_id=turn.user_id, permission="resource:chat_send", tenant_id=tenant_id
             )
             if not perm.allowed:
                 result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
@@ -420,11 +420,11 @@ class V3ChatOrchestrator:
                 return result
 
             gate_ok = await self._unified_gate.check(
-                capsule, action="chat:send", user_id=turn.user_id, tenant_id=tenant_id
+                capsule, action="resource:chat_send", user_id=turn.user_id, tenant_id=tenant_id
             )
             if not gate_ok:
                 result.response = get_message(ErrorCode.DEGRADED_GATE_DENIED)
-                result.errors.append("UnifiedGate rejected chat:send")
+                result.errors.append("UnifiedGate rejected resource:chat_send")
                 return result
             result.phase_completed = 4
 
@@ -719,12 +719,12 @@ class V3ChatOrchestrator:
                 asyncio.gather(
                     self._permission_checker.check(
                         user_id=turn.user_id,
-                        permission="chat:send",
+                        permission="resource:chat_send",
                         tenant_id=tenant_id,
                     ),
                     self._unified_gate.check(
                         capsule,
-                        action="chat:send",
+                        action="resource:chat_send",
                         user_id=turn.user_id,
                         tenant_id=tenant_id,
                     ),

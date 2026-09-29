@@ -154,7 +154,10 @@ class ExternalServiceConfig(BaseModel):
 class AuthConfig(BaseModel):
     """Authentication configuration with validation."""
 
-    auth_required: bool = Field(default=True, description="Whether authentication is required")
+    auth_required: bool = Field(
+        default=True,
+        description="Whether authentication is required (always true; see validator)",
+    )
     jwt_secret: Optional[str] = Field(default=None, description="JWT secret key")
     jwt_public_key: Optional[str] = Field(default=None, description="JWT public key")
     jwt_jwks_url: Optional[str] = Field(default=None, description="JWKS URL")
@@ -304,14 +307,17 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def validate_config(self) -> Config:
-        #         """Cross-field validation."""
-        #         # Validate that required auth settings are present if auth is required
-        #         if self.auth.auth_required:
-        #             if not any([self.auth.jwt_secret, self.auth.jwt_public_key, self.auth.jwt_jwks_url]):
-        #                 raise ValueError(
-        #                     "At least one of jwt_secret, jwt_public_key, or jwt_jwks_url is required when auth_required=True"
-        #                 )
+        """Cross-field validation.
 
+        Authentication is not optional. A configuration that claims
+        ``auth_required=False`` is refused at load time rather than accepted
+        and honoured later — the previous version of this validator was
+        commented out, so that claim went unchallenged.
+        """
+        if not self.auth.auth_required:
+            raise ValueError(
+                "auth.auth_required must be true; this product has no unauthenticated mode"
+            )
         return self
 
     def get_somabrain_url(self) -> str:
@@ -405,12 +411,18 @@ class Config(BaseModel):
 
     @auth_required.setter
     def auth_required(self, value: bool) -> None:  # pragma: no cover
-        """Execute auth required.
+        """Set whether authentication is required.
 
-        Args:
-            value: The value.
+        Refuses ``False``. Assignment is a mutation path that bypasses the
+        model validator, so it has to enforce the same rule itself.
+
+        Raises:
+            ValueError: if ``value`` is falsy.
         """
-
+        if not value:
+            raise ValueError(
+                "auth_required cannot be set to false; this product has no unauthenticated mode"
+            )
         self.auth.auth_required = value
 
     # Service metrics host/port

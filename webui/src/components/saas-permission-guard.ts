@@ -149,10 +149,12 @@ export class SaasPermissionGuard extends LitElement {
                 sessionStorage.setItem('user_permissions', JSON.stringify(data.permissions));
             }
 
-            // Check if user has required permission
+            // Check if user has required permission. Exact match only: the
+            // catalog has no wildcards, so a '*' entry is not a grant and must
+            // not be treated as one.
             const requiredPerms = this.permission ? [this.permission] : this.permissions;
             this.hasPermission = requiredPerms.length === 0 ||
-                requiredPerms.some(p => this.userPermissions.has(p) || this.userPermissions.has('*'));
+                requiredPerms.some(p => this.userPermissions.has(p));
         } catch (e) {
             console.error('Failed to check permissions:', e);
             // Fail secure - deny access on error

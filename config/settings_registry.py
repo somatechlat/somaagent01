@@ -8,15 +8,49 @@ VIBE Rule 164: Vault-Mandatory - ALL secrets from Vault
 
 This module is the SINGLE SOURCE OF TRUTH for configuration dispatch
 based on SA01_DEPLOYMENT_MODE (STANDALONE | AAAS | DEV | PROD).
+
+Where a value lives, and why
+----------------------------
+
+========================  ==============================  ====================
+Kind of value             Store                           Why
+========================  ==============================  ====================
+**Secrets**               Vault                           Rule 164. Never env,
+                                                          never Django, never DB.
+**Topology**              THIS FILE, per mode             It is needed before
+                                                          Django and Postgres
+                                                          exist, so it cannot
+                                                          live in either. It is
+                                                          Python config.
+**Per-agent behaviour**   ``AgentSetting``                Per-agent and mutable
+                                                          at runtime (model
+                                                          names, recall limits).
+**Mode selector**         ``SA01_DEPLOYMENT_MODE`` env    The one bootstrap
+                                                          input: the same image
+                                                          serves every mode, so
+                                                          something outside has
+                                                          to say which one.
+========================  ==============================  ====================
+
+Topology is **not** read from ``os.environ`` and **not** staged in a ``.env``
+file. That is the whole point of Rule 100: one dict per mode, in one file,
+reviewable in one diff. ``.env`` files carry no configuration — at most a
+compose file injects the mode selector.
+
+The ``overrides`` parameter is the escape hatch, and it is Python rather than
+env on purpose: tests need ``localhost:63932`` topology and a deployer may
+need to point at a differently-named stack. Passing a dict beats an
+environment variable because it is typed, scoped to one process, and cannot
+leak into ``ps`` or ``/proc/*/environ``.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Optional, Type, TypeVar
+from abc import ABC
+from dataclasses import dataclass, field, fields
+from typing import Any, Dict, Mapping, Optional, TypeVar
 
 from services.common.unified_secret_manager import get_secret_manager
 
@@ -24,40 +58,10 @@ LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T", bound="BaseSettings")
 
+# The single bootstrap input. Everything else is derived from it.
+MODE_ENV_VAR = "SA01_DEPLOYMENT_MODE"
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# VIBE Rule 91: Zero-Fallback Helpers
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-def get_required_env(var_name: str) -> str:
-    """Get a required environment variable. Missing is always fatal.
-
-    VIBE Rule 91: Zero-Fallback Mandate. There is no dev_default and no
-    deployment-mode exemption — a default that lets the stack boot without
-    its configuration is exactly the fallback this rule forbids, and a mode
-    check around it is a bypass. If the variable is required, the operator
-    sets it in every environment.
-    """
-    value = os.environ.get(var_name)
-    if value:
-        return value
-
-    raise RuntimeError(
-        f"VIBE Rule 91 VIOLATION: {var_name} is REQUIRED and is not set. "
-        f"There is no default. Set {var_name} in the environment "
-        f"(deployment topology) — secrets go in Vault, not here."
-    )
-
-
-def get_optional_env(var_name: str, default: str = "") -> str:
-    """Get an optional environment variable.
-
-    Only for values that are genuinely optional: a disabled feature, an
-    unused integration, or a knob with a documented product default. Never
-    for topology that a running deployment needs to connect to anything.
-    """
-    return os.environ.get(var_name, default)
+_VALID_MODES = ("STANDALONE", "AAAS", "AAASMODE", "DEV", "PROD")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -122,7 +126,11 @@ class BaseSettings(ABC):
     auth_attempt_window: int = field(default=900)
 
     # Authorization
-    sa01_authz_fail_open: bool = field(default=False)
+    #
+    # There is deliberately no fail-open switch. Authorization is fail-closed
+    # in every deployment; a configuration value must not be able to turn a
+    # missing policy engine into a grant. The former `sa01_authz_fail_open`
+    # field and the SA01_AUTHZ_FAIL_OPEN environment variable are removed.
 
     # Features
     sa01_feature_profile: str = field(default="enhanced")
@@ -134,80 +142,194 @@ class BaseSettings(ABC):
     # Budget
     sa01_default_token_budget: int = field(default=4096)
 
+    # Integrations
+    # Temporal is topology (a host:port). Empty means "no temporal for this
+    # deployment", which is a real state, not a fallback.
+    temporal_host: str = field(default="")
+    # Optional LiteLLM gateway base URL. Empty means the provider library's
+    # own defaults apply — again a real state, not a missing value.
+    llm_base_url: str = field(default="")
+
+    # ------------------------------------------------------------------
+    # Derived / credential properties
+    # ------------------------------------------------------------------
+
+    @property
     def postgres_password(self) -> str:
-        """The PostgreSQL password, from Vault — never from ENV.
-
-        VIBE Rule 164: a database password is a credential. Topology
-        (host/port/user/db) is deployment configuration and belongs in ENV;
-        the password does not.
-
-        Missing is fatal. There is no empty-string fallback: connecting with a
-        blank password is a silent misconfiguration that surfaces far from its
-        cause, and inventing one is the fake Rule 4 forbids.
-        """
+        """Postgres password — Vault only (VIBE Rule 164)."""
         password = get_secret_manager().get_credential("postgres_password")
         if not password:
             raise RuntimeError(
-                "VIBE Rule 164 VIOLATION: postgres_password is missing. "
-                "Set it in Vault at secret/agent/credentials/postgres_password. "
-                "It is never generated, never defaulted and never read from ENV."
+                "VIBE Rule 164 VIOLATION: no postgres_password in Vault at "
+                "credential:postgres_password. Secrets are never read from the "
+                "environment or from a settings store."
             )
         return password
 
     @property
     def postgres_dsn(self) -> str:
-        """PostgreSQL connection string, assembled at call time.
-
-        There is no connection string in ENV anywhere in this system. A DSN
-        embeds the password, so supplying one through the environment would put
-        a credential in a file and in the process table. The string is built
-        here from topology plus the Vault password and is meant to be passed
-        straight into a client — never logged, never written to ENV, never
-        stored on self.
-
-        VIBE Rule 164.
-        """
-        from urllib.parse import quote_plus
-
+        """Postgres DSN. Built here so the password never appears in a config file."""
         return (
-            f"postgresql://{quote_plus(self.postgres_user)}:"
-            f"{quote_plus(self.postgres_password())}"
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
+    @property
     def django_database_config(self) -> dict:
-        """The Django `DATABASES` entry for this deployment.
-
-        Discrete fields rather than a DSN on purpose: Django never needs the
-        password inside a URL, and keeping it as its own field means no parser
-        has to split a credential back out of a string — which is exactly how
-        the password used to reach the ENV.
-
-        VIBE Rule 100 (one authority) + Rule 164 (password from Vault).
-        """
+        """Django DATABASES['default'] entry."""
         return {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": self.postgres_db,
             "USER": self.postgres_user,
-            "PASSWORD": self.postgres_password(),
+            "PASSWORD": self.postgres_password,
             "HOST": self.postgres_host,
             "PORT": str(self.postgres_port),
         }
 
     @property
     def redis_url(self) -> str:
-        """Redis connection URL."""
+        """Redis URL. Topology only — no credential is embedded."""
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
-    @classmethod
-    @abstractmethod
-    def load(cls: Type[T]) -> T:
-        """Load settings from environment. Must be implemented by subclasses."""
-        ...
+    def as_dict(self) -> Dict[str, Any]:
+        """Every field as a plain dict. Credentials are absent, not blanked.
+
+        Deliberately does not include ``postgres_password`` / ``postgres_dsn``:
+        those are properties that resolve Vault at call time, so they cannot
+        be serialised by accident. This is the shape that makes "the export
+        never carries a credential" true for free.
+        """
+        return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STANDALONE Settings
+# Mode topology — THE single source for non-secret config
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# One dict per mode. Topology only. Credentials are resolved from Vault at
+# load time and never appear here (Rule 164).
+#
+# These replace a 73-call `os.environ` read and the four `.env` files that
+# staged the same values with 13 mutually-conflicting keys. A value that is
+# the same in both modes is duplicated on purpose: reading it here is a
+# one-line diff, and inventing a "shared" third place is how the four files
+# happened in the first place.
+
+_STANDALONE_TOPOLOGY: Dict[str, Any] = {
+    "deployment_target": "LOCAL",
+    # Docker service names of the standalone compose project.
+    "postgres_host": "somaagent_postgres",
+    "postgres_port": 5432,
+    "postgres_db": "somaagent",
+    "postgres_user": "somaagent",
+    "redis_host": "somaagent_redis",
+    "redis_port": 6379,
+    "redis_db": 0,
+    "sa01_redis_url": "",
+    "spicedb_host": "localhost",
+    "spicedb_port": 50051,
+    "spicedb_insecure": False,
+    "vault_addr": "http://somaagent_vault:8200",
+    "vault_mount": "secret",
+    "vault_path_prefix": "somaagent",
+    "debug": False,
+    "allowed_hosts": "*",
+    "log_level": "INFO",
+    "kafka_bootstrap_servers": "",
+    "kafka_security_protocol": "PLAINTEXT",
+    "kafka_sasl_mechanism": "",
+    "kafka_sasl_username": "",
+    "publish_kafka_timeout_seconds": 2.0,
+    "policy_requeue_prefix": "policy:requeue",
+    "auth_max_attempts": 5,
+    "auth_lockout_duration": 900,
+    "auth_attempt_window": 900,
+    "sa01_feature_profile": "enhanced",
+    "sa01_tenant_id": "default",
+    "sa01_memory_namespace": "wm",
+    "sa01_default_token_budget": 4096,
+    "temporal_host": "temporal:7233",
+    "llm_base_url": "",
+}
+
+_AAAS_TOPOLOGY: Dict[str, Any] = {
+    "deployment_target": "LOCAL",
+    # Docker service names of the shared somastack compose project.
+    "postgres_host": "somastack_postgres",
+    "postgres_port": 5432,
+    "postgres_db": "soma",
+    "postgres_user": "soma",
+    "redis_host": "somastack_redis",
+    "redis_port": 6379,
+    "redis_db": 0,
+    "sa01_redis_url": "",
+    "spicedb_host": "localhost",
+    "spicedb_port": 50051,
+    "spicedb_insecure": False,
+    "vault_addr": "http://somastack_vault:8200",
+    "vault_mount": "secret",
+    "vault_path_prefix": "soma",
+    "debug": False,
+    "allowed_hosts": "*",
+    "log_level": "INFO",
+    "milvus_host": "somastack_milvus",
+    "milvus_port": 19530,
+    # AAAS direct-mode for sub-millisecond latency. A real toggle, so it is an
+    # override key — not derived from the mode name.
+    "aaas_direct_mode": False,
+    "kafka_bootstrap_servers": "somastack_kafka:9092",
+    "kafka_security_protocol": "PLAINTEXT",
+    "kafka_sasl_mechanism": "",
+    "kafka_sasl_username": "",
+    "publish_kafka_timeout_seconds": 2.0,
+    "policy_requeue_prefix": "policy:requeue",
+    "auth_max_attempts": 5,
+    "auth_lockout_duration": 900,
+    "auth_attempt_window": 900,
+    "sa01_feature_profile": "enhanced",
+    "sa01_tenant_id": "default",
+    "sa01_memory_namespace": "wm",
+    "sa01_default_token_budget": 4096,
+    "temporal_host": "somastack_temporal:7233",
+    "llm_base_url": "",
+}
+
+
+def _credentials() -> Dict[str, Any]:
+    """Every credential, resolved from Vault once per load. Rule 164.
+
+    Absent means the service is disabled for this deployment (SpiceDB without
+    a pre-shared key, a broker on PLAINTEXT) — not that it authenticates with
+    an empty string. That distinction is why these are ``Optional``.
+    """
+    return {
+        "spicedb_token": get_secret_manager().get_credential("spicedb_token"),
+        "kafka_sasl_password": get_secret_manager().get_credential("kafka_sasl_password"),
+    }
+
+
+def _apply_overrides(params: Dict[str, Any], overrides: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Apply explicit overrides, rejecting unknown keys.
+
+    Rejecting rather than ignoring is Rule 91: a typo in an override that is
+    silently dropped is a fallback in disguise — the stack boots on a value
+    nobody chose.
+    """
+    if not overrides:
+        return params
+    unknown = set(overrides) - set(params)
+    if unknown:
+        raise RuntimeError(
+            f"VIBE Rule 91 VIOLATION: unknown settings override key(s) {sorted(unknown)}. "
+            f"Known keys: {sorted(params)}. An override that does not land is a "
+            f"silent fallback."
+        )
+    params.update(overrides)
+    return params
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Mode classes
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -220,76 +342,20 @@ class StandaloneSettings(BaseSettings):
     fractalmemory_enabled: bool = field(default=True)
 
     @classmethod
-    def load(cls) -> "StandaloneSettings":
-        """Load Standalone settings from environment."""
+    def load(cls, overrides: Optional[Mapping[str, Any]] = None) -> "StandaloneSettings":
+        """Build Standalone settings. No environment is read.
+
+        `overrides` is the only injection point — Python, typed, scoped to the
+        process. It is what tests use for `localhost:63932` topology instead
+        of polluting the environment.
+        """
         LOGGER.info("Loading STANDALONE configuration...")
-
-        return cls(
-            deployment_mode="STANDALONE",
-            deployment_target=get_optional_env("SA01_DEPLOYMENT_TARGET", "LOCAL"),
-            # Database - fail-fast in prod
-            postgres_host=get_required_env("POSTGRES_HOST"),
-            postgres_port=int(get_optional_env("POSTGRES_PORT", "5432")),
-            postgres_db=get_optional_env("POSTGRES_DB", "somaagent"),
-            postgres_user=get_optional_env("POSTGRES_USER", "somaagent"),
-            # Redis
-            redis_host=get_required_env("REDIS_HOST"),
-            redis_port=int(get_optional_env("REDIS_PORT", "6379")),
-            redis_db=int(get_optional_env("REDIS_DB", "0")),
-            # SpiceDB
-            spicedb_host=get_optional_env("SPICEDB_HOST", "localhost"),
-            spicedb_port=int(get_optional_env("SPICEDB_PORT", "50051")),
-            # VIBE Rule 164: the SpiceDB pre-shared key is a credential. It comes
-            # from Vault, never from the environment. Host and port are topology
-            # and belong in ENV; the key does not.
-            spicedb_token=get_secret_manager().get_credential("spicedb_token"),
-            spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
-            # Vault
-            vault_addr=get_required_env("VAULT_ADDR"),
-            vault_mount=get_optional_env("VAULT_MOUNT", "secret"),
-            vault_path_prefix=get_optional_env("VAULT_PATH_PREFIX", "somaagent"),
-            # Application
-            debug=get_optional_env("DJANGO_DEBUG", "false").lower() == "true",
-            allowed_hosts=get_optional_env("ALLOWED_HOSTS", "*"),
-            log_level=get_optional_env("LOG_LEVEL", "INFO"),
-            # Kafka
-            kafka_bootstrap_servers=get_optional_env("KAFKA_BOOTSTRAP_SERVERS", ""),
-            kafka_security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            kafka_sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM", ""),
-            kafka_sasl_username=get_optional_env("KAFKA_SASL_USERNAME", ""),
-            # VIBE Rule 164: the SASL password is a credential and comes from
-            # Vault. The SASL mechanism/username stay in ENV — they are topology.
-            kafka_sasl_password=get_secret_manager().get_credential("kafka_sasl_password"),
-            publish_kafka_timeout_seconds=float(
-                get_optional_env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
-            ),
-            # Requeue store
-            sa01_redis_url=get_optional_env("SA01_REDIS_URL", ""),
-            policy_requeue_prefix=get_optional_env("POLICY_REQUEUE_PREFIX", "policy:requeue"),
-            # Auth / Account lockout
-            auth_max_attempts=int(get_optional_env("AUTH_MAX_ATTEMPTS", "5")),
-            auth_lockout_duration=int(get_optional_env("AUTH_LOCKOUT_DURATION", "900")),
-            auth_attempt_window=int(get_optional_env("AUTH_ATTEMPT_WINDOW", "900")),
-            # Authorization
-            sa01_authz_fail_open=get_optional_env("SA01_AUTHZ_FAIL_OPEN", "false").lower()
-            in {"1", "true", "yes", "on"},
-            # Features
-            sa01_feature_profile=get_optional_env("SA01_FEATURE_PROFILE", "enhanced"),
-            # Idempotency
-            sa01_tenant_id=get_optional_env("SA01_TENANT_ID", "default"),
-            sa01_memory_namespace=get_optional_env("SA01_MEMORY_NAMESPACE", "wm"),
-            # Budget
-            sa01_default_token_budget=int(get_optional_env("SA01_DEFAULT_TOKEN_BUDGET", "4096")),
-            # Full triad is ALWAYS enabled — Agent + SomaBrain + SFM.
-            # Never disable the memory lane (user directive 2026-09-27).
-            somabrain_enabled=True,
-            fractalmemory_enabled=True,
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# AAAS Settings
-# ═══════════════════════════════════════════════════════════════════════════════
+        params = _apply_overrides(dict(_STANDALONE_TOPOLOGY), overrides)
+        params.update(_credentials())
+        params["deployment_mode"] = "STANDALONE"
+        params["somabrain_enabled"] = True
+        params["fractalmemory_enabled"] = True
+        return cls(**params)
 
 
 @dataclass
@@ -309,79 +375,22 @@ class AAASSettings(BaseSettings):
     milvus_port: int = field(default=19530)
 
     @classmethod
-    def load(cls) -> "AAASSettings":
-        """Load AAAS settings from environment."""
+    def load(cls, overrides: Optional[Mapping[str, Any]] = None) -> "AAASSettings":
+        """Build AAAS settings. No environment is read except the mode selector.
+
+        `soma_aaas_mode` / `aaas_direct_mode` used to be parsed from
+        `SOMA_AAAS_MODE` (`true` / `direct` / `false`). Being in AAAS mode is
+        now established by `SA01_DEPLOYMENT_MODE=AAAS` — the same fact, stated
+        once. `aaas_direct_mode` stays a real toggle and is an override key.
+        """
         LOGGER.info("Loading AAAS configuration...")
-
-        aaas_mode_raw = get_optional_env("SOMA_AAAS_MODE", "true").lower()
-
-        return cls(
-            deployment_mode="AAAS",
-            deployment_target=get_optional_env("SA01_DEPLOYMENT_TARGET", "LOCAL"),
-            # Database - AAAS namespace
-            postgres_host=get_required_env("POSTGRES_HOST"),
-            postgres_port=int(get_optional_env("POSTGRES_PORT", "5432")),
-            postgres_db=get_optional_env("POSTGRES_DB", "soma"),
-            postgres_user=get_optional_env("POSTGRES_USER", "soma"),
-            # Redis
-            redis_host=get_required_env("REDIS_HOST"),
-            redis_port=int(get_optional_env("REDIS_PORT", "6379")),
-            redis_db=int(get_optional_env("REDIS_DB", "0")),
-            # SpiceDB
-            spicedb_host=get_optional_env("SPICEDB_HOST", "localhost"),
-            spicedb_port=int(get_optional_env("SPICEDB_PORT", "50051")),
-            # VIBE Rule 164: the SpiceDB pre-shared key is a credential. It comes
-            # from Vault, never from the environment. Host and port are topology
-            # and belong in ENV; the key does not.
-            spicedb_token=get_secret_manager().get_credential("spicedb_token"),
-            spicedb_insecure=get_optional_env("SPICEDB_INSECURE", "false").lower() == "true",
-            # Vault
-            vault_addr=get_required_env("VAULT_ADDR"),
-            vault_mount=get_optional_env("VAULT_MOUNT", "secret"),
-            vault_path_prefix=get_optional_env("VAULT_PATH_PREFIX", "soma"),
-            # Application
-            debug=get_optional_env("DJANGO_DEBUG", "false").lower() == "true",
-            allowed_hosts=get_optional_env("ALLOWED_HOSTS", "*"),
-            log_level=get_optional_env("LOG_LEVEL", "INFO"),
-            # AAAS-specific
-            soma_aaas_mode=aaas_mode_raw in ("true", "direct"),
-            aaas_direct_mode=aaas_mode_raw == "direct",
-            somabrain_enabled=True,
-            fractalmemory_enabled=True,
-            # Milvus
-            milvus_host=get_required_env("MILVUS_HOST"),
-            milvus_port=int(get_optional_env("MILVUS_PORT", "19530")),
-            # Kafka
-            kafka_bootstrap_servers=get_optional_env(
-                "KAFKA_BOOTSTRAP_SERVERS", "somastack_kafka:9092"
-            ),
-            kafka_security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            kafka_sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM", ""),
-            kafka_sasl_username=get_optional_env("KAFKA_SASL_USERNAME", ""),
-            # VIBE Rule 164: the SASL password is a credential and comes from
-            # Vault. The SASL mechanism/username stay in ENV — they are topology.
-            kafka_sasl_password=get_secret_manager().get_credential("kafka_sasl_password"),
-            publish_kafka_timeout_seconds=float(
-                get_optional_env("PUBLISH_KAFKA_TIMEOUT_SECONDS", "2.0")
-            ),
-            # Requeue store
-            sa01_redis_url=get_optional_env("SA01_REDIS_URL", ""),
-            policy_requeue_prefix=get_optional_env("POLICY_REQUEUE_PREFIX", "policy:requeue"),
-            # Auth / Account lockout
-            auth_max_attempts=int(get_optional_env("AUTH_MAX_ATTEMPTS", "5")),
-            auth_lockout_duration=int(get_optional_env("AUTH_LOCKOUT_DURATION", "900")),
-            auth_attempt_window=int(get_optional_env("AUTH_ATTEMPT_WINDOW", "900")),
-            # Authorization
-            sa01_authz_fail_open=get_optional_env("SA01_AUTHZ_FAIL_OPEN", "false").lower()
-            in {"1", "true", "yes", "on"},
-            # Features
-            sa01_feature_profile=get_optional_env("SA01_FEATURE_PROFILE", "enhanced"),
-            # Idempotency
-            sa01_tenant_id=get_optional_env("SA01_TENANT_ID", "default"),
-            sa01_memory_namespace=get_optional_env("SA01_MEMORY_NAMESPACE", "wm"),
-            # Budget
-            sa01_default_token_budget=int(get_optional_env("SA01_DEFAULT_TOKEN_BUDGET", "4096")),
-        )
+        params = _apply_overrides(dict(_AAAS_TOPOLOGY), overrides)
+        params.update(_credentials())
+        params["deployment_mode"] = "AAAS"
+        params["soma_aaas_mode"] = True
+        params["somabrain_enabled"] = True
+        params["fractalmemory_enabled"] = True
+        return cls(**params)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -404,38 +413,53 @@ class SettingsRegistry:
     _instance: Optional[BaseSettings] = None
 
     @classmethod
-    def load(cls, force_reload: bool = False) -> BaseSettings:
-        """
-        Load settings based on SA01_DEPLOYMENT_MODE.
+    def load(
+        cls,
+        force_reload: bool = False,
+        overrides: Optional[Mapping[str, Any]] = None,
+    ) -> BaseSettings:
+        """Load settings for ``SA01_DEPLOYMENT_MODE``.
 
-        Returns cached instance unless force_reload=True.
+        Returns the cached instance unless ``force_reload=True``. ``overrides``
+        is applied on load and therefore implies a reload.
         """
+        if overrides:
+            force_reload = True
+
         if cls._instance is not None and not force_reload:
             return cls._instance
 
-        mode = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE").upper()
+        mode = os.environ.get(MODE_ENV_VAR, "STANDALONE").upper()
 
         LOGGER.info("SettingsRegistry: Loading configuration for mode=%s", mode)
 
         if mode == "STANDALONE":
-            cls._instance = StandaloneSettings.load()
+            cls._instance = StandaloneSettings.load(overrides)
         elif mode in ("AAAS", "AAASMODE"):
-            cls._instance = AAASSettings.load()
+            cls._instance = AAASSettings.load(overrides)
         elif mode == "DEV":
             # DEV mode defaults to Standalone for simplicity
             LOGGER.info("DEV mode detected, using Standalone config")
-            cls._instance = StandaloneSettings.load()
+            cls._instance = StandaloneSettings.load(overrides)
         elif mode == "PROD":
-            # PROD mode requires explicit AAAS or STANDALONE
-            aaas_mode = os.environ.get("SOMA_AAAS_MODE", "false").lower() == "true"
-            if aaas_mode:
-                cls._instance = AAASSettings.load()
-            else:
-                cls._instance = StandaloneSettings.load()
+            # PROD requires the mode to be stated explicitly via the mode
+            # selector — it must not guess. `SOMA_AAAS_MODE` used to arbitrate
+            # here, which was the same fact told twice and twice the chance to
+            # disagree.
+            raise RuntimeError(
+                f"VIBE Rule 91 VIOLATION: {MODE_ENV_VAR}=PROD is not a "
+                f"deployment. Set {MODE_ENV_VAR}=AAAS or STANDALONE. "
+                f"PROD is an environment, not a topology."
+            )
+        elif mode in _VALID_MODES:  # pragma: no cover - guarded above
+            raise RuntimeError(
+                f"VIBE Rule 91 VIOLATION: Unknown {MODE_ENV_VAR}={mode}. "
+                f"Valid values: STANDALONE, AAAS, DEV"
+            )
         else:
             raise RuntimeError(
-                f"VIBE Rule 91 VIOLATION: Unknown SA01_DEPLOYMENT_MODE={mode}. "
-                "Valid values: STANDALONE, AAAS, DEV, PROD"
+                f"VIBE Rule 91 VIOLATION: Unknown {MODE_ENV_VAR}={mode}. "
+                f"Valid values: STANDALONE, AAAS, DEV"
             )
 
         LOGGER.info("SettingsRegistry: Configuration loaded successfully")
@@ -452,6 +476,16 @@ class SettingsRegistry:
     def reset(cls) -> None:
         """Reset cached settings (for testing)."""
         cls._instance = None
+
+    @classmethod
+    def set(cls, instance: BaseSettings) -> BaseSettings:
+        """Install a fully-built settings object. For tests and programmatic boot.
+
+        This is the supported way to run the suite against `localhost:63932`
+        topology. It is not an environment variable and not a `.env` file.
+        """
+        cls._instance = instance
+        return cls._instance
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

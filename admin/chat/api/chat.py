@@ -21,6 +21,7 @@ from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.messages import get_message, SuccessCode
 from admin.common.responses import paginated_response
 from admin.core.models import Session
+from services.common.authorization import authorize
 
 router = Router(tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -139,6 +140,7 @@ async def list_conversations(
 
     Per login-to-chat-journey design.md Section 6.2
     """
+    await authorize(request, action="resource:conversation_read", resource="chat")
     from asgiref.sync import sync_to_async
     from django.conf import settings
 
@@ -211,6 +213,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
     - Initializes agent session in SomaBrain
     - Recalls memories from SomaFractalMemory
     """
+    await authorize(request, action="resource:conversation_create", resource="chat")
     from asgiref.sync import sync_to_async
     from django.conf import settings
 
@@ -285,6 +288,7 @@ async def get_conversation(request, conversation_id: str) -> dict:
     Per SRS UC-01 Section 4.3.
     Per login-to-chat-journey design.md Section 6.2
     """
+    await authorize(request, action="resource:conversation_read", resource="chat")
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
@@ -333,6 +337,7 @@ class ConversationRenameIn(BaseModel):
 )
 async def rename_conversation(request, conversation_id: str, payload: ConversationRenameIn) -> dict:
     """Rename a conversation (C6 / CH-07)."""
+    await authorize(request, action="resource:conversation_create", resource="chat")
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
@@ -366,6 +371,7 @@ async def rename_conversation(request, conversation_id: str, payload: Conversati
 )
 async def delete_conversation(request, conversation_id: str) -> dict:
     """Hard-delete a conversation and its messages (C6 / CH-08)."""
+    await authorize(request, action="resource:conversation_delete", resource="chat")
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
@@ -396,6 +402,7 @@ async def delete_conversation(request, conversation_id: str) -> dict:
 )
 async def export_conversation(request, conversation_id: str) -> dict:
     """Export conversation transcript (C6 / CH-08)."""
+    await authorize(request, action="resource:conversation_view_history", resource="chat")
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)
@@ -456,6 +463,7 @@ async def get_messages(
 
     Per login-to-chat-journey design.md Section 6.2
     """
+    await authorize(request, action="resource:conversation_read", resource="chat")
     from asgiref.sync import sync_to_async
     from django.conf import settings
 
@@ -533,6 +541,7 @@ async def send_message(
     - Degradation handling ready
     - ZDL via OutboxMessage
     """
+    await authorize(request, action="resource:conversation_send_message", resource="chat")
     from asgiref.sync import sync_to_async
     from django.conf import settings
 
@@ -613,7 +622,7 @@ async def send_message(
 # =============================================================================
 
 
-@router.get("/session/{session_id}", response=ChatSessionResponse, summary="Get chat session")
+@router.get("/session/{session_id}", response=ChatSessionResponse, summary="Get chat session", auth=AuthBearer())
 async def get_chat_session(request, session_id: str) -> dict:
     """Fetch chat session metadata.
 
@@ -623,6 +632,7 @@ async def get_chat_session(request, session_id: str) -> dict:
     Returns:
         Session metadata including persona and tenant
     """
+    await authorize(request, action="resource:chat_view", resource="chat")
     from asgiref.sync import sync_to_async
 
     try:

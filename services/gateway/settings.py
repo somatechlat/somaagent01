@@ -141,7 +141,7 @@ TEMPLATES = [
 # (VIBE Rule 100).
 from config.settings_registry import SettingsRegistry
 
-_db = SettingsRegistry.load().django_database_config()
+_db = SettingsRegistry.load().django_database_config
 _db["CONN_MAX_AGE"] = int(os.environ.get("SA01_DB_CONN_MAX_AGE", "60"))
 _db["OPTIONS"] = {
     "connect_timeout": int(os.environ.get("SA01_DB_CONNECT_TIMEOUT", "10")),
@@ -215,15 +215,12 @@ KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.
 # Feature Flags
 FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
 
-# Endpoint-level permission mapping for UnifiedGate @require_permission decorator.
-# Format: {"permission_name": ["user_id_1", "user_id_2"]} or {"permission_name": "*"}
-# "*" allows all authenticated users. Empty/missing = DENY (secure-by-default).
-ENDPOINT_PERMISSIONS = {}
-
 # Authentication
-AUTH_REQUIRED = os.environ.get("SA01_AUTH_REQUIRED", "true").lower() == "true"
 # VIBE SECURITY: No backdoor flags in production code. Period.
-# Dev auth bypass is handled via DEBUG=True + policy/soma_development.rego gated to environment=="dev".
+# Authentication is always required. The previous AUTH_REQUIRED flag read
+# SA01_AUTH_REQUIRED and could be set to false, which is an auth bypass by
+# environment variable. There is no such flag now, and there must not be one.
+AUTH_REQUIRED = True
 
 # SomaBrain (Cognitive Runtime)
 SOMABRAIN_URL = get_optional_env(

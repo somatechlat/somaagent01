@@ -45,25 +45,34 @@ export const ADMIN_NAV: NavSection[] = [
         label: 'Overview',
         items: [
             { id: 'dashboard', label: 'Dashboard', icon: 'visibility', route: '/saas/dashboard' },
-            { id: 'tenants', label: 'Tenants', icon: 'apartment', route: '/saas/tenants' },
         ],
     },
     {
-        id: 'finance',
-        label: 'Finance',
+        id: 'agents',
+        label: 'Agents',
         items: [
-            { id: 'subscriptions', label: 'Subscriptions', icon: 'card_membership', route: '/saas/subscriptions' },
-            { id: 'billing', label: 'Billing', icon: 'payments', route: '/saas/billing' },
+            { id: 'agents', label: 'Agents', icon: 'smart_toy', route: '/admin/agents' },
+            { id: 'metrics', label: 'Metrics', icon: 'monitoring', route: '/admin/metrics' },
+            { id: 'users', label: 'Users', icon: 'group', route: '/admin/users' },
         ],
     },
     {
         id: 'platform',
-        label: 'Platform',
+        label: 'Configuration',
         items: [
             { id: 'models', label: 'Models', icon: 'model_training', route: '/platform/models' },
             { id: 'roles', label: 'Roles', icon: 'admin_panel_settings', route: '/platform/roles' },
-            { id: 'flags', label: 'Feature Flags', icon: 'toggle_on', route: '/platform/flags' },
             { id: 'api-keys', label: 'API Keys', icon: 'vpn_key', route: '/platform/api-keys' },
+            { id: 'integrations', label: 'Integrations', icon: 'cable', route: '/platform/integrations' },
+            { id: 'ratelimits', label: 'Rate Limits', icon: 'speed', route: '/platform/ratelimits' },
+            { id: 'permissions', label: 'Permissions', icon: 'lock', route: '/platform/permissions' },
+        ],
+    },
+    {
+        id: 'audit',
+        label: 'Audit',
+        items: [
+            { id: 'audit', label: 'Audit Log', icon: 'history', route: '/platform/audit' },
         ],
     },
 ];

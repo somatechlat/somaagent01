@@ -22,6 +22,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError
 from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 from services.common.degradation_monitor import DegradationLevel
@@ -177,6 +178,7 @@ async def act(request, payload: ActRequest) -> ActResponse:
     PhD Dev: Implements salience-based attention mechanism.
     Security Auditor: Input validation and rate limiting.
     """
+    await authorize(request, action="resource:tool_execute", resource="brain")
     start = time.time()
     client = get_somabrain_client()
     if client is None:
@@ -227,6 +229,7 @@ async def adaptation_reset(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="brain")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -266,6 +269,7 @@ async def brain_sleep_mode(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="brain")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -306,6 +310,7 @@ async def util_sleep(request, agent_id: str, seconds: int = 60) -> dict:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:view", resource="brain")
     if seconds > 3600:
         raise BadRequestError("Sleep duration cannot exceed 1 hour")
 
@@ -349,6 +354,7 @@ async def personality_set(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="brain")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -381,6 +387,7 @@ async def memory_config_get(request, agent_id: str) -> MemoryConfigResponse:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="resource:memory_read", resource="brain")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -419,6 +426,7 @@ async def memory_config_patch(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="resource:memory_write", resource="brain")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -474,6 +482,7 @@ async def wake_agent(request, agent_id: str) -> dict:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="agent:start", resource="brain")
     raise HttpError(501, "Agent wake is not implemented: SomaBrainClient has no wake endpoint.")
 
 
@@ -488,6 +497,7 @@ async def get_brain_status(request, agent_id: str) -> dict:
     REAL SomaBrain call - NO MOCK DATA.
     Returns degradation status if SomaBrain unavailable.
     """
+    await authorize(request, action="cognitive:view", resource="brain")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")

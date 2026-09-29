@@ -166,9 +166,10 @@ def load_config() -> Config:
             "otlp_endpoint": None,
         },
         "auth": {
-            # Fail-safe default across standalone + AaaS: require auth unless
-            # explicitly disabled via environment/config for controlled tests.
-            "auth_required": False,
+            # Authentication is required in every deployment. There is no
+            # environment variable and no config value that switches it off:
+            # an auth bypass is a bypass regardless of who sets it.
+            "auth_required": True,
             "jwt_secret": None,
             "jwt_public_key": None,
             "jwt_jwks_url": None,
@@ -200,16 +201,8 @@ def load_config() -> Config:
         "SA01_POLICY_URL",
         default_cfg_dict["external"]["opa_url"],
     )
-    # Authentication toggles and tokens are frequently set via environment
-    # variables; honour them here before validation.
-    auth_required_env = os.getenv("SA01_AUTH_REQUIRED")
-    if auth_required_env is not None:
-        default_cfg_dict["auth"]["auth_required"] = auth_required_env.lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
+    # There is deliberately no SA01_AUTH_REQUIRED override. Authentication is
+    # not a feature flag, and the previous override was an auth bypass.
     # VIBE Rule 164: the auth internal token is a credential and comes from
     # Vault, never from the environment. Absent means no internal token is
     # configured — not that one is an empty string.

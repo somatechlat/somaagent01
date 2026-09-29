@@ -111,7 +111,7 @@ class AgentUser(models.Model):
 
     user_id = models.UUIDField(db_index=True, help_text="Keycloak user ID")
 
-    role = models.CharField(max_length=20, choices=AgentRole.choices, default=AgentRole.OPERATOR)
+    role = models.CharField(max_length=20, choices=AgentRole.choices, default=AgentRole.AGENT_OPERATOR)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

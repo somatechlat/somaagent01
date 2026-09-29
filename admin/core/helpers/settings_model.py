@@ -126,11 +126,19 @@ class SettingsModel(BaseModel):
         default_factory=lambda: float(_dj("MEM_REPLACE_THRESHOLD", 0.9))
     )
 
-    # Credentials / auth
-    api_keys: Dict[str, str] = {}
+    # Auth. `auth_login` is a username, not a credential.
+    #
+    # There are deliberately no password / api-key / token fields on this
+    # model. `api_keys`, `auth_password`, `root_password`, `rfc_password`,
+    # `mcp_server_token` and `secrets` used to live here and were filled from
+    # the AgentSetting table — making Postgres a second secret store. None of
+    # them was ever read: provider keys go through
+    # `UnifiedSecretManager.get_provider_key()`, the RFC password through
+    # `runtime._get_rfc_password()`, and the MCP token was generated and
+    # dropped. A field that holds a credential and is never read is still a
+    # credential the day this model is serialised, so the fields are gone
+    # rather than left empty (VIBE Rule 164).
     auth_login: str = ""
-    auth_password: str = ""
-    root_password: str = ""
 
     # Agent profile
     agent_profile: str = Field(default_factory=lambda: str(_dj("AGENT_PROFILE", "agent0")))
@@ -141,10 +149,10 @@ class SettingsModel(BaseModel):
         default_factory=lambda: str(_dj("AGENT_KNOWLEDGE_SUBDIR", "custom"))
     )
 
-    # RFC / Docker tunnel defaults
+    # RFC / Docker tunnel defaults. Topology only — the RFC password is a
+    # credential and is read from Vault at use by `runtime._get_rfc_password`.
     rfc_auto_docker: bool = Field(default_factory=lambda: _dj("RFC_AUTO_DOCKER", True))
     rfc_url: str = Field(default_factory=lambda: str(_dj("RFC_URL", "localhost")))
-    rfc_password: str = ""
     rfc_port_http: int = Field(default_factory=lambda: int(_dj("RFC_PORT_HTTP", 55080)))
     rfc_port_ssh: int = Field(default_factory=lambda: int(_dj("RFC_PORT_SSH", 55022)))
 
@@ -179,12 +187,13 @@ class SettingsModel(BaseModel):
         default_factory=lambda: int(_dj("MCP_CLIENT_TOOL_TIMEOUT", 120))
     )
     mcp_server_enabled: bool = False
-    mcp_server_token: str = ""
     a2a_server_enabled: bool = False
 
-    # Misc runtime state
+    # Misc runtime state. `variables` is agent state (names → text), not
+    # credentials. There is deliberately no `secrets` field: a field by that
+    # name in a settings store is a secret store, whatever its type. Real
+    # secrets are in Vault (VIBE Rule 164).
     variables: str = ""
-    secrets: str = ""
     litellm_global_kwargs: Dict[str, Any] = {}
     USE_LLM: bool = True
 

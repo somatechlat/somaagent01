@@ -19,6 +19,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from admin.common.exceptions import BadRequestError
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
@@ -89,17 +90,6 @@ class FeatureFlags(BaseModel):
 # =============================================================================
 
 
-def require_admin(request) -> None:
-    """Verify user has ADMIN mode access.
-
-    Security Auditor: Critical access control.
-    """
-    from admin.core.permissions import has_permission
-
-    if not has_permission(request.auth, "admin"):
-        raise BadRequestError("Admin permission required")
-
-
 # =============================================================================
 # ENDPOINTS - Service Management
 # =============================================================================
@@ -118,7 +108,7 @@ async def list_services(request) -> ServiceListResponse:
 
     ADMIN mode only.
     """
-    require_admin(request)
+    await authorize(request, action="system:view", resource="system")
 
     import httpx
 
@@ -169,7 +159,7 @@ async def get_service_status(request, service_name: str) -> ServiceInfo:
 
     Per Phase 6.4: get_service_status()
     """
-    require_admin(request)
+    await authorize(request, action="system:view", resource="system")
     raise HttpError(501, "Service status is not implemented: no service registry is wired.")
 
 
@@ -190,7 +180,7 @@ async def service_action(
 
     WARNING: Production impact - use with caution.
     """
-    require_admin(request)
+    await authorize(request, action="system:configure", resource="system")
 
     valid_actions = ["start", "stop", "restart"]
     if payload.action not in valid_actions:
@@ -221,7 +211,7 @@ async def get_diagnostics(request) -> DiagnosticsResponse:
 
     Includes system, services, database, memory, queues.
     """
-    require_admin(request)
+    await authorize(request, action="system:read_metrics", resource="system")
 
     import platform
 
@@ -278,7 +268,7 @@ async def sleep_status_all(request) -> dict:
 
     Per Phase 6.4: sleep_status_all()
     """
-    require_admin(request)
+    await authorize(request, action="system:view", resource="system")
     raise HttpError(501, "Sleep status is not implemented: no agent store is wired.")
 
 
@@ -298,7 +288,7 @@ async def get_features(request) -> FeatureFlags:
 
     Per Phase 6.4: get_features()
     """
-    require_admin(request)
+    await authorize(request, action="system:view", resource="system")
     raise HttpError(501, "Feature flags are not implemented here: use /config feature-flag API.")
 
 
@@ -314,7 +304,7 @@ async def update_features(request, flags: dict) -> dict:
 
     WARNING: Production impact.
     """
-    require_admin(request)
+    await authorize(request, action="system:configure", resource="system")
 
     logger.warning("ADMIN ACTION: Feature flags updated: %s", flags)
 

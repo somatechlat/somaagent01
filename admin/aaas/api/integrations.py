@@ -23,7 +23,9 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.common.messages import ErrorCode, get_message, SuccessCode
+from services.common.authorization import authorize
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -154,12 +156,13 @@ SUPPORTED_PROVIDERS = ["keycloak", "smtp", "openai", "s3"]
 # =============================================================================
 
 
-@router.get("", response=list[IntegrationStatus])
+@router.get("", response=list[IntegrationStatus], auth=AuthBearer())
 async def list_integrations(request) -> list[IntegrationStatus]:
     """List all platform integrations with status.
 
     Permission: platform:view_settings
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     result = []
     # In future: fetch installed providers from CapabilityRegistry
     for provider in SUPPORTED_PROVIDERS:
@@ -183,12 +186,13 @@ async def list_integrations(request) -> list[IntegrationStatus]:
     return result
 
 
-@router.get("/{provider}", response=IntegrationConfig)
+@router.get("/{provider}", response=IntegrationConfig, auth=AuthBearer())
 async def get_integration(request, provider: str) -> IntegrationConfig:
     """Get integration configuration (with masked secrets).
 
     Permission: platform:view_settings
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     if provider not in SUPPORTED_PROVIDERS:
         from ninja.errors import HttpError
 
@@ -218,7 +222,7 @@ async def get_integration(request, provider: str) -> IntegrationConfig:
     )
 
 
-@router.put("/{provider}", response=IntegrationConfig)
+@router.put("/{provider}", response=IntegrationConfig, auth=AuthBearer())
 async def update_integration(
     request, provider: str, payload: IntegrationUpdate
 ) -> IntegrationConfig:
@@ -226,6 +230,7 @@ async def update_integration(
 
     Permission: platform:manage_settings (requires sudo/re-auth)
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     # 1. Fetch PlatformConfig
     platform_config = await PlatformConfig.aget_instance()
 
@@ -256,9 +261,10 @@ async def update_integration(
     return await get_integration(request, provider)
 
 
-@router.post("/{provider}/test", response=ConnectionTestResult)
+@router.post("/{provider}/test", response=ConnectionTestResult, auth=AuthBearer())
 async def test_connection(request, provider: str) -> ConnectionTestResult:
     """Test integration connection."""
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     import time
 
     import httpx
@@ -349,12 +355,13 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
     )
 
 
-@router.post("/smtp/test-email", response=dict)
+@router.post("/smtp/test-email", response=dict, auth=AuthBearer())
 async def send_test_email(request, to_email: str) -> dict:
     """Send a test email.
 
     Permission: platform:manage_settings
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     from django.core.mail import send_mail
 
     try:

@@ -19,7 +19,9 @@ from typing import Optional
 from django.conf import settings
 from ninja import Router
 
+from admin.common.auth import AuthBearer
 from admin.common.messages import ErrorCode, get_message, SuccessCode
+from services.common.authorization import authorize_sync
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Files V2"])
@@ -70,7 +72,7 @@ class FileListResponse(Schema):
 # =============================================================================
 
 
-@router.get("/", response=FileListResponse)
+@router.get("/", response=FileListResponse, auth=AuthBearer())
 def list_files(
     request,
     page: int = 1,
@@ -78,6 +80,8 @@ def list_files(
     tenant_id: Optional[str] = None,
 ):
     """List files with pagination."""
+    authorize_sync(request, action="resource:file_read", resource="files")
+
     from admin.filesv2.models import File
 
     offset = (page - 1) * per_page
@@ -113,9 +117,11 @@ def list_files(
     }
 
 
-@router.get("/{file_id}", response=FileOut)
+@router.get("/{file_id}", response=FileOut, auth=AuthBearer())
 def get_file(request, file_id: str):
     """Get file details."""
+    authorize_sync(request, action="resource:file_read", resource="files")
+
     from admin.filesv2.models import File
 
     try:
@@ -137,7 +143,7 @@ def get_file(request, file_id: str):
         return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
 
 
-@router.post("/upload", response=FileUploadResponse)
+@router.post("/upload", response=FileUploadResponse, auth=AuthBearer())
 def create_upload_url(
     request,
     filename: str,
@@ -147,6 +153,8 @@ def create_upload_url(
     user_id: str,
 ):
     """Create presigned upload URL."""
+    authorize_sync(request, action="resource:file_upload", resource="files")
+
     import boto3  # type: ignore[import]
     from botocore.config import Config  # type: ignore[import]
 
@@ -205,9 +213,11 @@ def create_upload_url(
         }
 
 
-@router.post("/upload-local/{file_id}")
+@router.post("/upload-local/{file_id}", auth=AuthBearer())
 def upload_local(request, file_id: str, file: UploadedFile = File(...)):
     """Handle local file upload (Dev/AAAS-in-a-box mode)."""
+    authorize_sync(request, action="resource:file_upload", resource="files")
+
     from django.core.files.base import ContentFile
     from django.core.files.storage import default_storage
 
@@ -231,9 +241,11 @@ def upload_local(request, file_id: str, file: UploadedFile = File(...)):
         return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500
 
 
-@router.delete("/{file_id}")
+@router.delete("/{file_id}", auth=AuthBearer())
 def delete_file(request, file_id: str):
     """Soft delete a file."""
+    authorize_sync(request, action="resource:file_delete", resource="files")
+
     from django.utils import timezone
 
     from admin.filesv2.models import File
@@ -247,9 +259,11 @@ def delete_file(request, file_id: str):
         return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
 
 
-@router.get("/{file_id}/download-url")
+@router.get("/{file_id}/download-url", auth=AuthBearer())
 def get_download_url(request, file_id: str):
     """Get presigned download URL."""
+    authorize_sync(request, action="resource:file_read", resource="files")
+
     import boto3  # type: ignore[import]
     from botocore.config import Config  # type: ignore[import]
 

@@ -21,47 +21,37 @@ class AgentStatus(models.TextChoices):
 
 
 class TenantRole(models.TextChoices):
-    """Roles within a tenant organization."""
+    """Roles within a tenant organization.
 
-    OWNER = "owner", "Owner"
-    ADMIN = "admin", "Admin"
+    These are exactly the organization-scoped authorization roles defined in
+    ``admin.core.authz``. The stored value is the role name the permission
+    catalog is keyed on, so a membership record resolves to authority without
+    a translation table — a translation table is where the old vocabulary
+    drifted and a subject could be denied by one call site and allowed by
+    another.
+
+    ``SYSADMIN`` is provisioned at install or by break-glass procedure and is
+    never offered in a role-assignment control. See
+    ``authz.PROVISIONED_ROLES``.
+    """
+
+    SYSADMIN = "sysadmin", "System Administrator"
+    ORG_ADMIN = "org_admin", "Organization Administrator"
+    DEVELOPER = "developer", "Developer"
+    TRAINER = "trainer", "Trainer"
     MEMBER = "member", "Member"
-    VIEWER = "viewer", "Viewer"
+    AUDITOR = "auditor", "Auditor"
 
 
 class AgentRole(models.TextChoices):
-    """User roles for agent access."""
+    """Roles for agent access.
 
-    MANAGER = "manager", "Manager"
-    OPERATOR = "operator", "Operator"
-    VIEWER = "viewer", "Viewer"
+    Exactly the agent-scoped authorization roles from ``admin.core.authz``.
+    ``AGENT_OWNER`` is established by an ownership transfer, not by a role
+    edit, so it is not in ``authz.AGENT_ASSIGNABLE_ROLES``.
+    """
 
-
-class BillingInterval(models.TextChoices):
-    """Billing cycle intervals."""
-
-    MONTHLY = "monthly", "Monthly"
-    YEARLY = "yearly", "Yearly"
-    WEEKLY = "weekly", "Weekly"
-
-
-class QuotaEnforcementPolicy(models.TextChoices):
-    """How quota limits are enforced."""
-
-    HARD = "hard", "Hard Block"
-    SOFT = "soft", "Soft Warn"
-    NONE = "none", "Unlimited"
-
-
-class FeatureCategory(models.TextChoices):
-    """Capability categories for features."""
-
-    VOICE = "voice", "Voice & Speech"
-    MEMORY = "memory", "Memory & Context"
-    MCP = "mcp", "MCP Servers"
-    VISION = "vision", "Vision & Image"
-    MODELS = "models", "AI Models"
-    BROWSER = "browser", "Browser Automation"
-    CODE_EXEC = "code_exec", "Code Execution"
-    TOOLS = "tools", "Tool Access"
-    DELEGATION = "delegation", "Agent Delegation"
+    AGENT_OWNER = "agent_owner", "Agent Owner"
+    AGENT_OPERATOR = "agent_operator", "Agent Operator"
+    TRAINER = "trainer", "Trainer"
+    MEMBER = "member", "Member"

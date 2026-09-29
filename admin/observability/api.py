@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.core.infrastructure import health_checker
+from services.common.authorization import authorize
 
 router = Router(tags=["observability"])
 logger = logging.getLogger(__name__)
@@ -159,6 +160,7 @@ async def get_infrastructure_health(request) -> InfrastructureHealthResponse:
 
     DevOps: Returns detailed status for each service.
     """
+    await authorize(request, action="system:view", resource="observability")
     result = await health_checker.check_all()
 
     return InfrastructureHealthResponse(
@@ -181,6 +183,7 @@ async def get_service_health(request, service: str) -> ServiceHealthResponse:
     Args:
         service: Service name (postgresql, redis, temporal, qdrant, etc.)
     """
+    await authorize(request, action="system:view", resource="observability")
     check_method = getattr(health_checker, f"check_{service}", None)
     if not check_method:
         return ServiceHealthResponse(
@@ -214,6 +217,11 @@ async def readiness(request) -> ReadinessResponse:
 
     Returns 200 if ready to serve traffic.
     Checks critical services: PostgreSQL (required).
+
+    Deliberately unauthenticated. A probe that required a principal could not
+    tell the orchestrator the process is up, and an orchestrator that cannot
+    tell will restart a healthy process. This endpoint reports whether the
+    process can serve; it exposes no principal's data and changes nothing.
 
     DevOps: Use for K8s readinessProbe.
     """
@@ -260,6 +268,10 @@ async def liveness(request) -> LivenessResponse:
     Returns 200 if process is alive.
     Simple check - does not verify external services.
 
+    Deliberately unauthenticated, for the same reason as ``readiness``: a
+    liveness probe that needs a credential cannot do its job, and a failed
+    liveness probe restarts the process.
+
     DevOps: Use for K8s livenessProbe.
     """
     uptime = get_uptime_seconds()
@@ -279,6 +291,7 @@ async def liveness(request) -> LivenessResponse:
 @router.get(
     "/metrics",
     summary="Prometheus metrics",
+    auth=AuthBearer(),
 )
 async def get_prometheus_metrics(request) -> str:
     """Get Prometheus-formatted metrics.
@@ -286,6 +299,7 @@ async def get_prometheus_metrics(request) -> str:
     Returns metrics in Prometheus exposition format.
     DevOps: Scrape with Prometheus server.
     """
+    await authorize(request, action="system:read_metrics", resource="observability")
     from admin.core.observability.metrics import (
         get_all_metrics_prometheus,  # type: ignore[import-not-found]
     )
@@ -316,6 +330,7 @@ async def get_metrics_json(request) -> MetricsJsonResponse:
 
     Alternative to Prometheus format for dashboard integration.
     """
+    await authorize(request, action="system:read_metrics", resource="observability")
     from admin.core.observability.metrics import (
         get_all_metrics_json,  # type: ignore[import-not-found]
     )
@@ -363,6 +378,7 @@ async def get_sla_compliance(request) -> dict:
 
     Returns current SLA targets vs actual values.
     """
+    await authorize(request, action="system:read_metrics", resource="observability")
     # Get health check for latency data
     result = await health_checker.check_all()
 
@@ -407,6 +423,7 @@ async def get_tenant_usage(request) -> TenantUsageResponse:
 
     PM: Usage tracking, quota visualization.
     """
+    await authorize(request, action="system:read_metrics", resource="observability")
     from asgiref.sync import sync_to_async
     from django.conf import settings
     from django.db.models import Sum
@@ -538,6 +555,7 @@ async def get_tenant_usage(request) -> TenantUsageResponse:
 )
 async def list_dashboards(request) -> dict:
     """List available monitoring dashboards."""
+    await authorize(request, action="system:view", resource="observability")
     return {
         "dashboards": [
             {

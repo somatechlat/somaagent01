@@ -1,6 +1,9 @@
 """Authentication Helpers - Utility functions for auth API.
 
 Extracted from admin/auth/api.py for 650-line compliance.
+
+Roles and permissions are defined in ``admin.core.authz`` and nowhere else.
+This module resolves them; it does not define them.
 """
 
 from __future__ import annotations
@@ -11,123 +14,71 @@ from typing import TYPE_CHECKING
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
+from admin.core.authz import (
+    ROLE_PERMISSIONS,
+    ROLE_PRIORITY,
+    permissions_for_roles,
+)
+
 if TYPE_CHECKING:
     from admin.common.auth import TokenPayload
 
 logger = logging.getLogger(__name__)
 
-
-# Role priority for determining highest role
-ROLE_PRIORITY = [
-    "aaas_admin",
-    "tenant_sysadmin",
-    "tenant_admin",
-    "agent_owner",
-    "developer",
-    "trainer",
-    "user",
-    "viewer",
+__all__ = [
+    "ROLE_PRIORITY",
+    "ROLE_PERMISSIONS",
+    "determine_redirect_path",
+    "get_highest_role",
+    "get_permissions_for_roles",
+    "update_last_login",
 ]
-
-# Role to permissions mapping
-ROLE_PERMISSIONS = {
-    "aaas_admin": [
-        "platform:manage",
-        "platform:manage_tenants",
-        "platform:manage_tiers",
-        "platform:manage_roles",
-        "platform:impersonate",
-        "tenant:manage",
-        "agent:configure",
-        "chat:send",
-        "memory:read",
-        "memory:write",
-    ],
-    "tenant_sysadmin": [
-        "tenant:manage",
-        "tenant:assign_roles",
-        "tenant:view_billing",
-        "agent:configure",
-        "agent:create",
-        "agent:delete",
-        "chat:send",
-        "memory:read",
-        "memory:write",
-    ],
-    "tenant_admin": [
-        "tenant:administrate",
-        "agent:configure",
-        "chat:send",
-        "memory:read",
-        "memory:write",
-    ],
-    "agent_owner": [
-        "agent:configure",
-        "agent:manage_users",
-        "chat:send",
-        "memory:read",
-        "memory:write",
-    ],
-    "developer": [
-        "agent:activate_dev",
-        "chat:send",
-        "memory:read",
-        "memory:write",
-    ],
-    "trainer": [
-        "agent:activate_trn",
-        "cognitive:view",
-        "cognitive:edit",
-        "chat:send",
-        "memory:read",
-        "memory:write",
-    ],
-    "user": [
-        "chat:send",
-        "memory:read",
-    ],
-    "viewer": [
-        "chat:view",
-        "memory:read",
-    ],
-}
 
 
 def determine_redirect_path(payload: "TokenPayload") -> str:
     """Determine redirect path based on user roles.
 
-    - aaas_admin, tenant_sysadmin -> /select-mode (mode selection)
-    - tenant_admin, agent_owner -> /dashboard
-    - user, viewer -> /chat
+    Every path returned here is a real route in ``webui/src/main.ts``. The
+    previous implementation sent platform administrators to ``/select-mode``,
+    a god/tenant mode switcher that was deleted with the SaaS console; that
+    redirect was a dead end.
     """
-    roles = set(payload.roles)
-    if "aaas_admin" in roles:
-        return "/select-mode"
-    elif "tenant_sysadmin" in roles:
-        return "/select-mode"
-    elif "tenant_admin" in roles:
-        return "/dashboard"
-    elif "agent_owner" in roles:
-        return "/dashboard"
-    else:
+    # Role names come from the catalog vocabulary (ROLE_PRIORITY), not from
+    # strings typed here. A renamed role used to send people to the wrong
+    # console without failing anything.
+    from admin.core.authz import ROLE_PRIORITY
+
+    known = [r for r in ROLE_PRIORITY if r in set(payload.roles)]
+    if not known:
         return "/chat"
+    top = known[0]
+    if top in ("sysadmin", "org_admin"):
+        return "/saas/dashboard"
+    if top in ("agent_owner", "developer"):
+        return "/admin/agents"
+    return "/chat"
 
 
 def get_highest_role(roles: list[str]) -> str:
-    """Get the highest priority role from the roles list."""
+    """Get the highest priority role from the roles list.
+
+    Returns ``"member"`` when no role is recognized. That is the least
+    privileged role in the catalog, which is the correct fallback: an
+    unrecognized role must never resolve to something more powerful.
+    """
     for role in ROLE_PRIORITY:
         if role in roles:
             return role
-    return "user"
+    return "member"
 
 
 def get_permissions_for_roles(roles: list[str]) -> list[str]:
-    """Map roles to permissions."""
-    permissions = set()
-    for role in roles:
-        if role in ROLE_PERMISSIONS:
-            permissions.update(ROLE_PERMISSIONS[role])
-    return list(permissions)
+    """Map roles to permissions.
+
+    Unknown roles contribute nothing. A role name this deployment has not
+    defined grants no authority.
+    """
+    return sorted(permissions_for_roles(roles))
 
 
 async def update_last_login(payload: "TokenPayload") -> None:
@@ -143,13 +94,3 @@ async def update_last_login(payload: "TokenPayload") -> None:
         await _update_login()
     except Exception as e:
         logger.debug("Could not update last_login: %s", e)
-
-
-__all__ = [
-    "ROLE_PRIORITY",
-    "ROLE_PERMISSIONS",
-    "determine_redirect_path",
-    "get_highest_role",
-    "get_permissions_for_roles",
-    "update_last_login",
-]

@@ -11,9 +11,14 @@ import yaml
 
 @dataclass
 class TenantSettings:
-    """Tenantsettings class implementation."""
+    """Tenantsettings class implementation.
 
-    fail_open: bool = False
+    Note:
+        There is no per-tenant fail-open flag. Authorization is fail-closed
+        for every organization; a tenant must not be able to configure its
+        own policy engine into granting on failure.
+    """
+
     budgets: Dict[str, int] = field(default_factory=dict)
     routing_allow: list[str] = field(default_factory=list)
     routing_deny: list[str] = field(default_factory=list)
@@ -38,15 +43,6 @@ class TenantConfig:
 
         data = self._load()
         return data.get(tenant, data.get("default", TenantSettings()))
-
-    def get_fail_open(self, tenant: str) -> bool:
-        """Retrieve fail open.
-
-        Args:
-            tenant: The tenant.
-        """
-
-        return self.get_settings(tenant).fail_open
 
     def get_budget_limit(self, tenant: str, persona_id: Optional[str]) -> Optional[int]:
         """Retrieve budget limit.
@@ -91,7 +87,6 @@ class TenantConfig:
             if not isinstance(values, dict):
                 continue
             settings = TenantSettings()
-            settings.fail_open = bool(values.get("fail_open", False))
             budgets = values.get("budgets", {})
             if isinstance(budgets, dict):
                 settings.budgets = {

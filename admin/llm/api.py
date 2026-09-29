@@ -22,6 +22,7 @@ from ninja.errors import HttpError
 
 from admin.common.auth import AuthBearer
 from admin.core.models.core import AgentSetting, Capsule
+from services.common.authorization import authorize, authorize_sync
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["llm"])
@@ -345,6 +346,9 @@ def _resolve_test_model(provider: str, model: Optional[str], model_id: Optional[
 @router.get("/providers", response=list[ProviderOut], auth=AuthBearer(), summary="List providers")
 def list_providers(request) -> list[ProviderOut]:
     """Provider registry with enable/base URL/model and key presence (never the key)."""
+    # Integrations, not ordinary config: this reports which provider credentials
+    # exist. An inventory of where the keys are is not a `system:view`.
+    authorize_sync(request, action="system:manage_integrations", resource="llm")
     configs = _load_provider_configs()
     result: list[ProviderOut] = []
     for pid, preset in PROVIDER_PRESETS.items():
@@ -383,6 +387,7 @@ def list_providers(request) -> list[ProviderOut]:
 )
 def update_provider(request, provider_id: str, body: ProviderUpdate) -> ProviderOut:
     """Enable/disable provider, set base URL and default model name."""
+    authorize_sync(request, action="system:manage_integrations", resource="llm")
     configs = _load_provider_configs()
     preset = PROVIDER_PRESETS.get(provider_id, {})
     cfg = configs.get(provider_id)
@@ -427,6 +432,7 @@ def list_models(
     active_only: bool = False,
 ) -> list[ModelOut]:
     """List LLMModelConfig rows (real ORM)."""
+    authorize_sync(request, action="system:view", resource="llm")
     from admin.llm.models import LLMModelConfig
 
     qs = LLMModelConfig.objects.all()
@@ -442,6 +448,7 @@ def list_models(
 @router.post("/models", response=ModelOut, auth=AuthBearer(), summary="Create model config")
 def create_model(request, body: ModelIn) -> ModelOut:
     """Create an LLMModelConfig. Does not accept API keys."""
+    authorize_sync(request, action="system:configure", resource="llm")
     from django.db import IntegrityError
 
     from admin.llm.models import LLMModelConfig
@@ -474,6 +481,7 @@ def create_model(request, body: ModelIn) -> ModelOut:
 
 @router.get("/models/{model_id}", response=ModelOut, auth=AuthBearer(), summary="Get model config")
 def get_model(request, model_id: str) -> ModelOut:
+    authorize_sync(request, action="system:view", resource="llm")
     obj = _get_llm_model(model_id)
     if obj is None:
         raise HttpError(404, f"model_not_found: {model_id}")
@@ -484,6 +492,7 @@ def get_model(request, model_id: str) -> ModelOut:
     "/models/{model_id}", response=ModelOut, auth=AuthBearer(), summary="Update model config"
 )
 def update_model(request, model_id: str, body: ModelPatch) -> ModelOut:
+    authorize_sync(request, action="system:configure", resource="llm")
     obj = _get_llm_model(model_id)
     if obj is None:
         raise HttpError(404, f"model_not_found: {model_id}")
@@ -496,6 +505,7 @@ def update_model(request, model_id: str, body: ModelPatch) -> ModelOut:
 
 @router.delete("/models/{model_id}", auth=AuthBearer(), summary="Delete model config")
 def delete_model(request, model_id: str) -> dict:
+    authorize_sync(request, action="system:configure", resource="llm")
     obj = _get_llm_model(model_id)
     if obj is None:
         raise HttpError(404, f"model_not_found: {model_id}")
@@ -515,6 +525,7 @@ def delete_model(request, model_id: str) -> dict:
 @router.get("/slots", response=SlotsOut, auth=AuthBearer(), summary="Get model slots")
 def get_slots(request, capsule_id: Optional[str] = None) -> SlotsOut:
     """Three slots bound to an active Capsule or tenant defaults."""
+    authorize_sync(request, action="system:view", resource="llm")
     if capsule_id:
         cap = Capsule.objects.filter(id=capsule_id).select_related("chat_model").first()
         if cap is None:
@@ -548,6 +559,7 @@ def set_slots(request, body: SlotsUpdate) -> SlotsOut:
     With capsule_id: chat binds Capsule.chat_model FK; utility/embedding via AgentSetting.
     Without: tenant defaults under agent_id=default.
     """
+    authorize_sync(request, action="system:configure", resource="llm")
     data = body.dict(exclude_unset=True)
     capsule_id = data.pop("capsule_id", None)
 
@@ -601,6 +613,7 @@ def _load_presets() -> list[dict[str, Any]]:
 @router.get("/presets", response=list[PresetOut], auth=AuthBearer(), summary="List model presets")
 def list_presets(request) -> list[PresetOut]:
     """Named slot bundles persisted via AgentSetting (LLMModelConfig-backed ids)."""
+    authorize_sync(request, action="system:view", resource="llm")
     return [
         PresetOut(
             id=str(p.get("id", "")),
@@ -618,6 +631,7 @@ def list_presets(request) -> list[PresetOut]:
 
 @router.post("/presets", response=PresetOut, auth=AuthBearer(), summary="Save model preset")
 def create_preset(request, body: PresetIn) -> PresetOut:
+    authorize_sync(request, action="system:configure", resource="llm")
     presets = _load_presets()
     from django.utils import timezone
 
@@ -655,6 +669,7 @@ def create_preset(request, body: PresetIn) -> PresetOut:
 )
 def apply_preset(request, preset_id: str, capsule_id: Optional[str] = None) -> SlotsOut:
     """Load a preset into the active slots (Capsule or tenant defaults)."""
+    authorize_sync(request, action="system:configure", resource="llm")
     presets = _load_presets()
     preset = next((p for p in presets if str(p.get("id")) == preset_id), None)
     if preset is None:
@@ -670,6 +685,7 @@ def apply_preset(request, preset_id: str, capsule_id: Optional[str] = None) -> S
 
 @router.delete("/presets/{preset_id}", auth=AuthBearer(), summary="Delete model preset")
 def delete_preset(request, preset_id: str) -> dict:
+    authorize_sync(request, action="system:configure", resource="llm")
     presets = _load_presets()
     remaining = [p for p in presets if str(p.get("id")) != preset_id]
     if len(remaining) == len(presets):
@@ -691,6 +707,10 @@ def delete_preset(request, preset_id: str) -> dict:
 )
 async def test_connection(request, body: TestConnectionIn) -> TestConnectionOut:
     """Live LiteLLM ping. Uses provided api_key (write-only) or Vault key."""
+    # Gate before any field is read out of the body. This is the one route here
+    # that spends a credential against a caller-supplied base_url — a live
+    # outbound call, not a read of configuration.
+    await authorize(request, action="system:manage_integrations", resource="llm")
     import time
 
     import litellm
@@ -759,6 +779,7 @@ async def test_connection(request, body: TestConnectionIn) -> TestConnectionOut:
 )
 def setup_gate(request, capsule_id: Optional[str] = None) -> SetupGateOut:
     """MD-05: gate when zero models are configured / slots empty."""
+    authorize_sync(request, action="system:view", resource="llm")
     from admin.llm.models import LLMModelConfig
 
     active_models = LLMModelConfig.objects.filter(is_active=True).count()

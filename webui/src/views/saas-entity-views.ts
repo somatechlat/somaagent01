@@ -53,24 +53,6 @@ abstract class BaseEntityView extends LitElement {
     }
 }
 
-@customElement('saas-tenants-view')
-export class SaasTenantsView extends BaseEntityView {
-    render() {
-        return html`
-      <aside class="sidebar">
-        <saas-sidebar active-route="/saas/tenants"></saas-sidebar>
-      </aside>
-      <main class="main">
-        <entity-manager
-          entity="tenant"
-          api-base="/api/v2/aaas"
-          .permissions=${this.permissions}
-        ></entity-manager>
-      </main>
-    `;
-    }
-}
-
 @customElement('saas-users-view')
 export class SaasUsersView extends BaseEntityView {
     render() {
@@ -109,8 +91,7 @@ export class SaasAgentsView extends BaseEntityView {
 
 declare global {
     interface HTMLElementTagNameMap {
-        'saas-tenants-view': SaasTenantsView;
         'saas-users-view': SaasUsersView;
         'saas-agents-view': SaasAgentsView;
-        }
+    }
 }

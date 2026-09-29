@@ -13,6 +13,7 @@ from ninja import Query, Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from admin.common.exceptions import UnauthorizedError
 from admin.common.messages import ErrorCode, get_message, SuccessCode
 from admin.core.somabrain_client import SomaBrainError
@@ -95,6 +96,7 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
     - Real SomaBrain integration
     - Graceful degradation if unavailable
     """
+    await authorize(request, action="resource:memory_search", resource="memory")
     from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
     # Get tenant from auth context (fail-closed if missing)
@@ -150,6 +152,7 @@ async def get_recent_memories(
 
     Per SRS UC-05: GET /api/v2/memory/recent
     """
+    await authorize(request, action="resource:memory_read", resource="memory")
     from admin.core.somabrain_client import get_somabrain_client
 
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
@@ -191,6 +194,7 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     Creates a memory record that will be synced to SomaBrain.
     Uses ZDL pattern if SomaBrain is unavailable.
     """
+    await authorize(request, action="resource:memory_write", resource="memory")
     from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
 
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
@@ -250,6 +254,7 @@ async def delete_memory(request, memory_id: str) -> dict:
 
     Per SRS UC-05: DELETE /api/v2/memory/{id}
     """
+    await authorize(request, action="resource:memory_delete", resource="memory")
     from admin.core.somabrain_client import get_somabrain_client
 
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
@@ -279,6 +284,7 @@ async def delete_memory(request, memory_id: str) -> dict:
 )
 async def get_pending_count(request) -> dict:
     """Degraded status for the UI (Kafka WAL queue ownership)."""
+    await authorize(request, action="resource:memory_read", resource="memory")
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for pending count")
     tenant_id = request.auth.effective_tenant_id
@@ -294,6 +300,7 @@ async def get_pending_count(request) -> dict:
 )
 async def get_memory_stats(request) -> dict:
     """Get memory statistics for the current tenant via SomaBrain + Kafka WAL."""
+    await authorize(request, action="resource:memory_read", resource="memory")
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for stats")
     tenant_id = request.auth.effective_tenant_id

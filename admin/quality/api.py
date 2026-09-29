@@ -16,6 +16,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["quality"])
 logger = logging.getLogger(__name__)
@@ -115,6 +116,7 @@ async def evaluate_quality(
 
     ML Eng: Uses GPT-4 or similar to evaluate quality.
     """
+    await authorize(request, action="system:read_metrics", resource="quality")
     evaluation_id = str(uuid4())
 
     # Default criteria based on asset type
@@ -179,6 +181,7 @@ async def execute_with_retry(
 
     PhD Dev: Exponential backoff with quality threshold.
     """
+    await authorize(request, action="system:configure", resource="quality")
     import asyncio
     import time
 
@@ -249,6 +252,7 @@ async def execute_with_retry(
 )
 async def list_retry_policies(request) -> dict:
     """List available retry policy presets."""
+    await authorize(request, action="system:view", resource="quality")
     return {
         "policies": [
             {
@@ -290,6 +294,7 @@ async def get_thresholds(request) -> dict:
     no per-asset-type threshold store, and no endpoint to write one —
     claiming otherwise was inventing configuration.
     """
+    await authorize(request, action="system:view", resource="quality")
     return {"default_threshold": DEFAULT_QUALITY_THRESHOLD}
 
 

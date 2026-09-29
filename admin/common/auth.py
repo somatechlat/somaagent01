@@ -89,6 +89,29 @@ class TokenPayload(BaseModel):
     tenant_id: str | None = None  # Custom claim for multi-tenancy (UUID)
     session_id: str | None = None  # Custom claim for session tracking
 
+    # Set only when the principal is an API key rather than a person. A key is
+    # a delegation: it holds exactly these permissions and no roles at all.
+    delegated_scopes: list[str] | None = None
+
+    @property
+    def is_api_key(self) -> bool:
+        """True when this principal is a delegated API key."""
+        return self.delegated_scopes is not None
+
+    @property
+    def permissions(self) -> list[str]:
+        """Catalog permissions this principal holds.
+
+        A key holds its scopes and nothing else. A person holds what their
+        roles grant. The two are never unioned — see
+        ``admin.core.authz.permissions_for_principal``.
+        """
+        from admin.core.authz import permissions_for_principal
+
+        if self.delegated_scopes is not None:
+            return sorted(permissions_for_principal(scopes=self.delegated_scopes))
+        return sorted(permissions_for_principal(roles=self.roles))
+
     @property
     def effective_tenant_id(self) -> str | None:
         """Get tenant ID with fallback chain: tenant_id → tenant → settings default.
@@ -159,19 +182,32 @@ class JWKSCache:
 _jwks_cache = JWKSCache()
 
 
+#: Issued API keys are opaque and carry this prefix so a presented credential
+#: can be routed to the right verifier without trying to parse it as a JWT.
+API_KEY_PREFIX = "sk_"
+
+
 async def decode_token(token: str) -> TokenPayload:
-    """Decode and validate a JWT token.
+    """Decode and validate a credential.
+
+    Accepts either a JWT session token or an issued API key. An API key is
+    verified against its stored hash and carries only the scopes it was issued
+    with; it never picks up the issuer's roles.
 
     Args:
-        token: The JWT token string
+        token: The credential string
 
     Returns:
         Decoded token payload
 
     Raises:
-        UnauthorizedError: If token is invalid or expired
+        UnauthorizedError: If the credential is invalid, expired, revoked or
+            unknown. All failures are the same failure.
     """
     from django.conf import settings as django_settings
+
+    if token.startswith(API_KEY_PREFIX):
+        return _decode_api_key(token)
 
     config = get_keycloak_config()
 
@@ -217,6 +253,48 @@ async def decode_token(token: str) -> TokenPayload:
         raise UnauthorizedError("Invalid or expired token")
 
 
+async def _decode_api_key(raw_key: str) -> TokenPayload:
+    """Resolve an issued API key into a principal.
+
+    FAIL-CLOSED: an unknown, revoked or expired key raises, exactly like a bad
+    JWT. A key that cannot be resolved is not "anonymous with no permissions";
+    it is unauthenticated.
+
+    The principal carries the key's scopes and no roles. Roles are what a
+    person holds; a key is a delegation of a fixed subset of its issuer's
+    authority and must not grow into the issuer's.
+    """
+    from asgiref.sync import sync_to_async
+
+    from admin.aaas.models.profiles import ApiKey
+
+    @sync_to_async
+    def _verify():
+        return ApiKey.verify(raw_key)
+
+    @sync_to_async
+    def _touch(key: ApiKey) -> None:
+        try:
+            key.mark_used()
+        except Exception:  # noqa: BLE001 - usage tracking must not break auth
+            pass
+
+    key = await _verify()
+    if key is None:
+        raise UnauthorizedError("Invalid or expired API key")
+
+    await _touch(key)
+
+    return TokenPayload(
+        sub=str(key.user_id or key.id),
+        exp=0,
+        iat=0,
+        iss="api-key",
+        tenant_id=str(key.tenant_id) if key.tenant_id else None,
+        delegated_scopes=list(key.scopes or []),
+    )
+
+
 # =============================================================================
 # NINJA SECURITY CLASSES
 # =============================================================================
@@ -259,89 +337,6 @@ class AuthBearer(HttpBearer):
             return None
 
 
-class RoleRequired(HttpBearer):
-    """Bearer token authentication with role requirement.
-
-    Supports both Bearer header and httpOnly cookie fallback.
-    Overrides __call__ for cookie fallback (same pattern as AuthBearer).
-
-    Usage:
-        @router.get("/admin-only", auth=RoleRequired("admin"))
-        async def admin_endpoint(request):
-            ...
-    """
-
-    def __init__(self, *required_roles: str):
-        """Initialize the instance."""
-
-        super().__init__()
-        self.required_roles = set(required_roles)
-
-    def __call__(self, request: HttpRequest) -> Optional[Any]:
-        """Check Authorization header first, then fall back to httpOnly cookie."""
-        auth_value = request.headers.get("Authorization", "")
-        if auth_value.startswith("Bearer "):
-            token = auth_value[7:]
-            return self.authenticate(request, token)
-        return self.authenticate(request, "")
-
-    async def authenticate(self, request, token: str) -> TokenPayload | None:
-        """Authenticate and check roles."""
-        try:
-            effective_token = token or request.COOKIES.get("access_token", "")
-            if not effective_token:
-                return None
-            payload = await decode_token(effective_token)
-            _apply_session_cookie(payload, request)
-
-            # Check if user has at least one required role
-            user_roles = set(payload.roles)
-            if not user_roles.intersection(self.required_roles):
-                raise ForbiddenError(
-                    action="access",
-                    resource=f"endpoint requiring roles: {', '.join(self.required_roles)}",
-                )
-
-            return payload
-
-        except UnauthorizedError:
-            return None
-
-
-class TenantRequired(HttpBearer):
-    """Bearer token authentication with tenant requirement.
-
-    Supports both Bearer header and httpOnly cookie fallback.
-
-    Usage:
-        @router.get("/tenant-resource", auth=TenantRequired())
-        async def tenant_endpoint(request):
-            tenant_id = request.auth.tenant_id
-            ...
-    """
-
-    async def authenticate(self, request, token: str) -> TokenPayload | None:
-        """Authenticate and extract tenant."""
-        try:
-            effective_token = token or request.COOKIES.get("access_token", "")
-            if not effective_token:
-                return None
-            payload = await decode_token(effective_token)
-            _apply_session_cookie(payload, request)
-
-            # Tenant ID must be present
-            if not payload.tenant_id and not payload.tenant:
-                raise ForbiddenError(
-                    action="access",
-                    resource="endpoint requiring tenant context",
-                )
-
-            return payload
-
-        except UnauthorizedError:
-            return None
-
-
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
@@ -373,85 +368,3 @@ def _apply_session_cookie(payload: TokenPayload, request) -> None:
         payload.session_id = session_id
 
 
-def require_roles(*roles: str):
-    """Decorator to require specific roles.
-
-    Usage:
-        @router.get("/admin")
-        @require_roles("admin", "super_admin")
-        async def admin_endpoint(request):
-            ...
-    """
-
-    def decorator(func):
-        """Execute decorator.
-
-        Args:
-            func: The func.
-        """
-
-        async def wrapper(request, *args, **kwargs):
-            """Execute wrapper.
-
-            Args:
-                request: The request.
-            """
-
-            user = get_current_user(request)
-            user_roles = set(user.roles)
-            required_roles = set(roles)
-
-            if not user_roles.intersection(required_roles):
-                raise ForbiddenError(
-                    action="access",
-                    resource="endpoint",
-                )
-
-            return await func(request, *args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-def require_permission(permission: str):
-    """Decorator to require specific permission via UnifiedGate/SpiceDB.
-
-    VIBE SECURITY: This enforces real permission checks.
-    If SpiceDB/UnifiedGate is unavailable, it FAILS CLOSED (denies access).
-
-    Usage:
-        @router.get("/resource/{id}")
-        @require_permission("view")
-        async def view_resource(request, id: str):
-            ...
-    """
-
-    def decorator(func):
-        async def wrapper(request, *args, **kwargs):
-            user = get_current_user(request)
-
-            # FAIL-CLOSED: If no user, deny immediately
-            if not user:
-                raise ForbiddenError(f"Permission denied: {permission} — authentication required")
-
-            # Check permission via UnifiedGate
-            from admin.core.agentiq import UnifiedGate
-
-            gate = UnifiedGate()
-            # For endpoint-level permissions, we check without a capsule
-            # The gate will use the default policy (deny if no policy defined)
-            allowed = await gate.check_endpoint_permission(
-                user_id=user.sub,
-                tenant_id=user.effective_tenant_id,
-                permission=permission,
-            )
-
-            if not allowed:
-                raise ForbiddenError(f"Permission denied: {permission}")
-
-            return await func(request, *args, **kwargs)
-
-        return wrapper
-
-    return decorator

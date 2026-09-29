@@ -16,13 +16,15 @@ from typing import AsyncGenerator, Optional
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.http import StreamingHttpResponse
+from django.http import HttpRequest, StreamingHttpResponse
 from ninja import Query, Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.messages import ErrorCode, get_message
 from admin.core.models import Session, SessionEvent
+from services.common.authorization import authorize
 
 router = Router(tags=["sessions"])
 logger = logging.getLogger(__name__)
@@ -189,9 +191,10 @@ async def _sse_event_generator(session_id: str) -> AsyncGenerator[str, None]:
             await asyncio.sleep(SSE_POLL_INTERVAL)
 
 
-@router.get("", response=list[SessionSummary], summary="List recent sessions")
-async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> list[dict]:
+@router.get("", response=list[SessionSummary], summary="List recent sessions", auth=AuthBearer())
+async def list_sessions(request: HttpRequest, limit: int = Query(50, ge=1, le=200)) -> list[dict]:
     """List recent sessions."""
+    await authorize(request, action="resource:conversation_read", resource="sessions")
     rows = await _list_sessions(limit)
     return [
         {
@@ -203,9 +206,10 @@ async def list_sessions(limit: int = Query(50, ge=1, le=200)) -> list[dict]:
     ]
 
 
-@router.get("/{session_id}", response=SessionDetailResponse, summary="Get session details")
-async def get_session(session_id: str) -> SessionDetailResponse:
+@router.get("/{session_id}", response=SessionDetailResponse, summary="Get session details", auth=AuthBearer())
+async def get_session(request: HttpRequest, session_id: str) -> SessionDetailResponse:
     """Get session envelope."""
+    await authorize(request, action="resource:conversation_read", resource="sessions")
     session = await _get_session(session_id)
     if session:
         return SessionDetailResponse(
@@ -219,11 +223,12 @@ async def get_session(session_id: str) -> SessionDetailResponse:
     raise NotFoundError("session", session_id)
 
 
-@router.get("/{session_id}/history", response=SessionHistoryResponse, summary="Get session history")
+@router.get("/{session_id}/history", response=SessionHistoryResponse, summary="Get session history", auth=AuthBearer())
 async def session_history(
-    session_id: str, limit: int = Query(100, ge=1, le=500)
+    request: HttpRequest, session_id: str, limit: int = Query(100, ge=1, le=500)
 ) -> SessionHistoryResponse:
     """Return session history events."""
+    await authorize(request, action="resource:conversation_view_history", resource="sessions")
     events = await _get_session_events(session_id, limit)
     if events is None:
         raise NotFoundError("session", session_id)
@@ -241,7 +246,7 @@ async def session_history(
     )
 
 
-@router.get("/{session_id}/events", summary="Session events (SSE or JSON)")
+@router.get("/{session_id}/events", summary="Session events (SSE or JSON)", auth=AuthBearer())
 async def session_events_sse(
     request,
     session_id: str,
@@ -249,6 +254,7 @@ async def session_events_sse(
     limit: int = Query(100, ge=1, le=500),
 ):
     """Session events endpoint with optional SSE streaming."""
+    await authorize(request, action="resource:conversation_view_history", resource="sessions")
     if stream:
         return StreamingHttpResponse(
             _sse_event_generator(session_id),
@@ -270,9 +276,10 @@ async def session_events_sse(
     }
 
 
-@router.post("/message", response=SessionMessageResponse, summary="Post user message")
-async def post_session_message(payload: SessionMessageRequest) -> dict:
+@router.post("/message", response=SessionMessageResponse, summary="Post user message", auth=AuthBearer())
+async def post_session_message(request: HttpRequest, payload: SessionMessageRequest) -> dict:
     """Enqueue a user message and persist a session event."""
+    await authorize(request, action="resource:conversation_send_message", resource="sessions")
     from admin.common.exceptions import ValidationError
     from services.conversation_worker.temporal_worker import ConversationWorkflow
     from services.gateway import providers
@@ -314,9 +321,11 @@ async def post_session_message(payload: SessionMessageRequest) -> dict:
     "/terminate/{workflow_id}",
     response=TerminationResponse,
     summary="Terminate conversation workflow",
+    auth=AuthBearer(),
 )
-async def terminate_conversation(workflow_id: str) -> TerminationResponse:
+async def terminate_conversation(request: HttpRequest, workflow_id: str) -> TerminationResponse:
     """Cancel a running conversation workflow."""
+    await authorize(request, action="resource:conversation_delete", resource="sessions")
     from services.gateway import providers
 
     client = await providers.get_temporal_client()

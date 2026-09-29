@@ -745,6 +745,25 @@ class AgentSetting(models.Model):
 
         return f"AgentSetting({self.agent_id}:{self.key})"
 
+    def save(self, *args, **kwargs):
+        """Write a setting, refusing to make Postgres a secret store.
+
+        Two catches, because either alone is bypassable:
+
+        * a secret-shaped KEY (`password`, `api_key`, `token`, …) may only
+          hold a Vault path or hold nothing;
+        * a VALUE that looks like credential material is refused even under
+          an innocent key (`notes`, `config`, …).
+
+        This is the write-path gate for VIBE Rule 164. Reads still have to
+        fail closed on an empty value — an empty setting is "not configured",
+        never "use a default that happens to work".
+        """
+        from services.common.secret_policy import assert_no_secret_value
+
+        assert_no_secret_value(self.key, self.value, where=f"AgentSetting({self.agent_id})")
+        super().save(*args, **kwargs)
+
 
 # =============================================================================
 # ZERO DATA LOSS INFRASTRUCTURE - MOVED TO admin/core/models/zdl.py

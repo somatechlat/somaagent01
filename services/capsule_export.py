@@ -12,6 +12,7 @@ A complete Capsule export contains everything needed to recreate an agent:
 VIBE Compliance:
 - Rule 82: Professional comments, zero AI slop
 - Rule 84: No mocks - real Django ORM queries
+- Rule 164: An export describes an agent. It never carries its credentials.
 - Rule 216: Django 5+ Backend Sovereignty
 - Rule 245: Under 650 lines
 """
@@ -416,6 +417,39 @@ def _export_instances(capsule: Capsule) -> list:
     ]
 
 
+def _assert_exportable_settings(settings: list, *, kind: str) -> list:
+    """Refuse to write credential material into an export file.
+
+    A capsule export is a portable artefact people email, commit to a ticket
+    and attach to a backup. It describes an agent; it never carries its
+    credentials (VIBE Rule 164).
+
+    A secret-shaped key whose value is a **Vault path** is exported as-is —
+    that is the point of the path: it is portable, safe, and lets the import
+    side resolve the real credential from the destination's own Vault.
+
+    A secret-shaped key whose value is credential material **fails the
+    export**. It is deliberately not stripped: a silently stripped export
+    looks complete and re-imports as an agent missing every credential, with
+    nothing on its face saying so. Failing loudly is the honest failure.
+
+    `AgentSetting.save()` already refuses such rows, so this catches what
+    `save()` cannot: rows written before that gate, and rows written through
+    `bulk_create` / `queryset.update()`, which never call `save()`.
+    """
+    from services.common.secret_policy import assert_no_secret_value
+
+    for row in settings:
+        if not isinstance(row, dict):
+            continue
+        key = row.get("key", "")
+        for field_name in ("value", "default_value"):
+            if field_name not in row:
+                continue
+            assert_no_secret_value(key, row[field_name], where=f"capsule export ({kind})")
+    return settings
+
+
 def _export_related_data(capsule: Capsule) -> RelatedDataExport:
     """Export related data entities."""
     # Get capabilities from M2M (canonical) — snapshot at export time
@@ -426,8 +460,14 @@ def _export_related_data(capsule: Capsule) -> RelatedDataExport:
         capabilities=capabilities,
         prompts=list(Prompt.objects.filter(tenant=capsule.tenant, is_active=True).values()),
         feature_flags=list(FeatureFlag.objects.values()),
-        agent_settings=list(AgentSetting.objects.filter(agent_id=str(capsule.id)).values()),
-        ui_settings=list(UISetting.objects.filter(tenant=capsule.tenant).values()),
+        agent_settings=_assert_exportable_settings(
+            list(AgentSetting.objects.filter(agent_id=str(capsule.id)).values()),
+            kind="agent_settings",
+        ),
+        ui_settings=_assert_exportable_settings(
+            list(UISetting.objects.filter(tenant=capsule.tenant).values()),
+            kind="ui_settings",
+        ),
     )
 
 

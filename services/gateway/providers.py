@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.conf import settings
 
-from config.settings_registry import get_optional_env
+from config.settings_registry import get_settings
 from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import (
     KafkaEventBus,
@@ -35,11 +35,13 @@ def get_event_bus() -> KafkaEventBus:
 
 def get_bus() -> KafkaEventBus:
     """Create a Kafka event bus using admin settings."""
+    cfg = get_settings()
     kafka_settings = KafkaSettings(
-        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-        security_protocol=get_optional_env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-        sasl_mechanism=get_optional_env("KAFKA_SASL_MECHANISM") or None,
-        sasl_username=get_optional_env("KAFKA_SASL_USERNAME") or None,
+        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None)
+        or cfg.kafka_bootstrap_servers,
+        security_protocol=cfg.kafka_security_protocol,
+        sasl_mechanism=cfg.kafka_sasl_mechanism or None,
+        sasl_username=cfg.kafka_sasl_username or None,
         sasl_password=resolve_kafka_sasl_password(),
     )
     return KafkaEventBus(kafka_settings)
@@ -77,7 +79,7 @@ def get_llm_adapter():
     from services.common.llm_adapter import LLMAdapter
     from services.common.unified_secret_manager import get_secret_manager
 
-    base_url = get_optional_env("SA01_LLM_BASE_URL") or None
+    base_url = get_settings().llm_base_url or None
     # Prefer per-call secret retrieval to avoid stale keys.
     sm = get_secret_manager()
 
@@ -126,6 +128,6 @@ async def get_temporal_client():
 
     async with _TEMPORAL_LOCK:
         if _TEMPORAL_CLIENT is None:
-            host = get_optional_env("SA01_TEMPORAL_HOST", "temporal:7233")
+            host = get_settings().temporal_host or "temporal:7233"
             _TEMPORAL_CLIENT = await Client.connect(host)
         return _TEMPORAL_CLIENT

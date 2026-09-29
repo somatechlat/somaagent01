@@ -12,8 +12,9 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel, Field
 
-from admin.common.auth import RoleRequired
+from admin.common.auth import AuthBearer
 from admin.core.somabrain_client import SomaClientError
+from services.common.authorization import authorize
 
 router = Router(tags=["admin-migrate"])
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ class MigrateImportResponse(BaseModel):
     "/export",
     response=dict,
     summary="Export memory data for migration",
-    auth=RoleRequired("admin", "aaas_admin"),
+    auth=AuthBearer(),
 )
 async def admin_migrate_export(
     request: HttpRequest,
@@ -79,6 +80,10 @@ async def admin_migrate_export(
     - Long-term memories
     - Optionally working memory (with limit)
     """
+    # A full memory export is the platform's data leaving the building. It is
+    # not a read a sysadmin happens to be able to do — it is its own act, and
+    # the catalog says so.
+    await authorize(request, action="system:configure", resource="migrate")
     from admin.agents.services.somabrain_integration import SomaBrainClient
 
     client = SomaBrainClient.get()
@@ -96,7 +101,7 @@ async def admin_migrate_export(
     "/import",
     response=dict,
     summary="Import memory data from migration",
-    auth=RoleRequired("admin", "aaas_admin"),
+    auth=AuthBearer(),
 )
 async def admin_migrate_import(
     request: HttpRequest,
@@ -111,6 +116,10 @@ async def admin_migrate_import(
 
     If replace=True, existing data is replaced.
     """
+    # ``replace=True`` overwrites what is already here. Gate before the body
+    # is read so an unauthenticated caller cannot learn which fields the
+    # importer accepts.
+    await authorize(request, action="system:configure", resource="migrate")
     from admin.agents.services.somabrain_integration import SomaBrainClient
 
     client = SomaBrainClient.get()

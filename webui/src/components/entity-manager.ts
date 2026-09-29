@@ -39,18 +39,19 @@ interface ActionDef {
     id: string;
     label: string;
     icon: string;
-    permission: string;  // e.g., ':edit' becomes 'tenant:edit'
+    /** A permission name from the authorization catalog (admin.core.authz).
+     *  Never a template fragment: a name the catalog does not contain is not
+     *  a permission, and a control gated on one can never be authorized. */
+    permission: string;
     variant?: 'default' | 'danger';
     requiresConfirm?: boolean;
 }
 
-// Default actions available for all entities
-const DEFAULT_ACTIONS: ActionDef[] = [
-    { id: 'view', label: 'View', icon: 'visibility', permission: ':view' },
-    { id: 'edit', label: 'Edit', icon: 'edit', permission: ':edit' },
-    { id: 'duplicate', label: 'Duplicate', icon: 'content_copy', permission: ':create' },
-    { id: 'delete', label: 'Delete', icon: 'delete', permission: ':delete', variant: 'danger', requiresConfirm: true },
-];
+// Actions are declared per entity below with the exact catalog permission
+// that authorizes them. There is no shared default list: the same verb on two
+// entities is two different permissions (`org:update` is not `agent:update`),
+// and a shared template is how the old `tenant:edit` style names appeared.
+const DEFAULT_ACTIONS: ActionDef[] = [];
 
 // Entity-specific configurations
 const ENTITY_CONFIGS: Record<string, EntityConfig> = {
@@ -67,9 +68,14 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
             { key: 'created_at', label: 'Created', sortable: true },
         ],
         actions: [
-            ...DEFAULT_ACTIONS.filter(a => a.id !== 'duplicate'),
-            { id: 'suspend', label: 'Suspend', icon: 'pause_circle', permission: ':suspend', variant: 'danger' },
-            { id: 'impersonate', label: 'Impersonate', icon: 'person', permission: ':impersonate' },
+            { id: 'view', label: 'View', icon: 'visibility', permission: 'org:read' },
+            { id: 'edit', label: 'Edit', icon: 'edit', permission: 'org:update' },
+            { id: 'suspend', label: 'Suspend', icon: 'pause_circle', permission: 'org:manage', variant: 'danger' },
+            { id: 'delete', label: 'Delete', icon: 'delete', permission: 'system:configure', variant: 'danger', requiresConfirm: true },
+            // Impersonation is gone. Acting as another subject is authority
+            // none of the eight roles grants, so a control for it can never be
+            // authorized by the catalog. A button that can never be correctly
+            // gated is not a feature, it is a trap.
         ],
     },
     user: {
@@ -84,9 +90,11 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
             { key: 'last_login', label: 'Last Login', sortable: true },
         ],
         actions: [
-            ...DEFAULT_ACTIONS,
-            { id: 'reset_password', label: 'Reset Password', icon: 'key', permission: ':edit' },
-            { id: 'suspend', label: 'Suspend', icon: 'pause_circle', permission: ':suspend', variant: 'danger' },
+            { id: 'view', label: 'View', icon: 'visibility', permission: 'org:user_read' },
+            { id: 'edit', label: 'Edit', icon: 'edit', permission: 'org:user_update' },
+            { id: 'reset_password', label: 'Reset Password', icon: 'key', permission: 'org:user_update' },
+            { id: 'suspend', label: 'Suspend', icon: 'pause_circle', permission: 'org:user_update', variant: 'danger' },
+            { id: 'delete', label: 'Delete', icon: 'delete', permission: 'org:user_delete', variant: 'danger', requiresConfirm: true },
         ],
     },
     agent: {
@@ -100,7 +108,12 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
             { key: 'message_count', label: 'Messages', sortable: true, align: 'center' },
             { key: 'created_at', label: 'Created', sortable: true },
         ],
-        actions: DEFAULT_ACTIONS,
+        actions: [
+            { id: 'view', label: 'View', icon: 'visibility', permission: 'agent:read' },
+            { id: 'edit', label: 'Edit', icon: 'edit', permission: 'agent:update' },
+            { id: 'duplicate', label: 'Duplicate', icon: 'content_copy', permission: 'agent:create' },
+            { id: 'delete', label: 'Delete', icon: 'delete', permission: 'agent:delete', variant: 'danger', requiresConfirm: true },
+        ],
     },
     feature: {
         displayName: 'Feature',
@@ -113,9 +126,9 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
             { key: 'is_active', label: 'Active', sortable: true, align: 'center' },
         ],
         actions: [
-            { id: 'view', label: 'View', icon: 'visibility', permission: ':view' },
-            { id: 'edit', label: 'Edit', icon: 'edit', permission: ':edit' },
-            { id: 'toggle', label: 'Toggle', icon: 'toggle_on', permission: ':edit' },
+            { id: 'view', label: 'View', icon: 'visibility', permission: 'system:configure' },
+            { id: 'edit', label: 'Edit', icon: 'edit', permission: 'system:configure' },
+            { id: 'toggle', label: 'Toggle', icon: 'toggle_on', permission: 'system:configure' },
         ],
     },
     ratelimit: {
@@ -130,9 +143,9 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
             { key: 'is_active', label: 'Active', sortable: true, align: 'center' },
         ],
         actions: [
-            { id: 'view', label: 'View', icon: 'visibility', permission: ':view' },
-            { id: 'edit', label: 'Edit', icon: 'edit', permission: ':edit' },
-            { id: 'delete', label: 'Delete', icon: 'delete', permission: ':delete', variant: 'danger' },
+            { id: 'view', label: 'View', icon: 'visibility', permission: 'system:ratelimit' },
+            { id: 'edit', label: 'Edit', icon: 'edit', permission: 'system:ratelimit' },
+            { id: 'delete', label: 'Delete', icon: 'delete', permission: 'system:ratelimit', variant: 'danger' },
         ],
     },
 };
@@ -336,7 +349,7 @@ export class EntityManager extends LitElement {
 
     private getAvailableActions(): ActionItem[] {
         return this.config.actions
-            .filter(action => this.hasPermission(`${this.entity}${action.permission}`))
+            .filter(action => this.hasPermission(action.permission))
             .map(action => ({
                 id: action.id,
                 label: action.label,
@@ -346,9 +359,12 @@ export class EntityManager extends LitElement {
     }
 
     private hasPermission(perm: string): boolean {
-        return this.permissions.includes(perm) ||
-            this.permissions.includes('*') ||
-            this.permissions.includes(`${this.entity}:*`);
+        // Exact match only. The previous version also accepted `*` and
+        // `<entity>:*`, which is a client-side bypass: one wildcard in the
+        // permission list unlocked every control on the screen regardless of
+        // what the server decided. The catalog has no wildcard and neither
+        // does this.
+        return this.permissions.includes(perm);
     }
 
     private apiPath(suffix: string): string {

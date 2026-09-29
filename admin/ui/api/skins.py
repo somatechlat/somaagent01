@@ -16,7 +16,9 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel, Field, field_validator
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
+from services.common.authorization import authorize
 
 router = Router(tags=["skins"])
 logger = logging.getLogger(__name__)
@@ -144,32 +146,33 @@ def _get_tenant_id(request: HttpRequest) -> str:
     return request.headers.get("X-Tenant-Id", "00000000-0000-0000-0000-000000000000")
 
 
-async def _is_admin(request: HttpRequest) -> bool:
-    """Execute is admin.
+def _may_see_unapproved(request: HttpRequest) -> bool:
+    """True when the caller may read skins that have not been approved.
 
-    Args:
-        request: The request.
+    This is a question about a principal, not a decision to let them act, so it
+    reads the role catalog instead of calling ``authorize()``. The previous
+    version called ``authorize()`` inside ``try/except Exception: return False``
+    under a retired action name — which turned an unknown permission, a policy
+    outage and a real bug into the same quiet "no".
     """
+    from admin.core.authz import permissions_for_roles
 
-    try:
-        from services.common.authorization import authorize
-
-        await authorize(request, action="skin:upload", resource="skins")
-        return True
-    except Exception:
-        return False
+    auth = getattr(request, "auth", None)
+    roles = list(getattr(auth, "roles", None) or [])
+    return "org:manage" in permissions_for_roles(roles)
 
 
-@router.get("", response=SkinListResponse, summary="List skins")
+@router.get("", response=SkinListResponse, summary="List skins", auth=AuthBearer())
 async def list_skins(request: HttpRequest) -> dict:
     """List available skins for the tenant."""
+    await authorize(request, action="org:read", resource="skins")
     store = _get_store()
     await store.ensure_schema()
 
     tenant_id = _get_tenant_id(request)
-    is_admin = await _is_admin(request)
+    can_moderate = _may_see_unapproved(request)
 
-    skins = await store.list(tenant_id=tenant_id, include_unapproved=is_admin)
+    skins = await store.list(tenant_id=tenant_id, include_unapproved=can_moderate)
 
     return {
         "skins": [_record_to_response(s) for s in skins],
@@ -177,14 +180,15 @@ async def list_skins(request: HttpRequest) -> dict:
     }
 
 
-@router.get("/{skin_id}", response=SkinResponse, summary="Get skin")
+@router.get("/{skin_id}", response=SkinResponse, summary="Get skin", auth=AuthBearer())
 async def get_skin(request: HttpRequest, skin_id: str) -> dict:
     """Get a single skin by ID."""
+    await authorize(request, action="org:read", resource="skins")
     store = _get_store()
     await store.ensure_schema()
 
     tenant_id = _get_tenant_id(request)
-    is_admin = await _is_admin(request)
+    can_moderate = _may_see_unapproved(request)
 
     skin = await store.get(skin_id)
     if not skin:
@@ -195,22 +199,21 @@ async def get_skin(request: HttpRequest, skin_id: str) -> dict:
     if skin.tenant_id != tenant_id and skin.tenant_id != global_tenant:
         raise NotFoundError("skin", skin_id)
 
-    if not is_admin and not skin.is_approved:
+    if not can_moderate and not skin.is_approved:
         raise NotFoundError("skin", skin_id)
 
     return _record_to_response(skin)
 
 
-@router.post("", response=SkinResponse, summary="Create skin")
+@router.post("", response=SkinResponse, summary="Create skin", auth=AuthBearer())
 async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
     """Upload a new skin (admin only)."""
-    from services.common.authorization import authorize
+    auth = await authorize(request, action="system:configure", resource="skins")
     from services.common.skins_store import SkinRecord
 
     store = _get_store()
     await store.ensure_schema()
 
-    auth = await authorize(request, action="skin:upload", resource="skins")
     tenant_id = auth.get("tenant", _get_tenant_id(request))
 
     existing = await store.get_by_name(tenant_id, payload.name)
@@ -236,14 +239,12 @@ async def create_skin(request: HttpRequest, payload: SkinCreateRequest) -> dict:
     return _record_to_response(created)
 
 
-@router.put("/{skin_id}", response=SkinResponse, summary="Update skin")
+@router.put("/{skin_id}", response=SkinResponse, summary="Update skin", auth=AuthBearer())
 async def update_skin(request: HttpRequest, skin_id: str, payload: SkinUpdateRequest) -> dict:
     """Update an existing skin (admin only)."""
-    from services.common.authorization import authorize
-
+    await authorize(request, action="system:configure", resource="skins")
     store = _get_store()
     await store.ensure_schema()
-    await authorize(request, action="skin:update", resource="skins")
 
     skin = await store.get(skin_id)
     if not skin:
@@ -264,14 +265,12 @@ async def update_skin(request: HttpRequest, skin_id: str, payload: SkinUpdateReq
     return _record_to_response(updated)
 
 
-@router.delete("/{skin_id}", summary="Delete skin")
+@router.delete("/{skin_id}", summary="Delete skin", auth=AuthBearer())
 async def delete_skin(request: HttpRequest, skin_id: str) -> dict:
     """Delete a skin (admin only)."""
-    from services.common.authorization import authorize
-
+    await authorize(request, action="system:configure", resource="skins")
     store = _get_store()
     await store.ensure_schema()
-    await authorize(request, action="skin:delete", resource="skins")
 
     skin = await store.get(skin_id)
     if not skin:
@@ -281,14 +280,12 @@ async def delete_skin(request: HttpRequest, skin_id: str) -> dict:
     return {"deleted": skin_id}
 
 
-@router.patch("/{skin_id}/approve", response=SkinResponse, summary="Approve skin")
+@router.patch("/{skin_id}/approve", response=SkinResponse, summary="Approve skin", auth=AuthBearer())
 async def approve_skin(request: HttpRequest, skin_id: str) -> dict:
     """Approve a skin (admin only)."""
-    from services.common.authorization import authorize
-
+    await authorize(request, action="system:configure", resource="skins")
     store = _get_store()
     await store.ensure_schema()
-    await authorize(request, action="skin:approve", resource="skins")
 
     skin = await store.get(skin_id)
     if not skin:
@@ -300,14 +297,12 @@ async def approve_skin(request: HttpRequest, skin_id: str) -> dict:
     return _record_to_response(approved)
 
 
-@router.patch("/{skin_id}/reject", response=SkinResponse, summary="Reject skin")
+@router.patch("/{skin_id}/reject", response=SkinResponse, summary="Reject skin", auth=AuthBearer())
 async def reject_skin(request: HttpRequest, skin_id: str) -> dict:
     """Reject a skin (admin only)."""
-    from services.common.authorization import authorize
-
+    await authorize(request, action="system:configure", resource="skins")
     store = _get_store()
     await store.ensure_schema()
-    await authorize(request, action="skin:reject", resource="skins")
 
     skin = await store.get(skin_id)
     if not skin:

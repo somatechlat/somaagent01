@@ -133,6 +133,15 @@ class SpiceDBClient:
         self._stub: Any = None
         self._connected = False
 
+    @property
+    def is_configured(self) -> bool:
+        """True when SpiceDB is attached and may express an opinion.
+
+        When False, callers must decide authorization from role-based access
+        control alone. Absence of an engine is not consent.
+        """
+        return not getattr(self, "_disabled", False)
+
     async def connect(self) -> None:
         """Establish gRPC connection to SpiceDB."""
         import grpc.aio

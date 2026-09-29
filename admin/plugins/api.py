@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.modules import hooks as hooks_module, registry as module_registry
+from services.common.authorization import authorize
 
 router = Router(tags=["plugins"])
 logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ async def list_plugins(
     category: Optional[str] = None,
 ) -> dict:
     """List installed plugins (delegates to Capsule Module registry)."""
+    await authorize(request, action="system:view", resource="plugins")
 
     try:
         modules = module_registry.list_modules()
@@ -126,6 +128,7 @@ async def install_plugin(
 
     Security Auditor: Validate and sandbox.
     """
+    await authorize(request, action="system:configure", resource="plugins")
     raise HttpError(501, "Plugin install is not implemented: no plugin registry host.")
 
 
@@ -137,6 +140,7 @@ async def install_plugin(
 )
 async def get_plugin(request, plugin_id: str) -> Plugin:
     """Get plugin details."""
+    await authorize(request, action="system:view", resource="plugins")
     try:
         module = module_registry.get_module(plugin_id)
     except module_registry.ModuleNotFound as exc:
@@ -151,6 +155,7 @@ async def get_plugin(request, plugin_id: str) -> Plugin:
 )
 async def enable_plugin(request, plugin_id: str) -> dict:
     """Enable a plugin (real module registry state)."""
+    await authorize(request, action="system:configure", resource="plugins")
 
     try:
         module = module_registry.set_module_enabled(plugin_id, True)
@@ -170,6 +175,7 @@ async def enable_plugin(request, plugin_id: str) -> dict:
 )
 async def disable_plugin(request, plugin_id: str) -> dict:
     """Disable a plugin (real module registry state)."""
+    await authorize(request, action="system:configure", resource="plugins")
 
     try:
         module = module_registry.set_module_enabled(plugin_id, False)
@@ -190,6 +196,7 @@ async def uninstall_plugin(request, plugin_id: str) -> dict:
 
     Security Auditor: Clean removal, revoke permissions.
     """
+    await authorize(request, action="system:configure", resource="plugins")
     raise HttpError(501, "Plugin uninstall is not implemented: no plugin registry host.")
 
 
@@ -205,6 +212,7 @@ async def uninstall_plugin(request, plugin_id: str) -> dict:
 )
 async def get_plugin_config(request, plugin_id: str) -> dict:
     """Get plugin configuration (from the Module registry)."""
+    await authorize(request, action="system:view", resource="plugins")
 
     try:
         module = module_registry.get_module(plugin_id)
@@ -224,6 +232,7 @@ async def update_plugin_config(
     config: dict,
 ) -> dict:
     """Update plugin configuration (from the Module registry)."""
+    await authorize(request, action="system:configure", resource="plugins")
 
     try:
         module = module_registry.update_module_config(plugin_id, config)
@@ -244,6 +253,7 @@ async def update_plugin_config(
 )
 async def list_hooks(request) -> dict:
     """List available plugin hooks (orchestrator hook registry)."""
+    await authorize(request, action="system:view", resource="plugins")
 
     return {
         "hooks": {
@@ -263,6 +273,7 @@ async def list_hooks(request) -> dict:
 @router.get(
     "/marketplace",
     summary="Browse marketplace",
+    auth=AuthBearer(),
 )
 async def browse_marketplace(
     request,
@@ -273,4 +284,5 @@ async def browse_marketplace(
 
     PM: Discover new plugins.
     """
+    await authorize(request, action="system:manage_integrations", resource="plugins")
     raise HttpError(501, "Plugin marketplace is not implemented: no real registry.")

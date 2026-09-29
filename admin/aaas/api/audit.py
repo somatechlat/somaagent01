@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from admin.aaas.models import AuditLog
 from admin.common.auth import AuthBearer
 from admin.common.responses import paginated_response
+from services.common.authorization import authorize_sync
 
 router = Router(tags=["audit"])
 
@@ -83,6 +84,8 @@ def list_audit_logs(
     - Date range filtering
     - Paginated results
     """
+    authorize_sync(request, action="audit:read", resource="audit")
+
     qs = AuditLog.objects.all()
 
     # Apply filters
@@ -147,6 +150,9 @@ def export_audit_logs(
 
     Per SRS Section 4.8 - CSV export for compliance.
     """
+    # Exporting the evidence trail is a stricter authority than reading it.
+    authorize_sync(request, action="audit:export", resource="audit")
+
     qs = AuditLog.objects.all()
 
     if action:
@@ -211,6 +217,10 @@ def export_audit_logs(
 )
 def get_audit_actions(request) -> dict:
     """Get list of distinct action types for filtering."""
+    # Gate before the query: an unauthenticated caller must not learn which
+    # action names exist in the log.
+    authorize_sync(request, action="audit:read", resource="audit")
+
     actions = AuditLog.objects.values_list("action", flat=True).distinct()
     return {"actions": list(actions)}
 
@@ -222,6 +232,9 @@ def get_audit_actions(request) -> dict:
 )
 def get_resource_types(request) -> dict:
     """Get list of distinct resource types for filtering."""
+    # Same rule as action names: the vocabulary is part of the evidence.
+    authorize_sync(request, action="audit:read", resource="audit")
+
     types = AuditLog.objects.values_list("resource_type", flat=True).distinct()
     return {"resource_types": list(types)}
 
@@ -240,6 +253,8 @@ def get_audit_stats(
 
     Returns action counts, top actors, etc.
     """
+    authorize_sync(request, action="audit:read", resource="audit")
+
     from django.db.models import Count
 
     start_date = timezone.now() - timedelta(days=days)

@@ -1,11 +1,11 @@
 /**
- * Agent Metrics Dashboard - Tenant Admin View
+ * Agent Metrics Dashboard
  * Shows usage summary, agent breakdown, and cost estimates.
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
  * - Uses /api/v2/observability endpoints
- * - Permission: tenant:read, billing:view_usage
+ * - Permission: tenant:read
  * - Per SRS-METRICS-DASHBOARDS.md Section 3.2
  *
  * 7-Persona Implementation:

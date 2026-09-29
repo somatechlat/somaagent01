@@ -283,10 +283,11 @@ export class SaasPermissions extends LitElement {
     }
   }
 
-  // Helper to check if a role key exists in permissions array (simplified logic for now)
+  // A role holds a permission only if it names it. The previous version also
+  // granted on `*` and on `<resource>:*`, so a role listed with a wildcard
+  // read as holding every permission in the matrix — which is exactly the
+  // picture the catalog does not allow to exist.
   hasPermission(role: Role, perm: Permission): boolean {
-    if (role.permissions.includes('*')) return true;
-    if (role.permissions.includes(`${perm.resource}:*`)) return true; // Wildcard resource
     return role.permissions.includes(perm.permission_id);
   }
 

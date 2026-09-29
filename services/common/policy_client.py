@@ -41,7 +41,10 @@ class PolicyClient:
             base_url or os.environ.get("SA01_POLICY_URL") or os.environ.get("SA01_OPA_URL")
         )
         if not default_base_url:
-            # Standalone mode: no OPA configured, allow all
+            # No policy engine attached. This is the normal Standalone case and
+            # it must NOT grant anything: authorization is resolved by
+            # role-based access control (admin.core.authz) and a policy engine,
+            # when one is attached, may only narrow that. See evaluate().
             self.base_url = None
             self.data_path = "/v1/data/soma/allow"
             self._client = None
@@ -70,15 +73,36 @@ class PolicyClient:
         self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}
         self.tenant_config = tenant_config or TenantConfig()
 
+    @property
+    def is_configured(self) -> bool:
+        """True when a policy engine is attached and may express an opinion.
+
+        When False, callers must decide authorization from role-based access
+        control alone. They must not treat the absence of an engine as consent.
+        """
+        return not getattr(self, "_disabled", False)
+
     async def evaluate(self, request: PolicyRequest) -> bool:
         """Execute evaluate.
 
         Args:
             request: The request.
+
+        Returns:
+            bool: True only when the policy engine affirmatively allows.
+
+        Note:
+            FAIL-CLOSED. With no engine attached there is no affirmative
+            decision to be had, so this denies. Previously it returned True
+            here — that was an authentication bypass in every deployment
+            without OPA, which is every Standalone install.
         """
-        # Standalone mode: no OPA configured, allow all
         if getattr(self, "_disabled", False):
-            return True
+            LOGGER.error(
+                "PolicyClient has no policy engine; denying (fail-closed). "
+                "Role-based access control is the authority in this mode."
+            )
+            return False
 
         payload = {
             "input": {

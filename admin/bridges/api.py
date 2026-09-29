@@ -25,6 +25,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize, authorize_sync
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["bridges"])
@@ -147,6 +148,7 @@ def _validate_status(status: str) -> str:
 def list_channels(request) -> dict:
     """List channels bound to the caller's tenant (real DB)."""
 
+    authorize_sync(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -159,6 +161,7 @@ def list_channels(request) -> dict:
 def create_channel(request, payload: ChannelCreate) -> dict:
     """Create a channel. Tenant comes from auth — never a default."""
 
+    authorize_sync(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     kind = _validate_kind(payload.kind)
     status = _validate_status(payload.status or "disabled")
@@ -204,6 +207,7 @@ def create_channel(request, payload: ChannelCreate) -> dict:
 def get_channel(request, channel_id: str) -> dict:
     """Get one channel (tenant-scoped)."""
 
+    authorize_sync(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -220,6 +224,7 @@ def get_channel(request, channel_id: str) -> dict:
 def update_channel(request, channel_id: str, payload: ChannelUpdate) -> dict:
     """Update channel fields (tenant-scoped)."""
 
+    authorize_sync(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -265,6 +270,7 @@ def update_channel(request, channel_id: str, payload: ChannelUpdate) -> dict:
 def delete_channel(request, channel_id: str) -> dict:
     """Delete a channel (tenant-scoped)."""
 
+    authorize_sync(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -283,6 +289,7 @@ def delete_channel(request, channel_id: str) -> dict:
 @router.post("/channels/{channel_id}/test", summary="Test channel connection", auth=AuthBearer())
 async def test_channel(request, channel_id: str) -> dict:
     """Test connectivity for a channel (WhatsApp / Telegram)."""
+    await authorize(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -314,6 +321,7 @@ async def test_channel(request, channel_id: str) -> dict:
 @router.post("/channels/{channel_id}/start", summary="Start channel", auth=AuthBearer())
 async def start_channel(request, channel_id: str) -> dict:
     """Start a bridge channel runtime."""
+    await authorize(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -340,6 +348,7 @@ async def start_channel(request, channel_id: str) -> dict:
 @router.post("/channels/{channel_id}/stop", summary="Stop channel", auth=AuthBearer())
 async def stop_channel(request, channel_id: str) -> dict:
     """Stop a bridge channel runtime."""
+    await authorize(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 
@@ -366,6 +375,7 @@ async def stop_channel(request, channel_id: str) -> dict:
 @router.get("/channels/{channel_id}/qr", summary="Get pairing QR", auth=AuthBearer())
 async def channel_qr(request, channel_id: str) -> dict:
     """Get pairing QR for WhatsApp (Baileys)."""
+    await authorize(request, action="system:manage_integrations", resource="bridges")
     tenant_id = _require_tenant_id(request)
     from admin.bridges.models import Channel
 

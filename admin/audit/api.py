@@ -25,6 +25,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["audit"])
 logger = logging.getLogger(__name__)
@@ -109,6 +110,8 @@ async def list_audit_events(
     offset: int = 0,
 ) -> dict:
     """List audit events."""
+    await authorize(request, action="audit:read", resource="audit")
+
     from admin.aaas.models import AuditLog
 
     start = _parse_date(from_date, "from_date")
@@ -151,6 +154,8 @@ async def get_audit_summary(
     to_date: Optional[str] = None,
 ) -> AuditSummary:
     """Get audit summary statistics."""
+    await authorize(request, action="audit:read", resource="audit")
+
     from admin.aaas.models import AuditLog
 
     start = _parse_date(from_date, "from_date")
@@ -188,6 +193,8 @@ async def get_audit_event(
     event_id: str,
 ) -> AuditEvent:
     """Get audit event details."""
+    await authorize(request, action="audit:read", resource="audit")
+
     from admin.aaas.models import AuditLog
 
     @sync_to_async
@@ -218,6 +225,8 @@ async def get_actor_history(
     limit: int = 50,
 ) -> dict:
     """Audit trail for one actor."""
+    await authorize(request, action="audit:read", resource="audit")
+
     from admin.aaas.models import AuditLog
 
     try:
@@ -245,6 +254,8 @@ async def get_resource_history(
     limit: int = 50,
 ) -> dict:
     """Audit trail for one resource."""
+    await authorize(request, action="audit:read", resource="audit")
+
     from admin.aaas.models import AuditLog
 
     try:

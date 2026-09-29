@@ -24,8 +24,10 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ServiceError
 from admin.common.messages import ErrorCode, get_message
+from services.common.authorization import authorize
 
 router = Router(tags=["gateway"])
 logger = logging.getLogger(__name__)
@@ -40,13 +42,17 @@ class A2ARequest(BaseModel):
     event: dict
 
 
-@router.post("/a2a/execute", summary="Execute A2A workflow")
-async def execute_a2a(req: A2ARequest) -> dict:
+@router.post("/a2a/execute", summary="Execute A2A workflow", auth=AuthBearer())
+async def execute_a2a(request: HttpRequest, req: A2ARequest) -> dict:
     """Start an A2A delegation workflow via Temporal.
 
     🔒 Security: Workflow ID includes session for audit
     ⚡ Perf: Async Temporal client
     """
+    # Starting a delegation workflow is starting an agent's work. Gate before
+    # the event body is read: an unauthenticated caller must not learn which
+    # event shapes the gateway accepts.
+    await authorize(request, action="agent:start", resource="gateway")
     from services.delegation_gateway.temporal_worker import A2AWorkflow
     from services.gateway.providers import get_temporal_client
 
@@ -77,9 +83,15 @@ class A2aTerminationResponse(BaseModel):
     "/a2a/terminate/{workflow_id}",
     response=A2aTerminationResponse,
     summary="Terminate A2A workflow",
+    auth=AuthBearer(),
 )
-async def terminate_a2a(workflow_id: str) -> A2aTerminationResponse:
-    """Cancel a running A2A workflow."""
+async def terminate_a2a(request: HttpRequest, workflow_id: str) -> A2aTerminationResponse:
+    """Cancel a running A2A workflow.
+
+    🔒 Security: Stopping agent work is a privileged act.
+    """
+    await authorize(request, action="agent:stop", resource="a2a_workflow")
+
     from services.gateway.providers import get_temporal_client
 
     client = await get_temporal_client()
@@ -97,12 +109,15 @@ async def terminate_a2a(workflow_id: str) -> A2aTerminationResponse:
 # === Workflow Describe ===
 
 
-@router.get("/describe/{workflow_id}", summary="Describe workflow")
+@router.get("/describe/{workflow_id}", summary="Describe workflow", auth=AuthBearer())
 async def describe_workflow(request: HttpRequest, workflow_id: str) -> dict:
     """Get workflow description and status.
 
+    🔒 Security: Workflow metadata reveals what the agent was asked to do.
     📚 ISO Doc: Returns workflow metadata for audit
     """
+    await authorize(request, action="agent:view_logs", resource="a2a_workflow")
+
     from services.gateway.providers import get_temporal_client
 
     client = await get_temporal_client()
@@ -125,18 +140,24 @@ async def describe_workflow(request: HttpRequest, workflow_id: str) -> dict:
 
 
 class KeyCreateRequest(BaseModel):
-    """API key creation request."""
+    """API key creation request.
+
+    Scopes are mandatory, must name permissions from the catalog, and may
+    never exceed the issuing principal's authority. The previous ``scope``
+    field defaulted to ``"default"``, which is not a permission.
+    """
 
     name: str
-    scope: Optional[str] = "default"
+    scopes: list[str]
 
 
-@router.get("/keys", summary="List API keys")
+@router.get("/keys", summary="List API keys", auth=AuthBearer())
 async def list_keys(request: HttpRequest) -> dict:
     """List all API keys for the tenant.
 
     🔒 Security: Tenant-scoped access
     """
+    await authorize(request, action="org:apikey_read", resource="keys")
     from asgiref.sync import sync_to_async
 
     from admin.aaas.models.profiles import ApiKey
@@ -150,23 +171,41 @@ async def list_keys(request: HttpRequest) -> dict:
     return {"keys": keys}
 
 
-@router.post("/keys", summary="Create API key")
+@router.post("/keys", summary="Create API key", auth=AuthBearer())
 async def create_key(request: HttpRequest, body: KeyCreateRequest) -> dict:
     """Create a new API key.
 
-    🔒 Security: Key is hashed before storage
+    🔒 Security: Key is hashed before storage. Scopes are explicit, validated
+    against the authorization catalog, and never exceed the issuer.
     """
+    await authorize(request, action="org:apikey_create", resource="keys")
     import hashlib
     import secrets
 
     from asgiref.sync import sync_to_async
 
     from admin.aaas.models.profiles import ApiKey
+    from admin.core.authz import permissions_for_roles, validate_scopes
 
     tenant_id = request.headers.get("X-Tenant-Id", "")
-    raw_key = f"sk_{secrets.token_urlsafe(32)}"
+
+    auth = getattr(request, "auth", None)
+    issuer_permissions = permissions_for_roles(list(getattr(auth, "roles", None) or []))
+    try:
+        scopes = sorted(validate_scopes(body.scopes, issuer_permissions))
+    except ValueError as exc:
+        from admin.common.exceptions import ValidationError
+
+        raise ValidationError(str(exc), field="scopes")
+
+    # Same shape as admin.aaas.api.settings.create_api_key: one format, one
+    # prefix length. The previous version wrote a 12-character prefix into
+    # ApiKey.key_prefix, which is a CharField(max_length=8).
+    from admin.common.auth import API_KEY_PREFIX
+
+    raw_key = f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-    key_prefix = raw_key[:12]
+    key_prefix = raw_key[:8]
 
     key = await sync_to_async(ApiKey.objects.create)(
         key_type="tenant",
@@ -174,15 +213,16 @@ async def create_key(request: HttpRequest, body: KeyCreateRequest) -> dict:
         name=body.name,
         key_prefix=key_prefix,
         key_hash=key_hash,
-        scopes=[body.scope] if body.scope else [],
+        scopes=scopes,
     )
 
     return {"key": {"id": str(key.id), "name": key.name, "prefix": key_prefix, "value": raw_key}}
 
 
-@router.delete("/keys/{key_id}", summary="Revoke API key")
+@router.delete("/keys/{key_id}", summary="Revoke API key", auth=AuthBearer())
 async def revoke_key(request: HttpRequest, key_id: str) -> dict:
     """Revoke an API key."""
+    await authorize(request, action="org:apikey_revoke", resource="keys")
     from asgiref.sync import sync_to_async
 
     from admin.aaas.models.profiles import ApiKey
@@ -207,12 +247,13 @@ class ConstitutionUpdate(BaseModel):
     rules: list[str]
 
 
-@router.get("/constitution", summary="Get constitution")
+@router.get("/constitution", summary="Get constitution", auth=AuthBearer())
 async def get_constitution(request: HttpRequest) -> dict:
     """Get the agent constitution/policy rules.
 
     📚 ISO Doc: Returns governance rules
     """
+    await authorize(request, action="system:view", resource="gateway")
     from services.common.constitution_store import ConstitutionStore
 
     tenant_id = request.headers.get("X-Tenant-Id", "default")
@@ -223,9 +264,10 @@ async def get_constitution(request: HttpRequest) -> dict:
     return {"tenant_id": tenant_id, "rules": rules}
 
 
-@router.put("/constitution", summary="Update constitution")
+@router.put("/constitution", summary="Update constitution", auth=AuthBearer())
 async def update_constitution(request: HttpRequest, body: ConstitutionUpdate) -> dict:
     """Update constitution rules."""
+    await authorize(request, action="system:security_policy", resource="gateway")
     from services.common.constitution_store import ConstitutionStore
 
     tenant_id = request.headers.get("X-Tenant-Id", "default")
@@ -239,12 +281,13 @@ async def update_constitution(request: HttpRequest, body: ConstitutionUpdate) ->
 # === AV/Status ===
 
 
-@router.get("/av", summary="Get AV status")
-async def get_av_status() -> dict:
+@router.get("/av", summary="Get AV status", auth=AuthBearer())
+async def get_av_status(request: HttpRequest) -> dict:
     """Get antivirus/content scan status.
 
-    🔒 Security: Reports scan capability status
+    🔒 Security: Scan capability is system configuration, not public state.
     """
+    await authorize(request, action="system:view", resource="gateway")
 
     av_enabled = getattr(settings, "AV_SCAN_ENABLED", False)
     return {"av_enabled": av_enabled, "status": "operational" if av_enabled else "disabled"}

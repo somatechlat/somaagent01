@@ -18,6 +18,7 @@ from ninja import Router
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceUnavailableError
+from services.common.authorization import authorize, authorize_sync
 from admin.voice.schemas import (
     LLMConfigListOut,
     SynthesizeRequest,
@@ -81,6 +82,7 @@ async def transcribe_endpoint(request, payload: TranscribeRequest) -> Transcribe
     - Fallback to browser API if unavailable
     - Size and format validation
     """
+    await authorize(request, action="resource:tool_execute", resource="voice")
     return await transcribe_audio(payload)
 
 
@@ -100,6 +102,7 @@ async def synthesize_endpoint(request, payload: SynthesizeRequest) -> Synthesize
     - Fallback to browser API if unavailable
     - Multiple voice options
     """
+    await authorize(request, action="resource:tool_execute", resource="voice")
     return await synthesize_speech(payload)
 
 
@@ -111,6 +114,7 @@ async def synthesize_endpoint(request, payload: SynthesizeRequest) -> Synthesize
 )
 async def voices_endpoint(request) -> VoiceListResponse:
     """List available TTS voices."""
+    await authorize(request, action="resource:tool_read", resource="voice")
     return await list_voices()
 
 
@@ -142,6 +146,7 @@ async def transcribe_stream(request) -> dict:
             Do not implement this endpoint as a REST redirect; callers
             must be told the truth.
     """
+    await authorize(request, action="resource:tool_execute", resource="voice")
     raise ServiceUnavailableError(
         "voice_stream",
         "Real-time streaming transcription requires Django Channels WebSocket support, "
@@ -162,6 +167,7 @@ async def transcribe_stream(request) -> dict:
 )
 def list_llm_configs_endpoint(request, model_type: str = "chat"):
     """List active LLMModelConfig entries for persona LLM selection."""
+    authorize_sync(request, action="system:view", resource="voice")
     return list_llm_configs(model_type=model_type)
 
 
@@ -178,6 +184,7 @@ def list_personas_endpoint(
     active_only: bool = False,
 ):
     """List voice personas for the current tenant."""
+    authorize_sync(request, action="agent:read", resource="voice")
     return list_personas(
         tenant_id=_tenant_id(request),
         page=page,
@@ -194,6 +201,7 @@ def list_personas_endpoint(
 )
 def create_persona_endpoint(request, payload: VoicePersonaCreate):
     """Create a new voice persona."""
+    authorize_sync(request, action="agent:configure_personality", resource="voice")
     return create_persona(tenant_id=_tenant_id(request), payload=payload)
 
 
@@ -205,6 +213,7 @@ def create_persona_endpoint(request, payload: VoicePersonaCreate):
 )
 def get_persona_endpoint(request, persona_id: UUID):
     """Get a specific voice persona by ID."""
+    authorize_sync(request, action="agent:read", resource="voice")
     return get_persona(tenant_id=_tenant_id(request), persona_id=persona_id)
 
 
@@ -216,6 +225,7 @@ def get_persona_endpoint(request, persona_id: UUID):
 )
 def update_persona_endpoint(request, persona_id: UUID, payload: VoicePersonaUpdate):
     """Update a voice persona."""
+    authorize_sync(request, action="agent:configure_personality", resource="voice")
     return update_persona(
         tenant_id=_tenant_id(request),
         persona_id=persona_id,
@@ -230,6 +240,7 @@ def update_persona_endpoint(request, persona_id: UUID, payload: VoicePersonaUpda
 )
 def delete_persona_endpoint(request, persona_id: UUID):
     """Delete a voice persona."""
+    authorize_sync(request, action="agent:configure_personality", resource="voice")
     return delete_persona(tenant_id=_tenant_id(request), persona_id=persona_id)
 
 
@@ -240,6 +251,7 @@ def delete_persona_endpoint(request, persona_id: UUID):
 )
 def set_persona_default_endpoint(request, persona_id: UUID):
     """Set a persona as the default for the tenant."""
+    authorize_sync(request, action="agent:configure_personality", resource="voice")
     return set_persona_default(tenant_id=_tenant_id(request), persona_id=persona_id)
 
 
@@ -261,6 +273,7 @@ def list_sessions_endpoint(
     status: Optional[str] = None,
 ):
     """List voice sessions for the current tenant."""
+    authorize_sync(request, action="resource:conversation_read", resource="voice")
     return list_sessions(
         tenant_id=_tenant_id(request),
         page=page,
@@ -277,6 +290,7 @@ def list_sessions_endpoint(
 )
 def get_session_stats_endpoint(request):
     """Get aggregated session statistics."""
+    authorize_sync(request, action="system:read_metrics", resource="voice")
     return get_session_stats(tenant_id=_tenant_id(request))
 
 
@@ -287,6 +301,7 @@ def get_session_stats_endpoint(request):
 )
 def terminate_session_endpoint(request, session_id: UUID):
     """Terminate an active voice session."""
+    authorize_sync(request, action="resource:conversation_delete", resource="voice")
     return terminate_session(tenant_id=_tenant_id(request), session_id=session_id)
 
 
@@ -303,4 +318,5 @@ def terminate_session_endpoint(request, session_id: UUID):
 )
 def list_voice_models_endpoint(request, active_only: bool = True):
     """List available TTS voice models."""
+    authorize_sync(request, action="resource:tool_read", resource="voice")
     return list_voice_models(active_only=active_only)

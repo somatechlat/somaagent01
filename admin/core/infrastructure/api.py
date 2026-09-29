@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from admin.common.auth import AuthBearer
 from admin.common.messages import ErrorCode, get_message
 from admin.core.infrastructure.models import EnforcementPolicy, RateLimitPolicy
+from services.common.authorization import authorize
 
 router = Router(tags=["infrastructure"])
 logger = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ async def list_rate_limits(
 
     Security Auditor: Platform admin only (infra:view permission).
     """
+    await authorize(request, action="system:view", resource="infrastructure")
 
     @sync_to_async
     def _get_limits():
@@ -119,6 +121,7 @@ async def get_rate_limit(request, key: str) -> dict:
 
     Security Auditor: Platform admin only.
     """
+    await authorize(request, action="system:view", resource="infrastructure")
 
     @sync_to_async
     def _get_limit():
@@ -152,6 +155,7 @@ async def create_rate_limit(
     Security Auditor: Platform admin only (infra:configure permission).
     PhD Developer: Validates policy enum.
     """
+    await authorize(request, action="system:ratelimit", resource="infrastructure")
     # Validate policy enum
     if payload.policy not in [e.value for e in EnforcementPolicy]:
         return {
@@ -206,6 +210,7 @@ async def update_rate_limit(
     Security Auditor: Platform admin only (infra:configure permission).
     DevOps: Syncs to Redis for runtime enforcement.
     """
+    await authorize(request, action="system:ratelimit", resource="infrastructure")
 
     @sync_to_async
     def _update():
@@ -270,6 +275,7 @@ async def delete_rate_limit(request, key: str) -> dict:
 
     Security Auditor: Platform admin only (infra:configure permission).
     """
+    await authorize(request, action="system:ratelimit", resource="infrastructure")
 
     @sync_to_async
     def _delete():
@@ -307,6 +313,7 @@ async def seed_rate_limits(request) -> dict:
 
     PM: Creates standard platform defaults.
     """
+    await authorize(request, action="system:ratelimit", resource="infrastructure")
     defaults = [
         {
             "key": "api_calls",

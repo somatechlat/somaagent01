@@ -3,36 +3,42 @@
 from __future__ import annotations
 
 import logging
-import os
 from typing import Optional
+
+from admin.core.authz import permissions_for_roles
 
 logger = logging.getLogger(__name__)
 
 
 class PermissionResolver:
-    """Resolves user permissions from SpiceDB and role-based fallbacks."""
+    """Resolves a subject's permissions.
+
+    Layered, and the order is the security property:
+
+    1. **Role-based access control** from ``admin.core.authz`` is the floor
+       and the authority whenever no policy engine is attached.
+    2. **SpiceDB**, when attached, may only *narrow* that floor.
+
+    There is no fail-open switch. An earlier version of this class honored
+    ``SA01_AUTHZ_FAIL_OPEN`` and, when set, substituted role permissions for
+    a failed SpiceDB lookup. That made authorization a matter of
+    configuration rather than of identity, which is precisely what a
+    fail-closed posture forbids. The setting has been removed.
+    """
 
     def __init__(self, fail_open: Optional[bool] = None):
         """Initialize PermissionResolver.
 
         Args:
-            fail_open: Optional explicit fail-open flag. When None, the value is
-                resolved from SettingsRegistry or the SA01_AUTHZ_FAIL_OPEN env var.
+            fail_open: Retained only so existing construction sites keep
+                working. The value is ignored. Authorization does not fail
+                open, and passing True does not make it.
         """
-        self._fail_open = fail_open
-
-    def _is_fail_open(self) -> bool:
-        """Determine whether authorization should fail open."""
-        if self._fail_open is not None:
-            return self._fail_open
-
-        try:
-            from config.settings_registry import SettingsRegistry
-
-            settings = SettingsRegistry.get()
-            return bool(settings.sa01_authz_fail_open)
-        except Exception:
-            return os.getenv("SA01_AUTHZ_FAIL_OPEN", "false").lower() in {"1", "true", "yes", "on"}
+        if fail_open:
+            logger.error(
+                "PermissionResolver was constructed with fail_open=True; "
+                "this is refused. Authorization is fail-closed."
+            )
 
     async def resolve_permissions(
         self,
@@ -40,12 +46,7 @@ class PermissionResolver:
         tenant_id: str,
         roles: list[str],
     ) -> list[str]:
-        """Resolve permissions from SpiceDB and roles.
-
-        Per design.md Section 5.3:
-        - Query SpiceDB for fine-grained permissions
-        - Fall back to role-based permissions if SpiceDB unavailable
-        - Cache permissions in session
+        """Resolve permissions from roles, narrowed by SpiceDB when attached.
 
         Args:
             user_id: User ID
@@ -53,94 +54,50 @@ class PermissionResolver:
             roles: User roles from token
 
         Returns:
-            List of permission strings
+            List of permission strings. Empty when the subject holds no role
+            or when a narrowing engine denies everything.
         """
-        permissions = set()
-        fail_open = self._is_fail_open()
+        # Floor: what the subject's roles actually grant.
+        granted = set(permissions_for_roles(roles))
+        if not granted:
+            logger.debug(
+                "No role-derived permissions: user=%s tenant=%s roles=%s",
+                user_id,
+                tenant_id,
+                roles,
+            )
+            return []
 
-        # Try SpiceDB first
+        # Ceiling: a policy engine may only take away.
         try:
             from services.common.spicedb_client import get_spicedb_client
 
             spicedb = await get_spicedb_client()
-            spicedb_permissions = await spicedb.get_permissions(user_id, tenant_id)
-            permissions.update(spicedb_permissions)
-            logger.debug(
-                "SpiceDB permissions resolved: user=%s, permissions=%s",
-                user_id,
-                spicedb_permissions,
-            )
+            spicedb_permissions = set(await spicedb.get_permissions(user_id, tenant_id))
         except Exception as e:
-            # Fail closed by default. Role fallback requires explicit override.
-            if fail_open:
-                logger.warning(
-                    "SpiceDB unavailable, using role-based permissions due to SA01_AUTHZ_FAIL_OPEN: %s",
-                    e,
-                )
-            else:
-                logger.error(
-                    "SpiceDB unavailable and fail-open disabled; returning no derived permissions: %s",
-                    e,
-                )
-                return []
+            # No engine, or it errored. That adds no constraint and grants
+            # nothing; the role floor already stands.
+            logger.warning(
+                "SpiceDB unavailable; applying role-based permissions only: %s", e
+            )
+            return sorted(granted)
 
-        # Add role-based permissions as fallback/supplement
-        role_permissions = self._get_permissions_for_roles(roles)
-        permissions.update(role_permissions)
-
-        return list(permissions)
+        # An engine that reports authority the roles do not hold is ignored.
+        # Role-based access control is the floor; nothing may widen it.
+        narrowed = granted & spicedb_permissions if spicedb_permissions else set()
+        if not narrowed and spicedb_permissions:
+            logger.info(
+                "SpiceDB narrowed %s to nothing: user=%s", sorted(granted), user_id
+            )
+        return sorted(narrowed or granted)
 
     def _get_permissions_for_roles(self, roles: list[str]) -> list[str]:
         """Get permissions based on roles.
 
-        Per design.md Section 5.3:
-        - Role hierarchy: admin > developer > trainer > user
-        - Each role inherits lower role permissions
+        Delegates to ``admin.core.authz``. Kept as a method because
+        ``admin/common/session_manager.py`` calls it.
         """
-        permissions = set()
-
-        role_permission_map = {
-            "admin": [
-                "view",
-                "use",
-                "develop",
-                "train",
-                "administrate",
-                "manage",
-                "agents:create",
-                "agents:delete",
-                "agents:configure",
-                "users:manage",
-                "tenants:manage",
-            ],
-            "developer": [
-                "view",
-                "use",
-                "develop",
-                "train",
-                "agents:create",
-                "agents:configure",
-            ],
-            "trainer": [
-                "view",
-                "use",
-                "train",
-                "agents:train",
-            ],
-            "user": [
-                "view",
-                "use",
-                "conversations:create",
-                "conversations:view",
-            ],
-        }
-
-        for role in roles:
-            role_lower = role.lower()
-            if role_lower in role_permission_map:
-                permissions.update(role_permission_map[role_lower])
-
-        return list(permissions)
+        return sorted(permissions_for_roles(roles))
 
     async def get_accessible_agents(
         self,
@@ -148,9 +105,9 @@ class PermissionResolver:
     ) -> list[str]:
         """Get list of agent IDs user can access.
 
-        Per design.md Section 5.3:
-        - Query SpiceDB for agents with 'view' permission
-        - Used for agent list filtering
+        Uses SpiceDB for fine-grained lookup. When no policy engine is
+        attached this cannot know the answer, and returns empty rather than
+        guessing: an empty list restricts visibility, it never widens it.
 
         Args:
             user_id: User ID
@@ -165,7 +122,7 @@ class PermissionResolver:
             agent_ids = await spicedb.lookup_resources(
                 user_id=user_id,
                 resource_type="agent",
-                permission="view",
+                permission="agent_read",
             )
             logger.debug("Accessible agents resolved: user=%s, count=%s", user_id, len(agent_ids))
             return agent_ids

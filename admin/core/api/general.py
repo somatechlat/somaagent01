@@ -12,7 +12,8 @@ from typing import Optional
 from django.http import HttpRequest, HttpResponse
 from ninja import Router
 
-from admin.common.auth import RoleRequired
+from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["admin-general"])
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ async def ping() -> dict:
 @router.get(
     "/audit/export",
     summary="Export audit logs as NDJSON",
-    auth=RoleRequired("admin", "aaas_admin"),
+    auth=AuthBearer(),
 )
 async def audit_export(
     request: HttpRequest,
@@ -41,6 +42,10 @@ async def audit_export(
     Returns:
         Newline-delimited JSON response of audit records
     """
+    # The audit record is the evidence trail. Exporting it is its own authority
+    # in the catalog — not "is this person a sysadmin", which is a role string
+    # that lives outside the catalog and renames itself.
+    await authorize(request, action="audit:export", resource="audit")
     from integrations.repositories import get_audit_store  # type: ignore[import-not-found]
 
     store = get_audit_store()

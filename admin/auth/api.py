@@ -33,8 +33,9 @@ from admin.auth.api_schemas import (
     TokenRequest,
     UserResponse,
 )
-from admin.common.auth import decode_token, get_keycloak_config
+from admin.common.auth import AuthBearer, decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError, UnauthorizedError
+from services.common.authorization import authorize
 from admin.common.messages import get_message, SuccessCode
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
@@ -251,9 +252,11 @@ async def refresh_token(request, payload: RefreshRequest):
         raise UnauthorizedError(message="Token refresh failed")
 
 
-@router.get("/me", response=UserResponse)
+@router.get("/me", response=UserResponse, auth=AuthBearer())
 async def get_current_user(request):
     """Get current authenticated user info."""
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     # Check Authorization header first, then httpOnly cookie fallback
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
@@ -296,9 +299,11 @@ async def get_current_user(request):
         raise UnauthorizedError(message="Invalid token")
 
 
-@router.post("/logout")
+@router.post("/logout", auth=AuthBearer())
 async def logout(request):
     """Logout and revoke tokens."""
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     refresh_token = request.POST.get("refresh_token") or request.COOKIES.get("refresh_token")
     config = get_keycloak_config()
     logout_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/logout"
@@ -591,7 +596,7 @@ async def register_user(request, payload: RegisterRequest):
 # =============================================================================
 
 
-@router.post("/impersonate", response=ImpersonationResponse)
+@router.post("/impersonate", response=ImpersonationResponse, auth=AuthBearer())
 async def impersonate_tenant(request, payload: ImpersonationRequest):
     """Generate impersonation token to act as tenant admin."""
     import time
@@ -599,19 +604,13 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 
     from asgiref.sync import sync_to_async
 
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise UnauthorizedError("Missing or invalid authorization header")
-
-    token = auth_header.split(" ")[1]
-    try:
-        current_user = await decode_token(token)
-    except JWTError as e:
-        raise UnauthorizedError(f"Invalid token: {e}")
-
-    user_roles = current_user.realm_access.get("roles", []) if current_user.realm_access else []
-    if "super_admin" not in user_roles and "aaas_admin" not in user_roles:
-        raise UnauthorizedError("Only AAAS super admins can impersonate")
+    # The old check here looked for Keycloak realm roles named `super_admin` or
+    # `aaas_admin`. Neither is a permission this product defines, so the gate
+    # was authority invented outside the catalog — and realm names drift from
+    # ours the moment an operator renames a Keycloak role. The catalog decides.
+    await authorize(request, action="system:impersonate", resource="tenant")
+    current_user = request.auth
+    user_roles = list(getattr(current_user, "roles", None) or [])
 
     @sync_to_async
     def get_tenant():

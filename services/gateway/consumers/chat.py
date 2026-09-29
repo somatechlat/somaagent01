@@ -265,7 +265,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             gate = UnifiedGate()
             self.perm_cache = await gate.check(
                 self.capsule,
-                action="chat:send",
+                action="resource:chat_send",
                 user_id=self.user_id,
                 tenant_id=self.tenant_id,
             )

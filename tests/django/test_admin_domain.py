@@ -54,12 +54,20 @@ class TestAgentAdminEndpoints:
         assert router is not None
 
     def test_valid_agent_roles(self):
-        """Test valid agent roles are defined."""
-        from admin.agents.api.agents import VALID_ROLES
+        """Assignable agent roles are the catalog's assignable set.
 
-        assert "operator" in VALID_ROLES
-        assert "viewer" in VALID_ROLES
-        assert "manager" not in VALID_ROLES  # Manager cannot be assigned
+        ``agent_owner`` is transferred, not assigned, so it must never appear
+        here — an ownership transfer is the only way to obtain it.
+        """
+        from admin.agents.api.agents import VALID_ROLES
+        from admin.core.authz import AGENT_ASSIGNABLE_ROLES, PROVISIONED_ROLES
+
+        assert set(VALID_ROLES) == set(AGENT_ASSIGNABLE_ROLES)
+        assert "agent_operator" in VALID_ROLES
+        assert "trainer" in VALID_ROLES
+        assert "member" in VALID_ROLES
+        for provisioned in PROVISIONED_ROLES:
+            assert provisioned not in VALID_ROLES
 
 
 class TestTenantUserEndpoints:
@@ -72,13 +80,23 @@ class TestTenantUserEndpoints:
         assert router is not None
 
     def test_valid_tenant_roles(self):
-        """Test valid tenant roles are defined (Django TenantRole choices)."""
-        from admin.aaas.api.users import VALID_ROLES
+        """Assignable organization roles are the catalog's assignable set.
 
-        assert "owner" in VALID_ROLES
-        assert "admin" in VALID_ROLES
+        ``sysadmin`` is provisioned at install and must never be assignable
+        from inside an organization — that boundary is what stops organization
+        authority from reaching the system tier.
+        """
+        from admin.aaas.api.users import VALID_ROLES
+        from admin.core.authz import ORG_ASSIGNABLE_ROLES, PROVISIONED_ROLES
+
+        assert set(VALID_ROLES) == set(ORG_ASSIGNABLE_ROLES)
+        assert "org_admin" in VALID_ROLES
+        assert "developer" in VALID_ROLES
+        assert "trainer" in VALID_ROLES
         assert "member" in VALID_ROLES
-        assert "viewer" in VALID_ROLES
+        assert "auditor" in VALID_ROLES
+        for provisioned in PROVISIONED_ROLES:
+            assert provisioned not in VALID_ROLES
 
 
 class TestTenantAgentEndpoints:

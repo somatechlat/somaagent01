@@ -48,6 +48,32 @@ def get_policy_client() -> PolicyClient:
     return PolicyClient()
 
 
+def _principal_from_request(
+    request: HttpRequest,
+) -> tuple[list[str], list[str] | None]:
+    """Extract the subject's roles and, if it is a key, its scopes.
+
+    FAIL-CLOSED: an unauthenticated request yields neither, which is no
+    authority. A delegated key is reported as ``scopes`` and its roles are
+    dropped — see ``authz.permissions_for_principal`` for why the two are
+    never unioned.
+    """
+    auth = getattr(request, "auth", None)
+    if auth is None:
+        return [], None
+
+    def _get(name, default=None):
+        if isinstance(auth, dict):
+            return auth.get(name, default)
+        return getattr(auth, name, default)
+
+    delegated = _get("delegated_scopes", None)
+    if delegated is not None:
+        return [], [str(s) for s in delegated]
+
+    return [str(r) for r in (_get("roles") or [])], None
+
+
 async def authorize(
     request: HttpRequest,
     action: str,
@@ -55,70 +81,134 @@ async def authorize(
     context: Dict[str, Any] | None = None,
     client: PolicyClient | None = None,
 ) -> Dict[str, Any]:
-    """Authorize a request using OPA policy evaluation.
+    """Authorize a request.
 
-    🔒 Security: Evaluates policy against OPA
+    Two layers, in this order, and the order is the security property:
+
+    1. **Role-based access control.** The action maps to a catalog permission
+       (``admin.core.authz``) and the subject's roles must grant it. This is
+       the authority whenever no policy engine is attached, which is the
+       normal Standalone case. It is also a floor the engine can only narrow.
+
+    2. **Policy engine.** When OPA is attached its decision may only *deny
+       further*. A policy engine that is absent, unreachable or erroring never
+       grants anything.
+
+    🔒 Security: FAIL-CLOSED at every step.
     ⚡ Perf: Metrics tracked via Prometheus
 
     Raises:
-        ForbiddenError: If policy denies the request
+        ForbiddenError: If the subject is not authorized for the action.
     """
+    from admin.core.authz import permissions_for_principal, resolve_action
+
     start = time.perf_counter()
     ctx = context or {}
     tenant = request.headers.get("X-Tenant-Id", "default")
     persona = request.headers.get("X-Persona-Id")
 
-    policy_req = PolicyRequest(
-        tenant=tenant,
-        persona_id=persona,
-        action=action,
-        resource=resource,
-        context=ctx,
-    )
+    # ---- 1. Role baseline -------------------------------------------------
     try:
-        if client is None:
-            client = get_policy_client()
-        allowed = await client.evaluate(policy_req)
-    except Exception as exc:
-        allowed = False
-        AUTH_DECISIONS.labels(action=action, result="error").inc()
+        permission = resolve_action(action)
+    except KeyError:
+        AUTH_DECISIONS.labels(action=action, result="deny").inc()
         logging.getLogger("authz").warning(
-            "authz evaluation error",
-            extra={
-                "action": action,
-                "resource": resource,
-                "tenant": tenant,
-                "persona_id": persona,
-                "error": str(exc),
-            },
+            "authz denial: action has no catalog permission",
+            extra={"action": action, "resource": resource, "tenant": tenant},
         )
-    else:
-        AUTH_DECISIONS.labels(action=action, result=("allow" if allowed else "deny")).inc()
-        logging.getLogger("authz").info(
-            "authz decision",
-            extra={
-                "action": action,
-                "resource": resource,
-                "tenant": tenant,
-                "persona_id": persona,
-                "result": "allow" if allowed else "deny",
-                "mode": "live",
-            },
-        )
-    AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
-    if not allowed:
+        raise ForbiddenError(action=action, resource=resource)
+
+    roles, scopes = _principal_from_request(request)
+    granted = permissions_for_principal(roles=roles, scopes=scopes)
+    if permission not in granted:
+        AUTH_DECISIONS.labels(action=action, result="deny").inc()
+        AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
         logging.getLogger("authz").info(
             "authz denial",
             extra={
                 "action": action,
+                "permission": permission,
                 "resource": resource,
                 "tenant": tenant,
                 "persona_id": persona,
+                "roles": roles,
                 "result": "deny",
+                "layer": "rbac",
             },
         )
         raise ForbiddenError(action=action, resource=resource)
-    return {"tenant": tenant, "persona_id": persona, "action": action, "resource": resource}
+
+    # ---- 2. Policy engine, may only narrow --------------------------------
+    if client is None:
+        client = get_policy_client()
+
+    if client.is_configured:
+        # Ask the engine about the catalog permission, not the caller's
+        # spelling of it. RBAC already resolved the action; if the engine were
+        # asked the raw string it would see "settings:read" and "system:view"
+        # as two different questions, and a policy written against the catalog
+        # would silently miss every alias. One vocabulary, one question.
+        policy_req = PolicyRequest(
+            tenant=tenant,
+            persona_id=persona,
+            action=permission,
+            resource=resource,
+            context=ctx,
+        )
+        try:
+            allowed = await client.evaluate(policy_req)
+        except Exception as exc:
+            allowed = False
+            AUTH_DECISIONS.labels(action=action, result="error").inc()
+            logging.getLogger("authz").warning(
+                "authz evaluation error",
+                extra={
+                    "action": action,
+                    "resource": resource,
+                    "tenant": tenant,
+                    "persona_id": persona,
+                    "error": str(exc),
+                },
+            )
+        if not allowed:
+            AUTH_DECISIONS.labels(action=action, result="deny").inc()
+            AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
+            logging.getLogger("authz").info(
+                "authz denial",
+                extra={
+                    "action": action,
+                    "permission": permission,
+                    "resource": resource,
+                    "tenant": tenant,
+                    "persona_id": persona,
+                    "result": "deny",
+                    "layer": "policy",
+                },
+            )
+            raise ForbiddenError(action=action, resource=resource)
+
+    AUTH_DECISIONS.labels(action=action, result="allow").inc()
+    AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))
+    logging.getLogger("authz").info(
+        "authz decision",
+        extra={
+            "action": action,
+            "permission": permission,
+            "resource": resource,
+            "tenant": tenant,
+            "persona_id": persona,
+            "roles": roles,
+            "result": "allow",
+            "policy_engine": client.is_configured,
+        },
+    )
+    return {
+        "tenant": tenant,
+        "persona_id": persona,
+        "action": action,
+        "permission": permission,
+        "resource": resource,
+    }
 
 
 def require_policy(action: str, resource: str) -> Callable:
@@ -145,27 +235,33 @@ def require_policy(action: str, resource: str) -> Callable:
     return _decorator
 
 
-async def authorize_request(
-    request: HttpRequest, meta: dict[str, Any] | None = None
+def authorize_sync(
+    request: HttpRequest,
+    action: str,
+    resource: str,
+    context: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Legacy wrapper around authorize()."""
-    return await authorize(request, action="auto", resource="auto", context=meta or {})
+    """``authorize()`` for sync handlers.
 
+    The gate is identical — same catalog lookup, same RBAC floor, same
+    fail-closed policy layer. Only the calling convention differs: some
+    routes are ``def`` because they carry ``@transaction.atomic``, which
+    Django cannot express on an async handler.
 
-def _require_admin_scope(auth: dict[str, Any]) -> None:
-    """Validate that the authenticated user has admin scope.
+    This is not a second authorization path and it must never grow its own
+    rules. Any change to the decision logic belongs in ``authorize()``.
 
-    Raises ForbiddenError if admin scope is not present.
+    Raises:
+        ForbiddenError: If the subject is not authorized for the action.
     """
-    scopes = auth.get("scopes", [])
-    if "admin" not in scopes and not auth.get("is_admin", False):
-        raise ForbiddenError(action="admin_access", resource="admin")
+    from asgiref.sync import async_to_sync
+
+    return async_to_sync(authorize)(request, action=action, resource=resource, context=context)
 
 
 __all__ = [
     "authorize",
+    "authorize_sync",
     "require_policy",
     "get_policy_client",
-    "authorize_request",
-    "_require_admin_scope",
 ]

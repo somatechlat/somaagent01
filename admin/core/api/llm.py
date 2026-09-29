@@ -15,10 +15,13 @@ from typing import Any, Optional
 from django.conf import settings
 from django.core.cache import cache
 from django.dispatch import Signal
+from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceError, ValidationError
+from services.common.authorization import authorize
 
 router = Router(tags=["llm"])
 logger = logging.getLogger(__name__)
@@ -176,12 +179,14 @@ async def _invoke_llm(
     return content, usage, confidence
 
 
-@router.post("/invoke", response=LlmInvokeResponse, summary="Invoke LLM")
-async def invoke(req: LlmInvokeRequest) -> dict:
+@router.post("/invoke", response=LlmInvokeResponse, summary="Invoke LLM", auth=AuthBearer())
+async def invoke(request: HttpRequest, req: LlmInvokeRequest) -> dict:
     """Invoke LLM with prompt or messages.
 
     Uses Django caching for API keys and signals for audit logging.
     """
+    await authorize(request, action="resource:tool_execute", resource="llm")
+
     if not req.prompt and not req.messages:
         raise ValidationError("prompt_or_messages_required")
 
@@ -265,12 +270,16 @@ async def invoke(req: LlmInvokeRequest) -> dict:
     }
 
 
-@router.post("/invoke/stream", response=LlmInvokeResponse, summary="Stream LLM response")
-async def invoke_stream(req: LlmInvokeRequest) -> dict:
+@router.post(
+    "/invoke/stream", response=LlmInvokeResponse, summary="Stream LLM response", auth=AuthBearer()
+)
+async def invoke_stream(request: HttpRequest, req: LlmInvokeRequest) -> dict:
     """Stream LLM response.
 
     Note: Current implementation returns complete response.
     """
+    await authorize(request, action="resource:tool_execute", resource="llm")
+
     if not req.prompt and not req.messages:
         raise ValidationError("prompt_or_messages_required")
 

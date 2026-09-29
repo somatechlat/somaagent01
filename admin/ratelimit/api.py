@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.messages import ErrorCode, get_message
+from services.common.authorization import authorize
 
 router = Router(tags=["ratelimit"])
 logger = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ async def get_rate_limits(request) -> dict:
 
     Security Auditor: View rate limiting rules.
     """
+    await authorize(request, action="system:view", resource="ratelimit")
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
@@ -135,6 +137,7 @@ async def get_rate_limit_status(
 
     PM: Transparency on current limits.
     """
+    await authorize(request, action="system:view", resource="ratelimit")
     return RateLimitStatus(
         limit=60,
         remaining=55,
@@ -155,6 +158,7 @@ async def create_rate_limit(
 
     Security Auditor: Admin only.
     """
+    await authorize(request, action="system:ratelimit", resource="ratelimit")
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
@@ -193,6 +197,7 @@ async def update_rate_limit(
     enabled: Optional[bool] = None,
 ) -> dict:
     """Update a rate limit rule."""
+    await authorize(request, action="system:ratelimit", resource="ratelimit")
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
@@ -227,6 +232,7 @@ async def update_rate_limit(
 )
 async def delete_rate_limit(request, name: str) -> dict:
     """Delete a rate limit rule."""
+    await authorize(request, action="system:ratelimit", resource="ratelimit")
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
@@ -267,6 +273,7 @@ async def get_quota_usage(
 
     PM: Usage transparency for billing.
     """
+    await authorize(request, action="system:read_metrics", resource="ratelimit")
     return QuotaUsage(
         tenant_id=tenant_id,
         agents_used=0,
@@ -297,6 +304,7 @@ async def update_quotas(
 
     PM: Adjust limits based on subscription tier.
     """
+    await authorize(request, action="system:ratelimit", resource="ratelimit")
     logger.info("Quotas updated for tenant: %s", tenant_id)
 
     return {
@@ -318,6 +326,7 @@ async def list_quotas(
 
     PM: Platform-wide quota monitoring.
     """
+    await authorize(request, action="system:view", resource="ratelimit")
     return {
         "quotas": [],
         "total": 0,
@@ -340,6 +349,7 @@ async def list_blocked_ips(request) -> dict:
 
     Security Auditor: Abuse prevention.
     """
+    await authorize(request, action="system:view", resource="ratelimit")
     return {
         "blocked_ips": [],
         "total": 0,
@@ -361,6 +371,7 @@ async def block_ip(
 
     Security Auditor: Manual block for abuse.
     """
+    await authorize(request, action="system:ratelimit", resource="ratelimit")
     logger.warning("IP blocked: %s, reason: %s", ip_address, reason)
 
     return {
@@ -377,6 +388,7 @@ async def block_ip(
 )
 async def unblock_ip(request, ip_address: str) -> dict:
     """Unblock an IP address."""
+    await authorize(request, action="system:ratelimit", resource="ratelimit")
     logger.info("IP unblocked: %s", ip_address)
 
     return {
@@ -403,6 +415,7 @@ async def get_current_usage(
 
     DevOps: Real-time usage monitoring.
     """
+    await authorize(request, action="system:read_metrics", resource="ratelimit")
     return {
         "period": "current_hour",
         "api_calls": 0,
@@ -423,6 +436,7 @@ async def get_usage_history(
     period: str = "24h",  # 1h, 24h, 7d, 30d
 ) -> dict:
     """Get historical usage metrics."""
+    await authorize(request, action="system:read_metrics", resource="ratelimit")
     return {
         "period": period,
         "data_points": [],

@@ -38,7 +38,6 @@ interface AdminProfile {
     apiKeyCount: number;
     notifications: {
         criticalAlerts: boolean;
-        billingEvents: boolean;
         weeklyDigest: boolean;
         marketing: boolean;
     };
@@ -367,7 +366,6 @@ export class SaasPlatformProfile extends LitElement {
                 apiKeyCount: data.api_key_count ?? 0,
                 notifications: data.notifications || {
                     criticalAlerts: true,
-                    billingEvents: true,
                     weeklyDigest: false,
                     marketing: false,
                 },
@@ -551,7 +549,7 @@ export class SaasPlatformProfile extends LitElement {
             </div>
             <div class="access-item">
               <div class="access-label">Permissions</div>
-              <div class="access-value">${this.profile.permissions.includes('*') ? '* (Full Access)' : this.profile.permissions.length}</div>
+              <div class="access-value">${this.profile.permissions.length}</div>
             </div>
             <div class="access-item">
               <div class="access-label">API Keys</div>
@@ -569,14 +567,6 @@ export class SaasPlatformProfile extends LitElement {
             <saas-toggle
               ?checked=${this.profile.notifications.criticalAlerts}
               @change=${(e: CustomEvent) => this._updateNotification('criticalAlerts', e.detail.checked)}
-            ></saas-toggle>
-          </div>
-
-          <div class="notification-item">
-            <span class="notification-label">Billing events (new subscriptions, failed payments)</span>
-            <saas-toggle
-              ?checked=${this.profile.notifications.billingEvents}
-              @change=${(e: CustomEvent) => this._updateNotification('billingEvents', e.detail.checked)}
             ></saas-toggle>
           </div>
 

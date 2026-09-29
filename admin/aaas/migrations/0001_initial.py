@@ -17,121 +17,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="AaasFeature",
-            fields=[
-                (
-                    "id",
-                    models.UUIDField(
-                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
-                    ),
-                ),
-                (
-                    "code",
-                    models.CharField(
-                        help_text="Unique feature code (e.g., 'voice', 'memory', 'mcp')",
-                        max_length=50,
-                        unique=True,
-                    ),
-                ),
-                ("name", models.CharField(help_text="Display name", max_length=100)),
-                (
-                    "description",
-                    models.TextField(blank=True, help_text="Feature description for UI"),
-                ),
-                (
-                    "category",
-                    models.CharField(
-                        choices=[
-                            ("voice", "Voice & Speech"),
-                            ("memory", "Memory & Context"),
-                            ("mcp", "MCP Servers"),
-                            ("vision", "Vision & Image"),
-                            ("models", "AI Models"),
-                            ("browser", "Browser Automation"),
-                            ("code_exec", "Code Execution"),
-                            ("tools", "Tool Access"),
-                            ("delegation", "Agent Delegation"),
-                        ],
-                        db_index=True,
-                        help_text="Feature category for grouping",
-                        max_length=30,
-                    ),
-                ),
-                (
-                    "icon",
-                    models.CharField(
-                        default="settings",
-                        help_text="Google Material Symbol icon name",
-                        max_length=50,
-                    ),
-                ),
-                (
-                    "config_schema",
-                    models.JSONField(
-                        blank=True, default=dict, help_text="JSON Schema for feature configuration"
-                    ),
-                ),
-                (
-                    "default_settings",
-                    models.JSONField(
-                        blank=True,
-                        default=dict,
-                        help_text="Default settings when feature is enabled",
-                    ),
-                ),
-                (
-                    "is_billable",
-                    models.BooleanField(
-                        default=False, help_text="Whether feature has usage-based billing"
-                    ),
-                ),
-                (
-                    "requires_modal",
-                    models.BooleanField(
-                        default=True, help_text="Whether feature requires full-screen config modal"
-                    ),
-                ),
-                (
-                    "modal_component",
-                    models.CharField(
-                        blank=True,
-                        help_text="Lit component name for settings modal",
-                        max_length=100,
-                    ),
-                ),
-                (
-                    "is_active",
-                    models.BooleanField(
-                        db_index=True,
-                        default=True,
-                        help_text="Whether feature is available for configuration",
-                    ),
-                ),
-                (
-                    "is_beta",
-                    models.BooleanField(default=False, help_text="Whether feature is in beta"),
-                ),
-                (
-                    "sort_order",
-                    models.IntegerField(default=0, help_text="Display order in feature catalog"),
-                ),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-            ],
-            options={
-                "verbose_name": "AAAS Feature",
-                "verbose_name_plural": "AAAS Features",
-                "db_table": "aaas_features",
-                "ordering": ["category", "sort_order", "name"],
-                "indexes": [
-                    models.Index(fields=["code"], name="aaas_featur_code_334a9a_idx"),
-                    models.Index(fields=["category"], name="aaas_featur_categor_92cec1_idx"),
-                    models.Index(fields=["is_active"], name="aaas_featur_is_acti_ed3142_idx"),
-                    models.Index(fields=["sort_order"], name="aaas_featur_sort_or_e4e562_idx"),
-                ],
-            },
-        ),
-        migrations.CreateModel(
             name="SubscriptionTier",
             fields=[
                 (
@@ -155,26 +40,7 @@ class Migration(migrations.Migration):
                 ("slug", models.SlugField(help_text="URL-safe identifier", unique=True)),
                 (
                     "description",
-                    models.TextField(blank=True, help_text="Marketing description for the tier"),
-                ),
-                (
-                    "base_price_cents",
-                    models.BigIntegerField(
-                        default=0, help_text="Base monthly price in cents (USD)"
-                    ),
-                ),
-                (
-                    "billing_interval",
-                    models.CharField(
-                        choices=[
-                            ("monthly", "Monthly"),
-                            ("yearly", "Yearly"),
-                            ("weekly", "Weekly"),
-                        ],
-                        default="monthly",
-                        help_text="Billing cycle",
-                        max_length=20,
-                    ),
+                    models.TextField(blank=True, help_text="What this tier is for"),
                 ),
                 ("max_agents", models.IntegerField(default=1, help_text="Maximum agents allowed")),
                 (
@@ -211,18 +77,12 @@ class Migration(migrations.Migration):
                     models.BooleanField(
                         db_index=True,
                         default=True,
-                        help_text="Whether this tier is available for new subscriptions",
-                    ),
-                ),
-                (
-                    "is_public",
-                    models.BooleanField(
-                        default=True, help_text="Whether tier is shown on public pricing page"
+                        help_text="Whether this tier can be assigned to a tenant",
                     ),
                 ),
                 (
                     "sort_order",
-                    models.IntegerField(default=0, help_text="Display order on pricing page"),
+                    models.IntegerField(default=0, help_text="Display order"),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
@@ -231,7 +91,7 @@ class Migration(migrations.Migration):
                 "verbose_name": "Subscription Tier",
                 "verbose_name_plural": "Subscription Tiers",
                 "db_table": "subscription_tiers",
-                "ordering": ["sort_order", "base_price_cents"],
+                "ordering": ["sort_order", "name"],
                 "indexes": [
                     models.Index(fields=["slug"], name="subscriptio_slug_03cc71_idx"),
                     models.Index(fields=["is_active"], name="subscriptio_is_acti_a7d112_idx"),
@@ -525,76 +385,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name="TierFeature",
-            fields=[
-                (
-                    "id",
-                    models.UUIDField(
-                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
-                    ),
-                ),
-                (
-                    "is_enabled",
-                    models.BooleanField(
-                        default=True, help_text="Whether feature is enabled for this tier"
-                    ),
-                ),
-                (
-                    "settings_override",
-                    models.JSONField(
-                        blank=True,
-                        default=dict,
-                        help_text="Tier-specific settings that override feature defaults",
-                    ),
-                ),
-                (
-                    "quota_limit",
-                    models.IntegerField(
-                        blank=True,
-                        help_text="Usage quota limit for this tier (null = unlimited)",
-                        null=True,
-                    ),
-                ),
-                (
-                    "quota_policy",
-                    models.CharField(
-                        choices=[
-                            ("hard", "Hard Block"),
-                            ("soft", "Soft Warn"),
-                            ("none", "Unlimited"),
-                        ],
-                        default="soft",
-                        help_text="How quota is enforced",
-                        max_length=20,
-                    ),
-                ),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                (
-                    "feature",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="tier_assignments",
-                        to="aaas.aaasfeature",
-                    ),
-                ),
-                (
-                    "tier",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="tier_features",
-                        to="aaas.subscriptiontier",
-                    ),
-                ),
-            ],
-            options={
-                "verbose_name": "Tier Feature",
-                "verbose_name_plural": "Tier Features",
-                "db_table": "aaas_tier_features",
-                "ordering": ["tier", "feature"],
-            },
-        ),
-        migrations.CreateModel(
             name="UsageRecord",
             fields=[
                 (
@@ -714,73 +504,6 @@ class Migration(migrations.Migration):
                 "unique_together": {("agent", "user_id")},
             },
         ),
-        migrations.CreateModel(
-            name="FeatureProvider",
-            fields=[
-                (
-                    "id",
-                    models.UUIDField(
-                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
-                    ),
-                ),
-                (
-                    "code",
-                    models.CharField(
-                        help_text="Unique provider code (e.g., 'elevenlabs', 'openai_whisper')",
-                        max_length=50,
-                    ),
-                ),
-                ("name", models.CharField(help_text="Display name", max_length=100)),
-                ("description", models.TextField(blank=True, help_text="Provider description")),
-                (
-                    "config_schema",
-                    models.JSONField(
-                        blank=True,
-                        default=dict,
-                        help_text="JSON Schema for provider-specific configuration",
-                    ),
-                ),
-                (
-                    "default_config",
-                    models.JSONField(
-                        blank=True,
-                        default=dict,
-                        help_text="Default configuration for this provider",
-                    ),
-                ),
-                ("is_active", models.BooleanField(db_index=True, default=True)),
-                (
-                    "is_default",
-                    models.BooleanField(
-                        default=False,
-                        help_text="Whether this is the default provider for the feature",
-                    ),
-                ),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                (
-                    "feature",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="providers",
-                        to="aaas.aaasfeature",
-                    ),
-                ),
-            ],
-            options={
-                "verbose_name": "Feature Provider",
-                "verbose_name_plural": "Feature Providers",
-                "db_table": "aaas_feature_providers",
-                "ordering": ["feature", "-is_default", "name"],
-                "indexes": [
-                    models.Index(
-                        fields=["feature", "is_active"], name="aaas_featur_feature_89e37b_idx"
-                    ),
-                    models.Index(fields=["code"], name="aaas_featur_code_be8fe3_idx"),
-                ],
-                "unique_together": {("feature", "code")},
-            },
-        ),
         migrations.AddIndex(
             model_name="tenant",
             index=models.Index(fields=["slug"], name="tenants_slug_3181c2_idx"),
@@ -856,20 +579,6 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name="tenantuser",
             unique_together={("tenant", "user_id")},
-        ),
-        migrations.AddIndex(
-            model_name="tierfeature",
-            index=models.Index(
-                fields=["tier", "is_enabled"], name="aaas_tier_f_tier_id_1665e8_idx"
-            ),
-        ),
-        migrations.AddIndex(
-            model_name="tierfeature",
-            index=models.Index(fields=["feature"], name="aaas_tier_f_feature_06ee3c_idx"),
-        ),
-        migrations.AlterUniqueTogether(
-            name="tierfeature",
-            unique_together={("tier", "feature")},
         ),
         migrations.AddIndex(
             model_name="usagerecord",
@@ -1098,46 +807,6 @@ class Migration(migrations.Migration):
                 "verbose_name_plural": "Platform Configuration",
                 "db_table": "aaas_platform_config",
             },
-        ),
-        migrations.RenameIndex(
-            model_name="aaasfeature",
-            new_name="aaas_featur_code_e72981_idx",
-            old_name="aaas_featur_code_334a9a_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="aaasfeature",
-            new_name="aaas_featur_categor_de001e_idx",
-            old_name="aaas_featur_categor_92cec1_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="aaasfeature",
-            new_name="aaas_featur_is_acti_791a93_idx",
-            old_name="aaas_featur_is_acti_ed3142_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="aaasfeature",
-            new_name="aaas_featur_sort_or_b84412_idx",
-            old_name="aaas_featur_sort_or_e4e562_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="featureprovider",
-            new_name="aaas_featur_feature_842414_idx",
-            old_name="aaas_featur_feature_89e37b_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="featureprovider",
-            new_name="aaas_featur_code_ade063_idx",
-            old_name="aaas_featur_code_be8fe3_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="tierfeature",
-            new_name="aaas_tier_f_tier_id_1665e8_idx",
-            old_name="aaas_tier_f_tier_id_6c682b_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="tierfeature",
-            new_name="aaas_tier_f_feature_06ee3c_idx",
-            old_name="aaas_tier_f_feature_d87b80_idx",
         ),
         migrations.AddField(
             model_name="agent",

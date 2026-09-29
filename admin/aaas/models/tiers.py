@@ -1,7 +1,8 @@
-"""Subscription Tier Model.
+"""Plan / quota tier model.
 
-
-Per AAAS_ADMIN_SRS.md Section 4.3
+Defines the resource ceilings a tenant's agents run under. There is no
+pricing, no billing interval and no payment concept in this product — see
+AGENT.md §1.1 (Scope). This is a quota plan, not a subscription.
 """
 
 import uuid
@@ -9,13 +10,12 @@ from decimal import Decimal
 
 from django.db import models
 
-from admin.aaas.models.choices import BillingInterval
-
 
 class SubscriptionTier(models.Model):
-    """Subscription plan/tier definition.
+    """Quota plan definition.
 
-    Each tier defines limits, pricing, and available features.
+    Each tier defines the limits its tenant's agents run under and the
+    default feature configuration for that tier. No pricing.
     """
 
     id = models.UUIDField(
@@ -30,19 +30,7 @@ class SubscriptionTier(models.Model):
 
     slug = models.SlugField(max_length=50, unique=True, help_text="URL-safe identifier")
 
-    description = models.TextField(blank=True, help_text="Marketing description for the tier")
-
-    # Pricing
-    base_price_cents = models.BigIntegerField(
-        default=0, help_text="Base monthly price in cents (USD)"
-    )
-
-    billing_interval = models.CharField(
-        max_length=20,
-        choices=BillingInterval.choices,
-        default=BillingInterval.MONTHLY,
-        help_text="Billing cycle",
-    )
+    description = models.TextField(blank=True, help_text="What this tier is for")
 
     # Limits
     max_agents = models.IntegerField(default=1, help_text="Maximum agents allowed")
@@ -73,14 +61,10 @@ class SubscriptionTier(models.Model):
     is_active = models.BooleanField(
         default=True,
         db_index=True,
-        help_text="Whether this tier is available for new subscriptions",
+        help_text="Whether this tier can be assigned to a tenant",
     )
 
-    is_public = models.BooleanField(
-        default=True, help_text="Whether tier is shown on public pricing page"
-    )
-
-    sort_order = models.IntegerField(default=0, help_text="Display order on pricing page")
+    sort_order = models.IntegerField(default=0, help_text="Display order")
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -90,19 +74,19 @@ class SubscriptionTier(models.Model):
         """Meta class implementation."""
 
         db_table = "subscription_tiers"
-        ordering = ["sort_order", "base_price_cents"]
+        ordering = ["sort_order", "name"]
         indexes = [
             models.Index(fields=["slug"]),
             models.Index(fields=["is_active"]),
             models.Index(fields=["sort_order"]),
         ]
-        verbose_name = "Subscription Tier"
-        verbose_name_plural = "Subscription Tiers"
+        verbose_name = "Plan Tier"
+        verbose_name_plural = "Plan Tiers"
 
     def __str__(self):
         """Return string representation."""
 
-        return f"{self.name} (${self.base_price_cents / 100:.2f}/mo)"
+        return self.name
 
     def to_dict(self):
         """Serialize for API response."""
@@ -111,8 +95,6 @@ class SubscriptionTier(models.Model):
             "name": self.name,
             "slug": self.slug,
             "description": self.description,
-            "base_price_cents": self.base_price_cents,
-            "billing_interval": self.billing_interval,
             "max_agents": self.max_agents,
             "max_users_per_agent": self.max_users_per_agent,
             "max_monthly_voice_minutes": self.max_monthly_voice_minutes,
@@ -120,7 +102,6 @@ class SubscriptionTier(models.Model):
             "max_storage_gb": float(self.max_storage_gb),
             "feature_defaults": self.feature_defaults,
             "is_active": self.is_active,
-            "is_public": self.is_public,
             "sort_order": self.sort_order,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

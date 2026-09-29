@@ -19,6 +19,7 @@ from admin.aaas.models import Agent, AgentStatus, Tenant, TenantUser
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
+from services.common.authorization import authorize_sync
 
 router = Router(tags=["tenant-agents"])
 logger = logging.getLogger(__name__)
@@ -155,6 +156,7 @@ def list_agents(
     per_page: int = Query(20, ge=1, le=100),
 ) -> dict:
     """List all agents in the tenant."""
+    authorize_sync(request, action="agent:read", resource="agents")
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
 
     qs = Agent.objects.filter(tenant_id=tenant_id)
@@ -190,6 +192,7 @@ def create_agent(
     payload: AgentCreateRequest,
 ) -> dict:
     """Create a new agent in the tenant."""
+    authorize_sync(request, action="agent:create", resource="agents")
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
 
     # Check quota
@@ -233,6 +236,7 @@ def get_agent(
     agent_id: str,
 ) -> dict:
     """Get a single agent's details."""
+    authorize_sync(request, action="agent:read", resource="agents")
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
@@ -252,6 +256,7 @@ def update_agent(
     payload: AgentUpdateRequest,
 ) -> dict:
     """Update an agent's configuration."""
+    authorize_sync(request, action="agent:update", resource="agents")
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
@@ -285,6 +290,7 @@ def delete_agent(
     agent_id: str,
 ) -> dict:
     """Delete an agent."""
+    authorize_sync(request, action="agent:delete", resource="agents")
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
@@ -306,6 +312,7 @@ def start_agent(
     agent_id: str,
 ) -> dict:
     """Start an agent."""
+    authorize_sync(request, action="agent:start", resource="agents")
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
@@ -328,6 +335,7 @@ def stop_agent(
     agent_id: str,
 ) -> dict:
     """Stop an agent."""
+    authorize_sync(request, action="agent:stop", resource="agents")
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
@@ -347,6 +355,7 @@ def stop_agent(
 )
 def get_quota(request) -> dict:
     """Get the current quota status for the tenant."""
+    authorize_sync(request, action="agent:read", resource="agents")
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
     quota = get_tenant_quota(tenant_id)
     return api_response(quota.model_dump())

@@ -16,6 +16,8 @@ from typing import Any, Dict
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from admin.core.authz import ROLE_PERMISSIONS, ROLE_PRIORITY
+
 # We avoid importing Tenant here directly if it causes circular imports,
 # but models.OneToOneField('aaas.Tenant') handles it via string reference.
 
@@ -80,9 +82,17 @@ class PlatformConfig(models.Model):
         """
         return {
             # Models removed - use LLMModelConfig table instead
+            # Derived from admin.core.authz, never restated here. The previous
+            # literal was {"id": "admin", "permissions": ["*"]}: a wildcard
+            # grants authority that cannot be traced, so it cannot be audited.
             "roles": [
-                {"id": "admin", "permissions": ["*"]},
-                {"id": "member", "permissions": ["read"]},
+                {
+                    "id": role,
+                    "name": role.replace("_", " ").title(),
+                    "description": f"See admin.core.authz.ROLE_PERMISSIONS[{role!r}]",
+                    "permissions": sorted(ROLE_PERMISSIONS[role]),
+                }
+                for role in ROLE_PRIORITY
             ],
             "dev_sandbox_defaults": {
                 "max_agents": 2,
@@ -407,3 +417,49 @@ class ApiKey(models.Model):
         """Return string representation."""
 
         return f"{self.name} ({self.key_prefix}...)"
+
+    @staticmethod
+    def hash_key(raw_key: str) -> str:
+        """Hash a presented key the same way issuance does.
+
+        SHA-256 of a 256-bit CSPRNG token is a verifier, not a credential: it
+        cannot be reversed into a usable key and it is not what authenticates
+        anyone. The raw key is the credential and it is returned exactly once.
+        """
+        import hashlib
+
+        return hashlib.sha256(raw_key.encode()).hexdigest()
+
+    @classmethod
+    def verify(cls, raw_key: str):
+        """Resolve a presented key to its record, or to nothing.
+
+        FAIL-CLOSED on every path: unknown, revoked, or expired keys return
+        ``None``. There is no branch that treats "could not tell" as allowed,
+        and the unknown-key path does the same work as the known-key path so a
+        caller cannot learn anything from the shape of the failure.
+        """
+        if not raw_key or not isinstance(raw_key, str):
+            return None
+
+        key_hash = cls.hash_key(raw_key)
+        try:
+            key = cls.objects.get(key_hash=key_hash)
+        except cls.DoesNotExist:
+            return None
+
+        if not key.is_active:
+            return None
+        if key.expires_at is not None:
+            from django.utils import timezone
+
+            if key.expires_at <= timezone.now():
+                return None
+        return key
+
+    def mark_used(self) -> None:
+        """Record that the key was used. Never raises into the auth path."""
+        from django.utils import timezone
+
+        self.last_used_at = timezone.now()
+        self.save(update_fields=["last_used_at"])

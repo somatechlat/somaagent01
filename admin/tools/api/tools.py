@@ -10,10 +10,13 @@ import logging
 from typing import Optional
 
 from asgiref.sync import sync_to_async
+from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.core.models.core import Capability
+from services.common.authorization import authorize
 
 router = Router(tags=["tools"])
 logger = logging.getLogger(__name__)
@@ -43,12 +46,13 @@ class ToolsListResponse(BaseModel):
     count: int
 
 
-@router.get("", response=ToolsListResponse, summary="List all available tools")
-async def list_tools() -> dict:
+@router.get("", response=ToolsListResponse, summary="List all available tools", auth=AuthBearer())
+async def list_tools(request: HttpRequest) -> dict:
     """List all enabled tools with their schemas.
 
     Queries the canonical Capability model.
     """
+    await authorize(request, action="resource:tool_read", resource="tools")
     capabilities = await sync_to_async(list)(
         Capability.objects.filter(is_enabled=True).values("name", "description", "schema")
     )
@@ -67,9 +71,10 @@ async def list_tools() -> dict:
     return {"tools": tools, "count": len(tools)}
 
 
-@router.get("/catalog", response=list[ToolCatalogItem], summary="List tool catalog")
-async def list_catalog() -> list[dict]:
+@router.get("/catalog", response=list[ToolCatalogItem], summary="List tool catalog", auth=AuthBearer())
+async def list_catalog(request: HttpRequest) -> list[dict]:
     """List all tool catalog entries."""
+    await authorize(request, action="resource:tool_read", resource="tools")
     items = await sync_to_async(list)(
         Capability.objects.all().values("name", "description", "category", "is_enabled")
     )
@@ -85,9 +90,10 @@ async def list_catalog() -> list[dict]:
     ]
 
 
-@router.put("/catalog/{name}", response=ToolCatalogItem, summary="Upsert tool catalog entry")
-async def upsert_catalog_item(name: str, item: ToolCatalogItem) -> dict:
+@router.put("/catalog/{name}", response=ToolCatalogItem, summary="Upsert tool catalog entry", auth=AuthBearer())
+async def upsert_catalog_item(request: HttpRequest, name: str, item: ToolCatalogItem) -> dict:
     """Create or update a tool catalog entry."""
+    await authorize(request, action="resource:tool_configure", resource="tools")
     capability, _created = await sync_to_async(Capability.objects.update_or_create)(
         name=name,
         defaults={

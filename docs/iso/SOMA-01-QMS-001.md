@@ -242,6 +242,7 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Operations Runbook | SOMA-01-OPS-001 | ISO 9001:2015 | Operational procedures and incident handling |
 | Release Notes | SOMA-01-RELEASE-001 | ISO 9001:2015 | Released content, known issues and upgrade notes |
 | AAAS Deployment Specification | SOMA-01-AAAS-001 | ISO 9001:2015 | Agent-as-a-Service deployment topology and contract |
+| Deployment Model Specification | SOMA-01-DEPLOY-001 | ISO/IEC 27001:2022; ISO/IEC 42001:2023 | Standalone and Enterprise deployment models, identity sources, RBAC |
 | Cognitive Triad Compatibility Matrix | SOMA-01-COMPAT-001 | ISO 9001:2015 | Supported version combinations across the triad |
 
 ---

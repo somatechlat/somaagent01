@@ -16,12 +16,22 @@ from admin.common.exceptions import ForbiddenError, ValidationError
 
 
 class RecordingPolicyClient:
-    """Recording stand-in for PolicyClient: logs each call, returns a scripted verdict."""
+    """Recording stand-in for PolicyClient: logs each call, returns a scripted verdict.
+
+    `is_configured` is part of the real PolicyClient contract, and it is
+    load-bearing here: `authorize()` skips the policy layer entirely when a
+    client is not configured, which would leave these tests asserting on a
+    call that never happened.
+    """
 
     def __init__(self, allowed: bool | None, error: Exception | None = None) -> None:
         self.allowed = allowed
         self.error = error
         self.calls: list[tuple[str, str, str]] = []
+
+    @property
+    def is_configured(self) -> bool:
+        return True
 
     async def evaluate(self, request) -> bool:  # noqa: ANN001 - PolicyRequest
         self.calls.append((request.tenant, request.action, request.resource))
@@ -31,10 +41,18 @@ class RecordingPolicyClient:
 
 
 class MinimalRequest:
-    """Minimal request stand-in carrying the headers authorize() reads."""
+    """Minimal request stand-in carrying what authorize() reads.
 
-    def __init__(self, tenant: str = "tenant-a") -> None:
+    `auth` is the subject, not a bypass: `authorize()` is two-layered and
+    the RBAC floor runs first. A request with no roles is denied before OPA
+    is ever consulted, which is correct — and which would leave these tests
+    exercising the wrong layer. `sysadmin` is the role that holds
+    `system:configure`, so it is the subject a settings write actually is.
+    """
+
+    def __init__(self, tenant: str = "tenant-a", roles: list[str] | None = None) -> None:
         self.headers = {"X-Tenant-Id": tenant}
+        self.auth = {"roles": ["sysadmin"] if roles is None else roles}
 
 
 def _install_policy(monkeypatch, client: RecordingPolicyClient) -> None:
@@ -110,13 +128,13 @@ class TestSettingsWriteGate:
 
     @pytest.mark.asyncio
     async def test_gate_asks_settings_write_on_settings(self, monkeypatch):
-        """The policy question asked must be settings:write on resource settings."""
+        """The policy question asked must be system:configure on resource settings."""
         client = RecordingPolicyClient(allowed=True)
         _install_policy(monkeypatch, client)
         _install_saver(monkeypatch)
 
         await _update()
-        assert client.calls and client.calls[0][1] == "settings:write"
+        assert client.calls and client.calls[0][1] == "system:configure"
         assert client.calls[0][2] == "settings"
 
     @pytest.mark.asyncio

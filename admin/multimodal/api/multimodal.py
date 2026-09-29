@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import ForbiddenError, NotFoundError
+from services.common.authorization import authorize
 
 router = Router(tags=["multimodal"])
 logger = logging.getLogger(__name__)
@@ -103,7 +104,12 @@ def _require_multimodal_enabled():
         raise ForbiddenError("Multimodal capabilities disabled")
 
 
-@router.get("/capabilities", response=list[CapabilityResponse], summary="List capabilities")
+@router.get(
+    "/capabilities",
+    response=list[CapabilityResponse],
+    summary="List capabilities",
+    auth=AuthBearer(),
+)
 async def list_capabilities(
     request: HttpRequest,
     modality: str = Query(..., description="Modality (image, diagram, screenshot, video)"),
@@ -111,13 +117,11 @@ async def list_capabilities(
     include_unhealthy: bool = False,
 ) -> list[dict]:
     """List multimodal capabilities filtered by modality."""
-    from services.common.authorization import authorize
+    auth = await authorize(request, action="system:view", resource="multimodal")
+
     from services.common.capability_registry import CapabilityRegistry
 
     _require_multimodal_enabled()
-    auth = await authorize(
-        request, action="multimodal.capabilities.read", resource="multimodal.capabilities"
-    )
     tenant_id = auth.get("tenant")
 
     registry = CapabilityRegistry()
@@ -146,14 +150,16 @@ async def list_capabilities(
     ]
 
 
-@router.post("/jobs", response=JobCreateResponse, summary="Create multimodal job")
+@router.post(
+    "/jobs", response=JobCreateResponse, summary="Create multimodal job", auth=AuthBearer()
+)
 async def create_job(request: HttpRequest, body: JobCreateRequest) -> dict:
     """Submit a multimodal job plan (Task DSL)."""
-    from services.common.authorization import authorize
+    auth = await authorize(request, action="resource:tool_execute", resource="multimodal")
+
     from services.common.job_planner import JobPlanner, PlanValidationError
 
     _require_multimodal_enabled()
-    auth = await authorize(request, action="multimodal.jobs.create", resource="multimodal.jobs")
     tenant_id = auth.get("tenant")
 
     planner = JobPlanner()
@@ -185,6 +191,8 @@ async def list_jobs(
     page_size: int = Query(20, ge=1, le=100),
 ) -> JobListResponse:
     """List multimodal jobs for the current tenant."""
+    await authorize(request, action="system:view", resource="multimodal")
+
     from asgiref.sync import sync_to_async
     from django.conf import settings
 
@@ -226,14 +234,19 @@ async def list_jobs(
     return JobListResponse(items=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/jobs/{plan_id}", response=JobStatusResponse, summary="Get job status")
+@router.get(
+    "/jobs/{plan_id}",
+    response=JobStatusResponse,
+    summary="Get job status",
+    auth=AuthBearer(),
+)
 async def get_job_status(request: HttpRequest, plan_id: str) -> dict:
     """Get the status of a multimodal job plan."""
-    from services.common.authorization import authorize
+    auth = await authorize(request, action="system:view", resource="multimodal")
+
     from services.common.job_planner import JobPlanner
 
     _require_multimodal_enabled()
-    auth = await authorize(request, action="multimodal.jobs.read", resource="multimodal.jobs")
     tenant_id = auth.get("tenant")
 
     planner = JobPlanner()
@@ -253,14 +266,14 @@ async def get_job_status(request: HttpRequest, plan_id: str) -> dict:
     }
 
 
-@router.get("/assets/{asset_id}", summary="Get asset")
+@router.get("/assets/{asset_id}", summary="Get asset", auth=AuthBearer())
 async def get_asset(request: HttpRequest, asset_id: str):
     """Retrieve a generated multimodal asset by ID."""
-    from services.common.authorization import authorize
+    auth = await authorize(request, action="system:view", resource="multimodal")
+
     from services.gateway import providers
 
     _require_multimodal_enabled()
-    auth = await authorize(request, action="multimodal.assets.read", resource="multimodal.assets")
     tenant_id = auth.get("tenant")
 
     store = providers.get_asset_store()
@@ -281,16 +294,19 @@ async def get_asset(request: HttpRequest, asset_id: str):
     )
 
 
-@router.get("/provenance/{asset_id}", response=ProvenanceResponse, summary="Get provenance")
+@router.get(
+    "/provenance/{asset_id}",
+    response=ProvenanceResponse,
+    summary="Get provenance",
+    auth=AuthBearer(),
+)
 async def get_provenance(request: HttpRequest, asset_id: str) -> dict:
     """Retrieve provenance record for an asset."""
-    from services.common.authorization import authorize
+    auth = await authorize(request, action="system:view", resource="multimodal")
+
     from services.common.provenance_recorder import ProvenanceRecorder
 
     _require_multimodal_enabled()
-    auth = await authorize(
-        request, action="multimodal.provenance.read", resource="multimodal.provenance"
-    )
     tenant_id = auth.get("tenant")
 
     recorder = ProvenanceRecorder()

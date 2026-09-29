@@ -9,9 +9,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel
+
+from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["notifications"])
 logger = logging.getLogger(__name__)
@@ -36,9 +40,12 @@ class CreateNotificationRequest(BaseModel):
     meta: Optional[dict] = None
 
 
-@router.get("", summary="List notifications")
-async def list_notifications(limit: int = 50, unreadOnly: bool = False) -> dict:
+@router.get("", summary="List notifications", auth=AuthBearer())
+async def list_notifications(
+    request: HttpRequest, limit: int = 50, unreadOnly: bool = False
+) -> dict:
     """Return a list of notifications."""
+    await authorize(request, action="org:user_activity", resource="notifications")
     try:
         store = _get_store()
         await store.ensure_schema()
@@ -53,9 +60,11 @@ async def list_notifications(limit: int = 50, unreadOnly: bool = False) -> dict:
         raise HttpError(502, f"Notification store unavailable: {exc}")
 
 
-@router.post("", summary="Create notification")
-async def create_notification(req: CreateNotificationRequest) -> dict:
+@router.post("", summary="Create notification", auth=AuthBearer())
+async def create_notification(request: HttpRequest, req: CreateNotificationRequest) -> dict:
     """Create a new notification."""
+    # Not self-service: this writes into someone else's inbox, so user_update.
+    await authorize(request, action="org:user_update", resource="notifications")
     store = _get_store()
     await store.ensure_schema()
     notif = await store.create(
@@ -71,13 +80,14 @@ async def create_notification(req: CreateNotificationRequest) -> dict:
     return {"notification": notif}
 
 
-@router.post("/{notif_id}/read", summary="Mark read")
-async def mark_read(notif_id: str) -> dict:
+@router.post("/{notif_id}/read", summary="Mark read", auth=AuthBearer())
+async def mark_read(request: HttpRequest, notif_id: str) -> dict:
     """Execute mark read.
 
     Args:
         notif_id: The notif_id.
     """
+    await authorize(request, action="org:user_activity", resource="notifications")
 
     store = _get_store()
     await store.ensure_schema()
@@ -85,9 +95,11 @@ async def mark_read(notif_id: str) -> dict:
     return {"status": "ok"}
 
 
-@router.delete("/clear", summary="Clear notifications")
-async def clear_notifications() -> dict:
+@router.delete("/clear", summary="Clear notifications", auth=AuthBearer())
+async def clear_notifications(request: HttpRequest) -> dict:
     """Execute clear notifications."""
+    # Not self-service: clearing erases the record of what was delivered.
+    await authorize(request, action="org:user_update", resource="notifications")
 
     store = _get_store()
     await store.ensure_schema()

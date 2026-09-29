@@ -42,6 +42,7 @@ from admin.agents.services.agent_service import (
     _update_capsule,
 )
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["agents"])
 logger = logging.getLogger(__name__)
@@ -67,6 +68,7 @@ async def list_agents(
 
     PM: Agent catalog.
     """
+    await authorize(request, action="agent:read", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, tenant_id)
     limit = min(max(limit, 1), 200)
     agents, total = await _list_agents(effective_tenant_id, status, limit)
@@ -93,6 +95,7 @@ async def create_agent(
 
     PhD Dev: Agent instantiation.
     """
+    await authorize(request, action="agent:create", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, tenant_id)
     tenant = await _get_tenant(effective_tenant_id)
     if tenant is None:
@@ -118,6 +121,7 @@ async def create_agent(
 )
 async def get_agent(request, agent_id: str) -> Agent:
     """Get agent details."""
+    await authorize(request, action="agent:read", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, effective_tenant_id)
     if agent is None:
@@ -136,6 +140,7 @@ async def update_agent(
     payload: AgentUpdatePayload,
 ) -> dict:
     """Update agent settings."""
+    await authorize(request, action="agent:update", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, effective_tenant_id)
     if agent is None:
@@ -161,6 +166,7 @@ async def delete_agent(request, agent_id: str) -> dict:
     referenced by conversations and audit records. Archived agents drop out
     of every listing, which filters on status.
     """
+    await authorize(request, action="agent:delete", resource="agents")
     tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, tenant_id)
     if not agent:
@@ -192,6 +198,7 @@ async def get_personality(request, agent_id: str) -> dict:
     Stored on ``Agent.config["personality"]`` — the same place
     ``admin.agents.services.agent_service`` already reads it from.
     """
+    await authorize(request, action="cognitive:view", resource="agents")
     tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, tenant_id)
     if not agent:
@@ -214,6 +221,7 @@ async def update_personality(
     personality: dict,
 ) -> dict:
     """Update agent personality on ``Agent.config["personality"]``."""
+    await authorize(request, action="cognitive:edit", resource="agents")
     tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, tenant_id)
     if not agent:
@@ -241,6 +249,7 @@ async def get_agent_tools(request, agent_id: str) -> AgentToolsOut:
 
     PhD Dev: Tool configuration.
     """
+    await authorize(request, action="agent:read", resource="agents")
     tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, tenant_id)
     if not agent:
@@ -270,6 +279,8 @@ async def update_agent_tools(
     payload: AgentToolsUpdate,
 ) -> AgentToolsOut:
     """Update agent's enabled tools."""
+    await authorize(request, action="agent:configure_tools", resource="agents")
+
     from services.tool_executor.tools import AVAILABLE_TOOLS
 
     tenant_id = _resolve_tenant_id(request, None)
@@ -308,6 +319,7 @@ async def get_memory_config(request, agent_id: str) -> dict:
     and ``admin.core.context.builder`` already read (``recall_limit`` and
     friends). There is no separate memory-config store.
     """
+    await authorize(request, action="agent:read", resource="agents")
     tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, tenant_id)
     if not agent:
@@ -348,6 +360,7 @@ async def _set_agent_status(request, agent_id: str, status: str) -> dict:
 )
 async def activate_agent(request, agent_id: str) -> dict:
     """Activate an agent for use."""
+    await authorize(request, action="agent:start", resource="agents")
     return await _set_agent_status(request, agent_id, AgentStatus.ACTIVE)
 
 
@@ -358,6 +371,7 @@ async def activate_agent(request, agent_id: str) -> dict:
 )
 async def pause_agent(request, agent_id: str) -> dict:
     """Pause an agent."""
+    await authorize(request, action="agent:stop", resource="agents")
     return await _set_agent_status(request, agent_id, AgentStatus.PAUSED)
 
 
@@ -368,6 +382,7 @@ async def pause_agent(request, agent_id: str) -> dict:
 )
 async def archive_agent(request, agent_id: str) -> dict:
     """Archive an agent."""
+    await authorize(request, action="agent:delete", resource="agents")
     return await _set_agent_status(request, agent_id, AgentStatus.ARCHIVED)
 
 
@@ -389,6 +404,8 @@ async def get_agent_stats(request, agent_id: str) -> AgentStats:
     rather than reported as 0.0 — nothing in this system records per-message
     timing, so a number here would be invented.
     """
+    await authorize(request, action="agent:read", resource="agents")
+
     from admin.chat.models import Conversation, Message
 
     @sync_to_async
@@ -429,6 +446,8 @@ async def clone_agent(
     ManyToMany and are copied too; the capsule rows themselves are shared,
     not duplicated.
     """
+    await authorize(request, action="agent:create", resource="agents")
+
     from django.utils.text import slugify
 
     from admin.aaas.models import Agent as AgentModel, Tenant as TenantModel
@@ -484,6 +503,8 @@ async def get_multimodal_config(request, agent_id: str) -> dict:
 
     Uses GlobalDefault for persistence (Unified Policy).
     """
+    await authorize(request, action="agent:read", resource="agents")
+
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
@@ -513,6 +534,8 @@ async def update_multimodal_config(request, agent_id: str, config: MultimodalCon
 
     Persists to GlobalDefault (Unified Policy).
     """
+    await authorize(request, action="agent:update", resource="agents")
+
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
@@ -535,6 +558,7 @@ async def update_multimodal_config(request, agent_id: str, config: MultimodalCon
 )
 async def get_agent_capsule_config(request, agent_id: str) -> CapsuleConfigOut:
     """Get the agent's primary capsule configuration."""
+    await authorize(request, action="agent:read", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, None)
     capsule = await _get_agent_capsule(agent_id, effective_tenant_id)
     if capsule is None:
@@ -565,6 +589,7 @@ async def update_agent_capsule_config(
     payload: CapsuleConfigUpdate,
 ) -> CapsuleConfigUpdateResult:
     """Update the agent's primary capsule configuration."""
+    await authorize(request, action="agent:update", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, None)
     capsule = await _get_agent_capsule(agent_id, effective_tenant_id)
     if capsule is None:

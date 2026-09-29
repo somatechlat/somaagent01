@@ -20,6 +20,7 @@ from ninja.errors import HttpError
 
 from admin.common.auth import AuthBearer
 from admin.modules import hooks as hooks_module, registry as module_registry
+from services.common.authorization import authorize_sync
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["modules"])
@@ -97,6 +98,7 @@ def list_modules(
     feature_flag: Optional[str] = None,
 ) -> dict:
     """List Capsule Modules from the real DB registry (not a hardcoded list)."""
+    authorize_sync(request, action="system:view", resource="modules")
 
     try:
         items = module_registry.list_modules(enabled=enabled, feature_flag=feature_flag)
@@ -108,6 +110,7 @@ def list_modules(
 @router.get("/hooks", summary="List orchestrator hook registrations", auth=AuthBearer())
 def list_hooks(request) -> dict:
     """List hook points and the handlers modules have registered."""
+    authorize_sync(request, action="system:view", resource="modules")
 
     return {
         "hooks": {
@@ -122,6 +125,7 @@ def list_hooks(request) -> dict:
 @router.get("/{name}", response=ModuleOut, summary="Get Capsule Module", auth=AuthBearer())
 def get_module(request, name: str) -> dict:
     """Get one Capsule Module by name."""
+    authorize_sync(request, action="system:view", resource="modules")
 
     try:
         return module_registry.get_module(name)
@@ -132,6 +136,7 @@ def get_module(request, name: str) -> dict:
 @router.post("/{name}/enable", response=ModuleOut, summary="Enable module", auth=AuthBearer())
 def enable_module(request, name: str) -> dict:
     """Enable a module. Fail-closed when its feature flag is disabled."""
+    authorize_sync(request, action="system:configure", resource="modules")
 
     try:
         return module_registry.set_module_enabled(name, True)
@@ -142,6 +147,7 @@ def enable_module(request, name: str) -> dict:
 @router.post("/{name}/disable", response=ModuleOut, summary="Disable module", auth=AuthBearer())
 def disable_module(request, name: str) -> dict:
     """Disable a module. Refused for always_enabled modules."""
+    authorize_sync(request, action="system:configure", resource="modules")
 
     try:
         return module_registry.set_module_enabled(name, False)
@@ -152,6 +158,7 @@ def disable_module(request, name: str) -> dict:
 @router.get("/{name}/config", summary="Get module config", auth=AuthBearer())
 def get_module_config(request, name: str) -> dict[str, Any]:
     """Get runtime config for a module."""
+    authorize_sync(request, action="system:view", resource="modules")
 
     try:
         module = module_registry.get_module(name)
@@ -163,6 +170,7 @@ def get_module_config(request, name: str) -> dict[str, Any]:
 @router.patch("/{name}/config", summary="Update module config", auth=AuthBearer())
 def update_module_config(request, name: str, payload: ConfigUpdate) -> dict[str, Any]:
     """Merge runtime config values for a module (real DB state)."""
+    authorize_sync(request, action="system:configure", resource="modules")
 
     try:
         module = module_registry.update_module_config(name, payload.config)

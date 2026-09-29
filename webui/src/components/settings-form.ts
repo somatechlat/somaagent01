@@ -14,7 +14,7 @@
  *   entity="postgresql"
  *   schema-url="/api/v2/schemas/postgresql"
  *   values-url="/api/v2/settings/postgresql"
- *   .permissions=${['settings:edit']}
+ *   .permissions=${['system:configure']}
  * />
  */
 
@@ -420,10 +420,12 @@ export class SettingsForm extends LitElement {
   }
 
   private get canEdit(): boolean {
-    return this.permissions.includes('settings:edit') ||
-      this.permissions.includes('settings:write') ||
-      this.permissions.includes(`${this.entity}:configure`) ||
-      this.permissions.includes('*');
+    // Exact catalog names only. The old form accepted `settings:edit`,
+    // `settings:write`, a constructed `<entity>:configure` and `*`. None of
+    // those are permissions this product defines, and `*` would have granted
+    // edit on every settings screen to anyone whose permission list contained
+    // a single wildcard.
+    return this.permissions.includes('system:configure');
   }
 
   private async loadData() {

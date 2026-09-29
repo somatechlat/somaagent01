@@ -18,6 +18,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from services.common.memory_contract import embed_text
 
 router = Router(tags=["embeddings"])
@@ -115,6 +116,8 @@ async def create_embeddings(
 
     ML Eng: Batch embedding generation.
     """
+    await authorize(request, action="system:manage_integrations", resource="embeddings")
+
     dim = EMBEDDING_MODELS.get(model, EMBEDDING_MODELS["text-embedding-ada-002"])["dimensions"]
 
     data = [
@@ -152,6 +155,8 @@ async def create_batch_embeddings(
     ML Eng: Large-scale embedding.
     DevOps: Batch processing.
     """
+    await authorize(request, action="system:manage_integrations", resource="embeddings")
+
     raise HttpError(501, "Batch embedding is not implemented: no async embedding job runner.")
 
 
@@ -165,6 +170,8 @@ async def get_batch_status(
     batch_id: str,
 ) -> dict:
     """Get batch embedding status."""
+    await authorize(request, action="system:view", resource="embeddings")
+
     raise HttpError(
         501, "Batch embedding status is not implemented: no async embedding job runner."
     )
@@ -185,6 +192,8 @@ async def list_models(request) -> dict:
 
     ML Eng: Model selection.
     """
+    await authorize(request, action="system:view", resource="embeddings")
+
     models = [
         ModelInfo(
             model_id=model_id,
@@ -210,6 +219,8 @@ async def list_models(request) -> dict:
 )
 async def get_model(request, model_id: str) -> ModelInfo:
     """Get model details."""
+    await authorize(request, action="system:view", resource="embeddings")
+
     info = EMBEDDING_MODELS.get(model_id, EMBEDDING_MODELS["text-embedding-ada-002"])
 
     return ModelInfo(
@@ -240,6 +251,8 @@ async def compute_similarity(
 
     ML Eng: Similarity scoring.
     """
+    await authorize(request, action="resource:memory_search", resource="embeddings")
+
     # Compute cosine similarity
     dot_product = sum(a * b for a, b in zip(embedding1, embedding2, strict=False))
     norm1 = sum(a * a for a in embedding1) ** 0.5
@@ -270,6 +283,8 @@ async def get_stats(
 
     PM: Usage tracking.
     """
+    await authorize(request, action="system:read_metrics", resource="embeddings")
+
     return {
         "total_embeddings_created": 0,
         "total_tokens_used": 0,

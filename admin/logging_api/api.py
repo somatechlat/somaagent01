@@ -19,6 +19,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 
 router = Router(tags=["logging"])
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ async def query_logs(
 
     DevOps: Log search.
     """
+    await authorize(request, action="system:view", resource="logging")
     return {
         "logs": [],
         "total": 0,
@@ -78,6 +80,7 @@ async def query_logs(
 )
 async def get_log(request, log_id: str) -> LogEntry:
     """Get log entry details."""
+    await authorize(request, action="system:view", resource="logging")
     return LogEntry(
         log_id=log_id,
         timestamp=timezone.now().isoformat(),
@@ -106,6 +109,7 @@ async def log_stats(
 
     DevOps: Log overview.
     """
+    await authorize(request, action="system:view", resource="logging")
     return {
         "period": period,
         "total_logs": 10000,
@@ -132,6 +136,7 @@ async def error_logs(
 
     DevOps: Error monitoring.
     """
+    await authorize(request, action="system:view", resource="logging")
     return {
         "errors": [],
         "total": 0,
@@ -158,6 +163,7 @@ async def export_logs(
 
     Security Auditor: Audit export.
     """
+    await authorize(request, action="system:backup_read", resource="logging")
     export_id = str(uuid4())
 
     return {
@@ -182,6 +188,7 @@ async def get_retention(request) -> dict:
 
     Security Auditor: Retention policy.
     """
+    await authorize(request, action="system:view", resource="logging")
     return {
         "retention_days": 30,
         "archive_enabled": True,

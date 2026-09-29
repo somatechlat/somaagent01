@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from admin.common.auth import AuthBearer, get_current_user
 from admin.common.exceptions import NotFoundError
 from admin.common.session_manager import get_session_manager
+from services.common.authorization import authorize
 
 router = Router(tags=["sessions"])
 logger = logging.getLogger(__name__)
@@ -98,6 +99,8 @@ async def get_current_session(request) -> Session:
 
     Security Auditor: Self-inspection.
     """
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     user = get_current_user(request)
     session_id = getattr(user, "session_id", None) or request.COOKIES.get("session_id")
     if not session_id:
@@ -126,6 +129,8 @@ async def refresh_session(request) -> dict:
 
     Security Auditor: Token rotation.
     """
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     user = get_current_user(request)
     session_id = getattr(user, "session_id", None) or request.COOKIES.get("session_id")
     if not session_id:
@@ -153,6 +158,8 @@ async def refresh_session(request) -> dict:
 )
 async def logout_current(request) -> dict:
     """Logout current session."""
+    # Self-service: acts on the caller's own principal. Identity, not elevated authority.
+    await authorize(request, action="identity:self", resource="identity")
     user = get_current_user(request)
     session_id = getattr(user, "session_id", None) or request.COOKIES.get("session_id")
     if not session_id:
@@ -187,6 +194,7 @@ async def list_user_sessions(
 
     Security Auditor: Multi-device awareness.
     """
+    await authorize(request, action="org:user_activity", resource="sessions")
     session_manager = await get_session_manager()
     sessions = await session_manager.list_sessions(user_id)
 
@@ -216,6 +224,7 @@ async def logout_user_everywhere(
 
     Security Auditor: Account compromise response.
     """
+    await authorize(request, action="org:user_update", resource="sessions")
     session_manager = await get_session_manager()
     deleted = await session_manager.delete_user_sessions(user_id)
 
@@ -246,6 +255,7 @@ async def list_all_sessions(
 
     DevOps: Platform-wide session monitoring.
     """
+    await authorize(request, action="org:user_read", resource="sessions")
     session_manager = await get_session_manager()
     sessions = await session_manager.list_all_sessions(limit=limit)
 
@@ -274,6 +284,7 @@ async def terminate_session(
 
     Security Auditor: Targeted session kill.
     """
+    await authorize(request, action="org:user_update", resource="sessions")
     session_manager = await get_session_manager()
     session = await session_manager.get_session_by_id(session_id)
     if not session:
@@ -300,6 +311,7 @@ async def get_session_stats(request) -> SessionStats:
 
     DevOps: Usage monitoring.
     """
+    await authorize(request, action="org:user_activity", resource="sessions")
     session_manager = await get_session_manager()
     sessions = await session_manager.list_all_sessions(limit=1000)
 
@@ -355,6 +367,7 @@ async def terminate_all_sessions(
 
     Security Auditor: Platform-wide emergency logout.
     """
+    await authorize(request, action="org:user_update", resource="sessions")
     user = get_current_user(request)
     current_session_id = getattr(user, "session_id", None) or request.COOKIES.get("session_id")
 
@@ -389,6 +402,7 @@ async def terminate_by_ip(
 
     Security Auditor: IP-based threat response.
     """
+    await authorize(request, action="org:user_update", resource="sessions")
     session_manager = await get_session_manager()
     sessions = await session_manager.list_all_sessions(limit=10000)
 
@@ -421,6 +435,7 @@ async def get_session_config(request) -> dict:
 
     DevOps: Session settings.
     """
+    await authorize(request, action="system:view", resource="sessions")
     session_manager = await get_session_manager()
     return await session_manager.get_config()
 
@@ -436,6 +451,7 @@ async def update_session_config(
     max_sessions_per_user: Optional[int] = None,
 ) -> dict:
     """Update session configuration in Redis."""
+    await authorize(request, action="system:configure", resource="sessions")
     session_manager = await get_session_manager()
     updates: dict[str, Any] = {}
     if session_timeout_minutes is not None:

@@ -10,16 +10,27 @@ import logging
 from ninja import Router
 
 from admin.auth.api_schemas import SSOConfigRequest, SSOTestRequest
+from admin.common.auth import AuthBearer
 from admin.common.messages import ErrorCode, get_message, SuccessCode
+from services.common.authorization import authorize
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["SSO"])
 
 
-@router.post("/test")
+@router.post("/test", auth=AuthBearer())
 async def test_sso_connection(request, payload: SSOTestRequest):
-    """Test SSO provider connection."""
+    """Test SSO provider connection.
+
+    Identity (``AuthBearer``) and authority (``authorize``) are both required.
+    This route takes a caller-supplied issuer URL and makes an outbound request
+    to it — it is an integration probe, not a read, and an unauthenticated
+    caller holding it is an open relay.
+    """
+    # Gate before any URL is read out of the payload. Discovering which issuer
+    # formats are accepted is itself information about the auth surface.
+    await authorize(request, action="system:manage_integrations", resource="sso")
     import httpx
 
     provider = payload.provider
@@ -84,9 +95,16 @@ async def test_sso_connection(request, payload: SSOTestRequest):
         return {"success": False, "detail": get_message(ErrorCode.SSO_TEST_FAILED, error=str(e))}
 
 
-@router.post("/configure")
+@router.post("/configure", auth=AuthBearer())
 async def configure_sso(request, payload: SSOConfigRequest):
-    """Save SSO provider configuration."""
+    """Save SSO provider configuration.
+
+    ``system:security_policy``, not the integration permission: deciding which
+    identity provider the platform trusts decides who can authenticate at all.
+    That is security policy, and if the two ever split into separate roles the
+    tighter one has to be the one that governs login.
+    """
+    await authorize(request, action="system:security_policy", resource="sso")
     # Fail closed: no config store is wired to this endpoint yet.
     return {
         "success": False,

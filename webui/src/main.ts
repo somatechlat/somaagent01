@@ -96,30 +96,18 @@ if (app) {
             return;
         }
 
-        // 3. SAAS Routes
+        // 3. AGENT ADMINISTRATION Routes
+        //    No SaaS or billing routes: this is a standalone agent, and the
+        //    admin surface administers the agent only. See AGENT.md §1.1.
         if (path === '/saas/dashboard' || path === '/saas' || path === '/platform') {
-            await import('./views/saas-platform-dashboard.js');
-            app.appendChild(document.createElement('saas-platform-dashboard'));
+            await import('./views/saas-agent-metrics.js');
+            app.appendChild(document.createElement('saas-agent-metrics'));
             return;
         }
 
         if (path === '/platform/models') {
             await import('./views/saas-admin-models-list.js');
             app.appendChild(document.createElement('saas-admin-models-list'));
-            return;
-        }
-
-        // Subscription Tier Builder
-        if (path === '/platform/tiers' || path === '/saas/tiers') {
-            await import('./views/saas-tier-builder.js');
-            app.appendChild(document.createElement('saas-tier-builder'));
-            return;
-        }
-
-        // Usage Analytics Dashboard
-        if (path === '/platform/usage' || path === '/saas/usage') {
-            await import('./views/saas-usage-analytics.js');
-            app.appendChild(document.createElement('saas-usage-analytics'));
             return;
         }
 
@@ -150,22 +138,9 @@ if (app) {
             return;
         }
 
-        // Tenant Creation Wizard
-        if (path === '/saas/tenants/new' || path === '/platform/tenants/new') {
-            await import('./views/saas-tenant-wizard.js');
-            app.appendChild(document.createElement('saas-tenant-wizard'));
-            return;
-        }
-
         if (path === '/saas/permissions' || path === '/platform/permissions') {
             await import('./views/saas-permissions.js');
             app.appendChild(document.createElement('saas-permissions'));
-            return;
-        }
-
-        if (path === '/platform/flags') {
-            await import('./views/saas-admin-feature-flags.js');
-            app.appendChild(document.createElement('saas-admin-feature-flags'));
             return;
         }
 
@@ -175,36 +150,10 @@ if (app) {
             return;
         }
 
-        // Feature Catalog
-        if (path === '/platform/features' || path === '/saas/features') {
-            await import('./views/saas-feature-catalog.js');
-            app.appendChild(document.createElement('saas-feature-catalog'));
-            return;
-        }
-
-        // Agent Marketplace
-        if (path === '/platform/marketplace') {
-            await import('./views/saas-marketplace.js');
-            app.appendChild(document.createElement('saas-marketplace'));
-            return;
-        }
-
-        // Tenant Admin - Agent Metrics
-        if (path === '/admin/metrics' || path === '/tenant/metrics') {
+        // Agent metrics
+        if (path === '/admin/metrics') {
             await import('./views/saas-agent-metrics.js');
             app.appendChild(document.createElement('saas-agent-metrics'));
-            return;
-        }
-
-        if (path === '/saas/tenants' || path === '/platform/tenants') {
-            await import('./views/saas-tenants.js');
-            app.appendChild(document.createElement('saas-tenants'));
-            return;
-        }
-
-        if (path === '/saas/subscriptions') {
-            await import('./views/saas-subscriptions.js');
-            app.appendChild(document.createElement('saas-subscriptions'));
             return;
         }
 
@@ -239,20 +188,14 @@ if (app) {
             return;
         }
 
-        // Entity Views (Tenants, Users, Agents, Features using EntityManager)
-        if (path === '/platform/tenants-new') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-tenants-view'));
-            return;
-        }
-
+        // Entity Views (Users, Agents using EntityManager)
         if (path === '/admin/users') {
             await import('./views/saas-entity-views.js');
             app.appendChild(document.createElement('saas-users-view'));
             return;
         }
 
-        // User Detail View (Tenant Admin)
+        // User Detail View
         if (path.match(/^\/admin\/users\/[^/]+$/)) {
             await import('./views/saas-user-detail.js');
             app.appendChild(document.createElement('saas-user-detail'));
@@ -266,17 +209,10 @@ if (app) {
             return;
         }
 
-        // Tenant Admin Profile
+        // Agent admin profile
         if (path === '/admin/profile') {
             await import('./views/saas-platform-profile.js');
             app.appendChild(document.createElement('saas-platform-profile'));
-            return;
-        }
-
-        // Tenant Settings (Organization Configuration)
-        if (path === '/admin/settings' || path.startsWith('/admin/settings/')) {
-            await import('./views/saas-tenant-settings.js');
-            app.appendChild(document.createElement('saas-tenant-settings'));
             return;
         }
 
@@ -300,26 +236,6 @@ if (app) {
             return;
         }
 
-        if (path === '/saas/billing') {
-            await import('./views/saas-billing.js');
-            app.appendChild(document.createElement('saas-billing'));
-            return;
-        }
-
-        // Tenant Billing
-        if (path === '/admin/billing' || path === '/tenant/billing') {
-            await import('./views/saas-tenant-billing.js');
-            app.appendChild(document.createElement('saas-tenant-billing'));
-            return;
-        }
-
-
-        if (path === '/mode-select' || path === '/select-mode') {
-            await import('./views/saas-mode-selection.js');
-            app.appendChild(document.createElement('saas-mode-selection'));
-            return;
-        }
-
         if (path === '/cognitive' || path === '/training') {
             await import('./views/saas-cognitive-panel.js');
             app.appendChild(document.createElement('saas-cognitive-panel'));
@@ -337,13 +253,6 @@ if (app) {
             localStorage.removeItem('saas_auth_token');
             localStorage.removeItem('saas_user');
             window.location.href = '/login';
-            return;
-        }
-
-        // 5. Tenant Admin Routes
-        if (path === '/admin/dashboard') {
-            await import('./views/saas-tenant-dashboard.js');
-            app.appendChild(document.createElement('saas-tenant-dashboard'));
             return;
         }
 
@@ -396,12 +305,6 @@ if (app) {
         if (path === '/settings') {
             await import('./views/saas-settings.js');
             app.appendChild(document.createElement('saas-settings'));
-            return;
-        }
-
-        if (path === '/tools') {
-            await import('./views/saas-feature-catalog.js');
-            app.appendChild(document.createElement('saas-feature-catalog'));
             return;
         }
 

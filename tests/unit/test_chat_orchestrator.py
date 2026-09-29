@@ -12,6 +12,7 @@ import uuid
 from typing import Any
 
 import pytest
+from asgiref.sync import sync_to_async
 
 from admin.common.messages import ErrorCode, get_message
 from admin.core.chat_orchestrator import (
@@ -69,8 +70,13 @@ def reset_orchestrator_state():
     yield
 
 
+@sync_to_async
 def _create_test_tier() -> Any:
-    """Create a SubscriptionTier for tests."""
+    """Create a SubscriptionTier for tests.
+
+    ``@sync_to_async`` because every caller is an ``async def`` test: the
+    sync ORM must not run on the event loop. Same shape the handlers use.
+    """
     from admin.aaas.models import SubscriptionTier
 
     return SubscriptionTier.objects.create(
@@ -78,6 +84,7 @@ def _create_test_tier() -> Any:
     )
 
 
+@sync_to_async
 def _create_test_tenant(tier: Any) -> Any:
     """Create a Tenant for tests."""
     from admin.aaas.models import Tenant
@@ -89,6 +96,7 @@ def _create_test_tenant(tier: Any) -> Any:
     )
 
 
+@sync_to_async
 def _create_test_capsule(tenant: Any, governance: dict | None = None) -> Capsule:
     """Create a Capsule for tests."""
     persona_config: dict = {
@@ -102,6 +110,29 @@ def _create_test_capsule(tenant: Any, governance: dict | None = None) -> Capsule
         system_prompt="You are a helpful assistant.",
         persona_config=persona_config,
     )
+
+
+@sync_to_async
+def _create_test_member(tenant: Any, role: str = "member") -> str:
+    """Create a real TenantUser and return its subject id.
+
+    Roles are not attached to a call, they are recorded on a membership. A
+    subject with no row has no roles, and no roles is denial — so the denied
+    paths below simply use no row, and the allowed paths create one.
+    """
+    from admin.aaas.models import TenantUser
+
+    user_id = uuid.uuid4()
+    TenantUser.objects.create(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        user_id=user_id,
+        email=f"{user_id}@example.test",
+        display_name="Test Member",
+        role=role,
+        is_active=True,
+    )
+    return str(user_id)
 
 
 def _create_test_conversation(tenant_id: str) -> Any:
@@ -126,6 +157,7 @@ class DenyingPermissionChecker(PermissionChecker):
         tenant_id: str | None = None,
         agent_id: str | None = None,
         resource_id: str | None = None,
+        roles: list[str] | None = None,
     ) -> PermissionCheckResult:
         return PermissionCheckResult(
             allowed=False,
@@ -136,7 +168,13 @@ class DenyingPermissionChecker(PermissionChecker):
 
 
 class AllowingGate:
-    """Dummy gate that always allows (isolates tests from real OPA/SpiceDB)."""
+    """Collaborator double: a gate that offers no narrowing.
+
+    Injected where the test is about a later phase, so this phase is not the
+    variable under test. It is not a stand-in for infrastructure — the
+    permission tests below run the real ``PermissionChecker`` and the real
+    ``UnifiedGate`` against real rows.
+    """
 
     async def check(self, *args, **kwargs):
         return True
@@ -146,7 +184,13 @@ class AllowingGate:
 
 
 class DenyingGate:
-    """Dummy gate that always denies (for testing denied paths)."""
+    """Collaborator double: a gate that always narrows to denial.
+
+    Used only to reach the gate-denied branch, which needs the role floor to
+    pass and the gate to refuse. Without a policy engine attached the real gate
+    has nothing left to narrow with, so this stands in for an engine that
+    refuses.
+    """
 
     async def check(self, *args, **kwargs):
         return False
@@ -164,15 +208,20 @@ class DenyingGate:
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_process_turn_permission_denied():
-    """process_turn() with permission denied returns degraded result."""
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
-    capsule = _create_test_capsule(tenant)
+    """A subject with no membership row is denied at the role floor.
 
-    orchestrator = V3ChatOrchestrator(permission_checker=DenyingPermissionChecker())
+    This is the real ``PermissionChecker``. Denial does not come from a
+    substituted checker: the subject simply holds no role, and no role is
+    denial.
+    """
+    tier = await _create_test_tier()
+    tenant = await _create_test_tenant(tier)
+    capsule = await _create_test_capsule(tenant)
+
+    orchestrator = V3ChatOrchestrator()
     turn = ChatTurn(
         capsule=capsule,
-        user_id="user-123",
+        user_id="user-with-no-membership",
         tenant_id=str(tenant.id),
         user_message="Hello",
     )
@@ -181,7 +230,6 @@ async def test_process_turn_permission_denied():
 
     assert isinstance(result, ChatResult)
     assert result.response == get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
-    assert "Test permission denial" in result.errors
     assert result.turn_id
 
 
@@ -189,16 +237,20 @@ async def test_process_turn_permission_denied():
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_process_turn_gate_denied():
-    """process_turn() with gate denied returns degraded result."""
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
-    # Default UnifiedGate denies when no OPA/SpiceDB policies are defined
-    capsule = _create_test_capsule(tenant)
+    """A gate that refuses is reported as a gate denial, not a floor denial.
+
+    The subject is a real member, so the role floor passes. The gate is the
+    layer that refuses, which is the branch this test is about.
+    """
+    tier = await _create_test_tier()
+    tenant = await _create_test_tenant(tier)
+    capsule = await _create_test_capsule(tenant)
+    user_id = await _create_test_member(tenant, role="member")
 
     orchestrator = V3ChatOrchestrator(unified_gate=DenyingGate())
     turn = ChatTurn(
         capsule=capsule,
-        user_id="user-123",
+        user_id=user_id,
         tenant_id=str(tenant.id),
         user_message="Hello",
     )
@@ -207,7 +259,7 @@ async def test_process_turn_gate_denied():
 
     assert isinstance(result, ChatResult)
     assert result.response == get_message(ErrorCode.DEGRADED_GATE_DENIED)
-    assert "UnifiedGate rejected chat:send" in result.errors
+    assert "UnifiedGate rejected resource:chat_send" in result.errors
     assert result.turn_id
 
 
@@ -220,9 +272,9 @@ async def test_process_turn_returns_chat_result():
     from admin.chat.models import Conversation
     from admin.llm.models import LLMModelConfig
 
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
-    capsule = _create_test_capsule(
+    tier = await _create_test_tier()
+    tenant = await _create_test_tenant(tier)
+    capsule = await _create_test_capsule(
         tenant,
         governance={
             "opa_policies": {"chat_send": {"allow": True}},
@@ -243,10 +295,11 @@ async def test_process_turn_returns_chat_result():
         title="Test Conversation",
     )
 
+    user_id = await _create_test_member(tenant, role="member")
     orchestrator = V3ChatOrchestrator(unified_gate=AllowingGate())
     turn = ChatTurn(
         capsule=capsule,
-        user_id="user-123",
+        user_id=user_id,
         tenant_id=str(tenant.id),
         user_message="Say 'hello world' and nothing else.",
         conversation_id=str(conversation.id),
@@ -270,9 +323,9 @@ async def test_stream_turn_yields_tokens():
     from admin.chat.models import Conversation
     from admin.llm.models import LLMModelConfig
 
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
-    capsule = _create_test_capsule(
+    tier = await _create_test_tier()
+    tenant = await _create_test_tenant(tier)
+    capsule = await _create_test_capsule(
         tenant,
         governance={
             "opa_policies": {"chat_send": {"allow": True}},

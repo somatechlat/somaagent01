@@ -16,10 +16,12 @@ from django.db.models import Q
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.aaas.models import TenantRole, TenantUser
+from admin.aaas.models import TenantUser
+from admin.core.authz import ORG_ASSIGNABLE_ROLES
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
+from services.common.authorization import authorize, authorize_sync
 
 router = Router(tags=["tenant-users"])
 logger = logging.getLogger(__name__)
@@ -63,7 +65,11 @@ class UserUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
-VALID_ROLES = [r[0] for r in TenantRole.choices]
+# Roles an organization may assign to one of its members. `sysadmin` is
+# provisioned at install and is never assignable from inside an organization —
+# that boundary is what stops organization authority from reaching the system
+# tier. See authz.ORG_ASSIGNABLE_ROLES and authz.PROVISIONED_ROLES.
+VALID_ROLES = list(ORG_ASSIGNABLE_ROLES)
 
 
 def _user_to_out(user: TenantUser) -> TenantUserOut:
@@ -99,6 +105,7 @@ def list_users(
     per_page: int = Query(20, ge=1, le=100),
 ) -> dict:
     """List all users in the tenant with filtering."""
+    authorize_sync(request, action="org:user_read", resource="users")
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
 
     qs = TenantUser.objects.filter(tenant_id=tenant_id)
@@ -134,6 +141,7 @@ def invite_user(
     payload: UserInviteRequest,
 ) -> dict:
     """Invite a new user to the tenant."""
+    authorize_sync(request, action="org:user_create", resource="users")
     if payload.role not in VALID_ROLES:
         raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
 
@@ -174,6 +182,7 @@ def get_user(
     user_id: str,
 ) -> dict:
     """Get a single user's details."""
+    authorize_sync(request, action="org:user_read", resource="users")
     try:
         user = TenantUser.objects.get(id=user_id)
     except TenantUser.DoesNotExist:
@@ -193,6 +202,7 @@ def update_user(
     payload: UserUpdateRequest,
 ) -> dict:
     """Update a user's information."""
+    authorize_sync(request, action="org:user_update", resource="users")
     try:
         user = TenantUser.objects.get(id=user_id)
     except TenantUser.DoesNotExist:
@@ -223,6 +233,7 @@ def remove_user(
     user_id: str,
 ) -> dict:
     """Remove a user from the tenant."""
+    authorize_sync(request, action="org:user_delete", resource="users")
     try:
         user = TenantUser.objects.get(id=user_id)
     except TenantUser.DoesNotExist:
@@ -245,6 +256,7 @@ def change_user_role(
     role: str = Query(...),
 ) -> dict:
     """Change a user's role."""
+    authorize_sync(request, action="org:assign_roles", resource="users")
     if role not in VALID_ROLES:
         raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
 
@@ -284,11 +296,6 @@ class UserDetailOut(BaseModel):
     sessions: list[dict]
 
 
-@router.get(
-    "/users/{user_id}/detail",
-    summary="Get detailed user info",
-    auth=AuthBearer(),
-)
 @sync_to_async
 def _load_user_bundle(user_id: str):
     """Load the ORM half of the user-detail payload on a thread.
@@ -339,6 +346,11 @@ def _load_user_bundle(user_id: str):
     return user, permissions, agent_access, activity_log
 
 
+@router.get(
+    "/users/{user_id}/detail",
+    summary="Get detailed user info",
+    auth=AuthBearer(),
+)
 async def get_user_detail(
     request,
     user_id: str,
@@ -349,6 +361,7 @@ async def get_user_detail(
     pushed to a thread via ``_load_user_bundle`` so it never runs on the
     event loop.
     """
+    await authorize(request, action="org:user_read", resource="users")
     user, permissions, agent_access, activity_log = await _load_user_bundle(user_id)
 
     # Real sessions from Redis SessionManager
@@ -372,14 +385,9 @@ async def get_user_detail(
     except Exception as exc:
         logger.warning("Could not load sessions for user detail: %s", exc)
 
-    role_labels = {
-        "sysadmin": "System Administrator",
-        "admin": "Administrator",
-        "developer": "Developer",
-        "trainer": "Trainer",
-        "user": "User",
-        "viewer": "Viewer",
-    }
+    from admin.core.authz import ROLE_PRIORITY
+
+    role_labels = {role: role.replace("_", " ").title() for role in ROLE_PRIORITY}
 
     return api_response(
         UserDetailOut(
@@ -412,6 +420,7 @@ def suspend_user(
     user_id: str,
 ) -> dict:
     """Suspend a user account."""
+    authorize_sync(request, action="org:user_update", resource="users")
     try:
         user = TenantUser.objects.get(id=user_id)
     except TenantUser.DoesNotExist:
@@ -434,6 +443,7 @@ def unsuspend_user(
     user_id: str,
 ) -> dict:
     """Unsuspend a user account."""
+    authorize_sync(request, action="org:user_update", resource="users")
     try:
         user = TenantUser.objects.get(id=user_id)
     except TenantUser.DoesNotExist:
@@ -457,6 +467,7 @@ def revoke_user_session(
     session_id: str,
 ) -> dict:
     """Revoke a specific user session."""
+    authorize_sync(request, action="org:user_update", resource="users")
     # Would invalidate session in Keycloak/Redis
     logger.info("Session revoked: %s for user %s", session_id, user_id)
     return api_response({"session_id": session_id}, message="Session revoked")
@@ -500,6 +511,7 @@ class ProfileOut(BaseModel):
 )
 def get_profile(request) -> dict:
     """Get current authenticated user's profile."""
+    authorize_sync(request, action="org:user_read", resource="users")
     from admin.aaas.models import AdminProfile, ApiKey, UserSession
     from admin.auth.api import get_permissions_for_roles
 
@@ -572,6 +584,7 @@ def update_profile(
     payload: ProfileUpdateRequest,
 ) -> dict:
     """Update current user's profile settings."""
+    authorize_sync(request, action="org:user_update", resource="users")
     from admin.aaas.models import AdminProfile
 
     user_id = getattr(request.auth, "sub", None)

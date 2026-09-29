@@ -14,12 +14,16 @@ Usage:
 from config.settings_registry import (
     AAASSettings,
     BaseSettings,
-    get_optional_env,
-    get_required_env,
     get_settings,
     SettingsRegistry,
     StandaloneSettings,
 )
+
+# `get_required_env` / `get_optional_env` were removed on purpose. They read
+# os.environ, which is the config store Rule 100 retires: topology now lives
+# on the mode class in settings_registry, secrets in Vault, per-agent
+# behaviour in AgentSetting. Importing them here would be a second source of
+# truth wearing the package's own name.
 
 __all__ = [
     "SettingsRegistry",
@@ -27,6 +31,4 @@ __all__ = [
     "StandaloneSettings",
     "AAASSettings",
     "get_settings",
-    "get_required_env",
-    "get_optional_env",
 ]

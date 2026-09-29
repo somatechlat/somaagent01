@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
+from services.common.authorization import authorize
 
 router = Router(tags=["integrations"])
 logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ async def list_integrations(
     PM: View connected services.
     VIBE: Real DB Query.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     from asgiref.sync import sync_to_async
 
     from admin.integrations.models import Integration as IntegrationModel
@@ -135,6 +137,7 @@ async def create_integration(
     DevOps: Connect external services.
     VIBE: Real DB Creation.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     from asgiref.sync import sync_to_async
 
     from admin.integrations.models import Integration as IntegrationModel
@@ -177,6 +180,7 @@ async def get_integration(
     integration_id: str,
 ) -> Integration:
     """Get integration details."""
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     from asgiref.sync import sync_to_async
 
     from admin.integrations.models import Integration as IntegrationModel
@@ -213,6 +217,7 @@ async def update_integration(
     name: Optional[str] = None,
 ) -> dict:
     """Update integration settings."""
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     from asgiref.sync import sync_to_async
 
     from admin.integrations.models import Integration as IntegrationModel
@@ -261,6 +266,7 @@ async def delete_integration(
     Security Auditor: Revoke access, cleanup.
     VIBE: Real DB Deletion.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     from asgiref.sync import sync_to_async
 
     from admin.integrations.models import Integration as IntegrationModel
@@ -303,6 +309,7 @@ async def start_oauth(
 
     Security Auditor: Secure OAuth 2.0 flow.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
 
     from asgiref.sync import sync_to_async
 
@@ -345,6 +352,9 @@ async def start_oauth(
     }
 
 
+# The IdP redirects the browser here, so the principal is the admin who
+# started the flow — AuthBearer accepts their session cookie. Still gated:
+# this exchanges a code for tokens, which is credential work, not a probe.
 @router.post(
     "/{integration_id}/oauth/callback",
     summary="OAuth callback",
@@ -360,6 +370,7 @@ async def oauth_callback(
 
     Security Auditor: Exchange code for tokens.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     raise HttpError(
         501,
         "OAuth token exchange is not implemented: "
@@ -385,6 +396,7 @@ async def check_health(
 
     DevOps: Monitor connection status.
     """
+    await authorize(request, action="system:view", resource="integrations")
     raise HttpError(
         501,
         "Integration health check is not implemented: " "no provider health probe is wired.",
@@ -404,6 +416,7 @@ async def trigger_sync(
 
     DevOps: Force data synchronization.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     raise HttpError(
         501,
         "Integration sync is not implemented: no sync worker is wired.",
@@ -418,12 +431,14 @@ async def trigger_sync(
 @router.get(
     "/providers",
     summary="List providers",
+    auth=AuthBearer(),
 )
 async def list_providers(request) -> dict:
     """List available integration providers.
 
     PM: Integration marketplace.
     """
+    await authorize(request, action="system:manage_integrations", resource="integrations")
     return {
         "providers": [
             {"name": "slack", "type": "oauth", "category": "communication"},

@@ -12,7 +12,9 @@ import uuid
 from django.http import HttpRequest, HttpResponse
 from ninja import Router
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError
+from services.common.authorization import authorize
 
 router = Router(tags=["attachments"])
 logger = logging.getLogger(__name__)
@@ -26,9 +28,11 @@ def _get_store():
     return AttachmentsStore()
 
 
-@router.get("/{attachment_id}", summary="Download attachment")
+@router.get("/{attachment_id}", summary="Download attachment", auth=AuthBearer())
 async def download_attachment(request: HttpRequest, attachment_id: str):
     """Download an attachment by ID."""
+    await authorize(request, action="resource:file_read", resource="files")
+
     store = _get_store()
     att_uuid = uuid.UUID(str(attachment_id))
     meta = await store.get_metadata(att_uuid)  # type: ignore[union-attr]

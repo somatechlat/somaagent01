@@ -339,7 +339,9 @@ class AssetCritic:
         await self._ensure_prompt_template()
 
         if not self._llm_adapter or not asset.content:
-            return 0.5, "Skipped check (no client or content)", True
+            # Nothing to check with is not a pass. A rubric that asked for a
+            # quality check did not get one, so the check is not satisfied.
+            return 0.0, "Vision check not performed (no client or content)", False
 
         import base64
         import json
@@ -348,9 +350,7 @@ class AssetCritic:
         try:
             b64_content = base64.b64encode(asset.content).decode("utf-8")
         except Exception:
-            return 0.5, "Failed to encode image", True
-
-        data_uri = f"data:image/{asset.format.lower()};base64,{b64_content}"
+            return 0.0, "Failed to encode image", False
 
         data_uri = f"data:image/{asset.format.lower()};base64,{b64_content}"
 
@@ -423,8 +423,7 @@ class AssetCritic:
 
         except Exception as e:
             logger.warning("Vision LLM check failed: %s", e)
-            # If the vision check errors out (e.g. rate limit), we currently fail open
-            # to avoid blocking strict pipelines, but warn.
-            # However, for 'Quality Gating' phase, maybe we should be strict?
-            # Returning 0.5 + Warning status is a safe middle ground.
-            return 0.5, f"Vision check error: {str(e)}", True
+            # A gate that passes when it cannot run is not a gate. An error
+            # here (rate limit, timeout, malformed response) means the check
+            # did not happen, and "not checked" is not "checked and clean".
+            return 0.0, f"Vision check error: {str(e)}", False

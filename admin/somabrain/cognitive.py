@@ -20,6 +20,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from admin.common.exceptions import ServiceUnavailableError
 from admin.common.messages import get_message, SuccessCode
 from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
@@ -118,6 +119,7 @@ async def create_cognitive_thread(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -158,6 +160,7 @@ async def cognitive_thread_next(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -196,6 +199,7 @@ async def cognitive_thread_reset(request, thread_id: str) -> dict:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -226,6 +230,7 @@ async def terminate_cognitive_thread(request, thread_id: str) -> dict:
     REAL SomaBrain call - NO MOCK DATA.
     """
     # Thread termination is local state management
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     return {
         "thread_id": thread_id,
         "status": "terminated",
@@ -250,6 +255,7 @@ async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:view", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -285,6 +291,7 @@ async def update_cognitive_params(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -312,6 +319,7 @@ async def reset_adaptation(request, agent_id: str) -> dict:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -350,6 +358,7 @@ async def trigger_sleep_cycle(
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:edit", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
@@ -386,6 +395,7 @@ async def get_sleep_status(request, agent_id: str) -> dict:
 
     REAL SomaBrain call - NO MOCK DATA.
     """
+    await authorize(request, action="cognitive:view", resource="cognitive")
     client = get_somabrain_client()
     if client is None:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")

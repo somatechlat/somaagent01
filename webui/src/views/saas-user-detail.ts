@@ -469,7 +469,7 @@ export class SaasUserDetail extends LitElement {
               </div>
 
               <!-- Account Actions -->
-              <saas-permission-guard permission="user:update" fallback="hide">
+              <saas-permission-guard permission="org:user_update" fallback="hide">
                 <div class="content-section">
                   <div class="section-header">
                     <span class="section-title">Account Actions</span>
@@ -481,7 +481,7 @@ export class SaasUserDetail extends LitElement {
                       <button class="btn btn-danger" @click=${this._suspendUser}>
                         ${this.user.status === 'suspended' ? 'Unsuspend User' : html`<span class='material-symbols-outlined'>warning</span> Suspend User`}
                       </button>
-                      <saas-permission-guard permission="user:delete" fallback="hide">
+                      <saas-permission-guard permission="org:user_delete" fallback="hide">
                         <button class="btn btn-danger"><span class="material-symbols-outlined">delete</span> Delete User</button>
                       </saas-permission-guard>
                     </div>
@@ -497,8 +497,8 @@ export class SaasUserDetail extends LitElement {
 
         const permissionGroups = [
             { name: 'Agent', permissions: ['agent:read', 'agent:update', 'agent:create', 'agent:delete'] },
-            { name: 'Conversation', permissions: ['conversation:read', 'conversation:send_message', 'conversation:delete'] },
-            { name: 'Memory', permissions: ['memory:read', 'memory:search', 'memory:delete'] },
+            { name: 'Conversation', permissions: ['resource:conversation_read', 'resource:conversation_send_message', 'resource:conversation_delete'] },
+            { name: 'Memory', permissions: ['resource:memory_read', 'resource:memory_search', 'resource:memory_delete'] },
         ];
 
         return html`
@@ -509,12 +509,19 @@ export class SaasUserDetail extends LitElement {
                 .value=${this.user.role}
                 @change=${(e: Event) => this._changeRole((e.target as HTMLSelectElement).value)}
               >
-                <option value="sysadmin">SysAdmin</option>
-                <option value="admin">Admin</option>
+                <!-- Exactly authz.ORG_ASSIGNABLE_ROLES. sysadmin is
+                     provisioned at install and agent_owner is transferred,
+                     so neither may be assigned from this control. -->
+                <option value="org_admin">Organization Administrator</option>
                 <option value="developer">Developer</option>
                 <option value="trainer">Trainer</option>
-                <option value="user">User</option>
-                <option value="viewer">Viewer</option>
+                <option value="member">Member</option>
+                <option value="auditor">Auditor</option>
+                ${this.user.role === 'sysadmin' || this.user.role === 'agent_owner'
+                  ? html`<option value=${this.user.role} disabled>
+                      ${this.user.roleLabel} (provisioned — not assignable)
+                    </option>`
+                  : nothing}
               </select>
 
               <div style="margin-top: 16px;">

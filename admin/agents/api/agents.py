@@ -16,8 +16,10 @@ from pydantic import BaseModel
 
 from admin.aaas.models import AgentRole, AgentUser
 from admin.common.auth import AuthBearer
+from admin.core.authz import AGENT_ASSIGNABLE_ROLES
 from admin.common.exceptions import ForbiddenError, NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response
+from services.common.authorization import authorize_sync
 
 router = Router(tags=["agents"])
 logger = logging.getLogger(__name__)
@@ -60,8 +62,9 @@ class TransferOwnershipRequest(BaseModel):
     new_owner_id: str
 
 
-# Valid agent roles (excluding manager which is owner-equivalent)
-VALID_ROLES = ["operator", "viewer"]
+# Roles assignable on an agent. Ownership is transferred, not assigned, so
+# `agent_owner` is deliberately absent — see authz.AGENT_ASSIGNABLE_ROLES.
+VALID_ROLES = list(AGENT_ASSIGNABLE_ROLES)
 
 
 def _agent_user_to_schema(au: AgentUser) -> AgentUserSchema:
@@ -93,6 +96,7 @@ def list_agent_users(
     per_page: int = Query(20, ge=1, le=100),
 ) -> dict:
     """List all users assigned to an agent with their roles."""
+    authorize_sync(request, action="agent:manage_users", resource="agents")
     qs = AgentUser.objects.filter(agent_id=agent_id)
 
     if role:
@@ -121,9 +125,10 @@ def add_agent_user(
     payload: AddAgentUserRequest,
 ) -> dict:
     """Add a user to an agent with specified role."""
+    authorize_sync(request, action="agent:manage_users", resource="agents")
     if payload.role not in VALID_ROLES:
         raise ValidationError(
-            f"Invalid role. Must be one of: {VALID_ROLES}. 'manager' cannot be assigned.",
+            f"Invalid role. Must be one of: {VALID_ROLES}. 'agent_owner' is established by ownership transfer, not assignment.",
             field="role",
         )
 
@@ -160,6 +165,7 @@ def change_agent_role(
     payload: AgentRoleUpdateRequest,
 ) -> dict:
     """Change a user's role on an agent."""
+    authorize_sync(request, action="agent:manage_users", resource="agents")
     if payload.role not in VALID_ROLES:
         raise ValidationError(
             f"Invalid role. Must be one of: {VALID_ROLES}",
@@ -171,9 +177,9 @@ def change_agent_role(
     except AgentUser.DoesNotExist:
         raise NotFoundError("agent user", user_id)
 
-    # Cannot change manager role
-    if agent_user.role == AgentRole.MANAGER:
-        raise ForbiddenError("change role", "manager")
+    # Cannot change the owner's role
+    if agent_user.role == AgentRole.AGENT_OWNER:
+        raise ForbiddenError("change role", "agent_owner")
 
     agent_user.role = payload.role
     agent_user.save()
@@ -197,14 +203,15 @@ def remove_agent_user(
     user_id: str,
 ) -> dict:
     """Remove a user from an agent."""
+    authorize_sync(request, action="agent:manage_users", resource="agents")
     try:
         agent_user = AgentUser.objects.get(agent_id=agent_id, user_id=user_id)
     except AgentUser.DoesNotExist:
         raise NotFoundError("agent user", user_id)
 
-    # Cannot remove manager
-    if agent_user.role == AgentRole.MANAGER:
-        raise ForbiddenError("remove", "manager")
+    # Cannot remove the owner
+    if agent_user.role == AgentRole.AGENT_OWNER:
+        raise ForbiddenError("remove", "agent_owner")
 
     agent_user.delete()
     logger.info("User %s removed from agent %s", user_id, agent_id)
@@ -225,24 +232,25 @@ def transfer_ownership(
     payload: TransferOwnershipRequest,
 ) -> dict:
     """Transfer agent ownership to another user."""
-    # Find current manager
+    authorize_sync(request, action="agent:manage_users", resource="agents")
+    # Find current owner
     try:
-        current_manager = AgentUser.objects.get(agent_id=agent_id, role=AgentRole.MANAGER)
+        current_owner = AgentUser.objects.get(agent_id=agent_id, role=AgentRole.AGENT_OWNER)
     except AgentUser.DoesNotExist:
-        raise NotFoundError("agent manager", agent_id)
+        raise NotFoundError("agent owner", agent_id)
 
-    # Find new manager
+    # Find new owner
     try:
-        new_manager = AgentUser.objects.get(agent_id=agent_id, user_id=payload.new_owner_id)
+        new_owner = AgentUser.objects.get(agent_id=agent_id, user_id=payload.new_owner_id)
     except AgentUser.DoesNotExist:
-        raise NotFoundError("new manager", payload.new_owner_id)
+        raise NotFoundError("new owner", payload.new_owner_id)
 
     # Transfer ownership
-    current_manager.role = AgentRole.OPERATOR
-    current_manager.save()
+    current_owner.role = AgentRole.AGENT_OPERATOR
+    current_owner.save()
 
-    new_manager.role = AgentRole.MANAGER
-    new_manager.save()
+    new_owner.role = AgentRole.AGENT_OWNER
+    new_owner.save()
 
     logger.info("Agent %s ownership transferred to %s", agent_id, payload.new_owner_id)
 

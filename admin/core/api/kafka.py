@@ -11,7 +11,8 @@ from django.http import HttpRequest
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.common.auth import RoleRequired
+from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from admin.common.exceptions import ServiceUnavailableError
 
 router = Router(tags=["admin-kafka"])
@@ -70,7 +71,7 @@ def _kafka_settings():
     "/status",
     response=KafkaStatusResponse,
     summary="Get Kafka consumer status",
-    auth=RoleRequired("admin", "aaas_admin"),
+    auth=AuthBearer(),
 )
 async def kafka_status(
     request: HttpRequest,
@@ -78,6 +79,9 @@ async def kafka_status(
     group: str = Query(..., description="Consumer group ID"),
 ) -> dict:
     """Get Kafka consumer lag status for a topic/group."""
+    # Seeing that a consumer exists and how far behind it is, is a read of
+    # platform state — not the authority to move it.
+    await authorize(request, action="system:view", resource="kafka")
     try:
         from aiokafka import AIOKafkaConsumer
         from aiokafka.structs import TopicPartition
@@ -125,7 +129,7 @@ async def kafka_status(
     "/seek_to_end",
     response=KafkaSeekResponse,
     summary="Seek consumer group to end of topic",
-    auth=RoleRequired("admin", "aaas_admin"),
+    auth=AuthBearer(),
 )
 async def kafka_seek_to_end(
     request: HttpRequest,
@@ -136,6 +140,9 @@ async def kafka_seek_to_end(
 
     This effectively skips all pending messages.
     """
+    # Skipping every pending message is a change to the platform's own
+    # plumbing, and it cannot be undone. That is ``system:configure``.
+    await authorize(request, action="system:configure", resource="kafka")
     try:
         from aiokafka import AIOKafkaConsumer
         from aiokafka.structs import TopicPartition

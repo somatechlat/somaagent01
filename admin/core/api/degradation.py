@@ -22,6 +22,8 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
+from services.common.authorization import authorize
 from services.common.degradation_monitor import (
     degradation_monitor,
 )
@@ -96,6 +98,7 @@ class MonitoringStatusSchema(BaseModel):
     "/status",
     response=DegradationStatusSchema,
     summary="Get current degradation status",
+    auth=AuthBearer(),
 )
 async def get_degradation_status(request) -> DegradationStatusSchema:
     """
@@ -108,6 +111,7 @@ async def get_degradation_status(request) -> DegradationStatusSchema:
     - recommendations: Suggested actions based on current state
     - mitigation_actions: Automated actions that can be taken
     """
+    await authorize(request, action="system:view", resource="system")
     # Initialize if not already done
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
@@ -129,6 +133,7 @@ async def get_degradation_status(request) -> DegradationStatusSchema:
     "/components",
     response=List[ComponentHealthSchema],
     summary="Get all component health states",
+    auth=AuthBearer(),
 )
 async def get_component_health(request) -> List[ComponentHealthSchema]:
     """
@@ -140,6 +145,7 @@ async def get_component_health(request) -> List[ComponentHealthSchema]:
     - degradation_level: Current degradation level
     - circuit_state: CLOSED, OPEN, or HALF_OPEN
     """
+    await authorize(request, action="system:view", resource="system")
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
 
@@ -164,6 +170,7 @@ async def get_component_health(request) -> List[ComponentHealthSchema]:
     "/history",
     response=List[HistoryRecordSchema],
     summary="Get degradation history",
+    auth=AuthBearer(),
 )
 async def get_degradation_history(
     request,
@@ -183,6 +190,7 @@ async def get_degradation_history(
     - recovery: Component recovered
     - cascading: Cascading failure propagated
     """
+    await authorize(request, action="system:view", resource="system")
     limit = min(limit, 1000)
 
     history = degradation_monitor.get_history(
@@ -208,6 +216,7 @@ async def get_degradation_history(
     "/dependencies",
     response=List[DependencySchema],
     summary="Get service dependency graph",
+    auth=AuthBearer(),
 )
 async def get_dependencies(request) -> List[DependencySchema]:
     """
@@ -216,6 +225,7 @@ async def get_dependencies(request) -> List[DependencySchema]:
     Shows which services depend on which, used for
     cascading failure detection and analysis.
     """
+    await authorize(request, action="system:view", resource="system")
     dependencies = []
 
     for service, deps in degradation_monitor.SERVICE_DEPENDENCIES.items():
@@ -235,6 +245,7 @@ async def get_dependencies(request) -> List[DependencySchema]:
     "/start",
     response=MonitoringStatusSchema,
     summary="Start degradation monitoring",
+    auth=AuthBearer(),
 )
 async def start_monitoring(request) -> MonitoringStatusSchema:
     """
@@ -246,6 +257,7 @@ async def start_monitoring(request) -> MonitoringStatusSchema:
     - Propagates cascading failures
     - Records metrics to Prometheus
     """
+    await authorize(request, action="system:configure", resource="system")
     if degradation_monitor.is_monitoring():
         return MonitoringStatusSchema(
             monitoring_active=True,
@@ -267,11 +279,13 @@ async def start_monitoring(request) -> MonitoringStatusSchema:
     "/stop",
     response=MonitoringStatusSchema,
     summary="Stop degradation monitoring",
+    auth=AuthBearer(),
 )
 async def stop_monitoring(request) -> MonitoringStatusSchema:
     """
     Stop the continuous degradation monitoring loop.
     """
+    await authorize(request, action="system:configure", resource="system")
     if not degradation_monitor.is_monitoring():
         return MonitoringStatusSchema(
             monitoring_active=False,
@@ -293,11 +307,13 @@ async def stop_monitoring(request) -> MonitoringStatusSchema:
     "/component/{component_name}",
     response=ComponentHealthSchema,
     summary="Get specific component health",
+    auth=AuthBearer(),
 )
 async def get_component(request, component_name: str) -> ComponentHealthSchema:
     """
     Get health status of a specific component.
     """
+    await authorize(request, action="system:view", resource="system")
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
 

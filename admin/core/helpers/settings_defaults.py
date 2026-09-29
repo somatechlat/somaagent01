@@ -15,7 +15,7 @@ DJANGO ORM IS THE SINGLE SOURCE OF TRUTH.
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 
 def _ensure_django() -> None:
@@ -103,8 +103,31 @@ def _env_or_db(env_key: str, agent_id: str, db_key: str, default: str = "") -> s
     Priority (SOMA-SETTINGS-MODEL-001 §5 — normative):
         AgentSetting DB  >  Django settings  >  schema default
     Environment is reserved for URLs/hosts/ports (and only consulted when the
-    key is a topology key). Secrets belong in Vault (AgentSetting.is_secret).
+    key is a topology key).
+
+    Secrets never resolve through this chain. Not from AgentSetting (Postgres
+    would become a second secret store), not from Django settings, not from
+    env, not from ``default``. A secret-shaped key here is a programming
+    error and raises — because every one of those four sources is a place a
+    credential must not live (VIBE Rule 164). Resolve credentials from Vault
+    via ``UnifiedSecretManager.get_credential()`` instead.
     """
+    from services.common.secret_policy import (
+        SecretPolicyViolation,
+        is_secret_shaped_key,
+        vault_path_for,
+    )
+
+    if is_secret_shaped_key(db_key) or is_secret_shaped_key(env_key):
+        raise SecretPolicyViolation(
+            f"_env_or_db({env_key!r}, db_key={db_key!r}): secret-shaped keys do not "
+            f"resolve through the settings chain. This function's sources — the "
+            f"AgentSetting table, Django settings, the environment and the schema "
+            f"default — are all places a credential must not live. Read it from "
+            f"Vault instead: UnifiedSecretManager.get_credential({db_key!r}), "
+            f"stored at {vault_path_for(db_key)} (VIBE Rule 164)."
+        )
+
     db_val = _get_agent_setting(agent_id, db_key)
     if db_val is not None and str(db_val) != "":
         return str(db_val)
@@ -154,24 +177,24 @@ def _env_or_db_bool(env_key: str, agent_id: str, db_key: str, default: bool = Fa
     return str(val).lower() in ("true", "1", "yes")
 
 
-def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_id: str = "default"):
+def get_default_settings(agent_id: str = "default"):
     """Return default settings configuration from Django ORM.
 
     All model/provider settings are sourced from the AgentSetting Django ORM model.
     No hardcoded model names or providers per
 
     Args:
-        auth_token_fn: Optional function to generate auth token. If None, uses empty string.
         agent_id: Agent identifier for agent-specific settings. Defaults to "default".
 
     Returns:
         Settings object with values from Django ORM configuration.
+
+    Credentials are not resolved here at all — not from the ORM, not from env,
+    not generated. Read them from Vault at the point of use (VIBE Rule 164).
     """
     from admin.core.helpers import runtime
 
     from .settings_model import SettingsModel as Settings
-
-    mcp_token = auth_token_fn() if auth_token_fn else ""
 
     # All settings sourced from Django ORM AgentSetting model or environment
     return Settings(
@@ -323,11 +346,20 @@ def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_i
             "memory_memorize_replace_threshold",
             0.9,
         ),
-        # Auth settings
-        api_keys={},
+        # Auth settings. `auth_login` is a username, not a credential.
+        #
+        # There are deliberately no password / api-key / token fields here.
+        # `api_keys`, `auth_password`, `root_password`, `rfc_password`,
+        # `mcp_server_token` and `secrets` used to be filled by `_env_or_db`,
+        # which put them in the AgentSetting table — i.e. Postgres became a
+        # second secret store. They are also dead: no code reads any of them
+        # (`rfc_password` is read from Vault in `runtime._get_rfc_password`;
+        # provider keys go through `UnifiedSecretManager.get_provider_key`).
+        # A dead field that holds a credential is still a credential leak the
+        # day something serialises this model, so the fields are gone rather
+        # than left empty. Credentials come from Vault at point of use
+        # (VIBE Rule 164).
         auth_login=_env_or_db("SA01_AUTH_LOGIN", agent_id, "auth_login"),
-        auth_password=_env_or_db("SA01_AUTH_PASSWORD", agent_id, "auth_password"),
-        root_password=_env_or_db("SA01_ROOT_PASSWORD", agent_id, "root_password"),
         # Agent settings
         agent_profile=_env_or_db("SA01_AGENT_PROFILE", agent_id, "agent_profile", "agent0"),
         agent_memory_subdir=_env_or_db(
@@ -336,10 +368,10 @@ def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_i
         agent_knowledge_subdir=_env_or_db(
             "SA01_AGENT_KNOWLEDGE_SUBDIR", agent_id, "agent_knowledge_subdir", "custom"
         ),
-        # RFC settings
+        # RFC settings. Topology only — the RFC password is a credential and
+        # resolves from Vault at use (`runtime._get_rfc_password`), never here.
         rfc_auto_docker=_env_or_db_bool("SA01_RFC_AUTO_DOCKER", agent_id, "rfc_auto_docker", True),
         rfc_url=_env_or_db("SA01_RFC_URL", agent_id, "rfc_url", "localhost"),
-        rfc_password=_env_or_db("SA01_RFC_PASSWORD", agent_id, "rfc_password"),
         rfc_port_http=_env_or_db_int("SA01_RFC_PORT_HTTP", agent_id, "rfc_port_http", 55080),
         rfc_port_ssh=_env_or_db_int("SA01_RFC_PORT_SSH", agent_id, "rfc_port_ssh", 55022),
         shell_interface=(
@@ -387,14 +419,15 @@ def get_default_settings(auth_token_fn: Callable[[], str] | None = None, agent_i
         mcp_server_enabled=_env_or_db_bool(
             "SA01_MCP_SERVER_ENABLED", agent_id, "mcp_server_enabled", False
         ),
-        mcp_server_token=mcp_token,
         # A2A settings
         a2a_server_enabled=_env_or_db_bool(
             "SA01_A2A_SERVER_ENABLED", agent_id, "a2a_server_enabled", False
         ),
-        # Other settings
+        # Other settings. `variables` is agent runtime state (names → text),
+        # not credentials. `secrets` is gone: a field literally named "secrets"
+        # that lived in the AgentSetting table was a secret store with a
+        # friendly name. Real secrets are in Vault (VIBE Rule 164).
         variables=_env_or_db("SA01_VARIABLES", agent_id, "variables"),
-        secrets=_env_or_db("SA01_SECRETS", agent_id, "secrets"),
         litellm_global_kwargs={},
         USE_LLM=_env_or_db_bool("SA01_USE_LLM", agent_id, "use_llm", True),
     )

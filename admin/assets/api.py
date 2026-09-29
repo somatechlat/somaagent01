@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import BadRequestError
 from admin.common.messages import get_message, SuccessCode
+from services.common.authorization import authorize
 
 router = Router(tags=["assets"])
 logger = logging.getLogger(__name__)
@@ -117,6 +118,8 @@ async def upload_asset(
     PhD Dev: Content-addressable storage using SHA-256 hash.
     Security Auditor: Size validation, content type checks.
     """
+    await authorize(request, action="resource:file_upload", resource="files")
+
     # Read file content
     content = await file.aread() if hasattr(file, "aread") else file.read()  # type: ignore[attr-defined]
 
@@ -186,6 +189,8 @@ async def get_asset(request, asset_id: str) -> dict:
 
     Per Phase 7.2: Asset retrieval
     """
+    await authorize(request, action="resource:file_read", resource="files")
+
     from asgiref.sync import sync_to_async
 
     from admin.core.models.core import Asset
@@ -234,6 +239,8 @@ async def list_assets(
     cursor: Optional[str] = None,
 ) -> AssetListResponse:
     """List assets with optional filtering."""
+    await authorize(request, action="resource:file_read", resource="files")
+
     from asgiref.sync import sync_to_async
 
     from admin.core.models.core import Asset
@@ -275,6 +282,8 @@ async def delete_asset(request, asset_id: str) -> dict:
     the audit chain (``tombstone_reason``) but drops out of every listing,
     which filters on ``status="active"``.
     """
+    await authorize(request, action="resource:file_delete", resource="files")
+
     from asgiref.sync import sync_to_async
 
     from admin.common.exceptions import NotFoundError
@@ -323,6 +332,8 @@ async def get_provenance(request, asset_id: str) -> ProvenanceChainResponse:
 
     PhD Dev: Immutable provenance chain for audit compliance.
     """
+    await authorize(request, action="resource:file_read", resource="files")
+
     raise HttpError(
         501, "Provenance chain is not implemented: no immutable provenance store is wired."
     )
@@ -343,6 +354,8 @@ async def add_provenance(
 
     Used for custom provenance events.
     """
+    await authorize(request, action="resource:file_upload", resource="files")
+
     record = await _record_provenance(
         asset_id=asset_id,
         action=action,
@@ -368,6 +381,8 @@ async def verify_asset(request, asset_id: str) -> dict:
 
     Security Auditor: Tamper detection.
     """
+    await authorize(request, action="resource:file_read", resource="files")
+
     from asgiref.sync import sync_to_async
 
     from admin.core.models.core import Asset

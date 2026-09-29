@@ -13,6 +13,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from admin.common.auth import AuthBearer
+from services.common.authorization import authorize_sync
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["secrets"])
@@ -61,6 +62,7 @@ def _validate_provider(provider: str) -> str:
 )
 def list_provider_keys(request) -> list[ProviderKeyStatus]:
     """Which providers have keys in Vault. Never returns key material."""
+    authorize_sync(request, action="system:manage_integrations", resource="secrets")
     sm = _sm()
     # Known + whatever list_providers can see
     known = ["openai", "anthropic", "google", "groq", "ollama", "custom", "openrouter", "fireworks"]
@@ -83,6 +85,10 @@ def list_provider_keys(request) -> list[ProviderKeyStatus]:
 )
 def set_provider_key(request, provider: str, body: ProviderKeyWrite) -> ProviderKeyWriteResult:
     """Store API key in Vault. Request and response never echo the key."""
+    # Gate before the provider name is validated. This is the write half of the
+    # platform's credential store: whoever holds it can redirect every LLM call
+    # the platform makes, and a valid session on any account used to be enough.
+    authorize_sync(request, action="system:manage_integrations", resource="secrets")
     pid = _validate_provider(provider)
     if not body.api_key or not body.api_key.strip():
         raise HttpError(400, "api_key_required")
@@ -113,6 +119,7 @@ def set_provider_key(request, provider: str, body: ProviderKeyWrite) -> Provider
 )
 def delete_provider_key(request, provider: str) -> ProviderKeyWriteResult:
     """Remove provider key from Vault."""
+    authorize_sync(request, action="system:manage_integrations", resource="secrets")
     pid = _validate_provider(provider)
     try:
         sm = _sm()
@@ -142,6 +149,7 @@ def delete_provider_key(request, provider: str) -> ProviderKeyWriteResult:
 )
 def get_provider_key_status(request, provider: str) -> ProviderKeyStatus:
     """Configured flag only. Never returns key material."""
+    authorize_sync(request, action="system:manage_integrations", resource="secrets")
     pid = _validate_provider(provider)
     try:
         configured = bool(_sm().get_provider_key(pid))

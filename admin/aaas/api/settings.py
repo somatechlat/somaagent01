@@ -19,7 +19,10 @@ from admin.aaas.api.schemas import (
     RoleOut,
     RoleUpdate,
 )
+from admin.common.exceptions import ValidationError
 from admin.common.messages import ErrorCode, get_message, SuccessCode
+from admin.core.authz import permissions_for_roles, validate_scopes
+from services.common.authorization import authorize_sync
 
 router = Router()
 
@@ -40,6 +43,7 @@ from admin.aaas.models.profiles import ApiKey
 @router.get("/api-keys", response=list[ApiKeyOut])
 def list_api_keys(request, tenant_id: Optional[str] = None):
     """Get all API keys, optionally filtered by tenant."""
+    authorize_sync(request, action="org:apikey_read", resource="api_keys")
     queryset = ApiKey.objects.filter(is_active=True)
     if tenant_id:
         queryset = queryset.filter(tenant_id=tenant_id)
@@ -63,11 +67,26 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key.
 
-
-    Returns plaintext key ONCE only - must be saved by client.
+    The key is a delegation: it receives an explicit, non-empty subset of the
+    issuing principal's authority and nothing more. Returns plaintext key ONCE
+    only - must be saved by client.
     """
-    # Generate cryptographically secure key
-    raw_key = secrets.token_urlsafe(32)
+    # Gate before touching scopes: minting a delegation is itself a privilege,
+    # and an unauthenticated caller must not learn which scopes exist.
+    authorize_sync(request, action="org:apikey_create", resource="api_keys")
+    auth = getattr(request, "auth", None)
+    issuer_permissions = permissions_for_roles(list(getattr(auth, "roles", None) or []))
+
+    try:
+        scopes = sorted(validate_scopes(payload.scopes, issuer_permissions))
+    except ValueError as exc:
+        raise ValidationError(str(exc), field="scopes")
+
+    # Generate cryptographically secure key. 256 bits of CSPRNG entropy,
+    # presented once, stored only as a verifier.
+    from admin.common.auth import API_KEY_PREFIX
+
+    raw_key = f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
     key_prefix = raw_key[:8]
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
 
@@ -81,7 +100,7 @@ def create_api_key(request, payload: ApiKeyCreate):
         key_prefix=key_prefix,
         key_hash=key_hash,
         tenant_id=payload.tenant_id,
-        scopes=[],
+        scopes=scopes,
         expires_at=expires_at,
     )
 
@@ -99,6 +118,7 @@ def create_api_key(request, payload: ApiKeyCreate):
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
     """Revoke an API key."""
+    authorize_sync(request, action="org:apikey_revoke", resource="api_keys")
     try:
         api_key = ApiKey.objects.get(id=key_id)
         api_key.is_active = False
@@ -116,6 +136,7 @@ def revoke_api_key(request, key_id: str):
 @router.get("/models", response=list[ModelConfigOut])
 def list_models(request):
     """Get all configured LLM models from Global Defaults."""
+    authorize_sync(request, action="system:view", resource="settings")
     from admin.aaas.models.profiles import PlatformConfig
 
     defaults = PlatformConfig.get_instance().defaults
@@ -141,6 +162,7 @@ def list_models(request):
 @transaction.atomic
 def update_model(request, model_id: str, payload: ModelConfigUpdate):
     """Update model configuration in Global Defaults."""
+    authorize_sync(request, action="system:configure", resource="settings")
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = PlatformConfig.get_instance()
@@ -190,6 +212,7 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 @router.get("/roles", response=list[RoleOut])
 def list_roles(request):
     """Get all platform roles from Global Defaults."""
+    authorize_sync(request, action="org:read", resource="settings")
     from admin.aaas.models.profiles import PlatformConfig
 
     defaults = PlatformConfig.get_instance().defaults
@@ -210,7 +233,13 @@ def list_roles(request):
 @router.patch("/roles/{role_id}", response=RoleOut)
 @transaction.atomic
 def update_role(request, role_id: str, payload: RoleUpdate):
-    """Update role permissions."""
+    """Update role permissions.
+
+    ``org:assign_roles`` rather than a read permission: rewriting what a role
+    grants is how authority is handed out, which is the same class of act as
+    assigning that role to a person.
+    """
+    authorize_sync(request, action="org:assign_roles", resource="settings")
     from admin.aaas.models.profiles import PlatformConfig
 
     gd = PlatformConfig.get_instance()
@@ -286,6 +315,9 @@ def list_llm_providers(request):
     Returns which providers have API keys configured in Vault.
     VIBE Rule 164: Keys stored in Vault, never exposed.
     """
+    # Integrations, not ordinary config: this reveals which credentials exist
+    # and the leading characters of each. Read authority is explicit.
+    authorize_sync(request, action="system:manage_integrations", resource="settings")
     sm = get_secret_manager()
     providers = ["openai", "anthropic", "openrouter", "groq", "ollama", "fireworks"]
 
@@ -312,6 +344,11 @@ def set_llm_provider_key(request, payload: LLMProviderKeyIn):
     Stores the key securely in Vault at secret/agent/api_keys/{provider}_api_key.
     VIBE Rule 164: All secrets in Vault, never in ENV or database.
     """
+    # Gate first. Writing a credential into Vault is the highest-privilege
+    # write on this surface: whoever holds it can redirect every LLM call the
+    # platform makes. An unauthenticated request must not reach it, and must
+    # not learn which provider names are valid.
+    authorize_sync(request, action="system:manage_integrations", resource="settings")
     sm = get_secret_manager()
 
     # Validate provider name
@@ -339,6 +376,9 @@ def set_llm_provider_key(request, payload: LLMProviderKeyIn):
 @router.delete("/llm-providers/{provider}", response=MessageResponse)
 def delete_llm_provider_key(request, provider: str):
     """Delete API key for an LLM provider from Vault."""
+    # Same privilege as setting one: deleting a provider credential takes the
+    # platform's LLM traffic down. Gate before the name is even validated.
+    authorize_sync(request, action="system:manage_integrations", resource="settings")
     sm = get_secret_manager()
 
     success = sm.delete_provider_key(provider.lower())
