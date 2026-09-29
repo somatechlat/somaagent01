@@ -68,6 +68,10 @@ def _tenant_to_out(tenant: Tenant) -> TenantOut:
         agents=tenant.agents.count(),
         users=tenant.users.count(),
         mrr=(tenant.tier.base_price_cents / 100.0) if tenant.tier else 0.0,
+        # Tenant.billing_email was never mapped, so TenantOut.email was always
+        # None and every screen showed a blank billing contact for a tenant
+        # that had one. Empty string is not a contact — surface it as null.
+        email=tenant.billing_email or None,
     )
 
 
@@ -152,6 +156,10 @@ def update_tenant(request, tenant_id: str, payload: TenantUpdate):
         tier = SubscriptionTier.objects.filter(slug=payload.tier).first()
         if tier:
             tenant.tier = tier
+    if payload.email is not None:
+        # Written back like every other accepted field. Dropping it while
+        # returning 200 is a silent no-op.
+        tenant.billing_email = payload.email
 
     tenant.save()
     return _tenant_to_out(tenant)

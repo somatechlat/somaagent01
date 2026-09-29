@@ -5,7 +5,10 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import type { TenantSettings } from '../controllers/tenant-settings-controller.js';
+import type {
+  TenantQuota,
+  TenantSettings,
+} from '../controllers/tenant-settings-controller.js';
 export interface TenantSettingChangeDetail {
   path: string;
   value: unknown;
@@ -238,20 +241,6 @@ export class SaasTenantGeneralSettings extends LitElement {
           <span class="section-title">Organization Profile</span>
         </div>
         <div class="section-content">
-          <div class="logo-section">
-            <div class="logo-preview">
-              ${s.logoUrl
-                ? html`<img src="${s.logoUrl}" alt="Logo" />`
-                : html`<span class="material-symbols-outlined">folder</span>`}
-            </div>
-            <div>
-              <button class="btn btn-secondary">Upload Logo</button>
-              <p class="form-sublabel" style="margin-top: 8px;">
-                Recommended: 256x256 PNG, max 500KB
-              </p>
-            </div>
-          </div>
-
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Organization Name *</label>
@@ -284,7 +273,7 @@ export class SaasTenantGeneralSettings extends LitElement {
               <input
                 class="form-input"
                 type="email"
-                .value=${s.billingEmail}
+                .value=${s.billingEmail ?? ''}
                 @input=${(e: Event) =>
                   this._emitChange(
                     'billingEmail',
@@ -311,7 +300,14 @@ export class SaasTenantGeneralSettings extends LitElement {
               >
               ${s.tier.name}</span
             >
-            <span class="tier-price">$99/month</span>
+            <span class="tier-price"
+              >${s.mrr > 0
+                ? `$${s.mrr.toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}/month`
+                : '—'}</span
+            >
             <span style="color: #22c55e;"
               ><span class="material-symbols-outlined" style="font-size: 12px;"
                 >check_circle</span
@@ -321,57 +317,41 @@ export class SaasTenantGeneralSettings extends LitElement {
           </div>
 
           <div class="quota-grid">
-            <div class="quota-item">
-              <div class="quota-label">Agents</div>
-              <div class="quota-value">
-                ${s.quotas.agents.used}/${s.quotas.agents.limit}
-              </div>
-              <div class="quota-bar">
-                <div
-                  class="quota-fill ${this._getQuotaClass(
-                    s.quotas.agents.used,
-                    s.quotas.agents.limit
-                  )}"
-                  style="width: ${(s.quotas.agents.used / s.quotas.agents.limit) *
-                    100}%"
-                ></div>
-              </div>
-            </div>
-            <div class="quota-item">
-              <div class="quota-label">Users</div>
-              <div class="quota-value">
-                ${s.quotas.users.used}/${s.quotas.users.limit}
-              </div>
-              <div class="quota-bar">
-                <div
-                  class="quota-fill ${this._getQuotaClass(
-                    s.quotas.users.used,
-                    s.quotas.users.limit
-                  )}"
-                  style="width: ${(s.quotas.users.used / s.quotas.users.limit) *
-                    100}%"
-                ></div>
-              </div>
-            </div>
-            <div class="quota-item">
-              <div class="quota-label">Storage (GB)</div>
-              <div class="quota-value">
-                ${s.quotas.storage.used}/${s.quotas.storage.limit}
-              </div>
-              <div class="quota-bar">
-                <div
-                  class="quota-fill ${this._getQuotaClass(
-                    s.quotas.storage.used,
-                    s.quotas.storage.limit
-                  )}"
-                  style="width: ${(s.quotas.storage.used /
-                    s.quotas.storage.limit) *
-                    100}%"
-                ></div>
-              </div>
-            </div>
+            ${this._renderQuota('Agents', s.quotas.agents)}
+            ${this._renderQuota('Users', s.quotas.users)}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  /**
+   * One usage counter.
+   *
+   * TenantOut reports the live counts but no per-resource ceiling, so `limit`
+   * is null. Drawing `3/0` and a bar that divides by zero would invent a
+   * quota the system does not have — the ceiling is shown as — and no bar is
+   * drawn, exactly as an unmeasured figure should be.
+   */
+  private _renderQuota(label: string, q: TenantQuota) {
+    const hasCeiling = typeof q.limit === 'number' && q.limit > 0;
+    return html`
+      <div class="quota-item">
+        <div class="quota-label">${label}</div>
+        <div class="quota-value">
+          ${q.used}${hasCeiling ? `/${q.limit}` : ''}
+          ${hasCeiling ? '' : html`<span style="color: var(--saas-text-muted, #999)">&nbsp;— no ceiling</span>`}
+        </div>
+        ${hasCeiling
+          ? html`
+              <div class="quota-bar">
+                <div
+                  class="quota-fill ${this._getQuotaClass(q.used, q.limit as number)}"
+                  style="width: ${Math.min(100, (q.used / (q.limit as number)) * 100)}%"
+                ></div>
+              </div>
+            `
+          : ''}
       </div>
     `;
   }

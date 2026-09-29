@@ -5,38 +5,45 @@
 
 import { apiClient } from '../services/api-client.js';
 
+/**
+ * Mirrors `TenantOut` — every field here is one the API actually returns.
+ *
+ * `TenantOut` is: id, name, slug, status, tier, created_at, agents, users,
+ * mrr, email. `TenantUpdate` accepts only: name, status, tier.
+ *
+ * A previous version of this shape also carried `branding`, `security` and
+ * `featureOverrides`, and filled them with invented defaults (`#2563eb`,
+ * `mfaRequired: false`, `sessionTimeout: 30`). No endpoint stores any of
+ * that, so the tabs that edited it silently discarded the changes on save.
+ * They are gone rather than faked.
+ */
+export interface TenantQuota {
+  used: number;
+  /** Null when the API reports no quota ceiling for this resource. */
+  limit: number | null;
+}
+
 export interface TenantSettings {
   id: string;
   name: string;
   slug: string;
-  logoUrl?: string;
-  billingEmail: string;
+  /** Tenant billing contact. Null when the tenant has none on record. */
+  billingEmail: string | null;
   tier: {
     id: string;
     name: string;
     slug: string;
   };
   status: 'active' | 'suspended' | 'pending';
+  /** The tenant's real monthly recurring revenue, in dollars. */
+  mrr: number;
   quotas: {
-    agents: { used: number; limit: number };
-    users: { used: number; limit: number };
-    storage: { used: number; limit: number };
+    agents: TenantQuota;
+    users: TenantQuota;
   };
-  branding: {
-    primaryColor: string;
-    accentColor: string;
-    customDomain?: string;
-  };
-  security: {
-    mfaRequired: boolean;
-    ssoEnabled: boolean;
-    ssoProvider?: string;
-    sessionTimeout: number;
-  };
-  featureOverrides: Record<string, boolean>;
 }
 
-export type SettingsTab = 'general' | 'branding' | 'security' | 'features' | 'danger';
+export type SettingsTab = 'general' | 'danger';
 
 export interface TenantSettingsHost {
   requestUpdate(): void;
@@ -96,23 +103,26 @@ export class TenantSettingsController {
         status: 'active' | 'suspended' | 'pending';
         agents?: number;
         users?: number;
+        mrr?: number;
+        email?: string | null;
       }>(`/aaas/tenants/${tenant.id}`);
 
       this._settings = {
         id: data.id,
         name: data.name,
         slug: data.slug,
-        billingEmail: '',
+        // TenantOut.email — the real billing contact, or null when absent.
+        billingEmail: data.email ?? null,
         tier: { id: data.tier, name: data.tier, slug: data.tier },
         status: data.status,
+        mrr: data.mrr ?? 0,
+        // TenantOut carries the counts but no per-resource ceilings. `limit`
+        // is null, not 0: a ceiling of 0 would render as "3/0" and a quota bar
+        // that divides by zero. The view draws no bar for an unknown limit.
         quotas: {
-          agents: { used: data.agents || 0, limit: 0 },
-          users: { used: data.users || 0, limit: 0 },
-          storage: { used: 0, limit: 0 },
+          agents: { used: data.agents ?? 0, limit: null },
+          users: { used: data.users ?? 0, limit: null },
         },
-        branding: { primaryColor: '#2563eb', accentColor: '#3b82f6' },
-        security: { mfaRequired: false, ssoEnabled: false, sessionTimeout: 30 },
-        featureOverrides: {},
       };
       this._dirty = false;
     } catch (e) {
@@ -140,6 +150,9 @@ export class TenantSettingsController {
         name: this._settings.name,
         status: this._settings.status,
         tier: this._settings.tier.slug,
+        // Sent only when the operator actually set one: `email: null` would
+        // mean "clear the contact" and an empty string is not a contact.
+        ...(this._settings.billingEmail ? { email: this._settings.billingEmail } : {}),
       };
       await apiClient.patch(`/aaas/tenants/${this._tenantId}`, payload);
       this._dirty = false;

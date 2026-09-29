@@ -24,7 +24,6 @@ import {
 import type { TenantSettingChangeDetail } from '../components/saas-tenant-general-settings.js';
 
 import '../components/saas-tenant-general-settings.js';
-import '../components/saas-tenant-security-settings.js';
 
 @customElement('saas-tenant-settings')
 export class SaasTenantSettings extends LitElement {
@@ -297,24 +296,6 @@ export class SaasTenantSettings extends LitElement {
             General
           </button>
           <button
-            class="tab ${this.activeTab === 'branding' ? 'active' : ''}"
-            @click=${() => (this.activeTab = 'branding')}
-          >
-            Branding
-          </button>
-          <button
-            class="tab ${this.activeTab === 'security' ? 'active' : ''}"
-            @click=${() => (this.activeTab = 'security')}
-          >
-            Security
-          </button>
-          <button
-            class="tab ${this.activeTab === 'features' ? 'active' : ''}"
-            @click=${() => (this.activeTab = 'features')}
-          >
-            Features
-          </button>
-          <button
             class="tab danger ${this.activeTab === 'danger' ? 'active' : ''}"
             @click=${() => (this.activeTab = 'danger')}
           >
@@ -330,16 +311,6 @@ export class SaasTenantSettings extends LitElement {
               ></saas-tenant-general-settings>
             `
           : ''}
-        ${this.activeTab === 'branding' || this.activeTab === 'security'
-          ? html`
-              <saas-tenant-security-settings
-                .settings=${s}
-                .activeTab=${this.activeTab}
-                @tenant-setting-change=${this._onSettingChange}
-              ></saas-tenant-security-settings>
-            `
-          : ''}
-        ${this.activeTab === 'features' ? this._renderFeaturesTab() : ''}
         ${this.activeTab === 'danger' ? this._renderDangerTab() : ''}
 
         ${this.controller.dirty
@@ -368,86 +339,6 @@ export class SaasTenantSettings extends LitElement {
   private _onSettingChange(e: CustomEvent<TenantSettingChangeDetail>) {
     e.stopPropagation();
     this.controller.updateSetting(e.detail.path, e.detail.value);
-  }
-
-  private _renderFeaturesTab() {
-    return html`
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">Feature Overrides</span>
-        </div>
-        <div class="section-content">
-          <p
-            style="color: var(--saas-text-secondary); margin-bottom: 16px;"
-          >
-            Toggle features for your organization. You can only disable
-            features included in your tier, not enable new ones.
-          </p>
-
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <span class="toggle-label">Memory</span>
-              <span class="toggle-description"
-                >Long-term agent memory with SomaBrain</span
-              >
-            </div>
-            <span style="color: #22c55e;"
-              ><span class="material-symbols-outlined" style="font-size: 12px;"
-                >check_circle</span
-              >
-              Enabled by Tier</span
-            >
-          </div>
-
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <span class="toggle-label">Voice</span>
-              <span class="toggle-description"
-                >Speech-to-text and text-to-speech capabilities</span
-              >
-            </div>
-            <span style="color: #22c55e;"
-              ><span class="material-symbols-outlined" style="font-size: 12px;"
-                >check_circle</span
-              >
-              Enabled by Tier</span
-            >
-          </div>
-
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <span class="toggle-label">MCP Tools</span>
-              <span class="toggle-description"
-                >Connect external tools via MCP protocol</span
-              >
-            </div>
-            <span style="color: #22c55e;"
-              ><span class="material-symbols-outlined" style="font-size: 12px;"
-                >check_circle</span
-              >
-              Enabled by Tier</span
-            >
-          </div>
-
-          <div class="toggle-row">
-            <div class="toggle-info">
-              <span class="toggle-label">Agent Delegation</span>
-              <span class="toggle-description"
-                >Allow agents to spawn sub-agents</span
-              >
-            </div>
-            <span style="color: var(--saas-text-muted);"
-              ><span
-                class="material-symbols-outlined status-icon"
-                style="color: var(--saas-text-muted);"
-                >circle</span
-              >
-              Not in Tier (Enterprise)</span
-            >
-          </div>
-        </div>
-      </div>
-    `;
   }
 
   private _renderDangerTab() {

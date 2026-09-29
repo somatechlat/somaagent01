@@ -101,6 +101,9 @@ class TenantUpdate(Schema):
     name: Optional[str] = None
     status: Optional[str] = None
     tier: Optional[str] = None
+    # The billing contact is editable. It used to be absent here, so the
+    # settings screen offered a billing-email field and dropped it on save.
+    email: Optional[str] = None
 
 
 class TenantListResponse(Schema):
