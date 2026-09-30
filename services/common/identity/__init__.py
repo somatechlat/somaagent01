@@ -18,6 +18,13 @@ from services.common.identity.authenticate import (
     AuthenticationOutcome,
     decide_authentication,
 )
+from services.common.identity.login import (
+    AUDIT_ACTION_LOGIN_FAILED,
+    AUDIT_ACTION_LOGIN_SUCCEEDED,
+    REASON_AUDIT_UNAVAILABLE,
+    LoginResult,
+    complete_login,
+)
 from services.common.identity.lockout import (
     HARD_LOCK_AT_FAILURES,
     LockoutDecision,
@@ -56,6 +63,8 @@ from services.common.identity.session import (
 
 __all__ = [
     "ABSOLUTE_TIMEOUT",
+    "AUDIT_ACTION_LOGIN_FAILED",
+    "AUDIT_ACTION_LOGIN_SUCCEEDED",
     "HARD_LOCK_AT_FAILURES",
     "IDLE_TIMEOUT",
     "PASSWORD_PEPPER_VAULT_KEY",
@@ -63,6 +72,8 @@ __all__ = [
     "PRIVILEGED_IDLE_TIMEOUT",
     "SESSION_TOKEN_PREFIX",
     "AuthenticationOutcome",
+    "LoginResult",
+    "REASON_AUDIT_UNAVAILABLE",
     "LockoutDecision",
     "LockoutState",
     "PasswordPolicyError",
@@ -70,6 +81,7 @@ __all__ = [
     "SessionRecord",
     "bootstrap_password_pepper",
     "check_password_policy",
+    "complete_login",
     "decide_authentication",
     "evaluate_lockout",
     "generate_session_token",
