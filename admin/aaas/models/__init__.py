@@ -18,6 +18,7 @@ from admin.aaas.models.choices import (
 )
 # Local identity (Standalone credential record)
 from admin.aaas.models.identity import LocalIdentity
+from admin.aaas.models.session import LocalSession
 # Profile models
 from admin.aaas.models.profiles import (
     AdminProfile,
@@ -54,4 +55,5 @@ __all__ = [
     "UserSession",
     "ApiKey",
     "LocalIdentity",
+    "LocalSession",
 ]
