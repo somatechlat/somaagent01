@@ -89,9 +89,17 @@ class LocalSession(models.Model):
         verbose_name = "Local Session"
         verbose_name_plural = "Local Sessions"
         ordering = ["-created_at"]
+        # Names are explicit and match 0004_local_session exactly. Leaving
+        # them unnamed makes Django synthesise truncated names on every
+        # model load, and the autodetector then reports a rename between the
+        # model and the migration — a deploy-time schema change nobody asked
+        # for. One name, declared in both places, cannot drift.
         indexes = [
-            models.Index(fields=["principal_id", "-created_at"]),
-            models.Index(fields=["token_hash"]),
+            models.Index(
+                fields=["principal_id", "-created_at"],
+                name="aaas_local_sess_prin_idx",
+            ),
+            models.Index(fields=["token_hash"], name="aaas_local_sess_tok_idx"),
         ]
 
     def __str__(self) -> str:
