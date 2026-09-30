@@ -16,6 +16,8 @@ from admin.aaas.models.choices import (
     TenantRole,
     TenantStatus,
 )
+# Local identity (Standalone credential record)
+from admin.aaas.models.identity import LocalIdentity
 # Profile models
 from admin.aaas.models.profiles import (
     AdminProfile,
@@ -51,4 +53,5 @@ __all__ = [
     "UserPreferences",
     "UserSession",
     "ApiKey",
+    "LocalIdentity",
 ]
