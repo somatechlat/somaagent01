@@ -14,6 +14,8 @@ from typing import Any
 import pytest
 import tiktoken
 
+from types import SimpleNamespace
+
 from admin.core.context import build_context, BuiltContext
 from admin.core.models import Capsule
 
@@ -38,23 +40,17 @@ def _somabrain_available() -> bool:
         return False
 
 
-def _create_test_tier() -> Any:
-    """Create a SubscriptionTier for tests."""
-    from admin.aaas.models import SubscriptionTier
+def _create_test_tenant() -> Any:
+    """Create a Tenant for tests.
 
-    return SubscriptionTier.objects.create(
-        name="Test Tier", slug=f"test-tier-{uuid.uuid4().hex[:8]}"
-    )
-
-
-def _create_test_tenant(tier: Any) -> Any:
-    """Create a Tenant for tests."""
+    No tier. Subscription tiers left with billing: an organisation is a
+    partition, not a plan.
+    """
     from admin.aaas.models import Tenant
 
     return Tenant.objects.create(
         name="Test Tenant",
         slug=f"test-tenant-{uuid.uuid4().hex[:8]}",
-        tier=tier,
     )
 
 
@@ -85,15 +81,14 @@ def _create_test_capsule(tenant: Any, persona: dict | None = None) -> Capsule:
 @pytest.mark.asyncio
 async def test_build_context_returns_all_five_lanes():
     """build_context() returns a BuiltContext with all 5 lanes populated."""
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
+    tenant = _create_test_tenant()
     capsule = _create_test_capsule(tenant)
 
     context = await build_context(
         capsule=capsule,
         user_message="Hello",
         history=[{"role": "user", "content": "Previous message"}],
-        brain_client=None,
+        memory_hits=[],
     )
 
     assert isinstance(context, BuiltContext)
@@ -110,8 +105,7 @@ async def test_build_context_returns_all_five_lanes():
 @pytest.mark.asyncio
 async def test_build_context_respects_token_budget():
     """Context respects token budget via budget_override."""
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
+    tenant = _create_test_tenant()
     long_system = "A" * 2000
     persona = {
         "core": {"system_prompt": long_system},
@@ -128,7 +122,7 @@ async def test_build_context_respects_token_budget():
         capsule=capsule,
         user_message=long_message,
         history=long_history,
-        brain_client=None,
+        memory_hits=[],
         budget_override=budget_override,
     )
 
@@ -152,49 +146,50 @@ async def test_build_context_respects_token_budget():
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_memory_lane_includes_recalled_memories_when_brain_available():
-    """Memory lane includes recalled memories when brain client is available."""
-    from admin.core.somabrain_client import SomaBrainClient
+    """Memory lane formats whatever MemoryGateway.recall() returned.
 
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
+    The builder does not read memory. The caller recalls and passes the hits;
+    this asserts the lane renders them. One read path, and it is not here.
+    """
+    tenant = _create_test_tenant()
     capsule = _create_test_capsule(tenant)
 
-    client = SomaBrainClient(base_url="http://localhost:63996")
-    # Store a memory first
-    await client.remember(
-        content="Integration test memory about pineapples",
-        tenant=str(tenant.id),
-        namespace="chat_history",
-        metadata={"capsule_id": str(capsule.id)},
-    )
+    hits = [
+        SimpleNamespace(
+            text="Integration test memory about pineapples",
+            score=0.91,
+            coord="mem-1",
+        )
+    ]
 
     context = await build_context(
         capsule=capsule,
         user_message="Tell me about pineapples",
         history=[],
-        brain_client=client,
+        memory_hits=hits,
     )
 
-    assert "pineapples" in context.memory or "[No relevant memories]" in context.memory
-    await client.close()
+    assert "pineapples" in context.memory
 
 
 @pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_memory_lane_fallback_when_brain_unavailable():
-    """Memory lane falls back to history-only when brain is unavailable."""
-    tier = _create_test_tier()
-    tenant = _create_test_tenant(tier)
+async def test_memory_lane_requires_hits():
+    """A caller that did not recall is a bug, not a fallback.
+
+    ``memory_hits=None`` used to silently fall back to a second client and,
+    failing that, to the string ``"[Memory recall unavailable]"`` — a lane
+    that looked populated while holding nothing. Now it raises. ``[]`` is the
+    honest spelling of "recall ran and found nothing".
+    """
+    tenant = _create_test_tenant()
     capsule = _create_test_capsule(tenant)
 
-    context = await build_context(
-        capsule=capsule,
-        user_message="Hello",
-        history=[{"role": "user", "content": "Previous message"}],
-        brain_client=None,
-    )
-
-    assert "[Memory recall unavailable]" in context.memory
-    # History lane should still be populated independently
-    assert "Previous message" in context.history
+    with pytest.raises(ValueError, match="memory_hits is required"):
+        await build_context(
+            capsule=capsule,
+            user_message="Hello",
+            history=[{"role": "user", "content": "Previous message"}],
+            memory_hits=None,
+        )

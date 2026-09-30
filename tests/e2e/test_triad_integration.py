@@ -301,18 +301,15 @@ async def _run_story(stack: SeamStack) -> SeamStory:
     """Run turn 1 → probe both stores → run turn 2. Gathers evidence only."""
 
     import admin.core.chat_orchestrator as orchestrator_module
-    from admin.aaas.models import SubscriptionTier, Tenant
+    from admin.aaas.models import Tenant
     from admin.chat.models import Conversation
     from admin.core.chat_orchestrator import ChatTurn, V3ChatOrchestrator
     from admin.core.models import Capsule
 
     marker = f"SEAM-{uuid.uuid4().hex}"
 
-    tier = SubscriptionTier.objects.create(
-        name="Seam Tier", slug=f"seam-tier-{uuid.uuid4().hex[:8]}"
-    )
     tenant = Tenant.objects.create(
-        name="Seam Tenant", slug=f"seam-tenant-{uuid.uuid4().hex[:8]}", tier=tier
+        name="Seam Tenant", slug=f"seam-tenant-{uuid.uuid4().hex[:8]}"
     )
     capsule = Capsule.objects.create(
         name="Seam Capsule",

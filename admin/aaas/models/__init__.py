@@ -4,7 +4,7 @@ Django-style models package - import all models here for Django's model discover
 This follows Django's recommended pattern for splitting large models.py files.
 
 Usage:
-    from admin.aaas.models import Tenant, Agent, SubscriptionTier
+    from admin.aaas.models import Tenant, Agent
 """
 
 # Import all choices first (no dependencies)
@@ -30,8 +30,6 @@ from admin.aaas.models.profiles import (
 from admin.aaas.models.tenants import Tenant, TenantUser
 
 # Import models in dependency order
-from admin.aaas.models.tiers import SubscriptionTier
-from admin.aaas.models.usage import UsageRecord
 
 # Django model discovery - all models must be listed here
 __all__ = [
@@ -41,12 +39,10 @@ __all__ = [
     "TenantRole",
     "AgentRole",
     # Models
-    "SubscriptionTier",
     "Tenant",
     "TenantUser",
     "Agent",
     "AgentUser",
-    "UsageRecord",
     "AuditLog",
     # Profile Models
     "AdminProfile",

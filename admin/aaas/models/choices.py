@@ -8,8 +8,6 @@ class TenantStatus(models.TextChoices):
 
     ACTIVE = "active", "Active"
     SUSPENDED = "suspended", "Suspended"
-    PENDING = "pending", "Pending Activation"
-    CHURNED = "churned", "Churned"
 
 
 class AgentStatus(models.TextChoices):

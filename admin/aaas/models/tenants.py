@@ -1,7 +1,16 @@
-"""Tenant and TenantUser Models.
+"""Tenant and TenantUser models.
 
+``Tenant`` is the **data-partition boundary**: every child resource carries
+``tenant_id`` so one organisation's memories, agents and audit rows cannot be
+read by another. That isolation is a security property and it stays.
 
-Per AAAS_ADMIN_SRS.md Section 4.2, 4.4
+It is not a product tenancy. There is no subscription tier, no billing
+contact, no trial clock and no churn lifecycle: SomaBrain and the agent are
+HTTP + containers, not a commercial offering.
+
+``TenantUser`` is the org role-assignment record that
+``admin.core.permission_matrix`` and ``admin.core.agentiq.unified_gate`` read
+fail-closed to decide what a principal may do. It is RBAC state, not a seat.
 """
 
 import uuid
@@ -10,7 +19,6 @@ from typing import TYPE_CHECKING
 from django.db import models
 
 from admin.aaas.models.choices import TenantRole, TenantStatus
-from admin.aaas.models.tiers import SubscriptionTier
 
 if TYPE_CHECKING:
     from django.db.models import Manager
@@ -19,51 +27,42 @@ if TYPE_CHECKING:
 
 
 class Tenant(models.Model):
-    """Organization/company entity.
+    """Organisation boundary. One row per partition.
 
-    Each tenant has exactly one subscription tier.
-    Multi-tenant isolation is enforced via tenant_id on all child resources.
+    ``id`` is the partition key referenced as ``tenant_id`` across agents,
+    capsules, bridges and audit rows.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    name = models.CharField(max_length=100, help_text="Organization name")
+    name = models.CharField(max_length=100, help_text="Organisation name")
 
     slug = models.SlugField(max_length=100, unique=True, help_text="URL-safe identifier for tenant")
 
-    tier = models.ForeignKey(
-        SubscriptionTier,
-        on_delete=models.PROTECT,
-        related_name="tenants",
-        help_text="Current subscription tier",
-    )
-
     status = models.CharField(
-        max_length=20, choices=TenantStatus.choices, default=TenantStatus.PENDING, db_index=True
+        max_length=20,
+        choices=TenantStatus.choices,
+        default=TenantStatus.ACTIVE,
+        db_index=True,
     )
 
-    # Keycloak/Auth Integration
+    # Identity-provider realm for this partition's principals.
     keycloak_realm = models.CharField(
         max_length=100, blank=True, help_text="Keycloak realm for this tenant"
     )
 
-    # Contact
-    billing_email = models.EmailField(blank=True, help_text="Primary billing contact email")
-
-    # Feature Overrides (JSONB for flexible overrides)
+    # Per-partition behaviour knobs. Any ceiling that used to live on a plan
+    # row is a deployment setting (Django settings), not a tenant column.
     feature_overrides = models.JSONField(
         default=dict, blank=True, help_text="Per-tenant feature configuration overrides"
     )
 
-    # Metadata
     metadata = models.JSONField(
         default=dict, blank=True, help_text="Arbitrary metadata for integrations"
     )
 
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    trial_ends_at = models.DateTimeField(null=True, blank=True, help_text="When trial period ends")
 
     if TYPE_CHECKING:
         agents: Manager["Agent"]
@@ -93,32 +92,29 @@ class Tenant(models.Model):
             "id": str(self.id),
             "name": self.name,
             "slug": self.slug,
-            "tier_id": str(self.tier_id),  # type: ignore[reportAttributeAccessIssue]
-            "tier_name": self.tier.name if self.tier else None,
             "status": self.status,
             "keycloak_realm": self.keycloak_realm,
-            "billing_email": self.billing_email,
             "feature_overrides": self.feature_overrides,
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "trial_ends_at": self.trial_ends_at.isoformat() if self.trial_ends_at else None,
         }
 
 
 class TenantUser(models.Model):
-    """User membership within a tenant.
+    """Org role assignment: which principal holds which catalog role.
 
-    Links Keycloak users to tenants with role-based access.
+    This row is what RBAC reads. It is not a seat, not an invitation and not
+    a product membership.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="users")
 
-    user_id = models.UUIDField(db_index=True, help_text="Keycloak user ID")
+    user_id = models.UUIDField(db_index=True, help_text="Principal ID in the identity provider")
 
-    email = models.EmailField(help_text="User email (denormalized from Keycloak)")
+    email = models.EmailField(help_text="User email")
 
     display_name = models.CharField(max_length=200, blank=True, help_text="User display name")
 
@@ -126,7 +122,6 @@ class TenantUser(models.Model):
 
     is_active = models.BooleanField(default=True, db_index=True)
 
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_login_at = models.DateTimeField(null=True, blank=True)

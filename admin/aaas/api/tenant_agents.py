@@ -65,20 +65,6 @@ class AgentUpdateRequest(BaseModel):
     voice_enabled: Optional[bool] = None
 
 
-class QuotaStatus(BaseModel):
-    """Quota status for tenant."""
-
-    agents_used: int
-    agents_limit: int
-    users_used: int
-    users_limit: int
-    tokens_used: int
-    tokens_limit: int
-    storage_used_gb: float
-    storage_limit_gb: float
-    can_create_agent: bool
-    can_invite_user: bool
-
 
 def _agent_to_schema(agent: Agent) -> AgentSchema:
     """Convert Agent model to schema."""
@@ -98,44 +84,6 @@ def _agent_to_schema(agent: Agent) -> AgentSchema:
         tokens_used=0,
     )
 
-
-def get_tenant_quota(tenant_id: str) -> QuotaStatus:
-    """Get quota status for tenant from database."""
-    agents_used = Agent.objects.filter(tenant_id=tenant_id).count()
-    users_used = TenantUser.objects.filter(tenant_id=tenant_id).count()
-
-    # Get tenant limits from subscription tier
-    try:
-        tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
-        tier = tenant.tier
-        if tier:
-            agents_limit = tier.max_agents
-            users_limit = tier.max_users_per_agent
-            tokens_limit = tier.max_monthly_api_calls
-            storage_limit = float(tier.max_storage_gb)
-        else:
-            agents_limit = settings.AAAS_DEFAULT_MAX_AGENTS
-            users_limit = settings.AAAS_DEFAULT_MAX_USERS
-            tokens_limit = settings.AAAS_DEFAULT_MAX_TOKENS_MONTHLY
-            storage_limit = settings.AAAS_DEFAULT_STORAGE_GB
-    except Tenant.DoesNotExist:
-        agents_limit = settings.AAAS_DEFAULT_MAX_AGENTS
-        users_limit = settings.AAAS_DEFAULT_MAX_USERS
-        tokens_limit = settings.AAAS_DEFAULT_MAX_TOKENS_MONTHLY
-        storage_limit = settings.AAAS_DEFAULT_STORAGE_GB
-
-    return QuotaStatus(
-        agents_used=agents_used,
-        agents_limit=agents_limit,
-        users_used=users_used,
-        users_limit=users_limit,
-        tokens_used=0,
-        tokens_limit=tokens_limit,
-        storage_used_gb=0.0,
-        storage_limit_gb=storage_limit,
-        can_create_agent=agents_used < agents_limit,
-        can_invite_user=users_used < users_limit,
-    )
 
 
 # =============================================================================
@@ -170,7 +118,6 @@ def list_agents(
     offset = (page - 1) * per_page
     agents = qs.order_by("-created_at")[offset : offset + per_page]
 
-    quota = get_tenant_quota(tenant_id)
 
     response = paginated_response(
         items=[_agent_to_schema(a).model_dump() for a in agents],
@@ -178,7 +125,6 @@ def list_agents(
         page=page,
         page_size=per_page,
     )
-    response["quota"] = quota.model_dump()
     return response
 
 
@@ -194,11 +140,6 @@ def create_agent(
     """Create a new agent in the tenant."""
     authorize_sync(request, action="agent:create", resource="agents")
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
-
-    # Check quota
-    quota = get_tenant_quota(tenant_id)
-    if not quota.can_create_agent:
-        raise ValidationError("Agent limit reached. Upgrade to create more agents.")
 
     slug = payload.slug or payload.name.lower().replace(" ", "-").replace(".", "")
 
@@ -347,15 +288,3 @@ def stop_agent(
 
     return api_response({"agent_id": agent_id, "status": "paused"}, message="Agent stopped")
 
-
-@router.get(
-    "/quota",
-    summary="Get tenant quota status",
-    auth=AuthBearer(),
-)
-def get_quota(request) -> dict:
-    """Get the current quota status for the tenant."""
-    authorize_sync(request, action="agent:read", resource="agents")
-    tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
-    quota = get_tenant_quota(tenant_id)
-    return api_response(quota.model_dump())

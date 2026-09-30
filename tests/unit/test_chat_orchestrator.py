@@ -71,28 +71,20 @@ def reset_orchestrator_state():
 
 
 @sync_to_async
-def _create_test_tier() -> Any:
-    """Create a SubscriptionTier for tests.
+def _create_test_tenant() -> Any:
+    """Create a Tenant for tests.
 
     ``@sync_to_async`` because every caller is an ``async def`` test: the
     sync ORM must not run on the event loop. Same shape the handlers use.
+
+    No tier. Subscription tiers left with billing: an organisation is a
+    partition, not a plan.
     """
-    from admin.aaas.models import SubscriptionTier
-
-    return SubscriptionTier.objects.create(
-        name="Test Tier", slug=f"test-tier-{uuid.uuid4().hex[:8]}"
-    )
-
-
-@sync_to_async
-def _create_test_tenant(tier: Any) -> Any:
-    """Create a Tenant for tests."""
     from admin.aaas.models import Tenant
 
     return Tenant.objects.create(
         name="Test Tenant",
         slug=f"test-tenant-{uuid.uuid4().hex[:8]}",
-        tier=tier,
     )
 
 
@@ -214,8 +206,7 @@ async def test_process_turn_permission_denied():
     substituted checker: the subject simply holds no role, and no role is
     denial.
     """
-    tier = await _create_test_tier()
-    tenant = await _create_test_tenant(tier)
+    tenant = await _create_test_tenant()
     capsule = await _create_test_capsule(tenant)
 
     orchestrator = V3ChatOrchestrator()
@@ -242,8 +233,7 @@ async def test_process_turn_gate_denied():
     The subject is a real member, so the role floor passes. The gate is the
     layer that refuses, which is the branch this test is about.
     """
-    tier = await _create_test_tier()
-    tenant = await _create_test_tenant(tier)
+    tenant = await _create_test_tenant()
     capsule = await _create_test_capsule(tenant)
     user_id = await _create_test_member(tenant, role="member")
 
@@ -272,8 +262,7 @@ async def test_process_turn_returns_chat_result():
     from admin.chat.models import Conversation
     from admin.llm.models import LLMModelConfig
 
-    tier = await _create_test_tier()
-    tenant = await _create_test_tenant(tier)
+    tenant = await _create_test_tenant()
     capsule = await _create_test_capsule(
         tenant,
         governance={
@@ -323,8 +312,7 @@ async def test_stream_turn_yields_tokens():
     from admin.chat.models import Conversation
     from admin.llm.models import LLMModelConfig
 
-    tier = await _create_test_tier()
-    tenant = await _create_test_tenant(tier)
+    tenant = await _create_test_tenant()
     capsule = await _create_test_capsule(
         tenant,
         governance={
