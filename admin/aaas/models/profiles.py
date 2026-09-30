@@ -136,7 +136,7 @@ class AdminProfile(models.Model):
     # Notifications
     notification_prefs = models.JSONField(
         default=dict,
-        help_text="Notification preferences: criticalAlerts, billingEvents, weeklyDigest, marketing",
+        help_text="Notification preferences: criticalAlerts, weeklyDigest",
     )
 
     # Audit
@@ -162,9 +162,7 @@ class AdminProfile(models.Model):
         """Return default notification preferences."""
         return {
             "criticalAlerts": True,
-            "billingEvents": True,
             "weeklyDigest": False,
-            "marketing": False,
         }
 
     def save(self, *args, **kwargs):
@@ -206,7 +204,7 @@ class TenantSettings(models.Model):
 
     # Features
     feature_overrides = models.JSONField(
-        default=dict, help_text="Feature overrides within tier limits"
+        default=dict, help_text="Feature overrides for this partition"
     )
 
     # SRS Compliance Extensions (JSONB pillars)
@@ -302,7 +300,7 @@ class UserPreferences(models.Model):
     # Notifications
     notification_prefs = models.JSONField(
         default=dict,
-        help_text="Notification preferences: agentReplies, activitySummary, productUpdates",
+        help_text="Notification preferences: agentReplies, activitySummary",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -325,7 +323,6 @@ class UserPreferences(models.Model):
         return {
             "agentReplies": True,
             "activitySummary": False,
-            "productUpdates": False,
         }
 
     def save(self, *args, **kwargs):
