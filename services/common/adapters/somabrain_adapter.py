@@ -8,8 +8,10 @@ somabrain/api/v1.py:96,104; Django serves them both with and without the
     POST {SOMABRAIN_URL}/memory/forget     (endpoints/memory.py:291)
     POST {SOMABRAIN_URL}/memory/remember/batch
 
-The ``/api/remember`` and ``/api/recall`` dialect (agent BrainBridge,
-aaas/brain.py:162,218) has NO route in somabrain and is not used here.
+The ``/api/remember`` and ``/api/recall`` dialect has NO route in somabrain
+and is not used here. It was carried by the BrainBridge stub in
+``aaas/brain.py``, which is deleted; nothing in this codebase speaks it, and
+no route is to be invented for it.
 
 Forget speaks the brain's ``ForgetRequest`` / ``ForgetResponse`` contract
 (somabrain.api.memory.models:454-471): ``POST /memory/forget`` with
