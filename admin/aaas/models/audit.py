@@ -21,7 +21,19 @@ class AuditLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Who
-    actor_id = models.UUIDField(db_index=True, help_text="User ID who performed the action")
+    # Nullable on purpose. A failed authentication attempt has no actor: the
+    # caller was never identified. The alternative — a sentinel such as
+    # ``"anonymous"`` — cannot be stored in a UUIDField at all (the write
+    # raises, and the surrounding ``except Exception: log.warning`` hides it,
+    # so the attempt leaves no evidence). And a fixed fabricated UUID would be
+    # worse: an audit trail that invents an identity is not an audit trail.
+    # ``NULL`` means exactly "no authenticated actor".
+    actor_id = models.UUIDField(
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="User ID who performed the action; NULL when the caller was never identified",
+    )
 
     actor_email = models.EmailField(blank=True, help_text="Actor email (denormalized for query)")
 
