@@ -126,7 +126,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-01-SDP-001 | docs/iso/SOMA-01-SDP-001.md | SomaAgent01 Software Development Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-SEC-001 | docs/iso/SOMA-01-SEC-001.md | SomaAgent01 Security Assessment Report | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-SRS-001 | docs/iso/SOMA-01-SRS-001.md | SomaAgent01 Master Software Requirements Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-01-STD-001 | docs/iso/SOMA-01-STD-001.md | Standards Register — Normative and Applied External Standards | 1.0.0 | Draft | — | 2027-03-30 | Compliant |
+| SOMA-01-STD-001 | docs/iso/SOMA-01-STD-001.md | Standards Register — Normative and Applied External Standards | 1.0.1 | Draft | — | 2027-03-30 | Compliant |
 | SOMA-01-UIUX-001 | docs/iso/SOMA-01-UIUX-001.md | User Interface — Screen & Feature Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-002 | docs/iso/SOMA-01-UIUX-002.md | User Interface — Modal & Overlay Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-UIUX-003 | docs/iso/SOMA-01-UIUX-003.md | User Interface — Component & Module Catalogue | 1.0.0 | Draft | — | 2026-12-28 | Compliant |

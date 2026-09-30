@@ -6,7 +6,7 @@
 |-------|-------|
 | Document Title | Standards Register — Normative and Applied External Standards |
 | Document Identifier | SOMA-01-STD-001 |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Date | 2026-09-30 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -24,6 +24,7 @@
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 1.0.0 | 2026-09-30 | SomaTech Engineering | First issue. Inventory of every external standard cited across `docs/` or implemented in code, organised by standards body. Records six citation defects. |
+| 1.0.1 | 2026-09-30 | SomaTech Engineering | §4.4 records the settled transport contract: UDS socket paths, one `.proto` on both carriers, mode dispatch with no probe. D-6 moves from "uncited" to "slot reserved". |
 
 ---
 
@@ -256,8 +257,29 @@ under active specification.
 | Policy (OPA) | HTTP/1.1 | RFC 9110 | `services/common/policy_client.py` |
 | Events | Kafka wire protocol | Apache Kafka protocol | `services/common/trace_context.py:1` |
 
-**Disposition:** §6 assigns each of these a permanent home in `SOMA-01-SEC-001` (transport
-security) and `SOMA-01-ARCH-001` (transport architecture). Until then they are recorded here.
+**The transport contract (settled 2026-09-30).** These three decisions govern every hop
+above. They are architecture decisions, recorded here so the register and the implementation
+cannot drift apart.
+
+| # | Decision | Value |
+|---|----------|-------|
+| TC-1 | **Local socket layout** | One directory `/run/soma/`, not one per service. Sockets at `/run/soma/brain.sock` (Agent ↔ SomaBrain) and `/run/soma/sfm.sock` (SomaBrain ↔ SFM). Mode `0600`, owned by the service uid, never world-writable. Compose bind-mounts a single volume. |
+| TC-2 | **One `.proto`, two carriers** | The same `brain.proto` and the same protobuf messages on UDS and on TCP. UDS removes the TCP, TLS and bearer layers; it does not change the message. A lighter local framing would be a second schema, and a second schema is the divergence this contract exists to prevent. |
+| TC-3 | **Mode dispatch, never a probe** | `SA01_DEPLOYMENT_MODE` selects the topology from the settings registry; the registry constructs the adapter and its address. No runtime discovery, no "try UDS then fall back to TCP". A probe is a silent fallback under another name. If the configured transport cannot connect, the call fails and names the endpoint it was configured for. |
+
+**Why UDS is the single-node answer.** On one machine a Unix domain socket removes the TCP
+three-way handshake, `TIME_WAIT` accumulation and the TLS handshake entirely, and it removes the
+bearer from the wire: file mode `0600` plus uid ownership replaces network authentication with
+kernel access control, which is both cheaper and stronger. gRPC multiplexes HTTP/2 streams over
+that one socket and protobuf is binary, so the same contract is two to five times faster locally
+than HTTP/1.1 with JSON over loopback.
+
+**Disposition.** Each hop has a permanent home in `SOMA-01-SEC-001` (transport security) and
+`SOMA-01-ARCH-001` (transport architecture). **D-6 slot is reserved in `SOMA-01-ARCH-001`**;
+the exact normative citations (RFC 9113 HTTP/2, RFC 8446 TLS 1.3, RFC 5280 X.509, and the UDS
+security model) are to be supplied by the transport implementer rather than invented here.
+Until they land, the standards are recorded in this register so the suite can see what it
+depends on.
 
 ---
 
@@ -272,7 +294,7 @@ Found by cross-reading every citation against every other. Each has an owner and
 | **D-3** | **Edition drift.** One standard cited under three editions. | `ISO/IEC 25010` bare, `:2018` (`SOMA-SETTINGS-MODEL-001.md:38`), `:2023` (`SOMA-SRS-ARCHPATTERNS-001.md:101`) | Pin to `ISO/IEC 25010:2023` and keep the "lens, not certification" qualifier. | Documentation owners |
 | **D-4** | **Unmapped conformance target.** ISO/IEC 42001:2023 is named as a conformance target and no clause of it is mapped anywhere. | `SOMA-01-DEPLOY-001.md:15`, `:44`; zero clause references suite-wide | Either map the applicable clauses (AI risk, AI impact, data quality, human oversight) or demote 42001 to a stated *objective* rather than a *target*. | Security + documentation |
 | **D-5** | **Implemented but never cited.** NIST SP 800-63B and RFC 8785 are binding in code and appear in no document. | `services/common/identity/password.py:17`; `services/registry_service.py:10` | Cite both here (done) and in `SOMA-01-SEC-001` §2 alongside the ISO 27001 Annex A map. | Security |
-| **D-6** | **Transport standards absent.** gRPC, HTTP/2, TLS 1.3, X.509 are all in the runtime; no document names them. | `services/common/tracing.py:12`; `services/common/spicedb_client.py:146-176`; `admin/core/somabrain_client.py:24` | Record in §4.4 of this register (done) and land the transport specification with explicit normative references. | Architecture |
+| **D-6** | **Transport standards not yet normatively cited.** gRPC, HTTP/2, TLS 1.3, X.509 are all in the runtime; no document names them as requirements. Contract decisions TC-1…TC-3 are now recorded in §4.4. | `services/common/tracing.py:12`; `services/common/spicedb_client.py:146-176`; `admin/core/somabrain_client.py:24` | **Slot reserved** in `SOMA-01-ARCH-001`. Citations to be supplied by the transport implementer — RFC 9113, RFC 8446, RFC 5280, plus the UDS file-mode security model. Do not invent them here. | Architecture (contract: this register) |
 
 ---
 
