@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 from functools import lru_cache
 from typing import Any, Optional
 
@@ -17,6 +18,35 @@ from ninja.security import HttpBearer
 from pydantic import BaseModel
 
 from admin.common.exceptions import ForbiddenError, UnauthorizedError
+from services.common.identity.credential import (
+    API_KEY_PREFIX,
+    CredentialKind,
+    classify_credential,
+)
+
+# ``API_KEY_PREFIX`` is defined in ``services.common.identity.credential`` and
+# imported here, not redeclared. A second definition of a routing prefix is a
+# second opinion about which stack owns a bearer, and the two can drift while
+# both keep passing their own tests.
+
+
+def as_uuid(value: Any) -> Optional["uuid.UUID"]:
+    """Coerce an identity claim to a UUID, or None.
+
+    ``AuditLog.actor_id`` is a UUIDField. A claim that is not a UUID must not
+    be stringified into it: that write raises, and the audit call around it
+    swallows the exception, so the event is lost silently. ``None`` means
+    "no identifiable actor", which is the truth in that case.
+
+    An audit trail that stores a fabricated identity for an unidentified
+    caller is worse than one that records the gap.
+    """
+    if value is None:
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -182,20 +212,25 @@ class JWKSCache:
 _jwks_cache = JWKSCache()
 
 
-#: Issued API keys are opaque and carry this prefix so a presented credential
-#: can be routed to the right verifier without trying to parse it as a JWT.
-API_KEY_PREFIX = "sk_"
-
-
 async def decode_token(token: str) -> TokenPayload:
     """Decode and validate a credential.
 
-    Accepts either a JWT session token or an issued API key. An API key is
-    verified against its stored hash and carries only the scopes it was issued
-    with; it never picks up the issuer's roles.
+    Three stacks answer for three kinds of bearer, and the kind is decided
+    from the shape of the string before any of them is consulted:
+
+    * an issued API key (``sk_``) is verified against its stored hash and
+      carries only the scopes it was issued with;
+    * a local session (``ses_``) is resolved against the session store and
+      carries the roles its principal holds *now*;
+    * a federated JWT is verified against the identity provider's JWKS.
+
+    A bearer is never handed to a stack that did not mint it. A session
+    token decoded as a JWT would be checked against rules that cannot cover
+    it, and a JWT resolved as a session would be looked up by a hash of
+    something that was never a session.
 
     Args:
-        token: The credential string
+        token: The credential string, exactly as presented.
 
     Returns:
         Decoded token payload
@@ -206,8 +241,18 @@ async def decode_token(token: str) -> TokenPayload:
     """
     from django.conf import settings as django_settings
 
-    if token.startswith(API_KEY_PREFIX):
-        return _decode_api_key(token)
+    try:
+        kind = classify_credential(token)
+    except ValueError:
+        # Rule 91: an unrecognised bearer is not a default. Nothing is
+        # guessed about who minted it, so it never reaches a decoder.
+        raise UnauthorizedError("Invalid or expired token") from None
+
+    if kind is CredentialKind.API_KEY:
+        return await _decode_api_key(token)
+
+    if kind is CredentialKind.LOCAL_SESSION:
+        return await _decode_session(token)
 
     config = get_keycloak_config()
 
@@ -292,6 +337,112 @@ async def _decode_api_key(raw_key: str) -> TokenPayload:
         iss="api-key",
         tenant_id=str(key.tenant_id) if key.tenant_id else None,
         delegated_scopes=list(key.scopes or []),
+    )
+
+
+async def _decode_session(raw_token: str) -> TokenPayload:
+    """Resolve a local session token into the principal who holds it.
+
+    FAIL-CLOSED on every path: unknown, revoked, expired, orphaned and
+    offboarded sessions all raise, exactly like a bad JWT. There is no branch
+    that treats "could not tell" as allowed.
+
+    **Offboarding is permanent.** A session whose identity has been disabled
+    or removed is revoked, not merely refused. Refusing alone would leave a
+    live credential sitting in the table waiting for the identity to come
+    back, and the kill would have to be remembered by something outside this
+    path.
+
+    **Authority is resolved at request time.** The session row holds no roles
+    and no permissions; they are read from the identity on every request. A
+    grant taken away therefore cannot survive inside a live session, and a
+    session can never carry ``delegated_scopes`` — that flag is what switches
+    authority from roles to scopes, and a session is the person themselves,
+    not a delegation.
+    """
+    from asgiref.sync import sync_to_async
+
+    from admin.aaas.models.identity import LocalIdentity
+    from admin.aaas.models.session import LocalSession
+
+    @sync_to_async
+    def _resolve():
+        """One synchronous block: look up, decide, and make any kill stick.
+
+        Returns the row and its identity, or ``None`` after whatever state
+        change the denial required. The caller turns ``None`` into one
+        uniform failure.
+        """
+        from django.utils import timezone
+
+        from services.common.identity.session import hash_session_token
+
+        try:
+            session = LocalSession.objects.get(
+                token_hash=hash_session_token(raw_token)
+            )
+        except LocalSession.DoesNotExist:
+            # Unknown is the same work as known, so the shape of the
+            # failure cannot be used to probe for live sessions.
+            return None
+
+        now = timezone.now()
+        if not session.is_valid(now=now):
+            # A dead session is not revived by being presented. Expiry is a
+            # timer rather than a kill, so the row is left to age out; only
+            # an unusable principal is revoked below.
+            return None
+
+        principal = as_uuid(session.principal_id)
+        if principal is None:
+            # A session whose holder cannot be named is orphaned. It must
+            # not outlive whatever it used to point at.
+            session.mark_revoked(now=now)
+            session.save(update_fields=["revoked", "revoked_at"])
+            return None
+
+        try:
+            identity = LocalIdentity.objects.get(pk=principal)
+        except LocalIdentity.DoesNotExist:
+            session.mark_revoked(now=now)
+            session.save(update_fields=["revoked", "revoked_at"])
+            return None
+
+        if not identity.is_active:
+            # Offboarding. The credential is killed so that re-enabling the
+            # identity does not silently hand back an old session.
+            session.mark_revoked(now=now)
+            session.save(update_fields=["revoked", "revoked_at"])
+            return None
+
+        # Slide the idle window. If this write fails the session idles out
+        # sooner rather than later, which is the safe direction, so it must
+        # not turn a good credential into a denial.
+        session.last_seen_at = now
+        session.save(update_fields=["last_seen_at"])
+
+        return session, identity
+
+    resolved = await _resolve()
+    if resolved is None:
+        raise UnauthorizedError("Invalid or expired session")
+
+    session, identity = resolved
+
+    return TokenPayload(
+        sub=str(identity.id),
+        # Opaque credential: the store decides whether it is live, not a
+        # claim. These are not consulted for a session and must not become a
+        # second expiry policy beside ``session_decision``.
+        exp=0,
+        iat=0,
+        iss="local-session",
+        email=identity.email or None,
+        preferred_username=identity.username,
+        name=identity.display_name or None,
+        # A person is authorized by roles. Never by scopes.
+        realm_access={"roles": list(identity.roles or [])},
+        session_id=str(session.id),
     )
 
 
