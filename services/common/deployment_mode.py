@@ -40,8 +40,25 @@ class DeploymentMode:
 
     @classmethod
     def _resolve(cls) -> DeploymentModeEnum:
+        """Resolve the deployment mode from the documented chain.
+
+        An **unset** variable resolves to ``DEV``, which is the documented
+        default and is not a fallback over a real value.
+
+        A value that is set but is not one of the three declared modes
+        raises, and names itself. It is never folded into one of them. This
+        resolver decides which identity source answers for a login, so
+        silently reinterpreting ``PROD`` — a value other parts of this
+        codebase accept — as ``DEV`` would authenticate people against an
+        authority nobody chose (Rule 91).
+
+        A refusal is not cached: the failure must be repeatable, or the next
+        call would quietly return the default.
+        """
         if cls._resolved:
-            return cls._mode or DeploymentModeEnum.DEV
+            if cls._mode is None:
+                raise ValueError("deployment mode was never resolved")
+            return cls._mode
 
         mode = os.environ.get("SA01_DEPLOYMENT_MODE", "").strip().upper()
         if not mode:
@@ -53,7 +70,11 @@ class DeploymentMode:
         try:
             cls._mode = DeploymentModeEnum(mode)
         except ValueError:
-            cls._mode = DeploymentModeEnum.DEV
+            # Leave _resolved False so the next call refuses again.
+            raise ValueError(
+                f"Unknown SA01_DEPLOYMENT_MODE {mode!r}: expected one of "
+                f"{sorted(m.value for m in DeploymentModeEnum)}"
+            ) from None
 
         cls._resolved = True
         return cls._mode
