@@ -62,6 +62,9 @@ class KeycloakConfig(BaseModel):
     server_url: str
     realm: str
     client_id: str
+    # Optional by design: a public OIDC client has no secret. The settings layer
+    # normalises a stored empty string to None rather than sending "" to the
+    # provider — an empty string is not a credential.
     client_secret: str | None = None
 
     @property

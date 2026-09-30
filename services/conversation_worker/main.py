@@ -106,22 +106,31 @@ class ConversationWorkerImpl:
 
         All config from env, no hardcoded defaults per VIBE rules.
         """
-        gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE") or "http://localhost:9000"
+        # No ``or "http://localhost:9000"`` here. That substitute made the
+        # required check below unreachable while its own message claimed there
+        # were no hardcoded defaults (VIBE Rule 91).
+        gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
         if not gateway_base:
             raise ValueError(
                 "SA01_WORKER_GATEWAY_BASE is required. No hardcoded defaults per VIBE rules."
             )
         # VIBE Rule 164: the gateway internal token is a credential and comes
-        # from Vault, never from the environment.
+        # from Vault, never from the environment. No ``or ""``: an absent secret
+        # is passed through as absent, and GenerateResponseUseCase refuses to
+        # run on it. Turning it into an empty string would send an empty
+        # X-Internal-Token — a dummy credential on a live request.
         from services.common.unified_secret_manager import get_secret_manager
+
+        # REQUIRED — the model actually sent when a caller names none. No
+        # ``or ""``: an empty model is not a model.
+        default_model = os.environ.get("SA01_LLM_MODEL")
 
         self._gen = GenerateResponseUseCase(
             gateway_base=gateway_base,
-            internal_token=get_secret_manager().get_credential("gateway_internal_token") or "",
+            internal_token=get_secret_manager().get_credential("gateway_internal_token"),
             publisher=self.publisher,
             outbound_topic=self.topics["out"],
-            default_model=os.environ.get("SA01_LLM_MODEL")
-            or "",  # REQUIRED - no hardcoded default per VIBE
+            default_model=default_model,
         )
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,

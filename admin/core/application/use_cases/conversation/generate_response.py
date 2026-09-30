@@ -127,24 +127,69 @@ def normalize_usage(raw: Dict[str, Any] | None) -> Dict[str, int]:
     return {"input_tokens": max(prompt_val, 0), "output_tokens": max(completion_val, 0)}
 
 
+# Values that are placeholders rather than model identifiers. The parameter
+# default used to be the literal ``"unknown"``, which would have reached the
+# gateway as if a model by that name existed (VIBE §1 / §4).
+_PLACEHOLDER_MODELS = frozenset({"unknown", "n/a", "none", "tbd", "todo", "placeholder", ""})
+
+
 class GenerateResponseUseCase:
     """Use case for generating LLM responses."""
 
     def __init__(
         self,
         gateway_base: str,
-        internal_token: str,
+        internal_token: str | None,
         publisher: PublisherProtocol,
         outbound_topic: str,
-        default_model: str = "unknown",
+        default_model: str | None,
     ):
-        """Initialize the instance."""
+        """Initialize the instance.
+
+        ``internal_token`` is a credential, not a string. It is the Vault
+        secret ``gateway_internal_token`` and it is sent as ``X-Internal-Token``
+        on every internal gateway call.
+
+        This used to accept anything and the call sites did
+        ``get_credential(...) or ""``, so an absent secret became an empty
+        header on a live request. An empty string is a dummy credential: it
+        crosses a gate looking like a value nobody issued. A missing secret
+        refuses construction here instead (VIBE Rule 91 / Rule 164).
+
+        ``default_model`` is required and is the model actually sent when the
+        caller names none. Its parameter default used to be the placeholder
+        ``"unknown"``.
+        """
+
+        # Validate before anything is stored or contacted.
+        if not isinstance(internal_token, str) or not internal_token.strip():
+            raise ValueError(
+                "internal_token is required: it is the Vault credential "
+                "gateway_internal_token, sent as X-Internal-Token on every "
+                "internal gateway call. An empty, blank or missing value is not "
+                "a credential and must not be sent. Set "
+                "secret/agent/credentials/gateway_internal_token in Vault."
+            )
+
+        if not isinstance(default_model, str) or not default_model.strip():
+            raise ValueError(
+                "default_model is required: it is the model sent to the gateway "
+                "when the caller names none. An empty or missing value is not a "
+                "model. Set SA01_LLM_MODEL to a real model identifier."
+            )
+        resolved_model = default_model.strip()
+        if resolved_model.lower() in _PLACEHOLDER_MODELS:
+            raise ValueError(
+                "default_model must name a real model, not a placeholder. "
+                f"Got {resolved_model!r}. Set SA01_LLM_MODEL to a real model "
+                "identifier."
+            )
 
         self._gateway_base = gateway_base.rstrip("/")
-        self._internal_token = internal_token
+        self._internal_token = internal_token.strip()
         self._publisher = publisher
         self._outbound_topic = outbound_topic
-        self._default_model = default_model
+        self._default_model = resolved_model
 
     async def execute(self, input_data: GenerateResponseInput) -> GenerateResponseOutput:
         """Generate LLM response."""
@@ -163,12 +208,15 @@ class GenerateResponseUseCase:
                 "messages": [self._message_to_dict(m) for m in input_data.messages],
                 "overrides": overrides,
             }
-            headers = {"X-Internal-Token": self._internal_token or ""}
+            # No ``or ""`` here. The constructor refuses to run without a real
+            # token, so this is always a credential — and writing
+            # ``x or ""`` is what turned a missing secret into an empty header.
+            headers = {"X-Internal-Token": self._internal_token}
 
             # Try streaming first
             try:
                 text, usage, confidence = await self._stream_response(
-                    input_data, payload, headers, model
+                    input_data, payload, headers
                 )
             except Exception as stream_error:
                 LOGGER.warning("Streaming failed, falling back to non-stream: %s", stream_error)
@@ -209,10 +257,17 @@ class GenerateResponseUseCase:
             )
 
     def _build_overrides(self, input_data: GenerateResponseInput) -> Dict[str, Any]:
-        """Build overrides dict, omitting empty values."""
-        ov: Dict[str, Any] = {}
-        if input_data.model:
-            ov["model"] = input_data.model
+        """Build overrides dict, omitting empty values.
+
+        The model is always present. ``execute`` resolves
+        ``input_data.model or self._default_model``, and that resolved value is
+        what the gateway must use. Keying this off ``input_data.model`` alone
+        meant the configured default was computed and then discarded, so a
+        deployment that set one silently got the gateway's own default instead.
+        """
+        ov: Dict[str, Any] = {
+            "model": (input_data.model or self._default_model).strip(),
+        }
         if input_data.base_url and input_data.base_url.strip():
             ov["base_url"] = input_data.base_url
         if input_data.temperature is not None:
@@ -232,9 +287,13 @@ class GenerateResponseUseCase:
         input_data: GenerateResponseInput,
         payload: Dict[str, Any],
         headers: Dict[str, str],
-        model: str,
     ) -> tuple[str, Dict[str, int], Optional[float]]:
-        """Stream response from gateway."""
+        """Stream response from gateway.
+
+        The model travels in ``payload["overrides"]["model"]``. It used to be
+        passed in here as well and never read — a parameter that promised
+        influence over the request and had none.
+        """
         import httpx
 
         url = f"{self._gateway_base}/v1/llm/invoke/stream"

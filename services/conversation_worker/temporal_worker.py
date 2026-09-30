@@ -82,11 +82,15 @@ def _build_use_case():
 
     gen = GenerateResponseUseCase(
         gateway_base=gateway_base,
-        internal_token=get_secret_manager().get_credential("gateway_internal_token") or "",
+        # No ``or ""``: an absent Vault secret is passed through as absent and
+        # GenerateResponseUseCase refuses to run on it. Substituting an empty
+        # string would send an empty X-Internal-Token — a dummy credential on a
+        # live request (VIBE Rule 164).
+        internal_token=get_secret_manager().get_credential("gateway_internal_token"),
         publisher=publisher,
         outbound_topic=os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
-        default_model=os.environ.get("SA01_LLM_MODEL")
-        or "",  # REQUIRED - no hardcoded default per VIBE
+        # REQUIRED, and no ``or ""``: an empty model is not a model.
+        default_model=os.environ.get("SA01_LLM_MODEL"),
     )
     proc = ProcessMessageUseCase(
         session_repo=store,

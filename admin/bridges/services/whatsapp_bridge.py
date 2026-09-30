@@ -398,9 +398,17 @@ def verify_subscription(
     # Vault, never from the environment.
     from services.common.unified_secret_manager import get_secret_manager
 
-    expected = (
-        verify_token or get_secret_manager().get_credential("wa_cloud_webhook_verify_token") or ""
+    expected = verify_token or get_secret_manager().get_credential(
+        "wa_cloud_webhook_verify_token"
     )
+    # Fail closed here, at the source. This used to read ``... or ""``, which
+    # manufactured an empty verify token and then relied on
+    # ``verify_webhook_challenge`` rejecting it. An absent credential must not
+    # be turned into "" and compared against — that is a dummy standing in for
+    # a secret. No expected token means no subscription.
+    if not expected:
+        return None
+
     from services.bridge_worker.drivers.whatsapp import verify_webhook_challenge
 
     return verify_webhook_challenge(mode, token, challenge, expected)
