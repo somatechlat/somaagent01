@@ -37,8 +37,21 @@ class ObjectStoreUnavailable(RuntimeError):
     """Raised when MinIO credentials cannot be resolved from Vault."""
 
 
-def _topology(name: str, default: str) -> str:
-    """Read non-secret topology: Django settings first, then env."""
+def _topology(name: str) -> str:
+    """Read non-secret topology: Django settings first, then env.
+
+    Required — there is deliberately no default. This used to be
+    ``_topology("MINIO_ENDPOINT", "http://minio:9000")`` and
+    ``_topology("MINIO_BUCKET", "soma-artefacts")``: a guessed endpoint is a
+    silent fallback under another name. It names a host the operator never
+    chose, and in the Standalone topology no MinIO container is even started,
+    so the guess was a destination that did not exist (VIBE Rule 91).
+
+    Raises:
+        ObjectStoreUnavailable: naming the variable that must be set. The
+            message never quotes a guessed value, so it cannot read as though
+            a default came from somewhere real.
+    """
     try:
         from django.conf import settings
 
@@ -47,7 +60,15 @@ def _topology(name: str, default: str) -> str:
             return str(value)
     except Exception:
         pass
-    return os.environ.get(name, default)
+    value = os.environ.get(name)
+    if not value:
+        raise ObjectStoreUnavailable(
+            f"{name} is not configured. Set it to the real value in "
+            f"config/settings.py or the environment. There is no default: a "
+            f"guessed location would send data somewhere the operator never "
+            f"chose (VIBE Rule 91)."
+        )
+    return value
 
 
 def _normalize_endpoint(raw: str) -> tuple[str, bool]:
@@ -193,8 +214,10 @@ def get_object_store() -> MinioObjectStore:
             f"default credentials are permitted.{detail}"
         )
 
-    endpoint, scheme_secure = _normalize_endpoint(_topology("MINIO_ENDPOINT", "http://minio:9000"))
-    bucket = _topology("MINIO_BUCKET", "soma-artefacts")
+    # Both are required. No defaults: a guessed endpoint or bucket is a silent
+    # fallback (VIBE Rule 91), and neither value is derivable.
+    endpoint, scheme_secure = _normalize_endpoint(_topology("MINIO_ENDPOINT"))
+    bucket = _topology("MINIO_BUCKET")
     secure = scheme_secure or os.environ.get("MINIO_SECURE", "").lower() in {"1", "true", "yes"}
 
     return MinioObjectStore(
