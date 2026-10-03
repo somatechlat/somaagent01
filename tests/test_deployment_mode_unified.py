@@ -55,19 +55,20 @@ class TestContextBuilderDeploymentMode:
     """CTX-002: Test ContextBuilder deployment mode memory retrieval."""
 
     @pytest.mark.asyncio
-    async def test_aaas_mode_memory_retrieval_graceful_failure(self):
-        """Test AAAS mode memory retrieval fails gracefully with no server."""
+    async def test_aaas_mode_memory_lane_requires_hits(self):
+        """AAAS mode: a caller that did not recall is rejected, not papered over.
+
+        The old behaviour dropped through to ``"[Memory recall unavailable]"``
+        when no client was attached — a populated-looking lane holding nothing.
+        The lane now requires the caller's recall result.
+        """
         original = _set_deployment_mode("aaas")
         try:
             import admin.core.context.builder as cb_module
 
             importlib.reload(cb_module)
 
-            from admin.core.somabrain_client import SomaBrainClient
-
-            # Real client pointing to a non-existent server
-            client = SomaBrainClient(base_url="http://localhost:9999")
-            builder = cb_module.ContextBuilder(brain_client=client)
+            builder = cb_module.ContextBuilder()
 
             capsule = SimpleNamespace(
                 tenant_id="test-tenant",
@@ -75,31 +76,27 @@ class TestContextBuilderDeploymentMode:
                 body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
             )
 
-            result = await builder._build_memory_lane(
-                capsule=capsule,
-                query="test query",
-                persona=capsule.body["persona"],
-                budget=100,
-            )
-            # Should fall back gracefully when SomaBrain is unreachable
-            assert result == "[Memory recall unavailable]"
-            print("  ✅ AAAS mode: Memory retrieval graceful failure handled")
+            with pytest.raises(ValueError, match="memory_hits is required"):
+                await builder._build_memory_lane(
+                    capsule=capsule,
+                    query="test query",
+                    persona=capsule.body["persona"],
+                    budget=100,
+                )
+            print("  ✅ AAAS mode: missing recall is rejected, not faked")
         finally:
             _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
-    async def test_standalone_mode_memory_retrieval_graceful_failure(self):
-        """Test STANDALONE mode memory retrieval fails gracefully."""
+    async def test_standalone_mode_memory_lane_requires_hits(self):
+        """Standalone mode: same contract — a missing recall is a caller bug."""
         original = _set_deployment_mode("standalone")
         try:
             import admin.core.context.builder as cb_module
 
             importlib.reload(cb_module)
 
-            from admin.core.somabrain_client import SomaBrainClient
-
-            client = SomaBrainClient(base_url="http://localhost:9999")
-            builder = cb_module.ContextBuilder(brain_client=client)
+            builder = cb_module.ContextBuilder()
 
             capsule = SimpleNamespace(
                 tenant_id="test-tenant",
@@ -107,14 +104,14 @@ class TestContextBuilderDeploymentMode:
                 body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
             )
 
-            result = await builder._build_memory_lane(
-                capsule=capsule,
-                query="test query",
-                persona=capsule.body["persona"],
-                budget=100,
-            )
-            assert result == "[Memory recall unavailable]"
-            print("  ✅ STANDALONE mode: Memory retrieval graceful failure handled")
+            with pytest.raises(ValueError, match="memory_hits is required"):
+                await builder._build_memory_lane(
+                    capsule=capsule,
+                    query="test query",
+                    persona=capsule.body["persona"],
+                    budget=100,
+                )
+            print("  ✅ STANDALONE mode: missing recall is rejected, not faked")
         finally:
             _restore_deployment_mode(original)
 

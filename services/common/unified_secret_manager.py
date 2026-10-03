@@ -108,11 +108,17 @@ class UnifiedSecretManager:
         )
 
     def delete_provider_key(self, provider: str) -> bool:
-        """Delete API key for LLM provider from Vault."""
+        """Delete API key for LLM provider from Vault.
+
+        The key lives *in* the document at ``VAULT_API_KEYS_PATH`` — the same
+        place ``set_provider_key`` writes it. Deleting a document named after
+        the provider instead would return ``True`` and leave the key readable.
+        """
         if not self._is_available():
             return False
         return delete_kv_secret(
-            path=f"{VAULT_API_KEYS_PATH}/{provider.lower()}",
+            path=VAULT_API_KEYS_PATH,
+            key=f"{provider.lower()}_api_key",
             logger=LOGGER,
         )
 
@@ -150,11 +156,18 @@ class UnifiedSecretManager:
         )
 
     def delete_credential(self, key: str) -> bool:
-        """Delete credential from Vault."""
+        """Delete credential from Vault.
+
+        The credential lives *in* the document at ``VAULT_CREDENTIALS_PATH``,
+        which is where ``set_credential`` writes it. Deleting a document named
+        after the key would return ``True`` and leave the credential readable
+        — a revocation that does not revoke.
+        """
         if not self._is_available():
             return False
         return delete_kv_secret(
-            path=f"{VAULT_CREDENTIALS_PATH}/{key}",
+            path=VAULT_CREDENTIALS_PATH,
+            key=key,
             logger=LOGGER,
         )
 

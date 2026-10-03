@@ -146,6 +146,18 @@ class BaseSettings(ABC):
     # Temporal is topology (a host:port). Empty means "no temporal for this
     # deployment", which is a real state, not a fallback.
     temporal_host: str = field(default="")
+
+    # HTTP-probed services this deployment actually runs: name -> health URL.
+    #
+    # Rule 100 — this map is the inventory. ``InfrastructureHealthChecker``
+    # probes exactly these and nothing else, which is how the stack stopped
+    # advertising Flink, Qdrant, Whisper, Kokoro and a "SomaBrain Core" that
+    # no compose file under ``infra/`` runs. A service absent from this map is
+    # not deployed here; that is a real state, not a missing value.
+    #
+    # Postgres and Redis are not in here on purpose: they are probed by
+    # connecting, from the ``postgres_*`` / ``redis_*`` topology above.
+    service_health_endpoints: Dict[str, str] = field(default_factory=dict)
     # Optional LiteLLM gateway base URL. Empty means the provider library's
     # own defaults apply — again a real state, not a missing value.
     llm_base_url: str = field(default="")
@@ -250,6 +262,12 @@ _STANDALONE_TOPOLOGY: Dict[str, Any] = {
     "sa01_default_token_budget": 4096,
     "temporal_host": "temporal:7233",
     "llm_base_url": "",
+    # Only services that exist in infra/standalone/docker-compose.yml.
+    # Postgres and Redis are connected to, not HTTP-probed.
+    "service_health_endpoints": {
+        "keycloak": "http://somaagent_keycloak:8080/health/ready",
+        "temporal": "http://temporal:7233/health",
+    },
 }
 
 _AAAS_TOPOLOGY: Dict[str, Any] = {
@@ -292,6 +310,11 @@ _AAAS_TOPOLOGY: Dict[str, Any] = {
     "sa01_default_token_budget": 4096,
     "temporal_host": "somastack_temporal:7233",
     "llm_base_url": "",
+    # Only services that exist in infra/aaas/aaas/docker-compose.yml.
+    "service_health_endpoints": {
+        "keycloak": "http://somastack_keycloak:8080/health/ready",
+        "temporal": "http://somastack_temporal:7233/health",
+    },
 }
 
 

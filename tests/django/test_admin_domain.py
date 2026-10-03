@@ -32,8 +32,13 @@ class TestCoreAdminEndpoints:
         assert router is not None
 
     def test_memory_router_exists(self):
-        """Test memory router is properly configured."""
-        from admin.core.api.memory import router
+        """Memory has one home: ``admin.memory.api.memory``.
+
+        The former second home at ``admin.core.api.memory`` is deleted — it was
+        mounted at ``/core/memory`` with no callers while the UI used
+        ``/memory``. One concern, one module.
+        """
+        from admin.memory.api.memory import router
 
         assert router is not None
 

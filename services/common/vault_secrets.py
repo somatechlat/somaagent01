@@ -290,6 +290,7 @@ def save_kv_secret(
 def delete_kv_secret(
     path: str,
     *,
+    key: Optional[str] = None,
     mount_point: str = "secret",
     url: Optional[str] = None,
     namespace: Optional[str] = None,
@@ -298,9 +299,33 @@ def delete_kv_secret(
     verify: Optional[str | bool] = None,
     logger: Optional[logging.Logger] = None,
 ) -> bool:
-    """Delete a KV v2 secret from Vault.
+    """Delete a secret, or one key of a secret, from Vault.
 
-    Returns True on success. Auth/transport failure raises ``VaultAuthError``.
+    ``save_kv_secret`` writes a *key into* the document at ``path``. Without a
+    matching key-level delete, the two operations address different places:
+    saving ``minio_access_key`` puts it in ``agent/credentials``, while a bare
+    delete of ``agent/credentials/minio_access_key`` removes a document that
+    was never written. ``delete_credential`` used to do exactly that, return
+    ``True``, and leave the credential readable — a revocation that does not
+    revoke.
+
+    Args:
+        path: the KV v2 document path.
+        key: when given, remove this key from the document at ``path`` and
+            leave the rest of the document alone. When omitted, delete the
+            whole document at ``path`` including all versions.
+
+    Returns:
+        True on success. Auth/transport failure raises ``VaultAuthError``.
+        A refused write raises ``RuntimeError`` — never a soft ``False``.
+
+    Note:
+        A key-level delete rewrites the live document without that key. Vault
+        KV v2 keeps prior versions of the document, so an old value may still
+        be recoverable from history until those versions are destroyed. That
+        is Vault's versioning model, not a fallback in this code; destroying
+        versions is a separate, deliberate operation because it affects every
+        key that shares the document.
     """
     log = logger or LOGGER
 
@@ -326,16 +351,53 @@ def delete_kv_secret(
     client = hvac_mod.Client(url=url, token=token, namespace=namespace, verify=verify_value)
 
     try:
-        client.secrets.kv.v2.delete_metadata_and_all_versions(
-            path=path,
-            mount_point=mount_point,
-        )
-        log.debug("Vault secret deleted", extra={"path": path})
+        if key is None:
+            client.secrets.kv.v2.delete_metadata_and_all_versions(
+                path=path,
+                mount_point=mount_point,
+            )
+            log.debug("Vault secret deleted", extra={"path": path})
+        else:
+            # Same read-modify-write as save_kv_secret: KV v2 stores ONE map
+            # per path and a write REPLACES it, so dropping a key means
+            # rewriting the document without it.
+            try:
+                existing = client.secrets.kv.v2.read_secret_version(
+                    path=path, mount_point=mount_point
+                )
+                document = dict(
+                    ((existing.get("data") or {}).get("data") or {})
+                    if isinstance(existing, dict)
+                    else {}
+                )
+            except Exception as exc:
+                if type(exc).__name__ not in {"InvalidPath", "NotFound"}:
+                    raise
+                document = {}
+
+            if key not in document:
+                # Nothing to remove. Still true — the key is not there.
+                log.debug(
+                    "Vault key already absent",
+                    extra={"path": path, "key": key},
+                )
+                load_kv_secret.cache_clear()
+                return True
+
+            del document[key]
+            client.secrets.kv.v2.create_or_update_secret(
+                path=path,
+                secret=document,
+                mount_point=mount_point,
+            )
+            log.debug("Vault secret key deleted", extra={"path": path, "key": key})
+
         load_kv_secret.cache_clear()
         return True
     except Exception as exc:
         raise RuntimeError(
-            f"Vault refused the delete at {mount_point}/{path}: "
+            f"Vault refused the delete at {mount_point}/{path}"
+            f"{'' if key is None else f' [{key}]'}: "
             f"{type(exc).__name__}. The key was NOT deleted — do not carry on "
             f"as if it were."
         ) from None

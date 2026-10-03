@@ -13,14 +13,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 
 from prometheus_client import Counter, Gauge
 
-from services.common.redis_pool import get_async_redis_pool
+from services.common.redis_pool import get_async_redis_pool, get_redis_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,11 +63,11 @@ class RedisRateLimiter:
     ):
         """Initialize the instance."""
 
-        self.redis_url = (
-            redis_url
-            or os.getenv("SA01_REDIS_URL")
-            or os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        )
+        # One resolver. ``redis_pool.get_redis_url`` already owns the
+        # environment chain; repeating it here with a private default is a
+        # second opinion about where Redis is, and the two have already
+        # disagreed in practice.
+        self.redis_url = redis_url or get_redis_url()
         self.default_limit = default_limit
         self.default_window_seconds = default_window_seconds
         self.key_prefix = key_prefix
@@ -118,9 +117,6 @@ class RedisRateLimiter:
         Returns:
             RateLimitResult with allowed status and remaining quota
         """
-        if not self._connected:
-            await self.connect()
-
         # Build key
         key_parts = [self.key_prefix, tenant_id]
         if endpoint:
@@ -161,6 +157,13 @@ class RedisRateLimiter:
         """
 
         try:
+            # ``connect`` sits inside the try like every other Redis call.
+            # Outside it, a refused connection escaped ``check`` entirely and
+            # the documented fail-closed contract only held for whatever the
+            # caller wrapped around us.
+            if not self._connected:
+                await self.connect()
+
             result = await self._redis.eval(
                 lua_script,
                 1,  # Number of keys

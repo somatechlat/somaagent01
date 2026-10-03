@@ -35,7 +35,11 @@ class AuditStore(BaseStore[Dict[str, Any]]):
             action=event_type,
             actor_id=actor or None,
             resource_type=resource or "",
-            resource_id=resource or None,
+            # Not ``resource or None``: ``resource`` here is a resource *name*
+            # ("auth", "tenant"), and ``resource_id`` is a UUIDField. Writing
+            # a name into it raises, and callers around this store swallow the
+            # error, so the event vanishes. This API carries no resource id.
+            resource_id=None,
             new_value=payload or {},
         )
 

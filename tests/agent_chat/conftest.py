@@ -202,14 +202,14 @@ async def governor(real_infrastructure):
 
 @pytest.fixture
 def context_builder(real_infrastructure):
-    """Get configured ContextBuilder."""
-    from admin.core.context.builder import ContextBuilder
-    from admin.core.somabrain_client import SomaBrainClient
+    """Get a ContextBuilder.
 
-    brain_client = SomaBrainClient.get()
-    if brain_client is None:
-        pytest.skip("SomaBrain not configured")
-    return ContextBuilder(brain_client=brain_client)
+    It takes no client: the memory lane is fed by ``memory_hits`` at build
+    time, from ``MemoryGateway.recall()``. There is no DI slot to configure.
+    """
+    from admin.core.context.builder import ContextBuilder
+
+    return ContextBuilder()
 
 
 # =============================================================================
