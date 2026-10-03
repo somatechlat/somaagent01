@@ -23,14 +23,29 @@ from admin.core.agentiq.settings import (
 
 @dataclass(frozen=True)
 class IntelligenceRow:
-    """Derivation from intelligence_level."""
+    """Derivation from intelligence_level.
 
-    temperature: float
-    max_tokens: int
+    CAPABILITY only. Response style (temperature, verbosity) lives on its own
+    axis: raising intelligence to get a better model must not also make it
+    more random or more verbose. A factual task wants a smart model at a low
+    temperature.
+    """
+
     rlm_iterations: int
     recall_limit: int
     model_tier: ModelTier
     brain_query_enabled: bool
+
+
+@dataclass(frozen=True)
+class StyleRow:
+    """Derivation from response_style.
+
+    STYLE only. Independent of how capable the model is.
+    """
+
+    temperature: float
+    max_tokens: int
 
 
 @dataclass(frozen=True)
@@ -55,32 +70,24 @@ class ResourceRow:
 # Level ranges: 1-3, 4-6, 7-8, 9-10
 INTELLIGENCE_TABLE: Dict[Tuple[int, int], IntelligenceRow] = {
     (1, 3): IntelligenceRow(
-        temperature=0.3,
-        max_tokens=512,
         rlm_iterations=1,
         recall_limit=5,
         model_tier=ModelTier.BUDGET,
         brain_query_enabled=False,
     ),
     (4, 6): IntelligenceRow(
-        temperature=0.7,
-        max_tokens=2048,
         rlm_iterations=2,
         recall_limit=15,
         model_tier=ModelTier.STANDARD,
         brain_query_enabled=True,
     ),
     (7, 8): IntelligenceRow(
-        temperature=0.8,
-        max_tokens=4096,
         rlm_iterations=3,
         recall_limit=25,
         model_tier=ModelTier.PREMIUM,
         brain_query_enabled=True,
     ),
     (9, 10): IntelligenceRow(
-        temperature=0.9,
-        max_tokens=8192,
         rlm_iterations=5,
         recall_limit=50,
         model_tier=ModelTier.FLAGSHIP,
@@ -113,6 +120,22 @@ AUTONOMY_TABLE: Dict[Tuple[int, int], AutonomyRow] = {
         egress_allowed=EgressAllowed.UNRESTRICTED,
     ),
 }
+
+
+# === RESPONSE STYLE TABLE ===
+# Independent of intelligence. precise -> factual/short, creative -> open/long.
+STYLE_TABLE: Dict[str, StyleRow] = {
+    "precise": StyleRow(temperature=0.2, max_tokens=1024),
+    "balanced": StyleRow(temperature=0.7, max_tokens=2048),
+    "creative": StyleRow(temperature=0.95, max_tokens=4096),
+}
+DEFAULT_RESPONSE_STYLE = "balanced"
+
+
+def lookup_style(style: str | None) -> StyleRow:
+    """Look up response style. Unknown values fall back to the default style."""
+    key = (style or DEFAULT_RESPONSE_STYLE).strip().lower()
+    return STYLE_TABLE.get(key, STYLE_TABLE[DEFAULT_RESPONSE_STYLE])
 
 
 # === RESOURCE TABLE ===

@@ -53,9 +53,12 @@ class DerivedSettings(BaseModel):
     PhD QA: All fields have bounds validation.
     """
 
-    # --- From INTELLIGENCE (1-10) ---
+    # --- From RESPONSE STYLE (independent of capability) ---
+    response_style: str = Field(description="precise | balanced | creative")
     temperature: float = Field(ge=0.0, le=1.0, description="LLM temperature")
     max_tokens: int = Field(ge=256, le=16384, description="Max output tokens")
+
+    # --- From INTELLIGENCE (1-10) : capability only ---
     rlm_iterations: int = Field(ge=1, le=10, description="RLM Mind-Body loop max")
     recall_limit: int = Field(ge=1, le=100, description="Memory recall limit")
     model_tier: ModelTier = Field(description="LLM model tier")

@@ -587,7 +587,12 @@ class V3ChatOrchestrator:
             # tools=tools_for_llm is passed to LiteLLM every round; tool_calls
             # come back natively (never regex-parsed) and are executed via the
             # capsule ToolRegistry under capsule tool_policy.
-            llm = get_chat_model(provider=model.provider, name=model.name)
+            llm = get_chat_model(
+                provider=model.provider,
+                name=model.name,
+                temperature=iq.temperature,
+                max_tokens=iq.max_tokens,
+            )
             messages = self._to_langchain_messages(context, history, turn.user_message)
             self._metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
 
@@ -784,7 +789,29 @@ class V3ChatOrchestrator:
                 return None
             return await client.get_neuromodulators(tenant_id=tenant_id)
 
-        history, memory_hits, body, neuro = await asyncio.gather(
+        async def _brain_eval_task():
+            # The cognitive co-processor: SomaBrain scores the turn and can
+            # suggest tools. This is the first hop of the three-way learning
+            # loop (agent asks brain -> brain scores -> memory stores). The
+            # sync REST path has always had it; the live stream path did not,
+            # so the chat the user actually uses never consulted the brain.
+            client = await SomaBrainClient.get_async()
+            if client is None:
+                return None
+            return await self._cb_somabrain.call(
+                client.context_evaluate,
+                request={
+                    "query": turn.user_message,
+                    "tenant_id": tenant_id,
+                    "persona_id": str(capsule.id),
+                    "context": {
+                        "system_prompt": capsule.system_prompt,
+                        "history_length": len(turn.history or []),
+                    },
+                },
+            )
+
+        history, memory_hits, body, neuro, brain_eval = await asyncio.gather(
             asyncio.wait_for(history_task, timeout=_history_timeout()),
             asyncio.wait_for(
                 self._recall_memories(turn.user_message, tenant_id, capsule),
@@ -792,6 +819,7 @@ class V3ChatOrchestrator:
             ),
             asyncio.wait_for(body_task, timeout=2.0),
             asyncio.wait_for(_neuro_task(), timeout=2.0),
+            asyncio.wait_for(_brain_eval_task(), timeout=2.0),
             return_exceptions=True,
         )
         if isinstance(history, BaseException):
@@ -871,7 +899,12 @@ class V3ChatOrchestrator:
             return
 
         # Stream LLM with native tool-calling loop (Phase 8-9)
-        llm = get_chat_model(provider=model.provider, name=model.name)
+        llm = get_chat_model(
+            provider=model.provider,
+            name=model.name,
+            temperature=iq.temperature,
+            max_tokens=iq.max_tokens,
+        )
         messages = self._to_langchain_messages(context, history, turn.user_message)
 
         response_chunks: List[str] = []
@@ -915,6 +948,13 @@ class V3ChatOrchestrator:
             coordinate=assistant_coord,
         )
         await self._bump_message_count(turn.conversation_id or "")
+        # Completion metrics for the stream path. The sync path has always
+        # recorded this; without it the live chat lane is invisible in SLOs.
+        self._metrics.record_turn_complete(
+            turn_id=getattr(turn, "turn_id", "") or "",
+            model_id=str(getattr(turn, "model_id", "") or ""),
+            elapsed_ms=0.0,
+        )
         await self._publish_cognitive_learning(
             tenant_id=tenant_id,
             session_id=turn.conversation_id or turn_id,
@@ -1196,18 +1236,21 @@ class V3ChatOrchestrator:
         """
         gateway = _require_memory_gateway()
 
-        recall_limit = 10
-        body = getattr(capsule, "_cached_body", None) if capsule is not None else None
-        if capsule is not None and body is None and hasattr(capsule, "async_body"):
-            body = await capsule.async_body()
-        body = body or {}
-        persona = body.get("persona", {}) if isinstance(body, dict) else {}
-        memory_config = persona.get("memory", {}) or {}
+        # AgentIQ derives recall_limit from the intelligence knob. It is the
+        # authority here; the capsule's memory config overrides it, and the
+        # final fallback is a declared setting, never a literal in the code.
         try:
-            recall_limit = int(memory_config.get("recall_limit", 10) or 10)
-        except (TypeError, ValueError):
-            recall_limit = 10
-
+            memory_config = capsule.body.get("memory", {}) if capsule.body else {}
+            if not memory_config:
+                async_body = await capsule.async_body() if hasattr(capsule, "async_body") else {}
+                memory_config = (async_body or {}).get("memory", {})
+            iq_recall_limit = iq.recall_limit if iq is not None else None
+            recall_limit = int(
+                memory_config.get("recall_limit") or iq_recall_limit
+                or _mem_setting("MEM_RECALL_LIMIT", 10)
+            )
+        except Exception:
+            recall_limit = int(_mem_setting("MEM_RECALL_LIMIT", 10))
         try:
             hits = await gateway.recall(query=query, k=recall_limit, tenant_id=tenant_id)
             return list(hits or [])
@@ -1224,7 +1267,7 @@ class V3ChatOrchestrator:
         model_id: str,
         elapsed_ms: int,
         token_count_out: int,
-        salience: float = 0.5,
+        salience: float | None = None,
     ) -> str:
         """Store a turn in semantic memory (T-1) via the MemoryGateway seam.
 
@@ -1388,7 +1431,7 @@ class V3ChatOrchestrator:
         conversation_id: str,
         model_id: str,
         elapsed_ms: int,
-        salience: float = 0.5,
+        salience: float | None = None,
     ) -> None:
         """Non-blocking episodic memory storage via the MemoryGateway seam."""
         content = f"User: {user_message}\nAssistant: {assistant_response}"

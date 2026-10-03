@@ -390,12 +390,18 @@ class UnifiedGate:
             return False
 
         # Then the narrowing layers, each consulted only when attached.
+        # T-5 fail-closed: there is no fallback tenant on an authorisation
+        # path. Defaulting a missing tenant would answer the request for
+        # the wrong subject.
+        if not tenant_id:
+            logger.warning("Endpoint permission denied: no tenant on the request")
+            return False
         try:
             client = self._get_policy_client()
             if client.is_configured:
                 opa_allowed = await client.evaluate(
                     PolicyRequest(
-                        tenant=tenant_id or "default",
+                        tenant=tenant_id,
                         persona_id=None,
                         action=permission,
                         resource="endpoint",
@@ -415,7 +421,7 @@ class UnifiedGate:
                 user_id=user_id,
                 permission=permission,
                 resource_type="tenant",
-                resource_id=tenant_id or "default",
+                resource_id=tenant_id,
             )
         except Exception as exc:
             logger.warning("Endpoint permission error (FAIL-CLOSED): %s", exc)

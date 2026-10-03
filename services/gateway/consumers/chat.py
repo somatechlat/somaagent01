@@ -125,8 +125,24 @@ CONTROL_MSG_TYPES = {
 # every few characters. Tokens are buffered and flushed together either when
 # the buffer is full or when this deadline expires - both far below the
 # ~100ms human perception threshold, so nothing looks slower.
-_FLUSH_INTERVAL_S = 0.02
-_FLUSH_MAX_CHARS = 512
+def _stream_setting(name: str, default):
+    """Resolve one stream-coalescing knob.
+
+    VIBE §4: no hardcoded values. Django settings is the authority, then env
+    for standalone scripts, then the caller's declared default. Same chain the
+    memory seam uses (``get_memory_setting``).
+    """
+    from services.common.memory_contract import get_memory_setting
+
+    return get_memory_setting(name, default)
+
+
+# Stream coalescing. A WebSocket frame per token is the dominant cost of a
+# stream turn. Tokens are buffered and flushed together either when the buffer
+# is full or when this deadline expires - both far below the ~100ms human
+# perception threshold. Both values are settings, not literals.
+_FLUSH_INTERVAL_S = float(_stream_setting("WS_STREAM_FLUSH_INTERVAL_S", 0.02))
+_FLUSH_MAX_CHARS = int(_stream_setting("WS_STREAM_FLUSH_MAX_CHARS", 512))
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):

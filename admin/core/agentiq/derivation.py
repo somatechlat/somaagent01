@@ -15,9 +15,11 @@ from typing import Any, cast, Dict, Literal, TYPE_CHECKING
 
 from admin.core.agentiq.settings import DerivedSettings
 from admin.core.agentiq.tables import (
+    DEFAULT_RESPONSE_STYLE,
     lookup_autonomy,
     lookup_intelligence,
     lookup_resource,
+    lookup_style,
 )
 
 if TYPE_CHECKING:
@@ -63,17 +65,27 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
         if knobs.get("resource_budget") is not None
         else resolve_setting("AGENTIQ_RESOURCE_BUDGET", capsule=capsule, default=0.10)
     )
+    response_style: str = str(
+        knobs.get("response_style")
+        if knobs.get("response_style") is not None
+        else resolve_setting(
+            "AGENTIQ_RESPONSE_STYLE", capsule=capsule, default=DEFAULT_RESPONSE_STYLE
+        )
+    )
 
     # Lookup derivations from tables
     intel = lookup_intelligence(intelligence_level)
     auto = lookup_autonomy(autonomy_level)
     resource = lookup_resource(resource_budget)
+    style = lookup_style(response_style)
 
     # Build and return immutable settings
     return DerivedSettings(
-        # From INTELLIGENCE
-        temperature=intel.temperature,
-        max_tokens=intel.max_tokens,
+        # From RESPONSE STYLE (independent of how capable the model is)
+        response_style=response_style.strip().lower(),
+        temperature=style.temperature,
+        max_tokens=style.max_tokens,
+        # From INTELLIGENCE : capability
         rlm_iterations=intel.rlm_iterations,
         recall_limit=intel.recall_limit,
         model_tier=intel.model_tier,
@@ -93,6 +105,7 @@ def derive_from_knobs(
     intelligence_level: int | None = None,
     autonomy_level: int | None = None,
     resource_budget: float | None = None,
+    response_style: str | None = None,
 ) -> DerivedSettings:
     """
     Derive settings from raw knob values.
@@ -117,13 +130,20 @@ def derive_from_knobs(
     if resource_budget is None:
         resource_budget = float(resolve_setting("AGENTIQ_RESOURCE_BUDGET", default=0.10))
 
+    if response_style is None:
+        response_style = str(
+            resolve_setting("AGENTIQ_RESPONSE_STYLE", default=DEFAULT_RESPONSE_STYLE)
+        )
+
     intel = lookup_intelligence(intelligence_level)
     auto = lookup_autonomy(autonomy_level)
     resource = lookup_resource(resource_budget)
+    style = lookup_style(response_style)
 
     return DerivedSettings(
-        temperature=intel.temperature,
-        max_tokens=intel.max_tokens,
+        response_style=response_style.strip().lower(),
+        temperature=style.temperature,
+        max_tokens=style.max_tokens,
         rlm_iterations=intel.rlm_iterations,
         recall_limit=intel.recall_limit,
         model_tier=intel.model_tier,

@@ -283,7 +283,11 @@ class SomaBrainClient:
 
         VIBE Rule 1: NO BULLSHIT - Real API call to somabrain /memory/remember
         """
-        effective_tenant = tenant_id or tenant or "default"
+        effective_tenant = tenant_id or tenant
+        if not effective_tenant:
+            # T-5 fail-closed: a memory write with no tenant is a refusal,
+            # never a write into a shared "default" namespace.
+            raise ValueError("tenant_id is required for a memory write")
         payload = payload or {}
         if content is not None:
             payload = {
