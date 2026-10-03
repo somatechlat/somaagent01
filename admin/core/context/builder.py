@@ -48,6 +48,12 @@ def _token_count(text: str) -> int:
 # did not exist, and no production caller ever passed it.
 
 
+# Shown in the memory lane when SomaBrain could not be reached. The turn
+# continues; the user is told the truth rather than getting no answer or a
+# crash. It is NOT shown when recall ran and found nothing.
+_MEMORY_UNAVAILABLE = "[Long-term memory unavailable this turn]"
+
+
 class ContextBuilder:
     """
     5-Lane context builder for prompt assembly.
@@ -200,11 +206,13 @@ class ContextBuilder:
         caller, not a licence to read memory another way.
         """
         if memory_hits is None:
-            raise ValueError(
-                "memory_hits is required: pass MemoryGateway.recall() output, "
-                "or [] if recall ran and found nothing. The memory lane has no "
-                "second read path."
-            )
+            # Recall did not produce a result this turn. That is an outage of
+            # SomaBrain, not a caller bug: MemoryGateway.recall() raises
+            # MemoryRecallUnavailable and the orchestrator turns that into None.
+            # The turn must degrade honestly and continue. What is still
+            # forbidden is reading memory any other way - there is no second
+            # read path here.
+            return _MEMORY_UNAVAILABLE
         return self._format_memory_hits(memory_hits, budget)
 
     def _format_memory_hits(self, hits: List[Any], budget: int) -> str:
