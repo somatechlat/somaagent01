@@ -40,9 +40,9 @@ class NoCapableModelError(Exception):
 class SelectedModel:
     """Result of model selection."""
 
-    provider: str  # "openrouter", "openai", "anthropic"
-    name: str  # "gpt-4o", "claude-sonnet-4-20250514"
-    display_name: str  # "GPT-4o"
+    provider: str  # e.g. "groq", "openai", "anthropic"
+    name: str  # LLMModelConfig.name — never an invented catalog entry
+    display_name: str
     capabilities: List[str] = field(default_factory=list)
     priority: int = 0  # Higher = preferred
     cost_tier: str = "standard"  # free, low, standard, premium
@@ -139,9 +139,14 @@ async def select_model(
 
         models = await _query_models()
 
-    except ImportError:
-        logger.warning("LLMModelConfig not available, using fallback catalog")
-        models = _get_fallback_catalog()
+    except ImportError as exc:
+        # Fail-closed: an unavailable registry is a routing failure. A
+        # fabricated catalog would send real traffic at models nobody
+        # provisioned (VIBE §1/§4).
+        raise NoCapableModelError(
+            required_capabilities,
+            f"LLM model registry unavailable: {exc}",
+        ) from exc
 
     # 3. Filter by capabilities
     capable_models = []
@@ -212,49 +217,3 @@ def _get_tier(model: Any) -> str:
 def _get_priority(model: Any) -> int:
     """Get priority."""
     return _get_attr(model, "priority", 0)
-
-
-def _get_fallback_catalog() -> List[Dict[str, Any]]:
-    """Fallback model catalog when ORM unavailable."""
-    return [
-        {
-            "name": "gpt-4o",
-            "provider": "openai",
-            "display_name": "GPT-4o",
-            "capabilities": ["text", "vision"],
-            "priority": 100,
-            "cost_tier": "premium",
-        },
-        {
-            "name": "claude-sonnet-4-20250514",
-            "provider": "anthropic",
-            "display_name": "Claude Sonnet 4",
-            "capabilities": ["text", "vision"],
-            "priority": 95,
-            "cost_tier": "premium",
-        },
-        {
-            "name": "gpt-4o-mini",
-            "provider": "openai",
-            "display_name": "GPT-4o Mini",
-            "capabilities": ["text", "vision"],
-            "priority": 80,
-            "cost_tier": "standard",
-        },
-        {
-            "name": "gemini-2.5-flash",
-            "provider": "google",
-            "display_name": "Gemini 2.5 Flash",
-            "capabilities": ["text", "vision", "audio"],
-            "priority": 75,
-            "cost_tier": "low",
-        },
-        {
-            "name": "llama-3.3-70b",
-            "provider": "openrouter",
-            "display_name": "Llama 3.3 70B",
-            "capabilities": ["text"],
-            "priority": 50,
-            "cost_tier": "free",
-        },
-    ]
