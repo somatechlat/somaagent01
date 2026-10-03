@@ -98,7 +98,11 @@ class Message(models.Model):
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, db_index=True)
 
-    # Message content (stored as text, indexed via SomaBrain/SFM)
+    # Turn text (the conversation transcript, ARCH-INVARIANTS §3).
+    content = models.TextField(default="")
+
+    # Seam coordinate (memory_contract.make_coord) for the semantic-memory
+    # twin of this turn. NOT the message text.
     coordinate = models.TextField(default="")
 
     # Token tracking
@@ -139,11 +143,6 @@ class Message(models.Model):
             models.Index(fields=["task_type", "rating"]),
             models.Index(fields=["model", "task_type"]),
         ]
-
-    @property
-    def content(self) -> str:
-        """Return coordinate as content reference."""
-        return self.coordinate
 
     def __str__(self):
         """Return string representation."""

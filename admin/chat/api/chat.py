@@ -56,9 +56,9 @@ class ConversationOut(BaseModel):
 class MessageOut(BaseModel):
     """Chat message.
 
-    ``content`` carries the message text (the trace registrar stores the turn
-    text in ``Message.coordinate`` — see chat_orchestrator._store_turn).
-    ``coordinate`` is kept for backward compatibility.
+    ``content`` is the turn text (``Message.content`` — the conversation
+    transcript, ARCH-INVARIANTS §3). ``coordinate`` is the seam coordinate
+    for the semantic-memory twin of this turn.
     """
 
     id: str
@@ -493,8 +493,8 @@ async def get_messages(
                     id=str(msg.id),
                     conversation_id=str(msg.conversation_id),
                     role=msg.role,
-                    coordinate=msg.coordinate,  # SomaBrain reference
-                    content=msg.coordinate or "",  # turn text lives here
+                    coordinate=msg.coordinate,  # seam coordinate
+                    content=msg.content or "",  # turn text (transcript)
                     token_count=msg.token_count,
                     metadata=msg.metadata,
                     created_at=msg.created_at.isoformat(),

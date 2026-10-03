@@ -425,6 +425,10 @@ class V3ChatOrchestrator:
                 return result
             result.phase_completed = 4
 
+            # Transcript: the input is recorded the moment the gate passes, so
+            # a later failure still leaves the turn on disk (ARCH-INVARIANTS §3).
+            await self._persist_user_transcript(turn, tenant_id)
+
             # Phase 4.5: Health Check + Governor Budget + Brain Context Evaluation
             health = self._health.get_overall_health()
             is_degraded = health.degraded or (turn.agent_mode or "").upper() == "DGR"
@@ -626,7 +630,7 @@ class V3ChatOrchestrator:
 
             # Phase 11: Memory Storage
             elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-            await self._store_turn(
+            assistant_coord = await self._store_turn(
                 conversation_id=turn.conversation_id or "",
                 tenant_id=tenant_id,
                 user_message=turn.user_message,
@@ -636,6 +640,14 @@ class V3ChatOrchestrator:
                 token_count_out=_token_count(full_response),
                 salience=brain_confidence,
             )
+            await self._persist_message(
+                conversation_id=turn.conversation_id or "",
+                tenant_id=tenant_id,
+                role="assistant",
+                text=full_response,
+                coordinate=assistant_coord,
+            )
+            await self._bump_message_count(turn.conversation_id or "")
             await self._publish_cognitive_learning(
                 tenant_id=tenant_id,
                 session_id=turn.conversation_id or turn_id,
@@ -738,6 +750,9 @@ class V3ChatOrchestrator:
         if not gate_ok:
             yield "[Gate denied]"
             return
+
+        # Transcript: record the input as soon as the gate passes.
+        await self._persist_user_transcript(turn, tenant_id)
 
         # Health check + governor budget
         health = self._health.get_overall_health()
@@ -879,7 +894,7 @@ class V3ChatOrchestrator:
         # Store after streaming
         full_response = "".join(response_chunks)
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
-        await self._store_turn(
+        assistant_coord = await self._store_turn(
             conversation_id=turn.conversation_id or "",
             tenant_id=tenant_id,
             user_message=turn.user_message,
@@ -888,6 +903,14 @@ class V3ChatOrchestrator:
             elapsed_ms=elapsed_ms,
             token_count_out=_token_count(full_response),
         )
+        await self._persist_message(
+            conversation_id=turn.conversation_id or "",
+            tenant_id=tenant_id,
+            role="assistant",
+            text=full_response,
+            coordinate=assistant_coord,
+        )
+        await self._bump_message_count(turn.conversation_id or "")
         await self._publish_cognitive_learning(
             tenant_id=tenant_id,
             session_id=turn.conversation_id or turn_id,
@@ -1012,6 +1035,71 @@ class V3ChatOrchestrator:
         msgs.append(HumanMessage(content=context.buffer or user_message))
         return msgs
 
+    async def _persist_message(
+        self,
+        *,
+        conversation_id: str,
+        tenant_id: str,
+        role: str,
+        text: str,
+        coordinate: str,
+    ) -> None:
+        """Write one conversation-transcript row (ARCH-INVARIANTS §3).
+
+        Message rows are the transcript, NOT semantic memory. They must be
+        written even when every memory store is down — that is why this path
+        never goes through the MemoryGateway.
+        """
+        if not conversation_id:
+            return
+        from admin.chat.models import Message as MessageModel
+
+        @sync_to_async
+        def _create() -> None:
+            MessageModel.objects.create(
+                conversation_id=conversation_id,
+                role=role,
+                content=text,
+                coordinate=coordinate,
+            )
+
+        await _create()
+
+    async def _bump_message_count(self, conversation_id: str) -> None:
+        """Increment Conversation.message_count (created 0, must be maintained)."""
+        if not conversation_id:
+            return
+        from django.db.models import F
+
+        from admin.chat.models import Conversation as ConversationModel
+
+        @sync_to_async
+        def _bump() -> None:
+            ConversationModel.objects.filter(id=conversation_id).update(
+                message_count=F("message_count") + 1
+            )
+
+        await _bump()
+
+    async def _persist_user_transcript(self, turn: ChatTurn, tenant_id: str) -> None:
+        """Record the user input as soon as the phase-4 gate has passed.
+
+        A failed turn must still leave its input in the transcript.
+        """
+        from services.common.memory_contract import MemoryWrite
+
+        text = turn.user_message or ""
+        kind = str(MemoryWrite.model_fields["kind"].default)
+        coord = make_coord(tenant_id, kind, datetime.now(UTC), text)
+        await self._persist_message(
+            conversation_id=turn.conversation_id or "",
+            tenant_id=tenant_id,
+            role="user",
+            text=text,
+            coordinate=coord,
+        )
+        await self._bump_message_count(turn.conversation_id or "")
+
     async def _remember_via_gateway(
         self,
         text: str,
@@ -1022,13 +1110,17 @@ class V3ChatOrchestrator:
         salience: Optional[float] = None,
         kind: Optional[str] = None,
         role: Optional[str] = None,
-    ) -> List[MemoryAck]:
+    ) -> str:
         """ONE write path: MemoryGateway.remember_text() fan-out (PLAN §1 rule 4).
 
         remember_text() derives the seam coord AND the SomaBrain key material
         from the same (tenant, kind, ts, text), so both stores upsert one row —
         never a second coordinate scheme. PendingMemory is queued ONLY for acks
         with ok=False / timed out; a successful ack is never re-written.
+
+        Returns the seam ``make_coord`` string for this write. The coord is
+        computed before any transport attempt and is always returned — the
+        transcript row must not depend on a memory store being reachable.
         """
         from services.common.memory_contract import get_memory_setting, MemoryWrite
 
@@ -1039,11 +1131,10 @@ class V3ChatOrchestrator:
         if not namespace:
             namespace = str(get_memory_setting("MEM_CHAT_NAMESPACE", "chat_history"))
 
-        gateway = _require_memory_gateway()
-
         stamp = datetime.now(UTC)
         coord = make_coord(tenant_id, kind, stamp, text)
         try:
+            gateway = _require_memory_gateway()
             acks = await asyncio.wait_for(
                 gateway.remember_text(
                     text,
@@ -1086,7 +1177,7 @@ class V3ChatOrchestrator:
                 )
             except Exception as qexc:
                 logger.error("Kafka degraded queue failed for coord=%s: %s", coord, qexc)
-        return acks
+        return coord
 
     async def _recall_memories(
         self,
@@ -1130,11 +1221,15 @@ class V3ChatOrchestrator:
         elapsed_ms: int,
         token_count_out: int,
         salience: float = 0.5,
-    ) -> None:
-        """Store a turn in SomaBrain (T-1). Agent Postgres is NOT the message store.
+    ) -> str:
+        """Store a turn in semantic memory (T-1) via the MemoryGateway seam.
 
-        SomaBrain is the sole message/memory store. Agent Postgres only holds
-        PendingMemory rows when SomaBrain is unreachable (degraded sync queue).
+        SomaBrain/SFM hold the semantic memories. Postgres ``Message`` rows
+        are the conversation transcript (ARCH-INVARIANTS §3) and are written
+        separately via ``_persist_message`` — never through this path.
+
+        Returns the assistant turn's seam coordinate (from
+        ``_remember_via_gateway``) so the transcript row can carry it.
         """
         # ONE write path: SomaBrain via MemoryGateway.
         # Failed acks are queued to Kafka WAL inside _remember_via_gateway.
@@ -1146,7 +1241,7 @@ class V3ChatOrchestrator:
             salience=salience,
             role="user",
         )
-        await self._remember_via_gateway(
+        assistant_coord = await self._remember_via_gateway(
             assistant_response,
             tenant_id=tenant_id,
             session_id=conversation_id or None,
@@ -1168,6 +1263,7 @@ class V3ChatOrchestrator:
             )
         )
         task.add_done_callback(self._on_background_task_done("_store_episodic_bg"))
+        return assistant_coord
 
     async def _publish_cognitive_learning(
         self,
