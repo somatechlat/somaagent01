@@ -11,7 +11,7 @@ PhD Developer: Clean functional design.
 
 from __future__ import annotations
 
-from typing import Any, cast, Dict, Literal, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
 from admin.core.agentiq.settings import DerivedSettings
 from admin.core.agentiq.tables import (
@@ -86,7 +86,6 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
         temperature=style.temperature,
         max_tokens=style.max_tokens,
         # From INTELLIGENCE : capability
-        rlm_iterations=intel.rlm_iterations,
         recall_limit=intel.recall_limit,
         model_tier=intel.model_tier,
         brain_query_enabled=intel.brain_query_enabled,
@@ -96,8 +95,6 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
         egress_allowed=auto.egress_allowed,
         # From RESOURCE
         token_limit=resource.token_limit,
-        cost_tier=cast(Literal["budget", "standard", "premium", "flagship"], resource.cost_tier),
-        thinking_budget=resource.thinking_budget,
     )
 
 
@@ -116,7 +113,7 @@ def derive_from_knobs(
     Args:
         intelligence_level: 1-10 (default from AGENTIQ_INTELLIGENCE_LEVEL)
         autonomy_level: 1-10 (default from AGENTIQ_AUTONOMY_LEVEL)
-        resource_budget: $/turn (default from AGENTIQ_RESOURCE_BUDGET)
+        resource_budget: per-turn spend (AGENTIQ_RESOURCE_BUDGET)
 
     Returns:
         DerivedSettings
@@ -144,7 +141,6 @@ def derive_from_knobs(
         response_style=response_style.strip().lower(),
         temperature=style.temperature,
         max_tokens=style.max_tokens,
-        rlm_iterations=intel.rlm_iterations,
         recall_limit=intel.recall_limit,
         model_tier=intel.model_tier,
         brain_query_enabled=intel.brain_query_enabled,
@@ -152,6 +148,4 @@ def derive_from_knobs(
         tool_approval=auto.tool_approval,
         egress_allowed=auto.egress_allowed,
         token_limit=resource.token_limit,
-        cost_tier=cast(Literal["budget", "standard", "premium", "flagship"], resource.cost_tier),
-        thinking_budget=resource.thinking_budget,
     )

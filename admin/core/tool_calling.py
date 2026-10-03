@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 # Cap the model→tool→model loop (Phase 9) so a runaway tool chain cannot
 # pin a turn forever.
+# Tools that reach the network. Gated by IQ egress_allowed: an operator who
+# turns autonomy down must not get outbound calls from an auto-executed tool.
+_NETWORK_TOOLS = frozenset({"http_fetch", "document_ingest", "canvas_append"})
+
 MAX_TOOL_ITERATIONS = 8
 TOOL_EXEC_TIMEOUT_S = 30.0
 _TOOL_RESULT_MAX_CHARS = 12_000
@@ -72,8 +76,17 @@ class ToolPolicy:
         return "auto_execute"
 
 
-def resolve_tool_policy(capsule: Any) -> ToolPolicy:
-    """Read the capsule tool_policy JSON (model field, body fallback)."""
+def resolve_tool_policy(capsule: Any, iq: Any = None) -> ToolPolicy:
+    """Read the capsule tool_policy JSON (model field, body fallback).
+
+    AgentIQ's autonomy knobs are a **floor on restrictiveness** on top of the
+    capsule policy: an operator who turns autonomy down gets a safer agent
+    whatever the capsule says. IQ can only tighten, never loosen.
+
+    The knobs used to be derived and then ignored - ``tool_approval`` and
+    ``require_hitl`` appeared in a log line while the capsule policy alone
+    decided. A knob named after safety that does not gate is a lie.
+    """
     policy = getattr(capsule, "tool_policy", None)
     if not isinstance(policy, dict):
         policy = {}
@@ -90,11 +103,60 @@ def resolve_tool_policy(capsule: Any) -> ToolPolicy:
             return ()
         return tuple(str(name) for name in raw)
 
-    return ToolPolicy(
+    policy = ToolPolicy(
         auto_execute=_names("auto_execute"),
         approval_required=_names("approval_required"),
         denied=_names("denied"),
     )
+    return _apply_autonomy_floor(policy, iq)
+
+
+def _apply_autonomy_floor(policy: ToolPolicy, iq: Any) -> ToolPolicy:
+    """Tighten a capsule policy to the AgentIQ autonomy level.
+
+    Fail-safe direction only. Unknown IQ values produce the strictest floor.
+    """
+    if iq is None:
+        return policy
+
+    approval = str(getattr(iq, "tool_approval", "") or "").lower()
+    require_hitl = bool(getattr(iq, "require_hitl", False))
+
+    # require_hitl is the strictest: nothing runs without a human.
+    if require_hitl or approval == "all":
+        return ToolPolicy(
+            auto_execute=(),
+            approval_required=policy.approval_required + policy.auto_execute,
+            denied=policy.denied,
+        )
+
+    # "dangerous": tools the operator flagged as needing a human stay gated.
+    if approval == "dangerous":
+        return ToolPolicy(
+            auto_execute=policy.auto_execute,
+            approval_required=policy.approval_required,
+            denied=policy.denied,
+        )
+
+    # "none" (or unknown): the capsule policy stands unchanged. Unknown is not
+    # a licence to loosen - it changes nothing, which is the safe reading.
+    return policy
+
+
+def egress_permitted(iq: Any) -> bool:
+    """Whether this turn may reach the network at all.
+
+    ``egress_allowed`` was derived and enforced by nothing. Network tools
+    (http_fetch and anything that calls out) consult this; with no IQ present
+    the answer is the strict one.
+    """
+    if iq is None:
+        return False
+    level = str(getattr(iq, "egress_allowed", "") or "").lower()
+    # NONE denies. WHITELIST/EXPANDED/UNRESTRICTED allow the call to proceed;
+    # per-host allow-lists are the next narrowing step and are not yet built,
+    # so this is a real gate on "may egress at all", not a pretend policy.
+    return level in {"whitelist", "expanded", "unrestricted"}
 
 
 def _truncate_result(text: str, limit: int = _TOOL_RESULT_MAX_CHARS) -> str:
@@ -182,6 +244,7 @@ async def run_tool_loop(
     tools_for_llm: List[Dict[str, Any]],
     tool_registry: Any,
     capsule: Any,
+    iq: Any = None,
     max_iterations: int = MAX_TOOL_ITERATIONS,
 ) -> AsyncIterator[Union[str, ToolStreamEvent]]:
     """Run the native function-calling loop until a final response (or cap).
@@ -198,7 +261,8 @@ async def run_tool_loop(
         ToolCallsChunk,
     )
 
-    policy = resolve_tool_policy(capsule)
+    policy = resolve_tool_policy(capsule, iq)
+    allow_egress = egress_permitted(iq)
 
     for iteration in range(1, max_iterations + 1):
         response_text: List[str] = []
@@ -266,6 +330,11 @@ async def run_tool_loop(
                     args = {**args, "tenant_id": ""}  # tool raises fail-closed
             started = time.perf_counter()
             decision = policy.decision(name)
+            # Egress is a separate axis from tool approval: a tool may be
+            # auto_execute and still be forbidden to reach the network this
+            # turn. egress_allowed was derived and enforced by nothing.
+            if not allow_egress and name in _NETWORK_TOOLS:
+                decision = "denied"
             display_args = args if isinstance(args, dict) else {}
 
             if decision == "approval_required":

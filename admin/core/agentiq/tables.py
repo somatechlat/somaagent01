@@ -31,7 +31,6 @@ class IntelligenceRow:
     temperature.
     """
 
-    rlm_iterations: int
     recall_limit: int
     model_tier: ModelTier
     brain_query_enabled: bool
@@ -59,36 +58,36 @@ class AutonomyRow:
 
 @dataclass(frozen=True)
 class ResourceRow:
-    """Derivation from resource_budget."""
+    """Derivation from resource_budget.
+
+    One output: the hard token cap for a turn. There is no cost tier - the
+    model catalog already routes on ``priority`` and ``capabilities``, and a
+    second vocabulary for one concept is a lie. ``thinking_budget`` named a
+    feature that is not applied anywhere and is gone.
+    """
 
     token_limit: int
-    cost_tier: str
-    thinking_budget: int
 
 
 # === INTELLIGENCE TABLE ===
 # Level ranges: 1-3, 4-6, 7-8, 9-10
 INTELLIGENCE_TABLE: Dict[Tuple[int, int], IntelligenceRow] = {
     (1, 3): IntelligenceRow(
-        rlm_iterations=1,
         recall_limit=5,
         model_tier=ModelTier.BUDGET,
         brain_query_enabled=False,
     ),
     (4, 6): IntelligenceRow(
-        rlm_iterations=2,
         recall_limit=15,
         model_tier=ModelTier.STANDARD,
         brain_query_enabled=True,
     ),
     (7, 8): IntelligenceRow(
-        rlm_iterations=3,
         recall_limit=25,
         model_tier=ModelTier.PREMIUM,
         brain_query_enabled=True,
     ),
     (9, 10): IntelligenceRow(
-        rlm_iterations=5,
         recall_limit=50,
         model_tier=ModelTier.FLAGSHIP,
         brain_query_enabled=True,
@@ -143,23 +142,15 @@ def lookup_style(style: str | None) -> StyleRow:
 RESOURCE_TABLE: Dict[Tuple[float, float], ResourceRow] = {
     (0.0, 0.10): ResourceRow(
         token_limit=1000,
-        cost_tier="budget",
-        thinking_budget=256,
     ),
     (0.10, 0.50): ResourceRow(
         token_limit=10000,
-        cost_tier="standard",
-        thinking_budget=1024,
     ),
     (0.50, 2.00): ResourceRow(
         token_limit=50000,
-        cost_tier="premium",
-        thinking_budget=2048,
     ),
     (2.00, float("inf")): ResourceRow(
         token_limit=100000,
-        cost_tier="flagship",
-        thinking_budget=4096,
     ),
 }
 

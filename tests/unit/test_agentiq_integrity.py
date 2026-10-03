@@ -24,16 +24,17 @@ _MODEL_TIERS = {c[0] for c in LLMModelConfig.COST_TIER_CHOICES}
 
 
 def test_every_iq_cost_tier_resolves_to_a_real_model_cost_tier():
-    """No IQ value may name a tier the model catalog cannot hold."""
+    """No IQ value may name a tier the model catalog cannot hold.
+
+    The IQ capability tier (``model_tier``) is what reaches the router.
+    """
     from admin.core.agentiq.routing import canonical_cost_tier
 
     for level in (1, 4, 7, 9):
-        pass
-    for budget in (0.05, 0.20, 1.00, 5.00):
-        iq = derive_from_knobs(resource_budget=budget)
-        mapped = canonical_cost_tier(iq.cost_tier)
+        iq = derive_from_knobs(intelligence_level=level)
+        mapped = canonical_cost_tier(iq.model_tier.value)
         assert mapped in _MODEL_TIERS, (
-            f"cost_tier {iq.cost_tier!r} maps to {mapped!r}, "
+            f"model_tier {iq.model_tier!r} maps to {mapped!r}, "
             f"which LLMModelConfig does not accept"
         )
 

@@ -77,6 +77,20 @@ def _token_count(text: str) -> int:
 _MEMORY_STORES = ("somabrain", "somafractalmemory")
 
 
+
+def _iq_model_tier(iq) -> str | None:
+    """Map the IQ capability tier onto the model catalog's vocabulary.
+
+    ``DerivedSettings.model_tier`` is the capability axis (how good a model to
+    ask for). ``LLMModelConfig.cost_tier`` is the catalog's own label. The two
+    vocabularies meet in exactly one place: ``agentiq.routing``.
+    """
+    if iq is None:
+        return None
+    tier = getattr(iq, "model_tier", None)
+    return str(tier.value if hasattr(tier, "value") else tier or "") or None
+
+
 def _mem_setting(name: str, default):
     from services.common.memory_contract import get_memory_setting
 
@@ -440,7 +454,11 @@ class V3ChatOrchestrator:
             brain_confidence = float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", 0.5))
             suggested_tools: List[str] = []
             try:
-                brain_client = await SomaBrainClient.get_async()
+                brain_client = (
+                    await SomaBrainClient.get_async()
+                    if (iq is None or iq.brain_query_enabled)
+                    else None
+                )
                 if brain_client:
                     eval_result = cast(
                         Dict[str, Any],
@@ -529,7 +547,7 @@ class V3ChatOrchestrator:
                         required_capabilities=caps0,
                         capsule_body=body or {},
                         tenant_id=tenant_id,
-                        prefer_cost_tier=getattr(iq, "cost_tier", None),
+                        prefer_cost_tier=_iq_model_tier(iq),
                         preferred_model_id=getattr(capsule, "chat_model_id", None),
                     ),
                 )
@@ -600,6 +618,7 @@ class V3ChatOrchestrator:
             tools_called: List[str] = []
             try:
                 async for item in run_tool_loop(
+                    iq=iq,
                     llm=llm,
                     messages=messages,
                     tools_for_llm=tools_for_llm,
@@ -764,8 +783,11 @@ class V3ChatOrchestrator:
         # Health check + governor budget
         health = self._health.get_overall_health()
         is_degraded = health.degraded or (turn.agent_mode or "").upper() == "DGR"
+        # token_limit is the hard cap from the resource knob. The governor
+        # decides lane splits inside it; the knob decides the ceiling.
+        _spend_cap = int(iq.token_limit)
         gov_decision = self._governor.allocate_budget(
-            max_tokens=iq.max_tokens,
+            max_tokens=min(int(iq.max_tokens), _spend_cap),
             is_degraded=is_degraded,
         )
         budget_override = gov_decision.lane_budget.to_dict()
@@ -792,9 +814,11 @@ class V3ChatOrchestrator:
         async def _brain_eval_task():
             # The cognitive co-processor: SomaBrain scores the turn and can
             # suggest tools. This is the first hop of the three-way learning
-            # loop (agent asks brain -> brain scores -> memory stores). The
-            # sync REST path has always had it; the live stream path did not,
-            # so the chat the user actually uses never consulted the brain.
+            # loop (agent asks brain -> brain scores -> memory stores).
+            # brain_query_enabled is the intelligence knob that decides whether
+            # the brain is consulted at all - it used to be derived and ignored.
+            if iq is not None and not iq.brain_query_enabled:
+                return None
             client = await SomaBrainClient.get_async()
             if client is None:
                 return None
@@ -890,7 +914,7 @@ class V3ChatOrchestrator:
                     required_capabilities=caps,
                     capsule_body=body or {},
                     tenant_id=tenant_id,
-                    prefer_cost_tier=getattr(iq, "cost_tier", None),
+                    prefer_cost_tier=_iq_model_tier(iq),
                     preferred_model_id=getattr(capsule, "chat_model_id", None),
                 ),
             )
@@ -910,6 +934,7 @@ class V3ChatOrchestrator:
         response_chunks: List[str] = []
         try:
             async for item in run_tool_loop(
+                    iq=iq,
                 llm=llm,
                 messages=messages,
                 tools_for_llm=tools_for_llm,
