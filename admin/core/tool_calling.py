@@ -26,15 +26,31 @@ from admin.common.messages import ErrorCode, get_message
 
 logger = logging.getLogger(__name__)
 
-# Cap the model→tool→model loop (Phase 9) so a runaway tool chain cannot
-# pin a turn forever.
+def _tool_setting(name: str, default):
+    """Resolve one runtime knob through the real chain.
+
+    Capsule -> AgentSetting -> SettingsModel -> schema default
+    (``admin.core.helpers.settings.get_settings``). The declared value lives on
+    ``SettingsModel``; the ``default`` here is only the last-resort fallback if
+    a name is ever removed from the model.
+    """
+    from admin.core.helpers.settings import get_settings
+
+    model = get_settings()
+    value = getattr(model, name.lower(), None)
+    return default if value is None else value
+
+
+
 # Tools that reach the network. Gated by IQ egress_allowed: an operator who
 # turns autonomy down must not get outbound calls from an auto-executed tool.
 _NETWORK_TOOLS = frozenset({"http_fetch", "document_ingest", "canvas_append"})
 
-MAX_TOOL_ITERATIONS = 8
-TOOL_EXEC_TIMEOUT_S = 30.0
-_TOOL_RESULT_MAX_CHARS = 12_000
+# Cap the model->tool->model loop so a runaway tool chain cannot pin a turn
+# forever. Each of these is a declared setting, not a literal.
+MAX_TOOL_ITERATIONS = int(_tool_setting("TOOL_MAX_ITERATIONS", 8))
+TOOL_EXEC_TIMEOUT_S = float(_tool_setting("TOOL_EXEC_TIMEOUT_S", 30.0))
+_TOOL_RESULT_MAX_CHARS = int(_tool_setting("TOOL_RESULT_MAX_CHARS", 12000))
 
 # Tool timeline event types — mirrored by the WS chat protocol
 # (services/gateway/consumers/chat.py) so the UI can render a tool timeline.

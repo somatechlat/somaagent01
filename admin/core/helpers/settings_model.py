@@ -178,6 +178,28 @@ class SettingsModel(BaseModel):
     )
     tts_kokoro: bool = False
 
+    # Tool loop. Bounded execution of model tool calls: how many
+    # model->tool->model rounds a turn may take, how long one tool may run,
+    # and how much of a result goes back to the model.
+    tool_max_iterations: int = Field(
+        default_factory=lambda: int(_dj("TOOL_MAX_ITERATIONS", 8))
+    )
+    tool_exec_timeout_s: float = Field(
+        default_factory=lambda: float(_dj("TOOL_EXEC_TIMEOUT_S", 30.0))
+    )
+    tool_result_max_chars: int = Field(
+        default_factory=lambda: int(_dj("TOOL_RESULT_MAX_CHARS", 12000))
+    )
+
+    # WebSocket stream coalescing. Tokens are buffered and flushed together;
+    # both values must stay far below human perception (~100ms).
+    ws_stream_flush_interval_s: float = Field(
+        default_factory=lambda: float(_dj("WS_STREAM_FLUSH_INTERVAL_S", 0.02))
+    )
+    ws_stream_flush_max_chars: int = Field(
+        default_factory=lambda: int(_dj("WS_STREAM_FLUSH_MAX_CHARS", 512))
+    )
+
     # MCP / A2A
     mcp_servers: str = Field(default_factory=lambda: str(_dj("MCP_SERVERS", '{"mcpServers": {}}')))
     mcp_client_init_timeout: int = Field(

@@ -126,15 +126,20 @@ CONTROL_MSG_TYPES = {
 # the buffer is full or when this deadline expires - both far below the
 # ~100ms human perception threshold, so nothing looks slower.
 def _stream_setting(name: str, default):
-    """Resolve one stream-coalescing knob.
+    """Resolve one runtime knob through the real chain.
 
-    VIBE §4: no hardcoded values. Django settings is the authority, then env
-    for standalone scripts, then the caller's declared default. Same chain the
-    memory seam uses (``get_memory_setting``).
+    Capsule -> AgentSetting -> SettingsModel -> schema default
+    (``admin.core.helpers.settings.get_settings``). The declared value lives on
+    ``SettingsModel``; the ``default`` here is only the last-resort fallback if
+    a name is ever removed from the model.
     """
-    from services.common.memory_contract import get_memory_setting
+    from admin.core.helpers.settings import get_settings
 
-    return get_memory_setting(name, default)
+    model = get_settings()
+    value = getattr(model, name.lower(), None)
+    return default if value is None else value
+
+
 
 
 # Stream coalescing. A WebSocket frame per token is the dominant cost of a

@@ -17,7 +17,6 @@ from typing import Any, Dict, List
 # Base tools every agent MUST have. Order is documentation-only.
 DEFAULT_AGENT_TOOLS: List[str] = [
     # Core loop
-    "response",  # end turn (if registered by tool_calling)
     "echo",
     "timestamp",
     # Cognition — SomaBrain-backed (T-1: one write lane)
@@ -42,7 +41,6 @@ NON_DISABLEABLE_TOOLS = frozenset(
         "memory_forget",
         "memory_proximity",
         "memory_get",
-        "response",
     }
 )
 

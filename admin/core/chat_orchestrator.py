@@ -587,6 +587,18 @@ class V3ChatOrchestrator:
                         )
                         seen_tools.add(tool_def.name)
 
+            # Do not offer a tool the turn may not run. A network tool with
+            # egress denied costs a model round-trip and returns a confusing
+            # error; filtering here is the honest signal.
+            from admin.core.tool_calling import _NETWORK_TOOLS, egress_permitted
+
+            if not egress_permitted(iq):
+                tools_for_llm = [
+                    t
+                    for t in tools_for_llm
+                    if (t.get("function") or {}).get("name") not in _NETWORK_TOOLS
+                ]
+
             # Degraded mode: drop optional tools (memory kit remains).
             tools_for_llm = select_tools_for_mode(
                 tools_for_llm,
@@ -1272,10 +1284,10 @@ class V3ChatOrchestrator:
             iq_recall_limit = iq.recall_limit if iq is not None else None
             recall_limit = int(
                 memory_config.get("recall_limit") or iq_recall_limit
-                or _mem_setting("MEM_RECALL_LIMIT", 10)
+                or _mem_setting("MEM_RECALL_TOP_K", 8)
             )
         except Exception:
-            recall_limit = int(_mem_setting("MEM_RECALL_LIMIT", 10))
+            recall_limit = int(_mem_setting("MEM_RECALL_TOP_K", 8))
         try:
             hits = await gateway.recall(query=query, k=recall_limit, tenant_id=tenant_id)
             return list(hits or [])
