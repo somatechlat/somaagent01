@@ -567,6 +567,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             token_count = 0
             response_content: list[str] = []
 
+            # Attachments ride on the turn so detect_required_capabilities can
+            # see vision/audio/document instead of always concluding {"text"}.
+            # The composer sends {name, type, size}; the seam reads content_type.
+            raw_attachments = payload.get("attachments") or []
+            attachments = [
+                {
+                    **a,
+                    "content_type": a.get("content_type") or a.get("type") or "",
+                }
+                for a in raw_attachments
+                if isinstance(a, dict)
+            ]
+
             turn = ChatTurn(
                 capsule=self.capsule,
                 iq_settings=self.iq,
@@ -575,8 +588,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 tenant_id=self.tenant_id or "",
                 user_message=message_content,
                 conversation_id=conversation_id,
+                attachments=attachments,
                 history=self._cached_history,
-                capsule_id=self.agent_id,
                 agent_mode=agent_mode,
             )
 
