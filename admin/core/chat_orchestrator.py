@@ -529,6 +529,8 @@ class V3ChatOrchestrator:
                         required_capabilities=caps0,
                         capsule_body=body or {},
                         tenant_id=tenant_id,
+                        prefer_cost_tier=getattr(iq, "cost_tier", None),
+                        preferred_model_id=getattr(capsule, "chat_model_id", None),
                     ),
                 )
             except CircuitBreakerError as e:
@@ -860,6 +862,8 @@ class V3ChatOrchestrator:
                     required_capabilities=caps,
                     capsule_body=body or {},
                     tenant_id=tenant_id,
+                    prefer_cost_tier=getattr(iq, "cost_tier", None),
+                    preferred_model_id=getattr(capsule, "chat_model_id", None),
                 ),
             )
         except CircuitBreakerError:

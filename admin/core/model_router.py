@@ -93,6 +93,7 @@ async def select_model(
     capsule_body: Optional[Dict[str, Any]] = None,
     tenant_id: Optional[str] = None,
     prefer_cost_tier: Optional[str] = None,
+    preferred_model_id: Optional[int] = None,
 ) -> SelectedModel:
     """
     Select optimal LLM model based on requirements.
@@ -100,22 +101,25 @@ async def select_model(
     Algorithm:
     1. Query LLMModelConfig (is_active=True)
     2. Filter by required capabilities
-    3. Apply Capsule allowed_models constraint
-    4. Apply cost tier preference
-    5. Sort by priority DESC
-    6. Return highest priority match
+    3. Honour Capsule.chat_model (preferred_model_id) when active+capable
+    4. Apply Capsule allowed_models constraint
+    5. Apply cost tier preference
+    6. Sort by priority DESC
+    7. Return highest priority match
 
     Args:
         required_capabilities: Set of required capabilities
         capsule_body: Optional Capsule.body with allowed_models
         tenant_id: Tenant ID for isolation
         prefer_cost_tier: Preferred cost tier
+        preferred_model_id: Capsule.chat_model PK — wins over priority when
+            that model is active and capable; otherwise warn and fall through
 
     Returns:
         SelectedModel with selected model details
 
     Raises:
-        NoCapableModelError: If no model matches
+        NoCapableModelError: If no model matches, or the registry is unavailable
     """
     # Try to import Django ORM model
     try:
@@ -161,6 +165,29 @@ async def select_model(
     if not capable_models:
         raise NoCapableModelError(
             required_capabilities, "No active model has all required capabilities"
+        )
+
+    # 3b. Capsule.chat_model binding (admin/llm/api.py set_slots). The slot is
+    # authoritative over priority when the model is active and capable.
+    if preferred_model_id is not None:
+        preferred = next(
+            (m for m in capable_models if _get_attr(m, "id", None) == preferred_model_id),
+            None,
+        )
+        if preferred is not None:
+            return SelectedModel(
+                provider=_get_attr(preferred, "provider", "openrouter"),
+                name=_get_name(preferred),
+                display_name=_get_attr(preferred, "display_name", _get_name(preferred)),
+                capabilities=list(_get_attr(preferred, "capabilities", [])),
+                priority=_get_priority(preferred),
+                cost_tier=_get_tier(preferred),
+                reason=f"Capsule.chat_model id={preferred_model_id}",
+            )
+        logger.warning(
+            "Capsule.chat_model id=%s is not an active capable model — "
+            "falling through to priority routing",
+            preferred_model_id,
         )
 
     # 4. Apply Capsule allowed_models constraint
