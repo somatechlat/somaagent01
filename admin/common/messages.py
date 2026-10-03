@@ -33,19 +33,14 @@ class ErrorCode(str, Enum):
     API_KEY_NOT_FOUND = "api_key_not_found"
     INVALID_PERMISSIONS = "invalid_permissions"
 
-    # AAAS - Tiers
-    TIER_NOT_FOUND = "tier_not_found"
-    TIER_ACTIVE_TENANTS = "tier_has_active_tenants"
 
     # AAAS - Features
     FEATURE_NOT_FOUND = "feature_not_found"
-    FEATURE_NOT_ON_TIER = "feature_not_on_tier"
     FEATURE_DEPENDENCY_MISSING = "feature_dependency_missing"
 
     # AAAS - Tenants
     TENANT_NOT_FOUND = "tenant_not_found"
     TENANT_SUSPENDED = "tenant_suspended"
-    TENANT_QUOTA_EXCEEDED = "tenant_quota_exceeded"
 
     # AAAS - Integrations
 
@@ -98,14 +93,9 @@ class ErrorCode(str, Enum):
     DEGRADED_PERMISSION_DENIED = "degraded_permission_denied"
     DEGRADED_GATE_DENIED = "degraded_gate_denied"
 
-    # Billing
-    BILLING_PAYMENT_FAILED = "billing_payment_failed"
-    BILLING_SUBSCRIPTION_EXPIRED = "billing_subscription_expired"
 
     # Integrations
     SMTP_SEND_FAILED = "smtp_send_failed"
-    BILLING_INVALID_SIGNATURE = "billing_invalid_signature"
-    BILLING_INVALID_JSON = "billing_invalid_json"
 
     # Budget
     BUDGET_EXHAUSTED = "budget_exhausted"
@@ -153,7 +143,6 @@ class SuccessCode(str, Enum):
     DELETED = "deleted"
 
     # AAAS
-    TIER_DEACTIVATED = "tier_deactivated"
     FEATURE_REMOVED = "feature_removed"
 
     # Capsule
@@ -205,7 +194,6 @@ class SuccessCode(str, Enum):
     # Voice
     VOICE_WEBSOCKET_CONNECTED = "voice_websocket_connected"
 
-    # Billing
     PAYMENT_METHOD_REFERENCE_STORED = "payment_method_reference_stored"
 
 
@@ -230,16 +218,12 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     ErrorCode.API_KEY_NOT_FOUND: _("API key {key_id} not found"),
     ErrorCode.INVALID_PERMISSIONS: _("Invalid permissions"),
     # AAAS
-    ErrorCode.TIER_NOT_FOUND: _("Subscription tier not found"),
-    ErrorCode.TIER_ACTIVE_TENANTS: _("Cannot delete tier with {count} active tenants"),
     ErrorCode.FEATURE_NOT_FOUND: _("Feature '{feature}' not found"),
-    ErrorCode.FEATURE_NOT_ON_TIER: _("Feature '{feature}' not available on your tier"),
     ErrorCode.FEATURE_DEPENDENCY_MISSING: _(
         "Feature '{feature}' requires missing dependency: {dependency}"
     ),
     ErrorCode.TENANT_NOT_FOUND: _("Tenant not found"),
     ErrorCode.TENANT_SUSPENDED: _("Your account has been suspended"),
-    ErrorCode.TENANT_QUOTA_EXCEEDED: _("Quota exceeded: {resource}"),
     # Capsule
     ErrorCode.CAPSULE_NOT_FOUND: _("Agent not found"),
     ErrorCode.CAPSULE_INVALID: _("Invalid agent configuration"),
@@ -285,11 +269,6 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     ),
     ErrorCode.DEGRADED_PERMISSION_DENIED: _("Permission denied"),
     ErrorCode.DEGRADED_GATE_DENIED: _("Gate denied"),
-    # Billing
-    ErrorCode.BILLING_PAYMENT_FAILED: _("Payment processing failed"),
-    ErrorCode.BILLING_SUBSCRIPTION_EXPIRED: _("Your subscription has expired"),
-    ErrorCode.BILLING_INVALID_SIGNATURE: _("Invalid signature"),
-    ErrorCode.BILLING_INVALID_JSON: _("Invalid JSON"),
     # Budget
     ErrorCode.BUDGET_EXHAUSTED: _(
         "{metric} limit exceeded: {usage}/{limit} used this {period}. Upgrade your plan."
@@ -342,8 +321,7 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     SuccessCode.CREATED: _("Successfully created"),
     SuccessCode.UPDATED: _("Successfully updated"),
     SuccessCode.DELETED: _("Successfully deleted"),
-    SuccessCode.TIER_DEACTIVATED: _("Tier '{name}' deactivated"),
-    SuccessCode.FEATURE_REMOVED: _("Feature '{feature_code}' removed from tier"),
+    SuccessCode.FEATURE_REMOVED: _("Feature '{feature_code}' removed"),
     SuccessCode.CAPSULE_CREATED: _("Agent created successfully"),
     SuccessCode.CAPSULE_EXPORTED: _("Agent exported successfully"),
     SuccessCode.CAPSULE_IMPORTED: _("Agent imported successfully"),
@@ -376,7 +354,6 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
         "Voice WebSocket connected. Send 'start_session' to begin."
     ),
     SuccessCode.PAYMENT_METHOD_REFERENCE_STORED: _(
-        "Payment method reference stored. Stripe verification required for full card details."
     ),
 }
 
@@ -392,8 +369,8 @@ def get_message(code: ErrorCode | SuccessCode | str, **kwargs: object) -> str:
         Formatted, translated message string
 
     Example:
-        >>> get_message(ErrorCode.TIER_ACTIVE_TENANTS, count=5)
-        "Cannot delete tier with 5 active tenants"
+        >>> get_message(ErrorCode.INVALID_REQUEST)
+        "Cannot delete a record with 5 active children"
     """
     msg = MESSAGES.get(code, _("Unknown error"))
     if kwargs:

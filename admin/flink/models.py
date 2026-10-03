@@ -63,7 +63,7 @@ class FlinkConversationMetrics(models.Model):
 
 
 class FlinkUsageAggregate(models.Model):
-    """Hourly usage aggregates from Flink for billing.
+    """Hourly usage aggregates from Flink for capacity reporting.
 
     Tumbling window: 1 hour.
     Source: soma.usage.metering Kafka topic.
@@ -78,7 +78,7 @@ class FlinkUsageAggregate(models.Model):
     total_quantity = models.BigIntegerField(default=0)
     event_count = models.BigIntegerField(default=0)
 
-    # Billing metadata
+    # Usage metadata
     unit_price = models.DecimalField(max_digits=10, decimal_places=6, default=0)
     total_cost = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     billed = models.BooleanField(default=False)
@@ -263,7 +263,7 @@ class FlinkLLMTokenMetrics(models.Model):
     Source: soma.llm.tokens Kafka topic.
 
     PhD Dev: Token tracking for cost optimization.
-    PM: Billing and usage dashboards.
+    PM: Usage dashboards.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -287,7 +287,7 @@ class FlinkLLMTokenMetrics(models.Model):
     p95_latency_ms = models.FloatField(default=0.0)
     p99_latency_ms = models.FloatField(default=0.0)
 
-    # Cost tracking (calculated based on model pricing)
+    # Token accounting (calculated from model token costs)
     estimated_cost_usd = models.DecimalField(max_digits=12, decimal_places=6, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)

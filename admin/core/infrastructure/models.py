@@ -114,7 +114,7 @@ class RateLimitPolicy(models.Model):
         return f"{self.key}: {self.limit}/{window_str} ({self.policy})"
 
     def get_limit_for_tier(self, tier_slug: str) -> int:
-        """Get the effective limit for a specific subscription tier."""
+        """Get the effective limit for a specific capacity profile."""
         return self.tier_overrides.get(tier_slug, self.limit)
 
     def to_redis_key(self) -> str:

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
+from admin.common.auth import as_uuid
 from admin.common.messages import ErrorCode, get_message
 from admin.common.session_manager import get_session_manager, SessionManager
 
@@ -140,7 +141,9 @@ class SessionMiddleware:
                 from admin.aaas.models import AuditLog
 
                 await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
-                    actor_id="anonymous",
+                    # No actor: the token failed validation, so the caller
+                    # was never identified. NULL, not a fabricated identity.
+                    actor_id=None,
                     actor_email="",
                     action="auth.middleware_token_failed",
                     resource_type="auth",
@@ -179,7 +182,7 @@ class SessionMiddleware:
                     from admin.aaas.models import AuditLog
 
                     await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
-                        actor_id=str(claims.sub),
+                        actor_id=as_uuid(getattr(claims, "sub", None)),
                         actor_email="",
                         action="auth.session_expired",
                         resource_type="auth",

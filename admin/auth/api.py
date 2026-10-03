@@ -33,7 +33,7 @@ from admin.auth.api_schemas import (
     TokenRequest,
     UserResponse,
 )
-from admin.common.auth import AuthBearer, decode_token, get_keycloak_config
+from admin.common.auth import AuthBearer, as_uuid, decode_token, get_keycloak_config
 from admin.common.exceptions import BadRequestError, ServiceUnavailableError, UnauthorizedError
 from services.common.authorization import authorize
 from admin.common.messages import get_message, SuccessCode
@@ -59,7 +59,9 @@ async def _emit_auth_audit(
         from admin.aaas.models import AuditLog
 
         await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
-            actor_id=actor_id or "anonymous",
+            # NULL = no authenticated actor. A sentinel string cannot be
+            # stored in a UUIDField; the write would raise and be swallowed.
+            actor_id=actor_id or None,
             actor_email=actor_email or "",
             action=action,
             resource_type="auth",
@@ -653,7 +655,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
         from admin.aaas.models import AuditLog
 
         return AuditLog.objects.create(
-            actor_id=current_user.sub,
+            actor_id=as_uuid(current_user.sub),
             actor_email=current_user.email or "",
             tenant=tenant,
             action="impersonation.started",

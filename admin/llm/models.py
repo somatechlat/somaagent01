@@ -69,7 +69,10 @@ class LLMModelConfig(models.Model):
     limit_input = models.IntegerField(default=0, help_text="Max input tokens per request")
     limit_output = models.IntegerField(default=0, help_text="Max output tokens per request")
 
-    # Legacy field (kept for backward compat, derived from capabilities)
+    # Derived from ``capabilities["vision"]`` on save. Stored, not computed,
+    # because it is filtered and indexed on (see Meta.indexes and the admin
+    # list_filter) — a property cannot do either. ``capabilities`` is the
+    # source of truth; never write this column directly.
     vision = models.BooleanField(default=False)
 
     # Configuration
@@ -112,11 +115,6 @@ class LLMModelConfig(models.Model):
         return required.issubset(set(self.capabilities or []))
 
     def save(self, *args, **kwargs):
-        """Sync vision field with capabilities for backward compat."""
-        if self.capabilities:
-            self.vision = "vision" in self.capabilities
+        """Derive ``vision`` from ``capabilities`` — the source of truth."""
+        self.vision = bool(self.capabilities) and "vision" in self.capabilities
         super().save(*args, **kwargs)
-
-
-# Backward compatibility alias for migration period
-ModelConfig = LLMModelConfig

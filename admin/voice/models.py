@@ -152,7 +152,7 @@ class VoicePersona(TenantScopedModel):
 class VoiceSession(TenantScopedModel):
     """Real-time voice session.
 
-    Tracks metrics for billing and analytics.
+    Tracks session metrics for operations and analytics.
     """
 
     STATUS_CHOICES = [

@@ -105,13 +105,15 @@ class MetricsJsonResponse(BaseModel):
 
 
 class UsageMetric(BaseModel):
-    """Tenant usage metric with quota."""
+    """Measured throughput counter.
+
+    Carries observed volume only. A quota or plan ceiling would be a commerce
+    surface and has no place here.
+    """
 
     label: str
     current: int
-    limit: int
     unit: str
-    percentage: int
 
 
 class AgentUsage(BaseModel):
@@ -439,7 +441,7 @@ async def get_tenant_usage(request) -> TenantUsageResponse:
     @sync_to_async
     def _aggregate():
         try:
-            tenant = Tenant.objects.select_related("tier").get(id=tenant_id)
+            tenant = Tenant.objects.get(id=tenant_id)
         except Tenant.DoesNotExist:
             tenant = None
 
@@ -463,41 +465,13 @@ async def get_tenant_usage(request) -> TenantUsageResponse:
         api_calls = sessions.count() + (turns or 0)
         images = 0  # Future: aggregate multimodal jobs
 
-        tier = tenant.tier if tenant else None
-        api_limit = tier.max_monthly_api_calls if tier else 100000
-        token_limit = api_limit * 10 if tier else 1000000
-        voice_limit = tier.max_monthly_voice_minutes if tier else 500
-        image_limit = 500
-
+        # Measured throughput only. There is no plan ceiling to compare
+        # against: this is operational telemetry, not a quota meter.
         usage = [
-            UsageMetric(
-                label="API Calls",
-                current=api_calls,
-                limit=api_limit,
-                unit="",
-                percentage=min(100, int((api_calls / api_limit) * 100) if api_limit else 0),
-            ),
-            UsageMetric(
-                label="LLM Tokens",
-                current=tokens,
-                limit=token_limit,
-                unit="",
-                percentage=min(100, int((tokens / token_limit) * 100) if token_limit else 0),
-            ),
-            UsageMetric(
-                label="Images",
-                current=images,
-                limit=image_limit,
-                unit="",
-                percentage=0,
-            ),
-            UsageMetric(
-                label="Voice Minutes",
-                current=voice_minutes,
-                limit=voice_limit,
-                unit="min",
-                percentage=min(100, int((voice_minutes / voice_limit) * 100) if voice_limit else 0),
-            ),
+            UsageMetric(label="API Calls", current=api_calls, unit=""),
+            UsageMetric(label="LLM Tokens", current=tokens, unit=""),
+            UsageMetric(label="Images", current=images, unit=""),
+            UsageMetric(label="Voice Minutes", current=voice_minutes, unit="min"),
         ]
 
         agents_qs = Agent.objects.filter(tenant_id=str(tenant_id)).order_by("name")

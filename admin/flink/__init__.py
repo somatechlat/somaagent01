@@ -5,7 +5,7 @@ Real-time stream processing for analytics, metering, monitoring.
 
 Use Cases:
 - Conversation Analytics (tumbling windows)
-- Usage Metering (hourly aggregation for billing)
+- Usage aggregation (hourly rollups for capacity reporting)
 - Anomaly Detection (security monitoring)
 - Audit Aggregation (compliance)
 """

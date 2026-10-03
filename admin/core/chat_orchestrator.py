@@ -174,9 +174,6 @@ class ChatTurn:
     # UI agent mode: STD | DEV | RO | DGR (DGR forces degraded governor path)
     agent_mode: str = "STD"
 
-    # Legacy: capsule_id for backward compatibility during migration
-    capsule_id: Optional[str] = None
-
 
 @dataclass
 class ChatResult:
@@ -991,11 +988,9 @@ class V3ChatOrchestrator:
         if context.system:
             system_parts.append(context.system)
 
-        # Lane 3: Memory recall (SomaBrain only — T-1, no SFM from agent)
-        if context.memory and context.memory not in (
-            "[Memory recall unavailable]",
-            "[No relevant memories]",
-        ):
+        # Lane 3: Memory recall (SomaBrain only — T-1, no SFM from agent).
+        # An empty recall is a real result and is left out of the prompt.
+        if context.memory and context.memory != "[No relevant memories]":
             system_parts.append(f"[Memory]\n{context.memory}")
 
         # Lane 4: Tools descriptions

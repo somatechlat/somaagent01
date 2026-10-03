@@ -86,12 +86,6 @@ class _LazyModelAccessor:
         return _get_model_type()
 
     @property
-    def ModelConfig(self):
-        """Execute ModelConfig."""
-
-        return _get_model_config()
-
-    @property
     def LLMModelConfig(self):
         """Execute LLMModelConfig."""
 

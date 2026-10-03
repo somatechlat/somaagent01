@@ -227,9 +227,7 @@ def create_api() -> NinjaAPI:
     # Events (Real-time SSE streaming) — removed: stub-only, no production impl
 
     # Integrations (Third-party services)
-    from admin.integrations.api import router as integrations_router
 
-    safe_add_router("/integrations", integrations_router)
 
     # Plugins (Extensibility system)
     from admin.plugins.api import router as plugins_router
@@ -247,9 +245,6 @@ def create_api() -> NinjaAPI:
     safe_add_router("/bridges", bridges_router)
 
     # Audit (Security logging)
-    from admin.audit.api import router as audit_router
-
-    safe_add_router("/audit", audit_router)
 
     # Permissions (RBAC) — removed: every handler minted a uuid4 and
     # returned {"created/updated/deleted": True} without touching Role.
@@ -266,7 +261,7 @@ def create_api() -> NinjaAPI:
     # admin.aaas.models.Tenant with its own incompatible schema. The real
     # CRUD is /aaas/tenants.
 
-    # Usage (Metering and billing) — removed: reported measured zeros over
+    # Usage metering — removed: reported measured zeros over
     # a real UsageRecord table it never queried.
 
     # Users (User management) — removed: delete_user claimed a GDPR

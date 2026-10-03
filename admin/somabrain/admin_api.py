@@ -1,196 +1,60 @@
-"""SomaBrain Admin API - Service management.
+"""SomaBrain Admin API - host diagnostics and service visibility.
 
+What this module is, and what it deliberately is not:
 
-Per AGENT_TASKS.md Phase 6.4 - Admin Endpoints.
+It is a read-only window onto things that are actually measured — host
+resources from ``psutil``, and the live infrastructure probes in
+``admin.core.infrastructure.health_checker``. Nothing here asserts a status
+it did not observe.
 
-- Security Auditor: ADMIN-only access
-- DevOps: Service lifecycle management
-- PM: Comprehensive diagnostics
+It is not a service lifecycle console. The previous version shipped seven
+routes: five of them raised ``HttpError(501)`` forever (per-service status,
+start/stop/restart, sleep status, read and write of feature flags), one
+returned invented numbers (``{"somabrain": "running"}``, ``connections: 5``,
+``kafka_lag: 0``) as if they were diagnostics, and one held a hardcoded
+Python dict of ``http://localhost:PORT/health`` URLs as its service
+inventory. That dict named Whisper, Kokoro TTS and a "SomaBrain Core"
+service; none of them is a container in either compose file under
+``infra/``. The routes are gone. A surface that cannot work must not exist,
+and a diagnostics response must never contain a constant dressed as a
+reading.
+
+There is one infrastructure inventory in this codebase and it is
+``InfrastructureHealthChecker``. This module reads it; it does not keep a
+second list.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from django.utils import timezone
 from ninja import Router
-from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from services.common.authorization import authorize
-from admin.common.exceptions import BadRequestError
-from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
 router = Router(tags=["admin"])
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# SCHEMAS
+# SCHEMAS — shapes for measured data only.
 # =============================================================================
-
-
-class ServiceInfo(BaseModel):
-    """Service information."""
-
-    name: str
-    status: str  # running, stopped, degraded, unknown
-    healthy: bool
-    uptime_seconds: Optional[float] = None
-    version: Optional[str] = None
-    endpoint: Optional[str] = None
-    last_check: str
-
-
-class ServiceListResponse(BaseModel):
-    """List of services."""
-
-    services: list[ServiceInfo]
-    total: int
-
-
-class ServiceActionRequest(BaseModel):
-    """Service action request."""
-
-    action: str  # start, stop, restart
-    force: bool = False
-
-
-class ServiceActionResponse(BaseModel):
-    """Service action response."""
-
-    service: str
-    action: str
-    success: bool
-    message: str
-    timestamp: str
 
 
 class DiagnosticsResponse(BaseModel):
-    """System diagnostics."""
+    """System diagnostics.
+
+    Every field is observed at request time. There are no status literals:
+    if a subsystem is not measured here, it is not in the response.
+    """
 
     timestamp: str
     system: dict
-    services: dict
-    database: dict
     memory: dict
-    queues: dict
-
-
-class FeatureFlags(BaseModel):
-    """Feature flags."""
-
-    features: dict[str, bool]
-
-
-# =============================================================================
-# ADMIN CHECK
-# =============================================================================
-
-
-# =============================================================================
-# ENDPOINTS - Service Management
-# =============================================================================
-
-
-@router.get(
-    "/services",
-    response=ServiceListResponse,
-    summary="List all services",
-    auth=AuthBearer(),
-)
-async def list_services(request) -> ServiceListResponse:
-    """List all SomaBrain services and their status.
-
-    Per Phase 6.4: list_services()
-
-    ADMIN mode only.
-    """
-    await authorize(request, action="system:view", resource="system")
-
-    import httpx
-
-    services = []
-    service_endpoints = {
-        "SomaBrain Core": "http://localhost:9696/health",
-        "Memory Service": "http://localhost:9696/memory/health",
-        "Cognitive Service": "http://localhost:9696/cognitive/health",
-        "Whisper": "http://localhost:9100/health",
-        "Kokoro TTS": "http://localhost:9200/health",
-        "Kafka": "http://localhost:9092/health",
-    }
-
-    async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
-        for name, endpoint in service_endpoints.items():
-            try:
-                response = await client.get(endpoint)
-                healthy = response.status_code == 200
-                status = "running" if healthy else "degraded"
-            except Exception:
-                healthy = False
-                status = "unknown"
-
-            services.append(
-                ServiceInfo(
-                    name=name,
-                    status=status,
-                    healthy=healthy,
-                    endpoint=endpoint,
-                    last_check=timezone.now().isoformat(),
-                )
-            )
-
-    return ServiceListResponse(
-        services=services,
-        total=len(services),
-    )
-
-
-@router.get(
-    "/services/{service_name}",
-    response=ServiceInfo,
-    summary="Get service status",
-    auth=AuthBearer(),
-)
-async def get_service_status(request, service_name: str) -> ServiceInfo:
-    """Get detailed status for a specific service.
-
-    Per Phase 6.4: get_service_status()
-    """
-    await authorize(request, action="system:view", resource="system")
-    raise HttpError(501, "Service status is not implemented: no service registry is wired.")
-
-
-@router.post(
-    "/services/{service_name}/action",
-    response=ServiceActionResponse,
-    summary="Execute service action",
-    auth=AuthBearer(),
-)
-async def service_action(
-    request,
-    service_name: str,
-    payload: ServiceActionRequest,
-) -> ServiceActionResponse:
-    """Start, stop, or restart a service.
-
-    Per Phase 6.4: start/stop/restart_service()
-
-    WARNING: Production impact - use with caution.
-    """
-    await authorize(request, action="system:configure", resource="system")
-
-    valid_actions = ["start", "stop", "restart"]
-    if payload.action not in valid_actions:
-        raise BadRequestError(f"Invalid action. Must be one of: {valid_actions}")
-
-    logger.warning(
-        "ADMIN ACTION: %s service %s (force=%s)", payload.action, service_name, payload.force
-    )
-
-    raise HttpError(501, "Service action is not implemented: no process manager is wired.")
+    services: list[dict]
 
 
 # =============================================================================
@@ -205,17 +69,22 @@ async def service_action(
     auth=AuthBearer(),
 )
 async def get_diagnostics(request) -> DiagnosticsResponse:
-    """Get comprehensive system diagnostics.
+    """Host resources and live service probes, measured at request time.
 
-    Per Phase 6.4: micro_diag()
-
-    Includes system, services, database, memory, queues.
+    ``system`` and ``memory`` come from psutil. ``services`` is the result of
+    the infrastructure health checks — same probes, same one inventory as
+    everything else. Nothing is assumed; a probe that cannot run reports its
+    own error rather than a status.
     """
     await authorize(request, action="system:read_metrics", resource="system")
 
     import platform
 
     import psutil
+
+    from admin.core.infrastructure import health_checker
+
+    health = await health_checker.check_all()
 
     return DiagnosticsResponse(
         timestamp=timezone.now().isoformat(),
@@ -224,16 +93,6 @@ async def get_diagnostics(request) -> DiagnosticsResponse:
             "python": platform.python_version(),
             "cpu_count": psutil.cpu_count() if hasattr(psutil, "cpu_count") else 0,
             "cpu_percent": psutil.cpu_percent() if hasattr(psutil, "cpu_percent") else 0,
-        },
-        services={
-            "somabrain": "running",
-            "whisper": "running",
-            "kokoro": "running",
-        },
-        database={
-            "postgresql": "healthy",
-            "connections": 5,
-            "pool_size": 20,
         },
         memory={
             "total_mb": (
@@ -250,64 +109,32 @@ async def get_diagnostics(request) -> DiagnosticsResponse:
                 psutil.virtual_memory().percent if hasattr(psutil, "virtual_memory") else 0
             ),
         },
-        queues={
-            "kafka_lag": 0,
-            "pending_memories": 0,
-            "pending_events": 0,
-        },
+        services=list(health.get("services", [])),
     )
 
 
 @router.get(
-    "/sleep-status",
-    summary="Get all agents sleep status",
+    "/services",
+    summary="List probed services",
     auth=AuthBearer(),
 )
-async def sleep_status_all(request) -> dict:
-    """Get sleep status for all agents.
+async def list_services(request) -> dict:
+    """The infrastructure inventory, as it probes out right now.
 
-    Per Phase 6.4: sleep_status_all()
+    Delegates to ``InfrastructureHealthChecker`` — the one place that knows
+    what services exist. The former version of this route kept its own
+    hardcoded map of localhost URLs, which is how the stack came to advertise
+    services it does not run.
     """
     await authorize(request, action="system:view", resource="system")
-    raise HttpError(501, "Sleep status is not implemented: no agent store is wired.")
 
+    from admin.core.infrastructure import health_checker
 
-# =============================================================================
-# ENDPOINTS - Feature Flags
-# =============================================================================
-
-
-@router.get(
-    "/features",
-    response=FeatureFlags,
-    summary="Get feature flags",
-    auth=AuthBearer(),
-)
-async def get_features(request) -> FeatureFlags:
-    """Get current feature flags.
-
-    Per Phase 6.4: get_features()
-    """
-    await authorize(request, action="system:view", resource="system")
-    raise HttpError(501, "Feature flags are not implemented here: use /config feature-flag API.")
-
-
-@router.patch(
-    "/features",
-    summary="Update feature flags",
-    auth=AuthBearer(),
-)
-async def update_features(request, flags: dict) -> dict:
-    """Update feature flags.
-
-    Per Phase 6.4: update_features()
-
-    WARNING: Production impact.
-    """
-    await authorize(request, action="system:configure", resource="system")
-
-    logger.warning("ADMIN ACTION: Feature flags updated: %s", flags)
-
-    raise HttpError(
-        501, "Feature flag persistence is not implemented: use /config feature-flag API."
-    )
+    health = await health_checker.check_all()
+    return {
+        "overall_status": health.get("overall_status"),
+        "timestamp": health.get("timestamp"),
+        "duration_ms": health.get("duration_ms"),
+        "services": health.get("services", []),
+        "total": len(health.get("services", [])),
+    }

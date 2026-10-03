@@ -131,22 +131,27 @@ class LLMModelConfigAdmin(admin.ModelAdmin):
 
     @admin.action(description="Enable vision capability")
     def enable_vision(self, request, queryset):
-        """Execute enable vision.
+        """Mark selected models as vision-capable.
 
-        Args:
-            request: The request.
-            queryset: The queryset.
+        Writes ``capabilities``, not the ``vision`` column: ``vision`` is
+        derived from ``capabilities`` on save (``LLMModelConfig.save``), so the
+        old ``queryset.update(vision=True)`` bypassed that and left the two
+        disagreeing. ``capabilities`` is the source of truth.
         """
-
-        queryset.update(vision=True)
+        for obj in queryset:
+            caps = list(obj.capabilities or [])
+            if "vision" not in caps:
+                caps.append("vision")
+            obj.capabilities = caps
+            obj.save(update_fields=["capabilities", "vision", "updated_at"])
+        self.message_user(request, f"{queryset.count()} models marked vision-capable.")
 
     @admin.action(description="Disable vision capability")
     def disable_vision(self, request, queryset):
-        """Execute disable vision.
+        """Clear the vision capability. Same source-of-truth rule as above."""
+        for obj in queryset:
+            caps = [c for c in (obj.capabilities or []) if c != "vision"]
+            obj.capabilities = caps
+            obj.save(update_fields=["capabilities", "vision", "updated_at"])
+        self.message_user(request, f"{queryset.count()} models cleared of vision.")
 
-        Args:
-            request: The request.
-            queryset: The queryset.
-        """
-
-        queryset.update(vision=False)

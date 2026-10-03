@@ -30,7 +30,12 @@ router = Router(tags=["audit"])
 
 
 class AuditLogOut(BaseModel):
-    """Audit log entry output."""
+    """Audit log entry output. Mirrors ``AuditLog``'s real columns.
+
+    One schema for the whole module. The former ``AuditEvent`` twin in
+    ``admin/audit/api.py`` carried ``user_agent`` and ``request_id`` while this
+    one dropped them; the model has both, so both are here and the twin is gone.
+    """
 
     id: str
     actor_id: str
@@ -42,6 +47,8 @@ class AuditLogOut(BaseModel):
     old_value: Optional[dict] = None
     new_value: Optional[dict] = None
     ip_address: Optional[str] = None
+    user_agent: str = ""
+    request_id: str = ""
     created_at: str
 
 
@@ -54,6 +61,25 @@ class AuditLogFilters(BaseModel):
     tenant_id: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+
+
+def _to_out(log: AuditLog) -> AuditLogOut:
+    """One row -> one output schema. Every read path goes through here."""
+    return AuditLogOut(
+        id=str(log.id),
+        actor_id=str(log.actor_id),
+        actor_email=log.actor_email or "",
+        tenant_id=str(log.tenant_id) if log.tenant_id else None,  # type: ignore[reportAttributeAccessIssue]
+        action=log.action,
+        resource_type=log.resource_type,
+        resource_id=str(log.resource_id) if log.resource_id else None,
+        old_value=log.old_value,
+        new_value=log.new_value,
+        ip_address=log.ip_address,
+        user_agent=log.user_agent or "",
+        request_id=log.request_id or "",
+        created_at=log.created_at.isoformat() if log.created_at else "",
+    )
 
 
 # =============================================================================
@@ -106,26 +132,8 @@ def list_audit_logs(
     offset = (page - 1) * per_page
     logs = qs.order_by("-created_at")[offset : offset + per_page]
 
-    items = []
-    for log in logs:
-        items.append(
-            AuditLogOut(
-                id=str(log.id),
-                actor_id=str(log.actor_id),
-                actor_email=log.actor_email or "",
-                tenant_id=str(log.tenant_id) if log.tenant_id else None,  # type: ignore[reportAttributeAccessIssue]
-                action=log.action,
-                resource_type=log.resource_type,
-                resource_id=str(log.resource_id) if log.resource_id else None,
-                old_value=log.old_value,
-                new_value=log.new_value,
-                ip_address=log.ip_address,
-                created_at=log.created_at.isoformat() if log.created_at else "",
-            ).model_dump()
-        )
-
     return paginated_response(
-        items=items,
+        items=[_to_out(log).model_dump() for log in logs],
         total=total,
         page=page,
         page_size=per_page,
@@ -277,3 +285,116 @@ def get_audit_stats(
         "by_action": by_action,
         "by_actor": by_actor,
     }
+
+# =============================================================================
+# ENDPOINTS - Event detail & history
+# =============================================================================
+#
+# These four lived in ``admin/audit/api.py``, a second audit API mounted at
+# ``/audit`` with zero callers. Audit has one home now: this module. They are
+# registered after every literal path so ``/{event_id}`` cannot swallow them.
+
+
+class AuditSummaryOut(BaseModel):
+    """Aggregate counts over the audit trail."""
+
+    total_events: int
+    by_action: dict
+    by_resource: dict
+
+
+@router.get("/summary", response=AuditSummaryOut, summary="Audit summary", auth=AuthBearer())
+def get_audit_summary(
+    request,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> AuditSummaryOut:
+    """Aggregate counts by action and resource type."""
+    authorize_sync(request, action="audit:read", resource="audit")
+
+    from django.db.models import Count
+
+    qs = AuditLog.objects.all()
+    if start_date:
+        qs = qs.filter(created_at__gte=start_date)
+    if end_date:
+        qs = qs.filter(created_at__lte=end_date)
+
+    return AuditSummaryOut(
+        total_events=qs.count(),
+        by_action=dict(qs.values_list("action").annotate(n=Count("id")).order_by()),
+        by_resource=dict(qs.values_list("resource_type").annotate(n=Count("id")).order_by()),
+    )
+
+
+@router.get(
+    "/actors/{actor_id}",
+    summary="Audit trail for one actor",
+    auth=AuthBearer(),
+)
+def get_actor_history(
+    request,
+    actor_id: str,
+    limit: int = Query(50, ge=1, le=500),
+) -> dict:
+    """Every recorded action by one actor."""
+    authorize_sync(request, action="audit:read", resource="audit")
+
+    rows = AuditLog.objects.filter(actor_id=actor_id).order_by("-created_at")[:limit]
+    return {"actor_id": actor_id, "events": [_to_out(r).model_dump() for r in rows]}
+
+
+@router.get(
+    "/resources/{resource_type}/{resource_id}",
+    summary="Audit trail for one resource",
+    auth=AuthBearer(),
+)
+def get_resource_history(
+    request,
+    resource_type: str,
+    resource_id: str,
+    limit: int = Query(50, ge=1, le=500),
+) -> dict:
+    """Every recorded action against one resource."""
+    authorize_sync(request, action="audit:read", resource="audit")
+
+    rows = AuditLog.objects.filter(
+        resource_type=resource_type, resource_id=resource_id
+    ).order_by("-created_at")[:limit]
+    return {
+        "resource_type": resource_type,
+        "resource_id": resource_id,
+        "events": [_to_out(r).model_dump() for r in rows],
+    }
+
+
+@router.get(
+    "/events/{event_id}",
+    response=AuditLogOut,
+    summary="Get one audit event",
+    auth=AuthBearer(),
+)
+def get_audit_event(request, event_id: str) -> AuditLogOut:
+    """One audit row by id.
+
+    Mounted at ``/events/{event_id}``, not ``/{event_id}``: a bare
+    single-segment wildcard would shadow ``/summary``, ``/export``,
+    ``/actions``, ``/stats`` and ``/resource-types``, which are all literals
+    that must keep winning.
+    """
+    authorize_sync(request, action="audit:read", resource="audit")
+
+    from uuid import UUID
+
+    from admin.common.exceptions import NotFoundError
+
+    try:
+        pk = UUID(event_id)
+    except ValueError:
+        raise NotFoundError("audit event", event_id)
+    try:
+        log = AuditLog.objects.get(id=pk)
+    except AuditLog.DoesNotExist:
+        raise NotFoundError("audit event", event_id)
+    return _to_out(log)
+

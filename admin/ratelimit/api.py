@@ -1,11 +1,10 @@
-"""Rate Limiting API - Request throttling and quota enforcement.
+"""Rate Limiting API - Request throttling and abuse prevention.
 
 
 Per
 
 - Security Auditor: Rate limiting, abuse prevention
 - DevOps: Redis integration, distributed limits
-- PM: Quota management, usage transparency
 """
 
 from __future__ import annotations
@@ -50,30 +49,6 @@ class RateLimitStatus(BaseModel):
     retry_after_seconds: Optional[int] = None
 
 
-class QuotaConfig(BaseModel):
-    """Quota configuration."""
-
-    tenant_id: str
-    max_agents: int
-    max_users: int
-    max_conversations_per_day: int
-    max_api_calls_per_month: int
-    max_storage_mb: int
-
-
-class QuotaUsage(BaseModel):
-    """Current quota usage."""
-
-    tenant_id: str
-    agents_used: int
-    agents_limit: int
-    users_used: int
-    users_limit: int
-    api_calls_used: int
-    api_calls_limit: int
-    storage_used_mb: float
-    storage_limit_mb: int
-    reset_at: str
 
 
 # =============================================================================
@@ -252,86 +227,6 @@ async def delete_rate_limit(request, name: str) -> dict:
         }
 
     return {"name": name, "deleted": False, "error": get_message(ErrorCode.NOT_FOUND)}
-
-
-# =============================================================================
-# ENDPOINTS - Quotas
-# =============================================================================
-
-
-@router.get(
-    "/quotas/{tenant_id}",
-    response=QuotaUsage,
-    summary="Get tenant quota usage",
-    auth=AuthBearer(),
-)
-async def get_quota_usage(
-    request,
-    tenant_id: str,
-) -> QuotaUsage:
-    """Get current quota usage for a tenant.
-
-    PM: Usage transparency for billing.
-    """
-    await authorize(request, action="system:read_metrics", resource="ratelimit")
-    return QuotaUsage(
-        tenant_id=tenant_id,
-        agents_used=0,
-        agents_limit=10,
-        users_used=0,
-        users_limit=50,
-        api_calls_used=0,
-        api_calls_limit=100000,
-        storage_used_mb=0.0,
-        storage_limit_mb=10240,
-        reset_at=(timezone.now()).isoformat(),
-    )
-
-
-@router.patch(
-    "/quotas/{tenant_id}",
-    summary="Update tenant quotas",
-    auth=AuthBearer(),
-)
-async def update_quotas(
-    request,
-    tenant_id: str,
-    max_agents: Optional[int] = None,
-    max_users: Optional[int] = None,
-    max_api_calls: Optional[int] = None,
-) -> dict:
-    """Update tenant quotas.
-
-    PM: Adjust limits based on subscription tier.
-    """
-    await authorize(request, action="system:ratelimit", resource="ratelimit")
-    logger.info("Quotas updated for tenant: %s", tenant_id)
-
-    return {
-        "tenant_id": tenant_id,
-        "updated": True,
-    }
-
-
-@router.get(
-    "/quotas",
-    summary="List all tenant quotas",
-    auth=AuthBearer(),
-)
-async def list_quotas(
-    request,
-    near_limit: bool = False,  # Filter to tenants near their limits
-) -> dict:
-    """List quota usage for all tenants.
-
-    PM: Platform-wide quota monitoring.
-    """
-    await authorize(request, action="system:view", resource="ratelimit")
-    return {
-        "quotas": [],
-        "total": 0,
-        "near_limit_count": 0,
-    }
 
 
 # =============================================================================

@@ -1,14 +1,27 @@
-"""Real Infrastructure Health Checker.
+"""Infrastructure health checks.
 
+One inventory, and it is not this file. What this deployment runs is declared
+in ``config.settings_registry`` as ``service_health_endpoints`` per mode
+(VIBE Rule 100). This module probes that map and nothing else.
 
-Per
+The previous version of this file checked ten services by name and resolved
+each one's URL with ``getattr(settings, "X", "http://localhost:PORT")`` — a
+silent default on every line. Concretely, that meant:
 
-10-Persona Implementation:
-- PhD Developer: Async health checks with proper error handling
-- DevOps: Real infrastructure verification
-- Performance Engineer: Latency measurement
-- Security Auditor: Connection timeout limits
-- QA Engineer: Comprehensive status reporting
+* ``REDIS_URL`` is not a Django setting in this project (the value lives at
+  ``SA01_REDIS_URL`` and in the registry), so the Redis check raised
+  "REDIS_URL is required" on every call. Permanently broken.
+* ``SOMABRAIN_URL`` *is* a setting, but it has no default and is ``None``
+  unless the environment sets it — so ``getattr(..., "http://localhost:9696")``
+  returned ``None`` (the attribute exists) and the check probed ``"None/health"``.
+* Flink, Qdrant, Whisper and Kokoro are not containers in any compose file
+  under ``infra/``, so those checks always fell through to probing localhost
+  and always reported "degraded" — a fabricated signal that made the dashboard
+  look monitored.
+
+VIBE Rule 91, Zero-Fallback: a missing configuration value fails the call. It
+does not silently become localhost. A service the map does not name is not
+deployed here, and the result says exactly that.
 """
 
 from __future__ import annotations
@@ -16,6 +29,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from typing import Dict
 
 from django.conf import settings
 from django.db import connection
@@ -38,7 +52,8 @@ class HealthCheckResult:
         """Initialize the instance."""
 
         self.name = name
-        self.status = status  # healthy, degraded, down
+        # healthy | degraded | down | not_deployed
+        self.status = status
         self.latency_ms = latency_ms
         self.details = details or {}
         self.error = error
@@ -55,74 +70,42 @@ class HealthCheckResult:
         }
 
 
-class InfrastructureHealthChecker:
-    """Real infrastructure health checker.
+def _registry():
+    """The declared topology for this deployment (Rule 100).
 
-    Connects to actual services and verifies they are operational.
-    No mocks, no fake data -
+    Returns ``config.settings_registry.BaseSettings``.
+
+    Raised, not defaulted: if the registry cannot load, the health check is
+    not the place to paper over it.
     """
+    from config.settings_registry import get_settings
+
+    return get_settings()
+
+
+def _http_endpoints() -> Dict[str, str]:
+    """Declared HTTP health endpoints, name -> full probe URL."""
+    cfg = _registry()
+    endpoints = getattr(cfg, "service_health_endpoints", None)
+    if not isinstance(endpoints, dict):
+        raise RuntimeError(
+            "VIBE Rule 91 VIOLATION: service_health_endpoints is missing from "
+            "the settings registry. A health check must not invent an inventory."
+        )
+    return {str(k): str(v) for k, v in endpoints.items() if v}
+
+
+class InfrastructureHealthChecker:
+    """Probes the declared deployment inventory. No mocks, no fake data."""
 
     def __init__(self):
         """Initialize the instance."""
 
         self.check_timeout = 5.0  # seconds
 
-    async def check_all(self) -> dict:
-        """Check all infrastructure services."""
-        start_time = time.time()
-
-        # Run all checks concurrently - INCLUDING Kafka and Flink
-        checks = await asyncio.gather(
-            self.check_postgresql(),
-            self.check_redis(),
-            self.check_kafka(),
-            self.check_flink(),
-            self.check_temporal(),
-            self.check_qdrant(),
-            self.check_keycloak(),
-            self.check_somabrain(),
-            self.check_whisper(),
-            self.check_kokoro(),
-            return_exceptions=True,
-        )
-
-        # Process results
-        results = []
-        all_healthy = True
-        critical_down = False
-
-        for check in checks:
-            if isinstance(check, BaseException):
-                results.append(
-                    HealthCheckResult(
-                        name="unknown",
-                        status="down",
-                        error=str(check),
-                    )
-                )
-                critical_down = True
-            else:
-                results.append(check)
-                if check.status == "down":
-                    critical_down = True
-                    all_healthy = False
-                elif check.status == "degraded":
-                    all_healthy = False
-
-        # Overall status
-        if critical_down:
-            overall_status = "degraded"
-        elif all_healthy:
-            overall_status = "healthy"
-        else:
-            overall_status = "degraded"
-
-        return {
-            "overall_status": overall_status,
-            "timestamp": timezone.now().isoformat(),
-            "duration_ms": (time.time() - start_time) * 1000,
-            "services": [r.to_dict() for r in results if isinstance(r, HealthCheckResult)],
-        }
+    # ------------------------------------------------------------------
+    # Connection-based checks — topology comes from the registry.
+    # ------------------------------------------------------------------
 
     async def check_postgresql(self) -> HealthCheckResult:
         """Check PostgreSQL database connectivity."""
@@ -130,7 +113,6 @@ class InfrastructureHealthChecker:
 
         start = time.time()
         try:
-            # Use sync_to_async wrapper for Django ORM in async context
             @sync_to_async
             def _check_db():
                 """Execute check db."""
@@ -164,20 +146,22 @@ class InfrastructureHealthChecker:
             )
 
     async def check_redis(self) -> HealthCheckResult:
-        """Check Redis connectivity."""
+        """Check Redis connectivity against the registry's redis topology.
+
+        The URL is built from ``redis_host`` / ``redis_port`` / ``redis_db``,
+        which is where that topology actually lives. The previous
+        ``getattr(settings, "REDIS_URL", None)`` named an attribute this
+        project does not define, so this check failed on every call.
+        """
         start = time.time()
         try:
             import redis.asyncio as redis
 
-            redis_url = getattr(settings, "REDIS_URL", None)
-            if not redis_url:
-                raise ValueError("REDIS_URL is required")
+            cfg = _registry()
+            redis_url = cfg.redis_url
             client = redis.from_url(redis_url, socket_timeout=self.check_timeout)
 
-            # Ping Redis
             await client.ping()
-
-            # Get info
             info = await client.info("server")
             await client.aclose()
 
@@ -208,19 +192,28 @@ class InfrastructureHealthChecker:
             )
 
     async def check_kafka(self) -> HealthCheckResult:
-        """Check Kafka connectivity using existing KafkaEventBus adapter.
+        """Check Kafka connectivity.
 
-        DevOps: Uses production KafkaEventBus.healthcheck() method.
+        An empty ``kafka_bootstrap_servers`` is a real topology state — this
+        deployment runs no broker (Standalone is declared that way). It is not
+        a reason to guess ``localhost:9092``.
         """
         start = time.time()
         try:
             from services.common.event_bus import KafkaEventBus, KafkaSettings
 
-            bootstrap_servers = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+            cfg = _registry()
+            bootstrap_servers = (cfg.kafka_bootstrap_servers or "").strip()
+            if not bootstrap_servers:
+                return HealthCheckResult(
+                    name="kafka",
+                    status="not_deployed",
+                    error="kafka_bootstrap_servers is empty in this deployment's topology",
+                )
+
             kafka_settings = KafkaSettings(bootstrap_servers=bootstrap_servers)
             bus = KafkaEventBus(kafka_settings)
 
-            # Use the existing healthcheck method from KafkaEventBus
             await bus.healthcheck()
             await bus.close()
 
@@ -230,9 +223,7 @@ class InfrastructureHealthChecker:
                 name="kafka",
                 status="healthy",
                 latency_ms=latency,
-                details={
-                    "bootstrap_servers": bootstrap_servers,
-                },
+                details={"bootstrap_servers": bootstrap_servers},
             )
         except ImportError as e:
             return HealthCheckResult(
@@ -249,64 +240,31 @@ class InfrastructureHealthChecker:
                 error=str(e),
             )
 
-    async def check_flink(self) -> HealthCheckResult:
-        """Check Flink cluster via REST API.
+    # ------------------------------------------------------------------
+    # HTTP-probed checks — one generic prober, driven by the registry.
+    # ------------------------------------------------------------------
 
-        DevOps: Queries Flink JobManager REST endpoint.
-        Performance Engineer: Monitors streaming job status.
+    async def _check_http(self, name: str) -> HealthCheckResult:
+        """Probe one declared HTTP endpoint.
+
+        An undeclared name is reported as ``not_deployed`` and never probed.
+        There is no fallback URL anywhere in this method — that is the point.
         """
         start = time.time()
-        try:
-            import httpx
-
-            flink_rest_url = getattr(settings, "FLINK_REST_URL", "http://localhost:8081")
-            url = f"{flink_rest_url}/overview"
-
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
-
-            latency = (time.time() - start) * 1000
-
-            if response.status_code == 200:
-                data = response.json() if response.text else {}
-                return HealthCheckResult(
-                    name="flink",
-                    status="healthy",
-                    latency_ms=latency,
-                    details={
-                        "flink_version": data.get("flink-version", "unknown"),
-                        "jobs_running": data.get("jobs-running", 0),
-                        "jobs_finished": data.get("jobs-finished", 0),
-                        "taskmanagers": data.get("taskmanagers", 0),
-                        "slots_total": data.get("slots-total", 0),
-                        "slots_available": data.get("slots-available", 0),
-                    },
-                )
-            else:
-                return HealthCheckResult(
-                    name="flink",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            logger.warning("Flink health check failed: %s", e)
+        endpoints = _http_endpoints()
+        url = endpoints.get(name)
+        if not url:
             return HealthCheckResult(
-                name="flink",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
+                name=name,
+                status="not_deployed",
+                error=(
+                    f"'{name}' is not in service_health_endpoints for this "
+                    f"deployment. Declared: {sorted(endpoints)}"
+                ),
             )
 
-    async def check_temporal(self) -> HealthCheckResult:
-        """Check Temporal server connectivity."""
-        start = time.time()
         try:
             import httpx
-
-            temporal_host = getattr(settings, "TEMPORAL_HOST", "localhost:7233")
-            # Temporal health check endpoint
-            url = f"http://{temporal_host}/health"
 
             async with httpx.AsyncClient(timeout=self.check_timeout) as client:
                 response = await client.get(url)
@@ -315,217 +273,103 @@ class InfrastructureHealthChecker:
 
             if response.status_code == 200:
                 return HealthCheckResult(
-                    name="temporal",
+                    name=name,
                     status="healthy",
                     latency_ms=latency,
-                    details={"host": temporal_host},
+                    details={"url": url},
                 )
-            else:
-                return HealthCheckResult(
-                    name="temporal",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            logger.warning("Temporal health check failed: %s", e)
             return HealthCheckResult(
-                name="temporal",
+                name=name,
+                status="degraded",
+                latency_ms=latency,
+                details={"url": url},
+                error=f"HTTP {response.status_code}",
+            )
+        except Exception as e:
+            logger.warning("Health check failed for %s: %s", name, e)
+            return HealthCheckResult(
+                name=name,
                 status="degraded",
                 latency_ms=(time.time() - start) * 1000,
+                details={"url": url},
                 error=str(e),
             )
 
-    async def check_qdrant(self) -> HealthCheckResult:
-        """Check Qdrant vector database connectivity."""
-        start = time.time()
-        try:
-            import httpx
+    def __getattr__(self, item: str):
+        """Expose ``check_<name>`` for every declared HTTP service.
 
-            qdrant_host = getattr(settings, "QDRANT_HOST", "localhost:6333")
-            url = f"http://{qdrant_host}/health"
+        ``admin.observability.api`` dispatches on the service name
+        dynamically, so the method has to exist. Undeclared names still get a
+        method — one that answers "not deployed" rather than inventing a probe.
+        """
+        if not item.startswith("check_"):
+            raise AttributeError(item)
+        name = item[len("check_") :]
 
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
+        async def _bound() -> HealthCheckResult:
+            if name == "postgresql":
+                return await self.check_postgresql()
+            if name == "redis":
+                return await self.check_redis()
+            if name == "kafka":
+                return await self.check_kafka()
+            return await self._check_http(name)
 
-            latency = (time.time() - start) * 1000
+        _bound.__name__ = item
+        return _bound
 
-            if response.status_code == 200:
-                data = response.json() if response.text else {}
-                return HealthCheckResult(
-                    name="qdrant",
-                    status="healthy",
-                    latency_ms=latency,
-                    details={
-                        "host": qdrant_host,
-                        "version": data.get("version", "unknown"),
-                    },
+    # ------------------------------------------------------------------
+    # Inventory
+    # ------------------------------------------------------------------
+
+    async def check_all(self) -> dict:
+        """Check the connection-based services and every declared HTTP endpoint."""
+        start_time = time.time()
+
+        declared = sorted(_http_endpoints())
+        checks = await asyncio.gather(
+            self.check_postgresql(),
+            self.check_redis(),
+            self.check_kafka(),
+            *(self._check_http(name) for name in declared),
+            return_exceptions=True,
+        )
+
+        results = []
+        all_healthy = True
+        critical_down = False
+
+        for check in checks:
+            if isinstance(check, BaseException):
+                results.append(
+                    HealthCheckResult(
+                        name="unknown",
+                        status="down",
+                        error=str(check),
+                    )
                 )
+                critical_down = True
             else:
-                return HealthCheckResult(
-                    name="qdrant",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            logger.warning("Qdrant health check failed: %s", e)
-            return HealthCheckResult(
-                name="qdrant",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
-            )
+                results.append(check)
+                if check.status == "down":
+                    critical_down = True
+                    all_healthy = False
+                elif check.status in ("degraded", "not_deployed"):
+                    all_healthy = False
 
-    async def check_keycloak(self) -> HealthCheckResult:
-        """Check Keycloak authentication server."""
-        start = time.time()
-        try:
-            import httpx
+        if critical_down:
+            overall_status = "degraded"
+        elif all_healthy:
+            overall_status = "healthy"
+        else:
+            overall_status = "degraded"
 
-            keycloak_url = getattr(settings, "KEYCLOAK_URL", "http://localhost:8080")
-            url = f"{keycloak_url}/health/ready"
-
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
-
-            latency = (time.time() - start) * 1000
-
-            if response.status_code == 200:
-                return HealthCheckResult(
-                    name="keycloak",
-                    status="healthy",
-                    latency_ms=latency,
-                    details={"url": keycloak_url},
-                )
-            else:
-                return HealthCheckResult(
-                    name="keycloak",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            logger.warning("Keycloak health check failed: %s", e)
-            return HealthCheckResult(
-                name="keycloak",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
-            )
-
-    async def check_somabrain(self) -> HealthCheckResult:
-        """Check SomaBrain memory service."""
-        start = time.time()
-        try:
-            import httpx
-
-            somabrain_url = getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
-            url = f"{somabrain_url}/health"
-
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
-
-            latency = (time.time() - start) * 1000
-
-            if response.status_code == 200:
-                data = response.json() if response.text else {}
-                return HealthCheckResult(
-                    name="somabrain",
-                    status="healthy",
-                    latency_ms=latency,
-                    details={
-                        "url": somabrain_url,
-                        "status": data.get("status", "unknown"),
-                    },
-                )
-            else:
-                return HealthCheckResult(
-                    name="somabrain",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            logger.warning("SomaBrain health check failed: %s", e)
-            return HealthCheckResult(
-                name="somabrain",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
-            )
-
-    async def check_whisper(self) -> HealthCheckResult:
-        """Check Whisper STT service."""
-        start = time.time()
-        try:
-            import httpx
-
-            whisper_url = getattr(settings, "WHISPER_URL", "http://localhost:9100")
-            url = f"{whisper_url}/health"
-
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
-
-            latency = (time.time() - start) * 1000
-
-            if response.status_code == 200:
-                return HealthCheckResult(
-                    name="whisper",
-                    status="healthy",
-                    latency_ms=latency,
-                )
-            else:
-                return HealthCheckResult(
-                    name="whisper",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            # Voice services are optional
-            return HealthCheckResult(
-                name="whisper",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
-            )
-
-    async def check_kokoro(self) -> HealthCheckResult:
-        """Check Kokoro TTS service."""
-        start = time.time()
-        try:
-            import httpx
-
-            kokoro_url = getattr(settings, "KOKORO_URL", "http://localhost:9200")
-            url = f"{kokoro_url}/health"
-
-            async with httpx.AsyncClient(timeout=self.check_timeout) as client:
-                response = await client.get(url)
-
-            latency = (time.time() - start) * 1000
-
-            if response.status_code == 200:
-                return HealthCheckResult(
-                    name="kokoro",
-                    status="healthy",
-                    latency_ms=latency,
-                )
-            else:
-                return HealthCheckResult(
-                    name="kokoro",
-                    status="degraded",
-                    latency_ms=latency,
-                    error=f"HTTP {response.status_code}",
-                )
-        except Exception as e:
-            # Voice services are optional
-            return HealthCheckResult(
-                name="kokoro",
-                status="degraded",
-                latency_ms=(time.time() - start) * 1000,
-                error=str(e),
-            )
+        return {
+            "overall_status": overall_status,
+            "timestamp": timezone.now().isoformat(),
+            "duration_ms": (time.time() - start_time) * 1000,
+            "services": [r.to_dict() for r in results if isinstance(r, HealthCheckResult)],
+        }
 
 
 # Singleton instance

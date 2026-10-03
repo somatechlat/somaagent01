@@ -87,7 +87,7 @@ class _RateLimiter:
 RateLimiter = _RateLimiter
 
 if TYPE_CHECKING:
-    from admin.llm.models import ModelConfig
+    from admin.llm.models import LLMModelConfig
 
 # Module-level state
 rate_limiters: dict[str, RateLimiter] = {}
@@ -480,7 +480,7 @@ async def run_with_retries_async(
 
 
 async def apply_rate_limiter(
-    model_config: "ModelConfig | None",
+    model_config: "LLMModelConfig | None",
     input_text: str,
     rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
 ):
@@ -501,7 +501,7 @@ async def apply_rate_limiter(
 
 
 def apply_rate_limiter_sync(
-    model_config: "ModelConfig | None",
+    model_config: "LLMModelConfig | None",
     input_text: str,
     rate_limiter_callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
 ):

@@ -45,15 +45,16 @@ class TenantUserOut(BaseModel):
     last_login_at: Optional[str] = None
 
 
-class UserInviteRequest(BaseModel):
-    """Invite user request."""
+class UserCreateRequest(BaseModel):
+    """Add a principal to the organisation with a catalog role.
+
+    ``user_id`` is the identity-provider subject and is not nullable: the row
+    must name a real principal, never an invented one.
+    """
 
     email: str
     name: str
     role: str = "member"
-    # TenantUser.user_id is the Keycloak subject and is not nullable. An
-    # invite without one would have to invent an identity that no login can
-    # ever match, so the caller must supply the real subject.
     user_id: str
 
 
@@ -67,8 +68,8 @@ class UserUpdateRequest(BaseModel):
 
 # Roles an organization may assign to one of its members. `sysadmin` is
 # provisioned at install and is never assignable from inside an organization —
-# that boundary is what stops organization authority from reaching the system
-# tier. See authz.ORG_ASSIGNABLE_ROLES and authz.PROVISIONED_ROLES.
+# that boundary is what stops organization authority from reaching system
+# scope. See authz.ORG_ASSIGNABLE_ROLES and authz.PROVISIONED_ROLES.
 VALID_ROLES = list(ORG_ASSIGNABLE_ROLES)
 
 
@@ -133,14 +134,18 @@ def list_users(
 
 @router.post(
     "/users",
-    summary="Invite user to tenant",
+    summary="Add an organization member",
     auth=AuthBearer(),
 )
-def invite_user(
+def add_user(
     request,
-    payload: UserInviteRequest,
+    payload: UserCreateRequest,
 ) -> dict:
-    """Invite a new user to the tenant."""
+    """Grant a principal a catalog role in this organization.
+
+    This is a role assignment. It is not an invitation: a member row is active
+    on creation because there is no pending state in a self-hosted deployment.
+    """
     authorize_sync(request, action="org:user_create", resource="users")
     if payload.role not in VALID_ROLES:
         raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
@@ -148,28 +153,28 @@ def invite_user(
     from uuid import UUID
 
     try:
-        keycloak_user_id = UUID(payload.user_id)
+        principal_id = UUID(payload.user_id)
     except ValueError:
-        raise ValidationError("user_id must be the Keycloak subject (a UUID).", field="user_id")
+        raise ValidationError("user_id must be the identity-provider subject (a UUID).", field="user_id")
 
-    if TenantUser.objects.filter(user_id=keycloak_user_id).exists():
-        raise ValidationError("That Keycloak user is already a member.", field="user_id")
+    if TenantUser.objects.filter(user_id=principal_id).exists():
+        raise ValidationError("That principal is already a member.", field="user_id")
 
     tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
 
     user = TenantUser.objects.create(
         id=uuid4(),
         tenant_id=tenant_id,
-        user_id=keycloak_user_id,
+        user_id=principal_id,
         email=payload.email,
         display_name=payload.name,
         role=payload.role,
-        is_active=False,  # Pending invite acceptance
+        is_active=True,
     )
 
-    logger.info("User invited: %s as %s", payload.email, payload.role)
+    logger.info("Member added: %s as %s", payload.email, payload.role)
 
-    return api_response(_user_to_out(user).model_dump(), message="User invited")
+    return api_response(_user_to_out(user).model_dump(), message="Member added")
 
 
 @router.get(
@@ -536,7 +541,6 @@ def get_profile(request) -> dict:
             "session_timeout": 30,
             "notification_prefs": {
                 "criticalAlerts": True,
-                "billingEvents": True,
                 "weeklyDigest": False,
                 "marketing": False,
             },
@@ -566,7 +570,6 @@ def get_profile(request) -> dict:
             notifications=profile.notification_prefs
             or {
                 "criticalAlerts": True,
-                "billingEvents": True,
                 "weeklyDigest": False,
                 "marketing": False,
             },

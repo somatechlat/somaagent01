@@ -176,3 +176,32 @@ async def forget_memory(request, coord: str) -> dict:
     if not ok:
         raise NotFoundError("memory", coord)
     return {"forgotten": True, "coord": coord, "memory_id": coord}
+
+# =============================================================================
+# METRICS
+# =============================================================================
+
+
+class MemoryMetricsResponse(BaseModel):
+    """Memory subsystem metrics. Measured, not asserted."""
+
+    kafka: dict
+
+
+@router.get("/metrics", summary="Memory and Kafka metrics", auth=AuthBearer())
+async def memory_metrics(request) -> MemoryMetricsResponse:
+    """Kafka health for the memory subsystem.
+
+    Moved here from ``admin/core/api/memory.py``: memory has one home, and
+    this is it. The orphaned ``/core/memory/metrics`` copy had no callers.
+    """
+    await authorize(request, action="system:read_metrics", resource="memory")
+    from services.common.event_bus import KafkaEventBus, KafkaSettings
+
+    client = KafkaEventBus(KafkaSettings.from_env())
+    try:
+        result = await client.healthcheck()
+    finally:
+        await client.close()
+
+    return MemoryMetricsResponse(kafka=result or {})

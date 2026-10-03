@@ -61,10 +61,10 @@ from admin.llm.services.litellm_schemas import (
 
 # Lazy imports for Django models
 def _get_model_config():
-    """Lazy import ModelConfig to avoid circular imports."""
-    from admin.llm.models import ModelConfig
+    """Lazy import LLMModelConfig to avoid circular imports."""
+    from admin.llm.models import LLMModelConfig
 
-    return ModelConfig
+    return LLMModelConfig
 
 
 # Dedicated logger for LLM call tracing

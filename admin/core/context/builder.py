@@ -40,15 +40,12 @@ def _token_count(text: str) -> int:
     return len(_ENCODING.encode(text))
 
 
-# --- Legacy DI surface (deprecated) -----------------------------------------
-#
 # The ONE memory interface is ``services.common.memory_contract.MemoryGateway``.
-# Pass its hits as ``build(..., memory_hits=[...])``. ``brain_client`` exists only
-# so older tests can inject SomaBrain. There is NO SFM client slot: the agent
-# never talks to somafractalmemory (T-1). SomaBrain is the sole bridge.
-#
-# Do not type new code against these. Use MemoryGateway.
-BrainClientProtocol = Any
+# Pass its hits as ``build(..., memory_hits=[...])``. There is no client slot to
+# inject: the agent never talks to somafractalmemory (T-1), and SomaBrain is
+# reached only through MemoryGateway. The former ``brain_client`` DI slot is
+# gone — it gave the memory lane a second read path that the docstring claimed
+# did not exist, and no production caller ever passed it.
 
 
 class ContextBuilder:
@@ -64,18 +61,11 @@ class ContextBuilder:
         a sentinel string, never a silent empty lie and never an SFM bypass.
     """
 
-    def __init__(
-        self,
-        brain_client: Optional[BrainClientProtocol] = None,
-    ) -> None:
-        """
-        Initialize ContextBuilder.
+    def __init__(self) -> None:
+        """Initialize ContextBuilder.
 
-        Args:
-            brain_client: DEPRECATED legacy DI slot. Prefer
-                ``build(..., memory_hits=...)`` from ``MemoryGateway.recall()``.
+        The memory lane is fed exclusively by ``build(..., memory_hits=...)``.
         """
-        self._brain_client = brain_client
 
     async def build(
         self,
@@ -93,10 +83,10 @@ class ContextBuilder:
             user_message: Current user message
             history: Optional conversation history
             budget_override: Optional explicit token budget per lane from SimpleGovernor
-            memory_hits: Optional MemoryGateway.recall() hits (one read path —
-                PLAN-TRIAD-SEAMLESS §1 rule 5). ``None`` falls back to the
-                legacy brain/SFM clients; ``[]`` means recall ran and found
-                nothing.
+            memory_hits: ``MemoryGateway.recall()`` hits — the only read path
+                (PLAN-TRIAD-SEAMLESS §1 rule 5). ``[]`` means recall ran and
+                found nothing. There is no fallback client; passing ``None``
+                is a caller error and raises.
 
         Returns:
             BuiltContext with all 5 lanes assembled
@@ -205,44 +195,17 @@ class ContextBuilder:
 
         ``memory_hits`` (MemoryGateway.recall() results) is the one read path
         (PLAN-TRIAD-SEAMLESS §1 rule 5). SomaBrain is the only bridge (T-1);
-        the agent never queries somafractalmemory directly.
+        the agent never queries somafractalmemory directly. There is no client
+        to fall back to here — a recall that did not run is a bug in the
+        caller, not a licence to read memory another way.
         """
-        if memory_hits is not None:
-            return self._format_memory_hits(memory_hits, budget)
-
-        memory_config = persona.get("memory", {})
-        recall_limit = memory_config.get("recall_limit", 10)
-
-        # SomaBrain is the sole memory bridge (T-1).
-        if self._brain_client:
-            try:
-                memories = await self._brain_client.recall(
-                    query=query,
-                    top_k=recall_limit,
-                    tenant=str(capsule.tenant.id),
-                    namespace="chat_history",
-                )
-                if memories:
-                    return self._format_memories(memories, budget)
-            except Exception as exc:
-                logger.warning("SomaBrain recall failed: %s", exc)
-
-        return "[Memory recall unavailable]"
-
-    def _format_memories(self, memories: list[dict], budget: int) -> str:
-        """Format memory list into context string."""
-        parts = []
-        char_limit = budget * 4
-        current_chars = 0
-
-        for mem in memories:
-            content = mem.get("content", str(mem))
-            if current_chars + len(content) > char_limit:
-                break
-            parts.append(f"- {content}")
-            current_chars += len(content)
-
-        return "\n".join(parts) if parts else "[No relevant memories]"
+        if memory_hits is None:
+            raise ValueError(
+                "memory_hits is required: pass MemoryGateway.recall() output, "
+                "or [] if recall ran and found nothing. The memory lane has no "
+                "second read path."
+            )
+        return self._format_memory_hits(memory_hits, budget)
 
     def _format_memory_hits(self, hits: List[Any], budget: int) -> str:
         """Format MemoryGateway hits into the memory lane within the token budget.
@@ -306,7 +269,6 @@ async def build_context(
     capsule: "Capsule",
     user_message: str,
     history: Optional[List[Dict[str, str]]] = None,
-    brain_client: Optional[BrainClientProtocol] = None,
     budget_override: Optional[Dict[str, int]] = None,
     memory_hits: Optional[List[Any]] = None,
 ) -> BuiltContext:
@@ -317,15 +279,15 @@ async def build_context(
         capsule: Capsule with body
         user_message: User's message
         history: Conversation history
-        brain_client: Optional SomaBrain client (legacy DI; prefer memory_hits)
         budget_override: Optional explicit token budget per lane (system, history, memory, tools, buffer)
-        memory_hits: Optional MemoryGateway.recall() hits for the memory lane
-            (one read path through SomaBrain, T-1).
+        memory_hits: ``MemoryGateway.recall()`` hits for the memory lane —
+            the one read path through SomaBrain (T-1). Required; ``[]`` means
+            recall ran and found nothing.
 
     Returns:
         BuiltContext
     """
-    builder = ContextBuilder(brain_client=brain_client)
+    builder = ContextBuilder()
     return await builder.build(
         capsule, user_message, history, budget_override, memory_hits=memory_hits
     )
