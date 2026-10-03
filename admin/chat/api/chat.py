@@ -385,7 +385,7 @@ async def delete_conversation(request, conversation_id: str) -> dict:
             return None
         if user.sub and str(conv.user_id) != user.sub:
             return None
-        Message.objects.filter(conversation=conv).delete()
+        Message.objects.filter(conversation_id=conv.id).delete()
         conv.delete()
         return True
 
@@ -416,7 +416,9 @@ async def export_conversation(request, conversation_id: str) -> dict:
             return None
         if user.sub and str(conv.user_id) != user.sub:
             return None
-        msgs = list(Message.objects.filter(conversation=conv).order_by("created_at"))
+        msgs = list(
+            Message.objects.filter(conversation_id=conv.id).order_by("created_at")
+        )
         return conv, msgs
 
     loaded = await _load()

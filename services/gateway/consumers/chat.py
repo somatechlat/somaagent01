@@ -120,6 +120,15 @@ CONTROL_MSG_TYPES = {
 # =============================================================================
 
 
+# Stream coalescing. A WebSocket frame per token is the dominant cost of a
+# stream turn: one JSON serialise + one frame + one metrics label lookup for
+# every few characters. Tokens are buffered and flushed together either when
+# the buffer is full or when this deadline expires - both far below the
+# ~100ms human perception threshold, so nothing looks slower.
+_FLUSH_INTERVAL_S = 0.02
+_FLUSH_MAX_CHARS = 512
+
+
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     """WebSocket consumer for real-time chat.
 
@@ -502,6 +511,34 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
         _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_PONG).inc()
 
+    async def _flush_deltas(
+        self,
+        tokens: list[str],
+        conversation_id: str,
+        response_id: str,
+        index: int,
+    ) -> None:
+        """Send one coalesced chat.delta for a batch of tokens.
+
+        One frame for many tokens, one metrics increment for many tokens.
+        The UI appends ``delta`` to its running buffer exactly as it does for
+        a single token, so the rendered output is identical.
+        """
+        if not tokens:
+            return
+        await self.send_json(
+            WSMessage(
+                type=MSG_CHAT_DELTA,
+                payload={
+                    "conversation_id": conversation_id,
+                    "response_id": response_id,
+                    "delta": "".join(tokens),
+                    "index": index,
+                },
+            ).to_dict()
+        )
+        _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DELTA).inc()
+
     async def _handle_chat(self, content: dict):
         """Handle chat message.
 
@@ -566,6 +603,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             response_id = str(uuid4())
             token_count = 0
             response_content: list[str] = []
+            pending: list[str] = []
+            last_flush = 0.0
+            loop = asyncio.get_running_loop()
 
             # Attachments ride on the turn so detect_required_capabilities can
             # see vision/audio/document instead of always concluding {"text"}.
@@ -621,23 +661,29 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
                 token_count += 1
                 response_content.append(item)
+                pending.append(item)
 
-                # Send delta
-                await self.send_json(
-                    WSMessage(
-                        type=MSG_CHAT_DELTA,
-                        payload={
-                            "conversation_id": conversation_id,
-                            "response_id": response_id,
-                            "delta": item,
-                            "index": token_count,
-                        },
-                    ).to_dict()
+                now = loop.time()
+                if (
+                    sum(len(x) for x in pending) >= _FLUSH_MAX_CHARS
+                    or now - last_flush >= _FLUSH_INTERVAL_S
+                ):
+                    await self._flush_deltas(
+                        pending, conversation_id, response_id, token_count
+                    )
+                    pending = []
+                    last_flush = now
+
+            if pending:
+                await self._flush_deltas(
+                    pending, conversation_id, response_id, token_count
                 )
-                _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_CHAT_DELTA).inc()
+                pending = []
 
-            # Send done
-            full_response = "".join(response_content)
+            # Done is metadata only. The UI already accumulated the streamed
+            # body (saas-chat.ts keeps _streamContent and falls back to it with
+            # `chunk.content ?? this._streamContent`), so re-sending the whole
+            # response here would double the bytes of every turn for nothing.
             await self.send_json(
                 WSMessage(
                     type=MSG_CHAT_DONE,
@@ -645,7 +691,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         "conversation_id": conversation_id,
                         "response_id": response_id,
                         "token_count": token_count,
-                        "content": full_response,
                     },
                 ).to_dict()
             )
