@@ -50,6 +50,7 @@ _NETWORK_TOOLS = frozenset({"http_fetch", "document_ingest", "canvas_append"})
 # forever. Each of these is a declared setting, not a literal.
 MAX_TOOL_ITERATIONS = int(_tool_setting("TOOL_MAX_ITERATIONS", 8))
 TOOL_EXEC_TIMEOUT_S = float(_tool_setting("TOOL_EXEC_TIMEOUT_S", 30.0))
+TOOL_APPROVAL_TIMEOUT_S = float(_tool_setting("TOOL_APPROVAL_TIMEOUT_S", 120.0))
 _TOOL_RESULT_MAX_CHARS = int(_tool_setting("TOOL_RESULT_MAX_CHARS", 12000))
 
 # Tool timeline event types — mirrored by the WS chat protocol
@@ -261,6 +262,7 @@ async def run_tool_loop(
     tool_registry: Any,
     capsule: Any,
     iq: Any = None,
+    approval_gate: Any = None,
     max_iterations: int = MAX_TOOL_ITERATIONS,
 ) -> AsyncIterator[Union[str, ToolStreamEvent]]:
     """Run the native function-calling loop until a final response (or cap).
@@ -363,10 +365,25 @@ async def run_tool_loop(
                         "arguments": display_args,
                     },
                 )
-                # No approval channel yet — fail-closed skip with a
-                # user-visible error (approval branch is structured here so
-                # C2 can wire a real approve/deny round-trip).
-                error = get_message(ErrorCode.TOOL_EXECUTION_DENIED)
+                # Real approve/deny round-trip. The gate is created by the
+                # transport (the WS consumer opens a future per request and
+                # resolves it from the client's `tool.approval`). With no gate
+                # attached there is no human to ask, so the answer is no -
+                # fail closed, never auto-approve.
+                approved = False
+                if approval_gate is not None:
+                    try:
+                        approved = bool(
+                            await approval_gate.wait(tc.id, TOOL_APPROVAL_TIMEOUT_S)
+                        )
+                    except Exception as exc:
+                        logger.warning("tool approval wait failed: %s", exc)
+                        approved = False
+                if approved:
+                    # fall through to execution below
+                    decision = "auto_execute"
+                else:
+                    error = get_message(ErrorCode.TOOL_EXECUTION_DENIED)
                 yield ToolStreamEvent(
                     type=TOOL_EVENT_DONE,
                     payload={

@@ -269,7 +269,7 @@ class Capsule(models.Model):
         blank=True,
         help_text="""
         Tool execution policy: {
-            "auto_execute": ["echo", "timestamp"],
+            "auto_execute": ["timestamp"],
             "approval_required": ["code_execute"],
             "denied": ["file_delete"]
         }
@@ -469,7 +469,7 @@ class Capability(models.Model):
         Tool implementation mapping: {
             "type": "python",
             "module": "tools.echo",
-            "class": "EchoTool"
+            "class": "TimestampTool"
         }
         """,
     )

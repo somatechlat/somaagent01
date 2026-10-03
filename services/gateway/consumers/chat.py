@@ -532,6 +532,27 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
         _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_PONG).inc()
 
+    class _ApprovalGate:
+        """Resolve tool approvals over the WebSocket.
+
+        One future per ``tool.approval_request``. The client answers with
+        ``tool.approval``; a timeout or a missing answer is a refusal.
+        """
+
+        def __init__(self, owner: "ChatConsumer") -> None:
+            self._owner = owner
+
+        async def wait(self, tool_call_id: str, timeout_s: float) -> bool:
+            loop = asyncio.get_running_loop()
+            future: asyncio.Future = loop.create_future()
+            self._owner._tool_approvals[tool_call_id] = future
+            try:
+                return bool(await asyncio.wait_for(future, timeout=timeout_s))
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                return False
+            finally:
+                self._owner._tool_approvals.pop(tool_call_id, None)
+
     async def _flush_deltas(
         self,
         tokens: list[str],
@@ -652,6 +673,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 attachments=attachments,
                 history=self._cached_history,
                 agent_mode=agent_mode,
+                approval_gate=ChatConsumer._ApprovalGate(self),
             )
 
             async for item in orchestrator.stream_turn(turn):

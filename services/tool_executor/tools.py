@@ -57,35 +57,6 @@ class BaseTool:
         return None
 
 
-class EchoTool(BaseTool):
-    """Echotool class implementation."""
-
-    name = "echo"
-
-    async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute run.
-
-        Args:
-            args: The args.
-        """
-
-        text = args.get("text")
-        if not isinstance(text, str):
-            from admin.common.messages import ErrorCode, get_message
-
-            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="text"))
-        return {"message": text}
-
-    def input_schema(self) -> Dict[str, Any] | None:
-        """Execute input schema."""
-
-        return {
-            "type": "object",
-            "properties": {"text": {"type": "string", "description": "Text to echo back"}},
-            "required": ["text"],
-            "additionalProperties": False,
-        }
-
 
 class TimestampTool(BaseTool):
     """Timestamptool class implementation."""
@@ -130,7 +101,17 @@ class TimestampTool(BaseTool):
 
 
 class CodeExecutionTool(BaseTool):
-    """Codeexecutiontool class implementation."""
+    """Run a Python snippet in a restricted interpreter.
+
+    Containment: ``__builtins__`` is replaced by ``{print, range, len}`` only,
+    so there is no ``import``, ``open``, ``eval``, ``exec`` or attribute
+    reaching into the process. That is a restricted interpreter, **not** an OS
+    sandbox - there is no filesystem, network or syscall isolation here. If
+    the agent must run untrusted code, it must run in a container.
+
+    Fail-closed: a snippet that raises fails the tool call. It never returns
+    a clean-looking result from a crashed run.
+    """
 
     name = "code_execute"
 
@@ -171,6 +152,9 @@ class CodeExecutionTool(BaseTool):
                         local_vars,
                     )
             except Exception as exc:
+                # Fail-closed: a run that raised is a failed tool call, not a
+                # successful one with empty output. Swallowing the exception
+                # made every broken snippet look like a clean run.
                 LOGGER.error(
                     "Tool execution failed",
                     extra={
@@ -179,6 +163,7 @@ class CodeExecutionTool(BaseTool):
                         "tool_name": self.name,
                     },
                 )
+                raise ToolExecutionError(f"{type(exc).__name__}: {exc}") from exc
             return {
                 "stdout": buffer.getvalue(),
                 "locals": {
@@ -357,7 +342,6 @@ class CanvasAppendTool(BaseTool):
 AVAILABLE_TOOLS = {
     tool.name: tool
     for tool in [
-        EchoTool(),
         TimestampTool(),
         CodeExecutionTool(),
         FileReadTool(),

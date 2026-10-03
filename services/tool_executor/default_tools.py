@@ -12,12 +12,15 @@ This module is the single list of default tools. Agent creation and
 
 from __future__ import annotations
 
+import logging
+
 from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 # Base tools every agent MUST have. Order is documentation-only.
 DEFAULT_AGENT_TOOLS: List[str] = [
     # Core loop
-    "echo",
     "timestamp",
     # Cognition — SomaBrain-backed (T-1: one write lane)
     "memory_recall",
@@ -51,7 +54,6 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "memory_forget": "Delete a memory by coordinate (privacy erasure).",
     "memory_proximity": "Find memories nearest to a query or coordinate (semantic proximity via SomaBrain scoring).",
     "memory_get": "Fetch one memory by exact coordinate.",
-    "echo": "Echo back text (connectivity check).",
     "timestamp": "Return current UTC timestamp.",
     "code_execute": "Execute Python code in the sandbox and return stdout/result.",
     "file_read": "Read a text file from the work directory.",
@@ -100,7 +102,22 @@ def select_tools_for_mode(
         selected = required
         limit = max(tool_count_limit, len(selected))
 
-    return selected[:limit] if limit > 0 else selected
+    if limit <= 0:
+        return selected
+
+    kept = selected[:limit]
+    dropped = [s for s in selected if s not in kept]
+    if dropped:
+        # A tool that silently vanishes from the model's kit is a behaviour
+        # change nobody can see. Log it with the names.
+        names = [(d.get("function") or {}).get("name") for d in dropped]
+        logger.warning(
+            "tool_count_limit=%d dropped %d tool(s) from the model kit: %s",
+            limit,
+            len(dropped),
+            names,
+        )
+    return kept
 
 
 def default_tool_definitions() -> List[Dict[str, Any]]:

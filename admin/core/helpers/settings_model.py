@@ -190,6 +190,9 @@ class SettingsModel(BaseModel):
     tool_result_max_chars: int = Field(
         default_factory=lambda: int(_dj("TOOL_RESULT_MAX_CHARS", 12000))
     )
+    tool_approval_timeout_s: float = Field(
+        default_factory=lambda: float(_dj("TOOL_APPROVAL_TIMEOUT_S", 120.0))
+    )
 
     # WebSocket stream coalescing. Tokens are buffered and flushed together;
     # both values must stay far below human perception (~100ms).

@@ -187,6 +187,10 @@ class ChatTurn:
     history: List[Dict[str, str]] = field(default_factory=list)
     # UI agent mode: STD | DEV | RO | DGR (DGR forces degraded governor path)
     agent_mode: str = "STD"
+    # Transport-attached approval gate for tools whose policy says
+    # approval_required. Set by the WebSocket consumer; absent on REST, where
+    # there is no human to ask and the answer is therefore no.
+    approval_gate: Optional[Any] = None
 
 
 @dataclass
@@ -587,6 +591,23 @@ class V3ChatOrchestrator:
                         )
                         seen_tools.add(tool_def.name)
 
+            # SomaBrain suggests tools for this turn. Only names that actually
+            # exist are promoted - the brain cannot invent a tool. Suggestion
+            # reorders; it never adds.
+            if brain_suggested_tools:
+                wanted = {str(s) for s in brain_suggested_tools}
+                suggested = [
+                    t
+                    for t in tools_for_llm
+                    if (t.get("function") or {}).get("name") in wanted
+                ]
+                rest = [
+                    t
+                    for t in tools_for_llm
+                    if (t.get("function") or {}).get("name") not in wanted
+                ]
+                tools_for_llm = suggested + rest
+
             # Do not offer a tool the turn may not run. A network tool with
             # egress denied costs a model round-trip and returns a confusing
             # error; filtering here is the honest signal.
@@ -631,6 +652,7 @@ class V3ChatOrchestrator:
             try:
                 async for item in run_tool_loop(
                     iq=iq,
+                    approval_gate=turn.approval_gate,
                     llm=llm,
                     messages=messages,
                     tools_for_llm=tools_for_llm,
@@ -862,6 +884,11 @@ class V3ChatOrchestrator:
             history = turn.history or []
         if isinstance(memory_hits, BaseException):
             memory_hits = None
+        if isinstance(brain_eval, BaseException):
+            brain_eval = None
+        brain_suggested_tools: List[str] = []
+        if isinstance(brain_eval, dict):
+            brain_suggested_tools = list(brain_eval.get("suggested_tools") or [])
         if isinstance(body, BaseException):
             body = {}
         if isinstance(neuro, BaseException):
@@ -947,6 +974,7 @@ class V3ChatOrchestrator:
         try:
             async for item in run_tool_loop(
                     iq=iq,
+                    approval_gate=turn.approval_gate,
                 llm=llm,
                 messages=messages,
                 tools_for_llm=tools_for_llm,
