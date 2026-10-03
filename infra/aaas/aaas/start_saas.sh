@@ -47,15 +47,15 @@ done
 # 2. RUN MIGRATIONS (Sequential)
 # ------------------------------
 echo "🧠 [SomaBrain] Running Migrations..."
-python manage_brain.py migrate --noinput
+python /app/somabrain/manage.py migrate --noinput
 echo "✅ [SomaBrain] Migrations Complete."
 
 echo "💾 [FractalMemory] Running Migrations..."
-python manage_memory.py migrate --noinput
+python /app/somafractalmemory/manage.py migrate --noinput
 echo "✅ [FractalMemory] Migrations Complete."
 
 echo "🕵️ [Agent01] Running Migrations..."
-python manage_agent.py migrate --noinput
+python /app/somaAgent01/manage.py migrate --noinput
 echo "✅ [Agent01] Migrations Complete."
 
 # 3. START SUPERVISOR

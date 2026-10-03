@@ -47,15 +47,15 @@ done
 # 2. RUN MIGRATIONS (Sequential)
 # ------------------------------
 echo "🧠 [SomaBrain] Running Migrations..."
-DJANGO_SETTINGS_MODULE=somabrain.settings python manage_brain.py migrate --noinput
+DJANGO_SETTINGS_MODULE=somabrain.settings python /app/somabrain/manage.py migrate --noinput
 echo "✅ [SomaBrain] Migrations Complete."
 
 echo "💾 [FractalMemory] Running Migrations..."
-DJANGO_SETTINGS_MODULE=somafractalmemory.settings python manage_memory.py migrate --noinput
+DJANGO_SETTINGS_MODULE=somafractalmemory.settings python /app/somafractalmemory/manage.py migrate --noinput
 echo "✅ [FractalMemory] Migrations Complete."
 
 echo "🕵️ [Agent01] Running Migrations..."
-DJANGO_SETTINGS_MODULE=services.gateway.settings python manage_agent.py migrate --noinput
+DJANGO_SETTINGS_MODULE=services.gateway.settings python /app/somaAgent01/manage.py migrate --noinput
 echo "✅ [Agent01] Migrations Complete."
 
 # 3. START SUPERVISOR

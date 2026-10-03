@@ -1,9 +1,20 @@
 """
-Unified URL Configuration for Agent-as-a-Service (AAAS) Mode.
+URL configuration for the agent in AAAS deployment mode.
 
-Mounts all API routers from all three repositories under a single Django URL config.
-This enables true single-process operation where all services share the same
-request/response cycle without HTTP overhead.
+This is the agent's own URL conf and nothing else. SomaBrain and
+somafractalmemory are separate containers reached over the transport
+(T-1: agent -> SomaBrain only; SomaBrain -> SFM; the agent never talks to
+SFM). They were previously mounted here in-process, which was both broken
+and wrong:
+
+- ``include("somabrain.urls")`` and ``include("somafractalmemory.urls")``
+  named modules that do not exist in either repository.
+- ``from somabrain.api import api`` named a module that is an empty
+  package with no ``api`` attribute.
+- Mounting SFM routers into the agent's URLconf is a direct T-1 violation.
+
+A cross-repo mount is not a faster transport. It is a second, silent
+coupling that hides the real one.
 
 VIBE Compliance:
 - Rule 8: Django Ninja only for APIs
@@ -12,73 +23,39 @@ VIBE Compliance:
 
 from __future__ import annotations
 
-import logging
-
 from django.contrib import admin
 from django.urls import include, path
 from ninja import NinjaAPI
 
-logger = logging.getLogger(__name__)
-
 # =============================================================================
-# UNIFIED NINJA API
+# AGENT NINJA API
 # =============================================================================
 
-# Create unified API with versioned prefixes
 unified_api = NinjaAPI(
-    title="SOMA Unified API",
+    title="Soma Agent API",
     version="2.0.0",
-    description="Unified API for Agent, Brain, and Memory in single-process mode",
+    description="Agent API. SomaBrain and SFM are separate services reached over the transport.",
 )
 
 # =============================================================================
 # MOUNT AGENT ROUTERS
 # =============================================================================
 
-try:
-    from admin.aaas.api import router as aaas_router
-    from admin.agents.api import router as agents_router
-    from admin.chat.api import router as chat_router
-    from admin.core.api import router as core_router
-    from admin.gateway.api import router as gateway_router
+# Fail closed. A router the URLconf cannot import is not a degraded mode — it
+# is a broken deployment, and logging at INFO while serving an empty surface
+# is the stub this codebase forbids.
+from admin.aaas.api import router as aaas_router
+from admin.agents.api import router as agents_router
+from admin.chat.api import router as chat_router
+from admin.core.api import router as core_router
+from admin.gateway.api import router as gateway_router
 
-    unified_api.add_router("/agents/", agents_router, tags=["agents"])
-    unified_api.add_router("/chat/", chat_router, tags=["chat"])
-    unified_api.add_router("/core/", core_router, tags=["core"])
-    unified_api.add_router("/aaas/", aaas_router, tags=["aaas"])
-    unified_api.add_router("/gateway/", gateway_router, tags=["gateway"])
-except ImportError as e:
-    logger.info("Agent routers not available: %s", e)
+unified_api.add_router("/agents/", agents_router, tags=["agents"])
+unified_api.add_router("/chat/", chat_router, tags=["chat"])
+unified_api.add_router("/core/", core_router, tags=["core"])
+unified_api.add_router("/aaas/", aaas_router, tags=["aaas"])
+unified_api.add_router("/gateway/", gateway_router, tags=["gateway"])
 
-# =============================================================================
-# MOUNT BRAIN ROUTERS
-# =============================================================================
-
-try:
-    from somabrain.api import api as brain_api
-
-    # Mount brain endpoints under /brain/
-    for router in getattr(brain_api, "_routers", []):
-        unified_api.add_router("/brain/", router, tags=["brain"])
-except ImportError as e:
-    logger.info("Brain routers not available: %s", e)
-
-# =============================================================================
-# MOUNT MEMORY ROUTERS
-# =============================================================================
-
-try:
-    from somafractalmemory.api.routers.graph import router as graph_router
-    from somafractalmemory.api.routers.health import router as health_router
-    from somafractalmemory.api.routers.memory import router as memory_router
-    from somafractalmemory.api.routers.search import router as search_router
-
-    unified_api.add_router("/memory/", memory_router, tags=["memory"])
-    unified_api.add_router("/memory/graph/", graph_router, tags=["memory-graph"])
-    unified_api.add_router("/memory/search/", search_router, tags=["memory-search"])
-    unified_api.add_router("/memory/", health_router, tags=["memory-health"])
-except ImportError as e:
-    logger.info("Memory routers not available: %s", e)
 
 # =============================================================================
 # HEALTH ENDPOINT
@@ -87,15 +64,16 @@ except ImportError as e:
 
 @unified_api.get("/health", tags=["system"])
 def health_check(request):
-    """Unified health check for all services."""
+    """Report this process's own health.
+
+    The agent cannot see SomaBrain or SFM from here, and it must not claim to.
+    A diagnostics response that prints ``"ok"`` for a peer it never asked is a
+    constant dressed as a reading. Peer health is the peer's own endpoint.
+    """
     return {
         "status": "healthy",
-        "mode": "unified-single-process",
-        "services": {
-            "agent": "ok",
-            "brain": "ok",
-            "memory": "ok",
-        },
+        "mode": "aaas",
+        "service": "agent",
     }
 
 
@@ -106,13 +84,8 @@ def health_check(request):
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
-    # Unified API v2
+    # Agent API v2
     path("api/v2/", unified_api.urls),
-    # Legacy compatibility - redirect old endpoints
     # Agent API (was :9000)
     path("api/v1/", include("services.gateway.urls")),
-    # Brain API (was :9696)
-    path("brain/", include("somabrain.urls")),
-    # Memory API (was :10101)
-    path("memory/", include("somafractalmemory.urls")),
 ]
