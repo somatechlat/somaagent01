@@ -18,6 +18,9 @@ email-validator==2.1.0.post1
 PyYAML==6.0.2
 PyJWT==2.9.0
 python-jose==3.3.0
+# Password hashing - services/common/identity/password.py imports argon2.
+# It was imported but never declared, so the agent image failed to boot.
+argon2-cffi==23.1.0
 
 # Databases and brokers
 jsonschema==4.22.0
