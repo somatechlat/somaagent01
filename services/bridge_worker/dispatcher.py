@@ -774,7 +774,6 @@ class BridgeDispatcher:
             user_message=composed,
             conversation_id=conversation_id,
             attachments=attachments,
-            capsule_id=str(capsule.id),
         )
         result = await orch.process_turn(turn)
         return {
