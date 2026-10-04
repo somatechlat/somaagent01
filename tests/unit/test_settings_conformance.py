@@ -251,14 +251,20 @@ class TestSeamStillHolds:
     """The 768 embedding seam contracts stay closed (D-01..D-06, D-15)."""
 
     def test_mem_embed_dim_default_is_768(self):
-        src = _read("config/settings.py")
-        assert re.search(r'MEM_EMBED_DIM["\']\s*,\s*["\']768["\']', src)
+        """768 is written once, as the schema default. Settings modules must not
+        invent a second copy."""
+        src = _read("services/common/memory_contract.py")
+        assert "DEFAULT_MEM_EMBED_DIM = 768" in src
+        cf = _read("config/settings.py")
+        assert not re.search(r'MEM_EMBED_DIM["\']\s*,\s*["\']768["\']', cf)
 
     def test_somabrain_embed_dim_seam_contract(self):
-        src = _read("somabrain/settings/cognitive.py") if (REPO / "somabrain").exists() else ""
         # Cross-repo file may not exist in this checkout; the agent-side seam is
-        # enforced here: gateway and config must agree on 768.
+        # enforced here: neither settings module may carry its own default.
         gw = _read("services/gateway/settings.py")
         cf = _read("config/settings.py")
         for src in (gw, cf):
-            assert re.search(r'MEM_EMBED_DIM["\']\s*,\s*["\']768["\']', src)
+            assert not re.search(r'MEM_EMBED_DIM["\']\s*,\s*["\']768["\']', src), (
+                "settings module still hardcodes the embedding dimension"
+            )
+        assert "DEFAULT_MEM_EMBED_DIM = 768" in _read("services/common/memory_contract.py")

@@ -64,7 +64,7 @@ BEHAVIORAL_FIELDS: list[tuple[str, str, object]] = [
     ("agent_knowledge_subdir", "AGENT_KNOWLEDGE_SUBDIR", "custom"),
     # RFC (remote file copy) topology
     ("rfc_auto_docker", "RFC_AUTO_DOCKER", True),
-    ("rfc_url", "RFC_URL", "localhost"),
+    ("rfc_url", "RFC_URL", ""),
     ("rfc_port_http", "RFC_PORT_HTTP", 55080),
     ("rfc_port_ssh", "RFC_PORT_SSH", 55022),
     # STT

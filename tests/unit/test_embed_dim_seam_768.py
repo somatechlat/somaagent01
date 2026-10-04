@@ -16,19 +16,25 @@ def _read(rel: str) -> str:
 
 
 class TestAgentDimDefaults:
-    def test_settings_mem_embed_dim_default_768(self):
+    def test_settings_mem_embed_dim_has_no_env_default(self):
+        """The schema default lives once. A settings module must not invent it."""
         src = _read("config/settings.py")
-        assert re.search(
-            r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,\s*["\']768["\']\s*\)\)',
+        assert not re.search(
+            r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,',
             src,
-        )
+        ), "config/settings.py still carries an ENV default for MEM_EMBED_DIM"
 
-    def test_gateway_settings_mem_embed_dim_default_768(self):
+    def test_gateway_settings_mem_embed_dim_has_no_env_default(self):
         src = _read("services/gateway/settings.py")
-        assert re.search(
-            r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,\s*["\']768["\']\s*\)\)',
+        assert not re.search(
+            r'MEM_EMBED_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']MEM_EMBED_DIM["\']\s*,',
             src,
-        )
+        ), "services/gateway/settings.py still carries an ENV default for MEM_EMBED_DIM"
+
+    def test_mem_embed_dim_default_is_one_constant(self):
+        """DEFAULT_MEM_EMBED_DIM is the only place 768 is written as a default."""
+        src = _read("services/common/memory_contract.py")
+        assert "DEFAULT_MEM_EMBED_DIM = 768" in src
 
     def test_unified_settings_vector_dim_default_768(self):
         src = _read("infra/aaas/unified_settings.py")
