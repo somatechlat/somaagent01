@@ -191,6 +191,11 @@ class ChatTurn:
     # approval_required. Set by the WebSocket consumer; absent on REST, where
     # there is no human to ask and the answer is therefore no.
     approval_gate: Optional[Any] = None
+    # Roles the authenticated principal holds. The token already carries them
+    # (TokenPayload.realm_access) and the identity record is their one source.
+    # Re-querying a second store here is how the chat path ended up authorizing
+    # with an empty role set while /auth/me showed the right ones.
+    roles: Optional[list] = None
 
 
 @dataclass
@@ -427,7 +432,10 @@ class V3ChatOrchestrator:
 
             # Phase 4: Permission Check (UnifiedGate + PermissionChecker)
             perm = await self._permission_checker.check(
-                user_id=turn.user_id, permission="resource:chat_send", tenant_id=tenant_id
+                user_id=turn.user_id,
+                permission="resource:chat_send",
+                tenant_id=tenant_id,
+                roles=list(turn.roles or []),
             )
             if not perm.allowed:
                 result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)

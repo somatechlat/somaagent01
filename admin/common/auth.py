@@ -343,6 +343,21 @@ async def _decode_api_key(raw_key: str) -> TokenPayload:
     )
 
 
+def _deployment_tenant() -> str:
+    """The deployment's data partition, from topology.
+
+    Fail-closed: an unconfigured partition is a refusal, never a guess.
+    """
+    import os
+
+    value = (
+        os.environ.get("SA01_TENANT_ID")
+        or os.environ.get("AAAS_DEFAULT_TENANT_ID")
+        or ""
+    ).strip()
+    return value or None
+
+
 async def _decode_session(raw_token: str) -> TokenPayload:
     """Resolve a local session token into the principal who holds it.
 
@@ -445,6 +460,10 @@ async def _decode_session(raw_token: str) -> TokenPayload:
         name=identity.display_name or None,
         # A person is authorized by roles. Never by scopes.
         realm_access={"roles": list(identity.roles or [])},
+        # Standalone has one data partition and it is deployment topology -
+        # LocalIdentity is an authentication record and carries no tenant.
+        # Authorization refuses a request with no tenant (T-5).
+        tenant_id=_deployment_tenant(),
         session_id=str(session.id),
     )
 

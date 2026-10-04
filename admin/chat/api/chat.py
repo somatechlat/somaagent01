@@ -588,6 +588,7 @@ async def send_message(
     if not payload.stream:
         turn = ChatTurn(
             capsule=capsule,
+            roles=_principal_roles(request),
             user_id=user_id,
             tenant_id=tenant_id or "",
             user_message=payload.content,
@@ -660,3 +661,18 @@ async def get_chat_session(request, session_id: str) -> dict:
     except Exception as exc:
         logger.error("Session error: %s", exc)
         raise ServiceError(f"session_error: {type(exc).__name__}")
+
+
+def _principal_roles(request) -> list:
+    """Roles the authenticated principal holds, from the token.
+
+    ``TokenPayload.realm_access`` is the one place roles are surfaced from the
+    identity record. Reading them from anywhere else is a second authority.
+    """
+    auth = getattr(request, "auth", None)
+    if auth is None:
+        return []
+    realm = getattr(auth, "realm_access", None) or {}
+    if isinstance(realm, dict):
+        return list(realm.get("roles") or [])
+    return list(getattr(auth, "roles", None) or [])

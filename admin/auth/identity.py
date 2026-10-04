@@ -52,6 +52,13 @@ class IdentityResult:
     # principal with `as_uuid(...)`, so the session row must hold this UUID -
     # an email is unresolvable and the session is revoked on first use.
     principal_id: str = ""
+    # Role names the principal holds. Authority is `admin.core.authz` - these
+    # are names only and grant nothing that catalog does not recognise.
+    roles: tuple = ()
+    # Data-partition key. Not an attribute of the person - Standalone has one
+    # partition and it comes from deployment topology. Authorization refuses
+    # a request with no tenant (T-5), so this must be populated.
+    tenant_id: str = ""
 
 
 def resolve_identity_provider() -> str:
@@ -76,6 +83,28 @@ def resolve_identity_provider() -> str:
         f"SA01_DEPLOYMENT_MODE={mode!r} is not a recognised mode; "
         f"cannot pick an identity authority."
     )
+
+
+def _standalone_tenant() -> str:
+    """The deployment's data partition.
+
+    Fail-closed: an unconfigured tenant is a refusal. Authorization has no
+    fallback tenant (T-5), so an identity with no partition cannot be given
+    one by guessing.
+    """
+    import os
+
+    value = (
+        os.environ.get("SA01_TENANT_ID")
+        or os.environ.get("AAAS_DEFAULT_TENANT_ID")
+        or ""
+    ).strip()
+    if not value:
+        raise RuntimeError(
+            "SA01_TENANT_ID is not set. A standalone identity has no tenant "
+            "column; the partition comes from deployment topology."
+        )
+    return value
 
 
 def _pepper() -> str:
@@ -116,6 +145,8 @@ async def authenticate_local(email: str, password: str) -> IdentityResult:
             email=row.email,
             display_name=row.display_name or row.username,
             principal_id=str(row.id),
+            roles=tuple(row.roles or ()),
+            tenant_id=_standalone_tenant(),
         )
 
     return await _verify()
