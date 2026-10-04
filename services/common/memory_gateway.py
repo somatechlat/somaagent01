@@ -19,6 +19,7 @@ from services.common.memory_contract import (
     make_coord,
     MemoryAck,
     MemoryHit,
+    MemoryRecallUnavailable,
     MemoryWrite,
 )
 
