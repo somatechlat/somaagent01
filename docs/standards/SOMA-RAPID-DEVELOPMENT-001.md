@@ -123,3 +123,47 @@ Every agent reports, honestly:
 - every hardcoded value found and every fallback deleted
 - real test results — never claim a pass that did not happen
 - anything blocked, and the exact reason
+
+---
+
+## THE ONE PATH — connect through the infrastructure, never around it
+
+**Owner's standing order:** *"TELL THE AGENTS TO CONNECT VIA THE WHOLE INFRASTRUCTURE
+OTHERWISE SOMETIMES THE AGENT JUST FUCKS UP THE CODE AND CREATES THEIR OWN LANES TO
+CONNECT THE CHAT."*
+
+If you are about to create any of these, **stop — you are doing it wrong**:
+
+- a new WebSocket route or a second chat consumer
+- a new orchestrator / chat pipeline / "just call the LLM directly" path
+- a new memory client, a direct SFM connection, or a second write path
+- a new auth check, a new role store, a new settings resolver
+- a "temporary" endpoint so a test can pass
+- a parallel config file, an .env-only path, or a hardcoded URL
+- a test-only settings override, a fake Vault, or a dummy credential so a suite boots
+
+**The one path, end to end:**
+
+```
+browser → WS /ws/v2/chat/{capsule_id}
+        → services/gateway/consumers/chat.py::ChatConsumer
+        → admin/core/chat_orchestrator.py::V3ChatOrchestrator.process_turn|stream_turn
+        → admin/core/tool_calling.py::run_tool_loop        (native function-calling only)
+        → services/common/memory_gateway.py::FanoutMemoryGateway
+        → services/common/adapters/somabrain_adapter.py::SomaBrainAdapter
+        → SomaBrain  →  somafractalmemory
+```
+
+| Concern | The only way |
+|---|---|
+| Permissions | `admin/core/agentiq/unified_gate.py`, `admin/core/authz.py` |
+| Service URLs | `admin/core/helpers/service_urls.require_service_url` (`Capsule > AgentSetting > InfrastructureConfig > SettingsModel`) |
+| Secrets | `services/common/unified_secret_manager.py` / `vault_secrets.py` — Vault only |
+| Tools | the per-capsule `ToolRegistry` |
+| Settings | `admin/core/helpers/settings.py`, `capsule_settings.py` |
+
+**A bypass is the same violation as a mock.** Routing around a broken hop leaves the real
+consumer broken and the architecture rotting. **Fix the hop.**
+
+Every agent must end its report with: *"I connected via the existing chain, and did not
+create a new lane."* If one was created, say so and revert it.
