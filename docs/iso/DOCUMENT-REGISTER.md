@@ -121,7 +121,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-01-DOCS-001 | docs/iso/SOMA-01-DOCS-001.md | Document Control and Traceability Procedure | 1.2.0 | Draft | — | 2026-12-27 | Compliant |
 | SOMA-01-OPS-001 | docs/iso/SOMA-01-OPS-001.md | SomaAgent01 Operations Runbook | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-PROD-001 | docs/iso/SOMA-01-PROD-001.md | SomaAgent01 Production Readiness Assessment | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-01-QMS-001 | docs/iso/SOMA-01-QMS-001.md | SomaAgent01 Quality Manual | 2.2.2 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-QMS-001 | docs/iso/SOMA-01-QMS-001.md | SomaAgent01 Quality Manual | 2.2.3 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-RELEASE-001 | docs/iso/SOMA-01-RELEASE-001.md | SomaAgent01 v2.0.0 Release Notes | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-RISK-001 | docs/iso/SOMA-01-RISK-001.md | SomaAgent01 Risk Register | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-SDP-001 | docs/iso/SOMA-01-SDP-001.md | SomaAgent01 Software Development Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -182,7 +182,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-SRS-TESTMODULES-001 | docs/requirements/SOMA-SRS-TESTMODULES-001.md | SRS-TEST-MODULES — Module-Based Test Suite Design | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-TOOLS-001 | docs/requirements/SOMA-SRS-TOOLS-001.md | SRS-TOOL-SYSTEM — Tool Discovery and Execution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-STD-CODING-001 | docs/standards/SOMA-STD-CODING-001.md | SOMA-STD-CODING-001 — Vibe Coding Rules | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-STD-CONFIG-001 | docs/standards/SOMA-STD-CONFIG-001.md | SOMA-STD-CONFIG-001 — Configuration and Service Endpoint Resolution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-STD-CONFIG-001 | docs/standards/SOMA-STD-CONFIG-001.md | Configuration, Endpoints and Secret Resolution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-STD-TEMPLATE-001 | docs/standards/SOMA-STD-TEMPLATE-001.md | SRS-{FEATURE} — {Title} | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-STD-TOKEN-001 | docs/standards/SOMA-STD-TOKEN-001.md | SOMA Token Format Standard (v1.0) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-TASK-AGENTIQ-001 | docs/tasks/SOMA-TASK-AGENTIQ-001.md | TASK-AGENTIQ: Governor Control Loop Implementation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |

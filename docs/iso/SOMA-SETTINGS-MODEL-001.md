@@ -23,14 +23,13 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial issue. Normative authority model, category taxonomy, full settings inventory, Capsule/Constitution binding rules, env-vs-Vault rules, conformance checklist, drift register. |
-| 1.0.1 | 2026-10-03 | SomaTech Engineering | Cross-reference SOMA-STD-CONFIG-001 (endpoint resolution, anti-patterns). Service URLs registered through KEY_CATEGORY; schema defaults empty for deployment URLs. |
+| 1.0.1 | 2026-10-03 | SomaTech Engineering | References `SOMA-STD-CONFIG-001` (Configuration, Endpoints and Secret Resolution) as the governing standard for value classes, the resolution chain, endpoint resolution and secret rules. Service URLs registered through `KEY_CATEGORY`; schema defaults empty for deployment URLs. |
 
 ## Normative References
 
 | ID | Reference | Role |
 |---|---|---|
 | N-1 | `docs/standards/SOMA-STD-CODING-001.md` | Standing engineering rules: no hardcoded product behavior, Vault for secrets, fail-closed |
-| N-1b | `docs/standards/SOMA-STD-CONFIG-001.md` | Configuration and service endpoint resolution: four-step pattern, fail-closed URLs, vendor protocol constants |
 | N-2 | `SOMA-01-DOCS-001` | Document control and traceability procedure |
 | N-3 | `SOMA-01-SEC-001` | Security requirements; secret custody |
 | N-4 | `SOMA-01-ARCH-001` | System architecture; memory seam |
@@ -38,6 +37,7 @@
 | N-6 | `admin/core/helpers/capsule_settings.py` | Runtime resolution order and category constants (must stay in sync with this document) |
 | N-7 | ISO/IEC 27001:2022 A.8.9 | Configuration management — baseline, control, inventory |
 | N-8 | ISO/IEC 25010:2018 | Quality model — used only as a category lens, not as certification |
+| N-9 | `docs/standards/SOMA-STD-CONFIG-001.md` | Cross-repo configuration standard: value classes, resolution chain rules, endpoint and secret resolution, scale rules, anti-patterns. This inventory **SHALL** be read under that standard; where the two disagree, the standard wins. |
 
 ---
 
