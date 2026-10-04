@@ -84,12 +84,33 @@ def _resolve_base_url(explicit: str | None) -> str:
     stays the one authority (VIBE §4 — no second lookup path).
     """
 
-    base = str(explicit or get_memory_setting("SOMABRAIN_URL") or "").strip()
+    if explicit:
+        base = str(explicit).strip()
+    else:
+        # The same chain every other tunable uses: Capsule > AgentSetting >
+        # InfrastructureConfig (the operator's editor) > SettingsModel. A
+        # service URL is an administrator-owned parameter — pointing the agent
+        # at another SomaBrain must not require an .env edit (SOMA-STD-CONFIG-001).
+        from django.core.exceptions import ImproperlyConfigured
+
+        from admin.core.helpers.service_urls import require_service_url
+
+        try:
+            base = str(require_service_url("SOMABRAIN_URL")).strip()
+        except ImproperlyConfigured as exc:
+            # The memory seam's contract is MemoryConfigurationError. The
+            # underlying refusal is carried, never swallowed.
+            raise MemoryConfigurationError(
+                "SomaBrain store URL is not configured. Set SOMABRAIN_URL "
+                "through the administration settings (InfrastructureConfig / "
+                "AgentSetting / Capsule). No localhost fallback is permitted "
+                f"(VIBE Rule 91). Cause: {exc}"
+            ) from exc
     if not base:
         raise MemoryConfigurationError(
-            "SomaBrain store URL is not configured. Set SOMABRAIN_URL in "
-            "config/settings.py to the SomaBrain base URL. No localhost "
-            "fallback is permitted (VIBE Rule 91)."
+            "SomaBrain store URL is not configured. Set SOMABRAIN_URL through "
+            "the administration settings (InfrastructureConfig / AgentSetting). "
+            "No localhost fallback is permitted (VIBE Rule 91)."
         )
     return base.rstrip("/")
 

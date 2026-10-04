@@ -27,7 +27,6 @@ an operator cannot edit and an auditor cannot see.
 
 from __future__ import annotations
 
-import os
 from typing import Any, Optional
 
 from django.core.exceptions import ImproperlyConfigured
@@ -144,6 +143,13 @@ def require_setting(setting_name: str, *, capsule: Any = None, agent_id: Optiona
 
     value = resolve_setting(setting_name, capsule=capsule, agent_id=agent_id)
     if value is not None and str(value).strip():
+        return value
+
+    # The operator's layer is not URL-specific. A tunable an administrator
+    # sets on an InfrastructureConfig row outranks the schema default, whether
+    # or not its value looks like an endpoint.
+    value = _from_infraconfig(setting_name)
+    if value is not None:
         return value
 
     from admin.core.helpers.settings import get_settings
