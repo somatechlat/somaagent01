@@ -68,3 +68,103 @@ def test_missing_url_refuses(monkeypatch):
     monkeypatch.setattr(_s, "get_settings", lambda **_k: type("M", (), {})())
     with pytest.raises(Exception):
         service_urls.require_service_url("NOT_A_REAL_SERVICE_URL")
+
+
+# ---------------------------------------------------------------------------
+# A-1 regression: the operator layer must work on the request path
+# ---------------------------------------------------------------------------
+
+
+class TestOperatorLayerWorksFromAsync:
+    """The resolver is called from async request handlers.
+
+    The first implementation ran ``loop.run_until_complete`` inside the
+    resolver. On the request path a loop is already running, so that raises
+    ``This event loop is already running``, a bare ``except`` swallowed it, and
+    the operator layer silently returned ``None`` — the feature existed but
+    never applied. It also created an un-awaited coroutine.
+
+    These assertions are falsifiable: they fail on that implementation.
+    """
+
+    @pytest.mark.django_db
+    def test_async_caller_sees_the_operator_value(self):
+        import asyncio
+        import warnings
+
+        from asgiref.sync import sync_to_async
+
+        from admin.core.infrastructure.models import InfrastructureConfig, ServiceHealth
+
+        async def _resolve():
+            def _seed():
+                svc, _ = ServiceHealth.objects.get_or_create(
+                    service_name="somabrain", defaults={"status": "healthy"}
+                )
+                InfrastructureConfig.objects.update_or_create(
+                    service=svc,
+                    key="SOMABRAIN_URL",
+                    defaults={"value": "http://operator-set-brain:30101"},
+                )
+
+            await sync_to_async(_seed)()
+            service_urls.invalidate_infraconfig_cache()
+            # Boot warms the cache; the request path only reads it.
+            await sync_to_async(service_urls.warm_infraconfig_cache)()
+            return service_urls.require_service_url("SOMABRAIN_URL")
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            resolved = asyncio.run(_resolve())
+
+        assert resolved == "http://operator-set-brain:30101", (
+            "the operator's layer did not apply from async code"
+        )
+        never_awaited = [w for w in caught if "never awaited" in str(w.message)]
+        assert not never_awaited, f"created an un-awaited coroutine: {never_awaited}"
+
+    @pytest.mark.django_db
+    def test_unconfigured_service_url_raises_from_async(self):
+        """No value anywhere means a refusal naming the setting, not a host."""
+        import asyncio
+
+        from asgiref.sync import sync_to_async
+        from django.core.exceptions import ImproperlyConfigured
+
+        async def _resolve():
+            def _clear():
+                from admin.core.infrastructure.models import InfrastructureConfig
+
+                InfrastructureConfig.objects.filter(key="SOMABRAIN_URL").delete()
+
+            # Isolation: an earlier test may have seeded a row. A refusal is
+            # only meaningful when nothing configures the setting.
+            await sync_to_async(_clear)()
+            service_urls.invalidate_infraconfig_cache()
+            await sync_to_async(service_urls.warm_infraconfig_cache)()
+            service_urls.require_service_url("SOMABRAIN_URL")
+
+        with pytest.raises(ImproperlyConfigured) as exc:
+            asyncio.run(_resolve())
+        assert "SOMABRAIN_URL" in str(exc.value)
+
+
+def test_resolver_drives_no_loop_and_swallows_no_exception():
+    """Source-level: neither failure mode may exist in executable code.
+
+    Comment lines are stripped first — an explanation of a removed bug is not
+    the bug.
+    """
+    import inspect
+
+    def _code_only(fn):
+        lines = inspect.getsource(fn).splitlines()
+        return "\n".join(
+            ln for ln in lines if not ln.lstrip().startswith("#")
+        )
+
+    for fn in (service_urls._from_infraconfig, service_urls.require_service_url):
+        src = _code_only(fn)
+        assert "run_until_complete" not in src, f"{fn.__name__} drives a loop from inside a loop"
+        assert "sync_to_async" not in src, f"{fn.__name__} touches the ORM from async"
+        assert "except Exception" not in src, f"{fn.__name__} converts a fault into a silent None"

@@ -18,6 +18,15 @@ from services.gateway.routing import websocket_urlpatterns
 
 django_asgi = get_asgi_application()
 
+# Warm the operator's settings layer before the event loop serves anything —
+# see services/gateway/asgi.py. Held rows mean the request path never touches
+# the ORM to resolve a service URL.
+from admin.core.helpers.service_urls import (  # noqa: E402
+    warm_infraconfig_cache,
+)
+
+warm_infraconfig_cache()
+
 application = ProtocolTypeRouter(
     {
         "http": django_asgi,

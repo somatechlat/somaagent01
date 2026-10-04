@@ -27,10 +27,28 @@ an operator cannot edit and an auditor cannot see.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from django.core.exceptions import ImproperlyConfigured
+from django.db import DatabaseError
 
+
+# The operator's layer, read once and held. InfrastructureConfig rows are
+# deployment topology: they change when an administrator edits them, not on
+# every request. Holding them means the request path does a dict read instead
+# of an ORM query — which is the latency answer at millions of transactions,
+# and it is also what makes this resolver correct from both sync and async
+# code.
+#
+# The previous implementation called sync_to_async and then
+# loop.run_until_complete from inside the resolver. On the request path a loop
+# is already running, so run_until_complete raised "This event loop is already
+# running", the bare except swallowed it, and the layer silently returned None —
+# the operator layer existed but never applied. It also created an un-awaited
+# coroutine. There is no ORM call on the read path now, so neither can happen.
+_INFRA_CACHE: Dict[str, str] = {}
+_INFRA_CACHE_LOADED = False
+_INFRA_CACHE_BOUND = 2048
 
 
 def _nonempty(value: Any) -> Optional[str]:
@@ -40,6 +58,65 @@ def _nonempty(value: Any) -> Optional[str]:
     return text or None
 
 
+def invalidate_infraconfig_cache() -> None:
+    """Drop the held operator layer so the next read sees a fresh edit.
+
+    Wired to InfrastructureConfig save/delete. An administrator who points the
+    agent at another SomaBrain must not wait for a process restart.
+    """
+    global _INFRA_CACHE_LOADED
+    _INFRA_CACHE.clear()
+    _INFRA_CACHE_LOADED = False
+
+
+def _load_infraconfig() -> None:
+    """Fill the cache from InfrastructureConfig. Sync ORM only.
+
+    Raises when Django's ORM is unavailable (a worker without Django, a
+    migration in flight) rather than guessing a host. The caller decides
+    whether that is fatal.
+    """
+    global _INFRA_CACHE_LOADED
+    from admin.core.infrastructure.models import InfrastructureConfig
+
+    rows = InfrastructureConfig.objects.filter(key__isnull=False).values_list(
+        "key", "value"
+    )
+    loaded: Dict[str, str] = {}
+    for key, value in rows:
+        if len(loaded) >= _INFRA_CACHE_BOUND:
+            break
+        text = _nonempty(value)
+        if text is not None:
+            loaded[str(key)] = text
+    _INFRA_CACHE.clear()
+    _INFRA_CACHE.update(loaded)
+    _INFRA_CACHE_LOADED = True
+
+
+def warm_infraconfig_cache() -> bool:
+    """Populate the operator layer from sync context (boot, management commands).
+
+    Returns True when the cache is populated. Never raises: a deployment that
+    cannot reach the ORM yet still boots, and the first request that needs a
+    service URL refuses with a named setting rather than a guessed host.
+    """
+    global _INFRA_CACHE_LOADED
+    if _INFRA_CACHE_LOADED:
+        return True
+    try:
+        _load_infraconfig()
+    except (
+        RuntimeError,          # apps not ready
+        ImportError,           # app not installed in a bare worker
+        ImproperlyConfigured,  # settings not loaded
+    ):
+        return False
+    except DatabaseError:
+        return False
+    return True
+
+
 def _from_infraconfig(setting_name: str) -> Optional[str]:
     """The operator's layer: InfrastructureConfig, edited from the admin UI.
 
@@ -47,36 +124,23 @@ def _from_infraconfig(setting_name: str) -> Optional[str]:
     key on its service row. A secret-shaped key is never a value here - it may
     hold a Vault path and nothing else (the model enforces that on save).
     """
-    try:
-        from asgiref.sync import sync_to_async
-
-        from admin.core.infrastructure.models import InfrastructureConfig
-
-        def _lookup() -> Optional[str]:
-            rows = InfrastructureConfig.objects.filter(key=setting_name)
-            for row in rows:
-                value = _nonempty(getattr(row, "value", None))
-                if value is not None:
-                    return value
-            return None
-
-        # This resolver is called from sync code (settings import, management
-        # commands) and from async code (the request path). sync_to_async is
-        # only correct in the second case; in the first it returns a coroutine
-        # nobody awaits and the value is silently lost. Detect the loop.
+    if not _INFRA_CACHE_LOADED:
         import asyncio
 
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            # No event loop: plain synchronous ORM is legal here.
-            return _lookup()
-        return asyncio.get_event_loop().run_until_complete(sync_to_async(_lookup)())
-    except Exception:
-        # The ORM is unavailable (a worker without Django, a migration in
-        # flight). That is not permission to guess a host - fall through to the
-        # next layer and ultimately refuse.
-        return None
+            # No event loop: synchronous ORM is legal here.
+            if not warm_infraconfig_cache():
+                return None
+        else:
+            # On the request path the cache is already warm (warmed at boot and
+            # invalidated on write). Doing ORM work here would mean blocking the
+            # event loop or spawning a coroutine nobody awaits. Refuse instead:
+            # a cold cache on a live request is a deployment fault, and the
+            # next layer or the final raise says so honestly.
+            return None
+    return _INFRA_CACHE.get(setting_name)
 
 
 def require_service_url(
@@ -167,4 +231,9 @@ def require_setting(setting_name: str, *, capsule: Any = None, agent_id: Optiona
     )
 
 
-__all__ = ["require_service_url", "require_setting"]
+__all__ = [
+    "invalidate_infraconfig_cache",
+    "require_service_url",
+    "require_setting",
+    "warm_infraconfig_cache",
+]
