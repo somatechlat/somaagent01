@@ -18,6 +18,7 @@ import openai
 
 from admin.core.helpers.tokens import approximate_tokens
 from admin.llm.exceptions import LLMNotConfiguredError
+from admin.core.helpers.vendor_api_bases import SOMA_GITHUB_REPOSITORY_URL
 from admin.llm.services.litellm_schemas import (
     ChatChunk,
     LLMCallError,
@@ -592,7 +593,7 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
     """Adjust call arguments for specific providers."""
     if provider_name == "openrouter":
         kwargs["extra_headers"] = {
-            "HTTP-Referer": "https://github.com/somatechlat/somaAgent01",
+            "HTTP-Referer": SOMA_GITHUB_REPOSITORY_URL,
             "X-Title": "SomaAgent01",
         }
     if provider_name == "other":

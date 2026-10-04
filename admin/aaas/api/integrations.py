@@ -17,6 +17,10 @@ Manage external service connections: Keycloak, SMTP, LLM, Storage.
 from __future__ import annotations
 
 import logging
+from admin.core.helpers.vendor_api_bases import (
+    OPENAI_API_BASE,
+    effective_base,
+)
 from typing import Optional
 
 from django.utils import timezone
@@ -116,7 +120,9 @@ async def _get_integration_config(provider: str) -> dict:
             return {
                 "name": "OpenAI (LLM)",
                 "icon": "🤖",
-                "endpoint": model.api_base or "https://api.openai.com/v1",
+                "endpoint": effective_base(
+                    OPENAI_API_BASE, getattr(model, "api_base", None)
+                ),
                 "api_key": None,  # Never expose secrets; resolved at call time from Vault
                 "status": "configured",
                 "last_check": None,
@@ -303,11 +309,16 @@ async def test_connection(request, provider: str) -> ConnectionTestResult:
         elif provider == "smtp":
             import socket
 
+            # SMTP topology is deployment config. There is no localhost
+            # substitute: a health probe of a guessed host reports the wrong
+            # dependency (SOMA-STD-CONFIG-001).
+            from admin.core.helpers.service_urls import require_setting
+
+            smtp_host = config.get("endpoint") or require_setting("SMTP_HOST")
+            smtp_port = config.get("smtp_port") or require_setting("SMTP_PORT")
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(5)
-            result = sock.connect_ex(
-                (config.get("endpoint", "localhost"), config.get("smtp_port", 587))
-            )
+            result = sock.connect_ex((str(smtp_host), int(smtp_port)))
             sock.close()
             success = result == 0
             message = "SMTP port reachable" if success else "SMTP connection failed"

@@ -98,6 +98,7 @@ class DalleProvider(MultimodalProvider):
         api_key: Optional[str] = None,
         model: str = "dall-e-3",
         timeout_seconds: int = 60,
+        api_base: Optional[str] = None,
     ) -> None:
         """Initialize DALL-E provider.
 
@@ -106,11 +107,21 @@ class DalleProvider(MultimodalProvider):
                 agent's model administration (Vault), never from os.environ.
             model: Model to use (dall-e-3 or dall-e-2).
             timeout_seconds: Request timeout.
+            api_base: Operator override for the OpenAI-compatible API base
+                (proxy / regional endpoint). Empty uses the vendor protocol
+                constant from admin.core.helpers.vendor_api_bases.
         """
         self._api_key = api_key or _resolve_provider_key("openai")
+        self._api_base = api_base
         self._model = model
         self._timeout = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None
+
+    def _images_base(self) -> str:
+        """OpenAI images API base — protocol constant, operator override wins."""
+        from admin.core.helpers.vendor_api_bases import OPENAI_API_BASE, effective_base
+
+        return effective_base(OPENAI_API_BASE, self._api_base)
 
     @property
     def name(self) -> str:
@@ -207,7 +218,7 @@ class DalleProvider(MultimodalProvider):
             )
 
             response = await client.post(
-                "https://api.openai.com/v1/images/generations",
+                f"{self._images_base()}/images/generations",
                 json=payload,
             )
 
@@ -334,7 +345,7 @@ class DalleProvider(MultimodalProvider):
         try:
             client = await self._get_client()
             response = await client.get(
-                "https://api.openai.com/v1/models",
+                f"{self._images_base()}/models",
                 timeout=5.0,
             )
             return response.status_code == 200

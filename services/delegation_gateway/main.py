@@ -98,8 +98,10 @@ def ensure_metrics_server() -> None:
 def get_bus() -> KafkaEventBus:
     """Retrieve bus."""
 
+    from admin.core.helpers.service_urls import require_setting
+
     kafka_settings = KafkaSettings(
-        bootstrap_servers=getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        bootstrap_servers=str(require_setting("KAFKA_BOOTSTRAP_SERVERS")),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),

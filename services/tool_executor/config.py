@@ -24,11 +24,10 @@ SERVICE_SETTINGS = _get_config()
 
 def kafka_settings() -> KafkaSettings:
     """Build Kafka connection settings from configuration."""
+    from admin.core.helpers.service_urls import require_setting
+
     return KafkaSettings(
-        bootstrap_servers=os.environ.get(
-            "KAFKA_BOOTSTRAP_SERVERS",
-            getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-        ),
+        bootstrap_servers=str(require_setting("KAFKA_BOOTSTRAP_SERVERS")),
         security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
         sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
         sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),

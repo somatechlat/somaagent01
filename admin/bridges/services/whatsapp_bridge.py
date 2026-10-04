@@ -27,6 +27,7 @@ import signal
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -94,12 +95,19 @@ def _channel_config(channel: Any) -> Dict[str, Any]:
 
 
 def _bridge_url(config: Dict[str, Any]) -> str:
-    """A0 bridge_manager.get_bridge_url(port) default 127.0.0.1:3100."""
+    """Baileys sidecar base URL — configured, never guessed.
+
+    There is no ``127.0.0.1:{port}`` substitute. A sidecar host is deployment
+    topology: set ``bridge_base_url`` on the channel or ``WA_BRIDGE_BASE_URL``
+    in the environment (SOMA-STD-CONFIG-001).
+    """
     explicit = config.get("bridge_base_url") or os.environ.get("WA_BRIDGE_BASE_URL")
     if explicit:
         return str(explicit).rstrip("/")
-    port = int(config.get("bridge_port") or os.environ.get("WA_BRIDGE_PORT", "3100"))
-    return f"http://127.0.0.1:{port}"
+    raise ImproperlyConfigured(
+        "WhatsApp bridge base URL is not configured. Set channel.bridge_base_url "
+        "or WA_BRIDGE_BASE_URL (service endpoints are administrator-managed)."
+    )
 
 
 def _mode(config: Dict[str, Any]) -> str:

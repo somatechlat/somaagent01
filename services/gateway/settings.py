@@ -291,28 +291,48 @@ CB_FAILURE_THRESHOLD = int(os.environ.get("CB_FAILURE_THRESHOLD", "5"))
 CB_RESET_TIMEOUT_S = float(os.environ.get("CB_RESET_TIMEOUT_S", "30.0"))
 OPA_URL = get_optional_env("SA01_OPA_URL", "", "Open Policy Agent for authorization policies")
 
-# Voice Services (Whisper STT + Kokoro TTS)
-WHISPER_URL = os.environ.get("SA01_WHISPER_URL", "http://localhost:9100")
-WHISPER_API_URL = os.environ.get("SA01_WHISPER_API_URL", "http://localhost:8001/transcribe")
-KOKORO_URL = os.environ.get("SA01_KOKORO_URL", "http://localhost:9200")
-KOKORO_TTS_URL = os.environ.get("SA01_KOKORO_TTS_URL", "http://localhost:8002/synthesize")
-AGENTVOICEVOX_BASE_URL = os.environ.get("SA01_VOICEVOX_URL", "http://localhost:65009")
+# Voice Services (Whisper STT + Kokoro TTS).
+# Empty when unset — require_service_url() refuses an unconfigured endpoint.
+# There is no localhost substitute (SOMA-STD-CONFIG-001 / Rule 16).
+WHISPER_URL = get_optional_env("SA01_WHISPER_URL", "", "Whisper STT base URL")
+WHISPER_API_URL = get_optional_env(
+    "SA01_WHISPER_API_URL", "", "Whisper transcribe endpoint URL"
+)
+KOKORO_URL = get_optional_env("SA01_KOKORO_URL", "", "Kokoro TTS base URL")
+KOKORO_TTS_URL = get_optional_env(
+    "SA01_KOKORO_TTS_URL", "", "Kokoro synthesize endpoint URL"
+)
+AGENTVOICEVOX_BASE_URL = get_optional_env(
+    "SA01_VOICEVOX_URL", "", "AgentVoiceVox base URL"
+)
 
 # LLM Service
-LLM_API_URL = os.environ.get("SA01_LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
+LLM_API_URL = get_optional_env("SA01_LLM_API_URL", "", "Internal LLM chat endpoint URL")
 # Absent becomes None, never "" — see the note on SOMABRAIN_MEMORY_HTTP_TOKEN.
 # Consumers refuse to call the LLM with a missing key rather than sending
 # `Authorization: Bearer ` and getting a 401 back.
 LLM_API_KEY = get_secret_manager().get_credential("llm_api_key")
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
 
-# Multimodal Services
-MERMAID_CLI_URL = os.environ.get("SA01_MERMAID_CLI_URL", "http://localhost:9300")
-IMAGE_GEN_URL = os.environ.get("SA01_IMAGE_GEN_URL", "http://localhost:8003/generate")
-DIAGRAM_URL = os.environ.get("SA01_DIAGRAM_URL", "http://localhost:8004/render")
+# AuthN / login hardening (administrator-managed; schema defaults on SettingsModel)
+LOGIN_RATE_LIMIT = int(os.environ.get("SA01_LOGIN_RATE_LIMIT", "10"))
+LOGIN_RATE_WINDOW = int(os.environ.get("SA01_LOGIN_RATE_WINDOW", "60"))
 
-# Monitoring (AAAS: 63905, K8S: 32905, Local: 9090)
-PROMETHEUS_URL = os.environ.get("SA01_PROMETHEUS_URL", "http://localhost:9090")
+# Voice payload ceilings and multimodal bounds
+VOICE_MAX_AUDIO_BYTES = int(os.environ.get("SA01_VOICE_MAX_AUDIO_BYTES", str(10 * 1024 * 1024)))
+VOICE_LLM_MAX_TOKENS = int(os.environ.get("SA01_VOICE_LLM_MAX_TOKENS", "150"))
+MULTIMODAL_PROMPT_MAX_CHARS = int(os.environ.get("SA01_MULTIMODAL_PROMPT_MAX_CHARS", "4000"))
+MULTIMODAL_IMAGE_TIMEOUT_S = float(os.environ.get("SA01_MULTIMODAL_IMAGE_TIMEOUT_S", "60.0"))
+MULTIMODAL_DIAGRAM_TIMEOUT_S = float(os.environ.get("SA01_MULTIMODAL_DIAGRAM_TIMEOUT_S", "30.0"))
+
+
+# Multimodal Services (empty when unset — never a guessed host)
+MERMAID_CLI_URL = get_optional_env("SA01_MERMAID_CLI_URL", "", "Mermaid CLI base URL")
+IMAGE_GEN_URL = get_optional_env("SA01_IMAGE_GEN_URL", "", "Image generation endpoint URL")
+DIAGRAM_URL = get_optional_env("SA01_DIAGRAM_URL", "", "Diagram render endpoint URL")
+
+# Monitoring
+PROMETHEUS_URL = get_optional_env("SA01_PROMETHEUS_URL", "", "Prometheus base URL")
 
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
@@ -344,8 +364,12 @@ JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "true").lower() == 
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = get_secret_manager().get_credential("google_client_secret") or None
-GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:5173/auth/callback")
-GOOGLE_JAVASCRIPT_ORIGIN = os.environ.get("GOOGLE_JAVASCRIPT_ORIGIN", "http://localhost:5173")
+GOOGLE_REDIRECT_URI = get_optional_env(
+    "GOOGLE_REDIRECT_URI", "", "Google OAuth redirect URI (deployment topology)"
+)
+GOOGLE_JAVASCRIPT_ORIGIN = get_optional_env(
+    "GOOGLE_JAVASCRIPT_ORIGIN", "", "Google OAuth JavaScript origin (deployment topology)"
+)
 
 # =============================================================================
 # DJANGO CACHE (Redis)

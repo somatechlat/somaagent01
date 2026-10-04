@@ -117,24 +117,25 @@ ENTITY_SPECS: Dict[str, Dict[str, Dict[str, Any]]] = {
     # Keycloak / SomaBrain / Voice are integration endpoints, not bootstrap
     # topology: nothing needs them before the ORM is up. They are therefore
     # ordinary editable settings — which is what makes them RBAC-addressable
-    # rather than a deploy.
+    # rather than a deploy. Seeds are empty: a docker hostname in a default is
+    # a guessed host the operator never chose (SOMA-STD-CONFIG-001).
     "keycloak": {
-        "url": {"type": "url", "editable": True, "default": "http://keycloak:8080"},
+        "url": {"type": "url", "editable": True, "default": ""},
         "realm": {"type": "string", "editable": True, "default": "master"},
         "client_id": {"type": "string", "editable": True, "default": ""},
         # The client secret is not here. It lives in Vault; the settings row
         # would hold `secret/agent/credentials/keycloak_client_secret`.
     },
     "somabrain": {
-        "url": {"type": "url", "editable": True, "default": "http://somabrain:8000"},
+        "url": {"type": "url", "editable": True, "default": ""},
         "retention_days": {"type": "integer", "editable": True, "default": 365},
         "sleep_interval": {"type": "integer", "editable": True, "default": 21600},
         "consolidation_enabled": {"type": "boolean", "editable": True, "default": True},
     },
     "voice": {
-        "whisper_url": {"type": "url", "editable": True, "default": "http://whisper:8000"},
+        "whisper_url": {"type": "url", "editable": True, "default": ""},
         "whisper_model": {"type": "string", "editable": True, "default": "base"},
-        "kokoro_url": {"type": "url", "editable": True, "default": "http://kokoro:8000"},
+        "kokoro_url": {"type": "url", "editable": True, "default": ""},
         "kokoro_voice": {"type": "string", "editable": True, "default": "af_nicole"},
     },
 }

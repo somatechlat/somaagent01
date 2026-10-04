@@ -71,6 +71,10 @@ def _env(name: str, default: str = "") -> str:
 
 import re
 
+from admin.core.helpers.vendor_api_bases import (
+    WHATSAPP_CLOUD_API_BASE as _WHATSAPP_CLOUD_API_BASE,
+)
+
 _JID_SUFFIX_RE = re.compile(r"[@:].*")
 _NON_DIGIT_RE = re.compile(r"\D+")
 _LEADING_ZERO_RE = re.compile(r"^0+")
@@ -283,7 +287,7 @@ class CloudApiDriver:
         token: str,
         phone_number_id: str,
         api_version: str = "v21.0",
-        api_base: str = "https://graph.facebook.com",
+        api_base: str = _WHATSAPP_CLOUD_API_BASE,
     ):
         self.channel_id = channel_id
         self.token = token
@@ -450,12 +454,14 @@ def build_whatsapp_driver(
     cfg = _cfg(channel_config)
     mode = str(cfg.get("mode") or _env("WA_BRIDGE_MODE", "baileys")).lower()
     if mode == "baileys":
-        base_url = str(
-            cfg.get("bridge_base_url")
-            or _env("WA_BRIDGE_BASE_URL")
-            or f"http://127.0.0.1:{cfg.get('bridge_port') or _env('WA_BRIDGE_PORT', '3100')}"
-        )
-        return BaileysSidecarDriver(base_url=base_url, channel_config=cfg)
+        base_url = str(cfg.get("bridge_base_url") or _env("WA_BRIDGE_BASE_URL") or "")
+        if not base_url.rstrip("/"):
+            raise ValueError(
+                "WhatsApp Baileys bridge_base_url is not configured "
+                "(channel config or WA_BRIDGE_BASE_URL). "
+                "A sidecar host is deployment topology and is never guessed."
+            )
+        return BaileysSidecarDriver(base_url=base_url.rstrip("/"), channel_config=cfg)
     if mode == "cloud":
         token = str(cfg.get("api_token") or _env("WA_CLOUD_API_TOKEN"))
         phone_number_id = str(cfg.get("phone_number_id") or _env("WA_CLOUD_PHONE_NUMBER_ID"))
@@ -465,7 +471,9 @@ def build_whatsapp_driver(
             phone_number_id=phone_number_id,
             api_version=str(cfg.get("api_version") or _env("WA_CLOUD_API_VERSION", "v21.0")),
             api_base=str(
-                cfg.get("api_base") or _env("WA_CLOUD_API_BASE", "https://graph.facebook.com")
+                cfg.get("api_base")
+                or _env("WA_CLOUD_API_BASE")
+                or _WHATSAPP_CLOUD_API_BASE
             ),
         )
     raise ValueError(f"unknown WhatsApp bridge mode '{mode}' (expected baileys|cloud)")

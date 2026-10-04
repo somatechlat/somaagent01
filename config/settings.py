@@ -29,7 +29,9 @@ ALLOWED_HOSTS = os.environ.get("SA01_ALLOWED_HOSTS", "localhost,127.0.0.1").spli
 SA01_DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE")
 
 # Keycloak
-KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://localhost:20880")
+# No localhost fallback (SOMA-STD-CONFIG-001). Identity provider topology
+# is administrator-managed; an unconfigured URL surfaces at the OIDC client.
+KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL")
 KEYCLOAK_REALM = os.environ.get("KEYCLOAK_REALM", "somaagent")
 KEYCLOAK_CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "somaagent-api")
 # Absent becomes None, never "". An empty string reads as "configured with a
@@ -50,7 +52,9 @@ AAAS_DEFAULT_TENANT_ID = os.environ.get(
 # Vault would be circular, and a settings mirror of it would be a second copy of
 # a secret that does nothing. Read it from ENV or VAULT_TOKEN_FILE at the point
 # of authentication (services/common/vault_secrets.py).
-VAULT_ADDR = os.environ.get("VAULT_ADDR", "http://localhost:20882")
+# No localhost fallback. vault_secrets already refuses an unset VAULT_ADDR
+# (VIBE Rule 164); a default here would hide that misconfiguration.
+VAULT_ADDR = os.environ.get("VAULT_ADDR")
 VAULT_MOUNT = os.environ.get("VAULT_MOUNT", "secret")
 
 # SomaBrain (cognitive processing + memory conditioning)

@@ -40,9 +40,11 @@ class DelegationWorker:
 
         self.topic = os.environ.get("DELEGATION_TOPIC", "somastack.delegation")
         self.group = os.environ.get("DELEGATION_GROUP", "delegation-worker")
+        from admin.core.helpers.service_urls import require_setting
+
         self.bus = KafkaEventBus(
             KafkaSettings(
-                bootstrap_servers=os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+                bootstrap_servers=str(require_setting("KAFKA_BOOTSTRAP_SERVERS")),
                 security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
                 sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),

@@ -69,9 +69,11 @@ from .voice_adapter import VoiceAdapter
 
 logger = logging.getLogger(__name__)
 
-WHISPER_URL = getattr(settings, "WHISPER_URL", "http://localhost:9100")
-KOKORO_URL = getattr(settings, "KOKORO_URL", "http://localhost:9200")
-MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
+# Deployment URLs resolve through the settings chain and refuse when missing
+# (SOMA-STD-CONFIG-001). Payload ceilings and timeouts are SettingsModel
+# fields — administrators change them, not a literal in this path.
+from admin.core.helpers.service_urls import require_service_url  # noqa: E402
+from admin.core.helpers.settings import get_settings  # noqa: E402
 
 _voice_models: tuple[type, type, type] | None = None
 
@@ -234,13 +236,17 @@ async def transcribe_audio(payload: TranscribeRequest) -> TranscribeResponse:
     except Exception:
         raise BadRequestError("Invalid base64 audio data")
 
-    if len(audio_bytes) > MAX_AUDIO_SIZE:
-        raise BadRequestError(f"Audio exceeds maximum size of {MAX_AUDIO_SIZE // 1024 // 1024}MB")
+    max_audio = int(get_settings().voice_max_audio_bytes)
+    if len(audio_bytes) > max_audio:
+        raise BadRequestError(
+            f"Audio exceeds maximum size of {max_audio // 1024 // 1024}MB"
+        )
 
+    whisper_base = require_service_url("WHISPER_URL")
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{WHISPER_URL}/asr",
+                f"{whisper_base}/asr",
                 files={"audio": (f"audio.{payload.format}", audio_bytes)},
                 data={
                     "language": payload.language or "auto",
@@ -276,10 +282,11 @@ async def synthesize_speech(payload: SynthesizeRequest) -> SynthesizeResponse:
     if not 0.5 <= payload.speed <= 2.0:
         raise BadRequestError("Speed must be between 0.5 and 2.0")
 
+    kokoro_base = require_service_url("KOKORO_URL")
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{KOKORO_URL}/synthesize",
+                f"{kokoro_base}/synthesize",
                 json={
                     "text": payload.text,
                     "voice": payload.voice,
@@ -317,8 +324,9 @@ async def list_voices() -> VoiceListResponse:
     voices: list[dict] = []
 
     try:
+        kokoro_base = require_service_url("KOKORO_URL")
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{KOKORO_URL}/voices")
+            response = await client.get(f"{kokoro_base}/voices")
             if response.status_code == 200:
                 voices.extend(response.json().get("voices", []))
     except Exception:
@@ -341,16 +349,18 @@ async def get_voice_status() -> VoiceStatusResponse:
     kokoro_status = "down"
 
     try:
+        whisper_base = require_service_url("WHISPER_URL")
         async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{WHISPER_URL}/health")
+            response = await client.get(f"{whisper_base}/health")
             if response.status_code == 200:
                 whisper_status = "healthy"
     except Exception:
         pass
 
     try:
+        kokoro_base = require_service_url("KOKORO_URL")
         async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{KOKORO_URL}/health")
+            response = await client.get(f"{kokoro_base}/health")
             if response.status_code == 200:
                 kokoro_status = "healthy"
     except Exception:

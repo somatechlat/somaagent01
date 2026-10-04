@@ -31,30 +31,41 @@ router = Router(tags=["llm"])
 DEFAULTS_AGENT_ID = "default"
 
 # Known provider registry (UI presets). Custom OpenAI-compatible is free-form.
+# Base URLs are vendor *protocol* constants from admin.core.helpers.vendor_api_bases
+# — the effective base an operator calls is LLMModelConfig.api_base (or the
+# preset shown here as a starting point), never a host invented in this file.
+from admin.core.helpers.vendor_api_bases import (
+    ANTHROPIC_API_BASE,
+    GOOGLE_GENERATIVE_LANGUAGE_API_BASE,
+    GROQ_API_BASE,
+    OLLAMA_DEFAULT_API_BASE,
+    OPENAI_API_BASE,
+)
+
 PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     "openai": {
         "label": "OpenAI",
-        "default_base_url": "https://api.openai.com/v1",
+        "default_base_url": OPENAI_API_BASE,
         "default_model": "gpt-4o-mini",
     },
     "anthropic": {
         "label": "Anthropic",
-        "default_base_url": "https://api.anthropic.com/v1",
+        "default_base_url": ANTHROPIC_API_BASE,
         "default_model": "claude-3-5-haiku-latest",
     },
     "google": {
         "label": "Google",
-        "default_base_url": "https://generativelanguage.googleapis.com/v1beta",
+        "default_base_url": GOOGLE_GENERATIVE_LANGUAGE_API_BASE,
         "default_model": "gemini-2.0-flash",
     },
     "groq": {
         "label": "Groq",
-        "default_base_url": "https://api.groq.com/openai/v1",
+        "default_base_url": GROQ_API_BASE,
         "default_model": "openai/gpt-oss-120b",
     },
     "ollama": {
         "label": "Ollama",
-        "default_base_url": "http://localhost:11434/v1",
+        "default_base_url": OLLAMA_DEFAULT_API_BASE,
         "default_model": "llama3.1",
     },
     "custom": {

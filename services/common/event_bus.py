@@ -56,6 +56,15 @@ class KafkaSettings:
     sasl_username: Optional[str] = None
     sasl_password: Optional[str] = None
 
+    def __post_init__(self) -> None:
+        """A broker list is topology. An empty one is misconfiguration, not a
+        default (SOMA-STD-CONFIG-001)."""
+        if not str(self.bootstrap_servers or "").strip():
+            raise ValueError(
+                "KAFKA_BOOTSTRAP_SERVERS is not configured. "
+                "Broker topology is administrator-managed; there is no guessed broker."
+            )
+
     @classmethod
     def from_env(cls) -> "KafkaSettings":
         """Load from centralized SettingsRegistry with a topology fallback."""
@@ -64,7 +73,7 @@ class KafkaSettings:
 
             settings = SettingsRegistry.get()
             return cls(
-                bootstrap_servers=settings.kafka_bootstrap_servers or "kafka:9092",
+                bootstrap_servers=settings.kafka_bootstrap_servers,
                 security_protocol=settings.kafka_security_protocol,
                 sasl_mechanism=settings.kafka_sasl_mechanism or None,
                 sasl_username=settings.kafka_sasl_username or None,
@@ -74,7 +83,7 @@ class KafkaSettings:
             # Topology may fall back to ENV. The password may not — see
             # resolve_kafka_sasl_password().
             return cls(
-                bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"),
+                bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP_SERVERS") or "",
                 security_protocol=os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
                 sasl_mechanism=os.environ.get("KAFKA_SASL_MECHANISM"),
                 sasl_username=os.environ.get("KAFKA_SASL_USERNAME"),

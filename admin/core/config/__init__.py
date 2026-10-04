@@ -126,15 +126,28 @@ def redis_url() -> str:
 
 
 def kafka_bootstrap_servers() -> str:
-    """Execute kafka bootstrap servers."""
+    """Kafka bootstrap servers — topology from config, never a guessed broker."""
 
-    return str(env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"))
+    value = env("KAFKA_BOOTSTRAP_SERVERS")
+    if not value:
+        raise ValueError(
+            "KAFKA_BOOTSTRAP_SERVERS is not configured. "
+            "Broker topology is administrator-managed (SOMA-STD-CONFIG-001)."
+        )
+    return str(value)
 
 
 def opa_url() -> str:
-    """Execute opa url."""
+    """OPA / OpenFGA base URL — configured, never a guessed host."""
 
-    return str(env("OPA_URL", "http://openfga:8080"))
+    value = env("OPA_URL")
+    if not value:
+        raise ValueError(
+            "OPA_URL is not configured. "
+            "Authorization service endpoints are administrator-managed "
+            "(SOMA-STD-CONFIG-001)."
+        )
+    return str(value)
 
 
 # Export a convenient singleton that mimics the historic ``runtime_config``

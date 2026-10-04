@@ -183,16 +183,29 @@ async def generate_image(request, payload: ImageGenerationRequest) -> ImageGener
             "openai", f"API keys not configured for provider {model_config.provider}"
         )
 
-    if len(payload.prompt) > 4000:
-        raise BadRequestError("Prompt exceeds maximum length of 4000 characters")
+    from admin.core.helpers.settings import get_settings
+
+    prompt_max = int(get_settings().multimodal_prompt_max_chars)
+    if len(payload.prompt) > prompt_max:
+        raise BadRequestError(
+            f"Prompt exceeds maximum length of {prompt_max} characters"
+        )
 
     image_id = str(uuid4())
 
     # 3. Execute Request
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Use model-specific URL if defined, else default to OpenAI
-            base_url = model_config.api_base or "https://api.openai.com/v1"
+        async with httpx.AsyncClient(
+                timeout=float(get_settings().multimodal_image_timeout_s)
+            ) as client:
+            # Model api_base is the operator override; the OpenAI images
+            # endpoint is a vendor protocol constant (SOMA-STD-CONFIG-001).
+            from admin.core.helpers.vendor_api_bases import (
+                OPENAI_API_BASE,
+                effective_base,
+            )
+
+            base_url = effective_base(OPENAI_API_BASE, getattr(model_config, "api_base", None))
 
             response = await client.post(
                 f"{base_url}/images/generations",
@@ -249,14 +262,24 @@ async def render_diagram(request, payload: DiagramRequest) -> DiagramResponse:
 
     import httpx
 
-    # Resolve Mermaid URL from PlatformConfig (Rule 91)
+    # Resolve Mermaid URL through the settings chain (Rule 91 / STD-CONFIG-001).
+    # PlatformConfig may carry an operator override; when it does not, the
+    # endpoint must be configured — there is no localhost substitute.
+    from admin.core.helpers.service_urls import require_service_url
+    from admin.core.helpers.settings import get_settings
+
     defaults = await PlatformConfig.aget_instance()
-    mermaid_url = defaults.defaults.get("mermaid_cli_url", "http://localhost:9300")
+    mermaid_url = (
+        (defaults.defaults or {}).get("mermaid_cli_url")
+        or require_service_url("MERMAID_CLI_URL")
+    )
 
     diagram_id = str(uuid4())
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(
+            timeout=float(get_settings().multimodal_diagram_timeout_s)
+        ) as client:
             response = await client.post(
                 f"{mermaid_url}/render",
                 json={

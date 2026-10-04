@@ -23,8 +23,13 @@ from admin.llm.models import LLMModelConfig
 
 
 def get_voicevox_base_url() -> str:
-    """Get AgentVoiceVox base URL from settings."""
-    return getattr(settings, "AGENTVOICEVOX_BASE_URL", "http://localhost:65009")
+    """AgentVoiceVox base URL — administrator-managed, never guessed.
+
+    Fail-closed: an unconfigured endpoint raises (SOMA-STD-CONFIG-001).
+    """
+    from admin.core.helpers.service_urls import require_service_url
+
+    return require_service_url("AGENTVOICEVOX_BASE_URL")
 
 
 # =============================================================================

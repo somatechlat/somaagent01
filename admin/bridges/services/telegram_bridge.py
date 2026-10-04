@@ -344,9 +344,15 @@ def _fetch_bot_identity_sync(channel: Any) -> Optional[Dict[str, Any]]:
             credentials_ref=str(getattr(channel, "credentials_ref", "") or ""),
             channel_config=_channel_config(channel),
         )
-        api_base = _channel_config(channel).get("api_base") or os.environ.get(
-            "TG_API_BASE", "https://api.telegram.org"
+        # Channel config / env is the operator override; the Telegram bot API
+        # host is a vendor protocol constant (SOMA-STD-CONFIG-001).
+        from admin.core.helpers.vendor_api_bases import (
+            TELEGRAM_API_BASE,
+            effective_base,
         )
+
+        override = _channel_config(channel).get("api_base") or os.environ.get("TG_API_BASE")
+        api_base = effective_base(TELEGRAM_API_BASE, override)
         resp = httpx.post(
             f"{str(api_base).rstrip('/')}/bot{token}/getMe",
             json={},

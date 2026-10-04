@@ -10,6 +10,7 @@ from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.worker import Worker
 
+from admin.core.helpers.service_urls import require_setting
 from services.common.compensation import compensate_event
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import KafkaEventBus, KafkaSettings
@@ -26,10 +27,7 @@ async def handle_a2a(event: dict) -> dict:
     """
 
     kcfg = KafkaSettings(
-        bootstrap_servers=os.environ.get(
-            "KAFKA_BOOTSTRAP_SERVERS",
-            os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-        )
+        bootstrap_servers=str(require_setting("KAFKA_BOOTSTRAP_SERVERS"))
     )
     bus = KafkaEventBus(kcfg)
     publisher = DurablePublisher(bus=bus)

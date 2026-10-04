@@ -26,8 +26,27 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 
 from admin.common.messages import get_message, SuccessCode
+from admin.core.helpers.settings import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def _voice_model_name() -> str:
+    """Voice LLM model — settings chain is the authority, never a literal.
+
+    Fail-closed: a voice turn without a configured model is a configuration
+    error, not a licence to invent ``gpt-4o-mini`` (SOMA-STD-CONFIG-001).
+    """
+    from admin.core.helpers.capsule_settings import resolve_setting
+
+    value = resolve_setting("DEFAULT_VOICE_MODEL")
+    if value is not None and str(value).strip():
+        return str(value).strip()
+    raise RuntimeError(
+        "DEFAULT_VOICE_MODEL is not configured. Set it through Django settings "
+        "or AgentSetting (voice model selection is administrator-managed)."
+    )
+
 
 
 @dataclass
@@ -284,7 +303,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         try:
             import httpx
 
-            whisper_url = getattr(settings, "WHISPER_API_URL", "http://localhost:8001/transcribe")
+            from admin.core.helpers.service_urls import require_service_url
+
+            whisper_url = require_service_url("WHISPER_API_URL")
 
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -330,7 +351,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             import httpx
 
             # Get LLM response via internal API
-            llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
+            from admin.core.helpers.service_urls import require_service_url
+
+            llm_url = require_service_url("LLM_API_URL")
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 llm_response = await client.post(
@@ -343,8 +366,8 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                             },
                             {"role": "user", "content": transcript},
                         ],
-                        "model": getattr(settings, "DEFAULT_VOICE_MODEL", "gpt-4o-mini"),
-                        "max_tokens": 150,
+                        "model": _voice_model_name(),
+                        "max_tokens": int(get_settings().voice_llm_max_tokens),
                     },
                     headers={"Authorization": f"Bearer {llm_api_key}"},
                 )
@@ -385,7 +408,9 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
         assert self.state is not None
         import httpx
 
-        tts_url = getattr(settings, "KOKORO_TTS_URL", "http://localhost:8002/synthesize")
+        from admin.core.helpers.service_urls import require_service_url
+
+        tts_url = require_service_url("KOKORO_TTS_URL")
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(

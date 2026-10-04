@@ -50,7 +50,13 @@ from services.bridge_worker.drivers.base import (
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_API_BASE = os.environ.get("TG_API_BASE", "https://api.telegram.org").rstrip("/")
+# Vendor protocol constant, overridable per deployment (proxy / test harness).
+from admin.core.helpers.vendor_api_bases import (  # noqa: E402
+    TELEGRAM_API_BASE as _TELEGRAM_PROTOCOL_BASE,
+    effective_base as _effective_base,
+)
+
+TELEGRAM_API_BASE = _effective_base(_TELEGRAM_PROTOCOL_BASE, os.environ.get("TG_API_BASE"))
 MAX_MESSAGE_LENGTH = 4096
 
 _POLL_TIMEOUT = 15.0  # HTTP timeout for one getUpdates call
