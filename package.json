@@ -1,7 +1,7 @@
 {
   "scripts": {
     "ui:test": "bunx playwright test tests/e2e --grep-invert @debug",
-    "ui:test:headed": "UI_BASE_URL=http://localhost:21016 bunx playwright test tests/e2e --grep-invert @debug --headed"
+    "ui:test:headed": "UI_BASE_URL=${UI_BASE_URL:?set UI_BASE_URL} bunx playwright test tests/e2e --grep-invert @debug --headed"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
