@@ -271,11 +271,14 @@ export class SaasSettingsModels extends LitElement {
     @state() private _presetNotes = '';
     @state() private _newModel: Partial<ModelRow> & { provider: string; name: string; model_type: 'chat' | 'embedding' } = {
         name: '',
-        provider: 'openai',
+        provider: '',
         model_type: 'chat',
         display_name: '',
         api_base: '',
     };
+    /** Model id being edited inline; null when no row is in edit mode. */
+    @state() private _editingModelId: string | null = null;
+    @state() private _editModel: Partial<ModelRow> = {};
 
     private _tabs: { id: TabId; label: string; icon: string }[] = [
         { id: 'providers', label: 'Providers', icon: 'dns' },
@@ -571,6 +574,48 @@ export class SaasSettingsModels extends LitElement {
         }
     }
 
+    private _startEditModel(m: ModelRow) {
+        this._editingModelId = m.id;
+        this._editModel = {
+            name: m.name,
+            display_name: m.display_name,
+            model_type: m.model_type,
+            provider: m.provider,
+            api_base: m.api_base,
+        };
+    }
+
+    private _cancelEditModel() {
+        this._editingModelId = null;
+        this._editModel = {};
+    }
+
+    private async _saveEditModel(m: ModelRow) {
+        const e = this._editModel;
+        if (!(e.name || '').trim() || !(e.provider || '').trim()) {
+            this._flash('error', 'Model name and provider are required');
+            return;
+        }
+        this._saving = true;
+        try {
+            await apiClient.patch(`/llm/models/${m.id}`, {
+                name: (e.name || '').trim(),
+                display_name: (e.display_name || e.name || '').trim(),
+                model_type: e.model_type || m.model_type,
+                provider: (e.provider || '').trim(),
+                api_base: (e.api_base || '').trim(),
+            });
+            this._editingModelId = null;
+            this._editModel = {};
+            this._flash('ok', `Model ${e.name} updated`);
+            await Promise.all([this._loadModels(), this._loadGate()]);
+        } catch (err) {
+            this._flash('error', `Update model failed: ${err instanceof Error ? err.message : err}`);
+        } finally {
+            this._saving = false;
+        }
+    }
+
     private async _deleteModel(m: ModelRow) {
         try {
             await apiClient.delete(`/llm/models/${m.id}`);
@@ -731,7 +776,7 @@ export class SaasSettingsModels extends LitElement {
                                         <input
                                             type="url"
                                             .value=${p.base_url}
-                                            placeholder="https://api.example.com/v1"
+                                            placeholder="Provider base URL"
                                             @input=${(e: Event) => {
                                                 const v = (e.target as HTMLInputElement).value;
                                                 this._providers = this._providers.map(x =>
@@ -1058,7 +1103,7 @@ export class SaasSettingsModels extends LitElement {
                         <input
                             type="text"
                             .value=${n.name}
-                            placeholder="e.g. gpt-4o-mini"
+                            placeholder="Model name"
                             @input=${(e: Event) => {
                                 this._newModel = { ...this._newModel, name: (e.target as HTMLInputElement).value };
                             }}
@@ -1084,13 +1129,13 @@ export class SaasSettingsModels extends LitElement {
                         <input
                             type="url"
                             .value=${n.api_base || ''}
-                            placeholder="https://..."
+                            placeholder="Provider base URL"
                             @input=${(e: Event) => {
                                 this._newModel = { ...this._newModel, api_base: (e.target as HTMLInputElement).value };
                             }}
                         />
                     </div>
-                    <button class="btn primary" @click=${this._createModel} ?disabled=${this._saving || !n.name.trim()}>
+                    <button class="btn primary" @click=${this._createModel} ?disabled=${this._saving || !n.name.trim() || !n.provider.trim()}>
                         Add model
                     </button>
                 </div>
@@ -1109,18 +1154,76 @@ export class SaasSettingsModels extends LitElement {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${this._models.map(m => html`
+                                ${this._models.map(m => {
+                                    const editing = this._editingModelId === m.id;
+                                    const e = this._editModel;
+                                    return html`
                                     <tr>
                                         <td>
-                                            <strong>${m.display_name || m.name}</strong>
-                                            <div class="muted">${m.name}</div>
+                                            ${editing
+                                                ? html`
+                                                      <input
+                                                          type="text"
+                                                          .value=${e.name || ''}
+                                                          @input=${(ev: Event) => {
+                                                              this._editModel = { ...this._editModel, name: (ev.target as HTMLInputElement).value };
+                                                          }}
+                                                      />
+                                                      <input
+                                                          type="text"
+                                                          style="margin-top: 6px;"
+                                                          .value=${e.display_name || ''}
+                                                          placeholder="Display name"
+                                                          @input=${(ev: Event) => {
+                                                              this._editModel = { ...this._editModel, display_name: (ev.target as HTMLInputElement).value };
+                                                          }}
+                                                      />
+                                                  `
+                                                : html`
+                                                      <strong>${m.display_name || m.name}</strong>
+                                                      <div class="muted">${m.name}</div>
+                                                  `}
                                         </td>
                                         <td>
-                                            <strong>${m.provider}</strong>
-                                            <div style="margin-top: 4px;">${this._keyBadge(m.provider)}</div>
-                                            <div class="key-hint">Uses the ${m.provider} provider key</div>
+                                            ${editing
+                                                ? html`
+                                                      <select
+                                                          .value=${e.provider || ''}
+                                                          @change=${(ev: Event) => {
+                                                              this._editModel = { ...this._editModel, provider: (ev.target as HTMLSelectElement).value };
+                                                          }}
+                                                      >
+                                                          <option value="">— select —</option>
+                                                          ${this._providers.map(
+                                                              (p) => html`<option value=${p.id} ?selected=${e.provider === p.id}>${p.label}</option>`
+                                                          )}
+                                                      </select>
+                                                      <div style="margin-top: 4px;">${this._keyBadge(e.provider || m.provider)}</div>
+                                                  `
+                                                : html`
+                                                      <strong>${m.provider}</strong>
+                                                      <div style="margin-top: 4px;">${this._keyBadge(m.provider)}</div>
+                                                      <div class="key-hint">Uses the ${m.provider} provider key</div>
+                                                  `}
                                         </td>
-                                        <td style="text-transform: capitalize">${m.model_type}</td>
+                                        <td>
+                                            ${editing
+                                                ? html`
+                                                      <select
+                                                          .value=${e.model_type || ''}
+                                                          @change=${(ev: Event) => {
+                                                              this._editModel = {
+                                                                  ...this._editModel,
+                                                                  model_type: (ev.target as HTMLSelectElement).value as 'chat' | 'embedding',
+                                                              };
+                                                          }}
+                                                      >
+                                                          <option value="chat" ?selected=${(e.model_type || 'chat') === 'chat'}>chat</option>
+                                                          <option value="embedding" ?selected=${e.model_type === 'embedding'}>embedding</option>
+                                                      </select>
+                                                  `
+                                                : html`<span style="text-transform: capitalize">${m.model_type}</span>`}
+                                        </td>
                                         <td>
                                             <saas-toggle
                                                 .checked=${m.is_active}
@@ -1129,20 +1232,30 @@ export class SaasSettingsModels extends LitElement {
                                         </td>
                                         <td>
                                             <div class="row-actions">
-                                                <button
-                                                    class="btn"
-                                                    @click=${() => this._testConnection({
-                                                        provider: m.provider,
-                                                        model_id: m.id,
-                                                    })}
-                                                    ?disabled=${this._testBusy[m.id] || !this._providerHasKey(m.provider)}
-                                                    title=${this._providerHasKey(m.provider)
-                                                        ? 'Test this model through its provider key'
-                                                        : 'No API key stored for this provider.'}
-                                                >
-                                                    ${this._testBusy[m.id] ? 'Testing…' : 'Test'}
-                                                </button>
-                                                <button class="btn" @click=${() => this._deleteModel(m)}>Delete</button>
+                                                ${editing
+                                                    ? html`
+                                                          <button class="btn primary" @click=${() => this._saveEditModel(m)} ?disabled=${this._saving}>
+                                                              Save
+                                                          </button>
+                                                          <button class="btn" @click=${() => this._cancelEditModel()}>Cancel</button>
+                                                      `
+                                                    : html`
+                                                          <button class="btn" @click=${() => this._startEditModel(m)}>Edit</button>
+                                                          <button
+                                                              class="btn"
+                                                              @click=${() => this._testConnection({
+                                                                  provider: m.provider,
+                                                                  model_id: m.id,
+                                                              })}
+                                                              ?disabled=${this._testBusy[m.id] || !this._providerHasKey(m.provider)}
+                                                              title=${this._providerHasKey(m.provider)
+                                                                  ? 'Test this model through its provider key'
+                                                                  : 'No API key stored for this provider.'}
+                                                          >
+                                                              ${this._testBusy[m.id] ? 'Testing…' : 'Test'}
+                                                          </button>
+                                                          <button class="btn" @click=${() => this._deleteModel(m)}>Delete</button>
+                                                      `}
                                             </div>
                                             ${this._testResult[m.id]
                                                 ? html`<div class="key-hint" style="color: ${this._testResult[m.id].ok ? '#047857' : '#b91c1c'}">
@@ -1151,7 +1264,8 @@ export class SaasSettingsModels extends LitElement {
                                                 : nothing}
                                         </td>
                                     </tr>
-                                `)}
+                                `;
+                                })}
                             </tbody>
                         </table>
                     `}
