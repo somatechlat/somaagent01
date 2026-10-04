@@ -284,7 +284,8 @@ export class SaasAgentMetrics extends LitElement {
         this.loading = true;
         this.error = '';
         try {
-            const data = await apiClient.get<{ usage?: UsageMetric[]; agents?: AgentUsage[]; costs?: CostBreakdown[] }>('/observability/tenant-usage');
+            const monthQuery = this.month ? `?month=${encodeURIComponent(this.month)}` : '';
+            const data = await apiClient.get<{ usage?: UsageMetric[]; agents?: AgentUsage[]; costs?: CostBreakdown[] }>(`/observability/tenant-usage${monthQuery}`);
             this.usage = data.usage || [];
             this.agents = data.agents || [];
             this.costs = data.costs || [];

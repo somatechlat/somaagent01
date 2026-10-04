@@ -361,9 +361,11 @@ export class PlatformMetricsDashboard extends LitElement {
   private async fetchMetrics() {
     this.error = null;
     try {
+      // Mounted at /api/v2/observability (admin/api.py), not /core/observability.
+      // /metrics/json is the real snapshot shape; there is no /snapshot route.
       const [metricsRes, slaRes] = await Promise.all([
-        fetch('/api/v2/core/observability/snapshot', { credentials: 'include' }),
-        fetch('/api/v2/core/observability/sla', { credentials: 'include' }),
+        fetch('/api/v2/observability/metrics/json', { credentials: 'include' }),
+        fetch('/api/v2/observability/sla', { credentials: 'include' }),
       ]);
 
       if (metricsRes.ok) {
@@ -416,12 +418,6 @@ export class PlatformMetricsDashboard extends LitElement {
             <p class="header-subtitle">Real-time observability dashboard</p>
           </div>
           <div class="header-actions">
-            <select class="time-range">
-              <option value="1h">Last 1 hour</option>
-              <option value="24h" selected>Last 24 hours</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-            </select>
             ${this.lastRefresh ? html`
               <span style="font-size: 11px; color: var(--saas-text-muted, #999);">
                 ${this.lastRefresh.toLocaleTimeString()}

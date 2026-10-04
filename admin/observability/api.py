@@ -29,11 +29,6 @@ router = Router(tags=["observability"])
 logger = logging.getLogger(__name__)
 
 
-# Approximate cost rates for dashboard estimates
-_COST_PER_TOKEN = 0.00001
-_COST_PER_VOICE_MINUTE = 0.005
-_COST_PER_IMAGE = 0.04
-
 # Store application start time for uptime calculation
 _app_start_time = time.time()
 
@@ -214,7 +209,7 @@ async def get_service_health(request, service: str) -> ServiceHealthResponse:
     response=ReadinessResponse,
     summary="Kubernetes readiness probe",
 )
-async def readiness(request) -> ReadinessResponse:
+async def readiness() -> ReadinessResponse:
     """Kubernetes readiness check.
 
     Returns 200 if ready to serve traffic.
@@ -264,7 +259,7 @@ async def readiness(request) -> ReadinessResponse:
     response=LivenessResponse,
     summary="Kubernetes liveness probe",
 )
-async def liveness(request) -> LivenessResponse:
+async def liveness() -> LivenessResponse:
     """Kubernetes liveness check.
 
     Returns 200 if process is alive.
@@ -420,10 +415,13 @@ async def get_sla_compliance(request) -> dict:
     summary="Get tenant usage and cost breakdown",
     auth=AuthBearer(),
 )
-async def get_tenant_usage(request) -> TenantUsageResponse:
+async def get_tenant_usage(request, month: Optional[str] = None) -> TenantUsageResponse:
     """Aggregate real tenant usage from VoiceSession and Agent models.
 
     PM: Usage tracking, quota visualization.
+
+    Args:
+        month: optional ``YYYY-MM`` window. Absent means the current month.
     """
     await authorize(request, action="system:read_metrics", resource="observability")
     from asgiref.sync import sync_to_async
@@ -431,25 +429,36 @@ async def get_tenant_usage(request) -> TenantUsageResponse:
     from django.db.models import Sum
 
     from admin.aaas.models.agents import Agent
-    from admin.aaas.models.tenants import Tenant
     from admin.voice.models import VoiceSession
 
     tenant_id = getattr(request, "tenant_id", None) or getattr(
         settings, "AAAS_DEFAULT_TENANT_ID", None
     )
 
+    if month is not None:
+        try:
+            parsed = time.strptime(month, "%Y-%m")
+        except ValueError:
+            from ninja.errors import HttpError
+
+            raise HttpError(422, "month must be YYYY-MM")
+        window_start = timezone.now().replace(
+            year=parsed.tm_year,
+            month=parsed.tm_mon,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+    else:
+        now = timezone.now()
+        window_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     @sync_to_async
     def _aggregate():
-        try:
-            tenant = Tenant.objects.get(id=tenant_id)
-        except Tenant.DoesNotExist:
-            tenant = None
-
-        now = timezone.now()
-        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
         sessions = VoiceSession.objects.filter(
-            tenant_id=str(tenant_id), created_at__gte=start_of_month
+            tenant_id=str(tenant_id), created_at__gte=window_start
         )
         agg = sessions.aggregate(
             total_turns=Sum("turn_count") or 0,
@@ -487,32 +496,11 @@ async def get_tenant_usage(request) -> TenantUsageResponse:
             for agent in agents_qs
         ]
 
-        token_cost = tokens * _COST_PER_TOKEN
-        voice_cost = voice_minutes * _COST_PER_VOICE_MINUTE
-        image_cost = images * _COST_PER_IMAGE
-
-        costs = [
-            CostBreakdown(
-                category="LLM Tokens",
-                amount=round(token_cost, 2),
-                details=f"Estimated @ ${_COST_PER_TOKEN}/token",
-            ),
-            CostBreakdown(
-                category="Voice",
-                amount=round(voice_cost, 2),
-                details=f"Estimated @ ${_COST_PER_VOICE_MINUTE}/minute",
-            ),
-        ]
-        if images:
-            costs.append(
-                CostBreakdown(
-                    category="Images",
-                    amount=round(image_cost, 2),
-                    details=f"Estimated @ ${_COST_PER_IMAGE}/image",
-                )
-            )
-
-        return TenantUsageResponse(usage=usage, agents=agents, costs=costs)
+        # Cost is not invented. There is no pricing authority in this system
+        # (provider invoices land outside this process), so a dollar figure
+        # would be a fabricated metric. The list stays empty until a real
+        # pricing source is configured; the UI shows an honest empty state.
+        return TenantUsageResponse(usage=usage, agents=agents, costs=[])
 
     return await _aggregate()
 
