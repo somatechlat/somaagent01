@@ -29,6 +29,17 @@ class CoreConfig(AppConfig):
 
         def _drop(*_args, **_kwargs) -> None:
             invalidate_infraconfig_cache()
+            # The memory gateway binds SOMABRAIN_URL at construction. Dropping
+            # the singleton here is what makes a UI edit of that URL repoint
+            # the memory lane without a process restart (W2.1). The seam file
+            # is untouched — this only clears its process-local cache.
+            import services.common.memory_gateway as memory_gateway_mod
+
+            memory_gateway_mod._memory_gateway_instance = None
+            from admin.core import chat_orchestrator as co
+
+            co._memory_gateway_cache = None
+            co._memory_gateway_url = None
 
         post_save.connect(
             _drop, sender=InfrastructureConfig, dispatch_uid="soma_infra_cache_save"

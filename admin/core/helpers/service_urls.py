@@ -27,6 +27,7 @@ an operator cannot edit and an auditor cannot see.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, Optional
 
 from django.core.exceptions import ImproperlyConfigured
@@ -95,26 +96,46 @@ def _load_infraconfig() -> None:
 
 
 def warm_infraconfig_cache() -> bool:
-    """Populate the operator layer from sync context (boot, management commands).
+    """Populate the operator layer (boot, management commands, first request).
 
     Returns True when the cache is populated. Never raises: a deployment that
     cannot reach the ORM yet still boots, and the first request that needs a
     service URL refuses with a named setting rather than a guessed host.
+
+    When an event loop is already running (ASGI import under uvicorn), the ORM
+    load is handed to a worker thread so Django's async safety is satisfied and
+    the operator layer is actually warm before the first request.
     """
     global _INFRA_CACHE_LOADED
     if _INFRA_CACHE_LOADED:
         return True
+
+    def _run() -> bool:
+        try:
+            _load_infraconfig()
+        except (
+            RuntimeError,          # apps not ready
+            ImportError,           # app not installed in a bare worker
+            ImproperlyConfigured,  # settings not loaded
+        ):
+            return False
+        except DatabaseError:
+            return False
+        return True
+
     try:
-        _load_infraconfig()
-    except (
-        RuntimeError,          # apps not ready
-        ImportError,           # app not installed in a bare worker
-        ImproperlyConfigured,  # settings not loaded
-    ):
-        return False
-    except DatabaseError:
-        return False
-    return True
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _run()
+
+    # A loop is running: sync ORM here would raise SynchronousOnlyOperation.
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        try:
+            return pool.submit(_run).result()
+        except Exception:
+            return False
 
 
 def _from_infraconfig(setting_name: str) -> Optional[str]:

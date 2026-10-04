@@ -78,10 +78,15 @@ class SettingsUpdateResponse(BaseModel):
 #
 # ``os.environ`` is not consulted. Rule 100 retired it as a config store.
 
-# key -> {"type", "editable", "default"?, "registry"?}
+# entity -> { local_key: {"type", "editable", "default"?, "registry"?, "setting"?} }
 #
 # `registry` names an attribute on the settings registry instance. A key that
 # carries one is topology and is never editable through this API.
+#
+# `setting` is the canonical UPPER name the rest of the codebase resolves
+# through `require_service_url` / `require_setting` (InfrastructureConfig.key).
+# Without it the operator layer is written under a local alias the resolver
+# never reads, so a UI edit of SOMABRAIN_URL would not repoint the memory lane.
 ENTITY_SPECS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "postgresql": {
         "host": {"type": "url", "editable": False, "registry": "postgres_host"},
@@ -120,25 +125,124 @@ ENTITY_SPECS: Dict[str, Dict[str, Dict[str, Any]]] = {
     # rather than a deploy. Seeds are empty: a docker hostname in a default is
     # a guessed host the operator never chose (SOMA-STD-CONFIG-001).
     "keycloak": {
-        "url": {"type": "url", "editable": True, "default": ""},
+        "url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "KEYCLOAK_URL",
+        },
         "realm": {"type": "string", "editable": True, "default": "master"},
         "client_id": {"type": "string", "editable": True, "default": ""},
         # The client secret is not here. It lives in Vault; the settings row
         # would hold `secret/agent/credentials/keycloak_client_secret`.
     },
     "somabrain": {
-        "url": {"type": "url", "editable": True, "default": ""},
+        "url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "SOMABRAIN_URL",
+        },
         "retention_days": {"type": "integer", "editable": True, "default": 365},
         "sleep_interval": {"type": "integer", "editable": True, "default": 21600},
         "consolidation_enabled": {"type": "boolean", "editable": True, "default": True},
     },
+    "memory": {
+        "url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "SOMAFRACTALMEMORY_URL",
+        },
+        "recall_top_k": {
+            "type": "integer",
+            "editable": True,
+            "setting": "MEM_RECALL_TOP_K",
+        },
+        "history_limit": {
+            "type": "integer",
+            "editable": True,
+            "setting": "MEM_HISTORY_LIMIT",
+        },
+        "similarity_threshold": {
+            "type": "number",
+            "editable": True,
+            "setting": "MEM_SIMILARITY_THRESHOLD",
+        },
+    },
+    "llm": {
+        "api_url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "LLM_API_URL",
+        },
+        "connect_timeout_s": {
+            "type": "number",
+            "editable": True,
+            "setting": "LLM_CONNECT_TIMEOUT_S",
+        },
+        "read_timeout_s": {
+            "type": "number",
+            "editable": True,
+            "setting": "LLM_READ_TIMEOUT_S",
+        },
+        "max_retries": {
+            "type": "integer",
+            "editable": True,
+            "setting": "LLM_MAX_RETRIES",
+        },
+    },
+    "agent": {
+        "tool_max_iterations": {
+            "type": "integer",
+            "editable": True,
+            "setting": "TOOL_MAX_ITERATIONS",
+        },
+        "tool_exec_timeout_s": {
+            "type": "number",
+            "editable": True,
+            "setting": "TOOL_EXEC_TIMEOUT_S",
+        },
+        "tool_result_max_chars": {
+            "type": "integer",
+            "editable": True,
+            "setting": "TOOL_RESULT_MAX_CHARS",
+        },
+        "login_rate_limit": {
+            "type": "integer",
+            "editable": True,
+            "setting": "LOGIN_RATE_LIMIT",
+        },
+        "login_rate_window": {
+            "type": "integer",
+            "editable": True,
+            "setting": "LOGIN_RATE_WINDOW",
+        },
+    },
     "voice": {
-        "whisper_url": {"type": "url", "editable": True, "default": ""},
+        "whisper_url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "WHISPER_URL",
+        },
         "whisper_model": {"type": "string", "editable": True, "default": "base"},
-        "kokoro_url": {"type": "url", "editable": True, "default": ""},
+        "kokoro_url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "KOKORO_URL",
+        },
         "kokoro_voice": {"type": "string", "editable": True, "default": "af_nicole"},
     },
 }
+
+
+def setting_name_for(entity: str, key: str) -> str:
+    """InfrastructureConfig.key for one entity field (canonical chain name)."""
+    spec = ENTITY_SPECS[entity][key]
+    return str(spec.get("setting") or key)
 
 
 def _registry_value(attr: str) -> Any:
@@ -185,6 +289,12 @@ def get_settings_from_db(entity: str) -> Optional[dict]:
     """
     from admin.core.infrastructure.models import InfrastructureConfig
 
+    spec = ENTITY_SPECS.get(entity, {})
+    # Canonical chain name -> local form key.
+    by_setting = {
+        setting_name_for(entity, local): local for local in spec
+    }
+
     rows = InfrastructureConfig.objects.filter(service__service_name=entity)
     if not rows.exists():
         return None
@@ -194,7 +304,8 @@ def get_settings_from_db(entity: str) -> Optional[dict]:
         assert_no_secret_value(
             row.key, row.value, where=f"InfrastructureConfig({entity}.{row.key})"
         )
-        out[row.key] = row.value
+        local = by_setting.get(str(row.key), str(row.key))
+        out[local] = row.value
     return out
 
 
@@ -223,13 +334,16 @@ def save_settings_to_db(entity: str, values: dict) -> bool:
     spec = ENTITY_SPECS.get(entity, {})
     for key, value in values.items():
         key_spec = spec.get(key, {})
+        # Persist under the canonical chain name so require_service_url /
+        # require_setting actually see the operator's edit.
+        row_key = setting_name_for(entity, key) if key in spec else key
         row, _created = InfrastructureConfig.objects.get_or_create(
             service=service,
-            key=key,
+            key=row_key,
             defaults={
                 "value": "" if value is None else str(value),
                 "default_value": str(key_spec.get("default", "")),
-                "is_secret": is_secret_shaped_key(key),
+                "is_secret": is_secret_shaped_key(row_key),
                 "is_editable": bool(key_spec.get("editable", True)),
                 "value_type": key_spec.get("type", "string"),
             },
@@ -362,20 +476,85 @@ async def _emit_settings_changed(request: HttpRequest, entity: str, changed_keys
         )
 
 
+ENTITY_META: Dict[str, Dict[str, str]] = {
+    "postgresql": {"name": "PostgreSQL", "icon": "database"},
+    "redis": {"name": "Redis", "icon": "bolt"},
+    "kafka": {"name": "Kafka", "icon": "mail"},
+    "temporal": {"name": "Temporal", "icon": "schedule"},
+    "keycloak": {"name": "Keycloak", "icon": "lock"},
+    "somabrain": {"name": "SomaBrain", "icon": "neurology"},
+    "memory": {"name": "Memory", "icon": "psychology"},
+    "llm": {"name": "LLM Gateway", "icon": "smart_toy"},
+    "agent": {"name": "Agent", "icon": "settings_suggest"},
+    "voice": {"name": "Voice Services", "icon": "mic"},
+}
+
+
+class FieldSchema(BaseModel):
+    """One editable setting, as the form must render it."""
+
+    key: str
+    setting: str
+    label: str
+    type: str
+    editable: bool
+    description: str = ""
+
+
+class EntitySchema(BaseModel):
+    """Server-owned form shape for one entity. The UI never invents fields."""
+
+    entity: str
+    name: str
+    icon: str
+    fields: list[FieldSchema]
+
+
+def _label_for(local: str) -> str:
+    """Human label from the field key. Formatting, not a lookup table."""
+    return local.replace("_", " ").strip().capitalize()
+
+
+@router.get("/schema/{entity}", response=EntitySchema)
+async def get_entity_schema(request: HttpRequest, entity: str):
+    """Field catalog for one entity — the lookup table lives here, not in TS."""
+    await authorize(request, action="system:view", resource="settings")
+    if entity not in ENTITY_SPECS:
+        raise ValidationError(
+            get_message(ErrorCode.VALIDATION_ERROR, details=f"Unknown entity: {entity}"),
+            details={"entity": entity},
+        )
+    meta = ENTITY_META.get(entity, {"name": entity, "icon": "settings"})
+    fields = [
+        FieldSchema(
+            key=local,
+            setting=setting_name_for(entity, local),
+            label=_label_for(local),
+            type=str(spec.get("type", "string")),
+            editable=bool(spec.get("editable", True)),
+            description=str(spec.get("description", "")),
+        )
+        for local, spec in ENTITY_SPECS[entity].items()
+    ]
+    return EntitySchema(
+        entity=entity, name=meta["name"], icon=meta["icon"], fields=fields
+    )
+
+
 @router.get("/", response=list)
 async def list_services(request: HttpRequest):
     """List all configurable services.
 
     Gated like every other settings surface — the inventory of what the
-    platform is wired to is itself configuration.
+    platform is wired to is itself configuration. The list is derived from
+    ENTITY_SPECS so a new entity cannot be missing from the UI.
     """
     await authorize(request, action="system:view", resource="settings")
     return [
-        {"entity": "postgresql", "name": "PostgreSQL", "icon": "database"},
-        {"entity": "redis", "name": "Redis", "icon": "bolt"},
-        {"entity": "kafka", "name": "Kafka", "icon": "mail"},
-        {"entity": "temporal", "name": "Temporal", "icon": "schedule"},
-        {"entity": "keycloak", "name": "Keycloak", "icon": "lock"},
-        {"entity": "somabrain", "name": "SomaBrain", "icon": "neurology"},
-        {"entity": "voice", "name": "Voice Services", "icon": "mic"},
+        {
+            "entity": entity,
+            "name": ENTITY_META.get(entity, {}).get("name", entity),
+            "icon": ENTITY_META.get(entity, {}).get("icon", "settings"),
+        }
+        for entity in ENTITY_SPECS
     ]

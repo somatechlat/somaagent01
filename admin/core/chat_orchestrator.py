@@ -52,7 +52,7 @@ from services.common.memory_contract import (
     MemoryConfigurationError,
     MemoryHit,
 )
-from services.common.memory_gateway import build_memory_gateway, get_memory_gateway
+from services.common.memory_gateway import build_memory_gateway
 from services.common.simple_governor import get_governor
 from services.common.unified_metrics import get_metrics, TurnPhase, TurnUsage
 
@@ -124,36 +124,40 @@ def _history_timeout() -> float:
 
 
 _memory_gateway_cache: Any = None
+_memory_gateway_url: str | None = None
 
 
 def _require_memory_gateway() -> Any:
     """Return the MemoryGateway. Always required — full Agent+SomaBrain+SFM path.
 
-    Fail-closed: if no store URL is configured (env SOMABRAIN_URL / SFM_URL,
-    else config.settings), raise MemoryConfigurationError — never skip a write.
+    Fail-closed: if no store URL is configured through the settings chain
+    (Capsule > AgentSetting > InfrastructureConfig > SettingsModel), raise
+    MemoryConfigurationError — never skip a write and never invent a host.
+
+    The gateway is rebuilt when the resolved URL changes, so an operator
+    editing SOMABRAIN_URL in the UI repoints the memory lane without a
+    process restart or rebuild.
     """
-    global _memory_gateway_cache
-    if _memory_gateway_cache is not None:
+    global _memory_gateway_cache, _memory_gateway_url
+    from admin.core.helpers.service_urls import require_service_url
+
+    brain_url = str(require_service_url("SOMABRAIN_URL")).strip()
+    if _memory_gateway_cache is not None and _memory_gateway_url == brain_url:
         return _memory_gateway_cache
+
     try:
-        _memory_gateway_cache = get_memory_gateway()
+        if _memory_gateway_url is not None and _memory_gateway_url != brain_url:
+            logger.info(
+                "Memory lane repointed (somabrain=%s); rebuilding the gateway",
+                brain_url,
+            )
+        _memory_gateway_cache = build_memory_gateway(somabrain_url=brain_url)
+        _memory_gateway_url = brain_url
         return _memory_gateway_cache
     except MemoryConfigurationError:
-        # Seam env unset — fall back to the app config path (config/settings.py
-        # resolves the same keys). Still fail-closed if neither configures a URL.
-        from config import settings as django_settings
-
-        brain_url = (getattr(django_settings, "SOMABRAIN_URL", "") or "").strip()
-        if not brain_url:
-            raise
-        logger.info(
-            "Memory seam configured from config.settings (somabrain=%s)",
-            brain_url,
-        )
-        _memory_gateway_cache = build_memory_gateway(
-            somabrain_url=brain_url,
-        )
-        return _memory_gateway_cache
+        # The seam could not bind the configured URL (e.g. missing Vault
+        # token). Surface the refusal; never fall back to another host.
+        raise
 
 
 # ---------------------------------------------------------------------------
