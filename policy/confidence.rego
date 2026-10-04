@@ -13,15 +13,17 @@
 # - input.tenant_id: string
 # - input.endpoint: string
 
-package somaagent.confidence
+package soma.confidence
 
-import rego.v1
 
+import future.keywords.contains
+import future.keywords.in
+import future.keywords.every
 # Default allow if confidence scoring is disabled
-default allow := true
+default allow := false
 
 # Deny if confidence is below critical threshold
-deny contains msg if {
+deny contains msg {
     input.confidence_enabled == true
     input.confidence != null
     input.confidence < 0.3
@@ -29,7 +31,7 @@ deny contains msg if {
 }
 
 # Deny if confidence is missing and treat_null_as_low is true
-deny contains msg if {
+deny contains msg {
     input.confidence_enabled == true
     input.treat_null_as_low == true
     input.confidence == null
@@ -37,19 +39,19 @@ deny contains msg if {
 }
 
 # Allow if confidence is acceptable
-allow if {
+allow {
     input.confidence_enabled == true
     input.confidence != null
     input.confidence >= 0.3
 }
 
 # Allow if confidence scoring is disabled
-allow if {
+allow {
     input.confidence_enabled == false
 }
 
 # Allow if confidence is null and not treating as low
-allow if {
+allow {
     input.confidence_enabled == true
     input.confidence == null
     input.treat_null_as_low == false
@@ -57,7 +59,7 @@ allow if {
 
 # Flag low confidence (between 0.3 and configurable threshold)
 # This is informational, not blocking
-should_flag if {
+should_flag {
     input.confidence_enabled == true
     input.confidence != null
     input.confidence >= 0.3
@@ -65,22 +67,18 @@ should_flag if {
 }
 
 # Get confidence status for logging
-confidence_status := status if {
+confidence_status := "acceptable" {
     input.confidence != null
     input.confidence >= input.min_acceptance
-    status := "acceptable"
-} else := status if {
+} else := "low" {
     input.confidence != null
     input.confidence >= 0.3
     input.confidence < input.min_acceptance
-    status := "low"
-} else := status if {
+} else := "critical" {
     input.confidence != null
     input.confidence < 0.3
-    status := "critical"
-} else := status if {
-    input.confidence == null
-    status := "unknown"
+} else := "unknown" {
+    true
 }
 
 # Compute decision result
@@ -89,4 +87,12 @@ result := {
     "deny_reasons": deny,
     "should_flag": should_flag,
     "confidence_status": confidence_status,
+}
+
+# Not applicable: the request carries no opinion on the dimension this
+# policy owns. A rule with no input must not veto - that would deny every
+# ordinary request, which is a different failure from fail-closed.
+allow {
+    not input.confidence
+    not input.confidence_enabled
 }

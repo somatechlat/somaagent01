@@ -36,6 +36,11 @@
 networks:
   somaagent_net:
     driver: bridge
+  # The triad cluster. SomaBrain and SomaFractalMemory already share this
+  # network and reach each other by service DNS. The agent joins it too, so
+  # all three services are one cluster instead of three islands on one host.
+  soma-stack-net:
+    external: true
 
 volumes:
   somaagent_postgres_data:
@@ -93,8 +98,10 @@ services:
       # and are read there by services/gateway/settings.py. They are deliberately
       # NOT passed here.
       - SOMABRAIN_ENABLED=true
-      - SOMABRAIN_URL=${SOMABRAIN_URL:-http://host.docker.internal:30101}
-      - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:-http://host.docker.internal:10101}
+      # Service DNS on the shared triad cluster, same way SomaBrain already
+      # reaches SomaFractalMemory. No host.docker.internal guess.
+      - SOMABRAIN_URL=${SOMABRAIN_URL:-http://somabrain-somabrain_standalone_app-1:30101}
+      - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:-http://somafractalmemory-standalone-api:10101}
       - MEM_EMBED_DIM=${MEM_EMBED_DIM:-768}
       # Database topology — parts, not a DSN. A DSN embeds the password.
       # The password is read from Vault (secret/agent/credentials/postgres_password)
@@ -114,6 +121,7 @@ services:
       - "20020:9000" # Agent API
     networks:
       - somaagent_net
+      - soma-stack-net
     volumes:
       - ../../admin:/app/admin
       - ../../services:/app/services
