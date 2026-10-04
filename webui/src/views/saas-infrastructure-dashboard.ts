@@ -450,10 +450,6 @@ export class SaasInfrastructureDashboard extends LitElement {
                 <span class="material-symbols-outlined">visibility</span>
                 Dashboard
               </a>
-              <a class="nav-item" href="/saas/tenants">
-                <span class="material-symbols-outlined">apartment</span>
-                Tenants
-              </a>
             </div>
           </div>
 

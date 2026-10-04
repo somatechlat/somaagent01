@@ -284,7 +284,8 @@ export class SaasVoicePersonas extends LitElement {
             this.voiceOptions = (data.items || []).map((m) => m.voice_id);
         } catch (e) {
             console.error('Failed to load voice models:', e);
-            this.voiceOptions = ['af_heart', 'af_bella', 'af_nicole', 'am_adam', 'am_michael'];
+            // Fail closed: an unreachable voice catalog is empty, not a guess.
+            this.voiceOptions = [];
         }
     }
 

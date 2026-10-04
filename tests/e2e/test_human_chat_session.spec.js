@@ -16,10 +16,18 @@
 
 const { test, expect } = require('@playwright/test');
 
-const UI = process.env.UI_BASE_URL || 'http://localhost:20080';
-const API = process.env.API_BASE_URL || 'http://localhost:20020';
-const EMAIL = process.env.TEST_USER_EMAIL || 'test@soma.dev';
-const PASSWORD = process.env.TEST_USER_PASSWORD || 'SomaAccess-2026!';
+function requiredEnv(name) {
+  const value = (process.env[name] || '').trim();
+  if (!value) {
+    throw new Error(`${name} is required. Every endpoint and credential comes from the environment.`);
+  }
+  return value;
+}
+
+const UI = requiredEnv('UI_BASE_URL');
+const API = requiredEnv('API_BASE_URL');
+const EMAIL = requiredEnv('TEST_USER_EMAIL');
+const PASSWORD = requiredEnv('TEST_USER_PASSWORD');
 
 // A marker unique to this run so the memory assertion cannot pass on a
 // previous run's row.

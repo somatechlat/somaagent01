@@ -668,6 +668,18 @@ export class SaasSettingsModels extends LitElement {
                     </div>
                 </header>
                 <div class="content">
+                    <div class="section-desc" data-control="models-where">
+                        <strong>Where to change what.</strong>
+                        <ul style="margin: 8px 0 0; padding-left: 18px; line-height: 1.6;">
+                            <li><strong>API key</strong> → Providers tab → write-only key field on the provider row.
+                                Stored in Vault at <code>secret/agent/api_keys/{provider}_api_key</code>. Never echoed back.</li>
+                            <li><strong>Model (which model runs)</strong> → Model Slots tab (chat / utility / embedding)
+                                or Models tab → create or edit a catalog row.</li>
+                            <li><strong>Model type</strong> → Models tab → the <code>model_type</code> field on create/edit
+                                (<code>chat</code> or <code>embedding</code>).</li>
+                            <li><strong>Provider base URL / default model</strong> → Providers tab.</li>
+                        </ul>
+                    </div>
                     ${this._renderGate()}
                     ${this._tab === 'providers' ? this._renderProviders() : nothing}
                     ${this._tab === 'slots' ? this._renderSlots() : nothing}

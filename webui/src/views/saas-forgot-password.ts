@@ -264,17 +264,27 @@ export class SaasForgotPassword extends LitElement {
         this._error = '';
 
         try {
-            const response = await fetch('/api/v2/auth/password/reset-request', {
+            // Password reset is not registered on this deployment
+            // (`admin/auth/api.py` mounts /sso, /oauth, /mfa only). The
+            // middleware allowlists a reset path that has no handler. Never
+            // claim an email was sent when nothing accepted the request.
+            const response = await fetch('/api/v2/auth/password/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: this._email }),
             });
-
-            // Always show success to prevent email enumeration
+            if (response.status === 404 || response.status === 405) {
+                this._error =
+                    'Password reset is not available on this deployment. Contact your administrator.';
+                return;
+            }
+            if (!response.ok) {
+                this._error = 'Could not start a password reset. Try again later.';
+                return;
+            }
             this._success = true;
         } catch (err) {
-            // Still show success for security (prevent email enumeration)
-            this._success = true;
+            this._error = 'Could not reach the authentication service.';
         } finally {
             this._isLoading = false;
         }

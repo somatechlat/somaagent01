@@ -211,20 +211,21 @@ export class VoiceConfigPanel extends LitElement {
 
     @property({ type: Object }) config: VoiceConfig | null = null;
     @property({ type: Array }) llmOptions: LLMOption[] = [];
-    @property({ type: Array }) voiceOptions: string[] = ['af_heart', 'af_bella', 'af_nicole', 'am_adam', 'am_michael'];
+    /** Voices from GET /voice/voices. Never a client-side catalog. */
+    @property({ type: Array }) voiceOptions: string[] = [];
 
     @state() private _config: VoiceConfig = {
-        voice_id: 'af_heart',
+        voice_id: '',
         voice_speed: 1.0,
-        stt_model: 'tiny',
-        stt_language: 'en',
+        stt_model: '',
+        stt_language: '',
         llm_config_id: null,
         system_prompt: '',
-        temperature: 0.7,
-        max_tokens: 1024,
+        temperature: 0,
+        max_tokens: 0,
         turn_detection_enabled: true,
-        turn_detection_threshold: 0.5,
-        silence_duration_ms: 500,
+        turn_detection_threshold: 0,
+        silence_duration_ms: 0,
     };
 
     connectedCallback() {
@@ -273,22 +274,21 @@ export class VoiceConfigPanel extends LitElement {
                     <div class="form-row">
                         <div class="form-group">
                             <label>Model</label>
-                            <select .value=${this._config.stt_model} @change=${(e: Event) => this._updateConfig('stt_model', (e.target as HTMLSelectElement).value)}>
-                                <option value="tiny">Whisper Tiny</option>
-                                <option value="small">Whisper Small</option>
-                                <option value="medium">Whisper Medium</option>
-                                <option value="large">Whisper Large</option>
-                            </select>
+                            <input
+                                type="text"
+                                .value=${this._config.stt_model}
+                                placeholder="STT model id from the server catalog"
+                                @change=${(e: Event) => this._updateConfig('stt_model', (e.target as HTMLInputElement).value)}
+                            />
                         </div>
                         <div class="form-group">
                             <label>Language</label>
-                            <select .value=${this._config.stt_language} @change=${(e: Event) => this._updateConfig('stt_language', (e.target as HTMLSelectElement).value)}>
-                                <option value="en">English</option>
-                                <option value="es">Spanish</option>
-                                <option value="fr">French</option>
-                                <option value="de">German</option>
-                                <option value="auto">Auto-detect</option>
-                            </select>
+                            <input
+                                type="text"
+                                .value=${this._config.stt_language}
+                                placeholder="BCP-47 language tag"
+                                @change=${(e: Event) => this._updateConfig('stt_language', (e.target as HTMLInputElement).value)}
+                            />
                         </div>
                     </div>
                 </div>
