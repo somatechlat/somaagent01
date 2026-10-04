@@ -386,13 +386,13 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
         # last_seen_at. Both are required and NOT NULL.
         LocalSession.objects.create(
             token_hash=token_hash,
-            principal_id=identity.email,
+            principal_id=identity.principal_id,
             created_at=now,
             last_seen_at=now,
             revoked=False,
             privileged=False,
         )
-        return identity.email
+        return identity.principal_id
 
     principal = await _open_session()
     await _emit_auth_audit(

@@ -48,6 +48,10 @@ class IdentityResult:
     email: str = ""
     display_name: str = ""
     reason: str = ""
+    # The identity's primary key. `_decode_session` resolves a session's
+    # principal with `as_uuid(...)`, so the session row must hold this UUID -
+    # an email is unresolvable and the session is revoked on first use.
+    principal_id: str = ""
 
 
 def resolve_identity_provider() -> str:
@@ -111,6 +115,7 @@ async def authenticate_local(email: str, password: str) -> IdentityResult:
             provider="local",
             email=row.email,
             display_name=row.display_name or row.username,
+            principal_id=str(row.id),
         )
 
     return await _verify()
