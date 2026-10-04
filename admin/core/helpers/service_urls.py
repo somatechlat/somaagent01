@@ -33,18 +33,6 @@ from typing import Any, Optional
 from django.core.exceptions import ImproperlyConfigured
 
 
-def _from_env(setting_name: str) -> Optional[str]:
-    """12-factor topology override: UPPER_NAME, then SA01_UPPER_NAME.
-
-    Secrets never resolve here (VIBE Rule 164). This is only a deployment
-    endpoint / broker list / host, which the environment is allowed to carry.
-    """
-    for key in (setting_name, f"SA01_{setting_name}"):
-        value = _nonempty(os.environ.get(key))
-        if value is not None:
-            return value
-    return None
-
 
 def _nonempty(value: Any) -> Optional[str]:
     if value is None:
@@ -166,10 +154,6 @@ def require_setting(setting_name: str, *, capsule: Any = None, agent_id: Optiona
         value = _nonempty(getattr(model, attr, None))
         if value is not None:
             return value
-
-    value = _from_env(setting_name)
-    if value is not None:
-        return value
 
     raise ImproperlyConfigured(
         f"{setting_name} is not configured. Set it through Django settings or "
