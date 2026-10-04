@@ -254,6 +254,46 @@ async def test_process_turn_gate_denied():
 
 
 @pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_process_turn_passes_identity_roles_to_the_gate():
+    """The gate is checked with the turn's authenticated roles.
+
+    A live session subject is a ``LocalIdentity`` UUID that need not have a
+    ``TenantUser`` row. The role floor must see the token roles rather than
+    re-query membership and deny a member.
+    """
+    tenant = await _create_test_tenant()
+    capsule = await _create_test_capsule(tenant)
+
+    class RecordingGate:
+        """Collaborator double: records the roles the orchestrator passed."""
+
+        seen_roles: Any = None
+
+        async def check(self, *args, **kwargs):
+            RecordingGate.seen_roles = kwargs.get("roles")
+            return False
+
+        async def check_endpoint_permission(self, *args, **kwargs):
+            return False
+
+    orchestrator = V3ChatOrchestrator(unified_gate=RecordingGate())
+    turn = ChatTurn(
+        capsule=capsule,
+        user_id=str(uuid.uuid4()),
+        tenant_id=str(tenant.id),
+        user_message="Hello",
+        roles=["member"],
+    )
+
+    result = await orchestrator.process_turn(turn)
+
+    assert RecordingGate.seen_roles == ["member"]
+    assert result.response == get_message(ErrorCode.DEGRADED_GATE_DENIED)
+
+
+@pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
 @pytest.mark.skipif(not _llm_available(), reason="LLM API key not configured")
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio

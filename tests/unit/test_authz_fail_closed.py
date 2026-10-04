@@ -262,6 +262,68 @@ def test_gate_rejects_actions_outside_the_catalog():
     assert gate._check_role_floor("chat:send", ["sysadmin"]) is False
 
 
+@pytest.mark.asyncio
+async def test_gate_principal_prefers_caller_roles_over_a_second_store():
+    """Caller-supplied roles are the principal; membership is only a fallback.
+
+    The chat path surfaces roles from the authenticated identity
+    (``TokenPayload.realm_access`` / ``LocalIdentity.roles``). Re-querying
+    ``TenantUser`` is a second store that returned an empty set while
+    ``/auth/me`` showed the right ones, so the role floor denied a member.
+    An omitted role set (``None``) still resolves from membership; an empty
+    list is still "no roles" and still denies.
+    """
+    from admin.core.agentiq.unified_gate import UnifiedGate
+
+    gate = UnifiedGate()
+    roles, scopes = await gate._principal_for(
+        "user-with-no-tenantuser-row", "tenant", ["member"], None
+    )
+    assert roles == ["member"]
+    assert scopes is None
+
+    empty, _ = await gate._principal_for("user", "tenant", [], None)
+    assert empty == []
+
+
+@pytest.mark.asyncio
+async def test_gate_check_allows_member_from_caller_roles_without_membership_row():
+    """A real ``UnifiedGate`` lets a member chat when the caller carries roles.
+
+    No OPA and no SpiceDB are attached in Standalone, so the role floor is the
+    only layer. It must see the authenticated roles rather than an empty
+    membership lookup.
+    """
+    from admin.core.agentiq.unified_gate import UnifiedGate
+
+    class _Capsule:
+        id = "capsule-1"
+        tenant_id = "tenant-1"
+        _cached_body = {}
+
+    gate = UnifiedGate()
+    assert (
+        await gate.check(
+            _Capsule(),
+            action="resource:chat_send",
+            user_id="identity-uuid-with-no-tenantuser-row",
+            tenant_id="tenant-1",
+            roles=["member"],
+        )
+        is True
+    )
+    assert (
+        await gate.check(
+            _Capsule(),
+            action="resource:chat_send",
+            user_id="identity-uuid-with-no-tenantuser-row",
+            tenant_id="tenant-1",
+            roles=[],
+        )
+        is False
+    )
+
+
 def test_capsule_scope_denies_tools_that_are_not_enabled():
     """A capsule that declares no tools executes none.
 

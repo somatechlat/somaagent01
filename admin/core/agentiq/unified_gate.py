@@ -100,8 +100,10 @@ class UnifiedGate:
             resource: Optional resource identifier
             user_id: User ID for SpiceDB subject (required for real checks)
             tenant_id: Tenant ID for OPA context
-            roles: Roles held by the caller. An empty or missing set is
-                denial.
+            roles: Roles held by the caller. Supply the authenticated
+                principal's roles when they are already known (token /
+                identity). ``None`` falls back to the membership record. An
+                empty set is denial.
             scopes: Set only when the caller is a delegated API key. A key
                 holds exactly these and no roles.
 
@@ -200,10 +202,17 @@ class UnifiedGate:
         """Resolve the caller to (roles, scopes).
 
         When ``scopes`` is supplied the caller is a delegation and its roles
-        are dropped. Otherwise roles are resolved from the membership record.
+        are dropped. When ``roles`` is supplied the caller already carries the
+        authenticated principal's roles (the token / identity is their one
+        source) and membership is not re-queried — a second store is how the
+        chat path authorized with an empty role set while ``/auth/me`` showed
+        the right ones. Only an omitted role set (``None``) falls back to the
+        membership record. An empty list is "no roles" and stays empty.
         """
         if scopes is not None:
             return [], list(scopes)
+        if roles is not None:
+            return list(roles), None
         return await self._roles_for(user_id, tenant_id), None
 
     async def _roles_for(self, user_id: str | None, tenant_id: str | None) -> List[str]:
