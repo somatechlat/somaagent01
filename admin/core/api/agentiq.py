@@ -44,6 +44,7 @@ class AgentIQOut(Schema):
     knobs: dict
     derived: dict
     response_styles: list[str]
+    lanes: dict
 
 
 def _derived_to_dict(d: DerivedSettings) -> dict:
@@ -93,15 +94,26 @@ def _validate_knobs(knobs: dict) -> None:
             raise HttpError(422, f"response_style must be one of: {allowed}")
 
 
-def _read(capsule: Capsule) -> AgentIQOut:
+async def _read(capsule: Capsule) -> AgentIQOut:
+    """Assemble the AgentIQ view. Lanes come from the same allocator the
+    chat context builder uses — never a browser-side percentage."""
     from admin.core.agentiq.tables import STYLE_TABLE
+    from admin.core.context.lanes import get_lane_allocation
 
     derived = derive_all_settings(capsule)
+    lanes = await get_lane_allocation(capsule)
     return AgentIQOut(
         capsule_id=str(capsule.id),
         knobs=_effective_knobs(capsule),
         derived=_derived_to_dict(derived),
         response_styles=sorted(STYLE_TABLE),
+        lanes={
+            "system": lanes.system,
+            "history": lanes.history,
+            "memory": lanes.memory,
+            "tools": lanes.tools,
+            "buffer": lanes.buffer,
+        },
     )
 
 
@@ -114,7 +126,7 @@ def _read(capsule: Capsule) -> AgentIQOut:
 async def get_agentiq(request, capsule_id: str) -> AgentIQOut:
     await authorize(request, action="agent:read", resource="agents")
     capsule = await sync_to_async(_load_capsule)(capsule_id)
-    return await sync_to_async(_read)(capsule)
+    return await _read(capsule)
 
 
 @router.put(
@@ -156,4 +168,4 @@ async def put_agentiq(request, capsule_id: str, body: KnobsIn) -> AgentIQOut:
         return capsule
 
     capsule = await sync_to_async(_persist)()
-    return await sync_to_async(_read)(capsule)
+    return await _read(capsule)

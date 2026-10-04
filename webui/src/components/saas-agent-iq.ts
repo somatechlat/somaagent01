@@ -30,6 +30,7 @@ interface AgentIQPayload {
     knobs: Record<string, unknown>;
     derived: Record<string, unknown>;
     response_styles: string[];
+    lanes?: Record<string, number>;
 }
 
 @customElement('saas-agent-iq')
@@ -105,6 +106,8 @@ export class SaasAgentIq extends LitElement {
     @state() private _message = '';
     /** Allowed response_style values, from the server lookup table. */
     @state() private _styles: string[] = [];
+    /** Lane allocation shares from `admin.core.context.lanes` via AgentIQ GET. */
+    @state() private _lanes: Record<string, number> | null = null;
 
     private _unsubscribe: (() => void) | null = null;
 
@@ -144,6 +147,7 @@ export class SaasAgentIq extends LitElement {
                 `/core/agentiq/${this.capsuleId}`
             );
             this._styles = payload.response_styles ?? [];
+            this._lanes = payload.lanes ?? null;
             iqStore.setFromServer(
                 payload.knobs as never,
                 payload.derived as never
@@ -184,6 +188,7 @@ export class SaasAgentIq extends LitElement {
                 }
             );
             this._styles = payload.response_styles ?? this._styles;
+            this._lanes = payload.lanes ?? this._lanes;
             iqStore.setFromServer(payload.knobs as never, payload.derived as never);
             iqStore.markSaved();
             this._message = 'Knobs saved. Derived settings recomputed by the server.';
@@ -281,7 +286,11 @@ export class SaasAgentIq extends LitElement {
                     <div class="lane">
                         <span class="name">${l.label}</span>
                         <span class="desc">${l.desc}</span>
-                        <span class="pct">share set by the governor</span>
+                        <span class="pct">${
+                            this._lanes && typeof this._lanes[l.id] === 'number'
+                                ? `${(this._lanes[l.id] * 100).toFixed(0)}%`
+                                : '—'
+                        }</span>
                     </div>
                 `)}
             </div>

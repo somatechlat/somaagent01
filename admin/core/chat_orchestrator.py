@@ -1006,6 +1006,34 @@ class V3ChatOrchestrator:
             yield get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
             return
 
+        # Turn metadata the UI must be able to show a person: which model is
+        # actually serving this turn, the 5-lane allocation the governor
+        # applied, and what memory recall returned. Emitted on the existing
+        # tool-timeline channel so the browser already has a handler — no
+        # second chat consumer, no parallel lane.
+        yield ToolStreamEvent(
+            type="chat.turn_meta",
+            payload={
+                "model": f"{model.provider}/{model.name}",
+                "provider": model.provider,
+                "model_name": model.name,
+                "lanes": budget_override,
+                "memory_hits": (
+                    [
+                        {
+                            "text": (getattr(h, "text", None) or str(h))[:500],
+                            "score": getattr(h, "score", None),
+                            "kind": getattr(h, "kind", None),
+                        }
+                        for h in (memory_hits or [])
+                    ]
+                    if isinstance(memory_hits, list)
+                    else []
+                ),
+                "context_tokens": getattr(context, "total_tokens", 0),
+            },
+        )
+
         # Stream LLM with native tool-calling loop (Phase 8-9)
         llm = get_chat_model(
             provider=model.provider,
@@ -1443,8 +1471,6 @@ class V3ChatOrchestrator:
                 user_message=user_message,
                 assistant_response=assistant_response,
                 conversation_id=conversation_id,
-                model_id=model_id,
-                elapsed_ms=elapsed_ms,
                 salience=salience,
             )
         )
@@ -1568,11 +1594,15 @@ class V3ChatOrchestrator:
         user_message: str,
         assistant_response: str,
         conversation_id: str,
-        model_id: str,
-        elapsed_ms: int,
         salience: float | None = None,
     ) -> None:
-        """Non-blocking episodic memory storage via the MemoryGateway seam."""
+        """Non-blocking episodic memory storage via the MemoryGateway seam.
+
+        ``model_id`` and ``elapsed_ms`` used to be accepted here and silently
+        dropped: ``MemoryWrite`` has no field for them, and a signature that
+        promises a value it discards is a lie. Both are turn metrics and are
+        recorded where the turn is recorded, not in the memory payload.
+        """
         content = f"User: {user_message}\nAssistant: {assistant_response}"
         await self._remember_via_gateway(
             content,

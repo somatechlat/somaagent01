@@ -872,8 +872,11 @@ export class SaasChat extends LitElement {
     @state() private _modelLabel = '';
     @state() private _chatTitle = 'New conversation';
     @state() private _userName = 'User';
-    @state() private _userRole = 'Member';
+    @state() private _userRole = '';
     @state() private _userInitials = 'U';
+    @state() private _turnLanes: Record<string, number> | null = null;
+    @state() private _memoryHits: { text?: string; score?: number | null; kind?: string | null }[] = [];
+    @state() private _contextTokens = 0;
     @state() private _showRightPanel = false;
     @state() private _convFilter = '';
     @state() private _renamingId = '';
@@ -984,7 +987,7 @@ export class SaasChat extends LitElement {
             );
             const name = me.name || me.username || me.email || 'User';
             this._userName = name;
-            this._userRole = me.role || 'Member';
+            this._userRole = me.role ?? '';
             this._userInitials = name
                 .split(/\s+/)
                 .map((p) => p[0])
@@ -1178,6 +1181,14 @@ export class SaasChat extends LitElement {
         });
         this._wsClient.on('tool.approval_request', (data) => {
             this._handleToolApprovalRequest(data as ToolCallPayload);
+        });
+        this._wsClient.on('chat.turn_meta', (data) => {
+            this._handleTurnMeta(data as {
+                model?: string;
+                lanes?: Record<string, number>;
+                memory_hits?: { text?: string; score?: number | null; kind?: string | null }[];
+                context_tokens?: number;
+            });
         });
         this._wsClient.on('title_update', (data) => {
             const payload = data as { title?: string; conversation_id?: string };
@@ -1416,6 +1427,26 @@ export class SaasChat extends LitElement {
     private _handleToolCall(p: ToolCallPayload) {
         if (this._turnStopped) return;
         this._activeTools = this._upsertToolStep(p, 'executing');
+    }
+
+    /**
+     * Turn metadata the orchestrator emits after model selection and
+     * 5-lane context build (`chat.turn_meta`). The model actually in use,
+     * the lane allocation, and what memory recall returned — never guessed
+     * in the browser.
+     */
+    private _handleTurnMeta(p: {
+        model?: string;
+        lanes?: Record<string, number>;
+        memory_hits?: { text?: string; score?: number | null; kind?: string | null }[];
+        context_tokens?: number;
+    }) {
+        if (p.model) {
+            this._modelLabel = p.model;
+        }
+        this._turnLanes = p.lanes ?? null;
+        this._memoryHits = Array.isArray(p.memory_hits) ? p.memory_hits : [];
+        this._contextTokens = typeof p.context_tokens === 'number' ? p.context_tokens : 0;
     }
 
     private _handleToolDelta(p: ToolCallPayload) {
@@ -2025,6 +2056,59 @@ export class SaasChat extends LitElement {
                         .capsuleId=${this._agents.find((a) => a.id === this._selectedAgentId)
                             ?.capsule_id ?? ''}
                     ></saas-agent-iq>
+
+                    ${this._modelLabel || this._memoryHits.length || this._turnLanes
+                        ? html`
+                              <div class="turn-meta" data-control="turn-meta" style="
+                                  display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+                                  padding:6px 16px;font-size:11px;color:var(--saas-text-secondary,#666);
+                                  border-bottom:1px solid var(--saas-border-light,#e0e0e0);
+                                  background:var(--saas-bg-card,#fff);">
+                                  ${this._modelLabel
+                                      ? html`<span><strong>Model</strong> ${this._modelLabel}</span>`
+                                      : nothing}
+                                  ${this._contextTokens
+                                      ? html`<span><strong>Context</strong> ${this._contextTokens} tokens</span>`
+                                      : nothing}
+                                  ${this._turnLanes
+                                      ? html`<span
+                                            title="5-lane allocation applied by the governor for this turn"
+                                            ><strong>Lanes</strong>
+                                            ${Object.entries(this._turnLanes)
+                                                .map(([k, v]) => `${k} ${v}`)
+                                                .join(' · ')}</span
+                                        >`
+                                      : nothing}
+                                  <span title="Memory recall results for this turn"
+                                      ><strong>Memory recall</strong>
+                                      ${this._memoryHits.length
+                                          ? html`${this._memoryHits.length} hit(s)`
+                                          : '—'}</span
+                                  >
+                              </div>
+                              ${this._memoryHits.length
+                                  ? html`
+                                        <details style="padding:4px 16px 8px;font-size:11px;">
+                                            <summary style="cursor:pointer;color:var(--saas-text-secondary,#666);">
+                                                Recall results
+                                            </summary>
+                                            <ul style="margin:6px 0 0;padding-left:18px;line-height:1.5;">
+                                                ${this._memoryHits.map(
+                                                    (h) => html`
+                                                        <li>
+                                                            ${h.kind ? html`[${h.kind}] ` : nothing}${h.text ?? '—'}
+                                                            ${typeof h.score === 'number'
+                                                                ? html` (${Math.round(h.score * 100)}%)`
+                                                                : nothing}
+                                                        </li>
+                                                    `,
+                                                )}
+                                            </ul>
+                                        </details>
+                                    `
+                                  : nothing}
+                          `
+                        : nothing}
 
                     <div class="header-right">
                         ${this._agents.length > 1
