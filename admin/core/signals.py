@@ -159,34 +159,44 @@ def handle_memory_created(sender, **kwargs):
 def handle_conversation_message(sender, **kwargs):
     """Handle conversation message signal - queue for processing.
 
+    Payload is the conversation worker contract (``session_id`` / ``message``),
+    not a private dialect. The worker reads ``session_id``, ``message``,
+    ``persona_id`` and ``metadata.tenant`` (``services/conversation_worker``).
+
     Usage:
         from admin.core.signals import conversation_message
         conversation_message.send(
             sender=MyClass,
-            conversation_id="conv-123",
-            message_id="msg-456",
+            session_id="conv-123",
+            event_id="msg-456",
             role="user",
-            content="ping",
+            message="ping",
+            persona_id=None,
+            metadata={"tenant": "t1"},
         )
     """
-    conversation_id = kwargs.get("conversation_id")
-    message_id = kwargs.get("message_id")
+    session_id = kwargs.get("session_id") or kwargs.get("conversation_id")
+    event_id = kwargs.get("event_id") or kwargs.get("message_id")
     role = kwargs.get("role", "user")
-    content = kwargs.get("content", "")
+    message = kwargs.get("message", kwargs.get("content", ""))
+    persona_id = kwargs.get("persona_id")
+    metadata = dict(kwargs.get("metadata") or {})
 
     outbox_manager.create_entry(
         topic="conversation.inbound",
         payload={
-            "conversation_id": conversation_id,
-            "message_id": message_id,
+            "session_id": session_id,
+            "event_id": event_id,
             "role": role,
-            "content": content,
+            "message": message,
+            "persona_id": persona_id,
+            "metadata": metadata,
         },
-        partition_key=conversation_id,
-        idempotency_key=f"conv:{conversation_id}:{message_id}",
+        partition_key=session_id,
+        idempotency_key=f"conv:{session_id}:{event_id}",
     )
 
-    logger.debug("Conversation message queued: %s/%s", conversation_id, message_id)
+    logger.debug("Conversation message queued: %s/%s", session_id, event_id)
 
 
 @receiver(tool_executed)

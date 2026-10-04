@@ -45,10 +45,17 @@ class Command(BaseCommand):
             raise SystemExit(1)
 
     async def _drain(self, batch: int) -> tuple[int, int]:
+        from django.db.models import Q
+        from django.utils import timezone
+
         from services.common.event_bus import KafkaEventBus
 
+        now = timezone.now()
         pending = list(
-            OutboxMessage.objects.filter(status="pending")
+            OutboxMessage.objects.filter(
+                status__in=[OutboxMessage.Status.PENDING, OutboxMessage.Status.FAILED],
+            )
+            .filter(Q(next_retry_at__isnull=True) | Q(next_retry_at__lte=now))
             .order_by("created_at")[:batch]
         )
         if not pending:
@@ -58,14 +65,16 @@ class Command(BaseCommand):
         published = 0
         failed = 0
         for row in pending:
+            headers = dict(row.headers or {})
+            if row.idempotency_key:
+                headers.setdefault("idempotency_key", row.idempotency_key)
             try:
-                await bus.publish(
-                    row.topic,
-                    row.payload,
-                    dedupe_key=row.dedupe_key or f"outbox-{row.pk}",
-                )
+                # KafkaEventBus.publish(topic, payload, headers=...) — the real
+                # signature. Dedupe is carried in headers, not a phantom kwarg.
+                await bus.publish(row.topic, row.payload, headers=headers)
             except Exception as exc:
                 failed += 1
+                row.mark_failed(str(exc))
                 self.stderr.write(
                     self.style.WARNING(f"outbox {row.pk} -> {row.topic}: {exc}")
                 )
