@@ -1,5 +1,29 @@
 # Triad Full Integration — AGENT + BRAIN + MEMORY Implementation Plan
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | Triad Full Integration — AGENT + BRAIN + MEMORY Implementation Plan |
+| Document Identifier | 2026-10-03-triad-full-integration |
+| Version | 1.0.0 |
+| Date | 2026-10-03 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+| Related | `docs/standards/SOMA-STD-CODING-001.md`, `docs/architecture/SOMA-ARCH-INVARIANTS-001.md`, `docs/iso/SOMA-TRIAD-ARCH-001.md`, `docs/project/SOMA-PM-PLAN-TRIAD-001.md` |
+| Audience | Engineering contributors executing the triad integration plan |
+| Scope | End-to-end integration of agent, SomaBrain and SomaFractalMemory: one write lane, one credential authority, one deploy, settings under RBAC, UI/UX completion |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-03 | SomaTech Engineering | Initial issue. Measured state, gap list and nine-phase execution order. Brought under ISO document control. |
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** One working agent chat, fully integrated with SomaBrain and SomaFractalMemory — every stub and fallback deleted, one write lane, one credential authority, one deploy, all settings centralized under RBAC, all UI/UX screens finished.

@@ -1,5 +1,29 @@
 # 100% Wiring Plan — Agent + SomaBrain + SomaFractalMemory + Temporal
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | 100% Wiring Plan — Agent + SomaBrain + SomaFractalMemory + Temporal |
+| Document Identifier | 2026-10-03-100-percent-wiring |
+| Version | 1.0.0 |
+| Date | 2026-10-03 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+| Related | `docs/standards/SOMA-STD-CODING-001.md`, `docs/architecture/SOMA-ARCH-INVARIANTS-001.md`, `docs/iso/SOMA-TRIAD-ARCH-001.md`, `docs/plans/2026-10-03-triad-full-integration.md` |
+| Audience | Engineering contributors executing the wiring plan |
+| Scope | Measured defects B1–B30 and the phased plan that closes them across the triad and Temporal |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-03 | SomaTech Engineering | Initial issue. Measured defect register B1–B30 and phased wiring plan. Brought under ISO document control. |
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Use 100% of SomaBrain, 100% of SFM and 100% of the agent's own features — every real capability wired end to end, Temporal owning the full async cycle, and a degradation doctrine that never lies about what worked.
