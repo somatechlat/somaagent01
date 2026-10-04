@@ -64,14 +64,15 @@ def generate_for_memory_payload(
     """
 
     meta = payload.get("metadata") or {}
-    try:
-        from config.settings_registry import SettingsRegistry
-
-        settings = SettingsRegistry.get()
-        default_tenant = settings.sa01_tenant_id
-    except Exception:
-        default_tenant = os.environ.get("SA01_TENANT_ID", "default")
-    tenant = payload.get("tenant") or meta.get("tenant") or default_tenant
+    # Tenant is part of the idempotency key. A missing tenant must not be
+    # remapped to "default": two subjects would share one key space
+    # (SOMA-STD-CONFIG-001 / test_no_silent_default_tenant).
+    tenant = payload.get("tenant") or meta.get("tenant")
+    if not tenant:
+        raise ValueError(
+            "Missing tenant on an idempotency/memory path. "
+            "A payload without a tenant is refused, never assigned to 'default'."
+        )
     try:
         from config.settings_registry import SettingsRegistry
 

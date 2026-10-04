@@ -25,7 +25,7 @@ class ValidationResult:
     error_message: str | None = None
     tool_name: str | None = None
     session_id: str | None = None
-    tenant: str = "default"
+    tenant: str | None = None
     persona_id: str | None = None
 
 
@@ -41,8 +41,18 @@ def validate_tool_request(event: dict[str, Any]) -> ValidationResult:
     """
     session_id = event.get("session_id")
     tool_name = event.get("tool_name")
-    tenant = event.get("metadata", {}).get("tenant", "default")
     persona_id = event.get("persona_id")
+    tenant = event.get("metadata", {}).get("tenant")
+    if not tenant:
+        return ValidationResult(
+            valid=False,
+            error_message="Missing required field: metadata.tenant",
+            tool_name=tool_name,
+            session_id=session_id,
+            tenant=None,
+            persona_id=persona_id,
+        )
+    tenant = str(tenant)
 
     if not session_id:
         return ValidationResult(

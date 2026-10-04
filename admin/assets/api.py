@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 from django.conf import settings
@@ -28,6 +28,24 @@ from services.common.authorization import authorize
 
 router = Router(tags=["assets"])
 logger = logging.getLogger(__name__)
+
+
+def require_tenant(actor: Any, attr: str = "effective_tenant_id") -> str:
+    """Tenant for an asset/authz path. Missing tenant denies — never "default".
+
+    ``tenant_id or "default"`` evaluates the request as if it belonged to the
+    tenant named ``default``, so the authorisation check answers for the wrong
+    subject (SOMA-STD-CONFIG-001 / test_no_silent_default_tenant).
+    """
+    value = getattr(actor, attr, None) or getattr(actor, "tenant_id", None)
+    text = str(value).strip() if value is not None else ""
+    if not text:
+        raise PermissionError(
+            "Missing tenant on an authorization path. "
+            "A request without a tenant is denied, never assigned to 'default'."
+        )
+    return text
+
 
 
 # =============================================================================
@@ -135,7 +153,7 @@ async def upload_asset(
 
     from admin.core.models.core import Asset
 
-    tenant_id = str(getattr(request.auth, "effective_tenant_id", "") or "default")
+    tenant_id = require_tenant(request.auth, "effective_tenant_id")
 
     @sync_to_async
     def _store():
@@ -245,7 +263,7 @@ async def list_assets(
 
     from admin.core.models.core import Asset
 
-    tenant_id = str(getattr(request.auth, "effective_tenant_id", "") or "default")
+    tenant_id = require_tenant(request.auth, "effective_tenant_id")
 
     @sync_to_async
     def _list():
@@ -434,7 +452,7 @@ async def _record_provenance(
         return Provenance.objects.create(
             id=record_id,
             asset_id=asset_id,
-            tenant_id=str(getattr(actor, "effective_tenant_id", "") or "default"),
+            tenant_id=require_tenant(actor, "effective_tenant_id"),
             operation=action,
             generation_params=metadata or {},
         )

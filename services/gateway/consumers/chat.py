@@ -18,6 +18,17 @@ from admin.common.exceptions import UnauthorizedError, ValidationError
 
 logger = logging.getLogger(__name__)
 
+def _require_tenant_id_value(tenant_id) -> str:
+    """Memory/authz tenant. Missing denies — never "default"."""
+    text = str(tenant_id).strip() if tenant_id is not None else ""
+    if not text:
+        raise PermissionError(
+            "Missing tenant_id on an authorization/memory path. "
+            "A request without a tenant is denied, never assigned to \"default\"."
+        )
+    return text
+
+
 # =============================================================================
 # UNIFIED METRICS
 # =============================================================================
@@ -311,7 +322,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 brain_client = await SomaBrainClient.get_async()
                 if brain_client and self.capsule:
                     await brain_client.update_neuromodulators(
-                        self.tenant_id or "default",
+                        _require_tenant_id_value(self.tenant_id),
                         str(self.capsule.id),
                         self.capsule.neuromodulator_baseline or {},
                     )
@@ -375,7 +386,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 brain_client = await SomaBrainClient.get_async()
                 if brain_client:
                     neuro_state = await brain_client.get_neuromodulators(
-                        tenant_id=self.tenant_id or "default",
+                        tenant_id=_require_tenant_id_value(self.tenant_id),
                         persona_id=str(self.capsule.id),
                     )
                     if neuro_state:
@@ -667,7 +678,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 iq_settings=self.iq,
                 tool_registry=self.tool_registry,
                 user_id=self.user_id or "",
-                tenant_id=self.tenant_id or "",
+                tenant_id=_require_tenant_id_value(self.tenant_id),
                 user_message=message_content,
                 conversation_id=conversation_id,
                 attachments=attachments,
@@ -844,7 +855,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     "reward" if signal == "positive" else "punish",
                     1.0 if signal == "positive" else -1.0,
                     {
-                        "tenant_id": self.tenant_id or "default",
+                        "tenant_id": _require_tenant_id_value(self.tenant_id),
                         "persona_id": str(self.capsule.id),
                         "response_id": response_id,
                         "original_signal": signal,
