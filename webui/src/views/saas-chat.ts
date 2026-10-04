@@ -1263,21 +1263,29 @@ export class SaasChat extends LitElement {
     }
 
     private async _ensureWebSocket(): Promise<boolean> {
+        // A missing client is a client that has not been built yet, not a
+        // refusal. Build it rather than reporting "not connected".
+        if (!this._wsClient) {
+            this._connectWebSocket();
+        }
         if (!this._wsClient) return false;
         if (this._wsClient.connected) return true;
 
-        this._wsClient.connect();
-
         return new Promise((resolve) => {
-            const unsubscribe = this._wsClient!.on('connected', () => {
+            // Subscribe BEFORE connecting. A connection that completes before
+            // the listener is attached is missed, and the caller then waits the
+            // full timeout for an event that already happened.
+            const ws = this._wsClient!;
+            const unsubscribe = ws.on('connected', () => {
+                clearTimeout(timer);
                 unsubscribe();
                 resolve(true);
             });
-            const timeout = setTimeout(() => {
+            const timer = setTimeout(() => {
                 unsubscribe();
                 resolve(false);
             }, 5000);
-            void timeout;
+            ws.connect();
         });
     }
 
@@ -1286,16 +1294,28 @@ export class SaasChat extends LitElement {
     // ==========================================================================
 
     private _handleIncomingMessage(msg: ChatMessage) {
+        // Only a real chat row may land in the transcript. The WS also carries
+        // metadata frames whose payload is not a ChatMessage; treating one as a
+        // message would clear the live stream and push an empty bubble.
+        if (!msg || typeof msg !== 'object' || (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'system')) {
+            return;
+        }
         this._isStreaming = false;
         this._streamContent = '';
-        this._messages = [...this._messages, msg];
+        this._activeResponseId = '';
+        this._messages = [...this._messages, { ...msg, content: msg.content ?? '' }];
         this.updateComplete.then(() => this._scrollToBottom());
     }
 
     private _handleStreamDelta(chunk: { delta?: string; content?: string; response_id?: string }) {
         if (this._turnStopped) return;
         if (chunk?.response_id) {
-            if (this._activeResponseId && this._activeResponseId !== chunk.response_id) return;
+            // A different response id while nothing is buffered is a new turn,
+            // not a stale frame: adopt it. While text is buffered, ignore a
+            // foreign id so two turns cannot interleave in one bubble.
+            if (this._activeResponseId && this._activeResponseId !== chunk.response_id) {
+                if (this._streamContent) return;
+            }
             this._activeResponseId = chunk.response_id;
         }
         if (this._paused) return;
@@ -1305,10 +1325,14 @@ export class SaasChat extends LitElement {
     }
 
     private _handleStreamDone(chunk: { content?: string; confidence?: number; response_id?: string }) {
-        if (
-            this._turnStopped ||
-            (chunk?.response_id && this._activeResponseId && chunk.response_id !== this._activeResponseId)
-        ) {
+        const foreign =
+            !!chunk?.response_id &&
+            !!this._activeResponseId &&
+            chunk.response_id !== this._activeResponseId;
+        // A done for another response must not swallow the tokens already
+        // streamed for this one. Commit what we have; only a stopped turn
+        // discards its buffer.
+        if (this._turnStopped && !this._streamContent) {
             this._streamContent = '';
             this._activeTools = [];
             this._activeResponseId = '';
@@ -1316,10 +1340,16 @@ export class SaasChat extends LitElement {
             this._turnStopped = false;
             return;
         }
+        if (foreign && !this._streamContent && !chunk.content) {
+            this._activeTools = [];
+            this._isStreaming = false;
+            return;
+        }
+        const content = chunk.content ?? this._streamContent;
         const message: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'assistant',
-            content: chunk.content ?? this._streamContent,
+            content,
             timestamp: new Date().toISOString(),
             confidence: chunk.confidence,
             tools: this._activeTools.length > 0 ? [...this._activeTools] : undefined,
@@ -1327,7 +1357,10 @@ export class SaasChat extends LitElement {
         this._streamContent = '';
         this._activeTools = [];
         this._activeResponseId = '';
-        this._handleIncomingMessage(message);
+        this._isStreaming = false;
+        this._turnStopped = false;
+        this._messages = [...this._messages, message];
+        this.updateComplete.then(() => this._scrollToBottom());
     }
 
     private _finalizeStreamedMessage(stopped: boolean) {
@@ -1712,6 +1745,7 @@ export class SaasChat extends LitElement {
         this._paused = false;
         this._streamContent = '';
         this._activeTools = [];
+        this._activeResponseId = '';
         this._lastErrorMessage = '';
 
         this.updateComplete.then(() => this._scrollToBottom());
