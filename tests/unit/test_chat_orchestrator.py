@@ -390,3 +390,41 @@ async def test_stream_turn_yields_tokens():
     assert len(tokens) > 0
     full_response = "".join(tokens)
     assert full_response
+
+
+class TestStreamTurnMetricsAreHonest:
+    """A metric that reports zero is a lie (SOMA-STD-CODING-001 §1).
+
+    The stream lane's completion call passed ``tokens_in=0, tokens_out=0`` and
+    looked its turn up under the conversation id — a turn it never started —
+    so TOKENS_TOTAL never moved. These pin the wiring: real counts from the
+    turn, the real model identity, and a turn that is started and completed
+    under the same id.
+    """
+
+    @staticmethod
+    def _stream_turn_src() -> str:
+        import inspect
+
+        return inspect.getsource(V3ChatOrchestrator.stream_turn)
+
+    def test_stream_completion_does_not_pass_zero_tokens(self):
+        src = self._stream_turn_src()
+        assert "tokens_in=0" not in src
+        assert "tokens_out=0" not in src
+
+    def test_stream_completion_counts_the_real_turn(self):
+        src = self._stream_turn_src()
+        assert "_token_count(turn.user_message)" in src
+        assert "_token_count(full_response)" in src
+
+    def test_stream_completion_reports_the_real_model(self):
+        src = self._stream_turn_src()
+        assert "model.name" in src
+        assert "model.provider" in src
+
+    def test_stream_turn_starts_and_completes_one_turn_id(self):
+        """record_turn_complete is a no-op unless the turn was started first."""
+        src = self._stream_turn_src()
+        assert "record_turn_start" in src
+        assert "turn_id=turn_id" in src

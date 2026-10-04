@@ -990,6 +990,16 @@ class V3ChatOrchestrator:
         )
         messages = self._to_langchain_messages(context, history, turn.user_message)
 
+        # Register the turn so the completion metrics below actually land.
+        # Without a matching start, record_turn_complete looks up a turn id it
+        # has never seen and TOKENS_TOTAL silently stays at zero.
+        self._metrics.record_turn_start(
+            turn_id=turn_id,
+            tenant_id=tenant_id,
+            user_id=turn.user_id,
+            agent_id=str(capsule.id),
+        )
+
         response_chunks: List[str] = []
         try:
             async for item in run_tool_loop(
@@ -1008,9 +1018,25 @@ class V3ChatOrchestrator:
                 yield item
         except CircuitBreakerError:
             yield "[System degraded: LLM service temporarily unavailable. Using cached context only.]"
+            self._metrics.record_turn_complete(
+                turn_id=turn_id,
+                tokens_in=_token_count(turn.user_message),
+                tokens_out=_token_count("".join(response_chunks)),
+                model=model.name,
+                provider=model.provider,
+                error="llm_circuit_open",
+            )
             return
         except asyncio.TimeoutError:
             yield get_message(ErrorCode.LLM_DEGRADED_TIMEOUT)
+            self._metrics.record_turn_complete(
+                turn_id=turn_id,
+                tokens_in=_token_count(turn.user_message),
+                tokens_out=_token_count("".join(response_chunks)),
+                model=model.name,
+                provider=model.provider,
+                error="llm_timeout",
+            )
             return
 
         # Store after streaming
@@ -1033,14 +1059,16 @@ class V3ChatOrchestrator:
             coordinate=assistant_coord,
         )
         await self._bump_message_count(turn.conversation_id or "")
-        # Completion metrics for the stream path. The sync path has always
-        # recorded this; without it the live chat lane is invisible in SLOs.
+        # Completion metrics for the stream path. The counts come from the
+        # turn itself — the same measure the sync path records — and the model
+        # identity from the SelectedModel that served it. A metric that always
+        # reports zero is a lie.
         self._metrics.record_turn_complete(
-            turn_id=str(getattr(turn, "conversation_id", "") or ""),
-            tokens_in=0,
-            tokens_out=0,
-            model=str(getattr(model, "name", "") or ""),
-            provider=str(getattr(model, "provider", "") or ""),
+            turn_id=turn_id,
+            tokens_in=_token_count(turn.user_message),
+            tokens_out=_token_count(full_response),
+            model=model.name,
+            provider=model.provider,
         )
         await self._publish_cognitive_learning(
             tenant_id=tenant_id,
