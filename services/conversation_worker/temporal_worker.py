@@ -26,7 +26,6 @@ from admin.core.application.use_cases.conversation.process_message import (
     ProcessMessageInput,
     ProcessMessageUseCase,
 )
-from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
 from services.common.memory_gateway import build_memory_gateway
 from services.common.compensation import compensate_event
@@ -71,7 +70,6 @@ def _build_use_case():
     policy_client = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=tenants)
     enforcer = ConversationPolicyEnforcer(policy_client)
     telemetry = TelemetryPublisher(publisher=publisher)
-    soma = SomaBrainClient.get()
     router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
 
     gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")

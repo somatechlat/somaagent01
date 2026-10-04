@@ -24,7 +24,6 @@ from admin.core.application.use_cases.conversation.process_message import (
     ProcessMessageInput,
     ProcessMessageUseCase,
 )
-from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
 from services.common.memory_gateway import build_memory_gateway
 from services.common.degradation_monitor import degradation_monitor
@@ -97,7 +96,6 @@ class ConversationWorkerImpl:
         self.policy = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=self.tenants)
         self.enforcer = ConversationPolicyEnforcer(self.policy)
         self.telemetry = TelemetryPublisher(publisher=self.publisher)
-        self.soma = SomaBrainClient.get()
         self.router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
         # Initialize use cases
         self._init_use_cases()
@@ -243,8 +241,6 @@ async def main() -> None:
     try:
         await w.start()
     finally:
-        if w.soma is not None:
-            await w.soma.close()
         await w.router.close()
         await w.policy.close()
         await degradation_monitor.stop_monitoring()
