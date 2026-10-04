@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional
 
 from admin.common.messages import ErrorCode, get_message
 from services.common.job_planner import JobPlanner, PlanValidationError
+from services.common.memory_contract import MemoryGateway, MemoryHit, MemoryRecallUnavailable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,7 +34,6 @@ LOGGER = logging.getLogger(__name__)
 # Use Any for protocol types to avoid strict type checking issues with real implementations
 SessionRepositoryProtocol = Any
 PolicyEnforcerProtocol = Any
-MemoryClientProtocol = Any
 PublisherProtocol = Any
 ContextBuilderProtocol = Any
 
@@ -75,17 +75,21 @@ class ProcessMessageUseCase:
         self,
         session_repo: SessionRepositoryProtocol,
         policy_enforcer: PolicyEnforcerProtocol,
-        memory_client: MemoryClientProtocol,
+        gateway: MemoryGateway,
         publisher: PublisherProtocol,
         context_builder: ContextBuilderProtocol | None = None,
         response_generator: ResponseGeneratorProtocol | None = None,
         outbound_topic: str = "",
     ):
-        """Initialize the instance."""
+        """Initialize the instance.
+
+        ``gateway`` is the one memory seam (``MemoryGateway``). There is no
+        second write authority and no raw client slot.
+        """
 
         self._session_repo = session_repo
         self._policy_enforcer = policy_enforcer
-        self._memory_client = memory_client
+        self._gateway = gateway
         self._publisher = publisher
         self._response_generator = response_generator
         self._outbound_topic = outbound_topic
@@ -229,27 +233,14 @@ class ProcessMessageUseCase:
         tenant: str,
         metadata: Dict[str, Any],
     ) -> None:
-        """Store user message to memory (best effort)."""
-        if self._memory_client is None:
-            LOGGER.debug("SomaBrain not configured; skipping user memory store")
-            return
-        try:
-            from services.common.idempotency import generate_for_memory_payload
-
-            payload = {
-                "id": event.get("event_id") or str(uuid.uuid4()),
-                "type": "conversation_event",
-                "role": "user",
-                "content": event.get("message", ""),
-                "attachments": event.get("attachments", []) or [],
-                "session_id": session_id,
-                "persona_id": event.get("persona_id"),
-                "metadata": metadata,
-            }
-            payload["idempotency_key"] = generate_for_memory_payload(payload)
-            await self._memory_client.remember(payload)
-        except Exception:
-            LOGGER.debug("Failed to store user memory", exc_info=True)
+        """Store user message through the MemoryGateway seam."""
+        await self._remember_text(
+            event.get("message", ""),
+            tenant=tenant,
+            session_id=session_id,
+            role="user",
+            source_meta=metadata,
+        )
 
     async def _store_assistant_memory(
         self,
@@ -259,27 +250,58 @@ class ProcessMessageUseCase:
         tenant: str,
         metadata: Dict[str, Any],
     ) -> None:
-        """Store assistant response to memory (best effort)."""
-        if self._memory_client is None:
-            LOGGER.debug("SomaBrain not configured; skipping assistant memory store")
+        """Store assistant response through the MemoryGateway seam."""
+        await self._remember_text(
+            response_text,
+            tenant=tenant,
+            session_id=session_id,
+            role="assistant",
+            source_meta=metadata,
+        )
+
+    async def _remember_text(
+        self,
+        text: str,
+        *,
+        tenant: str,
+        session_id: str,
+        role: str,
+        source_meta: Dict[str, Any],
+    ) -> None:
+        """ONE write path: ``MemoryGateway.remember_text``.
+
+        A failed write is logged at WARNING (not debug) — silent data loss is a
+        defect. The gateway owns durable-before-hop; a failed ack is queued
+        there, never swallowed here.
+        """
+        if not text:
             return
         try:
-            from services.common.idempotency import generate_for_memory_payload
-
-            payload = {
-                "id": str(uuid.uuid4()),
-                "type": "conversation_event",
-                "role": "assistant",
-                "content": response_text,
-                "attachments": [],
-                "session_id": session_id,
-                "persona_id": persona_id,
-                "metadata": metadata,
-            }
-            payload["idempotency_key"] = generate_for_memory_payload(payload)
-            await self._memory_client.remember(payload)
+            acks = await self._gateway.remember_text(
+                text,
+                tenant_id=tenant,
+                kind="episodic",
+                session_id=session_id,
+                source="conversation-worker",
+                role=role,
+            )
         except Exception:
-            LOGGER.debug("Failed to store assistant memory", exc_info=True)
+            LOGGER.warning(
+                "MemoryGateway write failed (tenant=%s session=%s role=%s)",
+                tenant,
+                session_id,
+                role,
+                exc_info=True,
+            )
+            return
+        for ack in acks:
+            if not ack.ok:
+                LOGGER.warning(
+                    "MemoryGateway write not accepted (store=%s coord=%s): %s",
+                    ack.store,
+                    ack.coord,
+                    ack.error,
+                )
 
     async def _generate_response(
         self,
@@ -302,25 +324,35 @@ class ProcessMessageUseCase:
         system_prompt = self._build_system_prompt()
         messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
-        # Recall memory snippets via memory_client (SomaBrainClient) if available
-        if self._memory_client is None:
-            LOGGER.debug("SomaBrain not configured; skipping memory recall")
-        else:
-            try:
-                memory_results = await self._memory_client.recall(
-                    query=event.get("message", ""),
-                    top_k=3,
-                    tenant=tenant,
-                    namespace="chat_history",
-                )
-                memories = memory_results.get("memories", [])
-                for mem in memories[:3]:
-                    payload = mem.get("payload", {})
-                    content = payload.get("content", "")
-                    if content:
-                        messages.append({"role": "system", "content": f"[Memory] {content}"})
-            except Exception:
-                LOGGER.debug("Memory recall skipped in conversation worker", exc_info=True)
+        # ONE read path: MemoryGateway.recall feeds the memory lane.
+        # MemoryRecallUnavailable is a typed degraded result — never an empty
+        # list that would look like "the user has no history".
+        try:
+            hits = await self._gateway.recall(
+                query=event.get("message", ""),
+                k=3,
+                tenant_id=tenant,
+            )
+            for hit in list(hits or [])[:3]:
+                content = hit.text if isinstance(hit, MemoryHit) else str(hit)
+                if content:
+                    messages.append({"role": "system", "content": f"[Memory] {content}"})
+        except MemoryRecallUnavailable as exc:
+            LOGGER.warning("Memory recall unavailable (degraded): %s", exc)
+            messages.append(
+                {
+                    "role": "system",
+                    "content": "[Memory unavailable] long-term memory could not be consulted",
+                }
+            )
+        except Exception:
+            LOGGER.warning("MemoryGateway.recall failed", exc_info=True)
+            messages.append(
+                {
+                    "role": "system",
+                    "content": "[Memory unavailable] long-term memory could not be consulted",
+                }
+            )
 
         # Add history
         messages.extend(history_messages)

@@ -106,8 +106,26 @@ class MemoryGateway(Protocol):
         """Store one memory in the brain; one ack."""
         ...
 
+    async def remember_text(
+        self,
+        text: str,
+        *,
+        tenant_id: str,
+        kind: str = "episodic",
+        ts: str | datetime | None = None,
+        session_id: str | None = None,
+        salience: float = 0.5,
+        source: str = "agent-chat",
+        role: str | None = None,
+    ) -> list[MemoryAck]:
+        """Write through the seam with coordinate convergence (T-1)."""
+        ...
+
     async def recall(self, query: str, k: int, tenant_id: str) -> list[MemoryHit]:
-        """Recall from the brain, ranked by score."""
+        """Recall from the brain, ranked by score.
+
+        Raises ``MemoryRecallUnavailable`` on outage — never an empty list.
+        """
         ...
 
     async def forget(self, coord: str, tenant_id: str) -> bool:

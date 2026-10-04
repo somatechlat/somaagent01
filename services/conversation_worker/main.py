@@ -26,6 +26,7 @@ from admin.core.application.use_cases.conversation.process_message import (
 )
 from admin.core.somabrain_client import SomaBrainClient
 from services.common.budget_manager import BudgetManager
+from services.common.memory_gateway import build_memory_gateway
 from services.common.degradation_monitor import degradation_monitor
 from services.common.dlq import DeadLetterQueue
 from services.common.event_bus import (
@@ -135,7 +136,7 @@ class ConversationWorkerImpl:
         self._proc = ProcessMessageUseCase(
             session_repo=self.store,
             policy_enforcer=self.enforcer,
-            memory_client=self.soma,
+            gateway=build_memory_gateway(),
             publisher=self.publisher,
             response_generator=self._gen,
             outbound_topic=self.topics["out"],
