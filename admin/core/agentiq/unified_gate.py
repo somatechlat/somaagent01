@@ -19,9 +19,14 @@ from services.common.spicedb_client import SpiceDBClient
 
 logger = logging.getLogger(__name__)
 
-#: SpiceDB's permission set is deliberately small. Catalog verbs map onto it
-#: explicitly; a verb that is absent denies rather than falling through.
+#: SpiceDB's permission set is deliberately small (view / configure / manage).
+#: Catalog verbs map onto it explicitly; a verb that is absent denies rather
+#: than falling through. Completing this vocabulary is not a gate loosening:
+#: each verb maps to the relation that already governs that class of action,
+#: and an unknown verb still denies. Coverage of ``admin.core.authz`` is
+#: pinned by ``tests/unit/test_spicedb_verb_coverage.py``.
 _SPICEDB_VERBS: Dict[str, str] = {
+    # --- bare verbs (legacy callers that send a verb alone) ---
     "view": "view",
     "read": "view",
     "search": "view",
@@ -31,9 +36,60 @@ _SPICEDB_VERBS: Dict[str, str] = {
     "create": "configure",
     "upload": "configure",
     "edit": "configure",
+    "write": "configure",
     "delete": "manage",
     "manage": "manage",
     "execute": "manage",
+    # --- identity: act on your own principal ---
+    "self": "configure",
+    # --- system: runtime the agent runs on ---
+    "ratelimit": "configure",
+    "read_metrics": "view",
+    "manage_integrations": "manage",
+    "backup_read": "view",
+    "security_policy": "manage",
+    "impersonate": "manage",
+    # --- org ---
+    "user_create": "configure",
+    "user_read": "view",
+    "user_update": "configure",
+    "user_delete": "manage",
+    "user_activity": "view",
+    "assign_roles": "manage",
+    "apikey_create": "configure",
+    "apikey_read": "view",
+    "apikey_revoke": "manage",
+    # --- agent ---
+    "start": "configure",
+    "stop": "configure",
+    "view_logs": "view",
+    "export": "view",
+    "configure_personality": "configure",
+    "configure_tools": "configure",
+    "manage_users": "manage",
+    "activate_dev": "configure",
+    "activate_trn": "configure",
+    # --- resource: conversations, memory, files, tools, chat ---
+    # ``*_send*`` is the same class as ``send``: participating in a
+    # conversation you may already see.
+    "conversation_create": "configure",
+    "conversation_read": "view",
+    "conversation_delete": "manage",
+    "conversation_send_message": "view",
+    "conversation_view_history": "view",
+    "memory_read": "view",
+    "memory_write": "configure",
+    "memory_search": "view",
+    "memory_delete": "manage",
+    "file_upload": "configure",
+    "file_read": "view",
+    "file_delete": "manage",
+    "tool_read": "view",
+    "tool_execute": "manage",
+    "tool_configure": "configure",
+    "chat_send": "view",
+    "chat_view": "view",
+    "chat_delete": "manage",
 }
 
 #: Catalog family -> SpiceDB resource type.
