@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, UTC
-from typing import Callable
+from typing import Any, Callable
 
 from services.common.adapters.somabrain_adapter import SomaBrainAdapter
+from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 from services.common.memory_contract import (
     coord_key_material,
     embed_text,
@@ -24,6 +25,50 @@ from services.common.memory_contract import (
 LOGGER = logging.getLogger(__name__)
 
 EmbedFn = Callable[[str, int], list[float]]
+
+# The one memory replay topic. Memory WAL is the single replay authority for
+# unacked writes (memory-replicator replays it into SomaBrain). PendingMemory
+# is NOT a second writer — see SOMA degradation doctrine (T-6 / one authority).
+MEMORY_WAL_TOPIC_DEFAULT = "memory.wal"
+
+
+async def _durable_accept(
+    *,
+    topic: str,
+    payload: dict[str, Any],
+    idempotency_key: str,
+    partition_key: str | None,
+) -> Any:
+    """T-6: record the write durably BEFORE the network hop.
+
+    Lands in the local outbox (Postgres). A successful ``MemoryAck`` marks the
+    row published without a second send; a failed hop leaves it pending so the
+    outbox drain / memory-replicator can replay until acked.
+    """
+    from asgiref.sync import sync_to_async
+
+    from admin.core.models.zdl import OutboxMessage
+
+    def _create() -> Any:
+        row, _ = OutboxMessage.objects.get_or_create(
+            idempotency_key=idempotency_key,
+            defaults={
+                "topic": topic,
+                "payload": payload,
+                "partition_key": partition_key,
+                "headers": {"source": "memory-gateway", "t6": "durable-before-hop"},
+            },
+        )
+        return row
+
+    return await sync_to_async(_create)()
+
+
+async def _durable_complete(row: Any) -> None:
+    """Mark a durable-accept row complete (ack.ok — never replayed)."""
+    from asgiref.sync import sync_to_async
+
+    await sync_to_async(row.mark_published)()
 
 
 class FanoutMemoryGateway:
@@ -41,6 +86,9 @@ class FanoutMemoryGateway:
         """Initialize with the SomaBrain adapter and optional embedder override."""
         self._brain = brain
         self._embed_fn: EmbedFn = embed_fn or embed_text
+        # Hottest path in the agent: remember_text / recall must fail fast
+        # when SomaBrain is down, not pile up timeouts (R-SCL-03).
+        self._cb = get_circuit_breaker("memory_gateway", failure_threshold=5, reset_timeout=30.0)
 
     def _embed(self, text: str) -> list[float]:
         """Compute the shared embedding once for one memory."""
@@ -51,7 +99,10 @@ class FanoutMemoryGateway:
         if w.embedding is None:
             w.embedding = self._embed(w.text)
         try:
-            ack = await self._brain.remember(w)
+            ack = await self._cb.call(self._brain.remember, w)
+        except CircuitBreakerError as exc:
+            LOGGER.warning("Memory write fast-failed (breaker open): %s", exc)
+            ack = MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))
         except Exception as exc:
             LOGGER.warning("Memory write to somabrain failed: %s", exc)
             ack = MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))
@@ -69,29 +120,74 @@ class FanoutMemoryGateway:
         source: str = "agent-chat",
         role: str | None = None,
     ) -> list[MemoryAck]:
-        """Write through SomaBrain with seam coordinate convergence (T-1)."""
+        """Write through SomaBrain with seam coordinate convergence (T-1).
+
+        T-6: the write is accepted into the local durable outbox **before** the
+        network hop. ``MemoryAck.ok`` completes that record (never replayed).
+        A failed hop leaves it pending — the one replay authority (memory WAL
+        via outbox drain / memory-replicator) re-delivers until acked.
+        """
+        from services.common.memory_contract import get_memory_setting
+
         stamp = ts if ts is not None else datetime.now(UTC)
         material = coord_key_material(tenant_id, kind, stamp, text)
+        coord = make_coord(tenant_id, kind, stamp, text)
         w = MemoryWrite(
             text=text,
             kind=kind,  # type: ignore[arg-type]
             tenant_id=tenant_id,
             session_id=session_id,
-            coord=make_coord(tenant_id, kind, stamp, text),
+            coord=coord,
             embedding=self._embed(text),
             salience=salience,
             source=source,
         )
+        wal_topic = str(get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT))
+        durable = await _durable_accept(
+            topic=wal_topic,
+            payload={
+                "id": coord,
+                "type": "memory.degraded",
+                "role": "memory",
+                "session_id": session_id,
+                "tenant": tenant_id,
+                "payload": {
+                    "text": text,
+                    "content": text,
+                    "kind": kind,
+                    "salience": salience,
+                    "source": source,
+                    "coord": coord,
+                    "role": role,
+                    "ts": stamp.isoformat() if hasattr(stamp, "isoformat") else str(stamp),
+                },
+            },
+            idempotency_key=f"mem:{coord}",
+            partition_key=tenant_id,
+        )
         try:
-            ack = await self._brain.remember(w, key_material=material, role=role)
+            ack = await self._cb.call(
+                self._brain.remember, w, key_material=material, role=role
+            )
+        except CircuitBreakerError as exc:
+            LOGGER.warning("Memory write fast-failed (breaker open): %s", exc)
+            ack = MemoryAck(coord=coord, store="somabrain", ok=False, error=str(exc))
         except Exception as exc:
             LOGGER.warning("Memory write to somabrain failed: %s", exc)
-            ack = MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))
+            ack = MemoryAck(coord=coord, store="somabrain", ok=False, error=str(exc))
+        if ack.ok:
+            try:
+                await _durable_complete(durable)
+            except Exception as dexc:
+                LOGGER.warning("Durable-accept complete failed for coord=%s: %s", coord, dexc)
         return [ack]
 
     async def recall(self, query: str, k: int, tenant_id: str) -> list[MemoryHit]:
         """Recall from SomaBrain only. Raises MemoryRecallUnavailable on outage (no empty lie)."""
-        hits = await self._brain.recall(query, k, tenant_id)
+        try:
+            hits = await self._cb.call(self._brain.recall, query, k, tenant_id)
+        except CircuitBreakerError as exc:
+            raise MemoryRecallUnavailable(str(exc)) from exc
         ranked = sorted(hits, key=lambda h: h.score, reverse=True)
         return ranked[: max(1, int(k))]
 

@@ -1,4 +1,4 @@
-"""Health-aware publisher.
+"""Health-aware publisher with a local durable buffer in front of Kafka.
 
 Usage:
         publisher = DurablePublisher(bus=KafkaEventBus(...))
@@ -9,8 +9,9 @@ Notes:
   metadata. To avoid blocking HTTP request handlers, we enforce a short,
   configurable timeout on the Kafka publish attempt. Control via env
   PUBLISH_KAFKA_TIMEOUT_SECONDS (default: 2.0 seconds).
-
-
+- On broker failure the write lands in ``OutboxMessage`` (local durable buffer)
+  and is returned as ``enqueued``; ``publish_outbox`` drains it to Kafka.
+  A broker blip cannot lose a write.
 """
 
 from __future__ import annotations
@@ -91,6 +92,7 @@ class DurablePublisher:
         """
         settings = SettingsRegistry.get()
         timeout_s: float = settings.publish_kafka_timeout_seconds
+        hdrs: Optional[dict[str, Any]] = None
         try:
             hdrs = build_headers(
                 tenant=tenant or (payload.get("metadata") or {}).get("tenant"),
@@ -110,7 +112,7 @@ class DurablePublisher:
         except (asyncio.TimeoutError, KafkaError, Exception) as exc:
             PUBLISH_EVENTS.labels("failed").inc()
             LOGGER.warning(
-                "Kafka publish failed",
+                "Kafka publish failed — landing in local durable outbox",
                 extra={
                     "error": str(exc),
                     "topic": topic,
@@ -119,5 +121,50 @@ class DurablePublisher:
                     "tenant": tenant,
                     "timeout_seconds": timeout_s,
                 },
+            )
+            # Local durable buffer in front of Kafka: a broker blip must not
+            # lose the write. ``publish_outbox`` drains this row to Kafka.
+            row = await self._enqueue_local(
+                topic=topic,
+                payload=payload,
+                dedupe_key=dedupe_key,
+                headers=hdrs,
+            )
+            return {"published": False, "enqueued": True, "id": row.id if row else None}
+
+    async def _enqueue_local(
+        self,
+        *,
+        topic: str,
+        payload: dict[str, Any],
+        dedupe_key: Optional[str],
+        headers: Optional[dict[str, Any]],
+    ) -> Any:
+        """Write one OutboxMessage so the event survives a Kafka outage."""
+        import uuid as _uuid
+
+        from asgiref.sync import sync_to_async
+
+        from admin.core.models.zdl import OutboxMessage
+
+        key = dedupe_key or f"{topic}:{_uuid.uuid4().hex}"
+
+        def _create() -> Any:
+            row, _ = OutboxMessage.objects.get_or_create(
+                idempotency_key=key,
+                defaults={
+                    "topic": topic,
+                    "payload": payload,
+                    "headers": dict(headers or {}),
+                },
+            )
+            return row
+
+        try:
+            return await sync_to_async(_create)()
+        except Exception as exc:
+            LOGGER.error(
+                "Local durable buffer write failed — event cannot be retained",
+                extra={"topic": topic, "dedupe_key": key, "error": str(exc)},
             )
             raise
