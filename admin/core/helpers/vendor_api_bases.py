@@ -18,9 +18,9 @@ URLs: declared on ``SettingsModel`` / Django settings, registered in
 ``KEY_CATEGORY``, and resolved through
 ``admin.core.helpers.service_urls.require_service_url`` (SOMA-STD-CONFIG-001).
 
-Ollama is not a vendor cloud; its documented default listen address is kept
-here only as the protocol default for a local install. The effective base must
-still come from ``LLMModelConfig.api_base`` or an operator override.
+Ollama is deliberately absent: it is not a vendor cloud. Its endpoint is a
+deployment URL and resolves through ``require_service_url`` /
+``LLMModelConfig.api_base`` like every other service (R-VEN-02).
 """
 
 from __future__ import annotations
@@ -32,8 +32,6 @@ OPENAI_API_BASE = "https://api.openai.com/v1"
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 GOOGLE_GENERATIVE_LANGUAGE_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 GROQ_API_BASE = "https://api.groq.com/openai/v1"
-OLLAMA_DEFAULT_API_BASE = "http://localhost:11434/v1"
-
 # --- Messaging / social bridge protocol bases ------------------------------
 TELEGRAM_API_BASE = "https://api.telegram.org"
 WHATSAPP_CLOUD_API_BASE = "https://graph.facebook.com"
@@ -65,7 +63,6 @@ __all__ = [
     "ANTHROPIC_API_BASE",
     "GOOGLE_GENERATIVE_LANGUAGE_API_BASE",
     "GROQ_API_BASE",
-    "OLLAMA_DEFAULT_API_BASE",
     "TELEGRAM_API_BASE",
     "WHATSAPP_CLOUD_API_BASE",
     "SOMA_GITHUB_REPOSITORY_URL",

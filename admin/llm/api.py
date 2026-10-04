@@ -38,7 +38,6 @@ from admin.core.helpers.vendor_api_bases import (
     ANTHROPIC_API_BASE,
     GOOGLE_GENERATIVE_LANGUAGE_API_BASE,
     GROQ_API_BASE,
-    OLLAMA_DEFAULT_API_BASE,
     OPENAI_API_BASE,
 )
 
@@ -65,7 +64,10 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     },
     "ollama": {
         "label": "Ollama",
-        "default_base_url": OLLAMA_DEFAULT_API_BASE,
+        # Ollama is a deployment endpoint, not a vendor cloud. The operator
+        # names it (LLMModelConfig.api_base / InfrastructureConfig); there is
+        # no local-install default to fall back to.
+        "default_base_url": "",
         "default_model": "llama3.1",
     },
     "custom": {
@@ -761,6 +763,13 @@ async def test_connection(request, body: TestConnectionIn) -> TestConnectionOut:
             base_url = cfg.get("base_url") or None
         if not base_url and provider in PROVIDER_PRESETS:
             base_url = PROVIDER_PRESETS[provider]["default_base_url"] or None
+        if not base_url and provider == "ollama":
+            return TestConnectionOut(
+                success=False,
+                detail="api_base_missing: Ollama has no default host. "
+                "Set api_base on the model row (or an InfrastructureConfig "
+                "entry) to the Ollama endpoint.",
+            )
 
     started = time.perf_counter()
     try:
