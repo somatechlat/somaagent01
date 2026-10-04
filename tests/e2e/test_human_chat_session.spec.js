@@ -18,8 +18,8 @@ const { test, expect } = require('@playwright/test');
 
 const UI = process.env.UI_BASE_URL || 'http://localhost:20080';
 const API = process.env.API_BASE_URL || 'http://localhost:20020';
-const EMAIL = process.env.TEST_USER_EMAIL || 'test@example.com';
-const PASSWORD = process.env.TEST_USER_PASSWORD || 'testpassword123';
+const EMAIL = process.env.TEST_USER_EMAIL || 'test@soma.dev';
+const PASSWORD = process.env.TEST_USER_PASSWORD || 'SomaAccess-2026!';
 
 // A marker unique to this run so the memory assertion cannot pass on a
 // previous run's row.
@@ -34,8 +34,8 @@ test.describe('A person uses the agent', () => {
 
   test('logs in like a human', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"]').fill(EMAIL);
-    await page.locator('input[type="password"]').fill(PASSWORD);
+    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
+    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).first().click();
 
     // A human knows they are in when the chat surface appears.
@@ -47,8 +47,8 @@ test.describe('A person uses the agent', () => {
 
   test('streams a reply the person can watch arrive', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"]').fill(EMAIL);
-    await page.locator('input[type="password"]').fill(PASSWORD);
+    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
+    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).first().click();
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
@@ -70,8 +70,8 @@ test.describe('A person uses the agent', () => {
 
   test('the controls a person presses actually control the turn', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"]').fill(EMAIL);
-    await page.locator('input[type="password"]').fill(PASSWORD);
+    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
+    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).first().click();
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
@@ -95,8 +95,8 @@ test.describe('A person uses the agent', () => {
 
   test('remembers through SomaBrain and recalls it back', async ({ page, request }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"]').fill(EMAIL);
-    await page.locator('input[type="password"]').fill(PASSWORD);
+    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
+    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).first().click();
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
@@ -125,8 +125,8 @@ test.describe('A person uses the agent', () => {
 
   test('logging out ends the session', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"]').fill(EMAIL);
-    await page.locator('input[type="password"]').fill(PASSWORD);
+    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
+    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).first().click();
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,

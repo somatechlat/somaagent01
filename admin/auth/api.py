@@ -83,6 +83,20 @@ async def _emit_auth_audit(
 @router.post("/token")
 async def get_token(request, payload: TokenRequest):
     """Get access token via password grant or OAuth code exchange."""
+    # Exactly one authority answers (see admin.auth.identity).
+    #
+    #   STANDALONE  -> LocalIdentity. The agent holds the credential; there is
+    #                  no identity provider and none is consulted.
+    #   ENTERPRISE  -> Keycloak password grant. This process never stores it.
+    #
+    # Never both, and never a fallback between them: falling through from a
+    # federated rejection to a local check would let a disabled cloud account
+    # be resurrected by a stale local row.
+    from admin.auth.identity import resolve_identity_provider
+
+    if resolve_identity_provider() == "local":
+        return await _login_local(request, payload, lockout_service)
+
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
@@ -332,6 +346,93 @@ async def logout(request):
 # =============================================================================
 # LOGIN ENDPOINT
 # =============================================================================
+
+
+async def _login_local(request, payload: "LoginRequest", lockout_service):
+    """Standalone login: LocalIdentity is the authority.
+
+    The session token is the session id - `_decode_session` resolves it and
+    re-reads roles and permissions from the identity on every request, so a
+    stale row cannot carry a stale grant.
+    """
+    from admin.auth.identity import authenticate_local
+    from admin.common.session_manager import get_session_manager
+
+    identity = await authenticate_local(payload.email, payload.password)
+    if not identity.ok:
+        new_status = await lockout_service.record_failed_attempt(payload.email)
+        await _emit_auth_audit(
+            request,
+            action="auth.login_failed",
+            details={"error": identity.reason},
+            actor_email=payload.email,
+        )
+        if new_status.is_locked:
+            raise ForbiddenError(
+                action="login",
+                resource="account",
+                message=f"Account locked. Try again in {(new_status.retry_after or 0) // 60} minutes.",
+                details={"retry_after": new_status.retry_after},
+            )
+        raise UnauthorizedError(message="Invalid email or password")
+
+    await lockout_service.record_successful_login(payload.email)
+    session_manager = await get_session_manager()
+    permissions = await session_manager.resolve_permissions(
+        user_id=identity.email,
+        tenant_id="",
+        roles=[],
+    )
+    session = await session_manager.create_session(
+        user_id=identity.email,
+        tenant_id="",
+        email=identity.email,
+        roles=[],
+        permissions=permissions,
+        ip_address=request.META.get("REMOTE_ADDR", ""),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+    )
+    await _emit_auth_audit(
+        request,
+        action="auth.login_succeeded",
+        details={"provider": "local"},
+        actor_email=identity.email,
+    )
+
+    fwd_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "")
+    cookie_secure = bool(request.is_secure() or fwd_proto.lower() == "https")
+    resp_obj = JSONResponse(
+        status_code=200,
+        content={
+            "token": session.session_id,
+            "refresh_token": None,
+            "session_id": session.session_id,
+            "user": {
+                "id": identity.email,
+                "email": identity.email,
+                "name": identity.display_name,
+                "role": "member",
+                "roles": [],
+            },
+        },
+    )
+    resp_obj.set_cookie(
+        "access_token",
+        session.session_id,
+        max_age=3600,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="Lax",
+    )
+    resp_obj.set_cookie(
+        "session_id",
+        session.session_id,
+        max_age=3600,
+        httponly=True,
+        secure=cookie_secure,
+        samesite="Lax",
+    )
+    return resp_obj
 
 
 @router.post("/login")
