@@ -6,22 +6,22 @@
 |---|---|
 | Document Title | SomaAgent01 Deployment Readiness Plan |
 | Document Identifier | SOMA-OPS-READINESS-001 |
-| Version | 1.0.0 |
-| Date | 2026-06-01 |
+| Version | 1.1.0 |
+| Date | 2026-10-03 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
+| Next Review | 2027-01-03 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
-
-| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Pre-Production` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-06-01 | SomaTech Engineering | Initial deployment readiness assessment and plan |
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Pre-Production` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. Revision History table unbroken. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Removed the BrainBridge / `recall()` claim — `aaas/brain.py` was deleted in `6395bd78`. The memory seam is `MemoryGateway` → `SomaBrainAdapter` (T-1). |
 
 ---
 
@@ -102,7 +102,7 @@ This plan does not cover:
 2. **Root docker-compose.yml exists** -- `docker-compose.yml` is present at project root
 3. **Authorization** -- `UnifiedGate` now makes real OPA/SpiceDB calls; some high-level RBAC API endpoints still return stubs
 4. **Chat Pipeline** -- V3 orchestrator is the WebSocket/REST production path; conversation worker still uses a separate use-case pipeline
-5. **BrainBridge** -- `recall()` is implemented for direct and HTTP modes
+5. **Memory seam** -- `MemoryGateway` → `SomaBrainAdapter` is the only path (T-1). `BrainBridge` (`aaas/brain.py`) was deleted in `6395bd78`.
 6. **Test Coverage** -- 24 test files for ~570 source files
 7. **pyproject.toml** -- References `somabrain` as `../somabrain` path dependency
 8. **WebUI** -- `webui/Dockerfile` exists; `DEV_MODE = false` in `webui/src/main.ts`
@@ -211,7 +211,7 @@ pytest tests/saas/ -v
 | ACT-007 | ~~Remove `ALLOW_INSECURE_AUTH_BYPASS` from settings~~ | Security | **Done** |
 | ACT-008 | ~~Remove `DEV_MODE = true` hardcoding from `webui/src/main.ts`~~ | Frontend | **Done** |
 | ACT-009 | ~~Wire V3 ChatOrchestrator as production path~~ | Backend | **Done for WebSocket/REST** |
-| ACT-010 | ~~Fix `BrainBridge.recall()` NotImplementedError~~ | Backend | **Done** |
+| ACT-010 | ~~Fix `BrainBridge.recall()` NotImplementedError~~ | Backend | **Moot** — `BrainBridge` is deleted (`6395bd78`). The seam is `MemoryGateway` → `SomaBrainAdapter`. |
 | ACT-011 | ~~Containerize WebUI with nginx~~ | DevOps | **Done** |
 | ACT-012 | Synchronize `requirements.txt` and `pyproject.toml` | Engineering | 1 hour |
 | ACT-013 | Fix frontend WebSocket URL to include `agent_id` | Frontend | 2 hours |

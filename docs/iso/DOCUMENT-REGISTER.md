@@ -145,7 +145,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-OPS-DEPLOY-001 | docs/operations/SOMA-OPS-DEPLOY-001.md | 🚀 Deployment Guide | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-OPS-MODES-001 | docs/operations/SOMA-OPS-MODES-001.md | Deployment Modes - AAAS vs STANDALONE | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-OPS-PLAN-001 | docs/operations/SOMA-OPS-PLAN-001.md | 🚀 SOMAAGENT01 — COMPLETE DEPLOYMENT PLAN | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-OPS-READINESS-001 | docs/operations/SOMA-OPS-READINESS-001.md | SomaAgent01 Deployment Readiness Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-READINESS-001 | docs/operations/SOMA-OPS-READINESS-001.md | SomaAgent01 Deployment Readiness Plan | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-OPS-SOFTMODES-001 | docs/operations/SOMA-OPS-SOFTMODES-001.md | Software Deployment Modes | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | — | docs/plans/2026-10-03-100-percent-wiring.md | 100% Wiring Plan — Agent + SomaBrain + SomaFractalMemory + Temporal | — | — | — | MISSING | Non-compliant |
 | — | docs/plans/2026-10-03-triad-full-integration.md | Triad Full Integration — AGENT + BRAIN + MEMORY Implementation Plan | — | — | — | MISSING | Non-compliant |
