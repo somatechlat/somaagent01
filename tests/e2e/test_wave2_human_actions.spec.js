@@ -106,7 +106,7 @@ test.describe('Wave 2 — a person configures the agent', () => {
 
     const values = { ...(before.body.values || {}) };
     const previousUrl = values.url;
-    const probe = `http://operator-${MARK}.invalid`;
+    const probe = `operator-${MARK}.invalid`;
     values.url = probe;
 
     // 2. Write through the real chain (InfrastructureConfig).

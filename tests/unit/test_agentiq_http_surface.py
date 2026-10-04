@@ -68,13 +68,14 @@ def test_settings_write_uses_canonical_key(monkeypatch):
     """Saving somabrain.url must write InfrastructureConfig(key=SOMABRAIN_URL)."""
     from admin.core.infrastructure.models import InfrastructureConfig, ServiceHealth
 
-    saved = settings_v2.save_settings_to_db("somabrain", {"url": "http://brain.invalid"})
+    probe = "operator-set-brain.invalid"
+    saved = settings_v2.save_settings_to_db("somabrain", {"url": probe})
     assert saved is True
 
     row = InfrastructureConfig.objects.get(
         service__service_name="somabrain", key="SOMABRAIN_URL"
     )
-    assert row.value == "http://brain.invalid"
+    assert row.value == probe
     # The local alias must not be the row key — that is the bug this pins.
     assert not InfrastructureConfig.objects.filter(
         service__service_name="somabrain", key="url"
@@ -85,14 +86,15 @@ def test_settings_write_uses_canonical_key(monkeypatch):
 def test_settings_read_maps_canonical_key_back_to_local():
     from admin.core.infrastructure.models import InfrastructureConfig, ServiceHealth
 
+    probe = "operator-set-brain.invalid"
     ServiceHealth.objects.get_or_create(
         service_name="somabrain", defaults={"status": "healthy"}
     )
     InfrastructureConfig.objects.update_or_create(
         service=ServiceHealth.objects.get(service_name="somabrain"),
         key="SOMABRAIN_URL",
-        defaults={"value": "http://brain.invalid"},
+        defaults={"value": probe},
     )
     out = settings_v2.get_settings_from_db("somabrain")
     assert out is not None
-    assert out.get("url") == "http://brain.invalid"
+    assert out.get("url") == probe

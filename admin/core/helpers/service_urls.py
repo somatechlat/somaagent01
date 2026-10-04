@@ -1,9 +1,9 @@
 """Fail-closed resolution of deployment service endpoints.
 
 A service endpoint that is not configured **raises**. There is no guessed
-host, no ``getattr(settings, X, "http://localhost…")``, and no silent
-substitute. A URL a caller invents is a URL an operator cannot change and a
-reviewer cannot see (VIBE Rule 91 / SOMA-STD-CONFIG-001).
+host, no getattr-with-a-URL-fallback, and no silent substitute. A URL a
+caller invents is a URL an operator cannot change and a reviewer cannot
+see (VIBE Rule 91 / SOMA-STD-CONFIG-001).
 
 Resolution chain (highest wins) — identical to every other tunable:
 
