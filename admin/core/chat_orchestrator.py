@@ -74,8 +74,8 @@ def _token_count(text: str) -> int:
 # ---------------------------------------------------------------------------
 # Memory seam (PLAN-TRIAD-SEAMLESS §1) — one write path, one read path
 # ---------------------------------------------------------------------------
-_MEMORY_STORES = ("somabrain", "somafractalmemory")
-
+# SomaBrain is the sole store bridge. There is no multi-store fan-out and no
+# second replay authority (T-6 / degradation doctrine).
 
 
 def _iq_model_tier(iq) -> str | None:
@@ -457,6 +457,7 @@ class V3ChatOrchestrator:
             # SomaBrain context evaluation (cognitive co-processor)
             brain_confidence = float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", 0.5))
             suggested_tools: List[str] = []
+            brain_suggested_tools: List[str] = []
             try:
                 brain_client = (
                     await SomaBrainClient.get_async()
@@ -482,6 +483,7 @@ class V3ChatOrchestrator:
                     if eval_result:
                         brain_confidence = eval_result.get("confidence", 0.5)
                         suggested_tools = eval_result.get("suggested_tools", [])
+                        brain_suggested_tools = list(suggested_tools)
                         logger.info(
                             "Brain context eval: confidence=%.2f, suggested_tools=%s",
                             brain_confidence,
@@ -514,7 +516,7 @@ class V3ChatOrchestrator:
             history, memory_hits, body = await asyncio.gather(
                 asyncio.wait_for(history_task, timeout=_history_timeout()),
                 asyncio.wait_for(
-                    self._recall_memories(turn.user_message, tenant_id, capsule),
+                    self._recall_memories(turn.user_message, tenant_id, capsule, iq),
                     timeout=_recall_timeout(),
                 ),
                 asyncio.wait_for(body_task, timeout=2.0),
@@ -726,10 +728,11 @@ class V3ChatOrchestrator:
 
                 await sync_to_async(conversation_message.send)(
                     sender=self.__class__,
-                    conversation_id=turn.conversation_id or "",
-                    message_id=turn_id,
+                    session_id=turn.conversation_id or "",
+                    event_id=turn_id,
                     role="assistant",
-                    content=full_response,
+                    message=full_response,
+                    metadata={"tenant": tenant_id},
                 )
             except Exception as signal_exc:
                 logger.warning("Signal emission failed: %s", signal_exc)
@@ -872,7 +875,7 @@ class V3ChatOrchestrator:
         history, memory_hits, body, neuro, brain_eval = await asyncio.gather(
             asyncio.wait_for(history_task, timeout=_history_timeout()),
             asyncio.wait_for(
-                self._recall_memories(turn.user_message, tenant_id, capsule),
+                self._recall_memories(turn.user_message, tenant_id, capsule, iq),
                 timeout=_recall_timeout(),
             ),
             asyncio.wait_for(body_task, timeout=2.0),
@@ -1016,9 +1019,11 @@ class V3ChatOrchestrator:
         # Completion metrics for the stream path. The sync path has always
         # recorded this; without it the live chat lane is invisible in SLOs.
         self._metrics.record_turn_complete(
-            turn_id=getattr(turn, "turn_id", "") or "",
-            model_id=str(getattr(turn, "model_id", "") or ""),
-            elapsed_ms=0.0,
+            turn_id=str(getattr(turn, "conversation_id", "") or ""),
+            tokens_in=0,
+            tokens_out=token_count if "token_count" in dir() else 0,
+            model=str(getattr(model, "name", "") or ""),
+            provider=str(getattr(model, "provider", "") or ""),
         )
         await self._publish_cognitive_learning(
             tenant_id=tenant_id,
@@ -1038,10 +1043,11 @@ class V3ChatOrchestrator:
 
             await sync_to_async(conversation_message.send)(
                 sender=self.__class__,
-                conversation_id=turn.conversation_id or "",
-                message_id=turn_id,
+                session_id=turn.conversation_id or "",
+                event_id=turn_id,
                 role="assistant",
-                content=full_response,
+                message=full_response,
+                metadata={"tenant": tenant_id},
             )
         except Exception as signal_exc:
             logger.warning("Signal emission failed: %s", signal_exc)
@@ -1220,12 +1226,14 @@ class V3ChatOrchestrator:
         kind: Optional[str] = None,
         role: Optional[str] = None,
     ) -> str:
-        """ONE write path: MemoryGateway.remember_text() fan-out (PLAN §1 rule 4).
+        """ONE write path: MemoryGateway.remember_text() (PLAN §1 rule 4).
 
         remember_text() derives the seam coord AND the SomaBrain key material
-        from the same (tenant, kind, ts, text), so both stores upsert one row —
-        never a second coordinate scheme. PendingMemory is queued ONLY for acks
-        with ok=False / timed out; a successful ack is never re-written.
+        from the same (tenant, kind, ts, text). It is T-6: the write is accepted
+        into the durable outbox BEFORE the hop; ``MemoryAck.ok`` completes that
+        record. A failed hop leaves it pending — the outbox drain /
+        memory-replicator is the ONE replay authority. PendingMemory is never
+        written here (second authority).
 
         Returns the seam ``make_coord`` string for this write. The coord is
         computed before any transport attempt and is always returned — the
@@ -1258,34 +1266,24 @@ class V3ChatOrchestrator:
                 timeout=_write_timeout(),
             )
         except Exception as exc:
-            # Timeout / transport failure: every store unacked → outbox each.
+            # Timeout / transport failure: one unacked write — the gateway's
+            # durable-before-hop record is already pending. Never synthesise
+            # one failed ack per imagined store (the gateway returns one).
             logger.warning("MemoryGateway write failed (coord=%s): %s", coord, exc)
-            acks = [
-                MemoryAck(coord=coord, store=store, ok=False, error=str(exc))
-                for store in _MEMORY_STORES
-            ]
+            acks = [MemoryAck(coord=coord, store="somabrain", ok=False, error=str(exc))]
 
         for ack in acks:
             if ack.ok:
-                continue  # success is final — never queued, never re-written
-            # Degraded mode: Kafka WAL is the queue (memory-replicator replays
-            # into SomaBrain). NO Postgres message repository.
-            try:
-                from services.common.degraded_memory_queue import publish_degraded_memory
-
-                await publish_degraded_memory(
-                    text=text,
-                    tenant_id=tenant_id,
-                    namespace=namespace,
-                    kind=kind,
-                    session_id=session_id,
-                    salience=salience,
-                    coord=coord,
-                    source="agent-chat",
-                    error=ack.error,
-                )
-            except Exception as qexc:
-                logger.error("Kafka degraded queue failed for coord=%s: %s", coord, qexc)
+                continue  # success is final — durable record completed, no replay
+            # Failed hop: the T-6 durable-accept row stays pending. The one
+            # replay authority (outbox → memory.wal → memory-replicator) owns
+            # redelivery. Do NOT also write PendingMemory here.
+            logger.warning(
+                "Memory write unacked (coord=%s store=%s): %s — durable-accept left for replay",
+                coord,
+                ack.store,
+                ack.error,
+            )
         return coord
 
     async def _recall_memories(
@@ -1293,6 +1291,7 @@ class V3ChatOrchestrator:
         query: str,
         tenant_id: str,
         capsule: Any,
+        iq: Any = None,
     ) -> Optional[List[MemoryHit]]:
         """One read path: MemoryGateway.recall() feeds the memory lane (PLAN §1 rule 5).
 
