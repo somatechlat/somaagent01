@@ -310,14 +310,14 @@ async def test_process_turn_returns_chat_result():
             "spicedb_relations": {"chat_send": True},
         },
     )
-    LLMModelConfig.objects.create(
+    await sync_to_async(LLMModelConfig.objects.create)(
         name="gpt-4o-mini",
         provider="openai",
         capabilities=["text"],
         priority=80,
         is_active=True,
     )
-    conversation = Conversation.objects.create(
+    conversation = await sync_to_async(Conversation.objects.create)(
         agent_id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         tenant_id=tenant.id,
@@ -360,14 +360,14 @@ async def test_stream_turn_yields_tokens():
             "spicedb_relations": {"chat_send": True},
         },
     )
-    LLMModelConfig.objects.create(
+    await sync_to_async(LLMModelConfig.objects.create)(
         name="gpt-4o-mini",
         provider="openai",
         capabilities=["text"],
         priority=80,
         is_active=True,
     )
-    conversation = Conversation.objects.create(
+    conversation = await sync_to_async(Conversation.objects.create)(
         agent_id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         tenant_id=tenant.id,

@@ -18,6 +18,33 @@ from services.tool_executor.tools import BaseTool, ToolExecutionError
 LOGGER = logging.getLogger(__name__)
 
 
+#: Characters per hit summary. Eight summaries stay well inside the tool-message
+#: cap, so the model never sees truncated JSON and re-queries.
+_SUMMARY_CHARS = 240
+
+
+def _digest(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Shape hits into a ranked digest the model can answer from.
+
+    Raw payloads invite re-query: they overflow the tool-message cap, the
+    model sees incomplete JSON, and asks again. A summary per hit keeps the
+    whole result readable in one round.
+    """
+    out: List[Dict[str, Any]] = []
+    for i, h in enumerate(hits, start=1):
+        text = str(h.get("text") or "").strip()
+        summary = text if len(text) <= _SUMMARY_CHARS else text[: _SUMMARY_CHARS - 1] + "…"
+        out.append(
+            {
+                "rank": i,
+                "summary": summary,
+                "coord": h.get("coord"),
+                "score": h.get("score"),
+            }
+        )
+    return out
+
+
 def _require_tenant(args: Dict[str, Any]) -> str:
     """Fail-closed tenant. Never accepts 'default' / empty (T-5)."""
     tenant = args.get("tenant_id") or args.get("tenant") or args.get("tenantId") or ""
@@ -83,8 +110,20 @@ class MemoryRecallTool(BaseTool):
         except (TypeError, ValueError):
             top_k = int(get_memory_setting("MEM_RECALL_TOP_K", 8))
         top_k = max(1, min(top_k, 50))
-        # Empty probe = list this tenant's memories (SomaBrain ranked); not an error.
-        probe = query.strip() or str(get_memory_setting("MEM_PROXIMITY_WILDCARD", "*"))
+        # An empty query is a refusal, not a wildcard dump. Listing a tenant's
+        # whole memory overflows the tool message, the model sees truncated
+        # JSON, and asks again - that is the runaway.
+        probe = query.strip()
+        if not probe:
+            return {
+                "query": "",
+                "tenant_id": tenant_id,
+                "count": 0,
+                "enough": False,
+                "digest": [],
+                "error": "A specific question is required. Answer from the memory "
+                "already in the prompt, or ask the user for more detail.",
+            }
 
         gateway = _memory_gateway()
         try:
@@ -94,11 +133,15 @@ class MemoryRecallTool(BaseTool):
             raise ToolExecutionError(f"memory_recall failed: {exc}") from exc
 
         results = [_hit_to_dict(h) for h in (hits or [])]
+        digest = _digest(results)
         return {
             "query": probe,
             "tenant_id": tenant_id,
-            "count": len(results),
-            "memories": results,
+            "count": len(digest),
+            # True when these hits are enough to answer. The model should
+            # answer from them rather than call again.
+            "enough": bool(digest),
+            "digest": digest,
         }
 
     def input_schema(self) -> Dict[str, Any] | None:
@@ -249,7 +292,16 @@ class MemoryProximityTool(BaseTool):
         elif coord.strip():
             probe = f"coord:{coord.strip()}"
         else:
-            probe = str(get_memory_setting("MEM_PROXIMITY_WILDCARD", "*"))
+            return {
+                "probe": "",
+                "coord": coord,
+                "tenant_id": tenant_id,
+                "count": 0,
+                "neighbors": [],
+                "error": "A probe string or a coord is required. A wildcard dump "
+                "is not offered: it overflows the tool message and invites a "
+                "second call.",
+            }
 
         gateway = _memory_gateway()
         try:
@@ -317,7 +369,7 @@ class MemoryGetTool(BaseTool):
         return {
             "found": False,
             "coord": wanted,
-            "hint": "Use memory_recall / memory_proximity to search SomaBrain",
+            "hint": "Not found. Answer from what you already have, or tell the user you do not know.",
         }
 
     def input_schema(self) -> Dict[str, Any] | None:

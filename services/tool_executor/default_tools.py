@@ -49,7 +49,7 @@ NON_DISABLEABLE_TOOLS = frozenset(
 
 # Human descriptions for LLM tool schemas (when handler has none).
 DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
-    "memory_recall": "Search SomaBrain long-term memory for facts related to a query. Always use this before answering questions about past conversations, user preferences, or learned facts.",
+    "memory_recall": "Search SomaBrain long-term memory. Use it only when the memory already given to you is not enough to answer. If the answer is already in that memory, answer directly - do not call this.",
     "memory_save": "Persist an important fact or episode to SomaBrain memory (works for all future turns). Use for user preferences, commitments, and discoveries.",
     "memory_forget": "Delete a memory by coordinate (privacy erasure).",
     "memory_proximity": "Find memories nearest to a query or coordinate (semantic proximity via SomaBrain scoring).",

@@ -300,7 +300,11 @@ async def run_tool_loop(
         pending_tool_calls: List[Any] = []
         seen_call_keys: set[str] = set()
 
-        stream = llm._astream(messages=messages, tools=tools_for_llm or None)
+        # tool_choice is only legal alongside tools; sending it with none is a
+        # provider error.
+        _tools = tools_for_llm or None
+        _kwargs = {"tool_choice": "auto"} if _tools else {}
+        stream = llm._astream(messages=messages, tools=_tools, **_kwargs)
         async for chunk in stream:
             if isinstance(chunk, ToolCallsChunk):
                 pending_tool_calls = list(chunk.tool_calls)
@@ -394,27 +398,28 @@ async def run_tool_loop(
                     except Exception as exc:
                         logger.warning("tool approval wait failed: %s", exc)
                         approved = False
-                if approved:
-                    # fall through to execution below
-                    decision = "auto_execute"
-                else:
+                if not approved:
+                    # Refused (or nobody to ask). A denied tool is a terminal
+                    # tool result, not a reason to loop.
                     error = get_message(ErrorCode.TOOL_EXECUTION_DENIED)
-                yield ToolStreamEvent(
-                    type=TOOL_EVENT_DONE,
-                    payload={
-                        "iteration": iteration,
-                        "tool_call_id": tc.id,
-                        "name": name,
-                        "arguments": display_args,
-                        "result": None,
-                        "ok": False,
-                        "error": error,
-                        "duration_ms": 0,
-                        "status": "approval_required",
-                    },
-                )
-                messages.append(build_tool_result_message(tc.id, {}, False, error))
-                continue
+                    yield ToolStreamEvent(
+                        type=TOOL_EVENT_DONE,
+                        payload={
+                            "iteration": iteration,
+                            "tool_call_id": tc.id,
+                            "name": name,
+                            "arguments": display_args,
+                            "result": None,
+                            "ok": False,
+                            "error": error,
+                            "duration_ms": 0,
+                            "status": "denied",
+                        },
+                    )
+                    messages.append(build_tool_result_message(tc.id, {}, False, error))
+                    continue
+                # Approved: the human said yes. Fall through and execute.
+                decision = "auto_execute"
 
             if decision == "denied":
                 error = get_message(ErrorCode.TOOL_POLICY_DENIED)
@@ -474,7 +479,15 @@ async def run_tool_loop(
 
         # Next iteration: the model sees the tool results and continues.
 
-    yield ("\n[Tool loop stopped: maximum tool iterations " f"({max_iterations}) reached]")
+    # The chain ran to its cap. The user asked a question and deserves an
+    # answer, not a status line. One final call with tools disabled produces
+    # it. This round runs only when a tool chain actually happened: a plain
+    # turn returns above the moment the model stops calling tools.
+    stream = llm._astream(messages=messages, tools=None)
+    async for chunk in stream:
+        text = _chunk_text(chunk)
+        if text:
+            yield text
 
 
 __all__ = [
