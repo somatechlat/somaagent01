@@ -276,6 +276,21 @@ class SettingsModel(BaseModel):
         default_factory=lambda: int(_dj("WS_STREAM_FLUSH_MAX_CHARS", 512))
     )
 
+    # Temporal async cycle — schedule cadence (SOMA-STD-CONFIG-001 R-BEH-01/02).
+    # Behaviour, not topology: the administrator turns these through
+    # AgentSetting / Capsule, and `get_settings()` is the one reader. The
+    # number appears exactly once, here (R-VAL-01 / AP-03). Deployment env may
+    # still populate Django settings at boot; that bridge carries no default.
+    sa01_sleep_cycle_hours: float = Field(
+        default_factory=lambda: float(_dj("SA01_SLEEP_CYCLE_HOURS", 6))
+    )
+    sa01_job_advance_seconds: float = Field(
+        default_factory=lambda: float(_dj("SA01_JOB_ADVANCE_SECONDS", 60))
+    )
+    sa01_outbox_replay_seconds: float = Field(
+        default_factory=lambda: float(_dj("SA01_OUTBOX_REPLAY_SECONDS", 30))
+    )
+
     # MCP / A2A
     mcp_servers: str = Field(default_factory=lambda: str(_dj("MCP_SERVERS", '{"mcpServers": {}}')))
     mcp_client_init_timeout: int = Field(

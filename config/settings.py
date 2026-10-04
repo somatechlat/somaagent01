@@ -148,6 +148,13 @@ SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = float(
     os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", "0.5")
 )
 
+# Temporal async-cycle schedule cadence. Deployment env may override at boot;
+# the schema default lives only on SettingsModel (R-VAL-01 — one number, one
+# place), so this bridge carries no default of its own.
+SA01_SLEEP_CYCLE_HOURS = os.environ.get("SA01_SLEEP_CYCLE_HOURS")
+SA01_JOB_ADVANCE_SECONDS = os.environ.get("SA01_JOB_ADVANCE_SECONDS")
+SA01_OUTBOX_REPLAY_SECONDS = os.environ.get("SA01_OUTBOX_REPLAY_SECONDS")
+
 # ---------------------------------------------------------------------------
 # LLM / HTTP / MODEL runtime tunables — Django settings is the authority.
 # ---------------------------------------------------------------------------

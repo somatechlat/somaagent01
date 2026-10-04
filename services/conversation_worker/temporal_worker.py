@@ -243,16 +243,21 @@ class OutboxReplayWorkflow:
 
 
 def _schedule_specs() -> tuple:
-    """Interval specs for the async cycle (topology/behaviour via env, not literals)."""
+    """Interval specs for the async cycle.
+
+    Cadence is behaviour (SOMA-STD-CONFIG-001 R-BEH-01/02): it lives on
+    ``SettingsModel`` + ``AgentSetting``, CRUD-able by an administrator, and is
+    read here through the one resolver — never ``os.environ`` at a call site.
+    """
     from temporalio.client import ScheduleIntervalSpec
 
-    sleep_h = float(os.environ.get("SA01_SLEEP_CYCLE_HOURS", "6"))
-    jobs_s = float(os.environ.get("SA01_JOB_ADVANCE_SECONDS", "60"))
-    outbox_s = float(os.environ.get("SA01_OUTBOX_REPLAY_SECONDS", "30"))
+    from admin.core.helpers.settings import get_settings
+
+    cfg = get_settings()
     return (
-        ScheduleIntervalSpec(hours=sleep_h),
-        ScheduleIntervalSpec(seconds=jobs_s),
-        ScheduleIntervalSpec(seconds=outbox_s),
+        ScheduleIntervalSpec(hours=float(cfg.sa01_sleep_cycle_hours)),
+        ScheduleIntervalSpec(seconds=float(cfg.sa01_job_advance_seconds)),
+        ScheduleIntervalSpec(seconds=float(cfg.sa01_outbox_replay_seconds)),
     )
 
 
