@@ -193,7 +193,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self._turn_task: Optional[asyncio.Task] = None
         self._tool_approvals: Dict[str, asyncio.Future] = {}
         # Roles the authenticated principal holds (TokenPayload.realm_access).
-        self._roles: list = []
+        self._roles: list | None = None
 
         # Phase 1-3: Pre-loaded at connection time (cached for entire session)
         self.capsule: Optional[Any] = None
@@ -519,7 +519,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             self.user_id = payload.sub
             realm = getattr(payload, "realm_access", None) or {}
-            self._roles = list(realm.get("roles") or []) if isinstance(realm, dict) else []
+            # None means "resolve the roles from the store"; an empty list means
+            # "this subject holds nothing". A token with no realm roles is not a
+            # subject with no roles — passing [] here denied every chat. Only a
+            # token that actually names roles is trusted as the list (T-5: the
+            # token names the principal, the store decides).
+            claimed = list(realm.get("roles") or []) if isinstance(realm, dict) else []
+            self._roles = claimed or None
             self.tenant_id = payload.tenant_id
             self.session_id = cookies.get("session_id")
 
@@ -688,7 +694,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 attachments=attachments,
                 history=self._cached_history,
                 agent_mode=agent_mode,
-                roles=list(self._roles or []),
+                roles=self._roles,
                 approval_gate=ChatConsumer._ApprovalGate(self),
             )
 
