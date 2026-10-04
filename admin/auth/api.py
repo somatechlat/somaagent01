@@ -345,7 +345,7 @@ async def login_with_email(request, payload: LoginRequest):
     client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
         0
     ].strip() or request.META.get("REMOTE_ADDR", "unknown")
-    await check_rate_limit(client_ip, "/api/v2/auth/login", limit=10, window=60)
+    await check_rate_limit(client_ip, "/api/v2/auth/login")
 
     lockout_service = await get_lockout_service()
     lockout_status = await lockout_service.check_lockout(payload.email)

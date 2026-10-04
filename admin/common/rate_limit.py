@@ -15,9 +15,10 @@ logger = logging.getLogger(__name__)
 # RATE LIMIT CONFIGURATION
 # =============================================================================
 
-# Per design.md Section 2.1: 10 requests per minute per IP
-LOGIN_RATE_LIMIT = 10
-LOGIN_RATE_WINDOW = 60  # seconds
+# Per design.md Section 2.1: 10 requests per minute per IP.
+# Both values are administrator-managed (LOGIN_RATE_LIMIT / LOGIN_RATE_WINDOW).
+# Schema defaults live on SettingsModel; this module reads them at use time so
+# a Capsule/AgentSetting/Django override takes effect without a restart.
 
 
 # =============================================================================
@@ -25,23 +26,41 @@ LOGIN_RATE_WINDOW = 60  # seconds
 # =============================================================================
 
 
+def _login_rate_limit() -> int:
+    """LOGIN_RATE_LIMIT via the settings chain (schema default on SettingsModel)."""
+    from admin.core.helpers.settings import get_settings
+
+    return int(get_settings().login_rate_limit)
+
+
+def _login_rate_window() -> int:
+    """LOGIN_RATE_WINDOW via the settings chain (schema default on SettingsModel)."""
+    from admin.core.helpers.settings import get_settings
+
+    return int(get_settings().login_rate_window)
+
+
 async def check_rate_limit(
     ip_address: str,
     endpoint: str,
-    limit: int = LOGIN_RATE_LIMIT,
-    window: int = LOGIN_RATE_WINDOW,
+    limit: Optional[int] = None,
+    window: Optional[int] = None,
 ) -> None:
     """Check rate limit for IP/endpoint combination.
 
     Args:
         ip_address: Client IP address
         endpoint: Endpoint being accessed
-        limit: Max requests in window
-        window: Window size in seconds
+        limit: Max requests in window (defaults to LOGIN_RATE_LIMIT)
+        window: Window size in seconds (defaults to LOGIN_RATE_WINDOW)
 
     Raises:
         RateLimitError: If rate limit exceeded
     """
+
+    limit = _login_rate_limit() if limit is None else int(limit)
+    window = _login_rate_window() if window is None else int(window)
+
     from services.common.rate_limiter import get_rate_limiter
 
     try:
@@ -77,21 +96,21 @@ async def check_rate_limit(
 
 
 def rate_limit(
-    limit: int = LOGIN_RATE_LIMIT,
-    window: int = LOGIN_RATE_WINDOW,
+    limit: Optional[int] = None,
+    window: Optional[int] = None,
     key_func: Optional[Callable] = None,
 ):
     """Decorator to apply rate limiting to Django Ninja endpoints.
 
     Usage:
         @router.post("/login")
-        @rate_limit(limit=10, window=60)
+        @rate_limit()
         async def login(request, payload: LoginRequest):
             ...
 
     Args:
-        limit: Max requests in window
-        window: Window size in seconds
+        limit: Max requests in window (defaults to LOGIN_RATE_LIMIT)
+        window: Window size in seconds (defaults to LOGIN_RATE_WINDOW)
         key_func: Optional function to extract rate limit key from request
                   Default: uses client IP address
     """
@@ -155,6 +174,6 @@ def _get_client_ip(request) -> str:
 __all__ = [
     "check_rate_limit",
     "rate_limit",
-    "LOGIN_RATE_LIMIT",
-    "LOGIN_RATE_WINDOW",
+    "_login_rate_limit",
+    "_login_rate_window",
 ]
