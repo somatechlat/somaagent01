@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import OrderedDict
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -27,6 +28,21 @@ class PolicyRequest:
     context: dict[str, Any]
 
 
+def _policy_setting(name: str, default):
+    """Resolve one policy knob through the real settings chain.
+
+    Capsule -> AgentSetting -> SettingsModel -> schema default. Not
+    os.environ: an operator-managed value must be CRUD-able, and a literal in
+    the code is a value nobody can see or change.
+    """
+    from admin.core.helpers.settings import get_settings
+
+    model = get_settings()
+    value = getattr(model, name.lower(), None)
+    return default if value in (None, "") else value
+
+
+
 class PolicyClient:
     """Policyclient class implementation."""
 
@@ -48,9 +64,10 @@ class PolicyClient:
             self.base_url = None
             self.data_path = "/v1/data/soma/allow"
             self._client = None
-            self.cache_ttl = 2.0
+            self.cache_ttl = float(_policy_setting("POLICY_CACHE_TTL_S", 2.0))
             self.fail_open_default = False
-            self._cache = {}
+            self._cache: OrderedDict = OrderedDict()
+            self._cache_max = int(_policy_setting("POLICY_CACHE_MAX", 4096))
             self.tenant_config = tenant_config or TenantConfig()
             self._disabled = True
             return
@@ -63,14 +80,13 @@ class PolicyClient:
         elif _base.endswith("/v1/data/soma"):
             _base = _base[: -len("/v1/data/soma")]
         self.base_url = _base
-        self.data_path = (
-            os.environ.get("SA01_POLICY_DATA_PATH", "/v1/data/soma/allow") or "/v1/data/soma/allow"
-        )
+        self.data_path = _policy_setting("POLICY_DATA_PATH", "/v1/data/soma/allow")
         self._client = httpx.AsyncClient(timeout=httpx_timeout())
-        self.cache_ttl = float(os.environ.get("SA01_POLICY_CACHE_TTL", "2") or "2")
+        self.cache_ttl = float(_policy_setting("POLICY_CACHE_TTL_S", 2.0))
         # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored
         self.fail_open_default = False
-        self._cache: dict[tuple[Any, ...], tuple[bool, float]] = {}
+        self._cache: OrderedDict = OrderedDict()
+        self._cache_max = int(_policy_setting("POLICY_CACHE_MAX", 4096))
         self.tenant_config = tenant_config or TenantConfig()
 
     @property
@@ -118,6 +134,7 @@ class PolicyClient:
         now = time.time()
         cached = self._cache.get(cache_key)
         if cached and (now - cached[1]) < self.cache_ttl:
+            self._cache.move_to_end(cache_key)
             return cached[0]
 
         client = self._client
@@ -138,6 +155,9 @@ class PolicyClient:
             data: dict[str, Any] = response.json()
             decision = bool(data.get("result"))
             self._cache[cache_key] = (decision, now)
+            self._cache.move_to_end(cache_key)
+            while len(self._cache) > self._cache_max:
+                self._cache.popitem(last=False)
             return decision
         except Exception as exc:
             LOGGER.exception("Policy evaluation failed", extra={"error": str(exc)})

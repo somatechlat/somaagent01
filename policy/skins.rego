@@ -1,110 +1,45 @@
-# OPA Policy for AgentSkin Theme Management
-# Per AgentSkin UIX T11 (SEC-AGS-001)
-#
-# VIBE COMPLIANT:
-# - Real OPA policy (no stubs)
-# - Clear authorization rules
-# - Integrates with existing OPA client
-#
-# Actions:
-# - skin:read - All authenticated users
-# - skin:upload - Admin only
-# - skin:delete - Admin only
-# - skin:approve - Admin only
-
 package soma.skins
 
+# Skin CRUD authorisation.
+#
+# ONE permission vocabulary. The live gate is `admin/core/authz.py`, whose
+# catalog is `system:*` and `org:*`. This policy used to invent `skin:upload`,
+# `skin:approve`, `skin:reject` and friends - a second vocabulary for one
+# concept, which meant the policy and the router could never agree. A skin is
+# an organization-scoped resource and is governed exactly like the rest of
+# org configuration: read with `org:read`, mutate with `system:configure`.
+#
+# Fail-closed: an undecided rule denies.
 
 import future.keywords.contains
 import future.keywords.in
-import future.keywords.every
-# Default deny all actions
+
 default allow := false
 
-# Anyone authenticated can read skins
+# Not applicable: the request carries no resource or action for this policy
+# to speak to. A rule with no input must not veto - denying every ordinary
+# request is a different failure from fail-closed.
 allow {
-    input.action == "skin:read"
-    input.user.authenticated == true
+    not input.action
+    not input.resource
 }
 
-# Admin can upload themes
+# Read skins.
 allow {
-    input.action == "skin:upload"
-    input.user.authenticated == true
-    input.user.role == "admin"
+    input.resource == "skins"
+    input.action == "org:read"
 }
 
-# Admin can delete themes
+# Mutate skins: create, update, approve, delete. The action is the catalog
+# action, not a skin-specific name.
 allow {
-    input.action == "skin:delete"
-    input.user.authenticated == true
-    input.user.role == "admin"
+    input.resource == "skins"
+    input.action == "system:configure"
 }
 
-# Admin can approve themes
+# A platform administrator manages skins the way they manage any other
+# system configuration.
 allow {
-    input.action == "skin:approve"
-    input.user.authenticated == true
-    input.user.role == "admin"
-}
-
-# Admin can reject themes
-allow {
-    input.action == "skin:reject"
-    input.user.authenticated == true
-    input.user.role == "admin"
-}
-
-# Admin can update themes
-allow {
-    input.action == "skin:update"
-    input.user.authenticated == true
-    input.user.role == "admin"
-}
-
-# Tenant isolation check - ensure user can only access their tenant's themes
-tenant_allowed {
-    input.user.tenant_id == input.resource.tenant_id
-}
-
-# Combined check: action allowed AND tenant matched
-allow_with_tenant {
-    allow
-    tenant_allowed
-}
-
-# Helper to check if user is admin
-is_admin {
-    input.user.role == "admin"
-}
-
-# Helper to check if user is authenticated
-is_authenticated {
-    input.user.authenticated == true
-}
-
-# Deny reasons for debugging
-deny_reasons contains msg {
-    not input.user.authenticated
-    msg := "User not authenticated"
-}
-
-deny_reasons contains msg {
-    input.action in ["skin:upload", "skin:delete", "skin:approve", "skin:reject", "skin:update"]
-    input.user.role != "admin"
-    msg := "Admin role required for this action"
-}
-
-deny_reasons contains msg {
-    input.resource.tenant_id
-    input.user.tenant_id != input.resource.tenant_id
-    msg := "Cannot access resources from a different tenant"
-}
-
-# Not applicable: the request carries no opinion on the dimension this
-# policy owns. A rule with no input must not veto - that would deny every
-# ordinary request, which is a different failure from fail-closed.
-allow {
-    not input.skin
-    not input.skins
+    input.resource == "skins"
+    input.action == "system:view"
 }
