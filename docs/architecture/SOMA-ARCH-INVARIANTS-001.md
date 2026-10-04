@@ -289,7 +289,7 @@ groq/openai/gpt-oss-120b
 |---|---|---|
 | 1 | `chat_orchestrator._make_coordinate` — copy-pasted **MD5** coord writer, byte-identical to `scripts/generate_somafractal_image.py:23` | **Deleted**, along with its only caller `_store_to_sfm`. Coordinates now come only from `memory_contract.make_coord()` / `remember_text()`. |
 | 2 | `_queue_pending_memory` idempotency key embedded a **UUID** | Key is now `mem:{tenant_id}:{coord}:{retry_store}` — re-queues and double-runs collapse. |
-| 3 | `_store_turn` wrote "brain primary / SFM fallback" | Rewritten: both memory units take ONE path, `_remember_via_gateway()` → `remember_text()` fan-out with per-store acks. `PendingMemory` queued only for failed acks. |
+| 3 | `_store_turn` wrote "brain primary / SFM fallback" | Rewritten: both memory units take ONE path, `_remember_via_gateway()` → `remember_text()` fan-out with per-store acks. Failed acks stay pending on the `memory.wal` outbox. |
 | 4 | Memory lane not fed from `recall()` | `_recall_memories()` → `gateway.recall()` runs **before** `build_context` in both `process_turn` and `stream_turn`; `builder._format_memory_hits()` fits hits to the cl100k memory budget. |
 | 5 | `memory_created` signal → `OutboxMessage("somabrain.memory.remember")` was a **second unconditional write authority** | Emission removed at both sites. `conversation_message` kept. |
 

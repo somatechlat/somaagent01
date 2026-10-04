@@ -14,7 +14,7 @@
 | P0-D01 | Wire HealthMonitor into V3ChatOrchestrator | `admin/core/chat_orchestrator.py` | Already wired |
 | P0-D02 | Wire SimpleGovernor token budgets | `admin/core/chat_orchestrator.py` | Already wired |
 | P0-D03 | LLM circuit breaker → degraded response | `admin/core/chat_orchestrator.py` | `09688416e` |
-| P0-D04 | Wire MemorySyncService/PendingMemory | `admin/core/chat_orchestrator.py` | `35a892867` |
+| P0-D04 | ~~Wire MemorySyncService/PendingMemory~~ closed — one replay authority | `admin/core/chat_orchestrator.py` | deleted in `0009_drop_pending_memory` |
 | P0-D05 | Fix DLQ consumer (`os.environ.kafka` crash) | `services/common/dlq.py` | Already fixed |
 | P0-D06 | Fix audit publisher (missing `get_durable_publisher`) | `services/common/publisher.py` | Already fixed |
 | P0-D07 | Fix memory replicator (`os.environ.service` crash) | `services/memory_replicator/` | Already fixed |
@@ -95,7 +95,7 @@ c9e32fd1e refactor(p3): standardize error formats, openapi schemas, client path 
 0094c3481 feat(p1): milvus health check, django signals, kafka library unification
 0fc8be807 infra(p1): prune dead env vars, vault fail-fast, prom/grafana, ci cleanup
 0a3fb1fde docs(plan): mark all P0 items complete in CURRENT_PLAN.md
-35a892867 feat(memory): wire PendingMemory queue + sync worker
+~~35a892867 feat(memory): wire PendingMemory queue + sync worker~~ superseded — PendingMemory deleted; memory.wal is the only replay authority
 09688416e fix(chat): wire HealthMonitor + Governor, LLM circuit breaker → degraded response
 f02c0593e fix(blockers): resolve import errors, lazy BrainBridge, and update TODO docs
 ```
@@ -104,7 +104,7 @@ f02c0593e fix(blockers): resolve import errors, lazy BrainBridge, and update TOD
 
 ## 🏗️ ARCHITECTURE WINS
 
-1. **Zero Data Loss**: PendingMemory queue + sync worker ensures no memories are lost when Brain is down
+1. **Zero Data Loss**: the memory.wal outbox ensures no memories are lost when Brain is down
 2. **Degraded Mode**: Chat never hard-fails — circuit breaker → graceful degraded response
 3. **I18N Compliance**: All user-facing messages use `get_message()` — zero hardcoded strings
 4. **MemoryPort Protocol**: Single canonical interface for all memory operations

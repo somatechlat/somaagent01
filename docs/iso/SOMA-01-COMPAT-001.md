@@ -119,7 +119,7 @@ All three components run together as an integrated cognitive stack.
 | Endpoints | `POST /api/v1/memory/store`, `POST /api/v1/memory/recall`, `POST /v1/context/evaluate`, `PUT /v1/neuromodulators`, `POST /v1/learning/reward` |
 | Health | `GET /health` |
 | Timeout | 30s (circuit breaker: 5 failures → open, 30s reset) |
-| Fallback | SomaFractalMemory (direct) + PendingMemory queue |
+| Fallback | SomaFractalMemory (direct) + memory.wal outbox |
 
 ### 5.2 SomaAgent01 → SomaFractalMemory
 
@@ -130,7 +130,7 @@ All three components run together as an integrated cognitive stack.
 | Endpoints | `POST /memories`, `POST /memories/search`, `GET /memories/{coord}`, `GET /healthz` |
 | Health | `GET /healthz` |
 | Timeout | 10s |
-| Fallback | PendingMemory queue for later sync |
+| Fallback | memory.wal outbox for later replay |
 
 ### 5.3 SomaBrain → SomaFractalMemory
 

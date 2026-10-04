@@ -40,7 +40,7 @@ next turn — proven 100% by an automated test.
 | 2 | **SFM endpoints called by the agent do not exist** | real SFM serves `/memories`, `/memories/search`, `/graph/*` (port 10101); `/api/v1/*` exists only in `infra/mocks/` |
 | 3 | **Two coordinate writers** | coordinate scheme computed in both agent and SFM → collisions / misses |
 | 4 | **Embedding contract broken** | SFM `HashEmbedder` = SHA-256 bag-of-words (not semantic); agent sends real vectors → distance is meaningless |
-| 5 | **Two write authorities** | chat pipeline writes SFM directly + `PendingMemory` outbox writes again → duplicates |
+| 5 | **Two write authorities** | chat pipeline wrote SFM directly + a second queue wrote again → duplicates (the orphan queue is deleted; `memory.wal` is the one authority) |
 | 6 | **Recall path unused** | 5-lane context builder has a memory lane but it is not fed from either store end-to-end |
 | 7 | **Config split-brain** | mock ports (20996/20101) vs real ports (9696/10101); `SOMABRAIN_ENABLED=false` / `FRACTALMEMORY_ENABLED=false` in standalone `.env` |
 | 8 | **Beliefs never reach AgentIQ** | cognitive loop emits `BeliefUpdate` but derivation never consumes it |

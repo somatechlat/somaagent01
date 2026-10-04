@@ -460,7 +460,7 @@ SomaFractalMemory is accessed via HTTP adapters:
 | `OutboxMessage` | Transactional outbox |
 | `DeadLetterMessage` | Dead letter queue |
 | `IdempotencyRecord` | Exactly-once processing |
-| `PendingMemory` | Memory synchronization queue |
+| `OutboxMessage` (`memory.wal`) | Memory replay queue (the one authority) |
 | `SensorOutbox` | Sensor event outbox |
 
 ### 7.2 AAAS Models (`admin/aaas/models/`)

@@ -134,7 +134,7 @@ AAAS is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFr
     - PostgreSQL trace (always)
     - SomaBrain remember (primary cognitive memory)
     - SomaFractalMemory store (fallback if Brain unavailable)
-    - PendingMemory queue (for later sync)
+    - memory.wal outbox (for later replay)
     - Episodic memory (background task)
 14. Phase 12: Django signals emitted, metrics recorded
 15. Tokens streamed back to user via WebSocket deltas

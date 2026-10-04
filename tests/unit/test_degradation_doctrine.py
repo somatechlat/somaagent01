@@ -38,30 +38,20 @@ def test_durable_before_hop_records_before_the_network_call():
     src = inspect.getsource(co.V3ChatOrchestrator._remember_via_gateway)
     # A durable accept must appear before the gateway call in the source.
     hop = src.find("remember_text")
-    durable = max(
-        src.find("PendingMemory"),
-        src.find("publish_degraded_memory"),
-        src.find("durable"),
-        src.find("OutboxMessage"),
-    )
+    durable = max(src.find("durable"), src.find("OutboxMessage"))
     # Either the gateway itself owns pre-hop durability, or the caller records first.
     gw_src = inspect.getsource(mg.FanoutMemoryGateway.remember_text)
-    pre_hop_in_gateway = (
-        gw_src.find("PendingMemory") != -1
-        or gw_src.find("publish_degraded_memory") != -1
-        or gw_src.find("durable") != -1
-    )
+    pre_hop_in_gateway = "durable_accept_memory" in gw_src
     assert (durable != -1 and durable < hop) or pre_hop_in_gateway
 
 
-def test_one_replay_authority_kafka_wal_not_pending_memory_and_vice_versa():
-    """Kafka WAL *or* PendingMemory+sync_memories — never both as writers."""
+def test_the_memory_wal_outbox_is_the_only_replay_authority():
+    """One authority: the seam's outbox. No ORM queue, no second WAL writer."""
     co_src = inspect.getsource(co.V3ChatOrchestrator._remember_via_gateway)
-    writes_pending = "PendingMemory.objects" in co_src or "PendingMemory(" in co_src
-    writes_wal = "publish_degraded_memory" in co_src
-    assert not (writes_pending and writes_wal), (
-        "both Kafka WAL and PendingMemory are written for one failed memory"
-    )
+    assert "PendingMemory" not in co_src
+    assert "publish_degraded_memory" not in co_src
+    gw_src = inspect.getsource(mg.FanoutMemoryGateway.remember_text)
+    assert "durable_accept_memory" in gw_src
 
 
 def test_publisher_has_a_local_durable_buffer():
@@ -72,12 +62,11 @@ def test_publisher_has_a_local_durable_buffer():
     assert "enqueued" in src
 
 
-def test_degraded_memory_queue_is_not_a_second_authority_when_wal_is_primary():
-    """If chat_orchestrator uses Kafka WAL, PendingMemory must not also be written there."""
-    src = inspect.getsource(co)
-    if "publish_degraded_memory" in src:
-        assert "PendingMemory.objects.create" not in src
-        assert "PendingMemory(" not in src or "import" in src.split("PendingMemory")[0][-40:]
+def test_degraded_memory_queue_module_does_not_publish():
+    """That module is status only; a queue writer there would be authority two."""
+    src = inspect.getsource(dmq)
+    assert "publish" not in src.split('"""')[-1].lower() or "does not publish" in src.lower()
+    assert "def publish" not in src
 
 
 # ---------------------------------------------------------------------------
@@ -113,3 +102,66 @@ def test_every_memory_write_degrades_through_one_entry_point():
     entry = "durable_accept_memory"
     assert entry in gw_src, "the gateway must accept writes through the shared entry"
     assert entry in api_src, "api_router must degrade through the same shared entry"
+
+
+# ---------------------------------------------------------------------------
+# PendingMemory was a second replay authority (OutboxMessage is THE one).
+# ---------------------------------------------------------------------------
+
+
+def test_pending_memory_second_replay_authority_is_gone():
+    """Two replay authorities is split-brain; the ORM model must not survive."""
+    from admin.core.models import zdl
+    from admin.core import models as models_pkg
+
+    assert not hasattr(zdl, "PendingMemory"), "zdl.PendingMemory is the second replay authority"
+    assert not hasattr(models_pkg, "PendingMemory"), "PendingMemory still exported from admin.core.models"
+
+
+def test_sync_memories_command_is_gone():
+    """The command drove the orphan queue; a replay authority has no second driver."""
+    from pathlib import Path
+
+    cmd = (
+        Path(__file__).resolve().parents[2]
+        / "admin"
+        / "core"
+        / "management"
+        / "commands"
+        / "sync_memories.py"
+    )
+    assert not cmd.exists(), f"{cmd} still drives the deleted PendingMemory queue"
+
+
+def test_a_migration_drops_the_pending_memory_table():
+    """The table is dropped by a real migration, not left as an orphan."""
+    import re
+    from pathlib import Path
+
+    mig_dir = Path(__file__).resolve().parents[2] / "admin" / "core" / "migrations"
+    found = False
+    for path in sorted(mig_dir.glob("*.py")):
+        src = path.read_text(encoding="utf-8")
+        if re.search(r'DeleteModel\([^)]*name=["\']PendingMemory["\']', src):
+            found = True
+            break
+    assert found, "no migration drops the PendingMemory model/table"
+
+
+def test_no_production_code_writes_pending_memory():
+    """A leftover reference is how a second authority comes back."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    offenders: list[str] = []
+    for rel in (
+        "admin/core/chat_orchestrator.py",
+        "services/common/memory_gateway.py",
+        "admin/core/models/zdl.py",
+        "admin/core/models/__init__.py",
+    ):
+        src = (root / rel).read_text(encoding="utf-8")
+        if re.search(r"PendingMemory", src):
+            offenders.append(rel)
+    assert not offenders, f"PendingMemory still referenced: {offenders}"

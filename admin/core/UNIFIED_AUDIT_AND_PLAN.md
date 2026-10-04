@@ -56,7 +56,7 @@ The codebase has **real, production-grade infrastructure** (Kafka, Redis, Postgr
 | D-03 | **LLM circuit breaker causes HARD FAILURE** | Chat dies completely if LLM is down | `ServiceUnavailableError` propagates to user | Catch LLM circuit breaker → return degraded-mode response (local model or cached response) |
 | D-04 | **DegradationMonitor API is BROKEN** | `/degradation` endpoint crashes | References non-existent methods on shim | Fix `admin/core/api/degradation.py` to use `HealthMonitor` API |
 | D-05 | **ConversationWorker uses broken DegradationMonitor** | Worker crashes on degradation check | Accesses `degradation_monitor.components` which doesn't exist | Update to use `HealthMonitor` |
-| D-06 | **SomaBrain memory ops have NO transaction lane in chat path** | Memories lost when Brain is down | `PendingMemory` exists but is unwired from chat orchestrator | Wire `MemorySyncService` into `_store_turn()` and `_store_episodic_bg()` |
+| D-06 | **SomaBrain memory ops have NO transaction lane in chat path** | Memories lost when Brain is down | ~~`PendingMemory` exists but is unwired~~ **deleted** — `memory.wal` outbox is the one authority | Closed via MemoryGateway durable-accept |
 | D-07 | **EventPublisher in-memory buffer loses events on flush failure** | Observability events lost | 3 retries then `RuntimeError`, buffer cleared | Persist failed events to `SensorOutbox` before raising |
 | D-08 | **DLQ consumer crashes on import** | `os.environ.kafka` syntax error | File is completely broken | Fix to read env vars correctly |
 | D-09 | **Audit publisher singleton is broken** | `get_durable_publisher` missing | Import error on every audit publish call | Fix or remove the broken singleton |
@@ -76,7 +76,7 @@ If degraded:
     - Skip memory recall (use PostgreSQL history only)
     - Disable tools
     - Use LLM fallback chain (or cached response if all down)
-    - Queue SomaBrain memory ops to PendingMemory
+    - Leave failed SomaBrain memory ops pending on the memory.wal outbox
     - Continue chat normally
     ↓
 If healthy:
@@ -97,7 +97,7 @@ Return ChatResult (always, never hard-fail)
 | Token Budget Governor | ✅ Exists, unwired | `services/common/simple_governor.py` |
 | Transactional Outbox (Kafka) | ✅ Working, unwired from hot path | `admin/core/models/zdl.py` + `publish_outbox.py` |
 | Sensor Outbox (SomaBrain) | ✅ Working, unwired from hot path | `admin/core/sensors/outbox.py` + `sync_worker.py` |
-| PendingMemory Queue | ✅ Exists, unwired | `admin/core/models/zdl.py` + `sync_memories.py` |
+| ~~PendingMemory Queue~~ | deleted — orphan second replay authority | dropped in `0009_drop_pending_memory.py` |
 | LLM Fallback Chain | ✅ Working | `services/common/llm_degradation.py` |
 | ZDL (Zero Data Loss) | ✅ Models exist | `OutboxMessage`, `DeadLetterMessage`, `IdempotencyRecord` |
 
@@ -307,7 +307,7 @@ After direct inspection and running Pyright + pytest on the current working tree
 | P0-D01 | Wire HealthMonitor into V3ChatOrchestrator | Degradation | Medium |
 | P0-D02 | Wire SimpleGovernor into V3ChatOrchestrator token budgets | Degradation | Medium |
 | P0-D03 | LLM circuit breaker → degraded response (not hard failure) | Degradation | Medium |
-| P0-D04 | Wire MemorySyncService/PendingMemory into chat memory store | Degradation | Medium |
+| P0-D04 | ~~Wire MemorySyncService/PendingMemory~~ closed — one replay authority (`memory.wal`) | Degradation | Done |
 | P0-D05 | Fix DLQ consumer (`os.environ.kafka` crash) | Kafka | Small |
 | P0-D06 | Fix audit publisher (missing `get_durable_publisher`) | Kafka | Small |
 | P0-D07 | Fix memory replicator (`os.environ.service` crash) | Kafka | Small |
@@ -382,7 +382,7 @@ After direct inspection and running Pyright + pytest on the current working tree
 **Goal:** Agent works 100% without SomaBrain, never hard-fails on LLM.
 - Wire HealthMonitor + SimpleGovernor into V3ChatOrchestrator
 - LLM circuit breaker → degraded response path
-- Memory ops queue to PendingMemory when Brain down
+- Memory ops stay pending on the memory.wal outbox when Brain is down
 
 ### Phase 3: Infrastructure Hardening (P0-I04 through P0-I06, P1-I01 through P1-I06)
 **Goal:** Every service in docker-compose is used; every code dependency has a service.
@@ -404,10 +404,10 @@ After direct inspection and running Pyright + pytest on the current working tree
 | `services/common/health_monitor.py` | Binary health model |
 | `services/common/simple_governor.py` | Token budget allocation |
 | `services/common/circuit_breaker.py` | Circuit breaker implementation |
-| `admin/core/models/zdl.py` | Outbox, DeadLetter, PendingMemory, Idempotency |
+| `admin/core/models/zdl.py` | Outbox, DeadLetter, Idempotency |
 | `services/common/event_bus.py` | Kafka event bus (aiokafka) |
 | `admin/core/management/commands/publish_outbox.py` | Outbox → Kafka bridge |
-| `admin/core/management/commands/sync_memories.py` | PendingMemory → SomaBrain sync |
+| ~~`admin/core/management/commands/sync_memories.py`~~ | deleted with PendingMemory |
 | `services/common/llm_degradation.py` | LLM provider fallback chains |
 | `services/common/degradation_monitor.py` | Legacy shim (broken API) |
 | `infra/aaas/docker-compose.yml` | Simple AAAS compose |

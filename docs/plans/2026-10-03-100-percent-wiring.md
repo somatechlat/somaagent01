@@ -44,7 +44,7 @@
 | B15 | `_MEMORY_STORES` synthesizes 2 failed acks vs 1 real → **double-queue** | `chat_orchestrator.py:77,1063-1066` | bug |
 | B16 | `MemoryGateway` — hottest path — has **no circuit breaker** | `memory_gateway.py` | degradation gap |
 | B17 | SFM degraded recall returns `[]` — agent cannot tell "no history" from "SFM down" | `somabrain/memory/hybrid.py:213-219` | fail-open |
-| B18 | Two replay authorities: `PendingMemory`+`sync_memories` vs Kafka WAL | `admin/core/models/zdl.py`, `degraded_memory_queue.py` | split-brain |
+| B18 | Two replay authorities: `PendingMemory`+`sync_memories` vs Kafka WAL | ~~`admin/core/models/zdl.py`, `degraded_memory_queue.py`~~ **deleted** | fixed — `memory.wal` only |
 | B19 | SFM `k_hop` accepted and **ignored** (always 1-hop) | `somafractalmemory/api/routers/graph.py:78,96-98` | lying API |
 | B20 | SFM `memory_type="belief"` accepted but not modelled — invisible to stats | `schemas.py:33` vs `models.py:23-27` | contract break |
 | B21 | SFM `importance` always 0, and fallback ranking orders by it | `services.py:217-224,478` | dead field |
@@ -177,7 +177,7 @@ Hybrid search, decay, pruning, importance normalization, JWT, OPA, circuit break
 **Commit:** `feat(memory): writes are accepted durably before the hop`
 
 ### E2 — One replay authority (B18)
-Kafka WAL **or** `PendingMemory`+`sync_memories`, never both. Fix the double-queue at `chat_orchestrator.py:1063-1066` (use the real ack list, not `_MEMORY_STORES`).
+Kafka WAL is the only replay authority. `PendingMemory`+`sync_memories` is deleted. The double-queue at `chat_orchestrator.py:1063-1066` is fixed (real ack list, not `_MEMORY_STORES`).
 **Commit:** `refactor(memory): one replay authority`
 
 ### E3 — Circuit-break the seam (B16)

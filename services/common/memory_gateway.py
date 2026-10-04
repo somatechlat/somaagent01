@@ -28,8 +28,8 @@ LOGGER = logging.getLogger(__name__)
 EmbedFn = Callable[[str, int], list[float]]
 
 # The one memory replay topic. Memory WAL is the single replay authority for
-# unacked writes (memory-replicator replays it into SomaBrain). PendingMemory
-# is NOT a second writer — see SOMA degradation doctrine (T-6 / one authority).
+# unacked writes (memory-replicator replays it into SomaBrain). There is no
+# second writer — see SOMA degradation doctrine (T-6 / one authority).
 MEMORY_WAL_TOPIC_DEFAULT = "memory.wal"
 
 

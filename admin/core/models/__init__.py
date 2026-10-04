@@ -41,7 +41,6 @@ from admin.core.models.zdl import (
     DeadLetterMessage,
     IdempotencyRecord,
     OutboxMessage,
-    PendingMemory,
 )
 
 # Sensor Outbox
@@ -83,7 +82,6 @@ __all__ = [
     "OutboxMessage",
     "DeadLetterMessage",
     "IdempotencyRecord",
-    "PendingMemory",
     # Sensors
     "SensorOutbox",
 ]

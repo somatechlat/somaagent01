@@ -116,7 +116,7 @@ SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orch
 | REQ-MEM-001 | System SHALL integrate with SomaBrain for cognitive memory (AAAS mode) | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
 | REQ-MEM-002 | System SHALL integrate with SomaFractalMemory for vector storage (AAAS mode) | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
 | REQ-MEM-003 | Memory recall SHALL use SomaBrain as primary, SFM as fallback | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
-| REQ-MEM-004 | System SHALL queue failed memory writes to PendingMemory for later sync | Must | SRS-SOMABRAIN-INTEGRATION | Unit test |
+| REQ-MEM-004 | System SHALL leave failed memory writes pending on the memory.wal outbox for replay | Must | SRS-SOMABRAIN-INTEGRATION | Unit test |
 | REQ-MEM-005 | System SHALL work without SomaBrain/SFM in Standalone mode | Must | SRS-SAAS-INFRASTRUCTURE | Integration test |
 
 ### 2.6 Context Building (REQ-CTX)
@@ -185,7 +185,7 @@ SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orch
 | REQ-REL-001 | System availability | 99.9% uptime | Monitoring |
 | REQ-REL-002 | Circuit breaker recovery time | < 30 seconds | Integration test |
 | REQ-REL-003 | Data durability (chat messages) | Zero data loss | Integration test |
-| REQ-REL-004 | Graceful degradation when SomaBrain unavailable | SFM fallback + PendingMemory queue | Integration test |
+| REQ-REL-004 | Graceful degradation when SomaBrain unavailable | SFM fallback + memory.wal outbox | Integration test |
 
 ### 3.3 Security (REQ-SEC)
 

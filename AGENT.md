@@ -330,7 +330,6 @@ DelegationTask       # Delegated task
 OutboxMessage        # Transactional outbox
 DeadLetterMessage    # Dead letter queue
 IdempotencyRecord    # Exactly-once processing
-PendingMemory        # Memory synchronization queue
 SensorOutbox         # Sensor event outbox
 ```
 

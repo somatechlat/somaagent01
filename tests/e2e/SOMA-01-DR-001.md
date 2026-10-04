@@ -124,16 +124,16 @@ curl -X POST http://somabrain:63996/api/v1/memory/recall \
   -H "Content-Type: application/json" \
   -d '{"query": "test", "top_k": 1}'
 
-# 4. Check PendingMemory queue for missed writes
+# 4. Check the memory.wal outbox for unacked writes
 docker compose exec somaagent python manage.py shell -c "
-from admin.core.models import PendingMemory
-print(f'Pending: {PendingMemory.objects.filter(synced=False).count()}')
+from admin.core.models import OutboxMessage
+print(f'Unacked: {OutboxMessage.objects.filter(topic="memory.wal", published_at__isnull=True).count()}')
 "
 ```
 
 ### Fallback Behavior (Automatic)
 - Memory recall: Falls back to SomaFractalMemory
-- Memory store: Queued to PendingMemory for later sync
+- Memory store: Left pending on the memory.wal outbox for replay
 - Context evaluation: Skipped (default confidence 0.5)
 - Chat: Continues without cognitive memory
 
@@ -159,7 +159,7 @@ curl http://somafractalmemory:63901/healthz
 ```
 
 ### Fallback Behavior (Automatic)
-- Memory store: Queued to PendingMemory
+- Memory store: Left pending on the memory.wal outbox
 - Memory recall: Returns empty (no fallback below SFM)
 - Chat: Continues without vector memory
 

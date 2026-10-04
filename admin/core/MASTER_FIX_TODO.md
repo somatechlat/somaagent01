@@ -28,7 +28,7 @@
 | 2.2 | Wire SFM into ContextBuilder memory lane | `admin/core/context/builder.py` | ✅ DONE | `memory_client` param + `_build_memory_lane` fallback |
 | 2.3 | Wire HealthMonitor into V3ChatOrchestrator | `admin/core/chat_orchestrator.py` | 🔲 | Check `is_degraded()` at start of turn |
 | 2.4 | Wire SimpleGovernor token budgets | `admin/core/chat_orchestrator.py` | 🔲 | Replace hardcoded budgets with governor |
-| 2.5 | SomaBrain memory → PendingMemory queue | `admin/core/chat_orchestrator.py` | 🔲 | Queue to `PendingMemory` when Brain down |
+| 2.5 | SomaBrain memory → memory.wal outbox | `admin/core/chat_orchestrator.py` | ✅ | One replay authority (`memory.wal`); PendingMemory deleted |
 | 2.6 | EventPublisher persist failed events | `admin/core/observability/event_publisher.py` | 🔲 | File deleted from working tree — needs restore or alternative implementation |
 
 ## PHASE 3: INFRASTRUCTURE HARDENING

@@ -768,7 +768,7 @@ class AgentSetting(models.Model):
 # =============================================================================
 # ZERO DATA LOSS INFRASTRUCTURE - MOVED TO admin/core/models/zdl.py
 # =============================================================================
-# Models: OutboxMessage, DeadLetterMessage, IdempotencyRecord, PendingMemory
+# Models: OutboxMessage, DeadLetterMessage, IdempotencyRecord
 # Import: from admin.core.models.zdl import OutboxMessage
 # Note: All imports via admin.core.models still work (see __init__.py)
 

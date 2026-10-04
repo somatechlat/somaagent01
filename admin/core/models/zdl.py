@@ -7,7 +7,6 @@ Models:
     - OutboxMessage: Transactional outbox for Kafka publishing
     - DeadLetterMessage: Failed message storage for manual review
     - IdempotencyRecord: Exactly-once operation tracking
-    - PendingMemory: Degradation mode memory queue
 """
 
 from __future__ import annotations
@@ -239,47 +238,3 @@ class IdempotencyRecord(models.Model):
         deleted, _ = cls.objects.filter(expires_at__lt=timezone.now()).delete()
         return deleted
 
-
-class PendingMemory(models.Model):
-    """Pending memory queue for SomaBrain sync.
-
-    When SomaBrain is unavailable (degradation mode), memories are
-    stored here and synced when connection is restored.
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    idempotency_key = models.CharField(max_length=255, unique=True, db_index=True)
-
-    # Memory data
-    tenant_id = models.CharField(max_length=255, db_index=True)
-    namespace = models.CharField(max_length=100, default="wm")
-    payload = models.JSONField()
-
-    # State
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    synced = models.BooleanField(default=False, db_index=True)
-    synced_at = models.DateTimeField(null=True, blank=True)
-
-    # Retry tracking
-    sync_attempts = models.IntegerField(default=0)
-    last_error = models.TextField(null=True, blank=True)
-
-    class Meta:
-        """Django model metadata."""
-
-        db_table = "pending_memories"
-        ordering = ["created_at"]
-        indexes = [
-            models.Index(fields=["synced", "created_at"]),
-            models.Index(fields=["tenant_id", "synced"]),
-        ]
-
-    def __str__(self) -> str:
-        """Return string representation."""
-        return f"PendingMemory({self.tenant_id}:{self.synced})"
-
-    def mark_synced(self) -> None:
-        """Mark memory as successfully synced to SomaBrain."""
-        self.synced = True
-        self.synced_at = timezone.now()
-        self.save(update_fields=["synced", "synced_at"])

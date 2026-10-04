@@ -183,7 +183,7 @@ The data model layer is the persistence foundation of SomaAgent01. All business 
 | REQ-DM-012 | The system shall define a `DeadLetterMessage` model for dead-letter queue storage. | Must | Inspection | Approved |
 | REQ-DM-013 | The system shall define an `IdempotencyRecord` model for request deduplication. | Must | Inspection | Approved |
 | REQ-DM-014 | The system shall define a `MemoryReplica` model for write-ahead log events. | Must | Inspection | Approved |
-| REQ-DM-015 | The system shall define a `PendingMemory` model for brain synchronization queue entries. | Must | Inspection | Approved |
+| REQ-DM-015 | The system shall leave failed brain synchronisation writes on the `OutboxMessage` (`memory.wal`) replay queue — one replay authority. | Must | Inspection | Approved |
 
 #### 3.1.4 LLM Domain
 
@@ -346,7 +346,7 @@ No hardware interface requirements are specified in this document.
 | REQ-DM-012 | DeadLetterMessage model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
 | REQ-DM-013 | IdempotencyRecord model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
 | REQ-DM-014 | MemoryReplica model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
-| REQ-DM-015 | PendingMemory model | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/django/` |
+| REQ-DM-015 | OutboxMessage (memory.wal) | SRS-DATA-MODELS | `admin/core/models/zdl.py` | `admin/core/models/zdl.py` | `tests/unit/test_degradation_doctrine.py` |
 | REQ-DM-016 | LLMModelConfig model | SRS-DATA-MODELS | `admin/llm/models.py` | `admin/llm/models.py` | `tests/django/` |
 | REQ-DM-017 | Model routing algorithm | SRS-DATA-MODELS | `admin/core/model_router.py` | `admin/core/model_router.py` | `tests/unit/` |
 | REQ-DM-018 | Conversation model | SRS-DATA-MODELS | `admin/chat/models.py` | `admin/chat/models.py` | `tests/django/` |

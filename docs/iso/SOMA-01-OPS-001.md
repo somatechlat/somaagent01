@@ -198,10 +198,10 @@ print(f'Mode: {DeploymentMode.get()}')
 print(f'AAAS: {DeploymentMode.is_aaas()}')
 "
 
-# Check PendingMemory queue
+# Check the memory.wal outbox for unacked writes
 docker compose exec somaagent python manage.py shell -c "
-from admin.core.models import PendingMemory
-print(f'Pending: {PendingMemory.objects.filter(synced=False).count()}')
+from admin.core.models import OutboxMessage
+print(f'Unacked: {OutboxMessage.objects.filter(topic="memory.wal", published_at__isnull=True).count()}')
 "
 ```
 

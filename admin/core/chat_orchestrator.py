@@ -736,8 +736,9 @@ class V3ChatOrchestrator:
 
             # Emit Django signals for outbox publishers.
             # memory_created is NOT emitted: the MemoryGateway seam is the one
-            # write path (PLAN §1 rule 4) and its outbox (PendingMemory) already
-            # covers failed acks — a second outbox entry would duplicate writes.
+            # write path (PLAN §1 rule 4) and its outbox (the memory.wal
+            # OutboxMessage) already covers failed acks — a second outbox
+            # entry would duplicate writes.
             try:
                 from admin.core.signals import conversation_message
 
@@ -1081,8 +1082,9 @@ class V3ChatOrchestrator:
 
         # Emit Django signals for outbox publishers.
         # memory_created is NOT emitted: the MemoryGateway seam is the one
-        # write path (PLAN §1 rule 4) and its outbox (PendingMemory) already
-        # covers failed acks — a second outbox entry would duplicate writes.
+        # write path (PLAN §1 rule 4) and its outbox (the memory.wal
+        # OutboxMessage) already covers failed acks — a second outbox entry
+        # would duplicate writes.
         try:
             from admin.core.signals import conversation_message
 
@@ -1277,8 +1279,8 @@ class V3ChatOrchestrator:
         from the same (tenant, kind, ts, text). It is T-6: the write is accepted
         into the durable outbox BEFORE the hop; ``MemoryAck.ok`` completes that
         record. A failed hop leaves it pending — the outbox drain /
-        memory-replicator is the ONE replay authority. PendingMemory is never
-        written here (second authority).
+        memory-replicator is the ONE replay authority. No second authority
+        is written here.
 
         Returns the seam ``make_coord`` string for this write. The coord is
         computed before any transport attempt and is always returned — the
@@ -1322,7 +1324,7 @@ class V3ChatOrchestrator:
                 continue  # success is final — durable record completed, no replay
             # Failed hop: the T-6 durable-accept row stays pending. The one
             # replay authority (outbox → memory.wal → memory-replicator) owns
-            # redelivery. Do NOT also write PendingMemory here.
+            # redelivery. Do NOT queue the write anywhere else.
             logger.warning(
                 "Memory write unacked (coord=%s store=%s): %s — durable-accept left for replay",
                 coord,
