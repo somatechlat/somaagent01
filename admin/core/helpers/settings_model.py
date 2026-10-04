@@ -178,6 +178,77 @@ class SettingsModel(BaseModel):
     )
     tts_kokoro: bool = False
 
+    # Service endpoints. Every deployment URL resolves here; nothing in the
+    # codebase may name a host. A URL a caller invents is a URL an operator
+    # cannot change and a reviewer cannot see.
+    service_somabrain_url: str = Field(default_factory=lambda: str(_dj("SOMABRAIN_URL", "")))
+    service_somafractalmemory_url: str = Field(
+        default_factory=lambda: str(_dj("SOMAFRACTALMEMORY_URL", ""))
+    )
+    service_opa_url: str = Field(default_factory=lambda: str(_dj("OPA_URL", "")))
+    service_llm_api_url: str = Field(default_factory=lambda: str(_dj("LLM_API_URL", "")))
+    service_image_gen_url: str = Field(default_factory=lambda: str(_dj("IMAGE_GEN_URL", "")))
+    service_diagram_url: str = Field(default_factory=lambda: str(_dj("DIAGRAM_URL", "")))
+    service_mermaid_cli_url: str = Field(
+        default_factory=lambda: str(_dj("MERMAID_CLI_URL", ""))
+    )
+    service_whisper_url: str = Field(default_factory=lambda: str(_dj("WHISPER_URL", "")))
+    service_whisper_api_url: str = Field(
+        default_factory=lambda: str(_dj("WHISPER_API_URL", ""))
+    )
+    service_kokoro_url: str = Field(default_factory=lambda: str(_dj("KOKORO_URL", "")))
+    service_kokoro_tts_url: str = Field(
+        default_factory=lambda: str(_dj("KOKORO_TTS_URL", ""))
+    )
+    service_agentvoicevox_base_url: str = Field(
+        default_factory=lambda: str(_dj("AGENTVOICEVOX_BASE_URL", ""))
+    )
+    service_keycloak_url: str = Field(default_factory=lambda: str(_dj("KEYCLOAK_URL", "")))
+    service_bridge_base_url: str = Field(
+        default_factory=lambda: str(_dj("BRIDGE_BASE_URL", ""))
+    )
+    service_prometheus_url: str = Field(
+        default_factory=lambda: str(_dj("PROMETHEUS_URL", ""))
+    )
+    service_vault_addr: str = Field(default_factory=lambda: str(_dj("VAULT_ADDR", "")))
+    service_google_redirect_uri: str = Field(
+        default_factory=lambda: str(_dj("GOOGLE_REDIRECT_URI", ""))
+    )
+    service_google_javascript_origin: str = Field(
+        default_factory=lambda: str(_dj("GOOGLE_JAVASCRIPT_ORIGIN", ""))
+    )
+    service_kafka_bootstrap_servers: str = Field(
+        default_factory=lambda: str(_dj("KAFKA_BOOTSTRAP_SERVERS", ""))
+    )
+
+    # AuthN / login hardening. Tunable behaviour, not a literal at the gate.
+    login_rate_limit: int = Field(
+        default_factory=lambda: int(_dj("LOGIN_RATE_LIMIT", 10))
+    )
+    login_rate_window: int = Field(
+        default_factory=lambda: int(_dj("LOGIN_RATE_WINDOW", 60))
+    )
+
+    # Voice payload ceiling. A size limit that lives in source cannot be
+    # raised for a deployment that accepts longer clips.
+    voice_max_audio_bytes: int = Field(
+        default_factory=lambda: int(_dj("VOICE_MAX_AUDIO_BYTES", 10 * 1024 * 1024))
+    )
+    voice_llm_max_tokens: int = Field(
+        default_factory=lambda: int(_dj("VOICE_LLM_MAX_TOKENS", 150))
+    )
+
+    # Multimodal request bounds.
+    multimodal_prompt_max_chars: int = Field(
+        default_factory=lambda: int(_dj("MULTIMODAL_PROMPT_MAX_CHARS", 4000))
+    )
+    multimodal_image_timeout_s: float = Field(
+        default_factory=lambda: float(_dj("MULTIMODAL_IMAGE_TIMEOUT_S", 60.0))
+    )
+    multimodal_diagram_timeout_s: float = Field(
+        default_factory=lambda: float(_dj("MULTIMODAL_DIAGRAM_TIMEOUT_S", 30.0))
+    )
+
     # Tool loop. Bounded execution of model tool calls: how many
     # model->tool->model rounds a turn may take, how long one tool may run,
     # and how much of a result goes back to the model.

@@ -16,6 +16,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
+from admin.core.helpers.service_urls import require_service_url
 from services.common.authorization import authorize
 
 router = Router(tags=["quality"])
@@ -341,7 +342,7 @@ async def _evaluate_criterion(
         )
 
     try:
-        llm_url = getattr(settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat")
+        llm_url = require_service_url("LLM_API_URL")
 
         prompt = f"""Evaluate the following {asset_type} content for {criterion} on a scale of 0.0 to 1.0.
         
@@ -399,11 +400,9 @@ async def _execute_operation(operation_type: str, input_data: dict) -> dict:
 
     # Route to appropriate service
     service_urls = {
-        "generate_image": getattr(settings, "IMAGE_GEN_URL", "http://localhost:8003/generate"),
-        "render_diagram": getattr(settings, "DIAGRAM_URL", "http://localhost:8004/render"),
-        "llm_completion": getattr(
-            settings, "LLM_API_URL", "http://localhost:9000/api/v2/core/llm/chat"
-        ),
+        "generate_image": require_service_url("IMAGE_GEN_URL"),
+        "render_diagram": require_service_url("DIAGRAM_URL"),
+        "llm_completion": require_service_url("LLM_API_URL"),
     }
 
     url = service_urls.get(operation_type)
@@ -459,3 +458,5 @@ def _calculate_backoff(
         delay = initial_delay * (2 ** (attempt - 1))
 
     return min(delay, max_delay)
+
+

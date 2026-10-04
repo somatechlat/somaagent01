@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from admin.common.exceptions import ServiceError
 from admin.common.messages import ErrorCode, get_message
+from admin.core.helpers.service_urls import require_service_url
 
 router = Router(tags=["health"])
 logger = logging.getLogger(__name__)
@@ -191,12 +192,12 @@ async def health_check() -> dict:
 
     # Check external services
     somabrain_status, somabrain_detail = await _check_http_target(
-        "somabrain", getattr(settings, "SOMABRAIN_URL", "http://localhost:9696")
+        "somabrain", require_service_url("SOMABRAIN_URL")
     )
     record_status("somabrain", somabrain_status, somabrain_detail)
 
     opa_status, opa_detail = await _check_http_target(
-        "opa", getattr(settings, "OPA_URL", "http://localhost:8181")
+        "opa", require_service_url("OPA_URL")
     )
     record_status("opa", opa_status, opa_detail)
 
@@ -254,3 +255,4 @@ async def readiness_check() -> dict:
             get_message(ErrorCode.INTERNAL_ERROR),
             details={"detail": str(exc)},
         )
+
