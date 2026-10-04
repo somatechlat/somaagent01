@@ -289,25 +289,39 @@ export class SaasPersonalProfile extends LitElement {
         this.loading = true;
         this.error = '';
         try {
-            const data = await apiClient.get<{
-                id: string;
-                email?: string;
-                name?: string;
-                avatar_url?: string;
-            }>('/auth/me');
+            // Identity from the auth principal; display prefs from
+            // UserPreferences; MFA / session counts from the admin profile.
+            // Each field is bound to the API that actually owns it.
+            const [me, prefs, adminProfile] = await Promise.all([
+                apiClient.get<{ id: string; email?: string; name?: string; avatar_url?: string }>(
+                    '/auth/me'
+                ),
+                apiClient.get<{
+                    display_name?: string;
+                    theme?: string;
+                    language?: string;
+                    timezone?: string;
+                    notifications?: UserProfile['notifications'];
+                }>('/aaas/admin/preferences'),
+                apiClient.get<{
+                    mfa_enabled?: boolean;
+                    active_sessions?: number;
+                    avatar_url?: string | null;
+                }>('/aaas/admin/profile'),
+            ]);
 
             this.profile = {
-                id: data.id,
-                email: data.email || '',
-                displayName: data.name || '',
-                avatarUrl: data.avatar_url,
-                theme: 'system',
-                language: 'en',
-                timezone: 'America/New_York',
-                mfaEnabled: true,
-                activeSessions: 1,
-                notifications: {
-                    agentReplies: true,
+                id: me.id,
+                email: me.email || '',
+                displayName: prefs.display_name || me.name || '',
+                avatarUrl: adminProfile.avatar_url || me.avatar_url,
+                theme: (prefs.theme as UserProfile['theme']) || 'system',
+                language: prefs.language || '',
+                timezone: prefs.timezone || '',
+                mfaEnabled: Boolean(adminProfile.mfa_enabled),
+                activeSessions: adminProfile.active_sessions ?? 0,
+                notifications: prefs.notifications ?? {
+                    agentReplies: false,
                     activitySummary: false,
                     productUpdates: false,
                 },
@@ -325,13 +339,13 @@ export class SaasPersonalProfile extends LitElement {
         this.saving = true;
         this.error = '';
         try {
-            await apiClient.put('/auth/me', {
-                name: this.profile.displayName,
-                email: this.profile.email,
+            // Appearance and notifications live on UserPreferences. Identity
+            // (email) is owned by the IdP and is not written here.
+            await apiClient.put('/aaas/admin/preferences', {
+                display_name: this.profile.displayName,
                 theme: this.profile.theme,
                 language: this.profile.language,
                 timezone: this.profile.timezone,
-                mfa_enabled: this.profile.mfaEnabled,
                 notifications: this.profile.notifications,
             });
             this.dirty = false;

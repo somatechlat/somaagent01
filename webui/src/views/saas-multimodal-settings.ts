@@ -298,6 +298,7 @@ export class SaasMultimodalSettings extends LitElement {
 
     @state() private loading = false;
     @state() private saving = false;
+    @state() private error = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -321,7 +322,11 @@ export class SaasMultimodalSettings extends LitElement {
     private async saveConfig() {
         this.saving = true;
         try {
-            await apiClient.put(`/agents/${this.agentId || 'current'}/multimodal-config`, this.config);
+            if (!this.agentId) {
+                this.error = 'No agent selected — cannot save multimodal settings.';
+                return;
+            }
+            await apiClient.put(`/agents/${this.agentId}/multimodal-config`, this.config);
             // Show success toast
             console.log('Multimodal config saved');
         } catch (e) {

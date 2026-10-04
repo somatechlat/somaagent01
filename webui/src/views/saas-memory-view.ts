@@ -19,7 +19,7 @@ export interface Memory {
     content: string;
     summary?: string;
     tags: string[];
-    score: number;
+    score?: number;
     timestamp: string;
     coord?: string;
     metadata?: Record<string, unknown>;
@@ -54,7 +54,7 @@ function mapSomaHit(raw: SomaMemoryHit, index: number): Memory {
         type,
         content: text,
         tags: [],
-        score: typeof raw.score === 'number' ? raw.score : 0,
+        score: typeof raw.score === 'number' ? raw.score : undefined,
         timestamp: raw.created_at || new Date().toISOString(),
         coord: raw.coord,
     };
@@ -658,7 +658,7 @@ export class SaasMemoryView extends LitElement {
                         </div>
                         <span class="type-label">${memory.type}</span>
                     </div>
-                    <span class="memory-score">${Math.round(memory.score * 100)}%</span>
+                    <span class="memory-score">${typeof memory.score === 'number' ? `${Math.round(memory.score * 100)}%` : '—'}</span>
                 </div>
 
                 <div class="memory-content">
@@ -761,7 +761,7 @@ export class SaasMemoryView extends LitElement {
             } else if (this._sort === 'oldest') {
                 return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
             } else {
-                return b.score - a.score; // relevance
+                return (b.score ?? -1) - (a.score ?? -1); // relevance; missing score sorts last
             }
         });
         this._memories = sorted;

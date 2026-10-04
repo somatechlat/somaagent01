@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from admin.aaas.models import TenantUser
 from admin.core.authz import ORG_ASSIGNABLE_ROLES
 from admin.common.auth import AuthBearer
-from admin.common.exceptions import NotFoundError, ValidationError
+from admin.common.exceptions import NotFoundError, UnauthorizedError, ValidationError
 from admin.common.responses import api_response, paginated_response
 from services.common.authorization import authorize, authorize_sync
 
@@ -524,8 +524,6 @@ def get_profile(request) -> dict:
     email = getattr(request.auth, "email", None)
 
     if not email:
-        from admin.common.exceptions import UnauthorizedError
-
         raise UnauthorizedError("Email not found in auth context")
 
     roles = getattr(request.auth, "roles", ["aaas_admin"])
@@ -594,8 +592,6 @@ def update_profile(
     email = getattr(request.auth, "email", None)
 
     if not email:
-        from admin.common.exceptions import UnauthorizedError
-
         raise UnauthorizedError("Email not found in auth context")
 
     # Get or create profile
@@ -627,4 +623,96 @@ def update_profile(
             "notifications": profile.notification_prefs,
         },
         message="Profile updated",
+    )
+
+
+# =============================================================================
+# USER PREFERENCES (theme, language, timezone) — UserPreferences ORM
+# =============================================================================
+
+
+class PreferencesUpdateRequest(BaseModel):
+    """End-user display preferences. Absent fields are left unchanged."""
+
+    display_name: Optional[str] = None
+    theme: Optional[str] = None
+    language: Optional[str] = None
+    timezone: Optional[str] = None
+    notifications: Optional[dict] = None
+
+
+@router.get(
+    "/preferences",
+    summary="Get current user display preferences",
+    auth=AuthBearer(),
+)
+def get_preferences(request) -> dict:
+    """Read theme / language / timezone / notifications for the caller.
+
+    Backed by ``UserPreferences`` (`admin/aaas/models/profiles.py`). Values
+    that have never been saved come from the model defaults — never from a
+    browser-side guess.
+    """
+    authorize_sync(request, action="identity:self", resource="identity")
+    from admin.aaas.models import UserPreferences
+
+    user_id = getattr(request.auth, "sub", None)
+    if not user_id:
+        raise UnauthorizedError("No subject in auth context")
+
+    prefs, _created = UserPreferences.objects.get_or_create(user_id=user_id)
+    return api_response(
+        {
+            "display_name": prefs.display_name,
+            "avatar_url": prefs.avatar_url,
+            "bio": prefs.bio,
+            "theme": prefs.theme,
+            "language": prefs.language,
+            "timezone": prefs.timezone,
+            "date_format": prefs.date_format,
+            "notifications": prefs.notification_prefs
+            or prefs.get_default_notification_prefs(),
+        }
+    )
+
+
+@router.put(
+    "/preferences",
+    summary="Update current user display preferences",
+    auth=AuthBearer(),
+)
+def update_preferences(request, payload: PreferencesUpdateRequest) -> dict:
+    """Persist theme / language / timezone / notifications for the caller."""
+    authorize_sync(request, action="identity:self", resource="identity")
+    from admin.aaas.models import UserPreferences
+
+    user_id = getattr(request.auth, "sub", None)
+    if not user_id:
+        raise UnauthorizedError("No subject in auth context")
+
+    prefs, _created = UserPreferences.objects.get_or_create(user_id=user_id)
+
+    if payload.display_name is not None:
+        prefs.display_name = payload.display_name
+    if payload.theme is not None:
+        if payload.theme not in dict(UserPreferences.THEME_CHOICES):
+            raise ValidationError(f"theme must be one of: {', '.join(c[0] for c in UserPreferences.THEME_CHOICES)}")
+        prefs.theme = payload.theme
+    if payload.language is not None:
+        prefs.language = payload.language
+    if payload.timezone is not None:
+        prefs.timezone = payload.timezone
+    if payload.notifications is not None:
+        prefs.notification_prefs = payload.notifications
+
+    prefs.save()
+    return api_response(
+        {
+            "display_name": prefs.display_name,
+            "theme": prefs.theme,
+            "language": prefs.language,
+            "timezone": prefs.timezone,
+            "notifications": prefs.notification_prefs,
+        },
+        message="Preferences updated",
     )

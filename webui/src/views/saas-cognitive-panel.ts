@@ -521,6 +521,7 @@ export class SaasCognitivePanel extends LitElement {
     @state() private _isSaving = false;
     @state() private _cognitiveLoad = 0;
     @state() private _sleepCycleActive = false;
+    @state() private _brainConnected = false;
 
     // Live SomaBrain state only — no hardcoded defaults.
     @state() private _neuromodulators: NeuromodulatorLevel[] = [];
@@ -567,7 +568,9 @@ export class SaasCognitivePanel extends LitElement {
                     </div>
                     <div class="status-row">
                         <span class="status-label">SomaBrain</span>
-                        <span class="status-value online">Connected</span>
+                        <span class="status-value ${this._brainConnected ? 'online' : 'warning'}">
+                            ${this._brainConnected ? 'Connected' : 'Unavailable'}
+                        </span>
                     </div>
                 </div>
 
@@ -729,16 +732,27 @@ export class SaasCognitivePanel extends LitElement {
     private async _loadCognitiveState() {
         this._isLoading = true;
         try {
-            // Real SomaBrain Cognitive API — agent-scoped state
+            // Real SomaBrain Cognitive API — agent-scoped state. The route
+            // requires {agent_id}; without one we refuse rather than invent a
+            // trailing-slash path the server does not serve.
             const agentId = sessionStorage.getItem('saas_agent_id') || localStorage.getItem('saas_agent_id') || '';
-            const path = agentId ? `/somabrain/cognitive/state/${agentId}` : '/somabrain/cognitive/state/';
-            const response = await apiClient.get(path) as {
+            if (!agentId) {
+                this._brainConnected = false;
+                this._neuromodulators = [];
+                this._activityLog = [
+                    { message: 'No agent selected — cognitive state cannot be read.', time: new Date().toLocaleTimeString(), icon: 'block' },
+                    ...this._activityLog,
+                ];
+                return;
+            }
+            const response = await apiClient.get(`/somabrain/cognitive/state/${agentId}`) as {
                 neuromodulators?: NeuromodulatorLevel[] | Record<string, number>;
                 adaptation_params?: AdaptationParams;
                 params?: AdaptationParams;
                 cognitiveLoad?: number;
                 memory_stats?: Record<string, number>;
             } | null;
+            this._brainConnected = response !== null && response !== undefined;
             if (response) {
                 const neuro = response.neuromodulators;
                 if (Array.isArray(neuro) && neuro.length) {
@@ -763,6 +777,7 @@ export class SaasCognitivePanel extends LitElement {
                 }
             }
         } catch (error) {
+            this._brainConnected = false;
             console.error('Failed to load cognitive state:', error);
         } finally {
             this._isLoading = false;

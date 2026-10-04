@@ -252,10 +252,12 @@ export class SaasAgentHeader extends LitElement {
                 <div class="agent-info">
                     <div class="agent-avatar material-symbols-outlined">smart_toy</div>
                     <div class="agent-meta">
-                        <div class="agent-name">${agent?.name || 'SomaAgent'}</div>
+                        <div class="agent-name">${agent?.name ?? '—'}</div>
                         <div class="agent-status">
-                            <span class="status-dot ${agent?.status || 'active'}"></span>
-                            <span>${agent?.status === 'active' ? 'Online' : agent?.status || 'Online'}</span>
+                            ${agent?.status
+                                ? html`<span class="status-dot ${agent.status}"></span>
+                                      <span>${agent.status === 'active' ? 'Online' : agent.status}</span>`
+                                : html`<span class="muted">status —</span>`}
                         </div>
                     </div>
                 </div>
