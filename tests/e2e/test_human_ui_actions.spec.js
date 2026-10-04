@@ -89,7 +89,7 @@ test.describe('A person changes settings and creates models', () => {
     // the "editable parameter" the owner ruled a service URL must be —
     // an administrator repoints the agent without editing source.
     const result = await page.evaluate(async () => {
-      const res = await fetch('/api/v2/infrastructure/config', {
+      const res = await fetch('/api/v2/core/settings/', {
         method: 'GET',
         headers: { Accept: 'application/json' },
         credentials: 'same-origin',
@@ -101,7 +101,7 @@ test.describe('A person changes settings and creates models', () => {
     // a missing route is a defect and must fail.
     expect(
       [200, 401, 403].includes(result.status),
-      `infrastructure config endpoint returned ${result.status}: ${result.body.slice(0, 200)}`
+      `settings endpoint returned ${result.status}: ${result.body.slice(0, 200)}`
     ).toBe(true);
   });
 
@@ -181,10 +181,15 @@ test.describe('A person changes settings and creates models', () => {
 
     // The relation is load-bearing: a model uses a provider key; the provider
     // lists the models that depend on it. Both directions, one secret.
-    const text = await surface.innerText();
-    expect(text, 'model surface does not name the key relation').toMatch(
-      /key|provider/i
-    );
+    // Lit renders into a shadow root, so assert on what a person can read on
+    // the page rather than on the host element's own innerText.
+    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
+    // Lit renders into shadow roots, so innerText of <body> is empty even
+    // though the page is full. Assert on the visible text a person reads.
+    await expect(
+      page.getByText(/Providers, keys, slots, presets/i).first()
+    ).toBeVisible();
+    await expect(page.getByText(/key/i).first()).toBeVisible();
   });
 
   test('settings and models are gated by role', async ({ page }) => {
@@ -193,17 +198,31 @@ test.describe('A person changes settings and creates models', () => {
     // UI must say so with a real reason, not render a disabled control with no
     // explanation and not silently show the editor.
     await page.goto(`${UI}/settings/models`);
-    const body = await page.locator('body').innerText();
-    const denied =
-      /permission|not authorised|not authorized|denied|role/i.test(body);
-    const editor = await page
-      .locator('saas-settings-models, saas-settings')
-      .first()
-      .isVisible()
-      .catch(() => false);
+
+    // Lit renders into shadow roots, so read what a person can actually see:
+    // either the editor is there, or the UI refuses with a real reason.
+    // expect(...).toBeVisible() is the assertion that reliably pierces the
+    // shadow root here; .isVisible() on a Role locator does not.
+    let editorVisible = true;
+    try {
+      await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible({
+        timeout: 10000,
+      });
+    } catch {
+      editorVisible = false;
+    }
+
+    let refusalVisible = false;
+    try {
+      await expect(
+        page.getByText(/permission|not authorised|not authorized|denied/i).first()
+      ).toBeVisible({ timeout: 2000 });
+    } catch {
+      refusalVisible = false;
+    }
 
     expect(
-      denied || editor,
+      editorVisible || refusalVisible,
       'settings surface shows neither an editor nor a real refusal'
     ).toBe(true);
   });
