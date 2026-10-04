@@ -33,30 +33,63 @@ EmbedFn = Callable[[str, int], list[float]]
 MEMORY_WAL_TOPIC_DEFAULT = "memory.wal"
 
 
-async def _durable_accept(
+async def durable_accept_memory(
     *,
-    topic: str,
-    payload: dict[str, Any],
-    idempotency_key: str,
-    partition_key: str | None,
+    text: str,
+    tenant_id: str,
+    kind: str,
+    coord: str,
+    session_id: str | None = None,
+    salience: float = 0.5,
+    source: str = "agent-chat",
+    role: str | None = None,
+    ts: str | datetime | None = None,
+    error: str | None = None,
 ) -> Any:
-    """T-6: record the write durably BEFORE the network hop.
+    """T-6 durable-before-hop accept — THE one degraded-queue entry point.
 
-    Lands in the local outbox (Postgres). A successful ``MemoryAck`` marks the
-    row published without a second send; a failed hop leaves it pending so the
-    outbox drain / memory-replicator can replay until acked.
+    Every memory write is accepted into the ``memory.wal`` outbox here. The
+    gateway accepts before its network hop; a caller whose hop already failed
+    queues the same row so the write is replayed. A successful ``MemoryAck``
+    completes the row (``_durable_complete``), a failed hop leaves it pending
+    for the outbox drain / memory-replicator. One queue, one payload shape,
+    one replay authority — there is no second degraded path.
+
+    Returns the ``OutboxMessage`` row.
     """
     from asgiref.sync import sync_to_async
 
     from admin.core.models.zdl import OutboxMessage
+    from services.common.memory_contract import get_memory_setting
+
+    stamp = ts if ts is not None else datetime.now(UTC)
+    topic = str(get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT))
+    payload = {
+        "id": coord,
+        "type": "memory.degraded",
+        "role": "memory",
+        "session_id": session_id,
+        "tenant": tenant_id,
+        "payload": {
+            "text": text,
+            "content": text,
+            "kind": kind,
+            "salience": salience,
+            "source": source,
+            "coord": coord,
+            "role": role,
+            "ts": stamp.isoformat() if hasattr(stamp, "isoformat") else str(stamp),
+        },
+        "error": error,
+    }
 
     def _create() -> Any:
         row, _ = OutboxMessage.objects.get_or_create(
-            idempotency_key=idempotency_key,
+            idempotency_key=f"mem:{coord}",
             defaults={
                 "topic": topic,
                 "payload": payload,
-                "partition_key": partition_key,
+                "partition_key": tenant_id,
                 "headers": {"source": "memory-gateway", "t6": "durable-before-hop"},
             },
         )
@@ -128,8 +161,6 @@ class FanoutMemoryGateway:
         A failed hop leaves it pending — the one replay authority (memory WAL
         via outbox drain / memory-replicator) re-delivers until acked.
         """
-        from services.common.memory_contract import get_memory_setting
-
         stamp = ts if ts is not None else datetime.now(UTC)
         material = coord_key_material(tenant_id, kind, stamp, text)
         coord = make_coord(tenant_id, kind, stamp, text)
@@ -143,28 +174,16 @@ class FanoutMemoryGateway:
             salience=salience,
             source=source,
         )
-        wal_topic = str(get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT))
-        durable = await _durable_accept(
-            topic=wal_topic,
-            payload={
-                "id": coord,
-                "type": "memory.degraded",
-                "role": "memory",
-                "session_id": session_id,
-                "tenant": tenant_id,
-                "payload": {
-                    "text": text,
-                    "content": text,
-                    "kind": kind,
-                    "salience": salience,
-                    "source": source,
-                    "coord": coord,
-                    "role": role,
-                    "ts": stamp.isoformat() if hasattr(stamp, "isoformat") else str(stamp),
-                },
-            },
-            idempotency_key=f"mem:{coord}",
-            partition_key=tenant_id,
+        durable = await durable_accept_memory(
+            text=text,
+            tenant_id=tenant_id,
+            kind=kind,
+            coord=coord,
+            session_id=session_id,
+            salience=salience,
+            source=source,
+            role=role,
+            ts=stamp,
         )
         try:
             ack = await self._cb.call(
@@ -229,5 +248,6 @@ def get_memory_gateway() -> FanoutMemoryGateway:
 __all__ = [
     "FanoutMemoryGateway",
     "build_memory_gateway",
+    "durable_accept_memory",
     "get_memory_gateway",
 ]

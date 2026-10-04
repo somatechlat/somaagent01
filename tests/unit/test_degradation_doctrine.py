@@ -78,3 +78,38 @@ def test_degraded_memory_queue_is_not_a_second_authority_when_wal_is_primary():
     if "publish_degraded_memory" in src:
         assert "PendingMemory.objects.create" not in src
         assert "PendingMemory(" not in src or "import" in src.split("PendingMemory")[0][-40:]
+
+
+# ---------------------------------------------------------------------------
+# One degraded path for every memory write (the seam's outbox is THE entry).
+# ---------------------------------------------------------------------------
+
+
+def _read(rel: str) -> str:
+    from pathlib import Path
+
+    return (Path(__file__).resolve().parents[2] / rel).read_text(encoding="utf-8")
+
+
+def test_api_router_does_not_own_a_second_degraded_queue():
+    """create_memory must not call publish_degraded_memory — that is path two."""
+    src = _read("admin/somabrain/api_router.py")
+    assert "publish_degraded_memory" not in src, (
+        "api_router still queues degraded memories outside the MemoryGateway outbox"
+    )
+
+
+def test_publish_degraded_memory_second_entry_point_is_gone():
+    """There is one degraded-queue entry point; the direct-Kafka one is retired."""
+    assert not hasattr(dmq, "publish_degraded_memory"), (
+        "publish_degraded_memory is a second degraded path (Kafka-direct) — delete it"
+    )
+
+
+def test_every_memory_write_degrades_through_one_entry_point():
+    """The gateway seam and the REST memory surface share the same outbox accept."""
+    gw_src = inspect.getsource(mg.FanoutMemoryGateway.remember_text)
+    api_src = _read("admin/somabrain/api_router.py")
+    entry = "durable_accept_memory"
+    assert entry in gw_src, "the gateway must accept writes through the shared entry"
+    assert entry in api_src, "api_router must degrade through the same shared entry"

@@ -7,6 +7,7 @@ Per CANONICAL_USER_JOURNEYS_SRS.md UC-05: View/Manage Memories.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Optional
 
 from ninja import Query, Router
@@ -187,74 +188,76 @@ async def get_recent_memories(
 async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     """Store a new memory.
 
-    Creates a memory record that will be synced to SomaBrain.
-    Uses ZDL pattern if SomaBrain is unavailable.
+    Writes through the MemoryGateway seam. Degradation is the seam's own
+    outbox (T-6 durable-before-hop) — one path for every memory write.
     """
     await authorize(request, action="resource:memory_write", resource="memory")
-    from services.common.memory_gateway import get_memory_gateway
+    from services.common.memory_contract import get_memory_setting, make_coord
+    from services.common.memory_gateway import (
+        MEMORY_WAL_TOPIC_DEFAULT,
+        durable_accept_memory,
+        get_memory_gateway,
+    )
 
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for memory creation")
     tenant_id = request.auth.effective_tenant_id
+    kind = str(payload.memory_type or "episodic")
 
     try:
         gateway = get_memory_gateway()
         acks = await gateway.remember_text(
             payload.content,
             tenant_id=tenant_id,
-            kind=str(payload.memory_type or "episodic"),
+            kind=kind,
             source="api",
         )
         accepted = next((a for a in acks if a.ok), None)
-        if accepted is None:
-            # The seam already durable-accepted the write (T-6). Surface the
-            # failed ack and queue for replay rather than inventing an id.
-            error = next((a.error for a in acks if a.error), "memory write not accepted")
-            logger.warning("MemoryGateway write not accepted: %s", error)
-            from services.common.degraded_memory_queue import publish_degraded_memory
-
-            queued = await publish_degraded_memory(
-                text=payload.content,
-                tenant_id=tenant_id,
-                namespace="chat_history",
-                kind=str(payload.memory_type or "episodic"),
-                source="degraded-api",
-                error=str(error),
-            )
+        if accepted is not None:
             return {
                 "success": True,
-                "memory_id": queued.get("id"),
-                "degraded": True,
-                "queued": True,
-                "queue": queued.get("channel"),
+                "memory_id": accepted.coord,
                 "message": get_message(SuccessCode.MEMORY_STORED),
             }
-
+        # T-6: the seam already accepted this write into the memory.wal outbox
+        # before its hop. That row is the degraded record and the one replay
+        # authority (outbox drain → memory.wal → memory-replicator). Queuing it
+        # again elsewhere would be a second degraded path and a duplicate.
+        error = next((a.error for a in acks if a.error), "memory write not accepted")
+        coord = next((a.coord for a in acks), "")
+        logger.warning("MemoryGateway write unacked (coord=%s): %s", coord, error)
         return {
             "success": True,
-            "memory_id": accepted.coord,
+            "memory_id": coord,
+            "degraded": True,
+            "queued": True,
+            "queue": get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT),
             "message": get_message(SuccessCode.MEMORY_STORED),
         }
 
     except Exception as e:
-        # ZDL: degraded mode — Kafka WAL queue, replayed by memory-replicator.
-        logger.warning("MemoryGateway unavailable, queueing memory to Kafka WAL: %s", e)
-        from services.common.degraded_memory_queue import publish_degraded_memory
-
-        queued = await publish_degraded_memory(
+        # The seam could not accept the write at all, so no T-6 row exists yet.
+        # Queue it through the same entry point — one degraded path, never a
+        # second queue. If the outbox is also down this raises: fail-closed
+        # rather than silently dropping the write.
+        logger.warning("MemoryGateway could not accept write, queueing: %s", e)
+        stamp = datetime.now(UTC)
+        coord = make_coord(tenant_id, kind, stamp, payload.content)
+        await durable_accept_memory(
             text=payload.content,
             tenant_id=tenant_id,
-            namespace="chat_history",
-            kind=str(payload.memory_type or "episodic"),
-            source="degraded-api",
+            kind=kind,
+            coord=coord,
+            source="api",
+            ts=stamp,
             error=str(e),
         )
         return {
             "success": True,
-            "memory_id": queued.get("id"),
+            "memory_id": coord,
             "degraded": True,
             "queued": True,
-            "queue": queued.get("channel"),
+            "queue": get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT),
             "message": get_message(SuccessCode.MEMORY_STORED),
         }
 
