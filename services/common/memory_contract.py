@@ -87,6 +87,9 @@ class MemoryHit(BaseModel):
     # Never treat unrelated semantic hits as conversation turns.
     session_id: str | None = None
     role: str | None = None
+    # Taxonomy the write path set (episodic / semantic / belief / …). Optional
+    # because an older store row may not carry it; callers filter only when set.
+    kind: str | None = None
 
 
 class MemoryAck(BaseModel):

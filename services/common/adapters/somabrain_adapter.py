@@ -295,6 +295,7 @@ class SomaBrainAdapter:
         created = payload.get("created_at")
         session_id = payload.get("session_id") or item.get("session_id")
         role = payload.get("role") or item.get("role")
+        kind = payload.get("kind") or item.get("kind") or item.get("memory_type")
         return MemoryHit(
             text=text,
             coord=coord,
@@ -303,6 +304,7 @@ class SomaBrainAdapter:
             created_at=str(created) if created else "",
             session_id=str(session_id) if session_id else None,
             role=str(role) if role else None,
+            kind=str(kind) if kind else None,
         )
 
     async def close(self) -> None:

@@ -97,40 +97,36 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
     - Graceful degradation if unavailable
     """
     await authorize(request, action="resource:memory_search", resource="memory")
-    from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
+    from services.common.memory_contract import MemoryRecallUnavailable
+    from services.common.memory_gateway import get_memory_gateway
 
     # Get tenant from auth context (fail-closed if missing)
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for memory search")
     tenant_id = request.auth.effective_tenant_id
 
-    client = get_somabrain_client()
-    if client is None:
-        raise SomaBrainError("SomaBrain not configured", status_code=503)
-
     try:
-        memories = await client.recall(
-            query=payload.query,
-            tenant_id=tenant_id,
-            limit=payload.limit,
-            memory_type=payload.memory_type,
-        )
+        gateway = get_memory_gateway()
+        hits = await gateway.recall(payload.query, max(1, int(payload.limit)), tenant_id)
 
-        items = [
-            MemoryOut(
-                id=m.get("id", ""),
-                content=m.get("content", ""),
-                memory_type=m.get("memory_type", "episodic"),
-                created_at=m.get("created_at", ""),
-                relevance_score=m.get("score"),
-                metadata=m.get("metadata"),
-            ).model_dump()
-            for m in memories
-        ]
+        items = []
+        for hit in hits:
+            if payload.memory_type and hit.kind and hit.kind != payload.memory_type:
+                continue
+            items.append(
+                MemoryOut(
+                    id=hit.coord,
+                    content=hit.text,
+                    memory_type=hit.kind or payload.memory_type or "episodic",
+                    created_at=hit.created_at,
+                    relevance_score=hit.score,
+                    metadata=None,
+                ).model_dump()
+            )
 
         return {"memories": items, "query": payload.query}
 
-    except SomaBrainError as e:
+    except MemoryRecallUnavailable as e:
         logger.error("Memory search failed: %s", e)
         return {
             "memories": [],
@@ -195,35 +191,54 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
     Uses ZDL pattern if SomaBrain is unavailable.
     """
     await authorize(request, action="resource:memory_write", resource="memory")
-    from admin.core.somabrain_client import get_somabrain_client, SomaBrainError
+    from services.common.memory_gateway import get_memory_gateway
 
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for memory creation")
     tenant_id = request.auth.effective_tenant_id
-    user_id = request.auth.sub
-
-    client = get_somabrain_client()
-    if client is None:
-        raise SomaBrainError("SomaBrain not configured", status_code=503)
 
     try:
-        result = await client.remember(
-            content=payload.content,
+        gateway = get_memory_gateway()
+        acks = await gateway.remember_text(
+            payload.content,
             tenant_id=tenant_id,
-            user_id=user_id,
-            memory_type=payload.memory_type,
-            metadata=payload.metadata,
+            kind=str(payload.memory_type or "episodic"),
+            source="api",
         )
+        accepted = next((a for a in acks if a.ok), None)
+        if accepted is None:
+            # The seam already durable-accepted the write (T-6). Surface the
+            # failed ack and queue for replay rather than inventing an id.
+            error = next((a.error for a in acks if a.error), "memory write not accepted")
+            logger.warning("MemoryGateway write not accepted: %s", error)
+            from services.common.degraded_memory_queue import publish_degraded_memory
+
+            queued = await publish_degraded_memory(
+                text=payload.content,
+                tenant_id=tenant_id,
+                namespace="chat_history",
+                kind=str(payload.memory_type or "episodic"),
+                source="degraded-api",
+                error=str(error),
+            )
+            return {
+                "success": True,
+                "memory_id": queued.get("id"),
+                "degraded": True,
+                "queued": True,
+                "queue": queued.get("channel"),
+                "message": get_message(SuccessCode.MEMORY_STORED),
+            }
 
         return {
             "success": True,
-            "memory_id": result.get("id"),
+            "memory_id": accepted.coord,
             "message": get_message(SuccessCode.MEMORY_STORED),
         }
 
-    except SomaBrainError as e:
+    except Exception as e:
         # ZDL: degraded mode — Kafka WAL queue, replayed by memory-replicator.
-        logger.warning("SomaBrain unavailable, queueing memory to Kafka WAL: %s", e)
+        logger.warning("MemoryGateway unavailable, queueing memory to Kafka WAL: %s", e)
         from services.common.degraded_memory_queue import publish_degraded_memory
 
         queued = await publish_degraded_memory(
@@ -255,16 +270,13 @@ async def delete_memory(request, memory_id: str) -> dict:
     Per SRS UC-05: DELETE /api/v2/memory/{id}
     """
     await authorize(request, action="resource:memory_delete", resource="memory")
-    from admin.core.somabrain_client import get_somabrain_client
+    from services.common.memory_gateway import get_memory_gateway
 
     if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
         raise UnauthorizedError("Tenant context required for delete")
     tenant_id = request.auth.effective_tenant_id
-    client = get_somabrain_client()
-    if client is None:
-        raise SomaBrainError("SomaBrain not configured", status_code=503)
-
-    success = await client.forget(memory_id=memory_id, tenant_id=tenant_id)
+    gateway = get_memory_gateway()
+    success = await gateway.forget(memory_id, tenant_id)
 
     return {
         "success": success,

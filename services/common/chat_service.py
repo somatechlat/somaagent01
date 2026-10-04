@@ -97,14 +97,27 @@ class ChatService:
         limit: int,
         tenant_id: str,
     ) -> List[dict]:
-        """Recall memories from SomaBrain."""
-        from admin.core.somabrain_client import SomaBrainClient
+        """Recall memories through the MemoryGateway seam (one read path)."""
+        from services.common.memory_contract import MemoryRecallUnavailable
+        from services.common.memory_gateway import get_memory_gateway
 
-        client = await SomaBrainClient.get_async()
-        if client:
-            results = await client.recall(query=query, top_k=limit, tenant=tenant_id)
-            return results or []
-        return []
+        try:
+            gateway = get_memory_gateway()
+            hits = await gateway.recall(query, max(1, int(limit)), tenant_id)
+        except MemoryRecallUnavailable:
+            return []
+        return [
+            {
+                "id": h.coord,
+                "coord": h.coord,
+                "content": h.text,
+                "text": h.text,
+                "score": h.score,
+                "created_at": h.created_at,
+                "session_id": h.session_id,
+            }
+            for h in hits or []
+        ]
 
     async def _load_capsule(self, capsule_id: str) -> Optional[Any]:
         """Load a Capsule by ID."""

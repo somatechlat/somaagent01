@@ -107,36 +107,44 @@ async def store_memory(
     content: Dict[str, Any],
     memory_type: str = "interaction",
 ) -> Optional[str]:
-    """Store memory in SomaBrain with proper metadata."""
-    soma_client = _get_agent_soma_client(agent)
-    if soma_client is None:
-        raise RuntimeError("SomaBrain client is required for store_memory (no bypass)")
+    """Store memory through the MemoryGateway seam (one write path).
+
+    The gateway is the only writer. Structured agent payloads are carried as
+    JSON text so nothing is dropped at the seam; the taxonomy rides in ``kind``.
+    """
+    import json
+
+    from services.common.memory_gateway import get_memory_gateway
+
+    if not agent.tenant_id:
+        raise RuntimeError("tenant_id is required for store_memory (no bypass)")
     try:
-        memory_payload = {
-            "value": {
-                "content": content,
-                "type": memory_type,
-                "agent_number": agent.number,
-                "persona_id": agent.persona_id,
-                "session_id": agent.session_id,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            },
-            "tenant": agent.tenant_id,
-            "namespace": "wm",
-            "key": f"{memory_type}_{agent.session_id}_{datetime.now(timezone.utc).timestamp()}",
-            "tags": [memory_type, f"agent_{agent.number}"],
-            "importance": 0.8,
-            "novelty": 0.7,
-            "trace_id": agent.session_id,
-        }
-        result = await soma_client.remember(memory_payload)
-        coordinate = result.get("coordinate")
-        if coordinate:
-            PrintStyle(font_color="cyan", padding=False).print(
-                f"Stored {memory_type} memory: {str(coordinate)[:20]}..."
-            )
-            return str(coordinate)
-    except SomaClientError as e:
+        text = (
+            content
+            if isinstance(content, str)
+            else json.dumps(content, ensure_ascii=False, default=str)
+        )
+        gateway = get_memory_gateway()
+        acks = await gateway.remember_text(
+            text,
+            tenant_id=str(agent.tenant_id),
+            kind=str(memory_type or "episodic"),
+            session_id=getattr(agent, "session_id", None),
+            salience=0.8,
+            source=f"agent_{agent.number}",
+        )
+        for ack in acks:
+            if ack.ok:
+                PrintStyle(font_color="cyan", padding=False).print(
+                    f"Stored {memory_type} memory: {str(ack.coord)[:20]}..."
+                )
+                return str(ack.coord)
+        for ack in acks:
+            if ack.error:
+                PrintStyle(font_color="red", padding=False).print(
+                    f"Failed to store memory: {ack.error}"
+                )
+    except Exception as e:
         PrintStyle(font_color="red", padding=False).print(f"Failed to store memory: {e}")
     return None
 
@@ -147,23 +155,39 @@ async def recall_memories(
     top_k: int = 5,
     memory_type: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Recall memories from SomaBrain based on query."""
-    soma_client = _get_agent_soma_client(agent)
-    if soma_client is None:
-        LOGGER.debug("SomaBrain not configured; returning empty recall results")
+    """Recall memories through the MemoryGateway seam (one read path)."""
+    from services.common.memory_contract import MemoryRecallUnavailable
+    from services.common.memory_gateway import get_memory_gateway
+
+    if not agent.tenant_id:
+        LOGGER.debug("No tenant on agent; returning empty recall results")
         return []
     try:
-        memories = await soma_client.recall(
-            query=query,
-            top_k=top_k,
-            tenant=agent.tenant_id,
-            namespace="wm",
-            tags=[memory_type] if memory_type else None,
-        )
+        gateway = get_memory_gateway()
+        hits = await gateway.recall(query, max(1, int(top_k)), str(agent.tenant_id))
+        memories: List[Dict[str, Any]] = []
+        for hit in hits:
+            if memory_type and hit.kind and hit.kind != memory_type:
+                continue
+            memories.append(
+                {
+                    "id": hit.coord,
+                    "coord": hit.coord,
+                    "content": hit.text,
+                    "text": hit.text,
+                    "memory_type": hit.kind or memory_type or "episodic",
+                    "score": hit.score,
+                    "created_at": hit.created_at,
+                    "session_id": hit.session_id,
+                }
+            )
         if memories:
             PrintStyle(font_color="cyan", padding=False).print(f"Recalled {len(memories)} memories")
         return memories
-    except SomaClientError as e:
+    except MemoryRecallUnavailable as e:
+        PrintStyle(font_color="red", padding=False).print(f"Failed to recall memories: {e}")
+        return []
+    except Exception as e:
         PrintStyle(font_color="red", padding=False).print(f"Failed to recall memories: {e}")
         return []
 

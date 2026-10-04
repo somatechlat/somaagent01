@@ -242,13 +242,27 @@ class ResultPublisher:
                 )
 
             if allow_memory:
-                if self._executor.soma is None:
-                    LOGGER.debug("SomaBrain not configured; skipping tool memory capture")
-                    return
                 from services.common.memory_contract import get_memory_setting
+                from services.common.memory_gateway import get_memory_gateway
 
                 wal_topic = str(get_memory_setting("MEMORY_WAL_TOPIC", "memory.wal"))
-                result = await self._executor.soma.remember(memory_payload)
+                # ONE write path: MemoryGateway. The tool lane is not a second
+                # writer; the seam's durable-accept owns retry/replay.
+                text = str(memory_payload.get("content") or "")
+                gateway = get_memory_gateway()
+                acks = await gateway.remember_text(
+                    text,
+                    tenant_id=str(tenant),
+                    kind=str(memory_payload.get("type") or "episodic"),
+                    session_id=memory_payload.get("session_id"),
+                    source="tool-result",
+                )
+                accepted = next((a for a in acks if a.ok), None)
+                result = {
+                    "coordinate": accepted.coord if accepted else None,
+                    "coord": accepted.coord if accepted else None,
+                    "ok": accepted.ok if accepted else False,
+                }
                 try:
                     wal_event = {
                         "type": "memory.write",
