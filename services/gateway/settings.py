@@ -59,7 +59,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
-SECURE_HSTS_SECONDS = int(os.environ.get("SA01_HSTS_SECONDS", "31536000")) if not DEBUG else 0
+SECURE_HSTS_SECONDS = os.environ.get("SA01_HSTS_SECONDS") if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 
@@ -181,10 +181,10 @@ AAAS_DEFAULT_TENANT_ID = os.environ.get("AAAS_DEFAULT_TENANT_ID", None)
 AAAS_DEFAULT_CHAT_MODEL = os.environ.get("AAAS_DEFAULT_CHAT_MODEL")
 
 # Default tier limits (can be overridden per-tier in database)
-AAAS_DEFAULT_MAX_AGENTS = int(os.environ.get("AAAS_DEFAULT_MAX_AGENTS", "10"))
-AAAS_DEFAULT_MAX_USERS = int(os.environ.get("AAAS_DEFAULT_MAX_USERS", "50"))
-AAAS_DEFAULT_MAX_TOKENS_MONTHLY = int(os.environ.get("AAAS_DEFAULT_MAX_TOKENS_MONTHLY", "10000000"))
-AAAS_DEFAULT_STORAGE_GB = float(os.environ.get("AAAS_DEFAULT_STORAGE_GB", "50.0"))
+AAAS_DEFAULT_MAX_AGENTS = os.environ.get("AAAS_DEFAULT_MAX_AGENTS")
+AAAS_DEFAULT_MAX_USERS = os.environ.get("AAAS_DEFAULT_MAX_USERS")
+AAAS_DEFAULT_MAX_TOKENS_MONTHLY = os.environ.get("AAAS_DEFAULT_MAX_TOKENS_MONTHLY")
+AAAS_DEFAULT_STORAGE_GB = os.environ.get("AAAS_DEFAULT_STORAGE_GB")
 
 # =============================================================================
 # INFRASTRUCTURE SETTINGS (for migrated Django Ninja endpoints)
@@ -252,25 +252,26 @@ SOMAFRACTALMEMORY_URL = get_optional_env(
 # ---------------------------------------------------------------------------
 # MEMORY TOOLS / SEAM — fully configurable (Django settings is the authority).
 # ---------------------------------------------------------------------------
-MEM_EMBED_DIM = int(os.environ.get("MEM_EMBED_DIM", "768"))
-MEM_HTTP_TIMEOUT = float(os.environ.get("MEM_HTTP_TIMEOUT", "5.0"))
-MEM_RECALL_TOP_K = int(os.environ.get("MEM_RECALL_TOP_K", "8"))
-MEM_PROXIMITY_TOP_K = int(os.environ.get("MEM_PROXIMITY_TOP_K", "10"))
-MEM_HISTORY_LIMIT = int(os.environ.get("MEM_HISTORY_LIMIT", "20"))
+# No default here. The schema default lives once, as
+# services.common.memory_contract.DEFAULT_MEM_EMBED_DIM, and must equal
+# SFM's SOMA_VECTOR_DIM (ARCHITECTURE-INVARIANTS §2).
+MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DIM") else None
+MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT")
+MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K")
+MEM_PROXIMITY_TOP_K = os.environ.get("MEM_PROXIMITY_TOP_K")
+MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT")
 MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
 MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
-MEM_DEFAULT_SALIENCE = float(os.environ.get("MEM_DEFAULT_SALIENCE", "0.5"))
+MEM_DEFAULT_SALIENCE = os.environ.get("MEM_DEFAULT_SALIENCE")
 MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
-MEM_WRITE_TIMEOUT_S = float(os.environ.get("MEM_WRITE_TIMEOUT_S", "10.0"))
-MEM_RECALL_TIMEOUT_S = float(os.environ.get("MEM_RECALL_TIMEOUT_S", "2.5"))
-MEM_HISTORY_TIMEOUT_S = float(os.environ.get("MEM_HISTORY_TIMEOUT_S", "2.5"))
+MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S")
+MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S")
+MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S")
 MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
 MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
-TOOL_REWARD_SUCCESS = float(os.environ.get("TOOL_REWARD_SUCCESS", "1.0"))
-TOOL_REWARD_FAILURE = float(os.environ.get("TOOL_REWARD_FAILURE", "0.0"))
-SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = float(
-    os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", "0.5")
-)
+TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
+TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT")
 
 # Temporal async-cycle schedule cadence. Deployment env may override at boot;
 # the schema default lives only on SettingsModel (R-VAL-01 — one number, one
@@ -280,20 +281,20 @@ SA01_JOB_ADVANCE_SECONDS = os.environ.get("SA01_JOB_ADVANCE_SECONDS")
 SA01_OUTBOX_REPLAY_SECONDS = os.environ.get("SA01_OUTBOX_REPLAY_SECONDS")
 
 # LLM / HTTP / MODEL runtime tunables (Django settings authority).
-LLM_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_LLM_CONNECT_TIMEOUT", "5.0"))
-LLM_READ_TIMEOUT_S = float(os.environ.get("SA01_LLM_READ_TIMEOUT", "15.0"))
-LLM_MAX_RETRIES = int(os.environ.get("SA01_LLM_MAX_RETRIES", "1"))
-LLM_RETRY_BASE_DELAY_S = float(os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S", "0.4"))
-LLM_RETRY_BACKOFF_CAP_S = float(os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S", "2.0"))
-LLM_RETRY_AFTER_CAP_S = float(os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S", "3.0"))
-HTTP_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_HTTP_CONNECT_TIMEOUT", "5.0"))
-HTTP_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_READ_TIMEOUT", "10.0"))
-HTTP_SLOW_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT", "30.0"))
+LLM_CONNECT_TIMEOUT_S = os.environ.get("SA01_LLM_CONNECT_TIMEOUT")
+LLM_READ_TIMEOUT_S = os.environ.get("SA01_LLM_READ_TIMEOUT")
+LLM_MAX_RETRIES = os.environ.get("SA01_LLM_MAX_RETRIES")
+LLM_RETRY_BASE_DELAY_S = os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S")
+LLM_RETRY_BACKOFF_CAP_S = os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S")
+LLM_RETRY_AFTER_CAP_S = os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S")
+HTTP_CONNECT_TIMEOUT_S = os.environ.get("SA01_HTTP_CONNECT_TIMEOUT")
+HTTP_READ_TIMEOUT_S = os.environ.get("SA01_HTTP_READ_TIMEOUT")
+HTTP_SLOW_READ_TIMEOUT_S = os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT")
 DEFAULT_CHAT_MODEL_NAME = os.environ.get("SA01_DEFAULT_CHAT_MODEL_NAME", "")
 DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
 DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
-CB_FAILURE_THRESHOLD = int(os.environ.get("CB_FAILURE_THRESHOLD", "5"))
-CB_RESET_TIMEOUT_S = float(os.environ.get("CB_RESET_TIMEOUT_S", "30.0"))
+CB_FAILURE_THRESHOLD = os.environ.get("CB_FAILURE_THRESHOLD")
+CB_RESET_TIMEOUT_S = os.environ.get("CB_RESET_TIMEOUT_S")
 OPA_URL = get_optional_env("SA01_OPA_URL", "", "Open Policy Agent for authorization policies")
 
 # Voice Services (Whisper STT + Kokoro TTS).
@@ -320,15 +321,15 @@ LLM_API_KEY = get_secret_manager().get_credential("llm_api_key")
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
 
 # AuthN / login hardening (administrator-managed; schema defaults on SettingsModel)
-LOGIN_RATE_LIMIT = int(os.environ.get("SA01_LOGIN_RATE_LIMIT", "10"))
-LOGIN_RATE_WINDOW = int(os.environ.get("SA01_LOGIN_RATE_WINDOW", "60"))
+LOGIN_RATE_LIMIT = os.environ.get("SA01_LOGIN_RATE_LIMIT")
+LOGIN_RATE_WINDOW = os.environ.get("SA01_LOGIN_RATE_WINDOW")
 
 # Voice payload ceilings and multimodal bounds
 VOICE_MAX_AUDIO_BYTES = int(os.environ.get("SA01_VOICE_MAX_AUDIO_BYTES", str(10 * 1024 * 1024)))
-VOICE_LLM_MAX_TOKENS = int(os.environ.get("SA01_VOICE_LLM_MAX_TOKENS", "150"))
-MULTIMODAL_PROMPT_MAX_CHARS = int(os.environ.get("SA01_MULTIMODAL_PROMPT_MAX_CHARS", "4000"))
-MULTIMODAL_IMAGE_TIMEOUT_S = float(os.environ.get("SA01_MULTIMODAL_IMAGE_TIMEOUT_S", "60.0"))
-MULTIMODAL_DIAGRAM_TIMEOUT_S = float(os.environ.get("SA01_MULTIMODAL_DIAGRAM_TIMEOUT_S", "30.0"))
+VOICE_LLM_MAX_TOKENS = os.environ.get("SA01_VOICE_LLM_MAX_TOKENS")
+MULTIMODAL_PROMPT_MAX_CHARS = os.environ.get("SA01_MULTIMODAL_PROMPT_MAX_CHARS")
+MULTIMODAL_IMAGE_TIMEOUT_S = os.environ.get("SA01_MULTIMODAL_IMAGE_TIMEOUT_S")
+MULTIMODAL_DIAGRAM_TIMEOUT_S = os.environ.get("SA01_MULTIMODAL_DIAGRAM_TIMEOUT_S")
 
 
 # Multimodal Services (empty when unset — never a guessed host)
@@ -358,7 +359,7 @@ JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
 # -----------------------------------------------------------------------------
 JWT_JWKS_URL = os.environ.get("SA01_JWT_JWKS_URL", f"{JWT_ISSUER}/protocol/openid-connect/certs")
 JWT_ALGORITHMS = os.environ.get("SA01_JWT_ALGORITHMS", "RS256").split(",")
-JWT_LEEWAY = int(os.environ.get("SA01_JWT_LEEWAY", "10"))
+JWT_LEEWAY = os.environ.get("SA01_JWT_LEEWAY")
 # Disable issuer/audience validation for Docker dev (localhost/container hostname mismatch)
 JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "true").lower() == "true"
 

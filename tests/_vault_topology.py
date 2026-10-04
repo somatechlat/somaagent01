@@ -38,3 +38,32 @@ _DEFAULT_TOKEN_FILE = (
 os.environ.setdefault("VAULT_ADDR", "http://localhost:20882")
 os.environ.setdefault("VAULT_TOKEN_FILE", str(_DEFAULT_TOKEN_FILE))
 os.environ.setdefault("VAULT_MOUNT", "secret")
+
+# Postgres topology is bootstrap (SOMA-STD-CONFIG-001). config/settings.py
+# reads it at import — before any conftest is imported — so it must be named
+# here too. Topology only: the password is a Vault credential, never here.
+# These are the real hosts and ports of the real test stack.
+os.environ.setdefault("POSTGRES_HOST", "localhost")
+os.environ.setdefault("POSTGRES_PORT", "63932")
+os.environ.setdefault("SA01_ALLOWED_HOSTS", "testserver,localhost")
+os.environ.setdefault("SA01_REDIS_URL", "redis://localhost:63979/0")
+
+# The database role and name are deployment topology, not ENV. The supported
+# test seam is SettingsRegistry.set() with an override dict — see
+# config/settings_registry.py. These are the real role and database of the
+# real test stack (verified against somastack_postgres on :63932).
+from config.settings_registry import AAASSettings, SettingsRegistry  # noqa: E402
+
+SettingsRegistry.set(
+    AAASSettings.load(
+        overrides={
+            "postgres_host": "localhost",
+            "postgres_port": 63932,
+            "postgres_db": "somaagent",
+            "postgres_user": "somaagent",
+            "redis_host": "localhost",
+            "redis_port": 63979,
+            "redis_db": 0,
+        }
+    )
+)

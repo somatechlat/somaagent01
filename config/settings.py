@@ -117,12 +117,15 @@ SOMA_API_TOKEN = get_secret_manager().get_credential("soma_api_token")
 # MEM_EMBED_DIM (here) MUST equal SOMA_VECTOR_DIM (SFM's settings/infra.py).
 # This is the authority; env is the 12-factor override. Nothing else in the
 # codebase may invent a dimension.
-MEM_EMBED_DIM = int(os.environ.get("MEM_EMBED_DIM", "768"))
+# No default here. The schema default lives once, as
+# services.common.memory_contract.DEFAULT_MEM_EMBED_DIM, and must equal
+# SFM's SOMA_VECTOR_DIM (ARCHITECTURE-INVARIANTS §2).
+MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DIM") else None
 
 # Memory seam transport + namespace (ARCHITECTURE-INVARIANTS §6).
 # Adapters read these via services.common.memory_contract.get_memory_setting()
 # and must never touch os.environ directly — this file is the one authority.
-MEM_HTTP_TIMEOUT = float(os.environ.get("MEM_HTTP_TIMEOUT", "5.0"))
+MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT")
 SFM_NAMESPACE = os.environ.get("SFM_NAMESPACE", "api_ns")
 SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE", "default")
 
@@ -130,27 +133,25 @@ SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE", "default")
 # MEMORY TOOLS / SEAM — fully configurable. No hardcoded tool parameters.
 # Read via services.common.memory_contract.get_memory_setting().
 # ---------------------------------------------------------------------------
-MEM_RECALL_TOP_K = int(os.environ.get("MEM_RECALL_TOP_K", "8"))
-MEM_PROXIMITY_TOP_K = int(os.environ.get("MEM_PROXIMITY_TOP_K", "10"))
-MEM_HISTORY_LIMIT = int(os.environ.get("MEM_HISTORY_LIMIT", "20"))
+MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K")
+MEM_PROXIMITY_TOP_K = os.environ.get("MEM_PROXIMITY_TOP_K")
+MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT")
 MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
 MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
-MEM_DEFAULT_SALIENCE = float(os.environ.get("MEM_DEFAULT_SALIENCE", "0.5"))
+MEM_DEFAULT_SALIENCE = os.environ.get("MEM_DEFAULT_SALIENCE")
 MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
-MEM_WRITE_TIMEOUT_S = float(os.environ.get("MEM_WRITE_TIMEOUT_S", "10.0"))
-MEM_RECALL_TIMEOUT_S = float(os.environ.get("MEM_RECALL_TIMEOUT_S", "2.5"))
-MEM_HISTORY_TIMEOUT_S = float(os.environ.get("MEM_HISTORY_TIMEOUT_S", "2.5"))
+MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S")
+MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S")
+MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S")
 
 # Degraded-mode Kafka queue (memory-replicator replay → SomaBrain).
 MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
 MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
 
 # Cognitive / tool feedback rewards (SomaBrain FeedbackRequest.utility).
-TOOL_REWARD_SUCCESS = float(os.environ.get("TOOL_REWARD_SUCCESS", "1.0"))
-TOOL_REWARD_FAILURE = float(os.environ.get("TOOL_REWARD_FAILURE", "0.0"))
-SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = float(
-    os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", "0.5")
-)
+TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
+TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT")
 
 # Temporal async-cycle schedule cadence. Deployment env may override at boot;
 # the schema default lives only on SettingsModel (R-VAL-01 — one number, one
@@ -162,16 +163,16 @@ SA01_OUTBOX_REPLAY_SECONDS = os.environ.get("SA01_OUTBOX_REPLAY_SECONDS")
 # ---------------------------------------------------------------------------
 # LLM / HTTP / MODEL runtime tunables — Django settings is the authority.
 # ---------------------------------------------------------------------------
-LLM_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_LLM_CONNECT_TIMEOUT", "5.0"))
-LLM_READ_TIMEOUT_S = float(os.environ.get("SA01_LLM_READ_TIMEOUT", "15.0"))
-LLM_MAX_RETRIES = int(os.environ.get("SA01_LLM_MAX_RETRIES", "1"))
-LLM_RETRY_BASE_DELAY_S = float(os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S", "0.4"))
-LLM_RETRY_BACKOFF_CAP_S = float(os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S", "2.0"))
-LLM_RETRY_AFTER_CAP_S = float(os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S", "3.0"))
+LLM_CONNECT_TIMEOUT_S = os.environ.get("SA01_LLM_CONNECT_TIMEOUT")
+LLM_READ_TIMEOUT_S = os.environ.get("SA01_LLM_READ_TIMEOUT")
+LLM_MAX_RETRIES = os.environ.get("SA01_LLM_MAX_RETRIES")
+LLM_RETRY_BASE_DELAY_S = os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S")
+LLM_RETRY_BACKOFF_CAP_S = os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S")
+LLM_RETRY_AFTER_CAP_S = os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S")
 
-HTTP_CONNECT_TIMEOUT_S = float(os.environ.get("SA01_HTTP_CONNECT_TIMEOUT", "5.0"))
-HTTP_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_READ_TIMEOUT", "10.0"))
-HTTP_SLOW_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT", "30.0"))
+HTTP_CONNECT_TIMEOUT_S = os.environ.get("SA01_HTTP_CONNECT_TIMEOUT")
+HTTP_READ_TIMEOUT_S = os.environ.get("SA01_HTTP_READ_TIMEOUT")
+HTTP_SLOW_READ_TIMEOUT_S = os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT")
 
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
 DEFAULT_CHAT_MODEL_NAME = os.environ.get("SA01_DEFAULT_CHAT_MODEL_NAME", "")
@@ -179,8 +180,8 @@ DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
 DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
 
 # Circuit breaker knobs (SomaBrain / external service resilience).
-CB_FAILURE_THRESHOLD = int(os.environ.get("CB_FAILURE_THRESHOLD", "5"))
-CB_RESET_TIMEOUT_S = float(os.environ.get("CB_RESET_TIMEOUT_S", "30.0"))
+CB_FAILURE_THRESHOLD = os.environ.get("CB_FAILURE_THRESHOLD")
+CB_RESET_TIMEOUT_S = os.environ.get("CB_RESET_TIMEOUT_S")
 
 # Speech realtime (endpoint is topology → env/URL).
 SPEECH_REALTIME_MODEL = os.environ.get("SPEECH_REALTIME_MODEL", "")
@@ -188,9 +189,9 @@ SPEECH_REALTIME_VOICE = os.environ.get("SPEECH_REALTIME_VOICE", "")
 SPEECH_REALTIME_ENDPOINT = os.environ.get("SPEECH_REALTIME_ENDPOINT", "")
 
 # AgentIQ knobs (Capsule-overridable; see SOMA-SETTINGS-MODEL-001 §7.2).
-AGENTIQ_INTELLIGENCE_LEVEL = int(os.environ.get("AGENTIQ_INTELLIGENCE_LEVEL", "5"))
-AGENTIQ_AUTONOMY_LEVEL = int(os.environ.get("AGENTIQ_AUTONOMY_LEVEL", "5"))
-AGENTIQ_RESOURCE_BUDGET = float(os.environ.get("AGENTIQ_RESOURCE_BUDGET", "0.10"))
+AGENTIQ_INTELLIGENCE_LEVEL = os.environ.get("AGENTIQ_INTELLIGENCE_LEVEL")
+AGENTIQ_AUTONOMY_LEVEL = os.environ.get("AGENTIQ_AUTONOMY_LEVEL")
+AGENTIQ_RESOURCE_BUDGET = os.environ.get("AGENTIQ_RESOURCE_BUDGET")
 
 # Redis
 REDIS_HOST = os.environ.get("REDIS_HOST") or None
@@ -229,15 +230,20 @@ INSTALLED_APPS = [
 ]
 
 # Database credentials MUST come from Vault - zero hardcoded passwords (VIBE 164)
-# Topology is bootstrap: POSTGRES_HOST / POSTGRES_PORT / POSTGRES_DB /
-# POSTGRES_USER (SOMA-STD-CONFIG-001). There is no TEST_DB_* second
-# vocabulary and no default name, user, host or port.
-_db_name = os.environ.get("POSTGRES_DB")
-_db_user = os.environ.get("POSTGRES_USER")
+# Bootstrap ENV carries only POSTGRES_HOST and POSTGRES_PORT (SOMA-STD-CONFIG-001).
+# The database name and role are deployment topology and live in
+# config/settings_registry.py, one dict per mode — not a second ENV vocabulary
+# (the former TEST_DB_* pair) and not a literal here.
+from config.settings_registry import SettingsRegistry as _SettingsRegistry
+
+_topology = _SettingsRegistry.load()
+_db_name = _topology.postgres_db
+_db_user = _topology.postgres_user
 if not _db_name or not _db_user:
     raise RuntimeError(
-        "POSTGRES_DB and POSTGRES_USER are required bootstrap topology. "
-        "There is no default database name or user."
+        "postgres_db and postgres_user are not configured for this deployment "
+        "mode in config/settings_registry.py. There is no default database "
+        "name or role."
     )
 # No ephemeral fallback. A generated password is a fake: no database accepts
 # it, so every connection fails later and far from the real cause. Fail here,
