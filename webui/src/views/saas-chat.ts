@@ -2021,7 +2021,10 @@ export class SaasChat extends LitElement {
                         @saas-chat-control=${this._onChatControl}
                     ></saas-chat-topbar>
 
-                    <saas-agent-iq></saas-agent-iq>
+                    <saas-agent-iq
+                        .capsuleId=${this._agents.find((a) => a.id === this._selectedAgentId)
+                            ?.capsule_id ?? ''}
+                    ></saas-agent-iq>
 
                     <div class="header-right">
                         ${this._agents.length > 1

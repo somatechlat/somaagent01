@@ -2,15 +2,19 @@
  * AgentIQ strip — knobs, derived readouts, 5 context lanes.
  *
  * Derived settings are NEVER computed here. They come from the server
- * (`admin.core.agentiq.derivation.derive_all_settings`). Until an endpoint
- * returns them the readouts show "—", not a guess.
+ * (`GET /api/v2/core/agentiq/{capsule_id}` → `admin.core.agentiq.derivation`).
+ * Until the server returns them the readouts show "—", not a guess.
+ *
+ * Knob writes go to `PUT /api/v2/core/agentiq/{capsule_id}`, which persists
+ * `Capsule.persona_config.knobs` and returns freshly derived settings.
  *
  * The five context lanes (admin/core/context/lanes.py) are shown as the real
  * allocation buckets. Percentages only appear when the server reports them.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
+import { apiClient } from '../services/api-client.js';
 import { iqStore, type IQKnobs, type DerivedSettings } from '../stores/iq-store.js';
 
 const LANES = [
@@ -21,7 +25,12 @@ const LANES = [
     { id: 'buffer', label: 'Buffer', desc: 'User message' },
 ] as const;
 
-const STYLES = ['precise', 'balanced', 'creative'];
+interface AgentIQPayload {
+    capsule_id: string;
+    knobs: Record<string, unknown>;
+    derived: Record<string, unknown>;
+    response_styles: string[];
+}
 
 @customElement('saas-agent-iq')
 export class SaasAgentIq extends LitElement {
@@ -86,19 +95,66 @@ export class SaasAgentIq extends LitElement {
         }
     `;
 
+    /** Capsule whose persona_config.knobs this strip edits. */
+    @property({ type: String, attribute: 'capsule-id' }) capsuleId = '';
+
     @state() private _knobs = iqStore.knobs;
     @state() private _derived = iqStore.derived;
     @state() private _dirty = iqStore.dirty;
     @state() private _busy = false;
     @state() private _message = '';
+    /** Allowed response_style values, from the server lookup table. */
+    @state() private _styles: string[] = [];
+
+    private _unsubscribe: (() => void) | null = null;
 
     connectedCallback() {
         super.connectedCallback();
-        iqStore.subscribe(() => {
+        this._unsubscribe = iqStore.subscribe(() => {
             this._knobs = iqStore.knobs;
             this._derived = iqStore.derived;
             this._dirty = iqStore.dirty;
         });
+        if (this.capsuleId) {
+            void this._load();
+        }
+    }
+
+    disconnectedCallback() {
+        this._unsubscribe?.();
+        this._unsubscribe = null;
+        super.disconnectedCallback();
+    }
+
+    override updated(changed: Map<string, unknown>) {
+        if (changed.has('capsuleId') && this.capsuleId) {
+            void this._load();
+        }
+    }
+
+    private async _load() {
+        if (!this.capsuleId) {
+            this._message = 'No capsule selected — knobs are not loaded.';
+            return;
+        }
+        this._busy = true;
+        this._message = '';
+        try {
+            const payload = await apiClient.get<AgentIQPayload>(
+                `/core/agentiq/${this.capsuleId}`
+            );
+            this._styles = payload.response_styles ?? [];
+            iqStore.setFromServer(
+                payload.knobs as never,
+                payload.derived as never
+            );
+            iqStore.markSaved();
+            this._message = '';
+        } catch (error) {
+            this._message = `Failed to load AgentIQ: ${error instanceof Error ? error.message : error}`;
+        } finally {
+            this._busy = false;
+        }
     }
 
     private _setKnob(key: keyof IQKnobs, value: number | string) {
@@ -106,13 +162,33 @@ export class SaasAgentIq extends LitElement {
     }
 
     private async _save() {
+        if (!this.capsuleId) {
+            this._message = 'No capsule selected — cannot save knobs.';
+            return;
+        }
+        const knobs = iqStore.knobs;
+        if (!knobs) {
+            this._message = 'Knobs are not loaded.';
+            return;
+        }
         this._busy = true;
         this._message = '';
         try {
-            // No HTTP endpoint exposes Capsule.persona_config.knobs on this
-            // deployment. Saving would be a lie, so the control stays disabled
-            // until one exists. See the blocked note below.
-            this._message = 'Knob persistence has no API endpoint on this deployment.';
+            const payload = await apiClient.put<AgentIQPayload>(
+                `/core/agentiq/${this.capsuleId}`,
+                {
+                    intelligence_level: knobs.intelligence_level,
+                    autonomy_level: knobs.autonomy_level,
+                    resource_budget: knobs.resource_budget,
+                    response_style: knobs.response_style,
+                }
+            );
+            this._styles = payload.response_styles ?? this._styles;
+            iqStore.setFromServer(payload.knobs as never, payload.derived as never);
+            iqStore.markSaved();
+            this._message = 'Knobs saved. Derived settings recomputed by the server.';
+        } catch (error) {
+            this._message = `Failed to save knobs: ${error instanceof Error ? error.message : error}`;
         } finally {
             this._busy = false;
         }
@@ -163,20 +239,28 @@ export class SaasAgentIq extends LitElement {
                             .value=${knobs.response_style}
                             @change=${(e: Event) => this._setKnob('response_style', (e.target as HTMLSelectElement).value)}
                         >
-                            ${STYLES.map(s => html`<option value=${s} ?selected=${knobs.response_style === s}>${s}</option>`)}
+                            ${(this._styles.length ? this._styles : [knobs.response_style]).map(
+                                (s) => html`<option value=${s} ?selected=${knobs.response_style === s}>${s}</option>`
+                            )}
                         </select>
                     </div>
-                    <button class="btn" ?disabled=${!this._dirty} @click=${this._reset}>Reset to saved</button>
-                    <button class="btn primary" ?disabled=${true} title="No API endpoint writes Capsule.persona_config.knobs">Save</button>
-                ` : html`<span class="muted">Knobs not loaded.</span>`}
+                    <button class="btn" ?disabled=${!this._dirty || this._busy} @click=${this._reset}>Reset to saved</button>
+                    <button
+                        class="btn primary"
+                        data-control="save-iq"
+                        ?disabled=${!this._dirty || this._busy || !this.capsuleId}
+                        title=${this.capsuleId ? 'Persist knobs on the Capsule and recompute derived settings' : 'No capsule selected'}
+                        @click=${this._save}
+                    >Save</button>
+                ` : html`<span class="muted">${this.capsuleId ? 'Knobs not loaded.' : 'No capsule selected.'}</span>`}
 
                 ${this._message ? html`<span class="muted">${this._message}</span>` : nothing}
             </div>
 
             <div class="blocked">
-                Knob writes are blocked: this deployment exposes no HTTP endpoint for
-                <code>Capsule.persona_config.knobs</code>. Derived settings below are
-                whatever the server computed — never recomputed in the browser.
+                Knobs persist to <code>Capsule.persona_config.knobs</code> through
+                <code>PUT /api/v2/core/agentiq/{capsule_id}</code>. Derived settings below
+                are whatever the server computed — never recomputed in the browser.
             </div>
 
             <div class="derived">

@@ -82,13 +82,16 @@ export class IQStore {
     /** Load knobs + derived settings the server computed. Missing fields stay missing. */
     setFromServer(knobs: Partial<IQKnobs> | null, derived: Partial<DerivedSettings> | null) {
         if (knobs) {
-            this._knobs = {
-                intelligence_level: knobs.intelligence_level ?? this._knobs?.intelligence_level ?? 5,
-                autonomy_level: knobs.autonomy_level ?? this._knobs?.autonomy_level ?? 5,
-                resource_budget: knobs.resource_budget ?? this._knobs?.resource_budget ?? 0.10,
-                response_style: knobs.response_style ?? this._knobs?.response_style ?? 'balanced',
+            // Only accept what the server actually sent. A missing field stays
+            // missing — the UI never invents a knob value.
+            const next: IQKnobs = {
+                intelligence_level: (knobs.intelligence_level ?? this._knobs?.intelligence_level) as number,
+                autonomy_level: (knobs.autonomy_level ?? this._knobs?.autonomy_level) as number,
+                resource_budget: (knobs.resource_budget ?? this._knobs?.resource_budget) as number,
+                response_style: (knobs.response_style ?? this._knobs?.response_style) as string,
             };
-            if (!this._saved) this._saved = { ...this._knobs };
+            this._knobs = next;
+            if (!this._saved) this._saved = { ...next };
         }
         if (derived) {
             this._derived = { ...(this._derived ?? {}), ...derived } as DerivedSettings;
@@ -103,13 +106,8 @@ export class IQStore {
 
     setKnob<K extends keyof IQKnobs>(key: K, value: IQKnobs[K]) {
         if (!this._knobs) {
-            this._knobs = {
-                intelligence_level: 5,
-                autonomy_level: 5,
-                resource_budget: 0.10,
-                response_style: 'balanced',
-            };
-            if (!this._saved) this._saved = { ...this._knobs };
+            // No server state to edit. Refuse rather than invent a knob row.
+            return;
         }
         this._knobs = { ...this._knobs, [key]: value };
         this._notify();
