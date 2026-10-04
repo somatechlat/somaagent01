@@ -147,7 +147,9 @@ def _sidecar_env(channel: Any, config: Dict[str, Any]) -> Dict[str, str]:
     Path(media_dir).mkdir(parents=True, exist_ok=True)
     env.update(
         {
-            "PORT": str(config.get("bridge_port") or os.environ.get("WA_BRIDGE_PORT", "3100")),
+            # The sidecar listen port is deployment topology. No default: an
+            # unconfigured port means the sidecar is not started on a guess.
+            "PORT": str(config.get("bridge_port") or os.environ.get("WA_BRIDGE_PORT") or ""),
             "SESSION_DIR": str(session_dir),
             "CACHE_DIR": str(media_dir),
             "MODE": str(config.get("mode_self_chat", "self-chat")),

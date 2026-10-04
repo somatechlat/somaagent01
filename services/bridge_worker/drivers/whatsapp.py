@@ -21,8 +21,8 @@ Option B — ``cloud``
 
 Env vars (Channel.config overrides win over env):
     WA_BRIDGE_MODE                baileys | cloud          (default baileys)
-    WA_BRIDGE_BASE_URL            http://127.0.0.1:3100    (baileys sidecar)
-    WA_BRIDGE_PORT                3100                     (used to build base url)
+    WA_BRIDGE_BASE_URL            (required) Baileys sidecar base URL — no default
+    WA_BRIDGE_PORT                (unused) the sidecar host is never built from a port
     WA_CLOUD_API_TOKEN            Meta permanent access token
     WA_CLOUD_PHONE_NUMBER_ID      Graph phone number id
     WA_CLOUD_API_VERSION          v21.0
