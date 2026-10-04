@@ -34,9 +34,9 @@ test.describe('A person uses the agent', () => {
 
   test('logs in like a human', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
-    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
-    await page.getByRole('button', { name: /sign in|log in/i }).first().click();
+    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
 
     // A human knows they are in when the chat surface appears.
     await expect(page).toHaveURL(/\/(chat|saas\/chat|workspace)?$/, { timeout: 30000 });
@@ -47,9 +47,9 @@ test.describe('A person uses the agent', () => {
 
   test('streams a reply the person can watch arrive', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
-    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
-    await page.getByRole('button', { name: /sign in|log in/i }).first().click();
+    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -70,9 +70,9 @@ test.describe('A person uses the agent', () => {
 
   test('the controls a person presses actually control the turn', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
-    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
-    await page.getByRole('button', { name: /sign in|log in/i }).first().click();
+    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -95,9 +95,9 @@ test.describe('A person uses the agent', () => {
 
   test('remembers through SomaBrain and recalls it back', async ({ page, request }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
-    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
-    await page.getByRole('button', { name: /sign in|log in/i }).first().click();
+    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -125,9 +125,9 @@ test.describe('A person uses the agent', () => {
 
   test('logging out ends the session', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.locator('input[type="email"][autocomplete="email"], input[type="email"]').first().fill(EMAIL);
-    await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
-    await page.getByRole('button', { name: /sign in|log in/i }).first().click();
+    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
     await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });

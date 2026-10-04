@@ -83,20 +83,6 @@ async def _emit_auth_audit(
 @router.post("/token")
 async def get_token(request, payload: TokenRequest):
     """Get access token via password grant or OAuth code exchange."""
-    # Exactly one authority answers (see admin.auth.identity).
-    #
-    #   STANDALONE  -> LocalIdentity. The agent holds the credential; there is
-    #                  no identity provider and none is consulted.
-    #   ENTERPRISE  -> Keycloak password grant. This process never stores it.
-    #
-    # Never both, and never a fallback between them: falling through from a
-    # federated rejection to a local check would let a disabled cloud account
-    # be resurrected by a stale local row.
-    from admin.auth.identity import resolve_identity_provider
-
-    if resolve_identity_provider() == "local":
-        return await _login_local(request, payload, lockout_service)
-
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
@@ -359,6 +345,7 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
     from admin.common.session_manager import get_session_manager
 
     identity = await authenticate_local(payload.email, payload.password)
+    logger.warning('LOCAL_LOGIN email=%s ok=%s reason=%s', payload.email, identity.ok, identity.reason)
     if not identity.ok:
         new_status = await lockout_service.record_failed_attempt(payload.email)
         await _emit_auth_audit(
@@ -377,21 +364,37 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
         raise UnauthorizedError(message="Invalid email or password")
 
     await lockout_service.record_successful_login(payload.email)
-    session_manager = await get_session_manager()
-    permissions = await session_manager.resolve_permissions(
-        user_id=identity.email,
-        tenant_id="",
-        roles=[],
-    )
-    session = await session_manager.create_session(
-        user_id=identity.email,
-        tenant_id="",
-        email=identity.email,
-        roles=[],
-        permissions=permissions,
-        ip_address=request.META.get("REMOTE_ADDR", ""),
-        user_agent=request.META.get("HTTP_USER_AGENT", ""),
-    )
+
+    # Mint a real local session. `generate_session_token` returns the raw
+    # bearer (shown to the client once) and its hash (the only thing stored).
+    # decode_token classifies on shape - `ses_` is what routes a bearer to the
+    # local-session stack instead of the JWT stack.
+    from asgiref.sync import sync_to_async
+
+    from admin.aaas.models.session import LocalSession
+    from services.common.identity.session import generate_session_token
+
+    raw_token, token_hash = generate_session_token()
+
+    @sync_to_async
+    def _open_session() -> str:
+        from django.utils import timezone
+
+        now = timezone.now()
+        # LocalSession has no expires_at column: is_valid() derives the
+        # absolute window from created_at and the idle window from
+        # last_seen_at. Both are required and NOT NULL.
+        LocalSession.objects.create(
+            token_hash=token_hash,
+            principal_id=identity.email,
+            created_at=now,
+            last_seen_at=now,
+            revoked=False,
+            privileged=False,
+        )
+        return identity.email
+
+    principal = await _open_session()
     await _emit_auth_audit(
         request,
         action="auth.login_succeeded",
@@ -399,14 +402,17 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
         actor_email=identity.email,
     )
 
+    from django.http import JsonResponse
+
     fwd_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "")
     cookie_secure = bool(request.is_secure() or fwd_proto.lower() == "https")
-    resp_obj = JSONResponse(
-        status_code=200,
-        content={
-            "token": session.session_id,
+    resp_obj = JsonResponse(
+        status=200,
+        data={
+            "token": raw_token,
             "refresh_token": None,
-            "session_id": session.session_id,
+            "session_id": principal,
+            "redirect_path": "/chat",
             "user": {
                 "id": identity.email,
                 "email": identity.email,
@@ -416,18 +422,14 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
             },
         },
     )
+    # path="/" is load-bearing: without it Django scopes the cookie to the
+    # request path (/api/v2/auth/) and /chat never sees it, so checkAuth()
+    # bounces straight back to the login screen.
     resp_obj.set_cookie(
         "access_token",
-        session.session_id,
+        raw_token,
         max_age=3600,
-        httponly=True,
-        secure=cookie_secure,
-        samesite="Lax",
-    )
-    resp_obj.set_cookie(
-        "session_id",
-        session.session_id,
-        max_age=3600,
+        path="/",
         httponly=True,
         secure=cookie_secure,
         samesite="Lax",
@@ -463,6 +465,20 @@ async def login_with_email(request, payload: LoginRequest):
             message=f"Account locked. Try again in {(lockout_status.retry_after or 0) // 60} minutes.",
             details={"retry_after": lockout_status.retry_after},
         )
+
+    # Exactly one authority answers (see admin.auth.identity).
+    #
+    #   STANDALONE  -> LocalIdentity. The agent holds the credential; there is
+    #                  no identity provider and none is consulted.
+    #   ENTERPRISE  -> Keycloak password grant. This process never stores it.
+    #
+    # Never both, and never a fallback between them: falling through from a
+    # federated rejection to a local check would let a disabled cloud account
+    # be resurrected by a stale local row.
+    from admin.auth.identity import resolve_identity_provider
+
+    if resolve_identity_provider() == "local":
+        return await _login_local(request, payload, lockout_service)
 
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
